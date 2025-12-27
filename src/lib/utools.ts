@@ -1,0 +1,174 @@
+
+/**
+ * uTools Adapter
+ * 
+ * This class wraps all interactions with the uTools API.
+ * It provides a consistent interface that works locally (via localStorage/Web APIs)
+ * when running in a browser environment, and uses native uTools APIs when available.
+ */
+
+export interface UserInfo {
+  avatar?: string
+  nickname: string
+  type: string
+}
+
+export class UToolsAdapter {
+  /**
+   * Check if running in uTools environment
+   */
+  static get isUTools(): boolean {
+    // @ts-ignore
+    return typeof window !== 'undefined' && !!window.utools
+  }
+
+  /**
+   * Database Operations
+   */
+  static db = {
+    /**
+     * Save a document
+     * @param id Document ID
+     * @param data Data to save
+     */
+    put: <T>(id: string, data: T, rev?: string): { id: string, ok: boolean, rev?: string, error?: any } => {
+      if (UToolsAdapter.isUTools) {
+        // @ts-ignore
+        const result = window.utools.db.put({
+          _id: id,
+          _rev: rev,
+          data: data
+        })
+        return result
+      } else {
+        // Web Fallback: localStorage
+        try {
+          const item = {
+            _id: id,
+            _rev: rev || Date.now().toString(), // Simple mock rev
+            data: data
+          }
+          localStorage.setItem(id, JSON.stringify(item))
+          return { id, ok: true, rev: item._rev }
+        } catch (e) {
+          console.error("Web DB Put Error", e)
+          return { id, ok: false, error: e }
+        }
+      }
+    },
+
+    /**
+     * Get a document
+     * @param id Document ID
+     */
+    get: <T>(id: string): { _id: string, _rev?: string, data: T } | null => {
+      if (UToolsAdapter.isUTools) {
+        // @ts-ignore
+        return window.utools.db.get(id)
+      } else {
+        // Web Fallback
+        const itemStr = localStorage.getItem(id)
+        if (!itemStr) return null
+        try {
+          return JSON.parse(itemStr)
+        } catch {
+          return null
+        }
+      }
+    },
+
+    /**
+     * Delete a document
+     * @param id Document ID
+     */
+    remove: (id: string): { id: string, ok: boolean, error?: any } => {
+       if (UToolsAdapter.isUTools) {
+         // @ts-ignore
+         return window.utools.db.remove(id)
+       } else {
+         // Web Fallback
+         localStorage.removeItem(id)
+         return { id, ok: true }
+       }
+    },
+
+    /**
+     * Get all documents with a prefix
+     * @param prefix ID prefix
+     */
+    allDocs: <T>(prefix: string = ''): Array<{ _id: string, _rev?: string, data: T }> => {
+      if (UToolsAdapter.isUTools) {
+        // @ts-ignore
+        return window.utools.db.allDocs(prefix)
+      } else {
+        // Web Fallback: Iterate localStorage
+        const results = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith(prefix)) {
+            const val = localStorage.getItem(key)
+            if (val) {
+               try {
+                 results.push(JSON.parse(val))
+               } catch (e) {
+                 // Ignore malformed
+               }
+            }
+          }
+        }
+        return results
+      }
+    }
+  }
+
+  /**
+   * User Operations
+   */
+  static getUser(): UserInfo | null {
+    if (UToolsAdapter.isUTools) {
+      // @ts-ignore
+      return window.utools.getUser()
+    }
+    // Web Fallback: Mock user or null
+    return {
+      nickname: 'Local User',
+      avatar: undefined,
+      type: 'web'
+    }
+  }
+
+  /**
+   * System Integration
+   */
+  static copyToClipboard(text: string) {
+    if (UToolsAdapter.isUTools) {
+      // @ts-ignore
+      window.utools.copyText(text)
+    } else {
+      navigator.clipboard.writeText(text)
+    }
+  }
+  
+  static showNotification(body: string) {
+      if (UToolsAdapter.isUTools) {
+          // @ts-ignore
+          window.utools.showNotification(body)
+      } else {
+          // You might use a toast library here, but for strict "system" notification:
+          if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('Goose Notion', { body })
+          } else {
+              console.log('Notification:', body)
+          }
+      }
+  }
+  
+  static shellOpenExternal(url: string) {
+      if (UToolsAdapter.isUTools) {
+          // @ts-ignore
+          window.utools.shellOpenExternal(url)
+      } else {
+          window.open(url, '_blank')
+      }
+  }
+}

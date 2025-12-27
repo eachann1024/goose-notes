@@ -1,0 +1,66 @@
+import { BubbleMenu } from '@tiptap/react'
+import { Bold, Italic, Strikethrough, Code, Highlighter } from 'lucide-react'
+import { Toggle } from '@/components/ui/toggle'
+import { Separator } from '@/components/ui/separator'
+
+type EditorBubbleMenuProps = Omit<React.ComponentProps<typeof BubbleMenu>, 'children'>
+
+export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
+  if (!editor) return null
+
+  return (
+    <BubbleMenu
+      editor={editor}
+      tippyOptions={{ duration: 100 }}
+      className="flex items-center space-x-1 rounded-md border bg-popover p-1 shadow-md"
+      {...props}
+    >
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('bold')}
+        onPressedChange={() => editor.chain().focus().toggleBold().run()}
+        aria-label="Toggle bold"
+      >
+        <Bold className="h-4 w-4" />
+      </Toggle>
+      
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('italic')}
+        onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+        aria-label="Toggle italic"
+      >
+        <Italic className="h-4 w-4" />
+      </Toggle>
+      
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('strike')}
+        onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+        aria-label="Toggle strikethrough"
+      >
+        <Strikethrough className="h-4 w-4" />
+      </Toggle>
+
+      <Separator orientation="vertical" className="h-6" />
+
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('code')}
+        onPressedChange={() => editor.chain().focus().toggleCode().run()}
+        aria-label="Toggle code"
+      >
+        <Code className="h-4 w-4" />
+      </Toggle>
+      
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('highlight')}
+        onPressedChange={() => editor.chain().focus().toggleHighlight().run()}
+        aria-label="Toggle highlight"
+      >
+        <Highlighter className="h-4 w-4" />
+      </Toggle>
+    </BubbleMenu>
+  )
+}

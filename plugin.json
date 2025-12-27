@@ -1,0 +1,32 @@
+{
+	"pluginName": "鹅的Notion",
+	"description": "本地化的Notion风格笔记",
+	"author": "Antigravity",
+	"homepage": "https://github.com/your-repo",
+	"version": "0.0.1",
+	"logo": "logo.png",
+	"features": [
+		{
+			"code": "gn",
+			"explain": "打开鹅的Notion",
+			"cmds": [
+				"Goose Notion",
+				"Notion",
+				"Note",
+				"笔记",
+				"gn"
+			]
+		},
+        {
+            "code": "new_page",
+            "explain": "新建笔记",
+            "cmds": [
+                {
+                    "type": "over",
+                    "label": "新建笔记"
+                }
+            ]
+        }
+	],
+    "preload": "preload.js" 
+}
