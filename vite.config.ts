@@ -6,6 +6,7 @@ import { codeInspectorPlugin } from 'code-inspector-plugin'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './', // utools 需要相对路径
   plugins: [
     react(),
     codeInspectorPlugin({
