@@ -11,6 +11,7 @@ declare global {
   const ChevronDown: typeof import('lucide-react').ChevronDown
   const ChevronRight: typeof import('lucide-react').ChevronRight
   const Code: typeof import('lucide-react').Code
+  const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
   const FileText: typeof import('lucide-react').FileText
   const Fragment: typeof import('react').Fragment
   const Image: typeof import('lucide-react').Image
@@ -57,12 +58,16 @@ declare global {
   const usePages: typeof import('./stores/usePages').usePages
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
+  const useSettings: typeof import('./stores/useSettings').useSettings
   const useState: typeof import('react').useState
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTransition: typeof import('react').useTransition
 }
 // for type re-export
 declare global {
+  // @ts-ignore
+  export type { SearchProvider } from './stores/useSettings'
+  import('./stores/useSettings')
   // @ts-ignore
   export type { UToolsAdapter, UserInfo } from './lib/utools'
   import('./lib/utools')

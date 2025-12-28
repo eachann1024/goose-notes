@@ -12,11 +12,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Trash2, FileJson, FileCode, FileType, Check } from "lucide-react"
+import { MoreHorizontal, Trash2, FileJson, FileCode, FileType } from "lucide-react"
 import { usePages } from "@/stores/usePages"
 import { exportToJSON, exportToHTML, exportToMarkdown } from "@/lib/export"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { FontSelector } from "@/components/FontSelector"
 
 export function PageMenu() {
   const { activePageId, getPage, updatePage, deletePage } = usePages()
@@ -42,30 +43,10 @@ export function PageMenu() {
         
         <DropdownMenuGroup>
            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">样式</div>
-           
-           <div className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer" onClick={() => updatePage(activePageId, { fontFamily: 'default' })}>
-               <div className="flex items-center gap-2">
-                  <span className="font-sans text-xl">Ag</span>
-                  <span className="text-sm">默认</span>
-               </div>
-               {page.fontFamily === 'default' && <Check className="h-4 w-4" />}
-           </div>
-           
-           <div className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer font-serif" onClick={() => updatePage(activePageId, { fontFamily: 'serif' })}>
-               <div className="flex items-center gap-2">
-                  <span className="text-xl">Ag</span>
-                  <span className="text-sm">衬线体</span>
-               </div>
-               {page.fontFamily === 'serif' && <Check className="h-4 w-4" />}
-           </div>
-           
-           <div className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer font-mono" onClick={() => updatePage(activePageId, { fontFamily: 'mono' })}>
-               <div className="flex items-center gap-2">
-                  <span className="text-xl">Ag</span>
-                  <span className="text-sm">等宽体</span>
-               </div>
-               {page.fontFamily === 'mono' && <Check className="h-4 w-4" />}
-           </div>
+           <FontSelector 
+             value={page.fontFamily} 
+             onChange={(fontFamily) => updatePage(activePageId, { fontFamily })} 
+           />
         </DropdownMenuGroup>
         
         <DropdownMenuSeparator />

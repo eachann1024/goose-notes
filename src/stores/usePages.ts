@@ -14,6 +14,7 @@ interface PagesState {
   updatePage: (id: string, updates: Partial<Page>) => void
   deletePage: (id: string) => void // Soft delete
   restorePage: (id: string) => void
+  duplicatePage: (id: string) => string
   permanentlyDeletePage: (id: string) => void
   setActivePage: (id: string | null) => void
   
@@ -31,6 +32,35 @@ const initialContent: JSONContent = {
   ],
 }
 
+// 节流存储适配器，减少写入频率
+function createThrottledStorage(storage: typeof uToolsStorage, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let pendingValue: string | null = null
+  let pendingName: string | null = null
+  
+  return {
+    getItem: storage.getItem,
+    setItem: (name: string, value: string) => {
+      pendingName = name
+      pendingValue = value
+      
+      if (!timeoutId) {
+        timeoutId = setTimeout(() => {
+          if (pendingName && pendingValue) {
+            storage.setItem(pendingName, pendingValue)
+          }
+          timeoutId = null
+          pendingName = null
+          pendingValue = null
+        }, delay)
+      }
+    },
+    removeItem: storage.removeItem,
+  }
+}
+
+const throttledStorage = createThrottledStorage(uToolsStorage, 500)
+
 export const usePages = create<PagesState>()(
   persist(
     (set, get) => ({
@@ -46,6 +76,7 @@ export const usePages = create<PagesState>()(
           parentId,
           title: '',
           content: initialContent,
+          isFolder: false, // Unified: initially not a folder
           isLocked: false,
           isFullWidth: false,
           fontSize: 'default',
@@ -56,7 +87,7 @@ export const usePages = create<PagesState>()(
         
         set((state) => ({
           pages: { ...state.pages, [id]: newPage },
-          activePageId: id,
+          activePageId: id, // Switch to new page immediately
         }))
         
         return id
@@ -107,6 +138,34 @@ export const usePages = create<PagesState>()(
           }
         })
       },
+
+      duplicatePage: (id) => {
+        let newId = ""
+        set((state) => {
+          const page = state.pages[id]
+          if (!page) return state
+
+          newId = uuidv4()
+          const now = Date.now()
+          const newPage: Page = {
+            ...page,
+            id: newId,
+            title: `${page.title} 副本`,
+            updatedAt: now,
+            createdAt: now,
+            trashedAt: undefined, // Ensure it's not trashed
+            isFavorite: false, // Don't inherit favorite status
+          }
+
+          return {
+            pages: {
+              ...state.pages,
+              [newId]: newPage,
+            }
+          }
+        })
+        return newId
+      },
       
       permanentlyDeletePage: (id) => {
          set((state) => {
@@ -132,7 +191,9 @@ export const usePages = create<PagesState>()(
     }),
     {
       name: 'goose-notion-storage',
-      storage: createJSONStorage(() => uToolsStorage),
+      storage: createJSONStorage(() => throttledStorage),
+      // 只持久化 pages，不持久化临时状态
+      partialize: (state) => ({ pages: state.pages }),
     }
   )
 )

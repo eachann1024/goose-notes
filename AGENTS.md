@@ -102,3 +102,5 @@ interface Page {
 3. **错误处理**：使用 try-catch 包裹异步操作
 4. **注释规范**：只解释 Why，不解释 What
 5. **导入规则**：shadcn 和 hooks 由 autoimport 处理
+6. **尽量不要造轮子**
+7. **实现后请自行 pnpm build + 使用浏览器验证是否正常工作**

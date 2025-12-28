@@ -2,8 +2,8 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
+import HighlightExtension from '@tiptap/extension-highlight'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -13,8 +13,18 @@ import debounce from 'lodash.debounce'
 import { usePages } from '@/stores/usePages'
 import { cn } from '@/lib/utils'
 import { configureSlashCommand } from '@/extensions/SlashCommand'
+import { ResizableImage } from '@/extensions/ResizableImage'
 import { EditorBubbleMenu } from '@/components/EditorBubbleMenu'
 import 'tippy.js/dist/tippy.css'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { useSettings } from '@/stores/useSettings'
+import { Search, Scissors, Copy, Clipboard } from 'lucide-react'
 
 // Initialize lowlight for code syntax highlighting
 const lowlight = createLowlight(all)
@@ -26,6 +36,7 @@ interface EditorProps {
 export function Editor({ editable = true }: EditorProps) {
   const { activePageId, getPage, updatePage } = usePages()
   const page = activePageId ? getPage(activePageId) : undefined
+  const { searchProviders } = useSettings()
 
   // Create a debounced update function
   const debouncedUpdate = useMemo(
@@ -39,7 +50,9 @@ export function Editor({ editable = true }: EditorProps) {
   const editor = useEditor({
     editable,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false, // 使用 CodeBlockLowlight 替代
+      }),
       Placeholder.configure({
         placeholder: '输入 / 以使用命令...',
       }),
@@ -47,7 +60,7 @@ export function Editor({ editable = true }: EditorProps) {
         openOnClick: false,
         autolink: true,
       }),
-      Image,
+      ResizableImage,
       TaskList,
       TaskItem.configure({
         nested: true,
@@ -55,6 +68,7 @@ export function Editor({ editable = true }: EditorProps) {
       CodeBlockLowlight.configure({
         lowlight,
       }),
+      HighlightExtension,
       configureSlashCommand(),
     ],
     editorProps: {
@@ -124,7 +138,72 @@ export function Editor({ editable = true }: EditorProps) {
   return (
     <div className={cn("transition-all duration-300", fontFamilyClass, fontSizeClass, widthClass)}>
        <EditorBubbleMenu editor={editor} />
-       <EditorContent editor={editor} />
+       <ContextMenu>
+        <ContextMenuTrigger>
+          <EditorContent editor={editor} />
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-64">
+           {editor && !editor.state.selection.empty && (
+             <>
+               <ContextMenuItem inset disabled className="text-xs text-muted-foreground">
+                 {(() => {
+                    const { from, to } = editor.state.selection
+                    const text = editor.state.doc.textBetween(from, to, ' ')
+                    return text.length > 20 ? text.slice(0, 20) + '...' : text
+                 })()}
+               </ContextMenuItem>
+               <ContextMenuSeparator />
+               {searchProviders.filter(p => p.isEnabled).map(provider => (
+                 <ContextMenuItem
+                   key={provider.id}
+                   inset 
+                   onSelect={() => {
+                     const { from, to } = editor.state.selection
+                     const text = editor.state.doc.textBetween(from, to, ' ')
+                     const url = provider.urlTemplate.replace('%s', encodeURIComponent(text))
+                     window.open(url, '_blank')
+                   }}
+                 >
+                   <Search className="mr-2 h-4 w-4" />
+                   用 {provider.name} 搜索
+                 </ContextMenuItem>
+               ))}
+               <ContextMenuSeparator />
+             </>
+           )}
+           <ContextMenuItem inset onSelect={() => {
+               const { from, to } = editor.state.selection
+               const text = editor.state.doc.textBetween(from, to, ' ')
+               navigator.clipboard.writeText(text)
+               editor?.commands.deleteSelection()
+           }}>
+             <Scissors className="mr-2 h-4 w-4" />
+             剪切
+             <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘X</span>
+           </ContextMenuItem>
+           <ContextMenuItem inset onSelect={() => {
+              const { from, to } = editor.state.selection
+              const text = editor.state.doc.textBetween(from, to, ' ')
+              navigator.clipboard.writeText(text)
+           }}>
+             <Copy className="mr-2 h-4 w-4" />
+             拷贝
+             <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘C</span>
+           </ContextMenuItem>
+           <ContextMenuItem inset onSelect={async () => {
+              try {
+                const text = await navigator.clipboard.readText()
+                editor?.commands.insertContent(text)
+              } catch (err) {
+                console.error('Failed to read clipboard contents: ', err)
+              }
+           }}>
+             <Clipboard className="mr-2 h-4 w-4" />
+             粘贴
+             <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘V</span>
+           </ContextMenuItem>
+        </ContextMenuContent>
+       </ContextMenu>
     </div>
   )
 }

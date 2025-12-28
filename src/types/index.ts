@@ -32,6 +32,8 @@ export interface Page {
   content: JSONContent
   
   // Feature flags
+  isFolder?: boolean
+  isFavorite?: boolean
   isLocked: boolean
   isFullWidth: boolean
   fontSize: FontSize

@@ -4,7 +4,7 @@ import Suggestion from '@tiptap/suggestion'
 import { ReactRenderer } from '@tiptap/react'
 import tippy from 'tippy.js'
 import { CommandList, getSuggestionItems } from '@/components/CommandList'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { InputRule } from '@tiptap/core'
 
 export const SlashCommand = Extension.create({
   name: 'slashCommand',
@@ -17,8 +17,20 @@ export const SlashCommand = Extension.create({
           props.command({ editor, range })
         },
       },
-      chineseTrigger: '、'
     }
+  },
+
+  addInputRules() {
+    // 中文顿号 '、' 自动转换为 '/' 触发斜杠命令
+    return [
+      new InputRule({
+        find: /、$/,
+        handler: ({ state, range }) => {
+          const { tr } = state
+          tr.insertText('/', range.from, range.to)
+        },
+      }),
+    ]
   },
 
   addProseMirrorPlugins() {
@@ -27,20 +39,6 @@ export const SlashCommand = Extension.create({
         editor: this.editor,
         ...this.options.suggestion,
       }),
-      // Plugin to handle Chinese '、' -> '/' trigger
-      new Plugin({
-          key: new PluginKey('chineseSlashTrigger'),
-          props: {
-              handleTextInput: (view, from, to, text) => {
-                  if (text === '、') {
-                      const tr = view.state.tr.insertText('/', from, to)
-                      view.dispatch(tr)
-                      return true
-                  }
-                  return false
-              }
-          }
-      })
     ]
   },
 })
@@ -72,6 +70,9 @@ export const configureSlashCommand = () => {
                       interactive: true,
                       trigger: 'manual',
                       placement: 'bottom-start',
+                      arrow: false,
+                      theme: 'notion-slash',
+                      offset: [0, 8],
                     })
                   },
         
@@ -82,14 +83,14 @@ export const configureSlashCommand = () => {
                       return
                     }
         
-                    popup[0].setProps({
+                    popup?.[0]?.setProps({
                       getReferenceClientRect: props.clientRect,
                     })
                   },
         
                   onKeyDown(props: any) {
                     if (props.event.key === 'Escape') {
-                      popup[0].hide()
+                      popup?.[0]?.hide()
         
                       return true
                     }
@@ -98,8 +99,8 @@ export const configureSlashCommand = () => {
                   },
         
                   onExit() {
-                    popup[0].destroy()
-                    component.destroy()
+                    popup?.[0]?.destroy()
+                    component?.destroy()
                   },
                 }
               },
