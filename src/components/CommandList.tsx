@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react'
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from 'react'
 import {
   Heading1,
   Heading2,
@@ -23,6 +23,7 @@ interface CommandListProps {
 
 export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const selectItem = useCallback(
     (index: number) => {
@@ -38,14 +39,24 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
     setSelectedIndex(0)
   }, [props.items])
 
+  // 滚动到选中项
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const selectedEl = container.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [selectedIndex])
+
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
       if (event.key === 'ArrowUp') {
-        setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length)
+        setSelectedIndex((prev) => (prev - 1 + props.items.length) % props.items.length)
         return true
       }
       if (event.key === 'ArrowDown') {
-        setSelectedIndex((selectedIndex + 1) % props.items.length)
+        setSelectedIndex((prev) => (prev + 1) % props.items.length)
         return true
       }
       if (event.key === 'Enter') {
@@ -54,10 +65,11 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
       }
       return false
     },
-  }))
+  }), [props.items.length, selectItem, selectedIndex])
 
   return (
     <div
+      ref={containerRef}
       className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md transition-all animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
     >
       <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 mb-1">基础块</div>
@@ -66,6 +78,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         return (
           <button
             key={index}
+            data-index={index}
             className={cn(
               "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none w-full text-left gap-2",
               index === selectedIndex ? "bg-accent text-accent-foreground" : ""

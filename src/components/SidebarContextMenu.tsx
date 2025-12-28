@@ -90,6 +90,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
             >
                 <Trash2 className="h-4 w-4" />
                 <span>移至垃圾箱</span>
+                <span className="ml-auto text-xs text-muted-foreground">⌘⌫</span>
             </ContextMenuItem>
 
             <ContextMenuSeparator />

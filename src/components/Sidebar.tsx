@@ -172,8 +172,36 @@ export function Sidebar({ className }: SidebarProps) {
     [getFavorites, activeNotebookId, pages]
   )
 
+  // 检查页面内容是否为空（只包含一个空段落）
+  const isEmptyContent = (content: any) => {
+    if (!content || content.type !== 'doc') return true
+    if (!content.content || content.content.length === 0) return true
+    if (content.content.length === 1) {
+      const first = content.content[0]
+      // 只有一个空段落算空内容
+      if (first.type === 'paragraph' && (!first.content || first.content.length === 0)) {
+        return true
+      }
+    }
+    return false
+  }
+
   const handleCreatePage = () => {
-    createPage(undefined, activeNotebookId || 'default')
+    // 查找当前记事本中是否存在空白页面
+    const existingBlankPage = Object.values(pages).find(p => {
+      const matchWorkspace = p.workspaceId === (activeNotebookId || 'default')
+      const notTrashed = !p.trashedAt
+      const isBlankTitle = !p.title || p.title.trim() === ''
+      const isBlankContent = isEmptyContent(p.content)
+      return matchWorkspace && notTrashed && isBlankTitle && isBlankContent
+    })
+
+    if (existingBlankPage) {
+      // 存在空白页面，直接选中
+      setActivePage(existingBlankPage.id)
+    } else {
+      createPage(undefined, activeNotebookId || 'default')
+    }
   }
 
   const handleMove = ({

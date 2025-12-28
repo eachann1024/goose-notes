@@ -28,5 +28,6 @@
             ]
         }
 	],
-    "preload": "preload.js" 
+    "main": "dist/index.html",
+    "preload": "preload/preload.cjs" 
 }
