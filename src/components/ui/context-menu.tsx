@@ -3,8 +3,51 @@ import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useContextMenu } from "@/stores/useContextMenu"
 
-const ContextMenu = ContextMenuPrimitive.Root
+// 受控的 ContextMenu，自动管理全局状态以支持"切换页面隐藏菜单"等场景
+interface ContextMenuProps extends Omit<React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Root>, 'open'> {
+  children: React.ReactNode
+}
+
+function ContextMenu({ children, onOpenChange, ...props }: ContextMenuProps) {
+  const idRef = React.useRef<string | null>(null)
+  const { openMenuId, open, close, generateId } = useContextMenu()
+  
+  // 组件挂载时生成唯一 id
+  React.useEffect(() => {
+    idRef.current = generateId()
+    return () => {
+      // 组件卸载时如果是当前打开的菜单，则关闭
+      if (useContextMenu.getState().openMenuId === idRef.current) {
+        close()
+      }
+    }
+  }, [generateId, close])
+  
+  const isOpen = openMenuId === idRef.current
+  
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      open(idRef.current!)
+    } else {
+      close()
+    }
+    onOpenChange?.(nextOpen)
+  }, [open, close, onOpenChange])
+  // Radix 实际支持 open prop 但类型定义中未声明，使用类型断言
+  const rootProps = {
+    open: isOpen,
+    onOpenChange: handleOpenChange,
+    ...props
+  } as React.ComponentProps<typeof ContextMenuPrimitive.Root>
+  
+  return (
+    <ContextMenuPrimitive.Root {...rootProps}>
+      {children}
+    </ContextMenuPrimitive.Root>
+  )
+}
 
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 

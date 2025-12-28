@@ -7,18 +7,31 @@ import { PageMenu } from "@/components/PageMenu"
 import { CommandPalette } from "@/components/CommandPalette"
 import { IconSelector } from "@/components/IconSelector"
 import * as LucideIcons from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import welcomeCover from "@/assets/welcome-cover.png"
+import { Toaster, toast } from "sonner"
 
 function App() {
   const { activePageId, getPage, updatePage } = usePages()
   const page = activePageId ? getPage(activePageId) : undefined
   const [zoom, setZoom] = useState(1)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // 节流，避免频繁触发
+  const lastSaveToastRef = useRef(0)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.metaKey || e.ctrlKey) {
-            if (e.key === '=' || e.key === '+') {
+            if (e.key === 's') {
+                e.preventDefault()
+                // 节流：1秒内不重复提示
+                const now = Date.now()
+                if (now - lastSaveToastRef.current > 1000) {
+                    lastSaveToastRef.current = now
+                    toast.success('内容已自动保存，无需手动保存 ✨')
+                }
+            } else if (e.key === '=' || e.key === '+') {
                 e.preventDefault()
                 setZoom(prev => Math.min(prev + 0.1, 2))
             } else if (e.key === '-') {
@@ -44,11 +57,64 @@ function App() {
     }
   }, [])
 
+  // 页面切换时恢复滚动位置
+  useEffect(() => {
+    if (activePageId && scrollContainerRef.current) {
+      const savedScroll = sessionStorage.getItem(`scroll-${activePageId}`)
+      if (savedScroll) {
+        // 延迟恢复，等待内容渲染，使用 instant 避免滚动动画
+        requestAnimationFrame(() => {
+          scrollContainerRef.current?.scrollTo({ top: Number(savedScroll), behavior: 'instant' })
+        })
+      } else {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' })
+      }
+    }
+  }, [activePageId])
+
+  // 滚动时保存位置（防抖）
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container || !activePageId) return
+
+    let timer: ReturnType<typeof setTimeout>
+    const handleScroll = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        sessionStorage.setItem(`scroll-${activePageId}`, String(container.scrollTop))
+      }, 150)
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => {
+      clearTimeout(timer)
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [activePageId])
+
   return (
     <div 
         className="flex h-screen overflow-hidden bg-background text-foreground transition-transform duration-200"
         style={{ zoom: zoom }}
     >
+      {/* Toast 容器 - Notion 风格 */}
+      <Toaster 
+        position="top-center" 
+        duration={3000}
+        visibleToasts={1}
+        toastOptions={{
+          style: {
+            background: 'hsl(var(--foreground))',
+            color: 'hsl(var(--background))',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            padding: '12px 16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          },
+        }}
+      />
+      
       <CommandPalette />
       <Sidebar />
 
@@ -107,7 +173,7 @@ function App() {
              </div>
          )}
          
-         <div className="flex-1 overflow-y-auto scroll-smooth">
+         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
          {activePageId && page ? (
             <div className="py-12 px-8 min-h-screen">
                {/* Page Title Input */}

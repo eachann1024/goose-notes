@@ -49,6 +49,7 @@ declare global {
   const useActionState: typeof import('react').useActionState
   const useCallback: typeof import('react').useCallback
   const useContext: typeof import('react').useContext
+  const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
   const useEffect: typeof import('react').useEffect

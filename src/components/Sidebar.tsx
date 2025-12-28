@@ -123,7 +123,12 @@ type SidebarView = 'pages' | 'trash'
 export function Sidebar({ className }: SidebarProps) {
   const { createPage, updatePage, deletePage, pages, activePageId, setActivePage, reorderPages, getChildren, getFavorites } = usePages()
   const { activeNotebookId } = useNotebooks()
-  const [width, setWidth] = useState(256)
+  
+  // 从 localStorage 恢复侧边栏宽度
+  const [width, setWidth] = useState(() => {
+    const saved = localStorage.getItem('sidebar-width')
+    return saved ? Math.max(240, Math.min(480, Number(saved))) : 240
+  })
   const [isResizing, setIsResizing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [currentView, setCurrentView] = useState<SidebarView>('pages')
@@ -152,6 +157,14 @@ export function Sidebar({ className }: SidebarProps) {
       document.removeEventListener('keydown', handleDeleteShortcut)
     }
   }, [handleDeleteShortcut])
+
+  // 宽度变化时保存到 localStorage（防抖）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem('sidebar-width', String(width))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [width])
 
   const handleConfirmDelete = () => {
     if (activePageId) {
@@ -240,7 +253,7 @@ export function Sidebar({ className }: SidebarProps) {
 
     const onMouseMove = (e: MouseEvent) => {
       const newWidth = startWidth + e.clientX - startX
-      setWidth(Math.max(200, Math.min(480, newWidth)))
+      setWidth(Math.max(240, Math.min(480, newWidth)))
     }
 
     const onMouseUp = () => {

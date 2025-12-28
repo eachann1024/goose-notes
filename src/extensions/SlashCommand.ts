@@ -38,6 +38,19 @@ export const SlashCommand = Extension.create({
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
+        // 只在用户主动输入 / 时触发，而不是在内容中已存在 / 时触发
+        allow: ({ state, range }: { state: any; range: any }) => {
+          // 检查 / 是否在行首或空格后，避免误触发已有内容中的 /
+          const $from = state.doc.resolve(range.from)
+          const textBefore = $from.parent.textBetween(
+            Math.max(0, $from.parentOffset - 1),
+            $from.parentOffset,
+            null,
+            '\ufffc'
+          )
+          // 只有当 / 前面是空格、行首或者没有字符时才允许触发
+          return textBefore === '' || textBefore === ' ' || textBefore === '\n'
+        },
       }),
     ]
   },

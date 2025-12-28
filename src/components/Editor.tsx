@@ -99,19 +99,14 @@ export function Editor({ editable = true }: EditorProps) {
   // Sync content when page changes
   useEffect(() => {
     if (editor && page && activePageId) {
-      // Check if content is actually different to avoid cursor jumping?
-      // For simple page switching, re-setting content is fine.
-      // But if we use external updates (e.g. sync), we need to be careful.
-      // For now, assume single user single active session.
+      // 先让 editor 失焦，避免加载内容时触发 Slash Command
+      editor.commands.blur()
       
-      // Only set content if it's different or editor is empty (initial load)
-      // JSON comparison is expensive, but for page switch it's okay.
-      // A better way is relying on the key change of the editor component or dependencies.
+      // 设置内容，不触发更新事件（避免触发 Suggestion 插件）
+      editor.commands.setContent(page.content, false)
       
-      // Since we listed activePageId in dependency array of useEditor, 
-      // the editor instance is recreated when switching pages.
-      // So we just set the initial content.
-      editor.commands.setContent(page.content)
+      // 将光标移到文档开头，避免停留在 / 附近触发菜单
+      editor.commands.setTextSelection(0)
     }
   }, [editor, page, activePageId])
 
