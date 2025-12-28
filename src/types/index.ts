@@ -1,4 +1,5 @@
-export type { JSONContent } from '@tiptap/react'
+import type { JSONContent } from '@tiptap/react'
+export type { JSONContent }
 
 export type SyncProvider = 'local' | 'jianguoyun' | 'icloud'
 export type FontFamily = 'default' | 'serif' | 'mono'
@@ -42,6 +43,7 @@ export interface Page {
   // Metadata
   createdAt: number
   updatedAt: number
+  order?: number // Custom sort order
   trashedAt?: number // Soft delete
   
   // Linking (for future bidirectional links)

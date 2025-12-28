@@ -11,7 +11,8 @@ import {
   Copy,
   Trash2,
   PenLine,
-  Star
+  Star,
+  ArrowUpToLine
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -38,6 +39,12 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
   const toggleFavorite = () => {
     updatePage(page.id, { isFavorite: !page.isFavorite })
   }
+
+  const handleMoveToTopLevel = () => {
+    updatePage(page.id, { parentId: undefined })
+  }
+
+  const hasParent = !!page.parentId
 
   return (
     <ContextMenu>
@@ -66,6 +73,14 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
                 <span>重命名</span>
                 <span className="ml-auto text-xs text-muted-foreground">⌘⇧R</span>
             </ContextMenuItem>
+
+            {/* 只有当页面有父级时才显示"移至顶层"选项 */}
+            {hasParent && (
+              <ContextMenuItem onSelect={handleMoveToTopLevel}>
+                  <ArrowUpToLine className="mr-2 h-4 w-4" />
+                  <span>移至顶层</span>
+              </ContextMenuItem>
+            )}
 
             <ContextMenuSeparator />
 
@@ -97,3 +112,4 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
     </ContextMenu>
   )
 }
+

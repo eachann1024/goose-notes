@@ -16,6 +16,7 @@ interface PagesState {
   restorePage: (id: string) => void
   duplicatePage: (id: string) => string
   permanentlyDeletePage: (id: string) => void
+  reorderPages: (ids: string[], parentId: string | undefined) => void
   setActivePage: (id: string | null) => void
   
   // Computed (helper functions)
@@ -83,6 +84,7 @@ export const usePages = create<PagesState>()(
           fontFamily: 'default',
           createdAt: now,
           updatedAt: now,
+          order: now, // Default order to created time
         }
         
         set((state) => ({
@@ -155,6 +157,7 @@ export const usePages = create<PagesState>()(
             createdAt: now,
             trashedAt: undefined, // Ensure it's not trashed
             isFavorite: false, // Don't inherit favorite status
+            order: now, // Put duplicate at the end by default
           }
 
           return {
@@ -178,6 +181,27 @@ export const usePages = create<PagesState>()(
          })
       },
 
+      reorderPages: (ids, parentId) => {
+        set((state) => {
+          const newPages = { ...state.pages }
+          
+          ids.forEach((id, index) => {
+            if (newPages[id]) {
+              newPages[id] = {
+                ...newPages[id],
+                parentId: parentId,
+                order: index,
+                updatedAt: Date.now(), // Update timestamp? Maybe not if we want to avoid "edit" trigger side effects?
+                // Actually the user wants to avoid "position changes on edit".
+                // Since our sort logic now prioritizes 'order', updating 'updatedAt' is fine.
+              }
+            }
+          })
+          
+          return { pages: newPages }
+        })
+      },
+
       setActivePage: (id) => set({ activePageId: id }),
 
       getPage: (id) => get().pages[id],
@@ -186,14 +210,17 @@ export const usePages = create<PagesState>()(
         const pages = get().pages
         return Object.values(pages)
           .filter(p => p.parentId === parentId && !p.trashedAt)
-          .sort((a, b) => b.updatedAt - a.updatedAt) // Sort by recently updated
+          .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt)) // Sort by order, fallback to createdAt
       },
     }),
     {
       name: 'goose-notion-storage',
       storage: createJSONStorage(() => throttledStorage),
-      // 只持久化 pages，不持久化临时状态
-      partialize: (state) => ({ pages: state.pages }),
+      // Persist pages and activePageId
+      partialize: (state) => ({ 
+        pages: state.pages,
+        activePageId: state.activePageId 
+      }),
     }
   )
 )

@@ -1,5 +1,5 @@
 
-import type { Page } from '@/types'
+import type { Page, JSONContent } from '@/types'
 import { generateHTML } from '@tiptap/html'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -32,9 +32,10 @@ export function exportToMarkdown(page: Page) {
   // Real implementation requires recursive traversal of JSONContent.
   // For this MVP, let's just export the text content.
   
-  const text = page.content.content?.map(node => {
-     if (node.type === 'paragraph') return node.content?.map(c => c.text).join('') + '\n'
-     if (node.type === 'heading') return '#'.repeat(node.attrs?.level || 1) + ' ' + node.content?.map(c => c.text).join('') + '\n'
+  const content = page.content as JSONContent
+  const text = content.content?.map((node: JSONContent) => {
+     if (node.type === 'paragraph') return (node.content as JSONContent[] | undefined)?.map((c: JSONContent) => c.text).join('') + '\n'
+     if (node.type === 'heading') return '#'.repeat(node.attrs?.level || 1) + ' ' + (node.content as JSONContent[] | undefined)?.map((c: JSONContent) => c.text).join('') + '\n'
      return ''
   }).join('\n') || ''
 

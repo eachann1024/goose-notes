@@ -8,8 +8,12 @@ export interface SearchProvider {
   isEnabled: boolean
 }
 
+export type Theme = 'light' | 'dark' | 'system'
+
 interface SettingsState {
+  theme: Theme
   searchProviders: SearchProvider[]
+  setTheme: (theme: Theme) => void
   toggleSearchProvider: (id: string) => void
 }
 
@@ -24,7 +28,12 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
+      theme: 'system',
       searchProviders: DEFAULT_SEARCH_PROVIDERS,
+      setTheme: (theme) => {
+        set({ theme })
+        applyTheme(theme)
+      },
       toggleSearchProvider: (id) =>
         set((state) => ({
           searchProviders: state.searchProviders.map((provider) =>
@@ -34,6 +43,37 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'goose-notion-settings',
+      onRehydrateStorage: () => (state) => {
+        // 恢复后立即应用主题
+        if (state?.theme) {
+          applyTheme(state.theme)
+        }
+      },
     }
   )
 )
+
+// 应用主题到 DOM
+function applyTheme(theme: Theme) {
+  const root = document.documentElement
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  if (isDark) {
+    root.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+  }
+}
+
+// 监听系统主题变化
+if (typeof window !== 'undefined') {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', () => {
+    const { theme } = useSettings.getState()
+    if (theme === 'system') {
+      applyTheme('system')
+    }
+  })
+}

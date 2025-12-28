@@ -10,7 +10,8 @@ import {
   TextQuote,
   Image as ImageIcon,
   CheckSquare,
-  Code
+  Code,
+  Table2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -221,12 +222,25 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
        searchTerms: ['image', 'picture', 'file'],
        icon: ImageIcon,
        command: ({ editor, range }: any) => {
-           // TODO: Implement image upload dialog or file picker
            editor.chain().focus().deleteRange(range).run()
            const url = window.prompt("Image URL:")
            if (url) {
                editor.chain().focus().setImage({ src: url }).run()
            }
+       }
+    },
+    {
+       title: '表格',
+       description: '插入一个表格',
+       searchTerms: ['table', 'grid', 'biaoge'],
+       icon: Table2,
+       command: ({ editor, range }: any) => {
+           editor
+             .chain()
+             .focus()
+             .deleteRange(range)
+             .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+             .run()
        }
     }
   ].filter((item) => {

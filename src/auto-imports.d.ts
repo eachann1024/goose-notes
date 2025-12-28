@@ -66,7 +66,7 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { SearchProvider } from './stores/useSettings'
+  export type { SearchProvider, Theme } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { UToolsAdapter, UserInfo } from './lib/utools'
