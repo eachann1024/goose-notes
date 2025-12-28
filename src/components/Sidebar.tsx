@@ -1,12 +1,23 @@
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { usePages } from "@/stores/usePages"
-import { ChevronRight, File, SquarePen, Settings } from "lucide-react"
+import { useNotebooks } from "@/stores/useNotebooks"
+import { ChevronRight, File, SquarePen, Settings, Search, Star, Trash2 } from "lucide-react"
 import * as LucideIcons from "lucide-react"
 import { SidebarContextMenu } from "./SidebarContextMenu"
 import { SettingsDialog } from "./SettingsDialog"
+import { NotebookSwitcher } from "./NotebookSwitcher"
+import { TrashList } from "./TrashList"
 import { Tree } from "react-arborist"
 import type { NodeRendererProps, NodeApi } from "react-arborist"
 import type { Page } from "@/types"
@@ -21,20 +32,23 @@ interface TreeNode {
   name: string
   icon?: string
   children?: TreeNode[]
-  // 保存原始 page 引用
   page: Page
 }
 
 // 将扁平的 pages 转换为树形结构
-function buildTree(pages: Record<string, Page>, parentId?: string): TreeNode[] {
+function buildTree(pages: Record<string, Page>, parentId?: string, workspaceId?: string): TreeNode[] {
   return Object.values(pages)
-    .filter(p => p.parentId === parentId && !p.trashedAt)
+    .filter(p => {
+      const matchParent = p.parentId === parentId && !p.trashedAt
+      const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true
+      return matchParent && matchWorkspace
+    })
     .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))
     .map(page => ({
       id: page.id,
       name: page.title || "无标题",
       icon: page.icon,
-      children: buildTree(pages, page.id),
+      children: buildTree(pages, page.id, workspaceId),
       page,
     }))
 }
@@ -104,19 +118,62 @@ function PageNode({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
   )
 }
 
+type SidebarView = 'pages' | 'trash'
+
 export function Sidebar({ className }: SidebarProps) {
-  const { createPage, updatePage, pages, activePageId, setActivePage, reorderPages, getChildren } = usePages()
+  const { createPage, updatePage, deletePage, pages, activePageId, setActivePage, reorderPages, getChildren, getFavorites } = usePages()
+  const { activeNotebookId } = useNotebooks()
   const [width, setWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [currentView, setCurrentView] = useState<SidebarView>('pages')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const treeRef = useRef<any>(null)
 
-  // 将 pages 转换为 tree data
-  const treeData = useMemo(() => buildTree(pages), [pages])
+  // Cmd/Ctrl + Backspace 删除选中页面
+  const handleDeleteShortcut = useCallback((e: KeyboardEvent) => {
+    // 检查是否按下 Cmd/Ctrl + Backspace
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
+      // 确保有选中的页面且不在编辑器输入状态
+      const target = e.target as HTMLElement
+      const isInEditor = target.closest('.ProseMirror') || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+      
+      if (activePageId && !isInEditor && currentView === 'pages') {
+        e.preventDefault()
+        setDeleteDialogOpen(true)
+      }
+    }
+  }, [activePageId, currentView])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleDeleteShortcut)
+    return () => {
+      document.removeEventListener('keydown', handleDeleteShortcut)
+    }
+  }, [handleDeleteShortcut])
+
+  const handleConfirmDelete = () => {
+    if (activePageId) {
+      deletePage(activePageId)
+      setDeleteDialogOpen(false)
+    }
+  }
+
+  // 将 pages 转换为 tree data（基于当前记事本过滤）
+  const treeData = useMemo(
+    () => buildTree(pages, undefined, activeNotebookId || undefined),
+    [pages, activeNotebookId]
+  )
+
+  // 获取收藏页面
+  const favorites = useMemo(
+    () => getFavorites(activeNotebookId || undefined),
+    [getFavorites, activeNotebookId, pages]
+  )
 
   const handleCreatePage = () => {
-    createPage()
+    createPage(undefined, activeNotebookId || 'default')
   }
 
   const handleMove = ({
@@ -128,31 +185,20 @@ export function Sidebar({ className }: SidebarProps) {
     parentId: string | null
     index: number
   }) => {
-    // 1. Get current children of the target parent
     const targetParentId = parentId || undefined
-    const siblings = getChildren(targetParentId)
-
-    // 2. Remove dragged items if they are already in the list (same parent move)
+    const siblings = getChildren(targetParentId, activeNotebookId || undefined)
     const filteredSiblings = siblings.filter(p => !dragIds.includes(p.id))
-
-    // 3. Insert dragged items
     const movedPages = dragIds.map(id => pages[id]).filter(Boolean) as Page[]
-    
-    // Create a new array for mutation
     const newSiblings = [...filteredSiblings]
     newSiblings.splice(index, 0, ...movedPages)
-
-    // 4. Extract IDs and update order
     const newOrderIds = newSiblings.map(p => p.id)
     reorderPages(newOrderIds, targetParentId)
   }
 
-  // 处理重命名（双击编辑）
   const handleRename = ({ id, name }: { id: string; name: string }) => {
     updatePage(id, { title: name })
   }
 
-  // 处理节点激活（点击）
   const handleActivate = (node: NodeApi<TreeNode>) => {
     setActivePage(node.id)
   }
@@ -181,6 +227,26 @@ export function Sidebar({ className }: SidebarProps) {
     document.body.style.cursor = "col-resize"
   }
 
+  // 垃圾箱视图
+  if (currentView === 'trash') {
+    return (
+      <div
+        ref={sidebarRef}
+        className={cn("pb-0 border-r bg-muted/30 h-screen flex flex-col relative", className)}
+        style={{ width }}
+      >
+        <div
+          className={cn(
+            "absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50",
+            isResizing && "bg-primary"
+          )}
+          onMouseDown={startResizing}
+        />
+        <TrashList onBack={() => setCurrentView('pages')} />
+      </div>
+    )
+  }
+
   return (
     <div
       ref={sidebarRef}
@@ -200,23 +266,17 @@ export function Sidebar({ className }: SidebarProps) {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Area */}
-        <div className="px-3 py-3">
-          <div className="flex items-center justify-between px-2 mb-2 group">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground/80 hover:text-foreground transition-colors cursor-pointer">
-              <div className="w-5 h-5 bg-primary/10 rounded flex items-center justify-center text-xs">
-                G
-              </div>
-              <span className="truncate font-semibold text-foreground">
-                Goose Note
-              </span>
+        {/* Header Area - 记事本切换器 */}
+        <div className="px-3 py-3 border-b">
+          <div className="flex items-center gap-1">
+            <div className="flex-1">
+              <NotebookSwitcher />
             </div>
-
             <Button
               onClick={handleCreatePage}
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
               title="新建页面"
             >
               <SquarePen className="h-4 w-4" />
@@ -224,8 +284,78 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
 
+        {/* 搜索入口 */}
+        <div className="px-3 py-2">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground h-8 px-2"
+            onClick={() => {
+              // 触发全局搜索 Cmd+K
+              const event = new KeyboardEvent('keydown', {
+                key: 'k',
+                metaKey: true,
+                bubbles: true,
+              })
+              document.dispatchEvent(event)
+            }}
+          >
+            <Search className="mr-2 h-4 w-4" />
+            <span className="text-sm">搜索</span>
+            <span className="ml-auto text-xs text-muted-foreground/60">⌘K</span>
+          </Button>
+        </div>
+
+        {/* 收藏区 */}
+        {favorites.length > 0 && (
+          <div className="px-3 py-2 border-b">
+            <div className="flex items-center gap-2 px-2 mb-2 text-xs text-muted-foreground font-medium">
+              <Star className="h-3 w-3" />
+              收藏
+            </div>
+            <div className="space-y-0.5">
+              {favorites.map((page) => {
+                const iconName = page.icon
+                return (
+                  <div
+                    key={page.id}
+                    className={cn(
+                      "flex items-center gap-2 py-1 px-2 rounded-sm cursor-pointer transition-colors text-sm",
+                      activePageId === page.id
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-accent/50"
+                    )}
+                    onClick={() => setActivePage(page.id)}
+                  >
+                    {iconName ? (
+                      <div className="h-4 w-4 shrink-0 flex items-center justify-center">
+                        {(LucideIcons as any)[iconName] ? (
+                          (() => {
+                            const Icon = (LucideIcons as any)[iconName]
+                            return <Icon className="h-4 w-4" />
+                          })()
+                        ) : (
+                          <span className="text-xs">{iconName}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <File className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="truncate">{page.title || '无标题'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Page List with react-arborist */}
         <ScrollArea className="flex-1 px-2">
+          <div className="py-2">
+            <div className="flex items-center gap-2 px-2 mb-2 text-xs text-muted-foreground font-medium">
+              <File className="h-3 w-3" />
+              页面
+            </div>
+          </div>
           <div className="pb-20">
             {treeData.length > 0 ? (
               <Tree
@@ -263,11 +393,21 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </ScrollArea>
 
-        {/* Footer Settings */}
-        <div className="p-2 mt-auto border-t bg-background/50 backdrop-blur-sm">
+        {/* Footer */}
+        <div className="p-2 mt-auto border-t bg-background/50 backdrop-blur-sm space-y-1">
+          {/* 垃圾箱 */}
           <Button
             variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground h-9 px-2"
+            className="w-full justify-start text-muted-foreground hover:text-foreground h-8 px-2"
+            onClick={() => setCurrentView('trash')}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span className="text-sm">垃圾箱</span>
+          </Button>
+          {/* 设置 */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:text-foreground h-8 px-2"
             onClick={() => setShowSettings(true)}
           >
             <Settings className="mr-2 h-4 w-4" />
@@ -277,6 +417,26 @@ export function Sidebar({ className }: SidebarProps) {
       </div>
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+
+      {/* 删除确认对话框 */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              确定要将「{activePageId ? pages[activePageId]?.title || '无标题' : ''}」移至垃圾箱吗？
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

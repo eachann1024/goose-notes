@@ -10,7 +10,7 @@ interface PagesState {
   activePageId: string | null
   
   // Actions
-  createPage: (parentId?: string) => string
+  createPage: (parentId?: string, workspaceId?: string) => string
   updatePage: (id: string, updates: Partial<Page>) => void
   deletePage: (id: string) => void // Soft delete
   restorePage: (id: string) => void
@@ -21,7 +21,9 @@ interface PagesState {
   
   // Computed (helper functions)
   getPage: (id: string) => Page | undefined
-  getChildren: (parentId?: string) => Page[]
+  getChildren: (parentId?: string, workspaceId?: string) => Page[]
+  getTrashedPages: (workspaceId?: string) => Page[]
+  getFavorites: (workspaceId?: string) => Page[]
 }
 
 const initialContent: JSONContent = {
@@ -68,12 +70,12 @@ export const usePages = create<PagesState>()(
       pages: {},
       activePageId: null,
 
-      createPage: (parentId) => {
+      createPage: (parentId, workspaceId = 'default') => {
         const id = uuidv4()
         const now = Date.now()
         const newPage: Page = {
           id,
-          workspaceId: 'default', // TODO: Support multiple workspaces
+          workspaceId,
           parentId,
           title: '',
           content: initialContent,
@@ -206,11 +208,37 @@ export const usePages = create<PagesState>()(
 
       getPage: (id) => get().pages[id],
       
-      getChildren: (parentId) => {
+      getChildren: (parentId, workspaceId) => {
         const pages = get().pages
         return Object.values(pages)
-          .filter(p => p.parentId === parentId && !p.trashedAt)
-          .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt)) // Sort by order, fallback to createdAt
+          .filter(p => {
+            const matchParent = p.parentId === parentId && !p.trashedAt
+            const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true
+            return matchParent && matchWorkspace
+          })
+          .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))
+      },
+
+      getTrashedPages: (workspaceId) => {
+        const pages = get().pages
+        return Object.values(pages)
+          .filter(p => {
+            const isTrashed = !!p.trashedAt
+            const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true
+            return isTrashed && matchWorkspace
+          })
+          .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)) // 最近删除的在前
+      },
+
+      getFavorites: (workspaceId) => {
+        const pages = get().pages
+        return Object.values(pages)
+          .filter(p => {
+            const isFavorite = p.isFavorite && !p.trashedAt
+            const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true
+            return isFavorite && matchWorkspace
+          })
+          .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))
       },
     }),
     {

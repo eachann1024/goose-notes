@@ -2,24 +2,38 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Command } from 'cmdk'
 import { FileText, Search, Clock } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 import { usePages } from '@/stores/usePages'
 
+// 当前工作区 ID（后续可从 store 动态获取）
+const CURRENT_WORKSPACE_ID = 'default'
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
+  const [searchAll, setSearchAll] = useState(false)
   const { pages, setActivePage } = usePages()
+  
+  // 根据 searchAll 过滤页面
+  const filteredPages = useMemo(() => {
+    const allPagesArray = Object.values(pages).filter(p => !p.trashedAt)
+    if (searchAll) {
+      return allPagesArray
+    }
+    return allPagesArray.filter(p => p.workspaceId === CURRENT_WORKSPACE_ID)
+  }, [pages, searchAll])
   
   // Calculate recent pages (top 5 modified recently)
   const recentPages = useMemo(() => {
-    return Object.values(pages)
+    return filteredPages
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5)
-  }, [pages])
+  }, [filteredPages])
 
-  const allPages = useMemo(() => {
-    return Object.values(pages).sort((a, b) => a.title.localeCompare(b.title))
-  }, [pages])
+  const allPagesSorted = useMemo(() => {
+    return filteredPages.sort((a, b) => a.title.localeCompare(b.title))
+  }, [filteredPages])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -51,7 +65,21 @@ export function CommandPalette() {
             placeholder="搜索页面..." 
             className="flex h-12 w-full rouned-md bg-transparent py-3 text-lg outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         />
-        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+        <div className="flex items-center gap-2 ml-3 shrink-0">
+          <Switch 
+            id="search-all" 
+            checked={searchAll} 
+            onCheckedChange={setSearchAll}
+            className="scale-75"
+          />
+          <Label 
+            htmlFor="search-all" 
+            className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
+          >
+            {searchAll ? '全部' : '当前'}
+          </Label>
+        </div>
+        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 ml-2">
             <span className="text-xs">⌘</span>K
         </kbd>
       </div>
@@ -81,7 +109,7 @@ export function CommandPalette() {
         <Command.Separator className="my-1 h-px bg-border" />
 
         <Command.Group heading="所有页面">
-             {allPages.map(page => (
+             {allPagesSorted.map(page => (
                  <Command.Item
                     key={page.id}
                     value={`${page.title} ${page.id} all`}

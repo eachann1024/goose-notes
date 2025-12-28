@@ -11,6 +11,7 @@ declare global {
   const ChevronDown: typeof import('lucide-react').ChevronDown
   const ChevronRight: typeof import('lucide-react').ChevronRight
   const Code: typeof import('lucide-react').Code
+  const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
   const FileText: typeof import('lucide-react').FileText
   const Fragment: typeof import('react').Fragment
@@ -37,6 +38,9 @@ declare global {
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const forwardRef: typeof import('react').forwardRef
+  const importFile: typeof import('./lib/export').importFile
+  const importFromJSON: typeof import('./lib/export').importFromJSON
+  const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
   const startTransition: typeof import('react').startTransition
@@ -54,6 +58,7 @@ declare global {
   const useInsertionEffect: typeof import('react').useInsertionEffect
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
+  const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/usePages').usePages
   const useReducer: typeof import('react').useReducer
@@ -66,8 +71,14 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
+  export type { Notebook } from './stores/useNotebooks'
+  import('./stores/useNotebooks')
+  // @ts-ignore
   export type { SearchProvider, Theme } from './stores/useSettings'
   import('./stores/useSettings')
+  // @ts-ignore
+  export type { ImportResult } from './lib/export'
+  import('./lib/export')
   // @ts-ignore
   export type { UToolsAdapter, UserInfo } from './lib/utools'
   import('./lib/utools')

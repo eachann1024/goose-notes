@@ -12,16 +12,31 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Trash2, FileJson, FileCode, FileType } from "lucide-react"
+import { MoreHorizontal, Trash2, FileJson, FileCode, FileType, Upload } from "lucide-react"
 import { usePages } from "@/stores/usePages"
-import { exportToJSON, exportToHTML, exportToMarkdown } from "@/lib/export"
+import { useNotebooks } from "@/stores/useNotebooks"
+import { exportToJSON, exportToHTML, exportToMarkdown, importFile } from "@/lib/export"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { FontSelector } from "@/components/FontSelector"
 
 export function PageMenu() {
-  const { activePageId, getPage, updatePage, deletePage } = usePages()
+  const { activePageId, getPage, updatePage, deletePage, createPage } = usePages()
+  const { activeNotebookId } = useNotebooks()
   const page = activePageId ? getPage(activePageId) : undefined
+
+  const handleImport = async () => {
+    const result = await importFile()
+    if (result.success) {
+      const newId = createPage(undefined, activeNotebookId || 'default')
+      // 下一帧更新内容（确保页面已创建）
+      setTimeout(() => {
+        updatePage(newId, { title: result.title, content: result.content })
+      }, 0)
+    } else {
+      console.error('导入失败:', result.error)
+    }
+  }
 
   if (!page || !activePageId) return null
 
@@ -109,6 +124,11 @@ export function PageMenu() {
               </DropdownMenuItem>
            </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <DropdownMenuItem onSelect={handleImport}>
+          <Upload className="mr-2 h-4 w-4" />
+          <span>导入文件</span>
+        </DropdownMenuItem>
 
       </DropdownMenuContent>
     </DropdownMenu>

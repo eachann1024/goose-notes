@@ -2,11 +2,17 @@ import path from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import AutoImport from 'unplugin-auto-import/vite'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    codeInspectorPlugin({
+      bundler: 'vite',
+      hideConsole: true,
+      hideDomPathAttr: true,
+    }),
     AutoImport({
       imports: [
         'react',
@@ -30,3 +36,4 @@ export default defineConfig({
     },
   },
 })
+

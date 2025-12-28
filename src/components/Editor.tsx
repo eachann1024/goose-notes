@@ -155,7 +155,7 @@ export function Editor({ editable = true }: EditorProps) {
         <ContextMenuContent className="w-64">
            {editor && !editor.state.selection.empty && (
              <>
-               <ContextMenuItem inset disabled className="text-xs text-muted-foreground">
+               <ContextMenuItem disabled className="text-xs text-muted-foreground">
                  {(() => {
                     const { from, to } = editor.state.selection
                     const text = editor.state.doc.textBetween(from, to, ' ')
@@ -166,7 +166,6 @@ export function Editor({ editable = true }: EditorProps) {
                {searchProviders.filter(p => p.isEnabled).map(provider => (
                  <ContextMenuItem
                    key={provider.id}
-                   inset 
                    onSelect={() => {
                      const { from, to } = editor.state.selection
                      const text = editor.state.doc.textBetween(from, to, ' ')
@@ -181,7 +180,7 @@ export function Editor({ editable = true }: EditorProps) {
                <ContextMenuSeparator />
              </>
            )}
-           <ContextMenuItem inset onSelect={() => {
+           <ContextMenuItem onSelect={() => {
                const { from, to } = editor.state.selection
                const text = editor.state.doc.textBetween(from, to, ' ')
                navigator.clipboard.writeText(text)
@@ -191,7 +190,7 @@ export function Editor({ editable = true }: EditorProps) {
              剪切
              <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘X</span>
            </ContextMenuItem>
-           <ContextMenuItem inset onSelect={() => {
+           <ContextMenuItem onSelect={() => {
               const { from, to } = editor.state.selection
               const text = editor.state.doc.textBetween(from, to, ' ')
               navigator.clipboard.writeText(text)
@@ -200,7 +199,7 @@ export function Editor({ editable = true }: EditorProps) {
              拷贝
              <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘C</span>
            </ContextMenuItem>
-           <ContextMenuItem inset onSelect={async () => {
+           <ContextMenuItem onSelect={async () => {
               try {
                 const text = await navigator.clipboard.readText()
                 editor?.commands.insertContent(text)

@@ -56,20 +56,20 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
               页面
             </div>
             <ContextMenuItem onSelect={toggleFavorite}>
-                <Star className={cn("mr-2 h-4 w-4", page.isFavorite && "fill-yellow-400 text-yellow-400")} />
+                <Star className={cn("h-4 w-4", page.isFavorite && "fill-yellow-400 text-yellow-400")} />
                 <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
             </ContextMenuItem>
 
             <ContextMenuSeparator />
 
             <ContextMenuItem onSelect={handleDuplicate}>
-                <Copy className="mr-2 h-4 w-4" />
+                <Copy className="h-4 w-4" />
                 <span>创建副本</span>
                 <span className="ml-auto text-xs text-muted-foreground">⌘D</span>
             </ContextMenuItem>
             
             <ContextMenuItem onSelect={handleRename}>
-                <PenLine className="mr-2 h-4 w-4" />
+                <PenLine className="h-4 w-4" />
                 <span>重命名</span>
                 <span className="ml-auto text-xs text-muted-foreground">⌘⇧R</span>
             </ContextMenuItem>
@@ -77,7 +77,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
             {/* 只有当页面有父级时才显示"移至顶层"选项 */}
             {hasParent && (
               <ContextMenuItem onSelect={handleMoveToTopLevel}>
-                  <ArrowUpToLine className="mr-2 h-4 w-4" />
+                  <ArrowUpToLine className="h-4 w-4" />
                   <span>移至顶层</span>
               </ContextMenuItem>
             )}
@@ -88,7 +88,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
                 onSelect={() => deletePage(page.id)}
                 className="text-muted-foreground focus:text-destructive focus:bg-destructive/10"
             >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
                 <span>移至垃圾箱</span>
             </ContextMenuItem>
 
