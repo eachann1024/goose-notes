@@ -127,7 +127,7 @@ export function Sidebar({ className }: SidebarProps) {
   // 从 localStorage 恢复侧边栏宽度
   const [width, setWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width')
-    return saved ? Math.max(240, Math.min(480, Number(saved))) : 240
+    return saved ? Math.max(180, Math.min(480, Number(saved))) : 240
   })
   const [isResizing, setIsResizing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -253,7 +253,7 @@ export function Sidebar({ className }: SidebarProps) {
 
     const onMouseMove = (e: MouseEvent) => {
       const newWidth = startWidth + e.clientX - startX
-      setWidth(Math.max(240, Math.min(480, newWidth)))
+      setWidth(Math.max(180, Math.min(480, newWidth)))
     }
 
     const onMouseUp = () => {
