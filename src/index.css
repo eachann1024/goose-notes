@@ -66,6 +66,14 @@
     -webkit-user-select: none;
   }
 
+  /* 移除全局 focus 高亮边框 */
+  *:focus {
+    outline: none !important;
+  }
+  *:focus-visible {
+    outline: none !important;
+  }
+
   /* Prevent image dragging globally */
   img {
     -webkit-user-drag: none;

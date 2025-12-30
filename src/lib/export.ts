@@ -137,15 +137,23 @@ export function importFile(): Promise<ImportResult> {
 // ==================== HELPERS ====================
 
 function downloadFile(content: string, filename: string, contentType: string) {
-  const blob = new Blob([content], { type: contentType })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  try {
+    // uTools 和浏览器环境都使用 Blob 下载
+    // uTools 不支持文件系统 API，只能用浏览器下载方式
+    const blob = new Blob([content], { type: contentType })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('下载失败:', error)
+    throw error
+  }
 }
 
 // JSONContent 转 Markdown
@@ -158,7 +166,8 @@ function jsonContentToMarkdown(content: JSONContent): string {
 function nodeToMarkdown(node: JSONContent): string {
   switch (node.type) {
     case 'paragraph':
-      return inlineContentToMarkdown(node.content) + '\n'
+      const text = inlineContentToMarkdown(node.content)
+      return text + '\n'
     
     case 'heading': {
       const level = node.attrs?.level || 1
@@ -202,11 +211,11 @@ function listItemContent(item: JSONContent): string {
 }
 
 function inlineContentToMarkdown(content?: JSONContent[]): string {
-  if (!content) return ''
-  
+  if (!content || content.length === 0) return ''
+
   return content.map((node) => {
     let text = node.text || ''
-    
+
     if (node.marks) {
       for (const mark of node.marks) {
         switch (mark.type) {
@@ -228,7 +237,7 @@ function inlineContentToMarkdown(content?: JSONContent[]): string {
         }
       }
     }
-    
+
     return text
   }).join('')
 }

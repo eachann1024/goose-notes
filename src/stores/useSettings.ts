@@ -10,11 +10,19 @@ export interface SearchProvider {
 
 export type Theme = 'light' | 'dark' | 'system'
 
+export interface UToolsSettings {
+  globalSearchEnabled: boolean
+}
+
 interface SettingsState {
   theme: Theme
   searchProviders: SearchProvider[]
+  utools: UToolsSettings
+  searchAllNotebooks: boolean
   setTheme: (theme: Theme) => void
   toggleSearchProvider: (id: string) => void
+  setUToolsGlobalSearchEnabled: (enabled: boolean) => void
+  setSearchAllNotebooks: (searchAll: boolean) => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -30,6 +38,10 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       theme: 'system',
       searchProviders: DEFAULT_SEARCH_PROVIDERS,
+      utools: {
+        globalSearchEnabled: false,
+      },
+      searchAllNotebooks: false,
       setTheme: (theme) => {
         set({ theme })
         applyTheme(theme)
@@ -40,6 +52,12 @@ export const useSettings = create<SettingsState>()(
             provider.id === id ? { ...provider, isEnabled: !provider.isEnabled } : provider
           ),
         })),
+      setUToolsGlobalSearchEnabled: (enabled) =>
+        set((state) => ({
+          utools: { ...state.utools, globalSearchEnabled: enabled },
+        })),
+      setSearchAllNotebooks: (searchAll) =>
+        set({ searchAllNotebooks: searchAll }),
     }),
     {
       name: 'goose-notion-settings',

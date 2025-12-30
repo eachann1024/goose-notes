@@ -15,6 +15,7 @@ declare global {
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
   const FileText: typeof import('lucide-react').FileText
   const Fragment: typeof import('react').Fragment
+  const HighlightText: typeof import('./lib/highlight-text').HighlightText
   const Image: typeof import('lucide-react').Image
   const Link: typeof import('lucide-react').Link
   const List: typeof import('lucide-react').List
@@ -37,6 +38,7 @@ declare global {
   const exportToHTML: typeof import('./lib/export').exportToHTML
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
+  const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const forwardRef: typeof import('react').forwardRef
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
@@ -75,12 +77,12 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme } from './stores/useSettings'
+  export type { SearchProvider, Theme, UToolsSettings } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ImportResult } from './lib/export'
   import('./lib/export')
   // @ts-ignore
-  export type { UToolsAdapter, UserInfo } from './lib/utools'
+  export type { UToolsAdapter, UserInfo, SublistItem } from './lib/utools'
   import('./lib/utools')
 }

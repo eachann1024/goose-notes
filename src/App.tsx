@@ -2,17 +2,20 @@
 import { Editor } from "@/components/Editor"
 import { Sidebar } from "@/components/Sidebar"
 import { usePages } from "@/stores/usePages"
+import { useSettings } from "@/stores/useSettings"
 import { cn } from "@/lib/utils"
 import { PageMenu } from "@/components/PageMenu"
 import { CommandPalette } from "@/components/CommandPalette"
 import { IconSelector } from "@/components/IconSelector"
+import { UToolsAdapter } from "@/lib/utools"
+import { extractTextFromContent } from "@/lib/content-text-extractor"
 import * as LucideIcons from "lucide-react"
 import { useEffect, useState, useRef } from "react"
-import welcomeCover from "@/assets/welcome-cover.png"
 import { Toaster, toast } from "sonner"
 
 function App() {
-  const { activePageId, getPage, updatePage } = usePages()
+  const { activePageId, getPage, updatePage, pages, setActivePage } = usePages()
+  const { utools } = useSettings()
   const page = activePageId ? getPage(activePageId) : undefined
   const [zoom, setZoom] = useState(1)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -91,6 +94,54 @@ function App() {
       container.removeEventListener('scroll', handleScroll)
     }
   }, [activePageId])
+
+  // 初始化 uTools 全局搜索
+  useEffect(() => {
+    if (!UToolsAdapter.isUTools || !UToolsAdapter.supportsSublist) return
+
+    if (utools.globalSearchEnabled) {
+      UToolsAdapter.setSublistFn((keyword: string) => {
+        if (!keyword.trim()) return []
+
+        const query = keyword.toLowerCase()
+        const results = Object.values(pages)
+          .filter(p => !p.trashedAt)
+          .filter(p => {
+            const titleMatch = p.title.toLowerCase().includes(query)
+            const contentText = extractTextFromContent(p.content)
+            const contentMatch = contentText.toLowerCase().includes(query)
+            return titleMatch || contentMatch
+          })
+          .slice(0, 5) // 限制结果数量
+
+        return results.map(p => ({
+          title: p.title || '无标题',
+          description: new Date(p.updatedAt).toLocaleString(),
+          icon: '/logo.png',
+          url: `goose-notion://page/${p.id}`
+        }))
+      })
+    } else {
+      UToolsAdapter.removeSublistFn()
+    }
+
+    return () => {
+      UToolsAdapter.removeSublistFn()
+    }
+  }, [pages, utools.globalSearchEnabled])
+
+  // 监听 uTools sublist 导航事件
+  useEffect(() => {
+    const handleNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ pageId: string }>
+      setActivePage(customEvent.detail.pageId)
+    }
+
+    window.addEventListener('goose-notion:navigate', handleNavigate)
+    return () => {
+      window.removeEventListener('goose-notion:navigate', handleNavigate)
+    }
+  }, [setActivePage])
 
   return (
     <div 
@@ -234,7 +285,7 @@ function App() {
                   
                   <div className="w-full max-w-6xl px-12 flex-1 flex items-start justify-center">
                      <img 
-                         src={welcomeCover} 
+                         src="https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png" 
                          alt="Welcome" 
                          className="w-full h-auto max-h-[60vh] object-contain opacity-90"
                      />

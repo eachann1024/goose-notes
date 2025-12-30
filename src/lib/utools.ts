@@ -1,7 +1,7 @@
 
 /**
  * uTools Adapter
- * 
+ *
  * This class wraps all interactions with the uTools API.
  * It provides a consistent interface that works locally (via localStorage/Web APIs)
  * when running in a browser environment, and uses native uTools APIs when available.
@@ -11,6 +11,16 @@ export interface UserInfo {
   avatar?: string
   nickname: string
   type: string
+}
+
+/**
+ * Sublist 结果项（用于 uTools 全局搜索）
+ */
+export interface SublistItem {
+  title: string
+  description: string
+  icon: string
+  url: string
 }
 
 export class UToolsAdapter {
@@ -170,5 +180,36 @@ export class UToolsAdapter {
       } else {
           window.open(url, '_blank')
       }
+  }
+
+  /**
+   * 设置全局搜索回调（sublist）
+   * @param callback 搜索回调函数，接收关键词返回结果列表
+   */
+  static setSublistFn(callback: ((keyword: string) => SublistItem[]) | null) {
+    if (UToolsAdapter.isUTools) {
+      const utools = (window as any).utools
+      // 检查 API 是否存在（sublist 可能不是所有 uTools 版本都支持）
+      if (utools && typeof utools.setSublistFn === 'function') {
+        utools.setSublistFn(callback)
+      }
+    }
+  }
+
+  /**
+   * 移除全局搜索回调
+   */
+  static removeSublistFn() {
+    // 通过设置 null 来移除回调
+    UToolsAdapter.setSublistFn(null)
+  }
+
+  /**
+   * 检查是否支持 sublist 功能
+   */
+  static get supportsSublist(): boolean {
+    if (!UToolsAdapter.isUTools) return false
+    const utools = (window as any).utools
+    return utools && typeof utools.setSublistFn === 'function'
   }
 }

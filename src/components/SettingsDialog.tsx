@@ -41,9 +41,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                          <Settings className="mr-2 h-4 w-4" />
                          通用
                      </Button>
-                     <Button 
-                        variant="ghost" 
-                        size="sm" 
+                     <Button
+                        variant="ghost"
+                        size="sm"
                         className={cn(
                           "justify-start w-full",
                           activeTab === 'appearance' && "bg-accent/50"
@@ -94,30 +94,30 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                          <h3 className="text-lg font-medium">外观</h3>
                          <p className="text-sm text-muted-foreground">自定义界面的外观和感觉。</p>
                       </div>
-                      
+
                       <div className="space-y-4">
                          <div className="flex items-center justify-between">
                              <Label htmlFor="dark-mode">深色模式</Label>
                              <div className="flex items-center gap-2 border rounded-full p-1 bg-muted">
-                                 <Button 
-                                     size="icon" 
-                                     variant="ghost" 
+                                 <Button
+                                     size="icon"
+                                     variant="ghost"
                                      className={`h-6 w-6 rounded-full ${theme === 'light' ? 'bg-background shadow-sm' : ''}`}
                                      onClick={() => setTheme('light')}
                                  >
                                      <Sun className="h-4 w-4" />
                                  </Button>
-                                 <Button 
-                                     size="icon" 
-                                     variant="ghost" 
+                                 <Button
+                                     size="icon"
+                                     variant="ghost"
                                      className={`h-6 w-6 rounded-full ${theme === 'dark' ? 'bg-background shadow-sm' : ''}`}
                                      onClick={() => setTheme('dark')}
                                  >
                                      <Moon className="h-4 w-4" />
                                  </Button>
-                                 <Button 
-                                     size="icon" 
-                                     variant="ghost" 
+                                 <Button
+                                     size="icon"
+                                     variant="ghost"
                                      className={`h-6 w-6 rounded-full ${theme === 'system' ? 'bg-background shadow-sm' : ''}`}
                                      onClick={() => setTheme('system')}
                                  >
