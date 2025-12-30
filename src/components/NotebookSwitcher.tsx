@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNotebooks } from '@/stores/useNotebooks'
 import { usePages } from '@/stores/usePages'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,8 @@ export function NotebookSwitcher() {
   const { notebooks, activeNotebookId, setActiveNotebook, createNotebook, updateNotebook, deleteNotebook, getLastActivePage } = useNotebooks()
   const { setActivePage } = usePages()
   const [isOpen, setIsOpen] = useState(false)
+  const editDialogContentRef = useRef<HTMLDivElement>(null)
+  const createDialogContentRef = useRef<HTMLDivElement>(null)
   
   // Edit Dialog State
   const [editDialog, setEditDialog] = useState<{ open: boolean; id: string; name: string; icon: string }>({
@@ -199,7 +201,7 @@ export function NotebookSwitcher() {
 
       {/* 编辑记事本对话框 */}
       <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ ...editDialog, open })}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent ref={editDialogContentRef} className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>{showDeleteConfirm ? '永久删除记事本？' : '编辑记事本'}</DialogTitle>
             {showDeleteConfirm && (
@@ -233,6 +235,7 @@ export function NotebookSwitcher() {
                     <IconSelector 
                         value={editDialog.icon}
                         onChange={(val) => setEditDialog({ ...editDialog, icon: val || '📓' })}
+                        portalContainerRef={editDialogContentRef}
                     >
                         <Button 
                             variant="outline" 
@@ -300,7 +303,7 @@ export function NotebookSwitcher() {
 
       {/* 新建记事本对话框 */}
       <Dialog open={createDialog.open} onOpenChange={(open) => setCreateDialog({ ...createDialog, open, error: '' })}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent ref={createDialogContentRef} className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>新建记事本</DialogTitle>
           </DialogHeader>
@@ -317,6 +320,7 @@ export function NotebookSwitcher() {
                 <IconSelector
                   value={createDialog.icon}
                   onChange={(val) => setCreateDialog({ ...createDialog, icon: val || '📓' })}
+                  portalContainerRef={createDialogContentRef}
                 >
                   <Button
                     variant="outline"

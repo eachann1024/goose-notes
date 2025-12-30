@@ -10,16 +10,23 @@ import * as LucideIcons from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 
-interface IconSelectorProps {
+interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
     value?: string
     onChange: (icon: string | undefined) => void
     children: React.ReactNode
+    portalContainerRef?: React.RefObject<T | null>
 }
 
-export function IconSelector({ value, onChange, children }: IconSelectorProps) {
+export function IconSelector<T extends HTMLElement = HTMLElement>({
+    value,
+    onChange,
+    children,
+    portalContainerRef,
+}: IconSelectorProps<T>) {
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState("")
     const [tab, setTab] = useState<'emoji' | 'icon'>('emoji')
+    const portalContainer = portalContainerRef?.current ?? undefined
 
     const filteredIcons = useMemo(() => {
         if (!search) return Object.keys(LucideIcons).filter(key => key !== 'icons' && key !== 'createLucideIcon' && isNaN(Number(key))).slice(0, 300)
@@ -36,7 +43,13 @@ export function IconSelector({ value, onChange, children }: IconSelectorProps) {
             <PopoverTrigger asChild>
                 {children}
             </PopoverTrigger>
-            <PopoverContent className="w-[340px] p-0" align="start" side="right" collisionPadding={10}>
+            <PopoverContent
+                className="w-[340px] p-0"
+                align="start"
+                side="right"
+                collisionPadding={10}
+                container={portalContainer}
+            >
                 <div className="flex border-b">
                      <button
                         className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'emoji' ? 'border-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
