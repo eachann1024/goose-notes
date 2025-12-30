@@ -12,12 +12,15 @@ export interface Notebook {
 interface NotebooksState {
   notebooks: Record<string, Notebook>
   activeNotebookId: string | null
-  
-  createNotebook: (name?: string) => string
+  lastActivePageByNotebook: Record<string, string | null>
+
+  createNotebook: (name?: string, icon?: string) => string
   updateNotebook: (id: string, updates: Partial<Omit<Notebook, 'id' | 'createdAt'>>) => void
   deleteNotebook: (id: string) => void
   setActiveNotebook: (id: string) => void
   getNotebook: (id: string) => Notebook | undefined
+  setLastActivePage: (notebookId: string, pageId: string | null) => void
+  getLastActivePage: (notebookId: string) => string | null
 }
 
 // 生成唯一ID
@@ -41,13 +44,14 @@ export const useNotebooks = create<NotebooksState>()(
         },
       },
       activeNotebookId: DEFAULT_NOTEBOOK_ID,
+      lastActivePageByNotebook: {},
 
-      createNotebook: (name = '新记事本') => {
+      createNotebook: (name = '新记事本', icon = '📓') => {
         const id = generateId()
         const notebook: Notebook = {
           id,
           name,
-          icon: '📓',
+          icon,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }
@@ -74,11 +78,13 @@ export const useNotebooks = create<NotebooksState>()(
       deleteNotebook: (id) => {
         // 不能删除默认记事本
         if (id === DEFAULT_NOTEBOOK_ID) return
-        
+
         set((state) => {
           const { [id]: _, ...rest } = state.notebooks
+          const { [id]: __, ...restLastActive } = state.lastActivePageByNotebook
           return {
             notebooks: rest,
+            lastActivePageByNotebook: restLastActive,
             // 如果删除的是当前激活的，切换到默认
             activeNotebookId:
               state.activeNotebookId === id
@@ -95,9 +101,27 @@ export const useNotebooks = create<NotebooksState>()(
       getNotebook: (id) => {
         return get().notebooks[id]
       },
+
+      setLastActivePage: (notebookId, pageId) => {
+        set((state) => ({
+          lastActivePageByNotebook: {
+            ...state.lastActivePageByNotebook,
+            [notebookId]: pageId,
+          },
+        }))
+      },
+
+      getLastActivePage: (notebookId) => {
+        return get().lastActivePageByNotebook[notebookId] || null
+      },
     }),
     {
       name: 'goose-notion-notebooks',
+      partialize: (state) => ({
+        notebooks: state.notebooks,
+        activeNotebookId: state.activeNotebookId,
+        lastActivePageByNotebook: state.lastActivePageByNotebook,
+      }),
     }
   )
 )

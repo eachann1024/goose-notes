@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNotebooks } from '@/stores/useNotebooks'
+import { usePages } from '@/stores/usePages'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,7 +25,8 @@ import { IconSelector } from '@/components/IconSelector'
 import * as LucideIcons from "lucide-react"
 
 export function NotebookSwitcher() {
-  const { notebooks, activeNotebookId, setActiveNotebook, createNotebook, updateNotebook, deleteNotebook } = useNotebooks()
+  const { notebooks, activeNotebookId, setActiveNotebook, createNotebook, updateNotebook, deleteNotebook, getLastActivePage } = useNotebooks()
+  const { setActivePage } = usePages()
   const [isOpen, setIsOpen] = useState(false)
   
   // Edit Dialog State
@@ -33,6 +35,14 @@ export function NotebookSwitcher() {
     id: '',
     name: '',
     icon: '',
+  })
+
+  // Create Dialog State
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; name: string; icon: string; error: string }>({
+    open: false,
+    name: '',
+    icon: '📓',
+    error: '',
   })
 
   // Delete Confirmation State
@@ -51,8 +61,32 @@ export function NotebookSwitcher() {
   }, [editDialog.open])
 
   const handleCreate = () => {
-    createNotebook()
+    setCreateDialog({ open: true, name: '', icon: '📓', error: '' })
     setIsOpen(false)
+  }
+
+  const handleConfirmCreate = () => {
+    // 验证名称不能为空
+    if (!createDialog.name.trim()) {
+      setCreateDialog({ ...createDialog, error: '请输入记事本名称' })
+      return
+    }
+
+    // 验证名称不能重复
+    const nameExists = Object.values(notebooks).some(
+      nb => nb.name.toLowerCase() === createDialog.name.trim().toLowerCase()
+    )
+    if (nameExists) {
+      setCreateDialog({ ...createDialog, error: '记事本名称已存在' })
+      return
+    }
+
+    // 创建记事本（一次性传入名称和图标）
+    createNotebook(createDialog.name.trim(), createDialog.icon)
+    // 新建记事本显示空白页（不自动创建页面）
+    setActivePage(null)
+
+    setCreateDialog({ open: false, name: '', icon: '📓', error: '' })
   }
 
   const handleEdit = (id: string) => {
@@ -124,6 +158,9 @@ export function NotebookSwitcher() {
               className="flex items-center justify-between group"
               onClick={() => {
                 setActiveNotebook(notebook.id)
+                // 恢复该记事本的上次页面，或显示空白
+                const lastPageId = getLastActivePage(notebook.id)
+                setActivePage(lastPageId)
                 setIsOpen(false)
               }}
             >
@@ -175,17 +212,17 @@ export function NotebookSwitcher() {
           {showDeleteConfirm ? (
             <div className="grid gap-4 py-4">
                <div className="grid gap-2">
-                  <Label htmlFor="confirm-delete" className="text-muted-foreground">
-                      请输入 <span className="font-bold text-foreground select-all">{editDialog.name}</span> 以确认删除
-                  </Label>
-                  <Input
-                    id="confirm-delete"
-                    value={deleteConfirmInput}
-                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
-                    placeholder={editDialog.name}
-                    className="w-full"
-                    autoFocus
-                  />
+                 <Label htmlFor="confirm-delete" className="text-muted-foreground">
+                     请输入 <span className="font-bold text-foreground select-all">{editDialog.name}</span> 以确认删除
+                 </Label>
+                 <Input
+                   id="confirm-delete"
+                   value={deleteConfirmInput}
+                   onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                   placeholder={editDialog.name}
+                   className="w-full"
+                   autoFocus
+                 />
                </div>
             </div>
           ) : (
@@ -257,6 +294,65 @@ export function NotebookSwitcher() {
                     </div>
                 </div>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 新建记事本对话框 */}
+      <Dialog open={createDialog.open} onOpenChange={(open) => setCreateDialog({ ...createDialog, open, error: '' })}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>新建记事本</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {createDialog.error && (
+              <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">
+                {createDialog.error}
+              </div>
+            )}
+            <div className="flex gap-4 items-end">
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">图标</Label>
+                <IconSelector
+                  value={createDialog.icon}
+                  onChange={(val) => setCreateDialog({ ...createDialog, icon: val || '📓' })}
+                >
+                  <Button
+                    variant="outline"
+                    className="h-10 w-10 p-0 flex items-center justify-center shrink-0"
+                  >
+                    {renderIcon(createDialog.icon)}
+                  </Button>
+                </IconSelector>
+              </div>
+              <div className="grid gap-2 flex-1">
+                <Label htmlFor="new-notebook-name" className="text-xs text-muted-foreground">名称</Label>
+                <Input
+                  id="new-notebook-name"
+                  value={createDialog.name}
+                  onChange={(e) => setCreateDialog({ ...createDialog, name: e.target.value, error: '' })}
+                  placeholder="输入记事本名称"
+                  className="h-10"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleConfirmCreate()
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-between items-center sm:justify-between">
+            <div className="flex w-full justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCreateDialog({ ...createDialog, open: false, error: '' })}>
+                取消
+              </Button>
+              <Button size="sm" onClick={handleConfirmCreate}>创建</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

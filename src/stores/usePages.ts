@@ -88,12 +88,17 @@ export const usePages = create<PagesState>()(
           updatedAt: now,
           order: now, // Default order to created time
         }
-        
+
         set((state) => ({
           pages: { ...state.pages, [id]: newPage },
           activePageId: id, // Switch to new page immediately
         }))
-        
+
+        // 记录到当前记事本的历史
+        import('./useNotebooks').then(({ useNotebooks }) => {
+          useNotebooks.getState().setLastActivePage(workspaceId, id)
+        })
+
         return id
       },
 
@@ -204,7 +209,20 @@ export const usePages = create<PagesState>()(
         })
       },
 
-      setActivePage: (id) => set({ activePageId: id }),
+      setActivePage: (id) => {
+        const currentId = get().activePageId
+        // 只在页面 ID 实际变化时才更新状态和记录
+        if (currentId === id) return
+
+        set({ activePageId: id })
+        // 同步更新当前记事本的最后活跃页面记录
+        import('./useNotebooks').then(({ useNotebooks }) => {
+          const notebookId = useNotebooks.getState().activeNotebookId
+          if (notebookId) {
+            useNotebooks.getState().setLastActivePage(notebookId, id)
+          }
+        })
+      },
 
       getPage: (id) => get().pages[id],
       

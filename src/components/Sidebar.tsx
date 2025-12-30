@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { usePages } from "@/stores/usePages"
-import { useNotebooks } from "@/stores/useNotebooks"
+import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks"
 import { ChevronRight, File, SquarePen, Settings, Search, Star, Trash2 } from "lucide-react"
 import * as LucideIcons from "lucide-react"
 import { SidebarContextMenu } from "./SidebarContextMenu"
@@ -213,7 +213,7 @@ export function Sidebar({ className }: SidebarProps) {
       // 存在空白页面，直接选中
       setActivePage(existingBlankPage.id)
     } else {
-      createPage(undefined, activeNotebookId || 'default')
+      createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK)
     }
   }
 

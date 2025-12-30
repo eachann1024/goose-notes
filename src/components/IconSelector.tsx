@@ -36,7 +36,7 @@ export function IconSelector({ value, onChange, children }: IconSelectorProps) {
             <PopoverTrigger asChild>
                 {children}
             </PopoverTrigger>
-            <PopoverContent className="w-[340px] p-0" align="start" side="top" sideOffset={8}>
+            <PopoverContent className="w-[340px] p-0" align="start" side="right" collisionPadding={10}>
                 <div className="flex border-b">
                      <button
                         className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'emoji' ? 'border-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
@@ -52,7 +52,7 @@ export function IconSelector({ value, onChange, children }: IconSelectorProps) {
                      </button>
                 </div>
 
-                <div className="h-[350px]">
+                <div className="h-[320px]">
                     {tab === 'emoji' ? (
                         <div className="w-full h-full">
                              <EmojiPicker

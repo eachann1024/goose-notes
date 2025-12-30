@@ -12,7 +12,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { all, createLowlight } from 'lowlight'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import debounce from 'lodash.debounce'
 import { usePages } from '@/stores/usePages'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,9 @@ export function Editor({ editable = true }: EditorProps) {
   const { activePageId, getPage, updatePage } = usePages()
   const page = activePageId ? getPage(activePageId) : undefined
   const { searchProviders } = useSettings()
+
+  // 记录上次的页面 ID，用于判断是否真正切换了页面
+  const prevPageIdRef = useRef<string | null>(null)
 
   // Create a debounced update function
   const debouncedUpdate = useMemo(
@@ -96,19 +99,25 @@ export function Editor({ editable = true }: EditorProps) {
     },
   }, [activePageId]) // Re-create editor when activePageId changes (simplest strategy suitable for this structure)
 
-  // Sync content when page changes
+  // Sync content when page changes (only when activePageId actually changes)
   useEffect(() => {
-    if (editor && page && activePageId) {
-      // 先让 editor 失焦，避免加载内容时触发 Slash Command
-      editor.commands.blur()
-      
-      // 设置内容，不触发更新事件（避免触发 Suggestion 插件）
-      editor.commands.setContent(page.content, false)
-      
-      // 将光标移到文档开头，避免停留在 / 附近触发菜单
-      editor.commands.setTextSelection(0)
+    // 只在页面 ID 真正切换时才同步内容
+    if (activePageId !== prevPageIdRef.current) {
+      prevPageIdRef.current = activePageId
+
+      if (editor && page && activePageId) {
+        // 先让 editor 失焦，避免加载内容时触发 Slash Command
+        editor.commands.blur()
+
+        // 设置内容，不触发更新事件（避免触发 Suggestion 插件）
+        editor.commands.setContent(page.content, false)
+
+        // 将光标移到文档开头，避免停留在 / 附近触发菜单
+        editor.commands.setTextSelection(0)
+      }
     }
-  }, [editor, page, activePageId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePageId, page, editor])
 
   useEffect(() => {
      if (editor) {

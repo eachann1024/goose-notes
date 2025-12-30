@@ -228,17 +228,18 @@ function App() {
                />
             </div>
          ) : (
-             <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-background">
-                 <div className="w-[400px] h-[300px] mb-8 relative flex items-center justify-center">
-                    <img 
-                        src={welcomeCover} 
-                        alt="Welcome" 
-                        className="w-full h-full object-contain opacity-80"
-                    />
-                 </div>
-                 <h2 className="text-2xl font-semibold text-foreground mb-2">准备好记录想法了吗？</h2>
-                 <p className="text-sm opacity-60">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
-             </div>
+              <div className="h-full flex flex-col items-center justify-start pt-32 text-muted-foreground bg-background">
+                  <h2 className="text-3xl font-bold text-foreground mb-4">准备好记录想法了吗？</h2>
+                  <p className="text-base opacity-60 mb-12">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
+                  
+                  <div className="w-full max-w-6xl px-12 flex-1 flex items-start justify-center">
+                     <img 
+                         src={welcomeCover} 
+                         alt="Welcome" 
+                         className="w-full h-auto max-h-[60vh] object-contain opacity-90"
+                     />
+                  </div>
+              </div>
          )}
          </div>
       </main>

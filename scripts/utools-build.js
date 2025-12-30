@@ -25,7 +25,7 @@ try {
   console.log('✅ dist/package.json 已创建（type: commonjs）');
 
   // 3. 复制 logo
-  const logoSrc = path.join(rootDir, 'logo.png');
+  const logoSrc = path.join(rootDir, 'public/logo.png');
   if (fs.existsSync(logoSrc)) {
     fs.copyFileSync(logoSrc, path.join(distDir, 'logo.png'));
     console.log('✅ logo.png 已复制');

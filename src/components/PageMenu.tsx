@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Trash2, FileJson, FileCode, FileType, Upload } from "lucide-react"
 import { usePages } from "@/stores/usePages"
-import { useNotebooks } from "@/stores/useNotebooks"
+import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks"
 import { exportToJSON, exportToHTML, exportToMarkdown, importFile } from "@/lib/export"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -28,7 +28,7 @@ export function PageMenu() {
   const handleImport = async () => {
     const result = await importFile()
     if (result.success) {
-      const newId = createPage(undefined, activeNotebookId || 'default')
+      const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK)
       // 下一帧更新内容（确保页面已创建）
       setTimeout(() => {
         updatePage(newId, { title: result.title, content: result.content })
