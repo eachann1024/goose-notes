@@ -13,6 +13,7 @@ import * as LucideIcons from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { Toaster, toast } from "sonner"
 import welcomeCover from '@/assets/welcome-cover.png'
+import { getRandomTip } from '@/lib/tips'
 
 function App() {
   const { activePageId, getPage, updatePage, pages, setActivePage } = usePages()
@@ -265,21 +266,20 @@ function App() {
                       </IconSelector>
                    </div>
 
-                   <input
-                     type="text"
-                     placeholder="无标题"
-                     className="w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40"
-                     value={page.title}
-                     onChange={(e) => updatePage(activePageId, { title: e.target.value })}
-                     disabled={page.isLocked || !!page.trashedAt}
-                     onKeyDown={(e) => {
-                       if (e.key === 'Enter') {
-                         e.preventDefault()
-                         const editorEl = document.querySelector('.ProseMirror') as HTMLElement
-                         editorEl?.focus()
-                       }
-                     }}
-                   />
+                    <input
+                      type="text"
+                      placeholder="无标题"
+                      className="w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40"
+                      value={page.title}
+                      onChange={(e) => updatePage(activePageId, { title: e.target.value })}
+                      disabled={page.isLocked || !!page.trashedAt}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          window.dispatchEvent(new CustomEvent('goose-note:focus-editor-start'))
+                        }
+                      }}
+                    />
                </div>
                
                <Editor 
@@ -291,13 +291,16 @@ function App() {
                   <h2 className="text-3xl font-bold text-foreground mb-4">准备好记录想法了吗？</h2>
                   <p className="text-base opacity-60 mb-12">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
                   
-                  <div className="w-full max-w-6xl px-12 flex-1 flex items-start justify-center">
-                     <img 
-                         src={welcomeCover}
-                         alt="Welcome" 
-                         className="w-full h-auto max-h-[60vh] object-contain opacity-90"
-                     />
-                  </div>
+<div className="w-full max-w-6xl px-12 flex-1 flex flex-col items-center justify-start">
+                      <img 
+                          src={welcomeCover}
+                          alt="Welcome" 
+                          className="w-full h-auto max-h-[60vh] object-contain opacity-90"
+                      />
+                      <p className="text-sm text-muted-foreground/60 mt-6">
+                        💡 {getRandomTip()}
+                      </p>
+                   </div>
               </div>
          )}
          </div>

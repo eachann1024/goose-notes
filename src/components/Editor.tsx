@@ -8,6 +8,7 @@ import AutoJoiner from 'tiptap-extension-auto-joiner'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { Markdown } from 'tiptap-markdown'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
@@ -99,6 +100,14 @@ export function Editor({ editable = true }: EditorProps) {
         dragHandleWidth: 24,
         scrollTreshold: 100,
       }),
+      Markdown.configure({
+        html: true,
+        tightLists: true,
+        linkify: false,
+        breaks: false,
+        transformPastedText: true,
+        transformCopiedText: false,
+      }),
     ],
     editorProps: {
       attributes: {
@@ -169,6 +178,19 @@ export function Editor({ editable = true }: EditorProps) {
 
     return () => {
       editorElement.removeEventListener('paste', handlePaste)
+    }
+  }, [editor])
+
+  useEffect(() => {
+    if (!editor) return
+
+    const handleFocusStart = () => {
+      editor.chain().focus('start').insertContentAt(0, { type: 'paragraph' }).focus('start').run()
+    }
+
+    window.addEventListener('goose-note:focus-editor-start', handleFocusStart)
+    return () => {
+      window.removeEventListener('goose-note:focus-editor-start', handleFocusStart)
     }
   }, [editor])
 

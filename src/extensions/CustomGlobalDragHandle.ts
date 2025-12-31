@@ -17,11 +17,9 @@ function getPmView() {
 }
 
 function serializeForClipboard(view: any, slice: Slice) {
-  // Newer Tiptap/ProseMirror
   if (view && typeof view.serializeForClipboard === 'function') {
     return view.serializeForClipboard(slice)
   }
-  // Older version fallback
   const proseMirrorView = getPmView()
   if (proseMirrorView && typeof (proseMirrorView as any)?.__serializeForClipboard === 'function') {
     return (proseMirrorView as any).__serializeForClipboard(view, slice)
@@ -92,7 +90,70 @@ function calcNodePos(pos: number, view: any) {
 }
 
 function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
+  let dragHandleElement: HTMLElement | null = null
 
+  function hideDragHandle() {
+    if (dragHandleElement) {
+      dragHandleElement.classList.add('hide')
+    }
+  }
+
+  function showDragHandle() {
+    if (dragHandleElement) {
+      dragHandleElement.classList.remove('hide')
+    }
+  }
+
+  function updateHandlePosition(node: Element) {
+    if (!dragHandleElement) return
+    const compStyle = window.getComputedStyle(node)
+    const paddingTop = parseInt(compStyle.paddingTop, 10)
+    const paddingBottom = parseInt(compStyle.paddingBottom, 10)
+    const rect = absoluteRect(node)
+    const nodeHeight = node.getBoundingClientRect().height - paddingTop - paddingBottom
+    const handleHeight = 24
+    rect.top += paddingTop + (nodeHeight - handleHeight) / 2
+
+    if (node.matches('ul:not([data-type=taskList]) li, ol li')) {
+      rect.left -= options.dragHandleWidth
+    }
+    rect.width = options.dragHandleWidth
+
+    dragHandleElement.style.left = `${rect.left - rect.width}px`
+    dragHandleElement.style.top = `${rect.top}px`
+    showDragHandle()
+  }
+
+  function updateHandleBySelection(view: any) {
+    if (!view.editable || !dragHandleElement) return
+    const { selection } = view.state
+    if (!selection || selection.empty === undefined) return
+
+    const pos = selection.$from.pos
+    const resolved = view.state.doc.resolve(pos)
+    const nodePos = resolved.depth > 0 ? resolved.before(1) : pos
+    const domNode = view.nodeDOM(nodePos)
+
+    if (domNode instanceof Element) {
+      const excludedTagList = options.excludedTags.concat(['ol', 'ul']).join(', ')
+      if (!domNode.matches(excludedTagList) && !domNode.closest('.not-draggable')) {
+        updateHandlePosition(domNode)
+        return
+      }
+    }
+    hideDragHandle()
+  }
+
+  function hideHandleOnEditorOut(event: MouseEvent) {
+    if (event.target instanceof Element) {
+      const relatedTarget = event.relatedTarget as Element | null
+      const isInsideEditor =
+        relatedTarget?.classList.contains('tiptap') ||
+        relatedTarget?.classList.contains('drag-handle')
+      if (isInsideEditor) return
+    }
+    hideDragHandle()
+  }
 
   function handleDragStart(event: DragEvent, view: any) {
     view.focus()
@@ -146,8 +207,6 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
     view.dispatch(view.state.tr.setSelection(selection))
 
-
-
     const slice = view.state.selection.content()
     const { dom, text } = serializeForClipboard(view, slice)
     event.dataTransfer.clearData()
@@ -155,34 +214,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     event.dataTransfer.setData('text/plain', text)
     event.dataTransfer.effectAllowed = 'copyMove'
     event.dataTransfer.setDragImage(node, 0, 0)
-    
-    // 🔧 FIX: 默认设为 move: true（原版是 event.ctrlKey，需要按 Ctrl 才移动）
+
     view.dragging = { slice, move: true }
-  }
-
-  let dragHandleElement: HTMLElement | null = null
-
-  function hideDragHandle() {
-    if (dragHandleElement) {
-      dragHandleElement.classList.add('hide')
-    }
-  }
-
-  function showDragHandle() {
-    if (dragHandleElement) {
-      dragHandleElement.classList.remove('hide')
-    }
-  }
-
-  function hideHandleOnEditorOut(event: MouseEvent) {
-    if (event.target instanceof Element) {
-      const relatedTarget = event.relatedTarget as Element | null
-      const isInsideEditor =
-        relatedTarget?.classList.contains('tiptap') ||
-        relatedTarget?.classList.contains('drag-handle')
-      if (isInsideEditor) return
-    }
-    hideDragHandle()
   }
 
   function handleDrop(view: any, event: DragEvent) {
@@ -269,6 +302,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       view?.dom?.parentElement?.addEventListener('mouseout', hideHandleOnEditorOut as any)
 
       return {
+        update: () => {
+          requestAnimationFrame(() => updateHandleBySelection(view))
+        },
         destroy: () => {
           if (!handleBySelector) {
             dragHandleElement?.remove?.()
@@ -306,25 +342,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             return
           }
 
-          const compStyle = window.getComputedStyle(node)
-          const parsedLineHeight = parseInt(compStyle.lineHeight, 10)
-          const lineHeight = isNaN(parsedLineHeight)
-            ? parseInt(compStyle.fontSize) * 1.2
-            : parsedLineHeight
-          const paddingTop = parseInt(compStyle.paddingTop, 10)
-          const rect = absoluteRect(node)
-          rect.top += (lineHeight - 24) / 2
-          rect.top += paddingTop
-
-          if (node.matches('ul:not([data-type=taskList]) li, ol li')) {
-            rect.left -= options.dragHandleWidth
-          }
-          rect.width = options.dragHandleWidth
-
-          if (!dragHandleElement) return
-          dragHandleElement.style.left = `${rect.left - rect.width}px`
-          dragHandleElement.style.top = `${rect.top}px`
-          showDragHandle()
+          updateHandlePosition(node)
         },
         keydown: () => {
           hideDragHandle()
