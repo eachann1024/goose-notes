@@ -28,7 +28,7 @@
     
     /* Font Variables mapped to Tailwind theme */
     --font-default: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-serif: "Noto Serif SC", "Georgia", "Cambria", "Times New Roman", Times, serif;
+    --font-serif: "Source Serif 4", "Noto Serif SC", "Georgia", "Cambria", "Times New Roman", Times, serif;
     --font-mono: "JetBrains Mono", "Fira Code", "Menlo", "Monaco", "Consolas", "Courier New", monospace;
   }
 
@@ -160,6 +160,22 @@
   border-radius: 0.5rem;
   margin: 1rem 0;
   display: block;
+}
+
+/* 图片对齐 */
+.ProseMirror img[align="left"] {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.ProseMirror img[align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ProseMirror img[align="right"] {
+  margin-left: auto;
+  margin-right: 0;
 }
 
 /* Task List */
@@ -294,4 +310,91 @@
 
 .ProseMirror.resize-cursor {
   cursor: col-resize;
+}
+
+/* Global Drag Handle - Notion 风格 */
+.ProseMirror > * {
+  position: relative;
+}
+
+.drag-handle {
+  position: absolute;
+  left: -2rem;
+  top: 0;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: auto;
+}
+
+.ProseMirror > *:hover .drag-handle {
+  opacity: 1;
+}
+
+/* Notion-like Block Selection */
+.ProseMirror-selectednode,
+.tiptap-selected-node {
+  background-color: hsl(var(--primary) / 0.1) !important;
+  border-radius: 4px;
+  /* Ensure transparent outlines for selection so we don't duplicate browser focus */
+  outline: none !important; 
+}
+
+/* Specific handling for images to prevent double borders */
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: 2px;
+  background-color: transparent !important;
+}
+
+/* Ghost Image Improvement (Applied to dragging element) */
+/* This relies on the way dragging snapshots the element */
+.ProseMirror .is-dragging {
+  opacity: 0.5;
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+/* Drop Cursor - The line showing where content will land */
+.ProseMirror-dropcursor {
+  background-color: hsl(var(--primary));
+  width: 2px; 
+}
+
+
+
+/* Image Selection Customization (tiptap-extension-resize-image overrides) */
+
+/* 1. Hide and Override the dashed border completely */
+.ProseMirror div[style*="dashed"] {
+  border: none !important;
+}
+.ProseMirror-selectednode > div[style*="dashed"] {
+  border: 2px solid hsl(var(--primary)) !important;
+  border-radius: 4px;
+}
+
+/* 2. Hide unwanted internal UI (The "Ugly" Toolbar / PositionController) */
+/* Hide the position controller (the gray bordered toolbar with alignment icons) */
+.ProseMirror div[style*="position: absolute"][style*="z-index: 999"] {
+  display: none !important;
+}
+/* Hide any buttons injected by the extension */
+.ProseMirror-selectednode button {
+  display: none !important;
+}
+/* Hide containers that are not resize handles */
+.ProseMirror-selectednode > div > div:not([style*="cursor"]) {
+  display: none !important;
+}
+
+/* 3. Style and Show Resize Handles */
+.ProseMirror-selectednode > div > div[style*="cursor"] {
+  display: block !important;
+  background-color: white !important;
+  border: 1px solid hsl(var(--primary)) !important;
+  border-radius: 2px !important;
+  width: 8px !important;
+  height: 8px !important;
+  box-shadow: 0 0 0 1px hsla(var(--primary), 0.2);
+  z-index: 50;
 }

@@ -8,12 +8,12 @@ import { codeInspectorPlugin } from 'code-inspector-plugin'
 export default defineConfig({
   base: './', // utools 需要相对路径
   plugins: [
-    react(),
     codeInspectorPlugin({
       bundler: 'vite',
       hideConsole: true,
       hideDomPathAttr: true,
     }),
+    react(),
     AutoImport({
       imports: [
         'react',

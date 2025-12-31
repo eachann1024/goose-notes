@@ -29,10 +29,12 @@ declare global {
   const Trash2: typeof import('lucide-react').Trash2
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const X: typeof import('lucide-react').X
+  const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
+  const compressImage: typeof import('./lib/imageProcessor').compressImage
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
   const exportToHTML: typeof import('./lib/export').exportToHTML
@@ -40,11 +42,14 @@ declare global {
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const forwardRef: typeof import('react').forwardRef
+  const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
+  const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
+  const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const startTransition: typeof import('react').startTransition
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use

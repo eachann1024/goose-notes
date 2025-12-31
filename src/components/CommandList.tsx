@@ -235,11 +235,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
        searchTerms: ['image', 'picture', 'file'],
        icon: ImageIcon,
        command: ({ editor, range }: any) => {
-           editor.chain().focus().deleteRange(range).run()
-           const url = window.prompt("Image URL:")
-           if (url) {
-               editor.chain().focus().setImage({ src: url }).run()
-           }
+           editor.chain().focus().deleteRange(range).setImagePlaceholder().run()
        }
     },
     {

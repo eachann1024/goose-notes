@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ChevronDown, Plus, Check, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, Plus, Check, Settings, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -186,7 +186,7 @@ export function NotebookSwitcher() {
                     handleEdit(notebook.id)
                   }}
                 >
-                  <Pencil className="h-3 w-3" />
+                  <Settings className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </DropdownMenuItem>
@@ -212,7 +212,7 @@ export function NotebookSwitcher() {
           </DialogHeader>
 
           {showDeleteConfirm ? (
-            <div className="grid gap-4 py-4">
+            <div className="py-6">
                <div className="grid gap-2">
                  <Label htmlFor="confirm-delete" className="text-muted-foreground">
                      请输入 <span className="font-bold text-foreground select-all">{editDialog.name}</span> 以确认删除
@@ -222,39 +222,33 @@ export function NotebookSwitcher() {
                    value={deleteConfirmInput}
                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
                    placeholder={editDialog.name}
-                   className="w-full"
+                   className="w-full h-11"
                    autoFocus
                  />
                </div>
             </div>
           ) : (
-            <div className="grid gap-4 py-4">
-              <div className="flex gap-4 items-end">
-                  <div className="grid gap-2">
-                    <Label className="text-xs text-muted-foreground">图标</Label>
-                    <IconSelector 
-                        value={editDialog.icon}
-                        onChange={(val) => setEditDialog({ ...editDialog, icon: val || '📓' })}
-                        portalContainerRef={editDialogContentRef}
-                    >
-                        <Button 
-                            variant="outline" 
-                            className="h-10 w-10 p-0 flex items-center justify-center shrink-0"
-                        >
-                             {renderIcon(editDialog.icon)}
-                        </Button>
-                    </IconSelector>
-                  </div>
-                  <div className="grid gap-2 flex-1">
-                    <Label htmlFor="notebook-name" className="text-xs text-muted-foreground">名称</Label>
-                    <Input
-                      id="notebook-name"
-                      value={editDialog.name}
-                      onChange={(e) => setEditDialog({ ...editDialog, name: e.target.value })}
-                      placeholder="记事本名称"
-                      className="h-10"
-                    />
-                  </div>
+            <div className="py-6">
+              <div className="flex items-center gap-3">
+                  <IconSelector 
+                      value={editDialog.icon}
+                      onChange={(val) => setEditDialog({ ...editDialog, icon: val || '📓' })}
+                      portalContainerRef={editDialogContentRef}
+                  >
+                      <Button 
+                          variant="outline" 
+                          className="h-12 w-12 p-0 flex items-center justify-center shrink-0 text-xl shadow-sm"
+                      >
+                           {renderIcon(editDialog.icon)}
+                      </Button>
+                  </IconSelector>
+                  <Input
+                    id="notebook-name"
+                    value={editDialog.name}
+                    onChange={(e) => setEditDialog({ ...editDialog, name: e.target.value })}
+                    placeholder="记事本名称"
+                    className="h-12 flex-1 text-base shadow-sm"
+                  />
               </div>
             </div>
           )}
@@ -308,15 +302,13 @@ export function NotebookSwitcher() {
             <DialogTitle>新建记事本</DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="py-6 space-y-4">
             {createDialog.error && (
               <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">
                 {createDialog.error}
               </div>
             )}
-            <div className="flex gap-4 items-end">
-              <div className="grid gap-2">
-                <Label className="text-xs text-muted-foreground">图标</Label>
+            <div className="flex items-center gap-3">
                 <IconSelector
                   value={createDialog.icon}
                   onChange={(val) => setCreateDialog({ ...createDialog, icon: val || '📓' })}
@@ -324,20 +316,17 @@ export function NotebookSwitcher() {
                 >
                   <Button
                     variant="outline"
-                    className="h-10 w-10 p-0 flex items-center justify-center shrink-0"
+                    className="h-12 w-12 p-0 flex items-center justify-center shrink-0 text-xl shadow-sm"
                   >
                     {renderIcon(createDialog.icon)}
                   </Button>
                 </IconSelector>
-              </div>
-              <div className="grid gap-2 flex-1">
-                <Label htmlFor="new-notebook-name" className="text-xs text-muted-foreground">名称</Label>
                 <Input
                   id="new-notebook-name"
                   value={createDialog.name}
                   onChange={(e) => setCreateDialog({ ...createDialog, name: e.target.value, error: '' })}
                   placeholder="输入记事本名称"
-                  className="h-10"
+                  className="h-12 flex-1 text-base shadow-sm"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -346,7 +335,6 @@ export function NotebookSwitcher() {
                     }
                   }}
                 />
-              </div>
             </div>
           </div>
 

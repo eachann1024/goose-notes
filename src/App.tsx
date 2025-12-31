@@ -271,6 +271,13 @@ function App() {
                      value={page.title}
                      onChange={(e) => updatePage(activePageId, { title: e.target.value })}
                      disabled={page.isLocked || !!page.trashedAt}
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter') {
+                         e.preventDefault()
+                         const editorEl = document.querySelector('.ProseMirror') as HTMLElement
+                         editorEl?.focus()
+                       }
+                     }}
                    />
                </div>
                

@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
 import HighlightExtension from '@tiptap/extension-highlight'
+import AutoJoiner from 'tiptap-extension-auto-joiner'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -17,8 +18,13 @@ import debounce from 'lodash.debounce'
 import { usePages } from '@/stores/usePages'
 import { cn } from '@/lib/utils'
 import { configureSlashCommand } from '@/extensions/SlashCommand'
-import { ResizableImage } from '@/extensions/ResizableImage'
+import { ImageWithAlign } from '@/extensions/ImageWithAlign'
+import { DragHandle } from '@tiptap/extension-drag-handle-react'
+import NodeRange from '@tiptap/extension-node-range'
+import { ImagePlaceholder } from '@/extensions/ImagePlaceholder'
 import { EditorBubbleMenu } from '@/components/EditorBubbleMenu'
+import { ImageBubbleMenu } from '@/components/ImageBubbleMenu'
+import { getImageFromClipboard, processImageForStorage } from '@/lib/imageProcessor'
 import 'tippy.js/dist/tippy.css'
 import {
   ContextMenu,
@@ -28,7 +34,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { useSettings } from '@/stores/useSettings'
-import { Search, Scissors, Copy, Clipboard } from 'lucide-react'
+import { Search, Scissors, Copy, Clipboard, GripVertical } from 'lucide-react'
 
 // Initialize lowlight for code syntax highlighting
 const lowlight = createLowlight(all)
@@ -59,7 +65,9 @@ export function Editor({ editable = true }: EditorProps) {
     extensions: [
       StarterKit.configure({
         codeBlock: false, // 使用 CodeBlockLowlight 替代
+        link: false, // 单独配置 Link 扩展
       }),
+      AutoJoiner,
       Placeholder.configure({
         placeholder: '输入 / 以使用命令...',
       }),
@@ -67,7 +75,8 @@ export function Editor({ editable = true }: EditorProps) {
         openOnClick: false,
         autolink: true,
       }),
-      ResizableImage,
+      ImageWithAlign,
+      ImagePlaceholder,
       TaskList,
       TaskItem.configure({
         nested: true,
@@ -83,6 +92,7 @@ export function Editor({ editable = true }: EditorProps) {
       TableHeader,
       TableCell,
       configureSlashCommand(),
+      NodeRange,
     ],
     editorProps: {
       attributes: {
@@ -110,10 +120,13 @@ export function Editor({ editable = true }: EditorProps) {
         editor.commands.blur()
 
         // 设置内容，不触发更新事件（避免触发 Suggestion 插件）
-        editor.commands.setContent(page.content, false)
+        editor.commands.setContent(page.content, { emitUpdate: false })
 
-        // 将光标移到文档开头，避免停留在 / 附近触发菜单
-        editor.commands.setTextSelection(0)
+        // 将光标移到文档开头（跳过位置 0，因为它可能不在有效的文本节点内）
+        const firstPos = editor.state.doc.content.size > 0 ? 1 : 0
+        if (firstPos > 0) {
+          editor.commands.setTextSelection(firstPos)
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +137,35 @@ export function Editor({ editable = true }: EditorProps) {
         editor.setEditable(editable)
      }
   }, [editor, editable])
+
+  // 剪切板粘贴图片处理
+  useEffect(() => {
+    if (!editor) return
+
+    const handlePaste = async (event: ClipboardEvent) => {
+      const imageFile = getImageFromClipboard(event)
+      if (!imageFile) return
+
+      // 阻止默认行为，由我们处理图片
+      event.preventDefault()
+
+      try {
+        const base64 = await processImageForStorage(imageFile)
+        editor.chain().focus().setImage({ src: base64 }).run()
+      } catch (err) {
+        console.error('Failed to paste image:', err)
+      }
+    }
+
+    // 监听编辑器 DOM 的 paste 事件
+    const editorElement = editor.view.dom
+    editorElement.addEventListener('paste', handlePaste)
+
+    return () => {
+      editorElement.removeEventListener('paste', handlePaste)
+    }
+  }, [editor])
+
 
   // Apply font family
   const fontFamilyClass = useMemo(() => {
@@ -152,6 +194,12 @@ export function Editor({ editable = true }: EditorProps) {
   return (
     <div className={cn("transition-all duration-300", fontFamilyClass, fontSizeClass, widthClass)}>
        <EditorBubbleMenu editor={editor} />
+       <DragHandle editor={editor}>
+         <div className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:bg-muted rounded cursor-grab active:cursor-grabbing transition-colors">
+            <GripVertical className="w-4 h-4" />
+         </div>
+       </DragHandle>
+       <ImageBubbleMenu editor={editor} />
        <ContextMenu>
         <ContextMenuTrigger>
           <EditorContent editor={editor} />

@@ -1,4 +1,4 @@
-import { BubbleMenu } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import { Bold, Italic, Strikethrough, Code, Highlighter } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
@@ -11,8 +11,19 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{ duration: 100, theme: 'bubble-menu', arrow: false }}
       className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm"
+      shouldShow={({ editor, state }) => {
+        const { selection } = state
+
+        // 如果选中了图片，或者是一个 NodeSelection (选中整个节点)，则不显示文本工具栏
+        // 这里的工具栏只有 Bold/Italic 等文本样式，不适用于图片或整个块级元素
+        if (editor.isActive('image') || 'node' in selection) {
+          return false
+        }
+
+        // 必须有选中的文本才显示
+        return !selection.empty
+      }}
       {...props}
     >
       <Toggle

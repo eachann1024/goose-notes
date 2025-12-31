@@ -104,3 +104,4 @@ interface Page {
 5. **导入规则**：shadcn 和 hooks 由 autoimport 处理
 6. **尽量不要造轮子**
 7. **实现后请自行 pnpm build + 使用浏览器验证是否正常工作**
+- 注意自动导入的规则, 减少自动导入的代码 必要时可追加新的规则到 vite.config.ts
