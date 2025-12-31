@@ -12,15 +12,14 @@ import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
-import { all, createLowlight } from 'lowlight'
+import { common, createLowlight } from 'lowlight'
 import { useEffect, useMemo, useRef } from 'react'
 import debounce from 'lodash.debounce'
 import { usePages } from '@/stores/usePages'
 import { cn } from '@/lib/utils'
 import { configureSlashCommand } from '@/extensions/SlashCommand'
 import { ImageWithAlign } from '@/extensions/ImageWithAlign'
-import { DragHandle } from '@tiptap/extension-drag-handle-react'
-import NodeRange from '@tiptap/extension-node-range'
+import { CustomGlobalDragHandle } from '@/extensions/CustomGlobalDragHandle'
 import { ImagePlaceholder } from '@/extensions/ImagePlaceholder'
 import { EditorBubbleMenu } from '@/components/EditorBubbleMenu'
 import { ImageBubbleMenu } from '@/components/ImageBubbleMenu'
@@ -34,10 +33,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { useSettings } from '@/stores/useSettings'
-import { Search, Scissors, Copy, Clipboard, GripVertical } from 'lucide-react'
+import { Search, Scissors, Copy, Clipboard } from 'lucide-react'
 
-// Initialize lowlight for code syntax highlighting
-const lowlight = createLowlight(all)
+// Initialize lowlight for code syntax highlighting with common languages only
+const lowlight = createLowlight(common)
 
 interface EditorProps {
   editable?: boolean
@@ -66,6 +65,10 @@ export function Editor({ editable = true }: EditorProps) {
       StarterKit.configure({
         codeBlock: false, // 使用 CodeBlockLowlight 替代
         link: false, // 单独配置 Link 扩展
+        dropcursor: {
+          color: 'hsl(221.2, 83.2%, 53.3%)', // primary color
+          width: 3,
+        },
       }),
       AutoJoiner,
       Placeholder.configure({
@@ -92,7 +95,10 @@ export function Editor({ editable = true }: EditorProps) {
       TableHeader,
       TableCell,
       configureSlashCommand(),
-      NodeRange,
+      CustomGlobalDragHandle.configure({
+        dragHandleWidth: 24,
+        scrollTreshold: 100,
+      }),
     ],
     editorProps: {
       attributes: {
@@ -194,11 +200,6 @@ export function Editor({ editable = true }: EditorProps) {
   return (
     <div className={cn("transition-all duration-300", fontFamilyClass, fontSizeClass, widthClass)}>
        <EditorBubbleMenu editor={editor} />
-       <DragHandle editor={editor}>
-         <div className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:bg-muted rounded cursor-grab active:cursor-grabbing transition-colors">
-            <GripVertical className="w-4 h-4" />
-         </div>
-       </DragHandle>
        <ImageBubbleMenu editor={editor} />
        <ContextMenu>
         <ContextMenuTrigger>

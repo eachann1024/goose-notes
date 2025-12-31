@@ -46,7 +46,7 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   return (
     <BubbleMenu
       editor={editor}
-      className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm"
+      className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150"
       shouldShow={({ editor }: { editor: Editor }) => {
         return editor.isActive('imageResize')
       }}

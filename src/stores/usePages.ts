@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuidv4 } from 'uuid'
 import type { Page, JSONContent } from '@/types'
 import { uToolsStorage } from '@/lib/storage'
+import { useNotebooks } from './useNotebooks'
 
 interface PagesState {
   pages: Record<string, Page> // Normalize by ID
@@ -94,10 +95,8 @@ export const usePages = create<PagesState>()(
           activePageId: id, // Switch to new page immediately
         }))
 
-        // 记录到当前记事本的历史
-        import('./useNotebooks').then(({ useNotebooks }) => {
-          useNotebooks.getState().setLastActivePage(workspaceId, id)
-        })
+// 记录到当前记事本的历史
+        useNotebooks.getState().setLastActivePage(workspaceId, id)
 
         return id
       },
@@ -216,12 +215,10 @@ export const usePages = create<PagesState>()(
 
         set({ activePageId: id })
         // 同步更新当前记事本的最后活跃页面记录
-        import('./useNotebooks').then(({ useNotebooks }) => {
-          const notebookId = useNotebooks.getState().activeNotebookId
-          if (notebookId) {
-            useNotebooks.getState().setLastActivePage(notebookId, id)
-          }
-        })
+        const notebookId = useNotebooks.getState().activeNotebookId
+        if (notebookId) {
+          useNotebooks.getState().setLastActivePage(notebookId, id)
+        }
       },
 
       getPage: (id) => get().pages[id],

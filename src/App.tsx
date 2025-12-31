@@ -12,6 +12,7 @@ import { extractTextFromContent } from "@/lib/content-text-extractor"
 import * as LucideIcons from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { Toaster, toast } from "sonner"
+import welcomeCover from '@/assets/welcome-cover.png'
 
 function App() {
   const { activePageId, getPage, updatePage, pages, setActivePage } = usePages()
@@ -117,7 +118,7 @@ function App() {
         return results.map(p => ({
           title: p.title || '无标题',
           description: new Date(p.updatedAt).toLocaleString(),
-          icon: '/logo.png',
+          icon: './logo.png',
           url: `goose-notion://page/${p.id}`
         }))
       })
@@ -292,7 +293,7 @@ function App() {
                   
                   <div className="w-full max-w-6xl px-12 flex-1 flex items-start justify-center">
                      <img 
-                         src="https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png" 
+                         src={welcomeCover}
                          alt="Welcome" 
                          className="w-full h-auto max-h-[60vh] object-contain opacity-90"
                      />

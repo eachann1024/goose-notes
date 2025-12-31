@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNotebooks } from '@/stores/useNotebooks'
 import { usePages } from '@/stores/usePages'
 import { Button } from '@/components/ui/button'
@@ -21,8 +21,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { IconSelector } from '@/components/IconSelector'
+// import { IconSelector } from '@/components/IconSelector' // Moved to lazy load
 import * as LucideIcons from "lucide-react"
+
+const IconSelector = lazy(() => import('@/components/IconSelector').then(module => ({ default: module.IconSelector })))
 
 export function NotebookSwitcher() {
   const { notebooks, activeNotebookId, setActiveNotebook, createNotebook, updateNotebook, deleteNotebook, getLastActivePage } = useNotebooks()
@@ -172,7 +174,7 @@ export function NotebookSwitcher() {
               </div>
               <div className="flex items-center gap-1">
                 {activeNotebookId === notebook.id && (
-                  <Check className="h-4 w-4 text-primary" />
+                  <Check className="h-4 w-4" />
                 )}
                 <Button
                   variant="ghost"
@@ -230,6 +232,7 @@ export function NotebookSwitcher() {
           ) : (
             <div className="py-6">
               <div className="flex items-center gap-3">
+                  <Suspense fallback={<Button variant="outline" className="h-12 w-12 flex items-center justify-center">...</Button>}>
                   <IconSelector 
                       value={editDialog.icon}
                       onChange={(val) => setEditDialog({ ...editDialog, icon: val || '📓' })}
@@ -242,6 +245,7 @@ export function NotebookSwitcher() {
                            {renderIcon(editDialog.icon)}
                       </Button>
                   </IconSelector>
+                  </Suspense>
                   <Input
                     id="notebook-name"
                     value={editDialog.name}
@@ -309,6 +313,7 @@ export function NotebookSwitcher() {
               </div>
             )}
             <div className="flex items-center gap-3">
+                <Suspense fallback={<Button variant="outline" className="h-12 w-12 flex items-center justify-center">...</Button>}>
                 <IconSelector
                   value={createDialog.icon}
                   onChange={(val) => setCreateDialog({ ...createDialog, icon: val || '📓' })}
@@ -321,6 +326,7 @@ export function NotebookSwitcher() {
                     {renderIcon(createDialog.icon)}
                   </Button>
                 </IconSelector>
+                </Suspense>
                 <Input
                   id="new-notebook-name"
                   value={createDialog.name}

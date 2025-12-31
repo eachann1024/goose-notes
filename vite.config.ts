@@ -36,5 +36,28 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'zustand'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover', '@radix-ui/react-tooltip', 'lucide-react'],
+          'vendor-tiptap': [
+            '@tiptap/core', 
+            '@tiptap/react', 
+            '@tiptap/starter-kit', 
+            '@tiptap/extension-image',
+            '@tiptap/extension-link',
+            '@tiptap/extension-placeholder',
+            '@tiptap/extension-task-list',
+            '@tiptap/extension-task-item',
+            '@tiptap/extension-table',
+          ],
+          'vendor-hightlight': ['lowlight', '@tiptap/extension-code-block-lowlight'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000, // Tiptap is heavy, increase limit
+  }
 })
 
