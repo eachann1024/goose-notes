@@ -119,7 +119,7 @@ function App() {
           title: p.title || '无标题',
           description: new Date(p.updatedAt).toLocaleString(),
           icon: './logo.png',
-          url: `goose-notion://page/${p.id}`
+          url: `goose-note://page/${p.id}`
         }))
       })
     } else {
@@ -138,9 +138,9 @@ function App() {
       setActivePage(customEvent.detail.pageId)
     }
 
-    window.addEventListener('goose-notion:navigate', handleNavigate)
+    window.addEventListener('goose-note:navigate', handleNavigate)
     return () => {
-      window.removeEventListener('goose-notion:navigate', handleNavigate)
+      window.removeEventListener('goose-note:navigate', handleNavigate)
     }
   }, [setActivePage])
 

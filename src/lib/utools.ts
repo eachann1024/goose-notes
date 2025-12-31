@@ -166,7 +166,7 @@ export class UToolsAdapter {
       } else {
           // You might use a toast library here, but for strict "system" notification:
           if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('Goose Notion', { body })
+              new Notification('鹅的笔记', { body })
           } else {
               console.log('Notification:', body)
           }

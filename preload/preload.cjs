@@ -6,10 +6,10 @@ if (typeof window !== 'undefined' && typeof utools !== 'undefined') {
   // 注意：sublist API 可能不是所有 uTools 版本都支持
   if (typeof utools.onSublistEnter === 'function') {
     utools.onSublistEnter((item) => {
-      const pageId = item.url.replace('goose-notion://page/', '')
+      const pageId = item.url.replace('goose-note://page/', '')
 
       // 通知应用切换页面
-      window.dispatchEvent(new CustomEvent('goose-notion:navigate', {
+      window.dispatchEvent(new CustomEvent('goose-note:navigate', {
         detail: { pageId }
       }))
     })

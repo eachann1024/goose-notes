@@ -60,7 +60,7 @@ export const useSettings = create<SettingsState>()(
         set({ searchAllNotebooks: searchAll }),
     }),
     {
-      name: 'goose-notion-settings',
+      name: 'goose-note-settings',
       onRehydrateStorage: () => (state) => {
         // 恢复后立即应用主题
         if (state?.theme) {

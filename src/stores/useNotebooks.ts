@@ -116,7 +116,7 @@ export const useNotebooks = create<NotebooksState>()(
       },
     }),
     {
-      name: 'goose-notion-notebooks',
+      name: 'goose-note-notebooks',
       partialize: (state) => ({
         notebooks: state.notebooks,
         activeNotebookId: state.activeNotebookId,

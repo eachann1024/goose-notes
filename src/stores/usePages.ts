@@ -257,7 +257,7 @@ export const usePages = create<PagesState>()(
       },
     }),
     {
-      name: 'goose-notion-storage',
+      name: 'goose-note-storage',
       storage: createJSONStorage(() => throttledStorage),
       // Persist pages and activePageId
       partialize: (state) => ({ 

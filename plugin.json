@@ -1,5 +1,5 @@
 {
-	"pluginName": "鹅的Notion",
+	"pluginName": "鹅的笔记",
 	"description": "本地化的Notion风格笔记",
 	"author": "Antigravity",
 	"homepage": "https://github.com/your-repo",
@@ -8,9 +8,9 @@
 	"features": [
 		{
 			"code": "gn",
-			"explain": "打开鹅的Notion",
+			"explain": "打开鹅的笔记",
 			"cmds": [
-				"Goose Notion",
+				"Goose Note",
 				"Notion",
 				"Note",
 				"笔记",
