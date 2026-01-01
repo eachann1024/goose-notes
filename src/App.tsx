@@ -15,6 +15,7 @@ import { Toaster, toast } from "sonner"
 import welcomeCover from '@/assets/welcome-cover.png'
 import { getRandomTip } from '@/lib/tips'
 
+
 function App() {
   const { activePageId, getPage, updatePage, pages, setActivePage } = usePages()
   const { utools } = useSettings()
@@ -155,15 +156,12 @@ function App() {
         position="top-center" 
         duration={3000}
         visibleToasts={1}
+        theme="dark"
         toastOptions={{
           style: {
-            background: 'hsl(var(--foreground))',
-            color: 'hsl(var(--background))',
-            border: 'none',
             borderRadius: '6px',
             fontSize: '14px',
             padding: '12px 16px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           },
         }}
       />
@@ -209,20 +207,30 @@ function App() {
                      {page.isLocked && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">已锁定</span>}
                      {page.trashedAt && <span className="text-xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">只读</span>}
                  </div>
-                 <div className="flex items-center gap-2">
-                     <span className="text-xs text-muted-foreground">
-                        本地储存
-                     </span>
-                     {!page.trashedAt && <PageMenu />}
-                     <div className="w-px h-4 bg-border mx-1" />
-                     <button 
-                        onClick={() => usePages.getState().setActivePage(null)}
-                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
-                        title="关闭页面"
-                     >
-                        <LucideIcons.X className="h-4 w-4" />
-                     </button>
-                 </div>
+                  <div className="flex items-center gap-1">
+                      <button 
+                         onClick={() => usePages.getState().setActivePage(null)}
+                         className="p-1 hover:bg-muted rounded text-muted-foreground/70 hover:text-foreground transition-colors"
+                         title="关闭页面"
+                      >
+                         <LucideIcons.X className="h-4 w-4" />
+                      </button>
+
+                      <button
+                         onClick={() => updatePage(activePageId, { isFavorite: !page.isFavorite })}
+                         className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground/70 hover:text-foreground"
+                         title={page.isFavorite ? "取消收藏" : "收藏页面"}
+                      >
+                         <LucideIcons.Star 
+                             className={cn(
+                                 "h-4 w-4 transition-colors",
+                                 page.isFavorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/70"
+                             )} 
+                         />
+                      </button>
+
+                      {!page.trashedAt && <PageMenu />}
+                  </div>
              </div>
          )}
          
@@ -287,17 +295,17 @@ function App() {
                />
             </div>
          ) : (
-              <div className="h-full flex flex-col items-center justify-start pt-32 text-muted-foreground bg-background">
+              <div className="h-full flex flex-col items-center justify-start pt-16 text-muted-foreground bg-background overflow-y-auto">
                   <h2 className="text-3xl font-bold text-foreground mb-4">准备好记录想法了吗？</h2>
-                  <p className="text-base opacity-60 mb-12">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
+                  <p className="text-base opacity-60 mb-8">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
                   
-<div className="w-full max-w-6xl px-12 flex-1 flex flex-col items-center justify-start">
+                  <div className="w-full max-w-6xl px-12 pb-12 flex flex-col items-center justify-start">
                       <img 
                           src={welcomeCover}
                           alt="Welcome" 
-                          className="w-full h-auto max-h-[60vh] object-contain opacity-90"
+                          className="w-full h-auto max-h-[50vh] object-contain opacity-90"
                       />
-                      <p className="text-sm text-muted-foreground/60 mt-6">
+                      <p className="text-sm text-muted-foreground/60 mt-4">
                         💡 {getRandomTip()}
                       </p>
                    </div>

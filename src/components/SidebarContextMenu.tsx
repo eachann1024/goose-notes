@@ -67,7 +67,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
                 <span>创建副本</span>
                 <span className="ml-auto text-xs text-muted-foreground">⌘D</span>
             </ContextMenuItem>
-            
+
             <ContextMenuItem onSelect={handleRename}>
                 <PenLine className="h-4 w-4" />
                 <span>重命名</span>
@@ -84,7 +84,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
 
             <ContextMenuSeparator />
 
-            <ContextMenuItem 
+            <ContextMenuItem
                 onSelect={() => deletePage(page.id)}
                 className="text-muted-foreground focus:text-destructive focus:bg-destructive/10"
             >
@@ -97,7 +97,7 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
 
             <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 <div className="flex flex-col gap-0.5">
-                    <span>上次由 Eachann 编辑</span>
+                    <span>上次编辑</span>
                     <span className="text-[10px] opacity-80">
                         {new Date(page.updatedAt).toLocaleString('zh-CN', {
                             year: 'numeric',
@@ -113,4 +113,3 @@ export function SidebarContextMenu({ page, children }: SidebarContextMenuProps) 
     </ContextMenu>
   )
 }
-

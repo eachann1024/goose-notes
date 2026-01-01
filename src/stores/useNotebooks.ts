@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { uToolsStorage } from '@/lib/storage'
 
 export interface Notebook {
   id: string
@@ -37,7 +38,7 @@ export const useNotebooks = create<NotebooksState>()(
       notebooks: {
         [DEFAULT_NOTEBOOK_ID]: {
           id: DEFAULT_NOTEBOOK_ID,
-          name: '我的记事本',
+          name: 'Note',
           icon: '📓',
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -46,7 +47,7 @@ export const useNotebooks = create<NotebooksState>()(
       activeNotebookId: DEFAULT_NOTEBOOK_ID,
       lastActivePageByNotebook: {},
 
-      createNotebook: (name = '新记事本', icon = '📓') => {
+      createNotebook: (name = 'Note', icon = '📓') => {
         const id = generateId()
         const notebook: Notebook = {
           id,
@@ -117,6 +118,7 @@ export const useNotebooks = create<NotebooksState>()(
     }),
     {
       name: 'goose-note-notebooks',
+      storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
         activeNotebookId: state.activeNotebookId,

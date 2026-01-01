@@ -64,20 +64,21 @@ export interface ImportResult {
   content: JSONContent
   success: boolean
   error?: string
+  filename?: string
 }
 
 // 从 JSON 导入
-export function importFromJSON(jsonString: string): ImportResult {
+export function importFromJSON(jsonString: string, filename?: string): ImportResult {
   try {
     const data = JSON.parse(jsonString) as Page
-    
+
     // 验证必要字段
     if (!data.content || typeof data.content !== 'object') {
       return { title: '', content: { type: 'doc', content: [] }, success: false, error: '无效的 JSON 格式：缺少 content 字段' }
     }
-    
+
     return {
-      title: data.title || '导入的页面',
+      title: data.title || filename || '导入的页面',
       content: data.content,
       success: true,
     }
@@ -87,17 +88,18 @@ export function importFromJSON(jsonString: string): ImportResult {
 }
 
 // 从 Markdown 导入
-export function importFromMarkdown(markdown: string): ImportResult {
+export function importFromMarkdown(markdown: string, filename?: string): ImportResult {
   try {
     const content = markdownToJsonContent(markdown)
-    
-    // 从第一个 H1 提取标题
-    let title = '导入的页面'
-    const h1Match = markdown.match(/^#\s+(.+)$/m)
-    if (h1Match) {
-      title = h1Match[1].trim()
+
+    let title = filename || '导入的页面'
+    if (!filename) {
+      const h1Match = markdown.match(/^#\s+(.+)$/m)
+      if (h1Match) {
+        title = h1Match[1].trim()
+      }
     }
-    
+
     return { title, content, success: true }
   } catch (e) {
     return { title: '', content: { type: 'doc', content: [] }, success: false, error: '解析 Markdown 失败' }
@@ -110,26 +112,27 @@ export function importFile(): Promise<ImportResult> {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json,.md,.markdown,.txt'
-    
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) {
         resolve({ title: '', content: { type: 'doc', content: [] }, success: false, error: '未选择文件' })
         return
       }
-      
+
       const text = await file.text()
       const ext = file.name.split('.').pop()?.toLowerCase()
-      
+      const filename = file.name.replace(/\.[^/.]+$/, '')
+
       if (ext === 'json') {
-        resolve(importFromJSON(text))
+        resolve(importFromJSON(text, filename))
       } else if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
-        resolve(importFromMarkdown(text))
+        resolve(importFromMarkdown(text, filename))
       } else {
         resolve({ title: '', content: { type: 'doc', content: [] }, success: false, error: '不支持的文件格式' })
       }
     }
-    
+
     input.click()
   })
 }

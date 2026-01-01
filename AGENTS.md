@@ -105,3 +105,48 @@ interface Page {
 6. **尽量不要造轮子**
 7. **实现后请自行 pnpm build + 使用浏览器验证是否正常工作**
 - 注意自动导入的规则, 减少自动导入的代码 必要时可追加新的规则到 vite.config.ts
+
+---
+
+## ⚠️ 数据持久化铁律（CRITICAL - 违反必究）
+
+### 必须使用 uToolsStorage
+**所有 Zustand store 必须显式使用 uToolsStorage**
+
+```typescript
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { uToolsStorage } from '@/lib/storage'
+
+export const useXxx = create<XxxState>()(
+  persist(
+    (set, get) => ({ ... }),
+    {
+      name: 'goose-note-xxx',
+      storage: createJSONStorage(() => uToolsStorage), // ← 必须写这一行！
+    }
+  )
+)
+```
+
+**原因**：uTools 插件窗口关闭后会清空 `localStorage`，导致数据永久丢失。
+
+### 禁止使用可能丢数据的延迟写入
+- 节流/防抖存储必须在 `window.beforeunload` 或 `utools.onPluginOut` 时强制 flush
+- 或直接使用同步写入，宁可性能差也不能丢数据
+
+### 新增 store 前必检查
+- [ ] 是否使用了 `storage: createJSONStorage(() => uToolsStorage)`？
+- [ ] 是否有 flush 机制（如果使用了节流/防抖）？
+- [ ] 关闭窗口后数据是否能恢复？
+- [ ] 测试：打开插件 → 创建/编辑数据 → 关闭 → 重新打开 → 数据是否存在？
+
+---
+
+## 使用提示词库
+
+维护文件：`src/lib/tips.ts`
+
+添加新功能时，请同步更新提示词库，帮助用户发现新功能。提示词要求：
+- 简洁明了，一句话说清
+- 包含快捷键时标注 ⌘/Ctrl
+- 新功能优先添加对应提示

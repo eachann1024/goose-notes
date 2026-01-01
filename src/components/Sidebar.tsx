@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { usePages } from "@/stores/usePages"
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks"
-import { ChevronRight, File, SquarePen, Settings, Search, Star, Trash2 } from "lucide-react"
+import { ChevronRight, File, SquarePen, Settings, Search, Trash2, Plus } from "lucide-react"
 import * as LucideIcons from "lucide-react"
 import { SidebarContextMenu } from "./SidebarContextMenu"
 import { SettingsDialog } from "./SettingsDialog"
@@ -21,7 +21,10 @@ import { TrashList } from "./TrashList"
 import { Tree } from "react-arborist"
 import type { NodeRendererProps, NodeApi } from "react-arborist"
 import type { Page } from "@/types"
+import { UToolsAdapter } from "@/lib/utools"
 
+// uTools 环境需要侧边栏最小宽度以保证可用性，Web 环境允许更小宽度
+const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string
 }
@@ -32,42 +35,109 @@ interface TreeNode {
   name: string
   icon?: string
   children?: TreeNode[]
-  page: Page
+  page?: Page
+  isPlaceholder?: boolean
 }
 
 // 将扁平的 pages 转换为树形结构
-function buildTree(pages: Record<string, Page>, parentId?: string, workspaceId?: string): TreeNode[] {
-  return Object.values(pages)
+function buildTree(
+  pages: Record<string, Page>, 
+  openPageIds: Set<string>,
+  parentId?: string, 
+  workspaceId?: string
+): TreeNode[] {
+  const children = Object.values(pages)
     .filter(p => {
       const matchParent = p.parentId === parentId && !p.trashedAt
       const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true
       return matchParent && matchWorkspace
     })
     .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))
-    .map(page => ({
-      id: page.id,
-      name: page.title || "无标题",
-      icon: page.icon,
-      children: buildTree(pages, page.id, workspaceId),
-      page,
-    }))
+
+  const nodes: TreeNode[] = children.map(page => ({
+    id: page.id,
+    name: page.title || "无标题",
+    icon: page.icon,
+    children: buildTree(pages, openPageIds, page.id, workspaceId),
+    page,
+  }))
+
+  // 如果节点展开且没有子页面，添加 "内无页面" 占位符
+  if (parentId && openPageIds.has(parentId) && nodes.length === 0) {
+    return [
+      {
+        id: `${parentId}-empty`,
+        name: "内无页面",
+        isPlaceholder: true,
+      },
+    ]
+  }
+
+  return nodes
 }
 
 // 自定义节点渲染
 function PageNode({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
-  const { activePageId, setActivePage } = usePages()
+  const { activePageId, setActivePage, createPage, pages } = usePages()
+  const { activeNotebookId } = useNotebooks()
   const isActive = activePageId === node.id
-  const hasChildren = node.children && node.children.length > 0
+  const isPlaceholder = node.data.isPlaceholder
   const iconName = node.data.icon
 
+  // react-arborist 默认会将 paddingLeft 放入 style 中，这会覆盖 className 中的 px-2
+  // 我们手动处理缩进，所以需要移除 style 中的 paddingLeft 以防止样式覆盖
+  const { paddingLeft: _ignored, ...itemStyle } = style
+
+  // 计算缩进和对齐：与收藏栏对齐（容器 px-2 (8px) + 节点 mx-1 (4px) + 节点 px-2 (8px) = 20px 到图标开始）
+  const indent = node.level * 16
+  const paddingLeft = indent
+
+  if (isPlaceholder) {
+    return (
+      <div
+        style={itemStyle}
+        className="flex items-center h-8 mb-px px-2 mx-1 select-none"
+      >
+        <div 
+          style={{ paddingLeft: paddingLeft + 18 }} 
+          className="text-[13px] text-muted-foreground/45 italic truncate"
+        >
+          {node.data.name}
+        </div>
+      </div>
+    )
+  }
+
+  const handleAddChild = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    const existingBlankChild = Object.values(pages).find(p => {
+      const isChild = p.parentId === node.id && !p.trashedAt
+      const isBlankTitle = !p.title || p.title.trim() === ''
+      const isBlankContent = !p.content || p.content.type !== 'doc' || 
+        !p.content.content || p.content.content.length === 0 ||
+        (p.content.content.length === 1 && p.content.content[0].type === 'paragraph' && 
+         (!p.content.content[0].content || p.content.content[0].content.length === 0))
+      return isChild && isBlankTitle && isBlankContent
+    })
+
+    if (existingBlankChild) {
+      if (!node.isOpen) node.open()
+      setActivePage(existingBlankChild.id)
+    } else {
+      if (!node.isOpen) node.open()
+      createPage(node.id, activeNotebookId || DEFAULT_NOTEBOOK)
+    }
+  }
+
   return (
-    <SidebarContextMenu page={node.data.page}>
+    <SidebarContextMenu page={node.data.page!}>
       <div
         ref={dragHandle}
-        style={style}
+        style={itemStyle}
         className={cn(
-          "group flex items-center gap-1 py-1 px-2 rounded-sm cursor-pointer transition-colors",
-          isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+          "group relative flex items-center h-8 mb-px px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+          isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
           node.state.isDragging && "opacity-50"
         )}
         onClick={(e) => {
@@ -75,59 +145,251 @@ function PageNode({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
           setActivePage(node.id)
         }}
       >
-        {/* 展开/折叠按钮 */}
-        <div
-          className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted/80"
-          onClick={(e) => {
-            e.stopPropagation()
-            node.toggle()
-          }}
-        >
-          {hasChildren ? (
-            <ChevronRight
-              className={cn(
-                "h-3 w-3 transition-transform text-muted-foreground",
-                node.isOpen && "rotate-90"
-              )}
-            />
-          ) : (
-            <div className="w-3 h-3" />
-          )}
+        <div className="flex items-center h-full gap-2 min-w-0 flex-1" style={{ paddingLeft }}>
+            {/* 图标与展开/折叠按钮区域 - 16px 宽以确保对齐 */}
+            <div
+                className="relative flex items-center justify-center w-4 h-4 shrink-0"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    node.toggle()
+                }}
+            >
+                <div className="relative flex items-center justify-center w-full h-full z-10">
+                    <div className={cn("flex items-center justify-center", !node.isOpen && "group-hover:hidden")}>
+                        {node.isOpen ? (
+                            <ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
+                        ) : (
+                            <>
+                            {iconName ? (
+                                <div className="h-4 w-4 flex items-center justify-center">
+                                {(LucideIcons as any)[iconName] ? (
+                                    (() => {
+                                    const Icon = (LucideIcons as any)[iconName]
+                                    return <Icon className="h-4 w-4" />
+                                    })()
+                                ) : (
+                                    <span className="text-sm">{iconName}</span>
+                                )}
+                                </div>
+                            ) : (
+                                <File className="h-4 w-4 text-muted-foreground/70" />
+                            )}
+                            </>
+                        )}
+                    </div>
+                    
+                    {!node.isOpen && (
+                        <div className="hidden group-hover:flex items-center justify-center">
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 标题 */}
+            <span className="truncate text-[14px] flex-1 translate-y-[-0.5px]">{node.data.name}</span>
         </div>
 
-        {/* 图标 */}
-        {iconName ? (
-          <div className="h-4 w-4 shrink-0 flex items-center justify-center mr-1">
-            {(LucideIcons as any)[iconName] ? (
-              (() => {
-                const Icon = (LucideIcons as any)[iconName]
-                return <Icon className="h-4 w-4" />
-              })()
-            ) : (
-              <span className="text-xs">{iconName}</span>
-            )}
-          </div>
-        ) : (
-          <File className="h-4 w-4 shrink-0 text-muted-foreground mr-1" />
-        )}
-
-        {/* 标题 */}
-        <span className="truncate text-sm flex-1">{node.data.name}</span>
+        {/* 右侧操作按钮 - 绝对定位不占空间 */}
+        <div className={cn(
+          "absolute right-0 top-0 h-full flex items-center gap-0.5 pr-1 pl-4 opacity-0 group-hover:opacity-100 transition-opacity",
+          "bg-gradient-to-r from-transparent",
+          isActive ? "to-muted" : "to-[hsl(var(--muted)/0.6)]"
+        )}>
+          <button
+            className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-colors"
+            onClick={handleAddChild}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </SidebarContextMenu>
   )
 }
+
+// 收藏页面节点 - 支持展开子页面
+interface FavoriteNodeProps {
+  page: Page
+  level: number
+  pages: Record<string, Page>
+  activePageId: string | null
+  setActivePage: (id: string) => void
+  expandedFavorites: Set<string>
+  setExpandedFavorites: React.Dispatch<React.SetStateAction<Set<string>>>
+  activeNotebookId: string | null
+  createPage: (parentId?: string, workspaceId?: string) => void
+}
+
+function FavoriteNode({
+  page,
+  level,
+  pages,
+  activePageId,
+  setActivePage,
+  expandedFavorites,
+  setExpandedFavorites,
+  activeNotebookId,
+  createPage,
+}: FavoriteNodeProps) {
+  const iconName = page.icon
+  const isExpanded = expandedFavorites.has(page.id)
+  const isActive = activePageId === page.id
+  
+  // 获取子页面
+  const children = Object.values(pages)
+    .filter(p => p.parentId === page.id && !p.trashedAt)
+    .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))
+  
+  const hasChildren = children.length > 0
+  const indent = level * 16
+
+  const toggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedFavorites(prev => {
+      const next = new Set(prev)
+      if (next.has(page.id)) {
+        next.delete(page.id)
+      } else {
+        next.add(page.id)
+      }
+      return next
+    })
+  }
+
+  const handleAddChild = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    const existingBlankChild = Object.values(pages).find(p => {
+      const isChild = p.parentId === page.id && !p.trashedAt
+      const isBlankTitle = !p.title || p.title.trim() === ''
+      const isBlankContent = !p.content || p.content.type !== 'doc' || 
+        !p.content.content || p.content.content.length === 0 ||
+        (p.content.content.length === 1 && p.content.content[0].type === 'paragraph' && 
+         (!p.content.content[0].content || p.content.content[0].content.length === 0))
+      return isChild && isBlankTitle && isBlankContent
+    })
+
+    if (existingBlankChild) {
+      if (!isExpanded) {
+        setExpandedFavorites(prev => new Set(prev).add(page.id))
+      }
+      setActivePage(existingBlankChild.id)
+    } else {
+      if (!isExpanded) {
+        setExpandedFavorites(prev => new Set(prev).add(page.id))
+      }
+      createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK)
+    }
+  }
+
+  return (
+    <>
+      <SidebarContextMenu page={page}>
+        <div
+          className={cn(
+            "group relative flex items-center h-8 mb-px px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+            isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          )}
+          onClick={() => setActivePage(page.id)}
+        >
+          <div className="flex items-center h-full gap-2 min-w-0 flex-1" style={{ paddingLeft: indent }}>
+            <div
+              className="relative flex items-center justify-center w-4 h-4 shrink-0"
+              onClick={toggleExpand}
+            >
+              <div className="relative flex items-center justify-center w-full h-full z-10">
+                <div className={cn("flex items-center justify-center", !isExpanded && "group-hover:hidden")}>
+                  {isExpanded ? (
+                    <ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
+                  ) : (
+                    <>
+                      {iconName ? (
+                        <div className="h-4 w-4 flex items-center justify-center">
+                          {(LucideIcons as any)[iconName] ? (
+                            (() => {
+                              const Icon = (LucideIcons as any)[iconName]
+                              return <Icon className="h-4 w-4" />
+                            })()
+                          ) : (
+                            <span className="text-sm">{iconName}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <File className="h-4 w-4 text-muted-foreground/70" />
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                {!isExpanded && (
+                  <div className="hidden group-hover:flex items-center justify-center">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <span className="truncate text-[14px] flex-1 translate-y-[-0.5px]">{page.title || '无标题'}</span>
+          </div>
+
+          <div className={cn(
+            "absolute right-0 top-0 h-full flex items-center gap-0.5 pr-1 pl-4 opacity-0 group-hover:opacity-100 transition-opacity",
+            "bg-gradient-to-r from-transparent",
+            isActive ? "to-muted" : "to-[hsl(var(--muted)/0.6)]"
+          )}>
+            <button
+              className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-colors"
+              onClick={handleAddChild}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </SidebarContextMenu>
+
+      {/* 子页面 */}
+      {isExpanded && (
+        hasChildren ? (
+          children.map(child => (
+            <FavoriteNode
+              key={child.id}
+              page={child}
+              level={level + 1}
+              pages={pages}
+              activePageId={activePageId}
+              setActivePage={setActivePage}
+              expandedFavorites={expandedFavorites}
+              setExpandedFavorites={setExpandedFavorites}
+              activeNotebookId={activeNotebookId}
+              createPage={createPage}
+            />
+          ))
+        ) : (
+          <div
+            className="flex items-center h-8 mb-px px-2 mx-1 select-none"
+            style={{ paddingLeft: indent + 16 + 18 }}
+          >
+            <span className="text-[13px] text-muted-foreground/45 italic truncate">内无页面</span>
+          </div>
+        )
+      )}
+    </>
+  )
+}
+
 
 type SidebarView = 'pages' | 'trash'
 
 export function Sidebar({ className }: SidebarProps) {
   const { createPage, updatePage, deletePage, pages, activePageId, setActivePage, reorderPages, getChildren, getFavorites } = usePages()
   const { activeNotebookId } = useNotebooks()
-  
-  // 从 localStorage 恢复侧边栏宽度
+
+  // uTools 环境默认最窄(180)，Web 环境默认稍宽(220)
+  const DEFAULT_SIDEBAR_WIDTH = UToolsAdapter.isUTools ? 180 : 220
   const [width, setWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width')
-    return saved ? Math.max(180, Math.min(480, Number(saved))) : 240
+    return saved ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, Number(saved))) : DEFAULT_SIDEBAR_WIDTH
   })
   const [isResizing, setIsResizing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -135,6 +397,20 @@ export function Sidebar({ className }: SidebarProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const treeRef = useRef<any>(null)
+  const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set())
+
+  // 处理节点切换展开状态
+  const handleToggle = (id: string) => {
+    setOpenPageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   // Cmd/Ctrl + Backspace 删除选中页面
   const handleDeleteShortcut = useCallback((e: KeyboardEvent) => {
@@ -158,6 +434,10 @@ export function Sidebar({ className }: SidebarProps) {
     }
   }, [handleDeleteShortcut])
 
+  const [favoritesCollapsed, setFavoritesCollapsed] = useState(false)
+  const [pagesCollapsed, setPagesCollapsed] = useState(false)
+  const [expandedFavorites, setExpandedFavorites] = useState<Set<string>>(new Set())
+
   // 宽度变化时保存到 localStorage（防抖）
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -175,8 +455,8 @@ export function Sidebar({ className }: SidebarProps) {
 
   // 将 pages 转换为 tree data（基于当前记事本过滤）
   const treeData = useMemo(
-    () => buildTree(pages, undefined, activeNotebookId || undefined),
-    [pages, activeNotebookId]
+    () => buildTree(pages, openPageIds, undefined, activeNotebookId || undefined),
+    [pages, openPageIds, activeNotebookId]
   )
 
   // 获取收藏页面
@@ -253,7 +533,7 @@ export function Sidebar({ className }: SidebarProps) {
 
     const onMouseMove = (e: MouseEvent) => {
       const newWidth = startWidth + e.clientX - startX
-      setWidth(Math.max(180, Math.min(480, newWidth)))
+      setWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, newWidth)))
     }
 
     const onMouseUp = () => {
@@ -288,6 +568,23 @@ export function Sidebar({ className }: SidebarProps) {
     )
   }
 
+  // 公共 Header 渲染组件
+  const SectionHeader = ({ title, collapsed, onToggle }: { title: string, collapsed: boolean, onToggle: () => void }) => (
+    <div 
+        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+        onClick={onToggle}
+    >
+      <span>{title}</span>
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {collapsed ? (
+            <ChevronRight className="h-3 w-3" />
+        ) : (
+            <LucideIcons.ChevronDown className="h-3 w-3" />
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div
       ref={sidebarRef}
@@ -308,10 +605,10 @@ export function Sidebar({ className }: SidebarProps) {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header Area - 记事本切换器 */}
-        <div className="px-3 py-3 border-b">
-          <div className="flex items-center gap-1">
-            <div className="flex-1">
-              <NotebookSwitcher />
+        <div className="px-3 h-12 flex items-center shrink-0">
+          <div className="flex items-center gap-1 w-full">
+            <div className="flex-1 min-w-0">
+               <NotebookSwitcher />
             </div>
             <Button
               onClick={handleCreatePage}
@@ -326,10 +623,13 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         {/* 搜索入口 */}
-        <div className="px-3 py-2">
+        <div className="px-3 pb-2 pt-0">
           <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground h-8 px-2"
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-muted-foreground h-8 px-2 bg-muted/40 border-transparent shadow-none",
+              "hover:bg-muted/60 hover:text-foreground transition-colors"
+            )}
             onClick={() => {
               // 触发全局搜索 Cmd+K
               const event = new KeyboardEvent('keydown', {
@@ -340,98 +640,88 @@ export function Sidebar({ className }: SidebarProps) {
               document.dispatchEvent(event)
             }}
           >
-            <Search className="mr-2 h-4 w-4" />
+            <Search className="mr-2 h-4 w-4 opacity-50" />
             <span className="text-sm">搜索</span>
-            <span className="ml-auto text-xs text-muted-foreground/60">⌘K</span>
+            <span className="ml-auto text-xs text-muted-foreground/50">⌘K</span>
           </Button>
         </div>
 
         {/* 收藏区 */}
         {favorites.length > 0 && (
-          <div className="px-3 py-2 border-b">
-            <div className="flex items-center gap-2 px-2 mb-2 text-xs text-muted-foreground font-medium">
-              <Star className="h-3 w-3" />
-              收藏
-            </div>
-            <div className="space-y-0.5">
-              {favorites.map((page) => {
-                const iconName = page.icon
-                return (
-                  <div
+          <div className="py-1">
+            <SectionHeader 
+                title="收藏" 
+                collapsed={favoritesCollapsed} 
+                onToggle={() => setFavoritesCollapsed(!favoritesCollapsed)} 
+            />
+            {!favoritesCollapsed && (
+              <div className="px-2 pt-0.5 overflow-hidden">
+                {favorites.map((page) => (
+                  <FavoriteNode 
                     key={page.id}
-                    className={cn(
-                      "flex items-center gap-2 py-1 px-2 rounded-sm cursor-pointer transition-colors text-sm",
-                      activePageId === page.id
-                        ? "bg-accent text-accent-foreground"
-                        : "hover:bg-accent/50"
-                    )}
-                    onClick={() => setActivePage(page.id)}
-                  >
-                    {iconName ? (
-                      <div className="h-4 w-4 shrink-0 flex items-center justify-center">
-                        {(LucideIcons as any)[iconName] ? (
-                          (() => {
-                            const Icon = (LucideIcons as any)[iconName]
-                            return <Icon className="h-4 w-4" />
-                          })()
-                        ) : (
-                          <span className="text-xs">{iconName}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <File className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="truncate">{page.title || '无标题'}</span>
-                  </div>
-                )
-              })}
-            </div>
+                    page={page}
+                    level={0}
+                    pages={pages}
+                    activePageId={activePageId}
+                    setActivePage={setActivePage}
+                    expandedFavorites={expandedFavorites}
+                    setExpandedFavorites={setExpandedFavorites}
+                    activeNotebookId={activeNotebookId}
+                    createPage={createPage}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Page List with react-arborist */}
-        <ScrollArea className="flex-1 px-2">
-          <div className="py-2">
-            <div className="flex items-center gap-2 px-2 mb-2 text-xs text-muted-foreground font-medium">
-              <File className="h-3 w-3" />
-              页面
-            </div>
+        <ScrollArea className="flex-1">
+          <div className="mt-1">
+            <SectionHeader 
+                  title="页面" 
+                  collapsed={pagesCollapsed} 
+                  onToggle={() => setPagesCollapsed(!pagesCollapsed)} 
+              />
           </div>
-          <div className="pb-20">
-            {treeData.length > 0 ? (
-              <Tree
-                ref={treeRef}
-                data={treeData}
-                onMove={handleMove}
-                onRename={handleRename}
-                onActivate={handleActivate}
-                selection={activePageId || undefined}
-                openByDefault={false}
-                width={width - 20}
-                height={600}
-                indent={12}
-                rowHeight={32}
-                overscanCount={5}
-                disableEdit={false}
-                disableDrag={false}
-                disableDrop={false}
-              >
-                {PageNode}
-              </Tree>
-            ) : (
-              <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-muted/30 rounded mx-2 border border-dashed">
-                <div className="mb-2">👻</div>
-                <p>暂无页面</p>
-                <Button
-                  variant="link"
-                  onClick={handleCreatePage}
-                  className="h-auto p-0 mt-1"
+          {!pagesCollapsed && (
+            <div className="px-2 pb-20">
+              {treeData.length > 0 ? (
+                <Tree
+                  ref={treeRef}
+                  data={treeData}
+                  onMove={handleMove}
+                  onRename={handleRename}
+                  onActivate={handleActivate}
+                  selection={activePageId || undefined}
+                  openByDefault={false}
+                  width={width - 16}
+                  height={600}
+                  indent={16}
+                  rowHeight={33}
+                  overscanCount={5}
+                  disableEdit={false}
+                  disableDrag={false}
+                  disableDrop={false}
+                  onToggle={handleToggle}
                 >
-                  创建第一个页面
-                </Button>
-              </div>
-            )}
-          </div>
+                  {PageNode}
+                </Tree>
+              ) : (
+                <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-muted/30 rounded mx-2 border border-dashed">
+                  <div className="mb-2">👻</div>
+                  <p>暂无页面</p>
+                  <Button
+                    variant="link"
+                    onClick={handleCreatePage}
+                    className="h-auto p-0 mt-1"
+                  >
+                    创建第一个页面
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </ScrollArea>
 
         {/* Footer */}

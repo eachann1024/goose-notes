@@ -26,6 +26,7 @@ declare global {
   const Search: typeof import('lucide-react').Search
   const Settings: typeof import('lucide-react').Settings
   const Suspense: typeof import('react').Suspense
+  const TIPS: typeof import('./lib/tips').TIPS
   const Trash2: typeof import('lucide-react').Trash2
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const X: typeof import('lucide-react').X
@@ -41,8 +42,10 @@ declare global {
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
+  const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
   const forwardRef: typeof import('react').forwardRef
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
+  const getRandomTip: typeof import('./lib/tips').getRandomTip
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown

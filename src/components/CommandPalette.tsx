@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Command } from 'cmdk'
-import { FileText, Search, Clock } from 'lucide-react'
+import { FileText, Search, Clock, X } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { HighlightText } from '@/lib/highlight-text'
@@ -15,6 +15,21 @@ export function CommandPalette() {
   const { pages, setActivePage } = usePages()
   const { activeNotebookId } = useNotebooks()
   const { searchAllNotebooks, setSearchAllNotebooks } = useSettings()
+  const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('goose-recent-excludes')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  const handleRemoveRecent = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    const newIds = [...removedRecentIds, id]
+    setRemovedRecentIds(newIds)
+    localStorage.setItem('goose-recent-excludes', JSON.stringify(newIds))
+  }
 
   // 根据 searchAllNotebooks 过滤页面
   const filteredPages = useMemo(() => {
@@ -33,8 +48,8 @@ export function CommandPalette() {
     const query = searchQuery.trim().toLowerCase()
 
     if (!query) {
-      // 无搜索词时，显示所有页面（分为最近和全部）
       const recent = filteredPages
+        .filter(p => !removedRecentIds.includes(p.id))
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 5)
 
@@ -55,6 +70,7 @@ export function CommandPalette() {
     })
 
     const recent = matched
+      .filter(p => !removedRecentIds.includes(p.id))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5)
 
@@ -97,6 +113,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Global Search"
+      filter={() => 1}
       className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] bg-popover rounded-xl shadow-2xl border p-0 overflow-hidden z-50 text-popover-foreground data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-xl bg-popover/90"
     >
       <div className="flex items-center border-b px-4" cmdk-input-wrapper="">
@@ -132,17 +149,30 @@ export function CommandPalette() {
             {searchQuery.trim() ? '未找到匹配的页面' : '输入关键词开始搜索'}
         </Command.Empty>
 
-        {/* 只有在有结果时才显示分组 */}
-        {searchResults.recent.length > 0 && (
+        {/* 只有在没有输入内容且有结果时才显示最近访问 */}
+        {!searchQuery.trim() && searchResults.recent.length > 0 && (
           <Command.Group heading="最近访问">
             {searchResults.recent.map(page => (
                  <Command.Item
                     key={page.id}
-                    value={page.id}
+                    value={page.title || "无标题"}
                     onSelect={() => runCommand(() => setActivePage(page.id))}
-                    className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                    className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                  >
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground/70" />
+                    <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative">
+                      <Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover:opacity-0" />
+                      <div 
+                        role="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleRemoveRecent(e, page.id)
+                        }}
+                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted-foreground/20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute inset-0"
+                      >
+                         <X className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </div>
                     <span className="truncate flex-1">
                       <HighlightText text={page.title || "无标题"} query={searchQuery} />
                     </span>
@@ -154,7 +184,7 @@ export function CommandPalette() {
           </Command.Group>
         )}
 
-        {searchResults.recent.length > 0 && searchResults.all.length > 0 && (
+        {!searchQuery.trim() && searchResults.recent.length > 0 && searchResults.all.length > 0 && (
           <Command.Separator className="my-1 h-px bg-border" />
         )}
 
@@ -163,9 +193,9 @@ export function CommandPalette() {
              {searchResults.all.map(page => (
                  <Command.Item
                     key={page.id}
-                    value={`${page.id}-all`}
+                    value={page.title || "无标题"}
                     onSelect={() => runCommand(() => setActivePage(page.id))}
-                    className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                  >
                     <FileText className="mr-2 h-4 w-4" />
                     <span className="truncate flex-1">

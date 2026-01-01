@@ -146,11 +146,11 @@ export function NotebookSwitcher() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full justify-between px-2 h-9 font-medium"
+            className="w-full justify-between px-1 h-auto py-1 font-medium hover:bg-muted/60 transition-colors"
           >
             <div className="flex items-center gap-2 truncate">
-              {activeNotebook && renderIcon(activeNotebook.icon || '📓')}
-              <span className="truncate">{activeNotebook?.name || '选择记事本'}</span>
+              {activeNotebook && renderIcon(activeNotebook.icon || '📓', "h-4 w-4")}
+              <span className="truncate text-sm">{activeNotebook?.name || '选择记事本'}</span>
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
           </Button>

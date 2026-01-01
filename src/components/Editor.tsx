@@ -26,6 +26,8 @@ import { EditorBubbleMenu } from '@/components/EditorBubbleMenu'
 import { ImageBubbleMenu } from '@/components/ImageBubbleMenu'
 import { getImageFromClipboard, processImageForStorage } from '@/lib/imageProcessor'
 import 'tippy.js/dist/tippy.css'
+
+
 import {
   ContextMenu,
   ContextMenuContent,
@@ -35,6 +37,11 @@ import {
 } from "@/components/ui/context-menu"
 import { useSettings } from '@/stores/useSettings'
 import { Search, Scissors, Copy, Clipboard } from 'lucide-react'
+
+
+
+
+
 
 // Initialize lowlight for code syntax highlighting with common languages only
 const lowlight = createLowlight(common)
@@ -48,17 +55,37 @@ export function Editor({ editable = true }: EditorProps) {
   const page = activePageId ? getPage(activePageId) : undefined
   const { searchProviders } = useSettings()
 
-  // 记录上次的页面 ID，用于判断是否真正切换了页面
   const prevPageIdRef = useRef<string | null>(null)
+  const debouncedUpdateRef = useRef<any>(null)
+  // 追踪哪个页面的内容已经加载完成，只有该页面的更新才会被保存
+  // null 表示没有页面内容被加载（编辑器正在重建中）
+  const pageIdForUpdateRef = useRef<string | null>(null)
 
-  // Create a debounced update function
-  const debouncedUpdate = useMemo(
-    () =>
-      debounce((id: string, content: any) => {
-        updatePage(id, { content })
-      }, 1000),
-    [updatePage]
-  )
+  const debouncedUpdate = useMemo(() => {
+    const fn = debounce((id: string, content: any) => {
+      updatePage(id, { content })
+    }, 1000)
+    debouncedUpdateRef.current = fn
+    return fn
+  }, [updatePage])
+
+   useEffect(() => {
+    const flush = () => debouncedUpdateRef.current?.flush()
+
+    window.addEventListener('beforeunload', flush)
+
+    if ((window as any).utools) {
+      (window as any).utools.onPluginOut(flush)
+    }
+
+    window.addEventListener('goose-note:flush-editor', flush)
+
+    return () => {
+      flush()
+      window.removeEventListener('beforeunload', flush)
+      window.removeEventListener('goose-note:flush-editor', flush)
+    }
+  }, [])
 
   const editor = useEditor({
     editable,
@@ -112,32 +139,39 @@ export function Editor({ editable = true }: EditorProps) {
     editorProps: {
       attributes: {
         class: cn(
-          'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[calc(100vh-200px)]',
-          // Font styles will be applied via dynamic classes or style prop on wrapper
+          'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[calc(100vh-200px)] leading-relaxed',
         ),
       },
     },
     onUpdate: ({ editor }) => {
-      if (activePageId) {
-        debouncedUpdate(activePageId, editor.getJSON())
+      // 只有当前页面内容已加载后才触发保存
+      // 使用 pageIdForUpdateRef 而不是 activePageId，确保只为正确加载的页面保存
+      const safePageId = pageIdForUpdateRef.current
+      if (safePageId) {
+        debouncedUpdate(safePageId, editor.getJSON())
       }
     },
-  }, [activePageId]) // Re-create editor when activePageId changes (simplest strategy suitable for this structure)
+  }) // 不依赖 activePageId，保持编辑器实例不变
 
   // Sync content when page changes (only when activePageId actually changes)
   useEffect(() => {
     // 只在页面 ID 真正切换时才同步内容
     if (activePageId !== prevPageIdRef.current) {
+      // 切换页面前，先 flush 之前的 debounce，确保旧页面内容已保存
+      debouncedUpdateRef.current?.flush()
+
+      // 重置页面 ID 标记，防止在加载新内容前触发保存
+      pageIdForUpdateRef.current = null
+
       prevPageIdRef.current = activePageId
 
       if (editor && page && activePageId) {
-        // 先让 editor 失焦，避免加载内容时触发 Slash Command
         editor.commands.blur()
-
-        // 设置内容，不触发更新事件（避免触发 Suggestion 插件）
         editor.commands.setContent(page.content, { emitUpdate: false })
 
-        // 将光标移到文档开头（跳过位置 0，因为它可能不在有效的文本节点内）
+        // 内容加载完成，记录当前页面 ID，允许保存
+        pageIdForUpdateRef.current = activePageId
+
         const firstPos = editor.state.doc.content.size > 0 ? 1 : 0
         if (firstPos > 0) {
           editor.commands.setTextSelection(firstPos)
@@ -204,12 +238,12 @@ export function Editor({ editable = true }: EditorProps) {
         default: return 'font-sans'
      }
   }, [page?.fontFamily])
-  
+
   const fontSizeClass = useMemo(() => {
       if (!page) return ''
       return page.fontSize === 'small' ? 'text-sm' : 'text-base'
   }, [page?.fontSize])
-  
+
   const widthClass = useMemo(() => {
      if (!page) return 'max-w-3xl mx-auto'
      return page.isFullWidth ? 'max-w-full px-4' : 'max-w-3xl mx-auto'
@@ -220,14 +254,14 @@ export function Editor({ editable = true }: EditorProps) {
   }
 
   return (
-    <div className={cn("transition-all duration-300", fontFamilyClass, fontSizeClass, widthClass)}>
+    <div className={cn(fontFamilyClass, fontSizeClass, widthClass)}>
        <EditorBubbleMenu editor={editor} />
        <ImageBubbleMenu editor={editor} />
        <ContextMenu>
         <ContextMenuTrigger>
           <EditorContent editor={editor} />
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-64">
+        <ContextMenuContent className="w-[160px]">
            {editor && !editor.state.selection.empty && (
              <>
                <ContextMenuItem disabled className="text-xs text-muted-foreground">

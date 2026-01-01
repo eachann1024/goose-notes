@@ -23,8 +23,8 @@ export function FontSelector({ value, onChange }: FontSelectorProps) {
             "flex-1 flex flex-col items-center justify-center py-2 px-3 rounded-md transition-all",
             "hover:bg-accent/50",
             value === font.value
-              ? "bg-background border-2 border-primary text-primary shadow-sm"
-              : "border border-transparent"
+              ? "bg-background ring-2 ring-primary text-primary shadow-sm"
+              : ""
           )}
         >
           <span className={cn("text-2xl leading-none mb-1", font.className)}>

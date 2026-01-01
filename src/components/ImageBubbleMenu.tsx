@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
+import { useEditorState } from '@tiptap/react'
 import { AlignLeft, AlignCenter, AlignRight, Trash2 } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
@@ -30,9 +31,13 @@ function setAlignStyle(currentStyle: string | null | undefined, align: 'left' | 
 export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   if (!editor) return null
 
-  // 使用 editor.getAttributes 直接获取当前激活节点的属性
-  const attrs = editor.getAttributes('imageResize')
-  const currentAlign = getAlignFromStyle(attrs?.containerStyle)
+  const currentAlign = useEditorState({
+    editor,
+    selector: (ctx) => {
+      const attrs = ctx.editor.getAttributes('imageResize')
+      return getAlignFromStyle(attrs?.containerStyle)
+    },
+  })
 
   const handleAlign = (align: 'left' | 'center' | 'right') => {
     const { selection } = editor.state

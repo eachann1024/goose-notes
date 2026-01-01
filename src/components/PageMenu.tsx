@@ -1,27 +1,35 @@
-
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Trash2, FileJson, FileCode, FileType, Upload } from "lucide-react"
+// import { Separator } from "@/components/ui/separator"
+import {
+  MoreHorizontal,
+  Trash2,
+  FileJson,
+  FileCode,
+  FileType,
+  FolderInput,
+  Lock,
+  Download,
+  Upload as UploadIcon
+} from "lucide-react"
 import { usePages } from "@/stores/usePages"
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks"
 import { exportToJSON, exportToHTML, exportToMarkdown, importFile } from "@/lib/export"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { FontSelector } from "@/components/FontSelector"
 
 export function PageMenu() {
-  const { activePageId, getPage, updatePage, deletePage, createPage } = usePages()
+  const { activePageId, getPage, updatePage, deletePage, createPage, setActivePage } = usePages()
   const { activeNotebookId } = useNotebooks()
   const page = activePageId ? getPage(activePageId) : undefined
 
@@ -29,10 +37,12 @@ export function PageMenu() {
     const result = await importFile()
     if (result.success) {
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK)
-      // 下一帧更新内容（确保页面已创建）
-      setTimeout(() => {
-        updatePage(newId, { title: result.title, content: result.content })
-      }, 0)
+      updatePage(newId, { title: result.title, content: result.content })
+
+      setActivePage(null)
+      requestAnimationFrame(() => {
+        setActivePage(newId)
+      })
     } else {
       console.error('导入失败:', result.error)
     }
@@ -48,87 +58,85 @@ export function PageMenu() {
           <span className="sr-only">Open menu</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-             <span className="text-xs text-muted-foreground">最后编辑于 {new Date(page.updatedAt).toLocaleString()}</span>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuGroup>
-           <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">样式</div>
-           <FontSelector 
-             value={page.fontFamily} 
-             onChange={(fontFamily) => updatePage(activePageId, { fontFamily })} 
-           />
-        </DropdownMenuGroup>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuGroup>
-            <div className="flex items-center justify-between px-2 py-1.5">
-                <Label htmlFor="small-text-switch" className="text-sm font-normal cursor-pointer flex-1">小字号</Label>
-                <Switch 
-                    id="small-text-switch" 
-                    checked={page.fontSize === 'small'} 
-                    onCheckedChange={(checked) => updatePage(activePageId, { fontSize: checked ? 'small' : 'default' })}
-                />
-            </div>
-            
-             <div className="flex items-center justify-between px-2 py-1.5">
-                <Label htmlFor="full-width-switch" className="text-sm font-normal cursor-pointer flex-1">全宽</Label>
-                <Switch 
-                    id="full-width-switch" 
-                    checked={page.isFullWidth} 
-                    onCheckedChange={(checked) => updatePage(activePageId, { isFullWidth: checked })}
-                />
-            </div>
+      <DropdownMenuContent className="w-[280px] p-2" align="end" forceMount>
 
-            <div className="flex items-center justify-between px-2 py-1.5">
-                <Label htmlFor="lock-page-switch" className="text-sm font-normal cursor-pointer flex-1">锁定页面</Label>
-                <Switch 
-                    id="lock-page-switch" 
-                    checked={page.isLocked} 
-                    onCheckedChange={(checked) => updatePage(activePageId, { isLocked: checked })}
-                />
-            </div>
-        </DropdownMenuGroup>
-        
-        <DropdownMenuSeparator />
+         {/* Font Selector */}
+         <div className="px-1 py-2">
+             <FontSelector
+               value={page.fontFamily}
+               onChange={(fontFamily) => updatePage(activePageId, { fontFamily })}
+             />
+         </div>
 
-        <DropdownMenuItem onSelect={() => deletePage(activePageId)} className="text-destructive focus:text-destructive">
-          <Trash2 className="mr-2 h-4 w-4" />
-          <span>移至垃圾箱</span>
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuSub>
-           <DropdownMenuSubTrigger>
-              <FileJson className="mr-2 h-4 w-4" />
-              <span>导出</span>
-           </DropdownMenuSubTrigger>
-           <DropdownMenuSubContent>
-              <DropdownMenuItem onSelect={() => exportToJSON(page)}>
-                 <FileJson className="mr-2 h-4 w-4" />
-                 <span>JSON</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => exportToMarkdown(page)}>
-                 <FileCode className="mr-2 h-4 w-4" />
-                 <span>Markdown</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => exportToHTML(page)}>
-                 <FileType className="mr-2 h-4 w-4" />
-                 <span>HTML</span>
-              </DropdownMenuItem>
-           </DropdownMenuSubContent>
-        </DropdownMenuSub>
+         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onSelect={handleImport}>
-          <Upload className="mr-2 h-4 w-4" />
-          <span>导入文件</span>
-        </DropdownMenuItem>
+         <DropdownMenuGroup>
+             <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
+                 <div className="flex items-center gap-2">
+                     <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                     <span className="ml-2.5">锁定页面</span>
+                 </div>
+                 <Switch
+                     checked={page.isLocked}
+                     onCheckedChange={(checked) => updatePage(activePageId, { isLocked: checked })}
+                 />
+             </div>
+         </DropdownMenuGroup>
+
+
+
+         {/* Switches Section */}
+         <DropdownMenuGroup>
+             <DropdownMenuItem className="text-xs">
+                 <FolderInput className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                 <span className="flex-1">移动到</span>
+                 <span className="text-[10px] text-muted-foreground">⌘⇧P</span>
+             </DropdownMenuItem>
+             <DropdownMenuItem
+                className="text-xs text-destructive focus:text-destructive"
+                onClick={() => deletePage(activePageId)}
+             >
+                 <Trash2 className="mr-2 h-3.5 w-3.5" />
+                 <span>移至垃圾箱</span>
+             </DropdownMenuItem>
+
+         </DropdownMenuGroup>
+
+         <DropdownMenuSeparator />
+
+
+
+
+         {/* Import/Export */}
+         <DropdownMenuGroup>
+             <DropdownMenuItem className="text-xs" onSelect={handleImport}>
+                 <UploadIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                 <span>导入</span>
+             </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-xs">
+                   <Download className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                   <span>导出</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                   <DropdownMenuItem className="text-xs" onSelect={() => exportToJSON(page)}>
+                      <FileJson className="mr-2 h-3.5 w-3.5" /> JSON
+                   </DropdownMenuItem>
+                   <DropdownMenuItem className="text-xs" onSelect={() => exportToMarkdown(page)}>
+                      <FileCode className="mr-2 h-3.5 w-3.5" /> Markdown
+                   </DropdownMenuItem>
+                   <DropdownMenuItem className="text-xs" onSelect={() => exportToHTML(page)}>
+                      <FileType className="mr-2 h-3.5 w-3.5" /> HTML
+                   </DropdownMenuItem>
+                </DropdownMenuSubContent>
+             </DropdownMenuSub>
+         </DropdownMenuGroup>
+
+         <DropdownMenuSeparator />
+         <div className="px-2 py-1 text-[10px] text-muted-foreground/60 text-center">
+             最后编辑于 {new Date(page.updatedAt).toLocaleDateString()}
+         </div>
 
       </DropdownMenuContent>
     </DropdownMenu>

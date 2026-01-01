@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { uToolsStorage } from '@/lib/storage'
 
 export interface SearchProvider {
   id: string
@@ -61,6 +62,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'goose-note-settings',
+      storage: createJSONStorage(() => uToolsStorage),
       onRehydrateStorage: () => (state) => {
         // 恢复后立即应用主题
         if (state?.theme) {
