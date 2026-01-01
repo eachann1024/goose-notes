@@ -194,12 +194,28 @@ export const usePages = create<PagesState>()(
       setActivePage: (id) => {
         flushEditorContent()
 
-        const currentId = get().activePageId
-        if (currentId === id) return
+        if (!id) {
+          set({ activePageId: null })
+          return
+        }
 
-        set({ activePageId: id })
+        set((state) => {
+          const page = state.pages[id]
+          if (!page) {
+            return { activePageId: id }
+          }
+
+          return {
+            activePageId: id,
+            pages: {
+              ...state.pages,
+              [id]: { ...page, updatedAt: Date.now() },
+            },
+          }
+        })
+
         const notebookId = useNotebooks.getState().activeNotebookId
-        if (id && notebookId) {
+        if (notebookId) {
           useNotebooks.getState().setLastActivePage(notebookId, id)
         }
       },

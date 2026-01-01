@@ -43,7 +43,6 @@ export function CommandPalette() {
     return allPagesArray.filter(p => p.workspaceId === currentNotebookId)
   }, [pages, searchAllNotebooks, activeNotebookId])
 
-  // 搜索逻辑：同时匹配标题和内容
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
@@ -58,14 +57,10 @@ export function CommandPalette() {
       return { recent, all, hasQuery: false }
     }
 
-    // 有搜索词时，过滤匹配的页面
     const matched = filteredPages.filter(page => {
       const titleMatch = page.title.toLowerCase().includes(query)
-
-      // 提取内容文本并搜索
       const contentText = extractTextFromContent(page.content)
       const contentMatch = contentText.toLowerCase().includes(query)
-
       return titleMatch || contentMatch
     })
 
@@ -77,7 +72,7 @@ export function CommandPalette() {
     const all = matched.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
 
     return { recent, all, hasQuery: true }
-  }, [filteredPages, searchQuery])
+  }, [filteredPages, searchQuery, removedRecentIds])
 
   // 键盘事件：⌘K 打开搜索，Tab 切换搜索范围
   useEffect(() => {
@@ -98,9 +93,10 @@ export function CommandPalette() {
     return () => document.removeEventListener('keydown', down)
   }, [open, searchAllNotebooks, setSearchAllNotebooks])
 
-  const runCommand = (command: () => void) => {
-    setOpen(false)
+  const runCommand = async (command: () => void) => {
     command()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    setOpen(false)
   }
 
   // 当前记事本名称
@@ -164,6 +160,10 @@ export function CommandPalette() {
                       <div 
                         role="button"
                         onMouseDown={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
+                        onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                           handleRemoveRecent(e, page.id)
