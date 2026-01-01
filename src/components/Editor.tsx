@@ -7,13 +7,13 @@ import HighlightExtension from '@tiptap/extension-highlight'
 import AutoJoiner from 'tiptap-extension-auto-joiner'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { CodeBlockWithLanguageExtension } from '@/extensions/CodeBlockWithLanguage'
 import { Markdown } from 'tiptap-markdown'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
-import { common, createLowlight } from 'lowlight'
+import { all, createLowlight } from 'lowlight'
 import { useEffect, useMemo, useRef } from 'react'
 import debounce from 'lodash.debounce'
 import { usePages } from '@/stores/usePages'
@@ -26,6 +26,7 @@ import { EditorBubbleMenu } from '@/components/EditorBubbleMenu'
 import { ImageBubbleMenu } from '@/components/ImageBubbleMenu'
 import { getImageFromClipboard, processImageForStorage } from '@/lib/imageProcessor'
 import 'tippy.js/dist/tippy.css'
+import { SmartSelectAll } from '@/extensions/SmartSelectAll'
 
 
 import {
@@ -43,8 +44,8 @@ import { Search, Scissors, Copy, Clipboard } from 'lucide-react'
 
 
 
-// Initialize lowlight for code syntax highlighting with common languages only
-const lowlight = createLowlight(common)
+// Initialize lowlight with all languages
+const lowlight = createLowlight(all)
 
 interface EditorProps {
   editable?: boolean
@@ -112,7 +113,7 @@ export function Editor({ editable = true }: EditorProps) {
       TaskItem.configure({
         nested: true,
       }),
-      CodeBlockLowlight.configure({
+      CodeBlockWithLanguageExtension.configure({
         lowlight,
       }),
       HighlightExtension,
@@ -135,6 +136,7 @@ export function Editor({ editable = true }: EditorProps) {
         transformPastedText: true,
         transformCopiedText: false,
       }),
+      SmartSelectAll,
     ],
     editorProps: {
       attributes: {

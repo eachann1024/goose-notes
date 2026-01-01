@@ -8,6 +8,7 @@ import { extractTextFromContent } from '@/lib/content-text-extractor'
 import { usePages } from '@/stores/usePages'
 import { useNotebooks, DEFAULT_NOTEBOOK } from '@/stores/useNotebooks'
 import { useSettings } from '@/stores/useSettings'
+import type { Page } from '@/types'
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
@@ -31,17 +32,37 @@ export function CommandPalette() {
     localStorage.setItem('goose-recent-excludes', JSON.stringify(newIds))
   }
 
-  // 根据 searchAllNotebooks 过滤页面
   const filteredPages = useMemo(() => {
-    const allPagesArray = Object.values(pages).filter(p => !p.trashedAt)
+    const allPagesArray = Object.values(pages).filter(p => !p.trashedAt && p.title && p.title !== '无标题')
     if (searchAllNotebooks) {
-      // 勾选：搜索所有记事本
       return allPagesArray
     }
-    // 不勾选：搜索当前记事本
     const currentNotebookId = activeNotebookId || DEFAULT_NOTEBOOK
     return allPagesArray.filter(p => p.workspaceId === currentNotebookId)
   }, [pages, searchAllNotebooks, activeNotebookId])
+
+  const getPageBreadcrumb = (page: Page): string[] => {
+    const breadcrumb: string[] = []
+    let currentPage = page
+
+    while (currentPage) {
+      if (currentPage.title && currentPage.title !== '无标题') {
+        breadcrumb.unshift(currentPage.title)
+      }
+      if (!currentPage.parentId) {
+        break
+      }
+      currentPage = pages[currentPage.parentId]
+    }
+
+    const notebookId = page.workspaceId || 'default'
+    const notebook = useNotebooks.getState().notebooks[notebookId]
+    if (notebook) {
+      breadcrumb.unshift(notebook.name)
+    }
+
+    return breadcrumb
+  }
 
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -74,15 +95,12 @@ export function CommandPalette() {
     return { recent, all, hasQuery: true }
   }, [filteredPages, searchQuery, removedRecentIds])
 
-  // 键盘事件：⌘K 打开搜索，Tab 切换搜索范围
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      // ⌘K / Ctrl+K 打开搜索
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setOpen((open) => !open)
       }
-      // Tab 切换搜索范围（仅在搜索框打开时）
       if (open && e.key === 'Tab') {
         e.preventDefault()
         setSearchAllNotebooks(!searchAllNotebooks)
@@ -99,7 +117,6 @@ export function CommandPalette() {
     setOpen(false)
   }
 
-  // 当前记事本名称
   const currentNotebookName = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]?.name || '当前记事本'
     : '当前记事本'
@@ -145,42 +162,44 @@ export function CommandPalette() {
             {searchQuery.trim() ? '未找到匹配的页面' : '输入关键词开始搜索'}
         </Command.Empty>
 
-        {/* 只有在没有输入内容且有结果时才显示最近访问 */}
         {!searchQuery.trim() && searchResults.recent.length > 0 && (
           <Command.Group heading="最近访问">
-            {searchResults.recent.map(page => (
-                 <Command.Item
-                    key={page.id}
-                    value={page.title || "无标题"}
-                    onSelect={() => runCommand(() => setActivePage(page.id))}
-                    className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
-                 >
-                    <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative">
-                      <Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover:opacity-0" />
-                      <div 
-                        role="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleRemoveRecent(e, page.id)
-                        }}
-                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted-foreground/20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute inset-0"
-                      >
-                         <X className="h-3 w-3 text-muted-foreground" />
-                      </div>
-                    </div>
-                    <span className="truncate flex-1">
-                      <HighlightText text={page.title || "无标题"} query={searchQuery} />
-                    </span>
-                    <span className="ml-auto text-xs text-muted-foreground/50">
-                        {new Date(page.updatedAt).toLocaleDateString()}
-                    </span>
-                 </Command.Item>
-            ))}
+            {searchResults.recent.map(page => {
+                 const breadcrumb = getPageBreadcrumb(page)
+                 return (
+                  <Command.Item
+                     key={page.id}
+                     value={page.title}
+                     onSelect={() => runCommand(() => setActivePage(page.id))}
+                     className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  >
+                     <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative">
+                       <Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover:opacity-0" />
+                       <div
+                         role="button"
+                         onMouseDown={(e) => {
+                           e.preventDefault()
+                           e.stopPropagation()
+                         }}
+                         onClick={(e) => {
+                           e.preventDefault()
+                           e.stopPropagation()
+                           handleRemoveRecent(e, page.id)
+                         }}
+                         className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted-foreground/20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute inset-0"
+                       >
+                          <X className="h-3 w-3 text-muted-foreground" />
+                       </div>
+                     </div>
+                     <span className="truncate flex-1">
+                       <HighlightText text={page.title} query={searchQuery} />
+                     </span>
+                     <span className="ml-auto text-xs text-muted-foreground/50">
+                         {breadcrumb.length > 0 ? breadcrumb.join(' > ') : new Date(page.updatedAt).toLocaleDateString()}
+                     </span>
+                  </Command.Item>
+                 )
+            })}
           </Command.Group>
         )}
 
@@ -190,19 +209,25 @@ export function CommandPalette() {
 
         {searchResults.all.length > 0 && (
           <Command.Group heading={searchResults.hasQuery ? "搜索结果" : "所有页面"}>
-             {searchResults.all.map(page => (
-                 <Command.Item
-                    key={page.id}
-                    value={page.title || "无标题"}
-                    onSelect={() => runCommand(() => setActivePage(page.id))}
-                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
-                 >
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span className="truncate flex-1">
-                      <HighlightText text={page.title || "无标题"} query={searchQuery} />
-                    </span>
-                 </Command.Item>
-             ))}
+             {searchResults.all.map(page => {
+               const breadcrumb = getPageBreadcrumb(page)
+               return (
+                  <Command.Item
+                     key={page.id}
+                     value={page.title}
+                     onSelect={() => runCommand(() => setActivePage(page.id))}
+                     className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  >
+                     <FileText className="mr-2 h-4 w-4" />
+                     <span className="truncate flex-1">
+                       <HighlightText text={page.title} query={searchQuery} />
+                     </span>
+                     <span className="ml-auto text-xs text-muted-foreground/50 truncate max-w-[200px]">
+                       {breadcrumb.length > 0 ? breadcrumb.join(' > ') : ''}
+                     </span>
+                  </Command.Item>
+               )
+             })}
           </Command.Group>
         )}
       </Command.List>

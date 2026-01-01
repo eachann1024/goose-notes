@@ -12,18 +12,29 @@ import { extractTextFromContent } from "@/lib/content-text-extractor"
 import * as LucideIcons from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { Toaster, toast } from "sonner"
-import welcomeCover from '@/assets/welcome-cover.png'
 import { getRandomTip } from '@/lib/tips'
 
 
 function App() {
   const { activePageId, getPage, updatePage, pages, setActivePage } = usePages()
-  const { utools } = useSettings()
+  const { utools, customFonts } = useSettings()
   const page = activePageId ? getPage(activePageId) : undefined
   const [zoom, setZoom] = useState(1)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  // 节流，避免频繁触发
+  const defaultFonts = { default: 'Inter', serif: 'Source Serif 4', mono: 'JetBrains Mono' }
+
+  useEffect(() => {
+    const root = document.documentElement
+    const fontDefault = customFonts.default.font || defaultFonts.default
+    const fontSerif = customFonts.serif.font || defaultFonts.serif
+    const fontMono = customFonts.mono.font || defaultFonts.mono
+
+    root.style.setProperty('--font-default', `"${fontDefault}", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`)
+    root.style.setProperty('--font-serif', `"${fontSerif}", "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif`)
+    root.style.setProperty('--font-mono', `"${fontMono}", "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`)
+  }, [customFonts])
+
   const lastSaveToastRef = useRef(0)
 
   useEffect(() => {
@@ -49,12 +60,12 @@ function App() {
             }
         }
     }
-    
+
     // 全局禁用系统右键菜单
     const handleContextMenu = (e: MouseEvent) => {
         e.preventDefault()
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('contextmenu', handleContextMenu)
     return () => {
@@ -147,13 +158,13 @@ function App() {
   }, [setActivePage])
 
   return (
-    <div 
+    <div
         className="flex h-screen overflow-hidden bg-background text-foreground transition-transform duration-200"
         style={{ zoom: zoom }}
     >
       {/* Toast 容器 - Notion 风格 */}
-      <Toaster 
-        position="top-center" 
+      <Toaster
+        position="top-center"
         duration={3000}
         visibleToasts={1}
         theme="dark"
@@ -165,7 +176,7 @@ function App() {
           },
         }}
       />
-      
+
       <CommandPalette />
       <Sidebar />
 
@@ -178,7 +189,7 @@ function App() {
                      此页面在垃圾箱中
                  </span>
                  <div className="flex items-center gap-2">
-                     <button 
+                     <button
                          onClick={() => {
                              usePages.getState().restorePage(activePageId)
                          }}
@@ -186,7 +197,7 @@ function App() {
                      >
                          恢复页面
                      </button>
-                     <button 
+                     <button
                          onClick={() => {
                              usePages.getState().permanentlyDeletePage(activePageId)
                          }}
@@ -197,7 +208,7 @@ function App() {
                  </div>
              </div>
          )}
-         
+
          {/* Top Header (Notion-like) */}
          {activePageId && page && (
              <div className="h-12 flex items-center justify-between px-3 border-b bg-background sticky top-0 z-10 shrink-0">
@@ -208,7 +219,7 @@ function App() {
                      {page.trashedAt && <span className="text-xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">只读</span>}
                  </div>
                   <div className="flex items-center gap-1">
-                      <button 
+                      <button
                          onClick={() => usePages.getState().setActivePage(null)}
                          className="p-1 hover:bg-muted rounded text-muted-foreground/70 hover:text-foreground transition-colors"
                          title="关闭页面"
@@ -221,11 +232,11 @@ function App() {
                          className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground/70 hover:text-foreground"
                          title={page.isFavorite ? "取消收藏" : "收藏页面"}
                       >
-                         <LucideIcons.Star 
+                         <LucideIcons.Star
                              className={cn(
                                  "h-4 w-4 transition-colors",
                                  page.isFavorite ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/70"
-                             )} 
+                             )}
                          />
                       </button>
 
@@ -233,7 +244,7 @@ function App() {
                   </div>
              </div>
          )}
-         
+
          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
          {activePageId && page ? (
             <div className="py-12 px-8 min-h-screen">
@@ -289,8 +300,8 @@ function App() {
                       }}
                     />
                </div>
-               
-               <Editor 
+
+               <Editor
                   editable={!page.isLocked && !page.trashedAt}
                />
             </div>
@@ -298,11 +309,11 @@ function App() {
               <div className="h-full flex flex-col items-center justify-start pt-16 text-muted-foreground bg-background overflow-y-auto">
                   <h2 className="text-3xl font-bold text-foreground mb-4">准备好记录想法了吗？</h2>
                   <p className="text-base opacity-60 mb-8">点击左侧侧边栏新建页面，或选择现有页面开始。</p>
-                  
+
                   <div className="w-full max-w-6xl px-12 pb-12 flex flex-col items-center justify-start">
-                      <img 
-                          src={welcomeCover}
-                          alt="Welcome" 
+                      <img
+                          src={'https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png'}
+                          alt="Welcome"
                           className="w-full h-auto max-h-[50vh] object-contain opacity-90"
                       />
                       <p className="text-sm text-muted-foreground/60 mt-4">

@@ -81,19 +81,29 @@ export function TrashList({ onBack }: TrashListProps) {
                   {/* 操作按钮 */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => restorePage(page.id)}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        restorePage(page.id)
+                      }}
                       title="恢复"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
                     </Button>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => permanentlyDeletePage(page.id)}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        permanentlyDeletePage(page.id)
+                      }}
                       title="永久删除"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

@@ -230,212 +230,204 @@
 
 /* 代码块样式 */
 .ProseMirror pre {
-  background: hsl(var(--muted));
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin: 0.5rem 0;
+  background: var(--code-bg);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin: 1rem 0;
   overflow-x: auto;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--code-border);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--code-fg);
+  position: relative;
+  /* 确保行号定位参考 */
 }
 
 .ProseMirror pre code {
-  background: none;
+  background: transparent;
   padding: 0;
+  color: inherit;
+  font-family: inherit;
+  display: block;
+  min-width: 100%;
+}
+
+.code-block-wrapper {
+  position: relative;
+  border-radius: 0.75rem;
+  /* 避免溢出隐藏 toolbar */
+  margin: 1rem 0;
+}
+
+/* 行号样式 */
+.line-numbers {
+  position: absolute;
+  top: 1.25rem; /* Match pre padding */
+  left: 0;
+  width: 3rem;
+  padding-right: 1rem;
+  text-align: right;
+  color: var(--code-line-number);
   font-family: var(--font-mono);
   font-size: 0.875rem;
-  line-height: 1.6;
-  color: hsl(var(--foreground));
-}
-
-/* 代码块语法高亮 - 暗色模式优化 */
-.dark .ProseMirror pre {
-  background: hsl(220 13% 14%);
-  border-color: hsl(var(--border));
-}
-
-.ProseMirror code {
-  background: hsl(var(--muted));
-  padding: 0.2em 0.4em;
-  border-radius: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-}
-
-/* 表格样式 */
-.ProseMirror table {
-  border-collapse: collapse;
-  margin: 0.5em 0;
-  overflow: hidden;
-  table-layout: fixed;
-  width: 100%;
-}
-
-.ProseMirror td,
-.ProseMirror th {
-  border: 1px solid hsl(var(--border));
-  box-sizing: border-box;
-  min-width: 1em;
-  padding: 0.5rem;
-  position: relative;
-  vertical-align: top;
-}
-
-.ProseMirror th {
-  background-color: hsl(var(--muted));
-  font-weight: 600;
-  text-align: left;
-}
-
-.ProseMirror .selectedCell:after {
-  background: hsl(var(--primary) / 0.15);
-  content: "";
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
+  line-height: 1.7; /* Match pre line-height */
+  user-select: none;
   pointer-events: none;
-  position: absolute;
-  z-index: 2;
+  z-index: 10;
 }
 
-.ProseMirror .column-resize-handle {
-  background-color: hsl(var(--primary));
-  bottom: -2px;
-  position: absolute;
-  right: -2px;
-  pointer-events: none;
-  top: 0;
-  width: 4px;
+/* 有行号时的预格式化块 */
+.code-block-with-lines pre {
+  padding-left: 3.5rem; /* Space for line numbers */
 }
 
-.ProseMirror.resize-cursor {
-  cursor: col-resize;
+/* ========================================
+   Code Style CSS Variables & Themes
+   ======================================== */
+
+/* Default Variables (Fallback) */
+:root {
+  --code-bg: hsl(var(--muted));
+  --code-fg: hsl(var(--foreground));
+  --code-border: hsl(var(--border));
+  --code-line-number: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Global Drag Handle - Notion 风格 (tiptap-extension-global-drag-handle) */
-.drag-handle {
-  position: fixed;
-  opacity: 1;
-  transition: opacity ease-in 0.2s;
-  border-radius: 0.25rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(55, 53, 47, 0.35)'%3E%3Cpath d='M3,2 C2.44771525,2 2,1.55228475 2,1 C2,0.44771525 2.44771525,0 3,0 C3.55228475,0 4,0.44771525 4,1 C4,1.55228475 3.55228475,2 3,2 Z M3,6 C2.44771525,6 2,5.55228475 2,5 C2,4.44771525 2.44771525,4 3,4 C3.55228475,4 4,4.44771525 4,5 C4,5.55228475 3.55228475,6 3,6 Z M3,10 C2.44771525,10 2,9.55228475 2,9 C2,8.44771525 2.44771525,8 3,8 C3.55228475,8 4,8.44771525 4,9 C4,9.55228475 3.55228475,10 3,10 Z M7,2 C6.44771525,2 6,1.55228475 6,1 C6,0.44771525 6.44771525,0 7,0 C7.55228475,0 8,0.44771525 8,1 C8,1.55228475 7.55228475,2 7,2 Z M7,6 C6.44771525,6 6,5.55228475 6,5 C6,4.44771525 6.44771525,4 7,4 C7.55228475,4 8,4.44771525 8,5 C8,5.55228475 7.55228475,6 7,6 Z M7,10 C6.44771525,10 6,9.55228475 6,9 C6,8.44771525 6.44771525,8 7,8 C7.55228475,8 8,8.44771525 8,9 C8,9.55228475 7.55228475,10 7,10 Z'%3E%3C/path%3E%3C/svg%3E");
-  background-size: calc(0.5em + 0.375rem) calc(0.5em + 0.375rem);
-  background-repeat: no-repeat;
-  background-position: center;
-  width: 1.2rem;
-  height: 1.5rem;
-  z-index: 50;
-  cursor: grab;
+/* 1. GitHub Light/Dark */
+.github-light {
+  --code-bg: #ffffff;
+  --code-fg: #24292f;
+  --code-border: #d0d7de;
+  --code-line-number: #6e7781;
 }
+.github-light .ProseMirror pre .hljs-keyword { color: #cf222e; }
+.github-light .ProseMirror pre .hljs-title { color: #8250df; }
+.github-light .ProseMirror pre .hljs-string { color: #0a3069; }
+.github-light .ProseMirror pre .hljs-comment { color: #6e7781; }
+.github-light .ProseMirror pre .hljs-number { color: #0550ae; }
+.github-light .ProseMirror pre .hljs-built_in { color: #cf222e; }
+.github-light .ProseMirror pre .hljs-variable { color: #953800; }
 
-.drag-handle:hover {
-  background-color: hsl(var(--muted));
-  transition: background-color 0.2s;
+.github-dark {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-border: #30363d;
+  --code-line-number: #484f58;
 }
+.github-dark .ProseMirror pre .hljs-keyword { color: #ff7b72; }
+.github-dark .ProseMirror pre .hljs-title { color: #d2a8ff; }
+.github-dark .ProseMirror pre .hljs-string { color: #a5d6ff; }
+.github-dark .ProseMirror pre .hljs-comment { color: #8b949e; }
+.github-dark .ProseMirror pre .hljs-number { color: #79c0ff; }
+.github-dark .ProseMirror pre .hljs-built_in { color: #ffa657; }
+.github-dark .ProseMirror pre .hljs-variable { color: #79c0ff; }
 
-.drag-handle:active {
-  cursor: grabbing;
-  background-color: hsl(var(--muted));
+/* 2. One Light/Dark (Modern) */
+.one-light {
+  --code-bg: #fafafa;
+  --code-fg: #383a42;
+  --code-border: #e6e6e6;
+  --code-line-number: #a0a1a7;
 }
+.one-light .ProseMirror pre .hljs-keyword { color: #a626a4; }
+.one-light .ProseMirror pre .hljs-title { color: #bf8b3a; }
+.one-light .ProseMirror pre .hljs-string { color: #50a14f; }
+.one-light .ProseMirror pre .hljs-comment { color: #a0a1a7; font-style: italic; }
+.one-light .ProseMirror pre .hljs-number { color: #986801; }
 
-/* 暗色模式下的拖拽图标 */
-.dark .drag-handle {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(255, 255, 255, 0.5)'%3E%3Cpath d='M3,2 C2.44771525,2 2,1.55228475 2,1 C2,0.44771525 2.44771525,0 3,0 C3.55228475,0 4,0.44771525 4,1 C4,1.55228475 3.55228475,2 3,2 Z M3,6 C2.44771525,6 2,5.55228475 2,5 C2,4.44771525 2.44771525,4 3,4 C3.55228475,4 4,4.44771525 4,5 C4,5.55228475 3.55228475,6 3,6 Z M3,10 C2.44771525,10 2,9.55228475 2,9 C2,8.44771525 2.44771525,8 3,8 C3.55228475,8 4,8.44771525 4,9 C4,9.55228475 3.55228475,10 3,10 Z M7,2 C6.44771525,2 6,1.55228475 6,1 C6,0.44771525 6.44771525,0 7,0 C7.55228475,0 8,0.44771525 8,1 C8,1.55228475 7.55228475,2 7,2 Z M7,6 C6.44771525,6 6,5.55228475 6,5 C6,4.44771525 6.44771525,4 7,4 C7.55228475,4 8,4.44771525 8,5 C8,5.55228475 7.55228475,6 7,6 Z M7,10 C6.44771525,10 6,9.55228475 6,9 C6,8.44771525 6.44771525,8 7,8 C7.55228475,8 8,8.44771525 8,9 C8,9.55228475 7.55228475,10 7,10 Z'%3E%3C/path%3E%3C/svg%3E");
+.one-dark {
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-border: #21252b;
+  --code-line-number: #495162;
 }
+.one-dark .ProseMirror pre .hljs-keyword { color: #c678dd; }
+.one-dark .ProseMirror pre .hljs-title { color: #e5c07b; }
+.one-dark .ProseMirror pre .hljs-string { color: #98c379; }
+.one-dark .ProseMirror pre .hljs-comment { color: #5c6370; font-style: italic; }
+.one-dark .ProseMirror pre .hljs-number { color: #d19a66; }
+.one-dark .ProseMirror pre .hljs-built_in { color: #e6c07b; }
 
-/* 拖动时的元素透明效果 */
-.ProseMirror.dragging .ProseMirror-selectednode {
-  opacity: 0.4 !important;
+/* 3. Dracula / Atom Light (Vivid) */
+.atom-light {
+  --code-bg: #ffffff;
+  --code-fg: #333;
+  --code-border: #dbdbdb;
+  --code-line-number: #999;
 }
+/* Reusing One Light logic for atoms simplicity or customize */
+.atom-light .ProseMirror pre .hljs-keyword { color: #a626a4; }
 
-/* Drop Cursor - 放置位置的蓝线 */
-.ProseMirror-dropcursor {
-  background-color: hsl(var(--primary)) !important;
-  height: 3px !important;
-  width: 100% !important;
+.dracula {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-border: #44475a;
+  --code-line-number: #6272a4;
 }
+.dracula .ProseMirror pre .hljs-keyword { color: #ff79c6; }
+.dracula .ProseMirror pre .hljs-title { color: #50fa7b; }
+.dracula .ProseMirror pre .hljs-string { color: #f1fa8c; }
+.dracula .ProseMirror pre .hljs-comment { color: #6272a4; }
+.dracula .ProseMirror pre .hljs-number { color: #bd93f9; }
+.dracula .ProseMirror pre .hljs-built_in { color: #8be9fd; }
 
-/* Notion-like Block Selection */
-.ProseMirror-selectednode,
-.tiptap-selected-node {
-  background-color: hsl(var(--primary) / 0.1) !important;
-  border-radius: 4px;
-  /* Ensure transparent outlines for selection so we don't duplicate browser focus */
-  outline: none !important; 
+/* 4. Tokyo Night (Night) */
+.tokyo-night {
+  --code-bg: #1a1b26;
+  --code-fg: #c0caf5;
+  --code-border: #292e42;
+  --code-line-number: #565f89;
 }
+.tokyo-night .ProseMirror pre .hljs-keyword { color: #bb9af7; }
+.tokyo-night .ProseMirror pre .hljs-title { color: #7aa2f7; }
+.tokyo-night .ProseMirror pre .hljs-string { color: #9ece6a; }
+.tokyo-night .ProseMirror pre .hljs-comment { color: #565f89; font-style: italic; }
+.tokyo-night .ProseMirror pre .hljs-number { color: #ff9e64; }
+.tokyo-night .ProseMirror pre .hljs-built_in { color: #7dcfff; }
 
-/* Specific handling for images to prevent double borders */
-.ProseMirror img.ProseMirror-selectednode {
-  outline: 2px solid hsl(var(--primary)) !important;
-  outline-offset: 2px;
-  background-color: transparent !important;
+/* 5. Placeholder for 'github-light-mod' reused as Tokyo Day */
+.github-light-mod {
+   --code-bg: #d5d6db; 
+   --code-fg: #343b58;
+   --code-border: #c0c2cc;
+   --code-line-number: #9699a3;
 }
+.github-light-mod .ProseMirror pre .hljs-keyword { color: #8c4351; }
+/* ... (simplified) */
 
-/* Ghost Image Improvement (Applied to dragging element) */
-/* This relies on the way dragging snapshots the element */
-.ProseMirror .is-dragging {
-  opacity: 0.5;
-  background-color: hsl(var(--primary) / 0.05);
+/* GitHub Light Mod */
+.github-light-mod .ProseMirror pre .hljs-keyword {
+  color: #d73a49;
 }
-
-/* Drop Cursor - The line showing where content will land */
-.ProseMirror-dropcursor {
-  background-color: hsl(var(--primary));
-  width: 2px; 
+.github-light-mod .ProseMirror pre .hljs-title {
+  color: #6f42c1;
 }
-
-
-
-/* Image Selection Customization (tiptap-extension-resize-image overrides) */
-
-/* 1. Hide and Override the dashed border completely */
-.ProseMirror div[style*="dashed"] {
-  border: none !important;
+.github-light-mod .ProseMirror pre .hljs-variable,
+.github-light-mod .ProseMirror pre .hljs-name {
+  color: #005cc5;
 }
-.ProseMirror-selectednode > div[style*="dashed"] {
-  border: 2px solid hsl(var(--primary)) !important;
-  border-radius: 4px;
+.github-light-mod .ProseMirror pre .hljs-string {
+  color: #032f62;
 }
-
-/* 2. Hide unwanted internal UI (The "Ugly" Toolbar / PositionController) */
-/* Hide the position controller (the gray bordered toolbar with alignment icons) */
-.ProseMirror div[style*="position: absolute"][style*="z-index: 999"] {
-  display: none !important;
+.github-light-mod .ProseMirror pre .hljs-number {
+  color: #005cc5;
 }
-/* Hide any buttons injected by the extension */
-.ProseMirror-selectednode button {
-  display: none !important;
+.github-light-mod .ProseMirror pre .hljs-comment {
+  color: #6a737d;
 }
-/* Hide containers that are not resize handles */
-.ProseMirror-selectednode > div > div:not([style*="cursor"]) {
-  display: none !important;
+.github-light-mod .ProseMirror pre .hljs-tag {
+  color: #22863a;
 }
-
-/* 3. Style and Show Resize Handles */
-.ProseMirror-selectednode > div > div[style*="cursor"] {
-  display: block !important;
-  background-color: white !important;
-  border: 1px solid hsl(var(--primary)) !important;
-  border-radius: 2px !important;
-  width: 8px !important;
-  height: 8px !important;
-  box-shadow: 0 0 0 1px hsla(var(--primary), 0.2);
-  z-index: 50;
+.github-light-mod .ProseMirror pre .hljs-attr {
+  color: #e36209;
 }
-
-/* BubbleMenu 淡入动画 - 解决首次渲染闪烁 */
-.tippy-box {
-  opacity: 0;
-  animation: bubbleMenuFadeIn 0.15s ease-out forwards;
+.github-light-mod .ProseMirror pre .hljs-function {
+  color: #6f42c1;
 }
-
-@keyframes bubbleMenuFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.github-light-mod .ProseMirror pre .hljs-built_in {
+  color: #d73a49;
+}
+.github-light-mod .ProseMirror pre .hljs-type {
+  color: #d73a49;
 }

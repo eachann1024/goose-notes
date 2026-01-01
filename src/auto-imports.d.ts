@@ -64,6 +64,7 @@ declare global {
   const useDeferredValue: typeof import('react').useDeferredValue
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
+  const useFormatCode: typeof import('./hooks/useFormatCode').useFormatCode
   const useId: typeof import('react').useId
   const useImperativeHandle: typeof import('react').useImperativeHandle
   const useInsertionEffect: typeof import('react').useInsertionEffect
@@ -85,7 +86,7 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, UToolsSettings } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ImportResult } from './lib/export'
