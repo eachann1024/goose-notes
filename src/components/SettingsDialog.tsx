@@ -50,9 +50,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <div className="w-48 border-r py-4 px-2 bg-muted/50">
                  <h2 className="px-2 text-xs font-semibold text-muted-foreground mb-2">设置</h2>
                  <div className="flex flex-col gap-1">
-                     <Button 
-                        variant="ghost" 
-                        size="sm" 
+                     <Button
+                        variant="ghost"
+                        size="sm"
                         className={cn(
                           "justify-start w-full",
                           activeTab === 'general' && "bg-accent/50"
@@ -181,7 +181,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                            </div>
 
                            <div className="pt-4 border-t">
-                             <h4 className="text-sm font-medium mb-3">代码风格</h4>
+                             <h4 className="text-sm font-medium mb-3">主题与代码风格</h4>
                              <p className="text-xs text-muted-foreground mb-4">选择代码块的视觉风格（自动适配深浅模式）</p>
 
                              <div className="grid grid-cols-1 gap-2">

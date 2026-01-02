@@ -270,9 +270,6 @@ function App() {
                   只读
                 </span>
               )}
-              <span className="text-[10px] text-muted-foreground/60 leading-tight">
-                最后编辑于 {new Date(page.updatedAt).toLocaleString("zh-CN")}
-              </span>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -369,6 +366,9 @@ function App() {
                     }
                   }}
                 />
+                {/*<p className="text-xs text-muted-foreground/60 mt-1">
+                  最后编辑于 {new Date(page.updatedAt).toLocaleString("zh-CN")}
+                </p>*/}
               </div>
 
               <Editor editable={!page.isLocked && !page.trashedAt} />
