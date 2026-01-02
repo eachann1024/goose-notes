@@ -36,16 +36,17 @@ export function ImageResizer(props: NodeViewProps) {
   }, [node.attrs.width, node.attrs.containerStyle, parseWidthFromStyle]);
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent, direction: "left" | "right") => {
       e.preventDefault();
       setResizing(true);
 
       const startX = e.clientX;
       const startW = resizeRef.current?.offsetWidth || 0;
+      const multiplier = direction === "left" ? -1 : 1;
 
       const onMouseMove = (e: MouseEvent) => {
         const currentX = e.clientX;
-        const diffX = currentX - startX;
+        const diffX = (currentX - startX) * multiplier;
         const newWidth = Math.max(100, startW + diffX);
 
         setWidth(newWidth);
@@ -56,7 +57,7 @@ export function ImageResizer(props: NodeViewProps) {
         setResizing(false);
 
         const currentX = e.clientX;
-        const diffX = currentX - startX;
+        const diffX = (currentX - startX) * multiplier;
         const newWidth = Math.max(100, startW + diffX);
         const nextStyle = upsertWidthStyle(
           node.attrs.containerStyle,
@@ -103,12 +104,31 @@ export function ImageResizer(props: NodeViewProps) {
         {/* Resize Handle - visible only on hover or selection */}
         <div
           className={cn(
-            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 hover:bg-[#2463EB70] rounded-r-md",
-             resizing && "opacity-100 bg-primary/20"
+            "absolute top-0 left-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md",
+            resizing && "opacity-100",
           )}
-          onMouseDown={handleMouseDown}
+          onMouseDown={(e) => handleMouseDown(e, "left")}
         >
-             <div className="w-1 h-8 bg-white/50 rounded-full" />
+          <div
+            className={cn(
+              "w-1 h-8 rounded-full bg-black/20",
+              resizing && "bg-[#2463EB]",
+            )}
+          />
+        </div>
+        <div
+          className={cn(
+            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md",
+            resizing && "opacity-100",
+          )}
+          onMouseDown={(e) => handleMouseDown(e, "right")}
+        >
+          <div
+            className={cn(
+              "w-1 h-8 rounded-full bg-black/20",
+              resizing && "bg-[#2463EB]",
+            )}
+          />
         </div>
       </div>
     </NodeViewWrapper>
