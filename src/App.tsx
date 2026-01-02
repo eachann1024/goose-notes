@@ -29,9 +29,9 @@ function App() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const defaultFonts = {
-    default: "Inter",
+    default: "DM Sans",
     serif: "仓耳今楷",
-    mono: "JetBrains Mono",
+    mono: "DM Mono",
   };
 
   // 在 uTools 环境下添加类名，便于 CSS 针对性调整
@@ -71,15 +71,15 @@ function App() {
 
     root.style.setProperty(
       "--font-default",
-      `"${fontDefault}", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
+      `"${fontDefault}", "DM Sans", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
     );
     root.style.setProperty(
       "--font-serif",
-      `"${fontSerif}", "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif`,
+      `"${fontSerif}", "仓耳今楷", Georgia, Cambria, "Times New Roman", Times, serif`,
     );
     root.style.setProperty(
       "--font-mono",
-      `"${fontMono}", "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
+      `"${fontMono}", "DM Mono", "HarmonyOS Sans SC", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
     );
   }, [customFonts]);
 

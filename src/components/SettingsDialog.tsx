@@ -64,9 +64,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
   const defaultFonts = {
-    default: "Inter",
+    default: "DM Sans",
     serif: "仓耳今楷",
-    mono: "JetBrains Mono",
+    mono: "DM Mono",
   };
 
   const getFontPreview = (type: "default" | "serif" | "mono") =>
@@ -294,7 +294,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                               onChange={(e) =>
                                 setCustomFont(type, e.target.value || null)
                               }
-                              placeholder="例如：DM Sans"
+                              placeholder={"例：PingFang SC"}
                               className="h-8 text-sm min-w-[200px]"
                             />
                           </div>

@@ -27,15 +27,14 @@
     --radius: 0.5rem;
 
     /* Font Variables mapped to Tailwind theme */
-    --font-default:
-      "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      "Helvetica Neue", Arial, sans-serif;
-    --font-serif:
-      "仓耳今楷", "DM Mono", Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
-    --font-mono:
-      "DM Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-      monospace;
+  --font-default:
+      "DM Sans", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif:
+      "仓耳今楷", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono:
+      "DM Mono", "HarmonyOS Sans SC", Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
   }
 
   .dark {
@@ -353,6 +352,9 @@
   --code-fg: hsl(var(--foreground));
   --code-border: hsl(var(--border));
   --code-line-number: hsl(var(--muted-foreground) / 0.5);
+  --selection-border-color: hsl(var(--primary));
+  --selection-border-width: 2px;
+  --selection-border-radius: 12px;
 }
 
 /* 1. GitHub Light/Dark */
@@ -752,9 +754,26 @@
 
 /* Specific handling for images to prevent double borders */
 .ProseMirror img.ProseMirror-selectednode {
-  outline: 2px solid hsl(var(--primary)) !important;
+  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
   outline-offset: 2px;
   background-color: transparent !important;
+}
+.ProseMirror .code-block-node.ProseMirror-selectednode,
+.ProseMirror .code-block-node.tiptap-selected-node {
+  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
+  outline-offset: 2px;
+  border-radius: var(--selection-border-radius);
+}
+.ProseMirror .code-block-node.is-active {
+  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
+  outline-offset: 2px;
+  border-radius: var(--selection-border-radius);
+}
+.ProseMirror .tableWrapper.ProseMirror-selectednode,
+.ProseMirror .tableWrapper.tiptap-selected-node {
+  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
+  outline-offset: 2px;
+  border-radius: var(--selection-border-radius);
 }
 
 /* Ghost Image Improvement */

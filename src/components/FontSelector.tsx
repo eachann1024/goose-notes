@@ -8,9 +8,9 @@ interface FontSelectorProps {
 }
 
 const defaultFonts = [
-  { value: "default" as const, label: "默认", defaultFont: "DM Sans" },
-  { value: "serif" as const, label: "衬线体", defaultFont: "仓耳今楷" },
-  { value: "mono" as const, label: "等宽体", defaultFont: "DM Mono" },
+  { value: "default" as const, label: "默认", defaultFont: "PingFang SC" },
+  { value: "serif" as const, label: "衬线体", defaultFont: "Georgia" },
+  { value: "mono" as const, label: "等宽体", defaultFont: "JetBrains Mono" },
 ];
 
 export function FontSelector({ value, onChange }: FontSelectorProps) {

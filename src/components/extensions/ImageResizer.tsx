@@ -85,7 +85,7 @@ export function ImageResizer(props: NodeViewProps) {
       "image-node relative block w-full group my-4 transition-all",
       selected ? "ring-2 ring-primary ring-offset-2 rounded-md" : "",
     )}>
-      <div 
+      <div
         ref={resizeRef}
         className="relative max-w-full"
         style={{
@@ -99,11 +99,11 @@ export function ImageResizer(props: NodeViewProps) {
           title={node.attrs.title}
           className="rounded-md block max-w-full h-auto"
         />
-        
+
         {/* Resize Handle - visible only on hover or selection */}
         <div
           className={cn(
-            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 hover:bg-black/20 rounded-r-md",
+            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 hover:bg-[#2463EB70] rounded-r-md",
              resizing && "opacity-100 bg-primary/20"
           )}
           onMouseDown={handleMouseDown}

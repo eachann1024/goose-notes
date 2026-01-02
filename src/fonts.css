@@ -16,12 +16,21 @@
   src: url("./fonts/dm-mono-latin-400-normal.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/eachann1024/Resources@publish/%E9%B8%BF%E8%92%99%E9%BB%91%E4%BD%93-HarmonyOS%20Sans%20SC.woff2")
+    format("woff2");
+}
+
 /* 仓耳今楷 Font Family */
 @font-face {
   font-family: "仓耳今楷";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("https://cdn.jsdelivr.net/gh/eachann1024/Resources@eachann1024-publice/仓耳今楷03W04.ttf")
-    format("truetype");
+  src: url("https://cdn.jsdelivr.net/gh/eachann1024/Resources@publish/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2")
+    format("woff2");
 }

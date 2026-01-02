@@ -2,6 +2,7 @@ import {
   NodeViewWrapper,
   NodeViewContent,
   ReactNodeViewRenderer,
+  useEditorState,
 } from "@tiptap/react";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { CodeBlockToolbar } from "@/components/CodeBlockToolbar";
@@ -12,6 +13,17 @@ function CodeBlockWithLanguageView({
   editor,
   getPos,
 }: any) {
+  const isActive = useEditorState({
+    editor,
+    selector: (ctx) => {
+      if (typeof getPos !== "function") {
+        return ctx.editor.isActive("codeBlock");
+      }
+      const { from, to } = ctx.editor.state.selection;
+      const pos = getPos();
+      return from >= pos && to <= pos + node.nodeSize;
+    },
+  });
   const language = node.attrs.language || "";
 
   const getCodeContent = () => {
@@ -48,7 +60,7 @@ function CodeBlockWithLanguageView({
 
   return (
     <NodeViewWrapper
-      className={`relative group my-4 ${showLineNumbers ? "code-block-with-lines" : ""}`}
+      className={`code-block-node relative group my-4 ${showLineNumbers ? "code-block-with-lines" : ""} ${isActive ? "is-active" : ""}`}
     >
       <CodeBlockToolbar
         language={language}
