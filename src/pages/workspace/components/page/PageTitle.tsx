@@ -7,7 +7,47 @@ interface PageTitleProps {
   onFocusEditorStart: () => void;
 }
 
-export function PageTitle({ page, onUpdate, onFocusEditorStart }: PageTitleProps) {
+export function PageTitle({
+  page,
+  onUpdate,
+  onFocusEditorStart,
+}: PageTitleProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleFocusTitleEnd = () => {
+      inputRef.current?.focus();
+      const length = inputRef.current?.value.length || 0;
+      inputRef.current?.setSelectionRange(length, length);
+    };
+
+    const handleMergeToTitle = (event: Event) => {
+      const customEvent = event as CustomEvent<{ text: string }>;
+      const mergedTitle = page.title + customEvent.detail.text;
+      onUpdate({ title: mergedTitle });
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        const length = mergedTitle.length;
+        inputRef.current?.setSelectionRange(length, length);
+      });
+    };
+
+    window.addEventListener("goose-note:focus-title-end", handleFocusTitleEnd);
+    window.addEventListener("goose-note:merge-to-title", handleMergeToTitle);
+
+    return () => {
+      window.removeEventListener(
+        "goose-note:focus-title-end",
+        handleFocusTitleEnd,
+      );
+      window.removeEventListener(
+        "goose-note:merge-to-title",
+        handleMergeToTitle,
+      );
+    };
+  }, [page.title, onUpdate]);
+
   return (
     <div
       className={cn(
@@ -16,10 +56,7 @@ export function PageTitle({ page, onUpdate, onFocusEditorStart }: PageTitleProps
       )}
     >
       <div className="group relative mb-4">
-        <IconSelector
-          value={page.icon}
-          onChange={(icon) => onUpdate({ icon })}
-        >
+        <IconSelector value={page.icon} onChange={(icon) => onUpdate({ icon })}>
           <button
             className={cn(
               "flex items-center justify-center transition-opacity",
@@ -48,6 +85,7 @@ export function PageTitle({ page, onUpdate, onFocusEditorStart }: PageTitleProps
       </div>
 
       <input
+        ref={inputRef}
         type="text"
         placeholder="无标题"
         className="w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40"
@@ -57,7 +95,23 @@ export function PageTitle({ page, onUpdate, onFocusEditorStart }: PageTitleProps
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            onFocusEditorStart();
+
+            const target = e.currentTarget;
+            const cursorPos = target.selectionStart || 0;
+            const beforeCursor = page.title.slice(0, cursorPos);
+            const afterCursor = page.title.slice(cursorPos);
+
+            if (afterCursor) {
+              onUpdate({ title: beforeCursor });
+
+              window.dispatchEvent(
+                new CustomEvent("goose-note:insert-first-line", {
+                  detail: { text: afterCursor },
+                }),
+              );
+            } else {
+              onFocusEditorStart();
+            }
           }
         }}
       />

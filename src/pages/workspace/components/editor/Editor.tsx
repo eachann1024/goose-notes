@@ -82,7 +82,29 @@ export function Editor({ editable = true }: EditorProps) {
 
             if (isFirstChildEmptyParagraph) {
               event.preventDefault();
-              editor.chain().focus("end").run();
+              window.dispatchEvent(
+                new CustomEvent("goose-note:focus-title-end"),
+              );
+              return true;
+            }
+
+            if (
+              firstChild?.type.name === "paragraph" &&
+              firstChild.textContent
+            ) {
+              event.preventDefault();
+              const firstLineText = firstChild.textContent;
+
+              editor
+                .chain()
+                .deleteRange({ from: 0, to: firstChild.nodeSize })
+                .run();
+
+              window.dispatchEvent(
+                new CustomEvent("goose-note:merge-to-title", {
+                  detail: { text: firstLineText },
+                }),
+              );
               return true;
             }
           }
@@ -169,11 +191,34 @@ export function Editor({ editable = true }: EditorProps) {
         .run();
     };
 
+    const handleInsertFirstLine = (event: Event) => {
+      const customEvent = event as CustomEvent<{ text: string }>;
+      const text = customEvent.detail.text;
+
+      editor
+        .chain()
+        .focus("start")
+        .insertContentAt(0, {
+          type: "paragraph",
+          content: [{ type: "text", text }],
+        })
+        .focus("start")
+        .run();
+    };
+
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
+    window.addEventListener(
+      "goose-note:insert-first-line",
+      handleInsertFirstLine,
+    );
     return () => {
       window.removeEventListener(
         "goose-note:focus-editor-start",
         handleFocusStart,
+      );
+      window.removeEventListener(
+        "goose-note:insert-first-line",
+        handleInsertFirstLine,
       );
     };
   }, [editor]);
