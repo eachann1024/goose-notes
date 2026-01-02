@@ -1,27 +1,27 @@
-import { cn } from "@/lib/utils"
-import type { Page } from "@/types"
-import { useSettings } from "@/stores/useSettings"
+import { cn } from "@/lib/utils";
+import type { Page } from "@/types";
+import { useSettings } from "@/stores/useSettings";
 
 interface FontSelectorProps {
-  value: Page['fontFamily']
-  onChange: (value: Page['fontFamily']) => void
+  value: Page["fontFamily"];
+  onChange: (value: Page["fontFamily"]) => void;
 }
 
 const defaultFonts = [
-  { value: 'default' as const, label: '默认', defaultFont: 'Inter' },
-  { value: 'serif' as const, label: '衬线体', defaultFont: 'Source Serif 4' },
-  { value: 'mono' as const, label: '等宽体', defaultFont: 'JetBrains Mono' },
-]
+  { value: "default" as const, label: "默认", defaultFont: "DM Sans" },
+  { value: "serif" as const, label: "衬线体", defaultFont: "仓耳今楷" },
+  { value: "mono" as const, label: "等宽体", defaultFont: "DM Mono" },
+];
 
 export function FontSelector({ value, onChange }: FontSelectorProps) {
-  const { customFonts } = useSettings()
+  const { customFonts } = useSettings();
 
   return (
     <div className="flex gap-1 p-1">
       {defaultFonts.map((font) => {
-        const customFont = customFonts[font.value]
-        const label = customFont.label || font.label
-        const fontName = customFont.font || font.defaultFont
+        const customFont = customFonts[font.value];
+        const label = customFont.label || font.label;
+        const fontName = customFont.font || font.defaultFont;
 
         return (
           <button
@@ -32,7 +32,7 @@ export function FontSelector({ value, onChange }: FontSelectorProps) {
               "hover:bg-accent/50",
               value === font.value
                 ? "bg-background ring-2 ring-primary text-primary shadow-sm"
-                : ""
+                : "",
             )}
           >
             <span
@@ -41,15 +41,12 @@ export function FontSelector({ value, onChange }: FontSelectorProps) {
             >
               Ag
             </span>
-            <span
-              className="text-xs"
-              style={{ fontFamily: `"${fontName}"` }}
-            >
+            <span className="text-xs" style={{ fontFamily: `"${fontName}"` }}>
               {label}
             </span>
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

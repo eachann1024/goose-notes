@@ -18,7 +18,7 @@ import debounce from "lodash.debounce";
 import { usePages } from "@/stores/usePages";
 import { cn } from "@/lib/utils";
 import { configureSlashCommand } from "@/extensions/SlashCommand";
-import { ImageWithAlign } from "@/extensions/ImageWithAlign";
+import { ResizableImage } from "@/extensions/ResizableImage";
 import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
 import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { EditorBubbleMenu } from "@/components/EditorBubbleMenu";
@@ -104,7 +104,7 @@ export function Editor({ editable = true }: EditorProps) {
         openOnClick: false,
         autolink: true,
       }),
-      ImageWithAlign,
+      ResizableImage,
       ImagePlaceholder,
       TaskList,
       TaskItem.configure({

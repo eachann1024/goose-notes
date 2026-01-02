@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
+import { useSettings } from "@/stores/useSettings";
 import {
   ChevronRight,
   File,
@@ -46,6 +47,19 @@ interface TreeNode {
   page?: Page;
   isPlaceholder?: boolean;
 }
+
+// 统一的高度计算逻辑
+const useItemHeight = () => {
+  const { uiFontSize } = useSettings();
+
+  return useMemo(() => {
+    const rootFontSize = parseFloat(
+      getComputedStyle(document.documentElement).fontSize,
+    );
+    // 基础高度
+    return Math.round(rootFontSize * 2);
+  }, [uiFontSize]);
+};
 
 // 将扁平的 pages 转换为树形结构
 function buildTree(
@@ -85,26 +99,27 @@ function buildTree(
 }
 
 // 自定义节点渲染
-function PageNode({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
+type PageNodeProps = NodeRendererProps<TreeNode> & {
+  itemHeight: number;
+};
+
+function PageNode({ node, style, dragHandle, itemHeight }: PageNodeProps) {
   const { activePageId, setActivePage, createPage, pages } = usePages();
   const { activeNotebookId } = useNotebooks();
   const isActive = activePageId === node.id;
   const isPlaceholder = node.data.isPlaceholder;
   const iconName = node.data.icon;
 
-  // react-arborist 默认会将 paddingLeft 放入 style 中，这会覆盖 className 中的 px-2
-  // 我们手动处理缩进，所以需要移除 style 中的 paddingLeft 以防止样式覆盖
-  const { paddingLeft: _ignored, ...itemStyle } = style;
+  const { paddingLeft: _ignored, height: _ignoredHeight, ...itemStyle } = style;
 
-  // 计算缩进和对齐：与收藏栏对齐（容器 px-2 (8px) + 节点 mx-1 (4px) + 节点 px-2 (8px) = 20px 到图标开始）
   const indent = node.level * 16;
   const paddingLeft = indent;
 
   if (isPlaceholder) {
     return (
       <div
-        style={itemStyle}
-        className="flex items-center h-8 mb-px px-2 mx-1 select-none"
+        style={{ ...itemStyle, height: itemHeight }}
+        className="flex items-center px-2 mx-1 select-none"
       >
         <div
           style={{ paddingLeft: paddingLeft + 18 }}
@@ -147,9 +162,9 @@ function PageNode({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
     <SidebarContextMenu page={node.data.page!}>
       <div
         ref={dragHandle}
-        style={itemStyle}
+        style={{ ...itemStyle, height: itemHeight }}
         className={cn(
-          "group relative flex items-center h-8 mb-px px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+          "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
           isActive
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -244,6 +259,7 @@ interface FavoriteNodeProps {
   setExpandedFavorites: React.Dispatch<React.SetStateAction<Set<string>>>;
   activeNotebookId: string | null;
   createPage: (parentId?: string, workspaceId?: string) => void;
+  itemHeight: number;
 }
 
 function FavoriteNode({
@@ -256,6 +272,7 @@ function FavoriteNode({
   setExpandedFavorites,
   activeNotebookId,
   createPage,
+  itemHeight,
 }: FavoriteNodeProps) {
   const iconName = page.icon;
   const isExpanded = expandedFavorites.has(page.id);
@@ -317,8 +334,9 @@ function FavoriteNode({
     <>
       <SidebarContextMenu page={page}>
         <div
+          style={{ height: itemHeight }}
           className={cn(
-            "group relative flex items-center h-8 mb-px px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+            "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
             isActive
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -407,12 +425,13 @@ function FavoriteNode({
               setExpandedFavorites={setExpandedFavorites}
               activeNotebookId={activeNotebookId}
               createPage={createPage}
+              itemHeight={itemHeight}
             />
           ))
         ) : (
           <div
-            className="flex items-center h-8 mb-px px-2 mx-1 select-none"
-            style={{ paddingLeft: indent + 16 + 18 }}
+            style={{ height: itemHeight, paddingLeft: indent + 18 }}
+            className="flex items-center px-2 mx-1 select-none"
           >
             <span className="text-[13px] text-muted-foreground/45 italic truncate">
               内无页面
@@ -438,6 +457,10 @@ export function Sidebar({ className }: SidebarProps) {
     getFavorites,
   } = usePages();
   const { activeNotebookId } = useNotebooks();
+  const { uiFontSize: _ignored } = useSettings();
+
+  const itemHeight = useItemHeight();
+  const rowHeight = itemHeight + 1;
 
   // uTools 环境默认最窄(180)，Web 环境默认稍宽(220)
   const DEFAULT_SIDEBAR_WIDTH = UToolsAdapter.isUTools ? 180 : 220;
@@ -738,7 +761,7 @@ export function Sidebar({ className }: SidebarProps) {
               onToggle={() => setFavoritesCollapsed(!favoritesCollapsed)}
             />
             {!favoritesCollapsed && (
-              <div className="px-2 pt-0.5 overflow-hidden">
+              <div className="px-2 pt-0.5 overflow-hidden flex flex-col gap-px">
                 {favorites.map((page) => (
                   <FavoriteNode
                     key={page.id}
@@ -751,6 +774,7 @@ export function Sidebar({ className }: SidebarProps) {
                     setExpandedFavorites={setExpandedFavorites}
                     activeNotebookId={activeNotebookId}
                     createPage={createPage}
+                    itemHeight={itemHeight}
                   />
                 ))}
               </div>
@@ -781,14 +805,14 @@ export function Sidebar({ className }: SidebarProps) {
                   width={width - 16}
                   height={600}
                   indent={16}
-                  rowHeight={33}
+                  rowHeight={rowHeight}
                   overscanCount={5}
                   disableEdit={false}
                   disableDrag={false}
                   disableDrop={false}
                   onToggle={handleToggle}
                 >
-                  {PageNode}
+                  {(props) => <PageNode {...props} itemHeight={itemHeight} />}
                 </Tree>
               ) : (
                 <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-muted/30 rounded mx-2 border border-dashed">

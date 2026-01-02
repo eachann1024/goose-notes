@@ -30,7 +30,7 @@ function App() {
 
   const defaultFonts = {
     default: "Inter",
-    serif: "Source Serif 4",
+    serif: "仓耳今楷",
     mono: "JetBrains Mono",
   };
 

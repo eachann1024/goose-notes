@@ -1,26 +1,27 @@
-/* Inter Font Family */
+/* DM Sans Font Family */
 @font-face {
-  font-family: 'Inter';
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./fonts/inter-latin-400-normal.woff2') format('woff2');
+  src: url("./fonts/dm-sans-latin-400-normal.woff2") format("woff2");
 }
 
-/* JetBrains Mono Font Family */
+/* DM Mono Font Family */
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: "DM Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+  src: url("./fonts/dm-mono-latin-400-normal.woff2") format("woff2");
 }
 
-/* Source Serif 4 Font Family */
+/* 仓耳今楷 Font Family */
 @font-face {
-  font-family: 'Source Serif 4';
+  font-family: "仓耳今楷";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./fonts/source-serif-4-latin-400-normal.woff2') format('woff2');
+  src: url("https://cdn.jsdelivr.net/gh/eachann1024/Resources@eachann1024-publice/仓耳今楷03W04.ttf")
+    format("truetype");
 }

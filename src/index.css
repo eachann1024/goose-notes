@@ -28,13 +28,14 @@
 
     /* Font Variables mapped to Tailwind theme */
     --font-default:
-      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
       "Helvetica Neue", Arial, sans-serif;
     --font-serif:
-      "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif;
-    --font-mono:
-      "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono",
+      "仓耳今楷", "DM Mono", Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --font-mono:
+      "DM Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+      monospace;
   }
 
   .dark {
@@ -725,6 +726,9 @@
 .ProseMirror.dragging .ProseMirror-selectednode {
   opacity: 0.4 !important;
 }
+.ProseMirror.dragging .image-node.ProseMirror-selectednode {
+  opacity: 1 !important;
+}
 
 /* Drop Cursor - 放置位置的蓝线 */
 .ProseMirror-dropcursor {
@@ -740,6 +744,11 @@
   border-radius: 4px;
   outline: none !important;
 }
+.ProseMirror .image-node.ProseMirror-selectednode,
+.ProseMirror .image-node.tiptap-selected-node {
+  background-color: transparent !important;
+  border-radius: 0;
+}
 
 /* Specific handling for images to prevent double borders */
 .ProseMirror img.ProseMirror-selectednode {
@@ -752,6 +761,10 @@
 .ProseMirror .is-dragging {
   opacity: 0.5;
   background-color: hsl(var(--primary) / 0.05);
+}
+.ProseMirror .image-node.is-dragging {
+  opacity: 1;
+  background-color: transparent;
 }
 
 /* BubbleMenu 淡入动画 - 解决首次渲染闪烁 */
