@@ -1,39 +1,112 @@
+import type { Page, JSONContent } from "@/types";
+import { generateHTML } from "@tiptap/html";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Image from "@tiptap/extension-image";
+import Highlight from "@tiptap/extension-highlight";
+import JSZip from "jszip";
 
-import type { Page, JSONContent } from '@/types'
-import { generateHTML } from '@tiptap/html'
-import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
-import Image from '@tiptap/extension-image'
-import Highlight from '@tiptap/extension-highlight'
+const extensions = [StarterKit, Link, TaskList, TaskItem, Image, Highlight];
 
-// Extensions used for HTML generation (must match editor extensions)
-const extensions = [
-  StarterKit,
-  Link,
-  TaskList,
-  TaskItem,
-  Image,
-  Highlight,
-]
+function parseBase64Image(
+  src: string,
+): { data: string; mimeType: string; extension: string } | null {
+  const match = src.match(/^data:(image\/([a-zA-Z+]+));base64,(.+)$/);
+  if (!match) return null;
+  return {
+    mimeType: match[1],
+    extension: match[2] === "jpeg" ? "jpg" : match[2],
+    data: match[3],
+  };
+}
 
-// ==================== EXPORT ====================
+function getAlignFromContainerStyle(
+  style: string | null | undefined,
+): "left" | "center" | "right" | null {
+  if (!style) return null;
+  if (
+    style.includes("margin: 0 0 0 auto") ||
+    style.includes("margin: 0px 0px 0px auto")
+  )
+    return "right";
+  if (
+    style.includes("margin: 0 auto 0 0") ||
+    style.includes("margin: 0px auto 0px 0px")
+  )
+    return "left";
+  if (style.includes("margin: 0 auto") || style.includes("margin: 0px auto"))
+    return "center";
+  return null;
+}
+
+function alignToContainerStyle(align: "left" | "center" | "right"): string {
+  const marginMap = {
+    left: "margin: 0 auto 0 0;",
+    center: "margin: 0 auto;",
+    right: "margin: 0 0 0 auto;",
+  };
+  return marginMap[align];
+}
+
+async function extractImagesFromContent(
+  content: JSONContent,
+  assetsFolder: JSZip,
+  imageMap: Map<string, string>,
+  depth: number,
+) {
+  if (!content.content) return;
+
+  for (const node of content.content) {
+    if (
+      (node.type === "image" || node.type === "imageResize") &&
+      node.attrs?.src
+    ) {
+      const src = node.attrs.src;
+
+      if (imageMap.has(src)) {
+        node.attrs.src = getRelativeAssetPath(imageMap.get(src)!, depth);
+        continue;
+      }
+
+      if (src.startsWith("data:image")) {
+        const parsed = parseBase64Image(src);
+        if (parsed) {
+          const filename = `img_${Math.random().toString(36).slice(2, 9)}_${Date.now()}.${parsed.extension}`;
+          assetsFolder.file(filename, parsed.data, { base64: true });
+
+          imageMap.set(src, filename);
+          node.attrs.src = getRelativeAssetPath(filename, depth);
+        }
+      }
+    }
+
+    if (node.content) {
+      await extractImagesFromContent(node, assetsFolder, imageMap, depth);
+    }
+  }
+}
+
+function getRelativeAssetPath(filename: string, depth: number): string {
+  const prefix = "../".repeat(depth);
+  return `${prefix}assets/${filename}`;
+}
 
 export function exportToJSON(page: Page) {
-  const data = JSON.stringify(page, null, 2)
-  downloadFile(data, `${page.title || 'untitled'}.json`, 'application/json')
+  const data = JSON.stringify(page, null, 2);
+  downloadFile(data, `${page.title || "untitled"}.json`, "application/json");
 }
 
 export function exportToMarkdown(page: Page) {
-  const content = page.content as JSONContent
-  const markdown = jsonContentToMarkdown(content)
-  const fullMarkdown = `# ${page.title || '无标题'}\n\n${markdown}`
-  downloadFile(fullMarkdown, `${page.title || 'untitled'}.md`, 'text/markdown')
+  const content = page.content as JSONContent;
+  const markdown = jsonContentToMarkdown(content);
+  const fullMarkdown = `# ${page.title || "无标题"}\n\n${markdown}`;
+  downloadFile(fullMarkdown, `${page.title || "untitled"}.md`, "text/markdown");
 }
 
 export function exportToHTML(page: Page) {
-  const html = generateHTML(page.content, extensions)
+  const html = generateHTML(page.content, extensions);
   const fullHtml = `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -52,376 +125,791 @@ pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; }
 <h1>${page.title}</h1>
 ${html}
 </body>
-</html>`
-  
-  downloadFile(fullHtml, `${page.title || 'untitled'}.html`, 'text/html')
+</html>`;
+
+  downloadFile(fullHtml, `${page.title || "untitled"}.html`, "text/html");
 }
 
-// ==================== IMPORT ====================
+export interface ExportOptions {
+  format: "md" | "json" | "html";
+  includeTrash: boolean;
+  notebookIds: string[];
+}
+
+export async function exportNotebooks(
+  options: ExportOptions,
+  notebooksMap: Record<string, { name: string }>,
+  allPages: Page[],
+) {
+  const zip = new JSZip();
+  const { format, includeTrash, notebookIds } = options;
+  const assetsFolder = zip.folder("assets");
+  const imageMap = new Map<string, string>();
+
+  if (!assetsFolder) return;
+
+  for (const notebookId of notebookIds) {
+    const notebook = notebooksMap[notebookId];
+    if (!notebook) continue;
+
+    const notebookFolderName = sanitizeFileName(notebook.name);
+    const notebookFolder = zip.folder(notebookFolderName);
+    if (!notebookFolder) continue;
+
+    const notebookPages = allPages.filter(
+      (p) => p.workspaceId === notebookId && (includeTrash || !p.trashedAt),
+    );
+
+    const pageMap = new Map<string, Page>();
+    notebookPages.forEach((p) => pageMap.set(p.id, p));
+
+    const processPage = async (
+      page: Page,
+      parentFolder: JSZip,
+      depth: number,
+    ) => {
+      const pageClone = JSON.parse(JSON.stringify(page)) as Page;
+
+      await extractImagesFromContent(
+        pageClone.content,
+        assetsFolder,
+        imageMap,
+        depth,
+      );
+
+      let content = "";
+      let extension = "";
+
+      switch (format) {
+        case "md":
+          content = `# ${pageClone.title || "无标题"}\n\n${jsonContentToMarkdown(pageClone.content)}`;
+          extension = ".md";
+          break;
+        case "html":
+          const html = generateHTML(pageClone.content, extensions);
+          content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${pageClone.title}</title><style>img { max-width: 100%; }</style></head><body><h1>${pageClone.title}</h1>${html}</body></html>`;
+          extension = ".html";
+          break;
+        case "json":
+          content = JSON.stringify(pageClone, null, 2);
+          extension = ".json";
+          break;
+      }
+
+      const fileName =
+        sanitizeFileName(pageClone.title || "untitled") + extension;
+      parentFolder.file(fileName, content);
+
+      const children = notebookPages.filter((p) => p.parentId === page.id);
+      if (children.length > 0) {
+        const subFolderName = sanitizeFileName(page.title || "untitled");
+        const subFolder = parentFolder.folder(subFolderName);
+        if (subFolder) {
+          for (const child of children) {
+            await processPage(child, subFolder, depth + 1);
+          }
+        }
+      }
+    };
+
+    const rootPages = notebookPages.filter(
+      (p) => !p.parentId || !pageMap.has(p.parentId),
+    );
+
+    for (const p of rootPages) {
+      await processPage(p, notebookFolder, 1);
+    }
+  }
+
+  const content = await zip.generateAsync({ type: "blob" });
+  const timestamp = new Date().toISOString().split("T")[0];
+  downloadBlob(content, `goose-note-export-${timestamp}.zip`);
+}
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importNotebooksFromZip(
+  zipBlob: Blob,
+  onCreateNotebook: (name: string) => string,
+  onCreatePage: (
+    data: Partial<Page>,
+    workspaceId: string,
+    parentId?: string,
+  ) => string,
+) {
+  const zip = await JSZip.loadAsync(zipBlob);
+  const assetMap = new Map<string, string>();
+
+  const assetsFolder = zip.folder("assets");
+  if (assetsFolder) {
+    const assetFiles: string[] = [];
+    assetsFolder.forEach((relativePath) => assetFiles.push(relativePath));
+
+    for (const path of assetFiles) {
+      const file = assetsFolder.file(path);
+      if (file) {
+        const base64 = await file.async("base64");
+        const ext = path.split(".").pop()?.toLowerCase() || "png";
+        const mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
+        assetMap.set(path, `data:${mimeType};base64,${base64}`);
+      }
+    }
+  }
+
+  const restoreImages = (content: JSONContent) => {
+    if (!content.content) return;
+    for (const node of content.content) {
+      if (
+        (node.type === "image" || node.type === "imageResize") &&
+        node.attrs?.src
+      ) {
+        const src = node.attrs.src as string;
+        if (src.includes("assets/")) {
+          const filename = src.split("assets/").pop();
+          if (filename && assetMap.has(filename)) {
+            node.attrs.src = assetMap.get(filename);
+          }
+        }
+      }
+      if (node.content) restoreImages(node);
+    }
+  };
+
+  const topLevelEntries = new Set<string>();
+  zip.forEach((path) => {
+    const parts = path.split("/");
+    if (parts.length > 1 && parts[0] !== "assets") {
+      topLevelEntries.add(parts[0]);
+    }
+  });
+
+  for (const notebookName of topLevelEntries) {
+    const workspaceId = onCreateNotebook(notebookName);
+    const notebookPathPrefix = `${notebookName}/`;
+    const pathIdMap = new Map<string, string>();
+
+    const files: { path: string; depth: number }[] = [];
+    zip.forEach((path, entry) => {
+      if (!entry.dir && path.startsWith(notebookPathPrefix)) {
+        const relativePath = path.slice(notebookPathPrefix.length);
+        files.push({
+          path: relativePath,
+          depth: relativePath.split("/").length,
+        });
+      }
+    });
+    files.sort((a, b) => a.depth - b.depth);
+
+    for (const { path: relativePath } of files) {
+      const file = zip.file(`${notebookPathPrefix}${relativePath}`);
+      if (!file) continue;
+
+      const extension = relativePath.split(".").pop()?.toLowerCase();
+      const nameWithoutExt = relativePath.replace(/\.[^/.]+$/, "");
+      const pathParts = nameWithoutExt.split("/");
+      const title = pathParts[pathParts.length - 1];
+
+      let parentId: string | undefined;
+      if (pathParts.length > 1) {
+        const parentPath = pathParts.slice(0, -1).join("/");
+        parentId = pathIdMap.get(parentPath);
+      }
+
+      let pageData: Partial<Page> = { title };
+
+      if (extension === "json") {
+        const text = await file.async("text");
+        try {
+          const imported = JSON.parse(text) as Page;
+          pageData = { ...imported };
+          delete pageData.id;
+          delete pageData.workspaceId;
+          delete pageData.parentId;
+          if (pageData.content) restoreImages(pageData.content);
+        } catch (e) {
+          console.error("Failed to parse JSON page", e);
+        }
+      } else if (extension === "md") {
+        const text = await file.async("text");
+        const imported = importFromMarkdown(text, title);
+        pageData = { title: imported.title, content: imported.content };
+        if (pageData.content) restoreImages(pageData.content);
+      }
+
+      const newId = onCreatePage(pageData, workspaceId, parentId);
+      pathIdMap.set(nameWithoutExt, newId);
+    }
+  }
+}
 
 export interface ImportResult {
-  title: string
-  content: JSONContent
-  success: boolean
-  error?: string
-  filename?: string
+  title: string;
+  content: JSONContent;
+  success: boolean;
+  error?: string;
+  filename?: string;
 }
 
-// 从 JSON 导入
-export function importFromJSON(jsonString: string, filename?: string): ImportResult {
+export function importFromJSON(
+  jsonString: string,
+  filename?: string,
+): ImportResult {
   try {
-    const data = JSON.parse(jsonString) as Page
+    const data = JSON.parse(jsonString) as Page;
 
-    // 验证必要字段
-    if (!data.content || typeof data.content !== 'object') {
-      return { title: '', content: { type: 'doc', content: [] }, success: false, error: '无效的 JSON 格式：缺少 content 字段' }
+    if (!data.content || typeof data.content !== "object") {
+      return {
+        title: "",
+        content: { type: "doc", content: [] },
+        success: false,
+        error: "无效的 JSON 格式：缺少 content 字段",
+      };
     }
 
     return {
-      title: data.title || filename || '导入的页面',
+      title: data.title || filename || "导入的页面",
       content: data.content,
       success: true,
-    }
+    };
   } catch (e) {
-    return { title: '', content: { type: 'doc', content: [] }, success: false, error: '解析 JSON 失败' }
+    return {
+      title: "",
+      content: { type: "doc", content: [] },
+      success: false,
+      error: "解析 JSON 失败",
+    };
   }
 }
 
-// 从 Markdown 导入
-export function importFromMarkdown(markdown: string, filename?: string): ImportResult {
+export function importFromMarkdown(
+  markdown: string,
+  filename?: string,
+): ImportResult {
   try {
-    const content = markdownToJsonContent(markdown)
+    const content = markdownToJsonContent(markdown);
 
-    let title = filename || '导入的页面'
+    let title = filename || "导入的页面";
     if (!filename) {
-      const h1Match = markdown.match(/^#\s+(.+)$/m)
+      const h1Match = markdown.match(/^#\s+(.+)$/m);
       if (h1Match) {
-        title = h1Match[1].trim()
+        title = h1Match[1].trim();
       }
     }
 
-    return { title, content, success: true }
+    if (content.content?.length) {
+      const firstNode = content.content[0];
+      const getPlainText = (nodes?: JSONContent[]) =>
+        (nodes || [])
+          .map((n) => (n.type === "text" ? n.text || "" : ""))
+          .join("")
+          .trim();
+      if (
+        firstNode.type === "heading" &&
+        (firstNode.attrs?.level ?? 1) === 1 &&
+        getPlainText(firstNode.content) === title
+      ) {
+        content.content.shift();
+      }
+      while (
+        content.content[0]?.type === "paragraph" &&
+        !content.content[0].content
+      ) {
+        content.content.shift();
+      }
+    }
+
+    return { title, content, success: true };
   } catch (e) {
-    return { title: '', content: { type: 'doc', content: [] }, success: false, error: '解析 Markdown 失败' }
+    return {
+      title: "",
+      content: { type: "doc", content: [] },
+      success: false,
+      error: "解析 Markdown 失败",
+    };
   }
 }
 
-// 通用文件导入
 export function importFile(): Promise<ImportResult> {
   return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.json,.md,.markdown,.txt'
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.md,.markdown,.txt";
 
     input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
-        resolve({ title: '', content: { type: 'doc', content: [] }, success: false, error: '未选择文件' })
-        return
+        resolve({
+          title: "",
+          content: { type: "doc", content: [] },
+          success: false,
+          error: "未选择文件",
+        });
+        return;
       }
 
-      const text = await file.text()
-      const ext = file.name.split('.').pop()?.toLowerCase()
-      const filename = file.name.replace(/\.[^/.]+$/, '')
+      const text = await file.text();
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const filename = file.name.replace(/\.[^/.]+$/, "");
 
-      if (ext === 'json') {
-        resolve(importFromJSON(text, filename))
-      } else if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
-        resolve(importFromMarkdown(text, filename))
+      if (ext === "json") {
+        resolve(importFromJSON(text, filename));
+      } else if (ext === "md" || ext === "markdown" || ext === "txt") {
+        resolve(importFromMarkdown(text, filename));
       } else {
-        resolve({ title: '', content: { type: 'doc', content: [] }, success: false, error: '不支持的文件格式' })
+        resolve({
+          title: "",
+          content: { type: "doc", content: [] },
+          success: false,
+          error: "不支持的文件格式",
+        });
       }
-    }
+    };
 
-    input.click()
-  })
+    input.click();
+  });
 }
-
-// ==================== HELPERS ====================
 
 function downloadFile(content: string, filename: string, contentType: string) {
   try {
-    // uTools 和浏览器环境都使用 Blob 下载
-    // uTools 不支持文件系统 API，只能用浏览器下载方式
-    const blob = new Blob([content], { type: contentType })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    const blob = new Blob([content], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('下载失败:', error)
-    throw error
+    console.error("下载失败:", error);
+    throw error;
   }
 }
 
-// JSONContent 转 Markdown
 function jsonContentToMarkdown(content: JSONContent): string {
-  if (!content.content) return ''
-  
-  return content.content.map((node) => nodeToMarkdown(node)).join('\n')
+  if (!content.content) return "";
+
+  return content.content.map((node) => nodeToMarkdown(node)).join("\n");
 }
 
 function nodeToMarkdown(node: JSONContent): string {
   switch (node.type) {
-    case 'paragraph':
-      const text = inlineContentToMarkdown(node.content)
-      return text + '\n'
-    
-    case 'heading': {
-      const level = node.attrs?.level || 1
-      return '#'.repeat(level) + ' ' + inlineContentToMarkdown(node.content) + '\n'
+    case "paragraph":
+      const text = inlineContentToMarkdown(node.content);
+      return text + "\n";
+
+    case "heading": {
+      const level = node.attrs?.level || 1;
+      return (
+        "#".repeat(level) + " " + inlineContentToMarkdown(node.content) + "\n"
+      );
     }
-    
-    case 'bulletList':
-      return node.content?.map((item) => '- ' + listItemContent(item)).join('\n') + '\n'
-    
-    case 'orderedList':
-      return node.content?.map((item, i) => `${i + 1}. ` + listItemContent(item)).join('\n') + '\n'
-    
-    case 'taskList':
-      return node.content?.map((item) => {
-        const checked = item.attrs?.checked ? 'x' : ' '
-        return `- [${checked}] ` + listItemContent(item)
-      }).join('\n') + '\n'
-    
-    case 'blockquote':
-      return '> ' + jsonContentToMarkdown(node).trim().split('\n').join('\n> ') + '\n'
-    
-    case 'codeBlock': {
-      const lang = node.attrs?.language || ''
-      return '```' + lang + '\n' + (node.content?.[0]?.text || '') + '\n```\n'
+
+    case "bulletList":
+      return (
+        node.content?.map((item) => "- " + listItemContent(item)).join("\n") +
+        "\n"
+      );
+
+    case "orderedList":
+      return (
+        node.content
+          ?.map((item, i) => `${i + 1}. ` + listItemContent(item))
+          .join("\n") + "\n"
+      );
+
+    case "taskList":
+      return (
+        node.content
+          ?.map((item) => {
+            const checked = item.attrs?.checked ? "x" : " ";
+            return `- [${checked}] ` + listItemContent(item);
+          })
+          .join("\n") + "\n"
+      );
+
+    case "blockquote":
+      return (
+        "> " +
+        jsonContentToMarkdown(node).trim().split("\n").join("\n> ") +
+        "\n"
+      );
+
+    case "codeBlock": {
+      const lang = node.attrs?.language || "";
+      return "```" + lang + "\n" + (node.content?.[0]?.text || "") + "\n```\n";
     }
-    
-    case 'horizontalRule':
-      return '---\n'
-    
-    case 'image':
-      return `![${node.attrs?.alt || ''}](${node.attrs?.src || ''})\n`
-    
+
+    case "horizontalRule":
+      return "---\n";
+
+    case "image":
+    case "imageResize": {
+      const alt = node.attrs?.alt || "";
+      const src = node.attrs?.src || "";
+      const align = getAlignFromContainerStyle(node.attrs?.containerStyle);
+      const width = node.attrs?.width ? `width=${node.attrs.width}` : "";
+      const height = node.attrs?.height ? `height=${node.attrs.height}` : "";
+      const meta = [align ? `align=${align}` : "", width, height]
+        .filter(Boolean)
+        .join(" ");
+      const metaTag = meta ? `{${meta}}` : "";
+      return `![${alt}](${src})${metaTag}\n`;
+    }
+
+    case "table": {
+      const rows = node.content || [];
+      if (rows.length === 0) return "\n";
+      const tableRows = rows.map((row) => row.content || []);
+      const columnCount = Math.max(
+        1,
+        ...tableRows.map((cells) => cells.length),
+      );
+
+      const cellText = (cell: JSONContent) => {
+        const parts = (cell.content || []).map((child) => {
+          if (child.type === "paragraph") {
+            return inlineContentToMarkdown(child.content);
+          }
+          return inlineContentToMarkdown(child.content);
+        });
+        return parts.join("<br>");
+      };
+
+      const normalizeRow = (cells: JSONContent[]) => {
+        const padded = [...cells];
+        while (padded.length < columnCount) padded.push({ type: "tableCell" });
+        return padded;
+      };
+
+      const headerCells = normalizeRow(tableRows[0]).map((cell) =>
+        cellText(cell).replace(/\|/g, "\\|"),
+      );
+      const headerLine = `| ${headerCells.join(" | ")} |`;
+      const separatorLine = `| ${Array(columnCount).fill("---").join(" | ")} |`;
+
+      const bodyLines = tableRows.slice(1).map((cells) => {
+        const rowCells = normalizeRow(cells).map((cell) =>
+          cellText(cell).replace(/\|/g, "\\|"),
+        );
+        return `| ${rowCells.join(" | ")} |`;
+      });
+
+      return [headerLine, separatorLine, ...bodyLines].join("\n") + "\n";
+    }
+
     default:
-      return inlineContentToMarkdown(node.content) + '\n'
+      return inlineContentToMarkdown(node.content) + "\n";
   }
 }
 
 function listItemContent(item: JSONContent): string {
-  const paragraphs = item.content?.filter(c => c.type === 'paragraph') || []
-  return paragraphs.map(p => inlineContentToMarkdown(p.content)).join(' ')
+  const paragraphs = item.content?.filter((c) => c.type === "paragraph") || [];
+  return paragraphs.map((p) => inlineContentToMarkdown(p.content)).join(" ");
 }
 
 function inlineContentToMarkdown(content?: JSONContent[]): string {
-  if (!content || content.length === 0) return ''
+  if (!content || content.length === 0) return "";
 
-  return content.map((node) => {
-    let text = node.text || ''
+  return content
+    .map((node) => {
+      let text = node.text || "";
 
-    if (node.marks) {
-      for (const mark of node.marks) {
-        switch (mark.type) {
-          case 'bold':
-            text = `**${text}**`
-            break
-          case 'italic':
-            text = `*${text}*`
-            break
-          case 'strike':
-            text = `~~${text}~~`
-            break
-          case 'code':
-            text = `\`${text}\``
-            break
-          case 'link':
-            text = `[${text}](${mark.attrs?.href || ''})`
-            break
+      if (node.marks) {
+        for (const mark of node.marks) {
+          switch (mark.type) {
+            case "bold":
+              text = `**${text}**`;
+              break;
+            case "italic":
+              text = `*${text}*`;
+              break;
+            case "strike":
+              text = `~~${text}~~`;
+              break;
+            case "code":
+              text = `\`${text}\``;
+              break;
+            case "link":
+              text = `[${text}](${mark.attrs?.href || ""})`;
+              break;
+          }
         }
       }
-    }
 
-    return text
-  }).join('')
+      return text;
+    })
+    .join("");
 }
 
-// Markdown 转 JSONContent
 function markdownToJsonContent(markdown: string): JSONContent {
-  const lines = markdown.split('\n')
-  const content: JSONContent[] = []
-  let i = 0
-  
+  const lines = markdown.split("\n");
+  const content: JSONContent[] = [];
+  let i = 0;
+
   while (i < lines.length) {
-    const line = lines[i]
-    
-    // 代码块
-    if (line.startsWith('```')) {
-      const lang = line.slice(3).trim()
-      const codeLines: string[] = []
-      i++
-      while (i < lines.length && !lines[i].startsWith('```')) {
-        codeLines.push(lines[i])
-        i++
+    const line = lines[i];
+
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
       }
       content.push({
-        type: 'codeBlock',
+        type: "codeBlock",
         attrs: { language: lang },
-        content: [{ type: 'text', text: codeLines.join('\n') }]
-      })
-      i++
-      continue
+        content: [{ type: "text", text: codeLines.join("\n") }],
+      });
+      i++;
+      continue;
     }
-    
-    // 标题
-    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
       content.push({
-        type: 'heading',
+        type: "heading",
         attrs: { level: headingMatch[1].length },
-        content: parseInlineMarkdown(headingMatch[2])
-      })
-      i++
-      continue
+        content: parseInlineMarkdown(headingMatch[2]),
+      });
+      i++;
+      continue;
     }
-    
-    // 水平线
+
     if (line.match(/^---+$/)) {
-      content.push({ type: 'horizontalRule' })
-      i++
-      continue
+      content.push({ type: "horizontalRule" });
+      i++;
+      continue;
     }
-    
-    // 引用
-    if (line.startsWith('> ')) {
-      const quoteLines: string[] = []
-      while (i < lines.length && lines[i].startsWith('> ')) {
-        quoteLines.push(lines[i].slice(2))
-        i++
+
+    if (line.startsWith("> ")) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].startsWith("> ")) {
+        quoteLines.push(lines[i].slice(2));
+        i++;
       }
       content.push({
-        type: 'blockquote',
-        content: [{
-          type: 'paragraph',
-          content: parseInlineMarkdown(quoteLines.join(' '))
-        }]
-      })
-      continue
+        type: "blockquote",
+        content: [
+          {
+            type: "paragraph",
+            content: parseInlineMarkdown(quoteLines.join(" ")),
+          },
+        ],
+      });
+      continue;
     }
-    
-    // 任务列表
-    const taskMatch = line.match(/^-\s+\[([ x])\]\s+(.+)$/)
+
+    const isTableSeparator = (value: string) =>
+      /^(\s*\|?\s*:?-+:?\s*)+\|?\s*$/.test(value) && value.includes("-");
+
+    const splitTableRow = (value: string) => {
+      const trimmed = value.trim();
+      const withoutEdgePipes = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+      return withoutEdgePipes.split("|").map((cell) => cell.trim());
+    };
+
+    if (line.includes("|") && isTableSeparator(lines[i + 1] || "")) {
+      const headerCells = splitTableRow(line);
+      i += 2;
+      const bodyRows: string[][] = [];
+      while (i < lines.length && lines[i].includes("|")) {
+        if (isTableSeparator(lines[i])) {
+          i++;
+          continue;
+        }
+        bodyRows.push(splitTableRow(lines[i]));
+        i++;
+      }
+
+      const toCell = (text: string, type: "tableHeader" | "tableCell") => ({
+        type: "tableCell",
+        attrs: { ...((type === "tableHeader" && { isHeader: true }) || {}) },
+        content: [
+          {
+            type: "paragraph",
+            content: parseInlineMarkdown(text.replace(/\\\|/g, "|")),
+          },
+        ],
+      });
+
+      const headerRow = {
+        type: "tableRow",
+        content: headerCells.map((cell) => toCell(cell, "tableHeader")),
+      };
+      const bodyRowNodes = bodyRows.map((row) => ({
+        type: "tableRow",
+        content: row.map((cell) => toCell(cell, "tableCell")),
+      }));
+
+      content.push({
+        type: "table",
+        content: [headerRow, ...bodyRowNodes],
+      });
+      continue;
+    }
+
+    const taskMatch = line.match(/^-\s+\[([ x])\]\s+(.+)$/);
     if (taskMatch) {
-      const items: JSONContent[] = []
+      const items: JSONContent[] = [];
       while (i < lines.length) {
-        const tm = lines[i].match(/^-\s+\[([ x])\]\s+(.+)$/)
-        if (!tm) break
+        const tm = lines[i].match(/^-\s+\[([ x])\]\s+(.+)$/);
+        if (!tm) break;
         items.push({
-          type: 'taskItem',
-          attrs: { checked: tm[1] === 'x' },
-          content: [{ type: 'paragraph', content: parseInlineMarkdown(tm[2]) }]
-        })
-        i++
+          type: "taskItem",
+          attrs: { checked: tm[1] === "x" },
+          content: [{ type: "paragraph", content: parseInlineMarkdown(tm[2]) }],
+        });
+        i++;
       }
-      content.push({ type: 'taskList', content: items })
-      continue
+      content.push({ type: "taskList", content: items });
+      continue;
     }
-    
-    // 无序列表
+
     if (line.match(/^-\s+/)) {
-      const items: JSONContent[] = []
+      const items: JSONContent[] = [];
       while (i < lines.length && lines[i].match(/^-\s+/)) {
-        const text = lines[i].replace(/^-\s+/, '')
+        const text = lines[i].replace(/^-\s+/, "");
         items.push({
-          type: 'listItem',
-          content: [{ type: 'paragraph', content: parseInlineMarkdown(text) }]
-        })
-        i++
+          type: "listItem",
+          content: [{ type: "paragraph", content: parseInlineMarkdown(text) }],
+        });
+        i++;
       }
-      content.push({ type: 'bulletList', content: items })
-      continue
+      content.push({ type: "bulletList", content: items });
+      continue;
     }
-    
-    // 有序列表
+
     if (line.match(/^\d+\.\s+/)) {
-      const items: JSONContent[] = []
+      const items: JSONContent[] = [];
       while (i < lines.length && lines[i].match(/^\d+\.\s+/)) {
-        const text = lines[i].replace(/^\d+\.\s+/, '')
+        const text = lines[i].replace(/^\d+\.\s+/, "");
         items.push({
-          type: 'listItem',
-          content: [{ type: 'paragraph', content: parseInlineMarkdown(text) }]
-        })
-        i++
+          type: "listItem",
+          content: [{ type: "paragraph", content: parseInlineMarkdown(text) }],
+        });
+        i++;
       }
-      content.push({ type: 'orderedList', content: items })
-      continue
+      content.push({ type: "orderedList", content: items });
+      continue;
     }
-    
-    // 图片
-    const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
+
+    const imgMatch = line.match(
+      /^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/,
+    );
     if (imgMatch) {
+      const metaRaw = imgMatch[3] || "";
+      const metaMap = new Map<string, string>();
+      metaRaw
+        .split(/\s+/)
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .forEach((chunk) => {
+          const [key, value] = chunk.split("=");
+          if (key && value) metaMap.set(key, value);
+        });
+
+      const align = metaMap.get("align") as
+        | "left"
+        | "center"
+        | "right"
+        | undefined;
+      const containerStyle = align ? alignToContainerStyle(align) : undefined;
+      const width = metaMap.get("width");
+      const height = metaMap.get("height");
+      const widthValue = width ? Number(width) : undefined;
+      const heightValue = height ? Number(height) : undefined;
       content.push({
-        type: 'image',
-        attrs: { src: imgMatch[2], alt: imgMatch[1] }
-      })
-      i++
-      continue
+        type: "imageResize",
+        attrs: {
+          src: imgMatch[2],
+          alt: imgMatch[1],
+          containerStyle,
+          ...(Number.isFinite(widthValue) ? { width: widthValue } : {}),
+          ...(Number.isFinite(heightValue) ? { height: heightValue } : {}),
+        },
+      });
+      i++;
+      continue;
     }
-    
-    // 普通段落
+
     if (line.trim()) {
-      content.push({
-        type: 'paragraph',
-        content: parseInlineMarkdown(line)
-      })
-    } else if (content.length > 0 && content[content.length - 1].type !== 'paragraph') {
-      // 空行，添加空段落
-      content.push({ type: 'paragraph' })
+      const inline = parseInlineMarkdown(line);
+      content.push(
+        inline.length > 0
+          ? { type: "paragraph", content: inline }
+          : { type: "paragraph" },
+      );
+    } else if (
+      content.length > 0 &&
+      content[content.length - 1].type !== "paragraph"
+    ) {
+      content.push({ type: "paragraph" });
     }
-    i++
+    i++;
   }
-  
-  return { type: 'doc', content }
+
+  return { type: "doc", content };
 }
 
 function parseInlineMarkdown(text: string): JSONContent[] {
-  const result: JSONContent[] = []
-  
-  // 简单的正则解析内联标记
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g
-  let lastIndex = 0
-  let match
-  
-  while ((match = regex.exec(text)) !== null) {
-    // 添加匹配前的普通文本
-    if (match.index > lastIndex) {
-      result.push({ type: 'text', text: text.slice(lastIndex, match.index) })
-    }
-    
-    if (match[2]) {
-      // 粗体 **text**
-      result.push({ type: 'text', text: match[2], marks: [{ type: 'bold' }] })
-    } else if (match[3]) {
-      // 斜体 *text*
-      result.push({ type: 'text', text: match[3], marks: [{ type: 'italic' }] })
-    } else if (match[4]) {
-      // 删除线 ~~text~~
-      result.push({ type: 'text', text: match[4], marks: [{ type: 'strike' }] })
-    } else if (match[5]) {
-      // 行内代码 `text`
-      result.push({ type: 'text', text: match[5], marks: [{ type: 'code' }] })
-    } else if (match[6] && match[7]) {
-      // 链接 [text](url)
-      result.push({ type: 'text', text: match[6], marks: [{ type: 'link', attrs: { href: match[7] } }] })
-    }
-    
-    lastIndex = match.index + match[0].length
-  }
-  
-  // 添加剩余的普通文本
-  if (lastIndex < text.length) {
-    result.push({ type: 'text', text: text.slice(lastIndex) })
-  }
-  
-  return result.length > 0 ? result : [{ type: 'text', text }]
-}
+  const result: JSONContent[] = [];
+  if (!text) return result;
 
+  const regex =
+    /(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result.push({ type: "text", text: text.slice(lastIndex, match.index) });
+    }
+
+    if (match[2]) {
+      result.push({ type: "text", text: match[2], marks: [{ type: "bold" }] });
+    } else if (match[3]) {
+      result.push({
+        type: "text",
+        text: match[3],
+        marks: [{ type: "italic" }],
+      });
+    } else if (match[4]) {
+      result.push({
+        type: "text",
+        text: match[4],
+        marks: [{ type: "strike" }],
+      });
+    } else if (match[5]) {
+      result.push({ type: "text", text: match[5], marks: [{ type: "code" }] });
+    } else if (match[6] && match[7]) {
+      result.push({
+        type: "text",
+        text: match[6],
+        marks: [{ type: "link", attrs: { href: match[7] } }],
+      });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    result.push({ type: "text", text: text.slice(lastIndex) });
+  }
+
+  return result.length > 0 ? result : [{ type: "text", text }];
+}

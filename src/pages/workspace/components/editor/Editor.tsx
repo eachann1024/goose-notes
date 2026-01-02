@@ -122,30 +122,51 @@ export function Editor({ editable = true }: EditorProps) {
   });
 
   useEffect(() => {
-    if (activePageId !== prevPageIdRef.current) {
-      debouncedUpdateRef.current?.flush();
-      pageIdForUpdateRef.current = null;
+    if (!editor || !page || !activePageId) return;
+
+    const isSamePage = activePageId === prevPageIdRef.current;
+    const isPageLoaded = pageIdForUpdateRef.current === activePageId;
+    if (isSamePage && isPageLoaded) return;
+
+    debouncedUpdateRef.current?.flush();
+    pageIdForUpdateRef.current = null;
+
+    let cancelled = false;
+    const applyContent = () => {
+      if (cancelled) return;
+      editor.commands.blur();
+      editor.commands.setContent(page.content, { emitUpdate: false });
+
+      pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
 
-      if (editor && page && activePageId) {
-        editor.commands.blur();
-        editor.commands.setContent(page.content, { emitUpdate: false });
-
-        pageIdForUpdateRef.current = activePageId;
-
-        if (
-          page.content?.content?.[0]?.type === "paragraph" &&
-          !page.content.content[0].content
-        ) {
-          editor.commands.focus("end");
-        } else {
-          const firstPos = editor.state.doc.content.size > 0 ? 1 : 0;
-          if (firstPos > 0) {
-            editor.commands.setTextSelection(firstPos);
+      if (
+        page.content?.content?.[0]?.type === "paragraph" &&
+        !page.content.content[0].content
+      ) {
+        editor.commands.focus("end");
+      } else {
+        const firstPos = editor.state.doc.content.size > 0 ? 1 : 0;
+        if (firstPos > 0) {
+          try {
+            const resolved = editor.state.doc.resolve(firstPos);
+            const parent = resolved.parent;
+            if (parent.isTextblock && parent.inlineContent) {
+              editor.commands.setTextSelection(firstPos);
+            } else {
+              editor.commands.focus("start");
+            }
+          } catch {
+            editor.commands.focus("start");
           }
         }
       }
-    }
+    };
+
+    setTimeout(applyContent, 0);
+    return () => {
+      cancelled = true;
+    };
   }, [activePageId, page, editor]);
 
   useEffect(() => {

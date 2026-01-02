@@ -5,6 +5,7 @@ interface NotebookEditDialogProps {
   open: boolean;
   notebookId: string;
   name: string;
+  confirmName: string;
   icon: string;
   isDefault: boolean;
   onOpenChange: (open: boolean) => void;
@@ -18,6 +19,7 @@ export function NotebookEditDialog({
   open,
   notebookId,
   name,
+  confirmName,
   icon,
   isDefault,
   onOpenChange,
@@ -27,6 +29,7 @@ export function NotebookEditDialog({
   onDelete,
 }: NotebookEditDialogProps) {
   const editDialogContentRef = useRef<HTMLDivElement>(null);
+  const descriptionId = useId();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
@@ -37,13 +40,20 @@ export function NotebookEditDialog({
     }
   }, [open]);
 
-  const isDeleteEnabled = deleteConfirmInput === name;
+  const isDeleteEnabled = deleteConfirmInput === confirmName;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={editDialogContentRef} className="sm:max-w-[400px]">
+      <DialogContent
+        ref={editDialogContentRef}
+        aria-describedby={descriptionId}
+        className="sm:max-w-[400px]"
+      >
         <DialogHeader>
           <DialogTitle>{showDeleteConfirm ? "永久删除记事本？" : "编辑记事本"}</DialogTitle>
+          <DialogDescription id={descriptionId} className="sr-only">
+            编辑记事本名称与图标，或执行删除操作
+          </DialogDescription>
           {showDeleteConfirm && (
             <DialogDescription className="text-destructive pt-2">
               此操作无法撤销。这将永久删除该记事本及其所有内容。
@@ -55,13 +65,13 @@ export function NotebookEditDialog({
           <div className="py-6">
             <div className="grid gap-2">
               <Label htmlFor="confirm-delete" className="text-muted-foreground">
-                请输入 <span className="font-bold text-foreground select-all">{name}</span> 以确认删除
+                请输入 <span className="font-bold text-foreground select-all">{confirmName}</span> 以确认删除
               </Label>
               <Input
                 id="confirm-delete"
                 value={deleteConfirmInput}
                 onChange={(e) => setDeleteConfirmInput(e.target.value)}
-                placeholder={name}
+                placeholder={confirmName}
                 className="w-full h-11"
                 autoFocus
               />

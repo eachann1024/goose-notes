@@ -12,13 +12,18 @@ function getAlignFromStyle(
   style: string | null | undefined,
 ): "left" | "center" | "right" {
   if (!style) return "left";
-  if (style.includes("margin: 0 auto;") || style.includes("margin: 0px auto"))
-    return "center";
   if (
     style.includes("margin: 0 0 0 auto") ||
     style.includes("margin: 0px 0px 0px auto")
   )
     return "right";
+  if (
+    style.includes("margin: 0 auto 0 0") ||
+    style.includes("margin: 0px auto 0px 0px")
+  )
+    return "left";
+  if (style.includes("margin: 0 auto;") || style.includes("margin: 0px auto"))
+    return "center";
   return "left";
 }
 
@@ -49,19 +54,14 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   });
 
   const handleAlign = (align: "left" | "center" | "right") => {
-    const { selection } = editor.state;
-    const nodeSelection = selection as any;
-    if (nodeSelection.node && nodeSelection.node.type.name === "imageResize") {
-      const newStyle = setAlignStyle(
-        nodeSelection.node.attrs.containerStyle,
-        align,
-      );
-      editor
-        .chain()
-        .focus()
-        .updateAttributes("imageResize", { containerStyle: newStyle })
-        .run();
-    }
+    if (!editor.isActive("imageResize")) return;
+    const attrs = editor.getAttributes("imageResize");
+    const newStyle = setAlignStyle(attrs?.containerStyle, align);
+    editor
+      .chain()
+      .focus()
+      .updateAttributes("imageResize", { containerStyle: newStyle })
+      .run();
   };
 
   return (
@@ -81,7 +81,10 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "left"}
               onPressedChange={() => handleAlign("left")}
               aria-label="左对齐"
-              className="text-foreground"
+              className={cn(
+                "text-foreground",
+                currentAlign === "left" && "bg-primary/20 text-primary",
+              )}
             >
               <LucideIcons.AlignLeft className="h-4 w-4" />
             </Toggle>
@@ -98,7 +101,10 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "center"}
               onPressedChange={() => handleAlign("center")}
               aria-label="居中"
-              className="text-foreground"
+              className={cn(
+                "text-foreground",
+                currentAlign === "center" && "bg-primary/20 text-primary",
+              )}
             >
               <LucideIcons.AlignCenter className="h-4 w-4" />
             </Toggle>
@@ -115,7 +121,10 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "right"}
               onPressedChange={() => handleAlign("right")}
               aria-label="右对齐"
-              className="text-foreground"
+              className={cn(
+                "text-foreground",
+                currentAlign === "right" && "bg-primary/20 text-primary",
+              )}
             >
               <LucideIcons.AlignRight className="h-4 w-4" />
             </Toggle>

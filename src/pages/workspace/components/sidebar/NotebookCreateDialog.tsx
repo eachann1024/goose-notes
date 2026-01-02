@@ -25,12 +25,20 @@ export function NotebookCreateDialog({
   onClearError,
 }: NotebookCreateDialogProps) {
   const createDialogContentRef = useRef<HTMLDivElement>(null);
+  const descriptionId = useId();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={createDialogContentRef} className="sm:max-w-[400px]">
+      <DialogContent
+        ref={createDialogContentRef}
+        aria-describedby={descriptionId}
+        className="sm:max-w-[400px]"
+      >
         <DialogHeader>
           <DialogTitle>新建记事本</DialogTitle>
+          <DialogDescription id={descriptionId} className="sr-only">
+            创建新的记事本并设置名称与图标
+          </DialogDescription>
         </DialogHeader>
 
         <div className="py-6 space-y-4">

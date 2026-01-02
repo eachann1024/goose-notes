@@ -1,6 +1,7 @@
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { renderNotebookIcon } from "./notebookUtils";
+import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 export function NotebookSwitcher() {
   const {
@@ -18,6 +19,7 @@ export function NotebookSwitcher() {
     open: false,
     id: "",
     name: "",
+    confirmName: "",
     icon: "",
   });
   const [createDialog, setCreateDialog] = useState({
@@ -64,6 +66,7 @@ export function NotebookSwitcher() {
       open: true,
       id,
       name: notebook.name,
+      confirmName: notebook.name,
       icon: notebook.icon || "📓",
     });
   };
@@ -150,8 +153,9 @@ export function NotebookSwitcher() {
         open={editDialog.open}
         notebookId={editDialog.id}
         name={editDialog.name}
+        confirmName={editDialog.confirmName}
         icon={editDialog.icon}
-        isDefault={editDialog.id === "default-notebook"}
+        isDefault={editDialog.id === DEFAULT_NOTEBOOK}
         onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
         onNameChange={(name) => setEditDialog({ ...editDialog, name })}
         onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}
@@ -171,8 +175,7 @@ export function NotebookSwitcher() {
         onIconChange={(icon) => setCreateDialog({ ...createDialog, icon })}
         onCreate={handleConfirmCreate}
         onClearError={() =>
-          createDialog.error &&
-          setCreateDialog({ ...createDialog, error: "" })
+          createDialog.error && setCreateDialog({ ...createDialog, error: "" })
         }
       />
     </>

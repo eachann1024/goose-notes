@@ -91,9 +91,9 @@ export function ImageResizer(props: NodeViewProps) {
     )}>
       <div
         ref={resizeRef}
-        className="relative inline-block max-w-full align-top"
+        className="relative block max-w-full"
         style={{
-          width: width === "auto" ? undefined : `${width}px`,
+          width: width === "auto" ? "fit-content" : `${width}px`,
           maxWidth: "100%",
           margin,
         }}

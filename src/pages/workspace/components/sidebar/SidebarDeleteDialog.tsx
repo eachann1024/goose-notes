@@ -11,12 +11,16 @@ export function SidebarDeleteDialog({
   onOpenChange,
   onConfirm,
 }: SidebarDeleteDialogProps) {
+  const descriptionId = useId();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent
+        aria-describedby={descriptionId}
+        className="sm:max-w-[400px]"
+      >
         <DialogHeader>
           <DialogTitle>确认删除</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id={descriptionId}>
             确定要将「{title || "无标题"}」移至垃圾箱吗？
           </DialogDescription>
         </DialogHeader>
