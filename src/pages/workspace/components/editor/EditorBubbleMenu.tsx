@@ -13,10 +13,15 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         editor={editor}
         className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm"
         shouldShow={({ editor, state }) => {
+          if (!editor.isEditable) return false;
           const { selection } = state;
 
           // 图片、表格、NodeSelection 时不显示
-          if (editor.isActive("image") || editor.isActive("table") || "node" in selection) {
+          if (
+            editor.isActive("image") ||
+            editor.isActive("table") ||
+            "node" in selection
+          ) {
             return false;
           }
 

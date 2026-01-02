@@ -2,11 +2,22 @@ import type { Editor } from "@tiptap/react";
 
 interface EditorContextMenuProps {
   editor: Editor;
-  searchProviders: { id: string; name: string; urlTemplate: string; isEnabled: boolean }[];
+  searchProviders: {
+    id: string;
+    name: string;
+    urlTemplate: string;
+    isEnabled: boolean;
+  }[];
   children: React.ReactNode;
 }
 
-export function EditorContextMenu({ editor, searchProviders, children }: EditorContextMenuProps) {
+export function EditorContextMenu({
+  editor,
+  searchProviders,
+  children,
+}: EditorContextMenuProps) {
+  const isEditable = editor?.isEditable;
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>{children}</ContextMenuTrigger>
@@ -36,13 +47,15 @@ export function EditorContextMenu({ editor, searchProviders, children }: EditorC
                     window.open(url, "_blank");
                   }}
                 >
-                  <LucideIcons.Search className="mr-2 h-4 w-4" />用 {provider.name} 搜索
+                  <LucideIcons.Search className="mr-2 h-4 w-4" />用{" "}
+                  {provider.name} 搜索
                 </ContextMenuItem>
               ))}
             <ContextMenuSeparator />
           </>
         )}
         <ContextMenuItem
+          disabled={!isEditable}
           onSelect={() => {
             const { from, to } = editor.state.selection;
             const text = editor.state.doc.textBetween(from, to, " ");
@@ -70,6 +83,7 @@ export function EditorContextMenu({ editor, searchProviders, children }: EditorC
           </span>
         </ContextMenuItem>
         <ContextMenuItem
+          disabled={!isEditable}
           onSelect={async () => {
             try {
               const text = await navigator.clipboard.readText();

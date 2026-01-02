@@ -143,7 +143,17 @@ function FavoriteNode({
               </div>
             </div>
 
-            <span className="truncate text-sm flex-1">{page.title || "无标题"}</span>
+            <span
+              className={cn(
+                "truncate text-sm flex-1",
+                page.trashedAt && "opacity-50 italic",
+              )}
+            >
+              {page.title || "无标题"}
+            </span>
+            {page.trashedAt && (
+              <LucideIcons.Trash2 className="h-3 w-3 text-muted-foreground/50 ml-1" />
+            )}
           </div>
 
           <div
@@ -195,10 +205,13 @@ function FavoriteNode({
 }
 
 export function FavoritesSection({ itemHeight }: FavoritesSectionProps) {
-  const { pages, activePageId, setActivePage, createPage, getFavorites } = usePages();
+  const { pages, activePageId, setActivePage, createPage, getFavorites } =
+    usePages();
   const { activeNotebookId } = useNotebooks();
   const [favoritesCollapsed, setFavoritesCollapsed] = useState(false);
-  const [expandedFavorites, setExpandedFavorites] = useState<Set<string>>(new Set());
+  const [expandedFavorites, setExpandedFavorites] = useState<Set<string>>(
+    new Set(),
+  );
 
   const favorites = useMemo(
     () => getFavorites(activeNotebookId || undefined),

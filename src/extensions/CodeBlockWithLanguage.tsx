@@ -67,6 +67,7 @@ function CodeBlockWithLanguageView({
         onLanguageChange={handleLanguageChange}
         getCodeContent={getCodeContent}
         onFormat={handleFormat}
+        editable={editor.isEditable}
       />
       {showLineNumbers && (
         <div className="line-numbers" contentEditable={false}>

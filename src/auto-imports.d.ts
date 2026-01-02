@@ -119,6 +119,7 @@ declare global {
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
+  const exportNotebooks: typeof import('./lib/export').exportNotebooks
   const exportToHTML: typeof import('./lib/export').exportToHTML
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
@@ -130,6 +131,7 @@ declare global {
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
+  const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
@@ -171,7 +173,7 @@ declare global {
   export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
-  export type { ImportResult } from './lib/export'
+  export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')
   // @ts-ignore
   export type { UToolsAdapter, UserInfo, SublistItem } from './lib/utools'

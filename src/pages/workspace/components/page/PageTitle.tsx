@@ -56,7 +56,12 @@ export function PageTitle({
       )}
     >
       <div className="group relative mb-4">
-        <IconSelector value={page.icon} onChange={(icon) => onUpdate({ icon })}>
+        <IconSelector
+          value={page.icon}
+          onChange={(icon) =>
+            !page.trashedAt && !page.isLocked && onUpdate({ icon })
+          }
+        >
           <button
             className={cn(
               "flex items-center justify-center transition-opacity",

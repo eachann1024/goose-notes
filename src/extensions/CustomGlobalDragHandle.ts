@@ -1,4 +1,3 @@
-
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, NodeSelection } from "@tiptap/pm/state";
 import { Slice } from "@tiptap/pm/model";
@@ -153,20 +152,20 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     const isTableWrapper = node.matches(".tableWrapper");
     const isTable = node.matches("table");
     const isCodeBlock = node.matches("pre");
-    
+
     let targetNode = node;
     if (isTableWrapper) {
-        const table = node.querySelector('table');
-        if (table) targetNode = table;
+      const table = node.querySelector("table");
+      if (table) targetNode = table;
     }
 
     // 表格和代码块不添加 paddingTop，直接使用元素顶部边界
     // 避免鼠标在内容区和边框/间隙切换时手柄抖动
     if (isTableWrapper || isTable) {
-        const tableRect = absoluteRect(targetNode);
-        rect.top = tableRect.top;
+      const tableRect = absoluteRect(targetNode);
+      rect.top = tableRect.top;
     } else if (!isCodeBlock) {
-        rect.top += paddingTop;
+      rect.top += paddingTop;
     }
 
     if (node.matches("ul:not([data-type=taskList]) li, ol li")) {
@@ -182,18 +181,21 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   }
 
   function updateHandleBySelection(view: any) {
-    if (!view.editable || !dragHandleElement) return;
+    if (!view.editable || !dragHandleElement) {
+      hideDragHandle();
+      return;
+    }
     const { selection } = view.state;
     if (!selection) return;
 
     if (selection instanceof NodeSelection) {
-        const domNode = view.nodeDOM(selection.from);
-        if (domNode instanceof Element) {
-             updateHandlePosition(domNode);
-             return;
-        }
+      const domNode = view.nodeDOM(selection.from);
+      if (domNode instanceof Element) {
+        updateHandlePosition(domNode);
+        return;
+      }
     }
-    
+
     const pos = selection.$from.pos;
     const resolved = view.state.doc.resolve(pos);
     const nodePos = resolved.depth > 0 ? resolved.before(1) : pos;
@@ -254,9 +256,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
     let pos = nodePosAtDOM(node, view, options);
     if (pos == null) return;
-    
+
     let targetPos = calcNodePos(pos, view);
-    
+
     const selection = NodeSelection.create(view.state.doc, targetPos);
     view.dispatch(view.state.tr.setSelection(selection));
 
@@ -267,8 +269,13 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     event.dataTransfer.setData("text/html", dom.innerHTML);
     event.dataTransfer.setData("text/plain", text);
     event.dataTransfer.effectAllowed = "copyMove";
-    
-    view.dragging = { slice, move: true, from: selection.from, to: selection.to };
+
+    view.dragging = {
+      slice,
+      move: true,
+      from: selection.from,
+      to: selection.to,
+    };
   }
 
   function handleDrop(view: any, event: DragEvent) {
@@ -285,24 +292,24 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     if (insertPos == null) return false;
 
     if (dragging.move) {
-        // Use stored coordinates specifically to ensure we delete the correct range
-        const from = dragging.from ?? view.state.selection.from;
-        const to = dragging.to ?? view.state.selection.to;
+      // Use stored coordinates specifically to ensure we delete the correct range
+      const from = dragging.from ?? view.state.selection.from;
+      const to = dragging.to ?? view.state.selection.to;
 
-        // Critical: prevents dropping inside the dragged node
-        if (insertPos >= from && insertPos <= to) {
-            return false;
-        }
+      // Critical: prevents dropping inside the dragged node
+      if (insertPos >= from && insertPos <= to) {
+        return false;
+      }
 
-        const tr = view.state.tr;
-        tr.delete(from, to);
-        const mappedPos = tr.mapping.map(insertPos);
-        tr.insert(mappedPos, dragging.slice.content);
-        view.dispatch(tr.scrollIntoView());
-        event.preventDefault();
-        return true;
+      const tr = view.state.tr;
+      tr.delete(from, to);
+      const mappedPos = tr.mapping.map(insertPos);
+      tr.insert(mappedPos, dragging.slice.content);
+      view.dispatch(tr.scrollIntoView());
+      event.preventDefault();
+      return true;
     }
-    
+
     return false;
   }
 
@@ -345,16 +352,22 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
       return {
         update: () => {
-           requestAnimationFrame(() => updateHandleBySelection(view)); 
+          requestAnimationFrame(() => updateHandleBySelection(view));
         },
         destroy: () => {
           if (!handleBySelector) {
             dragHandleElement?.remove();
           }
           dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
-          dragHandleElement?.removeEventListener("dragstart", onDragHandleDragStart);
+          dragHandleElement?.removeEventListener(
+            "dragstart",
+            onDragHandleDragStart,
+          );
           document.removeEventListener("drop", onDocumentDrop);
-          view?.dom?.parentElement?.removeEventListener("mouseout", hideHandleOnEditorOut as any);
+          view?.dom?.parentElement?.removeEventListener(
+            "mouseout",
+            hideHandleOnEditorOut as any,
+          );
           dragHandleElement = null;
         },
       };
@@ -362,12 +375,15 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     props: {
       handleDOMEvents: {
         mousemove: (view, event) => {
-          if (!view.editable) return;
+          if (!view.editable) {
+            hideDragHandle();
+            return;
+          }
           if ((event.target as HTMLElement).closest(".table-add-control")) {
             hideDragHandle();
             return;
           }
-          
+
           const node = nodeDOMAtCoords(
             {
               x: event.clientX + 50 + options.dragHandleWidth,
@@ -375,23 +391,25 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             },
             options,
           );
-          
-          if (!node || !(node instanceof Element)) {
-               if (!updateHandleBySelectionFallback(view)) {
-                  hideDragHandle();
-               }
-               return;
-          }
-          
-           const excludedTagList = options.excludedTags.concat(["ol", "ul"]).join(", ");
-           if (node.matches(excludedTagList) || node.closest('.not-draggable')) {
-               if (!updateHandleBySelectionFallback(view)) {
-                  hideDragHandle();
-               }
-               return;
-           }
 
-           updateHandlePosition(node);
+          if (!node || !(node instanceof Element)) {
+            if (!updateHandleBySelectionFallback(view)) {
+              hideDragHandle();
+            }
+            return;
+          }
+
+          const excludedTagList = options.excludedTags
+            .concat(["ol", "ul"])
+            .join(", ");
+          if (node.matches(excludedTagList) || node.closest(".not-draggable")) {
+            if (!updateHandleBySelectionFallback(view)) {
+              hideDragHandle();
+            }
+            return;
+          }
+
+          updateHandlePosition(node);
         },
         keydown: () => {
           hideDragHandle();
@@ -403,8 +421,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           view.dom.classList.add("dragging");
         },
         dragover: (_view, event) => {
-             event.preventDefault(); // Allow drop
-             return false;
+          event.preventDefault(); // Allow drop
+          return false;
         },
         drop: (view, event) => {
           view.dom.classList.remove("dragging");

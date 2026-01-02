@@ -41,13 +41,8 @@ const isEmptyContent = (content: any) => {
 };
 
 export function Sidebar({ className }: SidebarProps) {
-  const {
-    createPage,
-    deletePage,
-    pages,
-    activePageId,
-    setActivePage,
-  } = usePages();
+  const { createPage, deletePage, pages, activePageId, setActivePage } =
+    usePages();
   const { activeNotebookId } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
 
@@ -148,12 +143,7 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   const handleSearch = () => {
-    const event = new KeyboardEvent("keydown", {
-      key: "k",
-      metaKey: true,
-      bubbles: true,
-    });
-    document.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent("goose-note:open-search"));
   };
 
   if (currentView === "trash") {
@@ -224,7 +214,10 @@ export function Sidebar({ className }: SidebarProps) {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <SidebarHeader onCreatePage={handleCreatePage} onSearch={handleSearch} />
+        <SidebarHeader
+          onCreatePage={handleCreatePage}
+          onSearch={handleSearch}
+        />
 
         <FavoritesSection itemHeight={itemHeight} />
 

@@ -133,10 +133,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         aria-describedby={descriptionId}
         className="sm:max-w-[700px] h-[500px] flex flex-col p-0 gap-0 overflow-hidden"
       >
-        <DialogTitle className="sr-only">设置</DialogTitle>
-        <DialogDescription id={descriptionId} className="sr-only">
-          配置应用的设置选项
-        </DialogDescription>
+        <DialogHeader className="sr-only">
+          <DialogTitle>设置</DialogTitle>
+          <DialogDescription id={descriptionId}>
+            配置应用的设置选项
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex bg-muted/30 h-full">
           <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 

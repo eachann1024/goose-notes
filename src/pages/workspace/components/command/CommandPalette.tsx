@@ -3,6 +3,7 @@ import type { Page } from "@/types";
 import { useCommandSearch } from "./useCommandSearch";
 
 export function CommandPalette() {
+  const descriptionId = useId();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { pages, setActivePage } = usePages();
@@ -45,7 +46,12 @@ export function CommandPalette() {
     };
 
     document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    const handleOpenSearch = () => setOpen(true);
+    window.addEventListener("goose-note:open-search", handleOpenSearch);
+    return () => {
+      document.removeEventListener("keydown", down);
+      window.removeEventListener("goose-note:open-search", handleOpenSearch);
+    };
   }, [open, searchAllNotebooks, setSearchAllNotebooks]);
 
   const runCommand = async (command: () => void) => {
@@ -65,7 +71,12 @@ export function CommandPalette() {
       label="Global Search"
       filter={() => 1}
       className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] bg-popover rounded-xl shadow-2xl border p-0 overflow-hidden z-50 text-popover-foreground data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-xl bg-popover/90"
+      aria-describedby={descriptionId}
     >
+      <DialogTitle className="sr-only">搜索</DialogTitle>
+      <DialogDescription id={descriptionId} className="sr-only">
+        搜索和快速访问页面
+      </DialogDescription>
       <div className="flex items-center border-b px-4" cmdk-input-wrapper="">
         <LucideIcons.Search className="mr-2 h-5 w-5 shrink-0 opacity-50" />
         <Command.Input
@@ -109,8 +120,8 @@ export function CommandPalette() {
               const breadcrumb = getPageBreadcrumb(page);
               return (
                 <Command.Item
-                  key={page.id}
-                  value={page.title}
+                  key={`recent-${page.id}`}
+                  value={`recent-${page.id}-${page.title}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
@@ -153,13 +164,15 @@ export function CommandPalette() {
           )}
 
         {searchResults.all.length > 0 && (
-          <Command.Group heading={searchResults.hasQuery ? "搜索结果" : "所有页面"}>
+          <Command.Group
+            heading={searchResults.hasQuery ? "搜索结果" : "所有页面"}
+          >
             {searchResults.all.map((page: Page) => {
               const breadcrumb = getPageBreadcrumb(page);
               return (
                 <Command.Item
-                  key={page.id}
-                  value={page.title}
+                  key={`all-${page.id}`}
+                  value={`all-${page.id}-${page.title}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >

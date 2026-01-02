@@ -5,6 +5,7 @@ import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { ImageBubbleMenu } from "./ImageBubbleMenu";
 import { TableHoverControls } from "./TableHoverControls";
+import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
 
 interface EditorProps {
@@ -274,6 +275,7 @@ export function Editor({ editable = true }: EditorProps) {
     <div className={cn(fontFamilyClass, fontSizeClass, widthClass)}>
       <EditorBubbleMenu editor={editor} />
       <TableHoverControls editor={editor} />
+      <TableRowColHandles editor={editor} />
       <ImageBubbleMenu editor={editor} />
       <EditorContextMenu editor={editor} searchProviders={searchProviders}>
         <EditorContent editor={editor} />

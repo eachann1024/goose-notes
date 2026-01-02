@@ -10,6 +10,7 @@ interface CodeBlockToolbarProps {
   onLanguageChange: (language: string) => void;
   getCodeContent: () => string;
   onFormat?: (formatted: string) => void;
+  editable?: boolean;
 }
 
 export function CodeBlockToolbar({
@@ -17,6 +18,7 @@ export function CodeBlockToolbar({
   onLanguageChange,
   getCodeContent,
   onFormat,
+  editable = true,
 }: CodeBlockToolbarProps) {
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState("");
@@ -70,61 +72,75 @@ export function CodeBlockToolbar({
   return (
     <TooltipProvider>
       <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-6 px-2 text-xs font-mono rounded-md",
-                "bg-background/80 hover:bg-background/90",
-                "border border-border/50",
-                "backdrop-blur-sm",
-              )}
-            >
-              {displayLanguage}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-48 max-h-64 overflow-y-auto"
-          >
-            <div className="p-2 border-b">
-              <Input
-                ref={inputRef}
-                placeholder="搜索语言..."
-                value={search}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setSearch(e.target.value)
-                }
-                className="h-7 text-xs"
-              />
-            </div>
-
-            {!search && <DropdownMenuLabel>常用语言</DropdownMenuLabel>}
-
-            {filteredLanguages.map((lang) => (
-              <DropdownMenuItem
-                key={lang}
-                onSelect={() => {
-                  onLanguageChange(lang);
-                  setIsOpen(false);
-                }}
+        {editable ? (
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
                 className={cn(
-                  "text-xs",
-                  lang.toLowerCase() === language.toLowerCase() && "bg-accent",
+                  "h-6 px-2 text-xs font-mono rounded-md",
+                  "bg-background/80 hover:bg-background/90",
+                  "border border-border/50",
+                  "backdrop-blur-sm",
                 )}
               >
-                {LANGUAGE_DISPLAY_NAMES[lang] || lang}
-                {lang.toLowerCase() === language.toLowerCase() && (
-                  <span className="ml-auto">✓</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {displayLanguage}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 max-h-64 overflow-y-auto"
+            >
+              <div className="p-2 border-b">
+                <Input
+                  ref={inputRef}
+                  placeholder="搜索语言..."
+                  value={search}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSearch(e.target.value)
+                  }
+                  className="h-7 text-xs"
+                />
+              </div>
 
-        {onFormat && canFormat && (
+              {!search && <DropdownMenuLabel>常用语言</DropdownMenuLabel>}
+
+              {filteredLanguages.map((lang) => (
+                <DropdownMenuItem
+                  key={lang}
+                  onSelect={() => {
+                    onLanguageChange(lang);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "text-xs",
+                    lang.toLowerCase() === language.toLowerCase() &&
+                      "bg-accent",
+                  )}
+                >
+                  {LANGUAGE_DISPLAY_NAMES[lang] || lang}
+                  {lang.toLowerCase() === language.toLowerCase() && (
+                    <span className="ml-auto">✓</span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div
+            className={cn(
+              "h-6 px-2 flex items-center text-[10px] font-mono rounded-md",
+              "bg-background/80 text-muted-foreground/70",
+              "border border-border/50",
+              "backdrop-blur-sm",
+            )}
+          >
+            {displayLanguage}
+          </div>
+        )}
+
+        {editable && onFormat && canFormat && (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button

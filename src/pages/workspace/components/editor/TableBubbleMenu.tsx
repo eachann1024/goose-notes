@@ -15,9 +15,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         editor={editor}
         pluginKey="tableBubbleMenu"
         shouldShow={({ editor }: { editor: any }) => {
-          return editor.isActive("table");
+          return editor.isEditable && editor.isActive("table");
         }}
-        className="flex flex-row items-start gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md !z-50"
+        className="flex flex-row items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md !z-50"
         // @ts-ignore
         tippyOptions={{
           zIndex: 9999,
@@ -26,7 +26,93 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         }}
         {...props}
       >
+        {/* 行操作 */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+            >
+              <LucideIcons.ArrowUpToLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>在上方插入行</p>
+          </TooltipContent>
+        </Tooltip>
 
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+            >
+              <LucideIcons.ArrowDownToLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>在下方插入行</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              className="p-1.5 text-destructive/80 hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+            >
+              <LucideIcons.RemoveFormatting className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>删除行</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-4 mx-1" />
+
+        {/* 列操作 */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+            >
+              <LucideIcons.ArrowLeftToLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>在左侧插入列</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+            >
+              <LucideIcons.ArrowRightToLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>在右侧插入列</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              className="p-1.5 text-destructive/80 hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+            >
+              <LucideIcons.Columns2 className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>删除列</p>
+          </TooltipContent>
+        </Tooltip>
 
         <Separator orientation="vertical" className="h-4 mx-1" />
 

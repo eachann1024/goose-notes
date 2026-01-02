@@ -3,7 +3,10 @@ interface SidebarFooterProps {
   onOpenSettings: () => void;
 }
 
-export function SidebarFooter({ onOpenTrash, onOpenSettings }: SidebarFooterProps) {
+export function SidebarFooter({
+  onOpenTrash,
+  onOpenSettings,
+}: SidebarFooterProps) {
   return (
     <div className="p-2 mt-auto border-t bg-background/50 backdrop-blur-sm space-y-1">
       <Button
