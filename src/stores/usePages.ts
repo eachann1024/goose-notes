@@ -205,12 +205,9 @@ export const usePages = create<PagesState>()(
             return { activePageId: id }
           }
 
+          // 切换页面不应更新 updatedAt，只在真正编辑内容时更新
           return {
             activePageId: id,
-            pages: {
-              ...state.pages,
-              [id]: { ...page, updatedAt: Date.now() },
-            },
           }
         })
 

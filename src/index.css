@@ -71,6 +71,11 @@
     -webkit-user-select: none;
   }
 
+  /* 编辑器字体大小 CSS 变量（通过 JS 动态设置）*/
+  :root {
+    --editor-font-size: 16px;
+  }
+
   /* 移除全局 focus 高亮边框 */
   *:focus {
     outline: none !important;
@@ -105,6 +110,8 @@
   padding-bottom: 100px;
   padding-left: 2rem;
   padding-right: 2rem;
+  font-size: var(--editor-font-size);
+  line-height: 1.6;
 }
 
 /* Headings */

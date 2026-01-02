@@ -133,10 +133,6 @@ export function PageMenu() {
              </DropdownMenuSub>
          </DropdownMenuGroup>
 
-         <DropdownMenuSeparator />
-         <div className="px-2 py-1 text-[10px] text-muted-foreground/60 text-center">
-             最后编辑于 {new Date(page.updatedAt).toLocaleDateString()}
-         </div>
 
       </DropdownMenuContent>
     </DropdownMenu>

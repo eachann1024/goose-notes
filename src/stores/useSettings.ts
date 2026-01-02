@@ -28,6 +28,14 @@ export interface CustomFonts {
   mono: FontConfig
 }
 
+// 界面字体大小选项
+export type UIFontSize = 'small' | 'normal' | 'large'
+
+// 编辑器字体大小边界
+export const EDITOR_FONT_SIZE_MIN = 12
+export const EDITOR_FONT_SIZE_MAX = 24
+export const EDITOR_FONT_SIZE_DEFAULT = 16
+
 interface SettingsState {
   theme: Theme
   codeStyle: CodeStyle
@@ -35,6 +43,8 @@ interface SettingsState {
   utools: UToolsSettings
   searchAllNotebooks: boolean
   customFonts: CustomFonts
+  uiFontSize: UIFontSize
+  editorFontSize: number
   setTheme: (theme: Theme) => void
   setCodeStyle: (style: CodeStyle) => void
   toggleSearchProvider: (id: string) => void
@@ -43,6 +53,11 @@ interface SettingsState {
   setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
   setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
   resetCustomFont: (type: 'default' | 'serif' | 'mono') => void
+  setUIFontSize: (size: UIFontSize) => void
+  setEditorFontSize: (size: number) => void
+  increaseEditorFontSize: () => void
+  decreaseEditorFontSize: () => void
+  resetEditorFontSize: () => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -68,6 +83,8 @@ export const useSettings = create<SettingsState>()(
         serif: { label: null, font: null },
         mono: { label: null, font: null },
       },
+      uiFontSize: 'normal',
+      editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
       setTheme: (theme) => {
         set({ theme })
         applyTheme(theme)
@@ -109,6 +126,17 @@ export const useSettings = create<SettingsState>()(
             [type]: { label: null, font: null },
           },
         })),
+      setUIFontSize: (uiFontSize) => set({ uiFontSize }),
+      setEditorFontSize: (size) => set({ 
+        editorFontSize: Math.max(EDITOR_FONT_SIZE_MIN, Math.min(EDITOR_FONT_SIZE_MAX, size)) 
+      }),
+      increaseEditorFontSize: () => set((state) => ({
+        editorFontSize: Math.min(EDITOR_FONT_SIZE_MAX, state.editorFontSize + 1)
+      })),
+      decreaseEditorFontSize: () => set((state) => ({
+        editorFontSize: Math.max(EDITOR_FONT_SIZE_MIN, state.editorFontSize - 1)
+      })),
+      resetEditorFontSize: () => set({ editorFontSize: EDITOR_FONT_SIZE_DEFAULT }),
     }),
     {
       name: 'goose-note-settings',

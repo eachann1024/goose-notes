@@ -13,6 +13,9 @@ declare global {
   const Code: typeof import('lucide-react').Code
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
+  const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_DEFAULT
+  const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
+  const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN
   const FileText: typeof import('lucide-react').FileText
   const Fragment: typeof import('react').Fragment
   const HighlightText: typeof import('./lib/highlight-text').HighlightText
@@ -86,7 +89,7 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ImportResult } from './lib/export'

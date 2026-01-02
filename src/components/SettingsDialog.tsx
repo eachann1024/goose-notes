@@ -2,6 +2,8 @@ import { useState } from "react"
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -21,7 +23,7 @@ interface SettingsDialogProps {
 type SettingsTab = 'general' | 'appearance'
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const { theme, setTheme, codeStyle, setCodeStyle, searchProviders, toggleSearchProvider, customFonts, setCustomLabel, setCustomFont, resetCustomFont } = useSettings()
+  const { theme, setTheme, codeStyle, setCodeStyle, searchProviders, toggleSearchProvider, customFonts, setCustomLabel, setCustomFont, resetCustomFont, uiFontSize, setUIFontSize } = useSettings()
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
 
   const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
@@ -40,6 +42,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] h-[400px] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* 无障碍：隐藏的标题和描述 */}
+        <DialogTitle className="sr-only">设置</DialogTitle>
+        <DialogDescription className="sr-only">配置应用的设置选项</DialogDescription>
         <div className="flex bg-muted/30 h-full">
             {/* 左侧导航 */}
             <div className="w-48 border-r py-4 px-2 bg-muted/50">
@@ -138,6 +143,39 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                       onClick={() => setTheme('system')}
                                   >
                                       <Laptop className="h-4 w-4" />
+                                  </Button>
+                              </div>
+                           </div>
+
+                          <div className="flex items-center justify-between">
+                              <div>
+                                <Label>界面字体大小</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">调整整体界面的文字大小</p>
+                              </div>
+                              <div className="flex items-center gap-2 border rounded-full p-1 bg-muted">
+                                  <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={`h-6 px-2 rounded-full text-xs ${uiFontSize === 'small' ? 'bg-background shadow-sm' : ''}`}
+                                      onClick={() => setUIFontSize('small')}
+                                  >
+                                      缩小
+                                  </Button>
+                                  <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={`h-6 px-2 rounded-full text-xs ${uiFontSize === 'normal' ? 'bg-background shadow-sm' : ''}`}
+                                      onClick={() => setUIFontSize('normal')}
+                                  >
+                                      标准
+                                  </Button>
+                                  <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={`h-6 px-2 rounded-full text-xs ${uiFontSize === 'large' ? 'bg-background shadow-sm' : ''}`}
+                                      onClick={() => setUIFontSize('large')}
+                                  >
+                                      放大
                                   </Button>
                               </div>
                            </div>
