@@ -1,0 +1,107 @@
+/* Table Styles (Notion-like) */
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1em 0;
+  border: 1px solid hsl(var(--border) / 0.5);
+  position: relative;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 100px;
+  border: 1px solid hsl(var(--border) / 0.5);
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  font-size: 14px;
+  background-color: hsl(var(--card) / 0.3);
+}
+
+.ProseMirror td:hover,
+.ProseMirror th:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.ProseMirror th {
+  font-weight: 600;
+  text-align: left;
+  background-color: hsl(var(--muted) / 0.5);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+/* Table background colors */
+.ProseMirror td[data-background="light"] {
+  background-color: hsl(var(--muted) / 0.3);
+}
+.ProseMirror td[data-background="medium"] {
+  background-color: hsl(var(--muted) / 0.5);
+}
+.ProseMirror td[data-background="dark"] {
+  background-color: hsl(var(--muted) / 0.7);
+}
+
+/* Table cell alignment */
+.ProseMirror td[data-align="center"],
+.ProseMirror th[data-align="center"] {
+  text-align: center;
+}
+.ProseMirror td[data-align="right"],
+.ProseMirror th[data-align="right"] {
+  text-align: right;
+}
+.ProseMirror td[data-align="left"],
+.ProseMirror th[data-align="left"] {
+  text-align: left;
+}
+
+/* Vertical alignment */
+.ProseMirror td[data-vertical-align="middle"] {
+  vertical-align: middle;
+}
+.ProseMirror td[data-vertical-align="bottom"] {
+  vertical-align: bottom;
+}
+
+/* Selected cells overlay */
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(35, 131, 226, 0.14);
+  pointer-events: none;
+  border: 2px solid rgba(35, 131, 226, 0.3);
+}
+
+/* Column dragging handle */
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: hsl(var(--primary) / 0.5);
+  pointer-events: none;
+  z-index: 20;
+  border-radius: 2px;
+}
+
+.ProseMirror .column-resize-handle:hover {
+  background-color: hsl(var(--primary) / 0.8);
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Add a bit of gap wrapper for tables if needed */
+.tableWrapper {
+  margin: 1.5em 0;
+  overflow-x: auto;
+}

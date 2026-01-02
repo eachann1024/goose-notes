@@ -7,12 +7,59 @@
 export {}
 declare global {
   const Activity: typeof import('react').Activity
+  const Button: typeof import('./components/ui/button').Button
+  const Card: typeof import('./components/ui/card').Card
+  const CardContent: typeof import('./components/ui/card').CardContent
+  const CardDescription: typeof import('./components/ui/card').CardDescription
+  const CardFooter: typeof import('./components/ui/card').CardFooter
+  const CardHeader: typeof import('./components/ui/card').CardHeader
+  const CardTitle: typeof import('./components/ui/card').CardTitle
   const Check: typeof import('lucide-react').Check
   const ChevronDown: typeof import('lucide-react').ChevronDown
   const ChevronRight: typeof import('lucide-react').ChevronRight
   const Code: typeof import('lucide-react').Code
+  const ContextMenu: typeof import('./components/ui/context-menu').ContextMenu
+  const ContextMenuCheckboxItem: typeof import('./components/ui/context-menu').ContextMenuCheckboxItem
+  const ContextMenuContent: typeof import('./components/ui/context-menu').ContextMenuContent
+  const ContextMenuGroup: typeof import('./components/ui/context-menu').ContextMenuGroup
+  const ContextMenuItem: typeof import('./components/ui/context-menu').ContextMenuItem
+  const ContextMenuLabel: typeof import('./components/ui/context-menu').ContextMenuLabel
+  const ContextMenuPortal: typeof import('./components/ui/context-menu').ContextMenuPortal
+  const ContextMenuRadioGroup: typeof import('./components/ui/context-menu').ContextMenuRadioGroup
+  const ContextMenuRadioItem: typeof import('./components/ui/context-menu').ContextMenuRadioItem
+  const ContextMenuSeparator: typeof import('./components/ui/context-menu').ContextMenuSeparator
+  const ContextMenuShortcut: typeof import('./components/ui/context-menu').ContextMenuShortcut
+  const ContextMenuSub: typeof import('./components/ui/context-menu').ContextMenuSub
+  const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
+  const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
+  const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
+  const Dialog: typeof import('./components/ui/dialog').Dialog
+  const DialogClose: typeof import('./components/ui/dialog').DialogClose
+  const DialogContent: typeof import('./components/ui/dialog').DialogContent
+  const DialogDescription: typeof import('./components/ui/dialog').DialogDescription
+  const DialogFooter: typeof import('./components/ui/dialog').DialogFooter
+  const DialogHeader: typeof import('./components/ui/dialog').DialogHeader
+  const DialogOverlay: typeof import('./components/ui/dialog').DialogOverlay
+  const DialogPortal: typeof import('./components/ui/dialog').DialogPortal
+  const DialogTitle: typeof import('./components/ui/dialog').DialogTitle
+  const DialogTrigger: typeof import('./components/ui/dialog').DialogTrigger
+  const DropdownMenu: typeof import('./components/ui/dropdown-menu').DropdownMenu
+  const DropdownMenuCheckboxItem: typeof import('./components/ui/dropdown-menu').DropdownMenuCheckboxItem
+  const DropdownMenuContent: typeof import('./components/ui/dropdown-menu').DropdownMenuContent
+  const DropdownMenuGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuGroup
+  const DropdownMenuItem: typeof import('./components/ui/dropdown-menu').DropdownMenuItem
+  const DropdownMenuLabel: typeof import('./components/ui/dropdown-menu').DropdownMenuLabel
+  const DropdownMenuPortal: typeof import('./components/ui/dropdown-menu').DropdownMenuPortal
+  const DropdownMenuRadioGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioGroup
+  const DropdownMenuRadioItem: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioItem
+  const DropdownMenuSeparator: typeof import('./components/ui/dropdown-menu').DropdownMenuSeparator
+  const DropdownMenuShortcut: typeof import('./components/ui/dropdown-menu').DropdownMenuShortcut
+  const DropdownMenuSub: typeof import('./components/ui/dropdown-menu').DropdownMenuSub
+  const DropdownMenuSubContent: typeof import('./components/ui/dropdown-menu').DropdownMenuSubContent
+  const DropdownMenuSubTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuSubTrigger
+  const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN
@@ -20,20 +67,51 @@ declare global {
   const Fragment: typeof import('react').Fragment
   const HighlightText: typeof import('./lib/highlight-text').HighlightText
   const Image: typeof import('lucide-react').Image
+  const Input: typeof import('./components/ui/input').Input
+  const Label: typeof import('./components/ui/label').Label
   const Link: typeof import('lucide-react').Link
   const List: typeof import('lucide-react').List
   const ListOrdered: typeof import('lucide-react').ListOrdered
+  const LucideIcons: typeof import('lucide-react')
   const Menu: typeof import('lucide-react').Menu
   const MoreHorizontal: typeof import('lucide-react').MoreHorizontal
   const Plus: typeof import('lucide-react').Plus
+  const Popover: typeof import('./components/ui/popover').Popover
+  const PopoverContent: typeof import('./components/ui/popover').PopoverContent
+  const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
+  const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
+  const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const Search: typeof import('lucide-react').Search
+  const Separator: typeof import('./components/ui/separator').Separator
   const Settings: typeof import('lucide-react').Settings
+  const Sheet: typeof import('./components/ui/sheet').Sheet
+  const SheetClose: typeof import('./components/ui/sheet').SheetClose
+  const SheetContent: typeof import('./components/ui/sheet').SheetContent
+  const SheetDescription: typeof import('./components/ui/sheet').SheetDescription
+  const SheetFooter: typeof import('./components/ui/sheet').SheetFooter
+  const SheetHeader: typeof import('./components/ui/sheet').SheetHeader
+  const SheetOverlay: typeof import('./components/ui/sheet').SheetOverlay
+  const SheetPortal: typeof import('./components/ui/sheet').SheetPortal
+  const SheetTitle: typeof import('./components/ui/sheet').SheetTitle
+  const SheetTrigger: typeof import('./components/ui/sheet').SheetTrigger
   const Suspense: typeof import('react').Suspense
+  const Switch: typeof import('./components/ui/switch').Switch
   const TIPS: typeof import('./lib/tips').TIPS
+  const Tabs: typeof import('./components/ui/tabs').Tabs
+  const TabsContent: typeof import('./components/ui/tabs').TabsContent
+  const TabsList: typeof import('./components/ui/tabs').TabsList
+  const TabsTrigger: typeof import('./components/ui/tabs').TabsTrigger
+  const Textarea: typeof import('./components/ui/textarea').Textarea
+  const Toggle: typeof import('./components/ui/toggle').Toggle
+  const Tooltip: typeof import('./components/ui/tooltip').Tooltip
+  const TooltipContent: typeof import('./components/ui/tooltip').TooltipContent
+  const TooltipProvider: typeof import('./components/ui/tooltip').TooltipProvider
+  const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
   const Trash2: typeof import('lucide-react').Trash2
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const X: typeof import('lucide-react').X
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
+  const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const clsx: typeof import('clsx').clsx
@@ -57,6 +135,7 @@ declare global {
   const memo: typeof import('react').memo
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const startTransition: typeof import('react').startTransition
+  const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
@@ -97,4 +176,7 @@ declare global {
   // @ts-ignore
   export type { UToolsAdapter, UserInfo, SublistItem } from './lib/utools'
   import('./lib/utools')
+  // @ts-ignore
+  export type { ButtonProps } from './components/ui/button'
+  import('./components/ui/button')
 }

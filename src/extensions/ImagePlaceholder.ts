@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
-import { ImageUploadPanel } from '@/components/extensions/ImageUploadPanel'
+import { ImageUploadPanel } from '@/pages/workspace/components/editor/extensions/ImageUploadPanel'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {

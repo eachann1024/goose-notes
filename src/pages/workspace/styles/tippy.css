@@ -1,0 +1,43 @@
+/* Tippy.js 斜杠命令主题 - 移除黑边 */
+.tippy-box[data-theme~="notion-slash"] {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.tippy-box[data-theme~="notion-slash"] .tippy-content {
+  padding: 0;
+}
+
+/* 气泡菜单主题 - 移除默认样式 */
+.tippy-box[data-theme~="bubble-menu"] {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.tippy-box[data-theme~="bubble-menu"] .tippy-content {
+  padding: 0;
+}
+
+/* BubbleMenu 淡入动画 - 解决首次渲染闪烁 */
+.tippy-box {
+  opacity: 0;
+  animation: bubbleMenuFadeIn 0.15s ease-out forwards;
+}
+
+@keyframes bubbleMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* EmojiPicker remove border-radius globally */
+.EmojiPickerReact {
+  border-radius: 0 !important;
+}

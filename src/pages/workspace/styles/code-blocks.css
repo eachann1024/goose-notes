@@ -1,0 +1,279 @@
+/* 代码块样式 */
+.ProseMirror pre {
+  background: var(--code-bg);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--code-border);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--code-fg);
+  position: relative;
+}
+
+.ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  display: block;
+  min-width: 100%;
+}
+
+.code-block-wrapper {
+  position: relative;
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+}
+
+/* 行号样式 */
+.line-numbers {
+  position: absolute;
+  top: 1.25rem;
+  left: 0;
+  width: 3rem;
+  padding-right: 1rem;
+  text-align: right;
+  color: var(--code-line-number);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  user-select: none;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 有行号时的预格式化块 */
+.code-block-with-lines pre {
+  padding-left: 3.5rem;
+}
+
+/* ========================================
+   Code Style CSS Variables & Themes
+   ======================================== */
+
+:root {
+  --code-bg: hsl(var(--muted));
+  --code-fg: hsl(var(--foreground));
+  --code-border: hsl(var(--border));
+  --code-line-number: hsl(var(--muted-foreground) / 0.5);
+  --selection-border-color: hsl(var(--primary));
+  --selection-border-width: 2px;
+  --selection-border-radius: 12px;
+}
+
+/* 1. GitHub Light/Dark */
+.github-light {
+  --code-bg: #ffffff;
+  --code-fg: #24292f;
+  --code-border: #d0d7de;
+  --code-line-number: #6e7781;
+}
+.github-light .ProseMirror pre .hljs-keyword {
+  color: #cf222e;
+}
+.github-light .ProseMirror pre .hljs-title {
+  color: #8250df;
+}
+.github-light .ProseMirror pre .hljs-string {
+  color: #0a3069;
+}
+.github-light .ProseMirror pre .hljs-comment {
+  color: #6e7781;
+}
+.github-light .ProseMirror pre .hljs-number {
+  color: #0550ae;
+}
+.github-light .ProseMirror pre .hljs-built_in {
+  color: #cf222e;
+}
+.github-light .ProseMirror pre .hljs-variable {
+  color: #953800;
+}
+
+.github-dark {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-border: #30363d;
+  --code-line-number: #484f58;
+}
+.github-dark .ProseMirror pre .hljs-keyword {
+  color: #ff7b72;
+}
+.github-dark .ProseMirror pre .hljs-title {
+  color: #d2a8ff;
+}
+.github-dark .ProseMirror pre .hljs-string {
+  color: #a5d6ff;
+}
+.github-dark .ProseMirror pre .hljs-comment {
+  color: #8b949e;
+}
+.github-dark .ProseMirror pre .hljs-number {
+  color: #79c0ff;
+}
+.github-dark .ProseMirror pre .hljs-built_in {
+  color: #ffa657;
+}
+.github-dark .ProseMirror pre .hljs-variable {
+  color: #79c0ff;
+}
+
+/* 2. One Light/Dark (Modern) */
+.one-light {
+  --code-bg: #fafafa;
+  --code-fg: #383a42;
+  --code-border: #e6e6e6;
+  --code-line-number: #a0a1a7;
+}
+.one-light .ProseMirror pre .hljs-keyword {
+  color: #a626a4;
+}
+.one-light .ProseMirror pre .hljs-title {
+  color: #bf8b3a;
+}
+.one-light .ProseMirror pre .hljs-string {
+  color: #50a14f;
+}
+.one-light .ProseMirror pre .hljs-comment {
+  color: #a0a1a7;
+  font-style: italic;
+}
+.one-light .ProseMirror pre .hljs-number {
+  color: #986801;
+}
+
+.one-dark {
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-border: #21252b;
+  --code-line-number: #495162;
+}
+.one-dark .ProseMirror pre .hljs-keyword {
+  color: #c678dd;
+}
+.one-dark .ProseMirror pre .hljs-title {
+  color: #e5c07b;
+}
+.one-dark .ProseMirror pre .hljs-string {
+  color: #98c379;
+}
+.one-dark .ProseMirror pre .hljs-comment {
+  color: #5c6370;
+  font-style: italic;
+}
+.one-dark .ProseMirror pre .hljs-number {
+  color: #d19a66;
+}
+.one-dark .ProseMirror pre .hljs-built_in {
+  color: #e6c07b;
+}
+
+/* 3. Dracula / Atom Light (Vivid) */
+.atom-light {
+  --code-bg: #ffffff;
+  --code-fg: #333;
+  --code-border: #dbdbdb;
+  --code-line-number: #999;
+}
+.atom-light .ProseMirror pre .hljs-keyword {
+  color: #a626a4;
+}
+
+.dracula {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-border: #44475a;
+  --code-line-number: #6272a4;
+}
+.dracula .ProseMirror pre .hljs-keyword {
+  color: #ff79c6;
+}
+.dracula .ProseMirror pre .hljs-title {
+  color: #50fa7b;
+}
+.dracula .ProseMirror pre .hljs-string {
+  color: #f1fa8c;
+}
+.dracula .ProseMirror pre .hljs-comment {
+  color: #6272a4;
+}
+.dracula .ProseMirror pre .hljs-number {
+  color: #bd93f9;
+}
+.dracula .ProseMirror pre .hljs-built_in {
+  color: #8be9fd;
+}
+
+/* 4. Tokyo Night (Night) */
+.tokyo-night {
+  --code-bg: #1a1b26;
+  --code-fg: #c0caf5;
+  --code-border: #292e42;
+  --code-line-number: #565f89;
+}
+.tokyo-night .ProseMirror pre .hljs-keyword {
+  color: #bb9af7;
+}
+.tokyo-night .ProseMirror pre .hljs-title {
+  color: #7aa2f7;
+}
+.tokyo-night .ProseMirror pre .hljs-string {
+  color: #9ece6a;
+}
+.tokyo-night .ProseMirror pre .hljs-comment {
+  color: #565f89;
+  font-style: italic;
+}
+.tokyo-night .ProseMirror pre .hljs-number {
+  color: #ff9e64;
+}
+.tokyo-night .ProseMirror pre .hljs-built_in {
+  color: #7dcfff;
+}
+
+/* 5. Placeholder for 'github-light-mod' reused as Tokyo Day */
+.github-light-mod {
+  --code-bg: #d5d6db;
+  --code-fg: #343b58;
+  --code-border: #c0c2cc;
+  --code-line-number: #9699a3;
+}
+.github-light-mod .ProseMirror pre .hljs-keyword {
+  color: #8c4351;
+}
+
+/* GitHub Light Mod */
+.github-light-mod .ProseMirror pre .hljs-keyword {
+  color: #d73a49;
+}
+.github-light-mod .ProseMirror pre .hljs-title {
+  color: #6f42c1;
+}
+.github-light-mod .ProseMirror pre .hljs-variable,
+.github-light-mod .ProseMirror pre .hljs-name {
+  color: #005cc5;
+}
+.github-light-mod .ProseMirror pre .hljs-string {
+  color: #032f62;
+}
+.github-light-mod .ProseMirror pre .hljs-number {
+  color: #005cc5;
+}
+.github-light-mod .ProseMirror pre .hljs-comment {
+  color: #6a737d;
+}
+.github-light-mod .ProseMirror pre .hljs-tag {
+  color: #22863a;
+}
+.github-light-mod .ProseMirror pre .hljs-attr {
+  color: #e36209;
+}
+.github-light-mod .ProseMirror pre .hljs-function {
+  color: #6f42c1;
+}
+.github-light-mod .ProseMirror pre .hljs-built_in {
+  color: #d73a49;
+}

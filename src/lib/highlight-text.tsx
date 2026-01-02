@@ -1,8 +1,6 @@
-import { useMemo } from 'react'
-
 interface HighlightTextProps {
-  text: string
-  query: string
+  text: string;
+  query: string;
 }
 
 /**
@@ -14,29 +12,32 @@ interface HighlightTextProps {
  */
 export function HighlightText({ text, query }: HighlightTextProps) {
   const highlighted = useMemo(() => {
-    if (!query.trim()) return text
+    if (!query.trim()) return text;
 
-    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi')
-    const parts = text.split(regex)
+    const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
+    const parts = text.split(regex);
 
     return parts.map((part, index) => {
       if (regex.test(part)) {
         return (
-          <mark key={index} className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">
+          <mark
+            key={index}
+            className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5"
+          >
             {part}
           </mark>
-        )
+        );
       }
-      return part
-    })
-  }, [text, query])
+      return part;
+    });
+  }, [text, query]);
 
-  return <>{highlighted}</>
+  return <>{highlighted}</>;
 }
 
 /**
  * 转义正则表达式特殊字符
  */
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

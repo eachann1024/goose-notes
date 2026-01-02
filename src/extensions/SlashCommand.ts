@@ -3,7 +3,8 @@ import { Extension } from '@tiptap/core'
 import Suggestion from '@tiptap/suggestion'
 import { ReactRenderer } from '@tiptap/react'
 import tippy from 'tippy.js'
-import { CommandList, getSuggestionItems } from '@/components/CommandList'
+import { CommandList } from '@/pages/workspace/components/command/CommandList'
+import { getSuggestionItems } from '@/pages/workspace/components/command/commandItems'
 import { InputRule } from '@tiptap/core'
 
 export const SlashCommand = Extension.create({

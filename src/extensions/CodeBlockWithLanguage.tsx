@@ -5,7 +5,7 @@ import {
   useEditorState,
 } from "@tiptap/react";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { CodeBlockToolbar } from "@/components/CodeBlockToolbar";
+import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
 
 function CodeBlockWithLanguageView({
   node,

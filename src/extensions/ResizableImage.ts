@@ -1,6 +1,6 @@
 import Image from "@tiptap/extension-image";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { ImageResizer } from "@/components/extensions/ImageResizer";
+import { ImageResizer } from "@/pages/workspace/components/editor/extensions/ImageResizer";
 
 export const ResizableImage = Image.extend({
   name: "imageResize",
