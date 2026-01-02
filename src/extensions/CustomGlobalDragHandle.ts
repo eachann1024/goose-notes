@@ -152,6 +152,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
     const isTableWrapper = node.matches(".tableWrapper");
     const isTable = node.matches("table");
+    const isCodeBlock = node.matches("pre");
     
     let targetNode = node;
     if (isTableWrapper) {
@@ -159,14 +160,12 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         if (table) targetNode = table;
     }
 
+    // 表格和代码块不添加 paddingTop，直接使用元素顶部边界
+    // 避免鼠标在内容区和边框/间隙切换时手柄抖动
     if (isTableWrapper || isTable) {
         const tableRect = absoluteRect(targetNode);
         rect.top = tableRect.top;
-    } else if (node.matches("pre")) {
-        // 代码块拖动手柄固定在顶部（不跟随鼠标位置）
-        const preRect = absoluteRect(node);
-        rect.top = preRect.top + parseInt(compStyle.paddingTop, 10);
-    } else {
+    } else if (!isCodeBlock) {
         rect.top += paddingTop;
     }
 
