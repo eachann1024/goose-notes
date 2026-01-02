@@ -44,10 +44,14 @@ export function ImageResizer(props: NodeViewProps) {
       const startW = resizeRef.current?.offsetWidth || 0;
       const multiplier = direction === "left" ? -1 : 1;
 
+      const getMaxWidth = () =>
+        resizeRef.current?.parentElement?.clientWidth || Infinity;
+
       const onMouseMove = (e: MouseEvent) => {
         const currentX = e.clientX;
         const diffX = (currentX - startX) * multiplier;
-        const newWidth = Math.max(100, startW + diffX);
+        const maxW = getMaxWidth();
+        const newWidth = Math.min(maxW, Math.max(100, startW + diffX));
 
         setWidth(newWidth);
       };
@@ -58,7 +62,8 @@ export function ImageResizer(props: NodeViewProps) {
 
         const currentX = e.clientX;
         const diffX = (currentX - startX) * multiplier;
-        const newWidth = Math.max(100, startW + diffX);
+        const maxW = getMaxWidth();
+        const newWidth = Math.min(maxW, Math.max(100, startW + diffX));
         const nextStyle = upsertWidthStyle(
           node.attrs.containerStyle,
           newWidth,
@@ -83,14 +88,15 @@ export function ImageResizer(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper className={cn(
-      "image-node relative block w-full group my-4 transition-all",
+      "image-node relative block w-full group transition-all",
       selected ? "ring-2 ring-primary ring-offset-2 rounded-md" : "",
     )}>
       <div
         ref={resizeRef}
-        className="relative max-w-full"
+        className="relative inline-block max-w-full align-top"
         style={{
-          width: width === "auto" ? "auto" : `${width}px`,
+          width: width === "auto" ? undefined : `${width}px`,
+          maxWidth: "100%",
           margin,
         }}
       >
@@ -98,34 +104,35 @@ export function ImageResizer(props: NodeViewProps) {
           src={node.attrs.src}
           alt={node.attrs.alt}
           title={node.attrs.title}
-          className="rounded-md block max-w-full h-auto"
+          className="rounded-md block max-w-full h-auto !m-0"
+          style={{ width: width === "auto" ? "auto" : "100%" }}
         />
 
         {/* Resize Handle - visible only on hover or selection */}
         <div
           className={cn(
-            "absolute top-0 left-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md",
+            "absolute top-0 left-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md group/handle",
             resizing && "opacity-100",
           )}
           onMouseDown={(e) => handleMouseDown(e, "left")}
         >
           <div
             className={cn(
-              "w-1 h-8 rounded-full bg-black/20",
+              "w-1 h-8 rounded-full bg-black/20 transition-colors group-hover/handle:bg-[#2463EB]",
               resizing && "bg-[#2463EB]",
             )}
           />
         </div>
         <div
           className={cn(
-            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md",
+            "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md group/handle",
             resizing && "opacity-100",
           )}
           onMouseDown={(e) => handleMouseDown(e, "right")}
         >
           <div
             className={cn(
-              "w-1 h-8 rounded-full bg-black/20",
+              "w-1 h-8 rounded-full bg-black/20 transition-colors group-hover/handle:bg-[#2463EB]",
               resizing && "bg-[#2463EB]",
             )}
           />

@@ -14,7 +14,8 @@
 2. 全局状态用 zustand，局部用 useState
 3. 注释只解释 Why，不解释 What
 4. shadcn/hooks 由 autoimport 处理
-5. 完成后执行 `pnpm build`
+5. 每个模块独立运行不要有耦合关系
+6. 完成后执行 `pnpm build`
 
 ---
 
