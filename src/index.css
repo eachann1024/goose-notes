@@ -760,13 +760,16 @@
 }
 .ProseMirror .code-block-node.ProseMirror-selectednode,
 .ProseMirror .code-block-node.tiptap-selected-node {
-  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
-  outline-offset: 2px;
-  border-radius: var(--selection-border-radius);
+  outline: none !important;
 }
 .ProseMirror .code-block-node.is-active {
-  outline: var(--selection-border-width) solid var(--selection-border-color) !important;
-  outline-offset: 2px;
+  outline: none !important;
+}
+.ProseMirror .code-block-node.ProseMirror-selectednode pre,
+.ProseMirror .code-block-node.tiptap-selected-node pre,
+.ProseMirror .code-block-node.is-active pre {
+  box-shadow: 0 0 0 var(--selection-border-width)
+    var(--selection-border-color);
   border-radius: var(--selection-border-radius);
 }
 .ProseMirror .tableWrapper.ProseMirror-selectednode,
