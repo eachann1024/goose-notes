@@ -7,6 +7,17 @@ interface PageTitleProps {
   onFocusEditorStart: () => void;
 }
 
+const getFontFamilyClass = (fontFamily: Page["fontFamily"]) => {
+  switch (fontFamily) {
+    case "serif":
+      return "font-serif";
+    case "mono":
+      return "font-mono";
+    default:
+      return "";
+  }
+};
+
 export function PageTitle({
   page,
   onUpdate,
@@ -93,7 +104,10 @@ export function PageTitle({
         ref={inputRef}
         type="text"
         placeholder="无标题"
-        className="w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40"
+        className={cn(
+          "w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40",
+          getFontFamilyClass(page.fontFamily),
+        )}
         value={page.title}
         onChange={(e) => onUpdate({ title: e.target.value })}
         disabled={page.isLocked || !!page.trashedAt}
