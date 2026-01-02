@@ -250,8 +250,8 @@ function App() {
             <div className="py-12 px-8 min-h-screen">
                {/* Page Title Input */}
                <div className={cn(
-                  "mb-8",
-                  page.isFullWidth ? "max-w-full px-4" : "max-w-3xl mx-auto"
+                  "mb-8 px-8",
+                  page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto"
                )}>
                    {/* Icon */}
                    <div className="group relative mb-4">
