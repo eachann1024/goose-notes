@@ -1,5 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { EditorState } from "@tiptap/pm/state";
+import { EditorState, Selection } from "@tiptap/pm/state";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -74,8 +74,9 @@ export function Editor({ editable = true }: EditorProps) {
         }
 
         if (event.key === "ArrowLeft") {
-          const { $from } = editor.state.selection;
-          if ($from.pos === 1) {
+          const { from } = editor.state.selection;
+          const docStartPos = Selection.atStart(editor.state.doc).from;
+          if (from === docStartPos) {
             event.preventDefault();
             window.dispatchEvent(new CustomEvent("goose-note:focus-title-end"));
             return true;
