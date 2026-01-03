@@ -3,6 +3,31 @@ import type { Page } from "@/types";
 import { useCommandSearch } from "./useCommandSearch";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const regex = new RegExp(
+    `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+    "gi",
+  );
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark
+            key={i}
+            className="bg-yellow-200/50 dark:bg-yellow-500/30 rounded-sm px-0.5"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
 export function CommandPalette() {
   const descriptionId = useId();
   const [open, setOpen] = useState(false);
@@ -145,7 +170,10 @@ export function CommandPalette() {
                     </div>
                   </div>
                   <span className="truncate flex-1">
-                    <HighlightText text={extractTitleFromContent(page.content)} query={searchQuery} />
+                    <HighlightText
+                      text={extractTitleFromContent(page.content)}
+                      query={searchQuery}
+                    />
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground/50">
                     {breadcrumb.length > 0
@@ -179,7 +207,10 @@ export function CommandPalette() {
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4" />
                   <span className="truncate flex-1">
-                    <HighlightText text={extractTitleFromContent(page.content)} query={searchQuery} />
+                    <HighlightText
+                      text={extractTitleFromContent(page.content)}
+                      query={searchQuery}
+                    />
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground/50 truncate max-w-[200px]">
                     {breadcrumb.length > 0 ? breadcrumb.join(" > ") : ""}
