@@ -32,7 +32,7 @@
   font-family: "HarmonyOS Sans SC";
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src:
     local("HarmonyOS Sans SC"),
     local("HarmonyOS Sans"),
@@ -45,7 +45,7 @@
   font-family: "仓耳今楷";
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src:
     local("仓耳今楷"),
     url("https://cdn.jsdelivr.net/gh/eachann1024/Resources@publish/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2")

@@ -1,4 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorState } from "@tiptap/pm/state";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -72,6 +73,15 @@ export function Editor({ editable = true }: EditorProps) {
           }
         }
 
+        if (event.key === "ArrowLeft") {
+          const { $from } = editor.state.selection;
+          if ($from.pos === 1) {
+            event.preventDefault();
+            window.dispatchEvent(new CustomEvent("goose-note:focus-title-end"));
+            return true;
+          }
+        }
+
         if (event.key === "Backspace") {
           const { $from } = editor.state.selection;
 
@@ -83,6 +93,10 @@ export function Editor({ editable = true }: EditorProps) {
 
             if (isFirstChildEmptyParagraph) {
               event.preventDefault();
+              editor
+                .chain()
+                .deleteRange({ from: 0, to: firstChild.nodeSize })
+                .run();
               window.dispatchEvent(
                 new CustomEvent("goose-note:focus-title-end"),
               );
@@ -137,6 +151,13 @@ export function Editor({ editable = true }: EditorProps) {
       if (cancelled) return;
       editor.commands.blur();
       editor.commands.setContent(page.content, { emitUpdate: false });
+
+      const { state, view } = editor;
+      const newState = EditorState.create({
+        doc: state.doc,
+        plugins: state.plugins,
+      });
+      view.updateState(newState);
 
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
@@ -213,6 +234,10 @@ export function Editor({ editable = true }: EditorProps) {
         .run();
     };
 
+    const handleFocusFirstChar = () => {
+      editor.commands.focus("start");
+    };
+
     const handleInsertFirstLine = (event: Event) => {
       const customEvent = event as CustomEvent<{ text: string }>;
       const text = customEvent.detail.text;
@@ -230,6 +255,10 @@ export function Editor({ editable = true }: EditorProps) {
 
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
     window.addEventListener(
+      "goose-note:focus-editor-first-char",
+      handleFocusFirstChar,
+    );
+    window.addEventListener(
       "goose-note:insert-first-line",
       handleInsertFirstLine,
     );
@@ -237,6 +266,10 @@ export function Editor({ editable = true }: EditorProps) {
       window.removeEventListener(
         "goose-note:focus-editor-start",
         handleFocusStart,
+      );
+      window.removeEventListener(
+        "goose-note:focus-editor-first-char",
+        handleFocusFirstChar,
       );
       window.removeEventListener(
         "goose-note:insert-first-line",

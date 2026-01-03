@@ -112,6 +112,18 @@ export function PageTitle({
         onChange={(e) => onUpdate({ title: e.target.value })}
         disabled={page.isLocked || !!page.trashedAt}
         onKeyDown={(e) => {
+          if (e.key === "ArrowRight") {
+            const target = e.currentTarget;
+            const cursorPos = target.selectionStart || 0;
+            if (cursorPos === page.title.length) {
+              e.preventDefault();
+              window.dispatchEvent(
+                new CustomEvent("goose-note:focus-editor-first-char"),
+              );
+            }
+            return;
+          }
+
           if (e.key === "Enter") {
             e.preventDefault();
 
