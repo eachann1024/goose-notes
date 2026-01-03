@@ -17,6 +17,7 @@ interface CommandListProps {
 
 export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showHint, setShowHint] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isTopPlacement = props.placement === "top";
 
@@ -33,6 +34,19 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   useEffect(() => {
     setSelectedIndex(0);
   }, [props.items]);
+
+  // 延迟显示 hint
+  useEffect(() => {
+    setShowHint(false);
+    const selectedItem = props.items[selectedIndex];
+    if (!selectedItem?.hint) return;
+
+    const timer = setTimeout(() => {
+      setShowHint(true);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [selectedIndex, props.items]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -158,8 +172,8 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         </div>
       </div>
 
-      {selectedItem?.hint && (
-        <div className="w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in slide-in-from-left-1">
+      {showHint && selectedItem?.hint && (
+        <div className="fixed z-[60] ml-[248px] w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-left-1">
           <div className="flex items-center gap-2 border-b border-border/50 pb-2">
             {selectedItem.icon && (
               <selectedItem.icon className="h-4 w-4 text-primary" />
