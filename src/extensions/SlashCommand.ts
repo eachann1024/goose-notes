@@ -41,6 +41,10 @@ export const SlashCommand = Extension.create({
         editor: this.editor,
         ...this.options.suggestion,
         allow: ({ state, range }: { state: any; range: any }) => {
+          if (!this.editor.isFocused) {
+            return false;
+          }
+
           const { doc } = state;
           const $from = doc.resolve(range.from);
           const $to = doc.resolve(range.to);
@@ -69,6 +73,10 @@ export const SlashCommand = Extension.create({
         key: new PluginKey("slash-command-capsule"),
         props: {
           decorations: (state) => {
+            if (!this.editor.isFocused || !state.selection.empty) {
+              return DecorationSet.empty;
+            }
+
             const { selection } = state;
             const { $from, to } = selection;
 

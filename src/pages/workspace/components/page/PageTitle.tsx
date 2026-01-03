@@ -1,11 +1,33 @@
 import type { Page } from "@/types";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
+
 interface PageTitleProps {
   page: Page;
   onUpdate: (payload: Partial<Page>) => void;
   onFocusEditorStart: () => void;
 }
+
+const updateTitleInContent = (content: any, title: string) => {
+  const newContent = JSON.parse(JSON.stringify(content));
+  if (
+    newContent.content?.[0]?.type === "heading" &&
+    newContent.content[0].attrs?.level === 1
+  ) {
+    newContent.content[0].content = [{ type: "text", text: title }];
+  } else {
+    newContent.content = [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: title }],
+      },
+      ...(newContent.content || []),
+    ];
+  }
+  return newContent;
+};
 
 const getFontFamilyClass = (fontFamily: Page["fontFamily"]) => {
   switch (fontFamily) {
@@ -34,8 +56,9 @@ export function PageTitle({
 
     const handleMergeToTitle = (event: Event) => {
       const customEvent = event as CustomEvent<{ text: string }>;
-      const mergedTitle = page.title + customEvent.detail.text;
-      onUpdate({ title: mergedTitle });
+      const currentTitle = extractTitleFromContent(page.content);
+      const mergedTitle = currentTitle + customEvent.detail.text;
+      onUpdate({ content: updateTitleInContent(page.content, mergedTitle) });
 
       requestAnimationFrame(() => {
         inputRef.current?.focus();
@@ -57,7 +80,9 @@ export function PageTitle({
         handleMergeToTitle,
       );
     };
-  }, [page.title, onUpdate]);
+  }, [page.content, onUpdate]);
+
+  const title = extractTitleFromContent(page.content);
 
   return (
     <div
@@ -108,14 +133,18 @@ export function PageTitle({
           "w-full text-4xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/40",
           getFontFamilyClass(page.fontFamily),
         )}
-        value={page.title}
-        onChange={(e) => onUpdate({ title: e.target.value })}
+        value={title === "无标题" ? "" : title}
+        onChange={(e) =>
+          onUpdate({
+            content: updateTitleInContent(page.content, e.target.value),
+          })
+        }
         disabled={page.isLocked || !!page.trashedAt}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") {
             const target = e.currentTarget;
             const cursorPos = target.selectionStart || 0;
-            if (cursorPos === page.title.length) {
+            if (cursorPos === title.length) {
               e.preventDefault();
               window.dispatchEvent(
                 new CustomEvent("goose-note:focus-editor-first-char"),
@@ -129,11 +158,13 @@ export function PageTitle({
 
             const target = e.currentTarget;
             const cursorPos = target.selectionStart || 0;
-            const beforeCursor = page.title.slice(0, cursorPos);
-            const afterCursor = page.title.slice(cursorPos);
+            const beforeCursor = title.slice(0, cursorPos);
+            const afterCursor = title.slice(cursorPos);
 
             if (afterCursor) {
-              onUpdate({ title: beforeCursor });
+              onUpdate({
+                content: updateTitleInContent(page.content, beforeCursor),
+              });
 
               window.dispatchEvent(
                 new CustomEvent("goose-note:insert-first-line", {

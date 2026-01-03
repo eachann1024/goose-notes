@@ -16,7 +16,18 @@ export function PageMenu() {
     const result = await importFile();
     if (result.success) {
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
-      updatePage(newId, { title: result.title, content: result.content });
+
+      const content = result.content;
+      content.content = [
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: result.title }],
+        },
+        ...(content.content || []),
+      ];
+
+      updatePage(newId, { content });
 
       setActivePage(null);
       requestAnimationFrame(() => {

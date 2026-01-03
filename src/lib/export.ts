@@ -185,10 +185,12 @@ export async function exportNotebooks(
       let extension = "";
 
       switch (format) {
-        case "md":
-          content = `# ${pageClone.title || "无标题"}\n\n${jsonContentToMarkdown(pageClone.content)}`;
+        case "md": {
+          const title = extractTitleFromContent(pageClone.content);
+          content = `# ${title}\n\n${jsonContentToMarkdown(pageClone.content)}`;
           extension = ".md";
           break;
+        }
         case "html":
           const html = generateHTML(pageClone.content, extensions);
           const titleForHtml = extractTitleFromContent(pageClone.content);
@@ -202,12 +204,16 @@ export async function exportNotebooks(
       }
 
       const fileName =
-        sanitizeFileName(extractTitleFromContent(pageClone.content) || "untitled") + extension;
+        sanitizeFileName(
+          extractTitleFromContent(pageClone.content) || "untitled",
+        ) + extension;
       parentFolder.file(fileName, content);
 
       const children = notebookPages.filter((p) => p.parentId === page.id);
       if (children.length > 0) {
-        const subFolderName = sanitizeFileName(extractTitleFromContent(page.content) || "untitled");
+        const subFolderName = sanitizeFileName(
+          extractTitleFromContent(page.content) || "untitled",
+        );
         const subFolder = parentFolder.folder(subFolderName);
         if (subFolder) {
           for (const child of children) {
@@ -331,16 +337,16 @@ export async function importNotebooksFromZip(
         parentId = pathIdMap.get(parentPath);
       }
 
-      let pageData: Partial<Page> = { title };
+      let pageData: Partial<Page> = {};
 
       if (extension === "json") {
         const text = await file.async("text");
         try {
           const imported = JSON.parse(text) as Page;
           pageData = { ...imported };
-          delete pageData.id;
-          delete pageData.workspaceId;
-          delete pageData.parentId;
+          delete (pageData as any).id;
+          delete (pageData as any).workspaceId;
+          delete (pageData as any).parentId;
           if (pageData.content) restoreImages(pageData.content);
         } catch (e) {
           console.error("Failed to parse JSON page", e);
@@ -348,7 +354,16 @@ export async function importNotebooksFromZip(
       } else if (extension === "md") {
         const text = await file.async("text");
         const imported = importFromMarkdown(text, title);
-        pageData = { title: imported.title, content: imported.content };
+        const content = imported.content;
+        content.content = [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: imported.title }],
+          },
+          ...(content.content || []),
+        ];
+        pageData = { content };
         if (pageData.content) restoreImages(pageData.content);
       }
 
@@ -384,7 +399,7 @@ export function importFromJSON(
 
     // 如果有旧的 title 字段，提取它；否则从 content 提取
     let title = filename || "导入的页面";
-    if ('title' in data && data.title) {
+    if ("title" in data && data.title) {
       title = data.title;
     } else {
       title = extractTitleFromContent(data.content) || filename || "导入的页面";
@@ -821,9 +836,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
       continue;
     }
 
-    const imgMatch = line.match(
-      /^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/,
-    );
+    const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/);
     if (imgMatch) {
       const metaRaw = imgMatch[3] || "";
       const metaMap = new Map<string, string>();

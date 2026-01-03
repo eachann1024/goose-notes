@@ -5,6 +5,7 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
 
@@ -106,7 +107,8 @@ export function Sidebar({ className }: SidebarProps) {
     const existingBlankPage = Object.values(pages).find((p) => {
       const matchWorkspace = p.workspaceId === (activeNotebookId || "default");
       const notTrashed = !p.trashedAt;
-      const isBlankTitle = !p.title || p.title.trim() === "";
+      const title = extractTitleFromContent(p.content);
+      const isBlankTitle = !title || title === "无标题" || title.trim() === "";
       const isBlankContent = isEmptyContent(p.content);
       return matchWorkspace && notTrashed && isBlankTitle && isBlankContent;
     });
@@ -253,7 +255,11 @@ export function Sidebar({ className }: SidebarProps) {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleConfirmDelete}
-        title={activePageId ? pages[activePageId]?.title || "无标题" : ""}
+        title={
+          activePageId
+            ? extractTitleFromContent(pages[activePageId]?.content) || "无标题"
+            : ""
+        }
       />
     </div>
   );
