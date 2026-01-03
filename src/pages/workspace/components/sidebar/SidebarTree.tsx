@@ -110,6 +110,8 @@ function PageNode({ node, style, dragHandle, itemHeight, activeNotebookId }: Pag
     if (existingBlankChild) {
       if (!node.isOpen) node.open();
       setActivePage(existingBlankChild.id);
+      // 即使是复用空白页，也要聚焦标题
+      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
     } else {
       if (!node.isOpen) node.open();
       createPage(node.id, activeNotebookId || DEFAULT_NOTEBOOK);

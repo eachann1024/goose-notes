@@ -85,6 +85,13 @@ export const usePages = create<PagesState>()(
 
         useNotebooks.getState().setLastActivePage(workspaceId, id);
 
+        // 新建页面时自动聚焦标题
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+          }, 100);
+        }
+
         return id;
       },
 

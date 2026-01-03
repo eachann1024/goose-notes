@@ -30,24 +30,6 @@ export function Editor({ editable = true }: EditorProps) {
     return fn;
   }, [updatePage]);
 
-  useEffect(() => {
-    const flush = () => debouncedUpdateRef.current?.flush();
-
-    window.addEventListener("beforeunload", flush);
-
-    if ((window as any).utools) {
-      (window as any).utools.onPluginOut(flush);
-    }
-
-    window.addEventListener("goose-note:flush-editor", flush);
-
-    return () => {
-      flush();
-      window.removeEventListener("beforeunload", flush);
-      window.removeEventListener("goose-note:flush-editor", flush);
-    };
-  }, []);
-
   const editor = useEditor({
     editable,
     extensions: editorExtensions,
@@ -123,6 +105,33 @@ export function Editor({ editable = true }: EditorProps) {
   });
 
   useEffect(() => {
+    const flush = () => debouncedUpdateRef.current?.flush();
+
+    window.addEventListener("beforeunload", flush);
+
+    if ((window as any).utools) {
+      (window as any).utools.onPluginOut(flush);
+    }
+
+    window.addEventListener("goose-note:flush-editor", flush);
+
+    const handleFocusStart = () => {
+      setTimeout(() => {
+        editor?.commands.focus("start");
+      }, 50);
+    };
+
+    window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
+
+    return () => {
+      flush();
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("goose-note:flush-editor", flush);
+      window.removeEventListener("goose-note:focus-editor-start", handleFocusStart);
+    };
+  }, [editor]);
+
+  useEffect(() => {
     if (!editor || !page || !activePageId) return;
 
     const isSamePage = activePageId === prevPageIdRef.current;
@@ -176,6 +185,17 @@ export function Editor({ editable = true }: EditorProps) {
 
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
+
+      // 如果是新页面（标题为空且内容为空），强制聚焦到标题
+      const isNewPage = page.createdAt === page.updatedAt &&
+                        (!page.content?.content?.[0]?.content || page.content.content[0].content.length === 0);
+
+      if (isNewPage) {
+        setTimeout(() => {
+          editor.commands.focus("start");
+        }, 50);
+        return;
+      }
 
       if (
         page.content?.content?.[0]?.type === "paragraph" &&
