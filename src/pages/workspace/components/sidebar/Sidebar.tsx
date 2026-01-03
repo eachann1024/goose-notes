@@ -115,6 +115,8 @@ export function Sidebar({ className }: SidebarProps) {
 
     if (existingBlankPage) {
       setActivePage(existingBlankPage.id);
+      // 即使是复用空白页，也要聚焦标题
+      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
     } else {
       createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
     }
