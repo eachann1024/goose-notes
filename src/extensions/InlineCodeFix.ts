@@ -31,10 +31,10 @@ export const InlineCodeFix = Extension.create({
                 const charBefore =
                   pos > $from.start() ? doc.textBetween(pos - 1, pos) : "";
 
-                // 如果前面没有空格（或内容），插入空格并前移光标
                 if (charBefore !== " ") {
                   event.preventDefault();
                   const tr = state.tr.insertText(" ", pos);
+                  tr.removeMark(pos, pos + 1, state.schema.marks.code);
                   tr.setSelection(TextSelection.create(tr.doc, pos));
                   tr.setStoredMarks([]);
                   view.dispatch(tr);
@@ -77,6 +77,7 @@ export const InlineCodeFix = Extension.create({
                 if (charAfter !== " ") {
                   event.preventDefault();
                   const tr = state.tr.insertText(" ", pos);
+                  tr.removeMark(pos, pos + 1, state.schema.marks.code);
                   tr.setSelection(TextSelection.create(tr.doc, pos + 1));
                   tr.setStoredMarks([]);
                   view.dispatch(tr);
@@ -107,7 +108,6 @@ export const InlineCodeFix = Extension.create({
               $pos.nodeBefore?.marks?.some((m) => m.type.name === "code") ??
               false;
 
-            // 点击在代码边缘时清除 storedMarks
             if (
               (codeAfterCursor && !codeBeforeCursor) ||
               (codeBeforeCursor && !codeAfterCursor)
