@@ -122,6 +122,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-accent/50 text-foreground/80",
                 )}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectItem(index)}
               >
                 <div className="flex items-center justify-center w-5 h-5 shrink-0 mr-2 overflow-hidden rounded-[3px] bg-transparent">
