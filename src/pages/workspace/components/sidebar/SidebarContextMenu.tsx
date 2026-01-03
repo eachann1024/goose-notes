@@ -1,4 +1,5 @@
 import type { Page } from "@/types";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 interface SidebarContextMenuProps {
   page: Page;
@@ -20,10 +21,15 @@ export function SidebarContextMenu({
 
   const handleRename = () => {
     if (isTrashed) return;
-    // Prompt for rename or trigger inline edit (simplified to prompt for now)
-    const newTitle = prompt("重命名", page.title);
+    const currentTitle = extractTitleFromContent(page.content);
+    const newTitle = prompt("重命名", currentTitle);
     if (newTitle !== null) {
-      updatePage(page.id, { title: newTitle || "无标题" });
+      // 更新 content 第一行的标题
+      const newContent = JSON.parse(JSON.stringify(page.content));
+      if (newContent.content?.[0]?.type === 'heading' && newContent.content[0].attrs?.level === 1) {
+        newContent.content[0].content = newTitle ? [{ type: 'text', text: newTitle }] : undefined;
+        updatePage(page.id, { content: newContent });
+      }
     }
   };
 

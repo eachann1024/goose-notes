@@ -41,11 +41,13 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   const scheduleHide = useCallback(() => {
     if (menuOpen) return;
     clearHideTimeout();
-    setVisible(false);
     hideTimeoutRef.current = setTimeout(() => {
-      setHandles(emptyState);
-      restoreDragHandle();
-    }, 200);
+      setVisible(false);
+      hideTimeoutRef.current = setTimeout(() => {
+        setHandles(emptyState);
+        restoreDragHandle();
+      }, 300);
+    }, 150);
   }, [menuOpen, clearHideTimeout, restoreDragHandle]);
 
   useEffect(() => {
@@ -76,12 +78,30 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       const cellRect = cell.getBoundingClientRect();
       const rowRect = row.getBoundingClientRect();
 
-      const leftEdge = cellRect.left - tableRect.left < 40;
-      const topEdge = cellRect.top - tableRect.top < 40;
+      const leftEdge =
+        cellRect.left - tableRect.left < 40 && e.clientX < cellRect.left + 20;
+      const topEdge =
+        cellRect.top - tableRect.top < 40 && e.clientY < cellRect.top + 20;
 
       if (!leftEdge && !topEdge) {
-        scheduleHide();
-        return;
+        const isNearRowHandle =
+          handles.row &&
+          Math.abs(e.clientX - (handles.row.rect.left - 15)) < 30 &&
+          Math.abs(
+            e.clientY - (handles.row.rect.top + handles.row.rect.height / 2),
+          ) < 20;
+
+        const isNearColHandle =
+          handles.col &&
+          Math.abs(
+            e.clientX - (handles.col.rect.left + handles.col.rect.width / 2),
+          ) < 20 &&
+          Math.abs(e.clientY - (handles.col.rect.top - 15)) < 30;
+
+        if (!isNearRowHandle && !isNearColHandle) {
+          scheduleHide();
+          return;
+        }
       }
 
       try {
@@ -125,21 +145,36 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       label: "在上方插入行",
       icon: LucideIcons.ArrowUpToLine,
       action: (cellPos: number) => {
-        editor.chain().focus().setNodeSelection(cellPos).addRowBefore().run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(cellPos + 1)
+          .addRowBefore()
+          .run();
       },
     },
     {
       label: "在下方插入行",
       icon: LucideIcons.ArrowDownToLine,
       action: (cellPos: number) => {
-        editor.chain().focus().setNodeSelection(cellPos).addRowAfter().run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(cellPos + 1)
+          .addRowAfter()
+          .run();
       },
     },
     {
       label: "删除行",
       icon: LucideIcons.Trash2,
       action: (cellPos: number) => {
-        editor.chain().focus().setNodeSelection(cellPos).deleteRow().run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(cellPos + 1)
+          .deleteRow()
+          .run();
       },
       destructive: true,
     },
@@ -153,7 +188,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         editor
           .chain()
           .focus()
-          .setNodeSelection(cellPos)
+          .setTextSelection(cellPos + 1)
           .addColumnBefore()
           .run();
       },
@@ -162,14 +197,24 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       label: "在右侧插入列",
       icon: LucideIcons.ArrowRightToLine,
       action: (cellPos: number) => {
-        editor.chain().focus().setNodeSelection(cellPos).addColumnAfter().run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(cellPos + 1)
+          .addColumnAfter()
+          .run();
       },
     },
     {
       label: "删除列",
       icon: LucideIcons.Trash2,
       action: (cellPos: number) => {
-        editor.chain().focus().setNodeSelection(cellPos).deleteColumn().run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(cellPos + 1)
+          .deleteColumn()
+          .run();
       },
       destructive: true,
     },
@@ -179,8 +224,10 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
     "flex items-center justify-center rounded-sm cursor-grab",
     "bg-muted/60 hover:bg-primary/20 text-muted-foreground hover:text-foreground",
     "border border-border/50 backdrop-blur-[2px]",
-    "transition-opacity duration-200 ease-out",
-    visible ? "opacity-70 hover:opacity-100" : "opacity-0 pointer-events-none",
+    "transition-all duration-200 ease-out",
+    visible
+      ? "opacity-70 hover:opacity-100"
+      : "opacity-0 invisible pointer-events-none",
   );
 
   return (

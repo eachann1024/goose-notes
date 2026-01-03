@@ -35,13 +35,35 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
 
       const cell = target.closest("td, th") as HTMLTableCellElement;
       const table = cell?.closest("table");
+      const currentTableRect =
+        table?.getBoundingClientRect() || hoverState?.tableRect;
 
       if (!cell || !table || !editor.view.dom.contains(table)) {
-        if (!hideTimeoutRef.current && hoverState) {
-          setVisible(false);
-          hideTimeoutRef.current = setTimeout(() => {
-            setHoverState(null);
-          }, 200);
+        const isNearRowBar =
+          hoverState?.type !== "none" &&
+          currentTableRect &&
+          Math.abs(
+            e.clientX - (currentTableRect.left + currentTableRect.width / 2),
+          ) <
+            currentTableRect.width / 2 + 20 &&
+          Math.abs(e.clientY - (currentTableRect.bottom + 16)) < 30;
+
+        const isNearColBar =
+          hoverState?.type !== "none" &&
+          currentTableRect &&
+          Math.abs(e.clientX - (currentTableRect.right + 16)) < 30 &&
+          Math.abs(
+            e.clientY - (currentTableRect.top + currentTableRect.height / 2),
+          ) <
+            currentTableRect.height / 2 + 20;
+
+        if (!isNearRowBar && !isNearColBar) {
+          if (!hideTimeoutRef.current && hoverState) {
+            setVisible(false);
+            hideTimeoutRef.current = setTimeout(() => {
+              setHoverState(null);
+            }, 300);
+          }
         }
         return;
       }
@@ -60,7 +82,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
         return;
       }
 
-      const tableRect = table.getBoundingClientRect();
+      const tableRect = currentTableRect!;
 
       try {
         const pos = editor.view.posAtDOM(cell, 0);
@@ -137,13 +159,23 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
   };
 
   const handleAddRow = () => {
-    editor.chain().focus().setNodeSelection(pos).addRowAfter().run();
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(pos + 1)
+      .addRowAfter()
+      .run();
     setVisible(false);
     setTimeout(() => setHoverState(null), 200);
   };
 
   const handleAddCol = () => {
-    editor.chain().focus().setNodeSelection(pos).addColumnAfter().run();
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(pos + 1)
+      .addColumnAfter()
+      .run();
     setVisible(false);
     setTimeout(() => setHoverState(null), 200);
   };

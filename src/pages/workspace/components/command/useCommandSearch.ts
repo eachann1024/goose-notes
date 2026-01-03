@@ -1,4 +1,5 @@
 import type { Page } from "@/types";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 interface CommandSearchState {
   pages: Record<string, Page>;
@@ -16,9 +17,11 @@ export function useCommandSearch({
   removedRecentIds,
 }: CommandSearchState) {
   const filteredPages = useMemo(() => {
-    const allPagesArray = Object.values(pages).filter(
-      (p) => !p.trashedAt && p.title && p.title !== "无标题",
-    );
+    const allPagesArray = Object.values(pages).filter((p) => {
+      if (p.trashedAt) return false;
+      const title = extractTitleFromContent(p.content);
+      return title && title !== "无标题";
+    });
     if (searchAllNotebooks) {
       return allPagesArray;
     }
@@ -32,8 +35,9 @@ export function useCommandSearch({
       let currentPage = page;
 
       while (currentPage) {
-        if (currentPage.title && currentPage.title !== "无标题") {
-          breadcrumb.unshift(currentPage.title);
+        const title = extractTitleFromContent(currentPage.content);
+        if (title && title !== "无标题") {
+          breadcrumb.unshift(title);
         }
         if (!currentPage.parentId) {
           break;
@@ -61,15 +65,18 @@ export function useCommandSearch({
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 5);
 
-      const all = filteredPages.sort((a, b) =>
-        a.title.localeCompare(b.title, "zh-CN"),
-      );
+      const all = filteredPages.sort((a, b) => {
+        const titleA = extractTitleFromContent(a.content);
+        const titleB = extractTitleFromContent(b.content);
+        return titleA.localeCompare(titleB, "zh-CN");
+      });
 
       return { recent, all, hasQuery: false };
     }
 
     const matched = filteredPages.filter((page) => {
-      const titleMatch = page.title.toLowerCase().includes(query);
+      const title = extractTitleFromContent(page.content);
+      const titleMatch = title.toLowerCase().includes(query);
       const contentText = extractTextFromContent(page.content);
       const contentMatch = contentText.toLowerCase().includes(query);
       return titleMatch || contentMatch;
@@ -80,9 +87,11 @@ export function useCommandSearch({
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5);
 
-    const all = matched.sort((a, b) =>
-      a.title.localeCompare(b.title, "zh-CN"),
-    );
+    const all = matched.sort((a, b) => {
+      const titleA = extractTitleFromContent(a.content);
+      const titleB = extractTitleFromContent(b.content);
+      return titleA.localeCompare(titleB, "zh-CN");
+    });
 
     return { recent, all, hasQuery: true };
   }, [filteredPages, searchQuery, removedRecentIds]);

@@ -1,5 +1,6 @@
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "./SidebarContextMenu";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 interface FavoritesSectionProps {
   itemHeight: number;
@@ -59,7 +60,8 @@ function FavoriteNode({
 
     const existingBlankChild = Object.values(pages).find((p) => {
       const isChild = p.parentId === page.id && !p.trashedAt;
-      const isBlankTitle = !p.title || p.title.trim() === "";
+      const title = extractTitleFromContent(p.content);
+      const isBlankTitle = !title || title.trim() === "" || title === "无标题";
       const isBlankContent =
         !p.content ||
         p.content.type !== "doc" ||
@@ -149,7 +151,7 @@ function FavoriteNode({
                 page.trashedAt && "opacity-50 italic",
               )}
             >
-              {page.title || "无标题"}
+              {extractTitleFromContent(page.content)}
             </span>
             {page.trashedAt && (
               <LucideIcons.Trash2 className="h-3 w-3 text-muted-foreground/50 ml-1" />

@@ -7,6 +7,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
 import Highlight from "@tiptap/extension-highlight";
 import JSZip from "jszip";
+import { extractTitleFromContent } from "./content-text-extractor";
 
 const extensions = [StarterKit, Link, TaskList, TaskItem, Image, Highlight];
 
@@ -95,24 +96,27 @@ function getRelativeAssetPath(filename: string, depth: number): string {
 
 export function exportToJSON(page: Page) {
   const data = JSON.stringify(page, null, 2);
-  downloadFile(data, `${page.title || "untitled"}.json`, "application/json");
+  const title = extractTitleFromContent(page.content);
+  downloadFile(data, `${title || "untitled"}.json`, "application/json");
 }
 
 export function exportToMarkdown(page: Page) {
   const content = page.content as JSONContent;
   const markdown = jsonContentToMarkdown(content);
-  const fullMarkdown = `# ${page.title || "无标题"}\n\n${markdown}`;
-  downloadFile(fullMarkdown, `${page.title || "untitled"}.md`, "text/markdown");
+  const title = extractTitleFromContent(page.content);
+  const fullMarkdown = `# ${title}\n\n${markdown}`;
+  downloadFile(fullMarkdown, `${title || "untitled"}.md`, "text/markdown");
 }
 
 export function exportToHTML(page: Page) {
   const html = generateHTML(page.content, extensions);
+  const title = extractTitleFromContent(page.content);
   const fullHtml = `
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>${page.title}</title>
+<title>${title}</title>
 <style>
 body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
 img { max-width: 100%; height: auto; }
@@ -122,12 +126,12 @@ pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; }
 </style>
 </head>
 <body>
-<h1>${page.title}</h1>
+<h1>${title}</h1>
 ${html}
 </body>
 </html>`;
 
-  downloadFile(fullHtml, `${page.title || "untitled"}.html`, "text/html");
+  downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
 }
 
 export interface ExportOptions {
@@ -187,7 +191,8 @@ export async function exportNotebooks(
           break;
         case "html":
           const html = generateHTML(pageClone.content, extensions);
-          content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${pageClone.title}</title><style>img { max-width: 100%; }</style></head><body><h1>${pageClone.title}</h1>${html}</body></html>`;
+          const titleForHtml = extractTitleFromContent(pageClone.content);
+          content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleForHtml}</title><style>img { max-width: 100%; }</style></head><body><h1>${titleForHtml}</h1>${html}</body></html>`;
           extension = ".html";
           break;
         case "json":
@@ -197,12 +202,12 @@ export async function exportNotebooks(
       }
 
       const fileName =
-        sanitizeFileName(pageClone.title || "untitled") + extension;
+        sanitizeFileName(extractTitleFromContent(pageClone.content) || "untitled") + extension;
       parentFolder.file(fileName, content);
 
       const children = notebookPages.filter((p) => p.parentId === page.id);
       if (children.length > 0) {
-        const subFolderName = sanitizeFileName(page.title || "untitled");
+        const subFolderName = sanitizeFileName(extractTitleFromContent(page.content) || "untitled");
         const subFolder = parentFolder.folder(subFolderName);
         if (subFolder) {
           for (const child of children) {
@@ -366,7 +371,7 @@ export function importFromJSON(
   filename?: string,
 ): ImportResult {
   try {
-    const data = JSON.parse(jsonString) as Page;
+    const data = JSON.parse(jsonString) as any;
 
     if (!data.content || typeof data.content !== "object") {
       return {
@@ -377,8 +382,16 @@ export function importFromJSON(
       };
     }
 
+    // 如果有旧的 title 字段，提取它；否则从 content 提取
+    let title = filename || "导入的页面";
+    if ('title' in data && data.title) {
+      title = data.title;
+    } else {
+      title = extractTitleFromContent(data.content) || filename || "导入的页面";
+    }
+
     return {
-      title: data.title || filename || "导入的页面",
+      title,
       content: data.content,
       success: true,
     };

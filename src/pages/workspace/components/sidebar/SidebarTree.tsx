@@ -2,6 +2,7 @@ import { Tree } from "react-arborist";
 import type { NodeApi, NodeRendererProps } from "react-arborist";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "./SidebarContextMenu";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
@@ -36,7 +37,7 @@ const buildTree = (
 
   const nodes: TreeNode[] = children.map((page) => ({
     id: page.id,
-    name: page.title || "无标题",
+    name: extractTitleFromContent(page.content),
     icon: page.icon,
     children: buildTree(pages, openPageIds, page.id, workspaceId),
     page,
@@ -92,7 +93,8 @@ function PageNode({ node, style, dragHandle, itemHeight, activeNotebookId }: Pag
 
     const existingBlankChild = Object.values(pages).find((p) => {
       const isChild = p.parentId === node.id && !p.trashedAt;
-      const isBlankTitle = !p.title || p.title.trim() === "";
+      const title = extractTitleFromContent(p.content);
+      const isBlankTitle = !title || title.trim() === "" || title === "无标题";
       const isBlankContent =
         !p.content ||
         p.content.type !== "doc" ||
@@ -239,9 +241,17 @@ export function SidebarTree({
 
   const handleRename = useCallback(
     ({ id, name }: { id: string; name: string }) => {
-      updatePage(id, { title: name });
+      const page = pages[id];
+      if (!page) return;
+      
+      // 更新 content 第一行的标题
+      const newContent = JSON.parse(JSON.stringify(page.content));
+      if (newContent.content?.[0]?.type === 'heading' && newContent.content[0].attrs?.level === 1) {
+        newContent.content[0].content = name ? [{ type: 'text', text: name }] : undefined;
+        updatePage(id, { content: newContent });
+      }
     },
-    [updatePage],
+    [pages, updatePage],
   );
 
   const handleActivate = useCallback(

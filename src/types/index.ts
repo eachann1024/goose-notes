@@ -27,7 +27,6 @@ export interface Page {
   id: string
   workspaceId: string
   parentId?: string
-  title: string
   icon?: string
   cover?: string
   content: JSONContent

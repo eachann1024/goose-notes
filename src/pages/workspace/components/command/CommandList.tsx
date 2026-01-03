@@ -1,3 +1,13 @@
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { cn, formatShortcut } from "@/lib/utils";
+
 interface CommandListProps {
   items: any[];
   command: any;
@@ -64,77 +74,124 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
     return null;
   }
 
-  return (
-    <div
-      ref={containerRef}
-      className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border border-[#303030]/50 bg-[#1F1F1F] shadow-2xl transition-all animate-in fade-in zoom-in-95"
-      style={{ boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}
-    >
-      <div className="text-[10px] font-medium text-[#7A7A7A] px-2 py-1 select-none">
-        基本区块
-      </div>
+  const selectedItem = props.items[selectedIndex];
 
-      <div className="flex flex-col gap-[1px] max-h-[260px] overflow-y-auto scrollbar-hide">
-        {props.items.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={index}
-              data-index={index}
-              className={cn(
-                "relative flex cursor-pointer items-center rounded-[3px] px-2 py-1 min-h-[28px] text-sm outline-none w-full text-left transition-colors",
-                index === selectedIndex
-                  ? "bg-[#2C2C2C]"
-                  : "hover:bg-[#2C2C2C]/50",
-              )}
-              onClick={() => selectItem(index)}
-            >
-              <div className="flex items-center justify-center w-5 h-5 shrink-0 mr-2 overflow-hidden rounded-[3px] bg-transparent">
-                {item.title === "文本" || item.title === "Text" ? (
+  return (
+    <div className="flex items-end gap-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+      <div
+        ref={containerRef}
+        className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border bg-popover text-popover-foreground shadow-2xl transition-all"
+      >
+        <div className="text-[10px] font-medium text-muted-foreground px-2 py-1 select-none">
+          基本区块
+        </div>
+
+        <div className="flex flex-col gap-[1px] max-h-[260px] overflow-y-auto scrollbar-hide">
+          {props.items.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={index}
+                data-index={index}
+                className={cn(
+                  "relative flex cursor-pointer items-center rounded-[3px] px-2 py-1 min-h-[28px] text-sm outline-none w-full text-left transition-colors",
+                  index === selectedIndex
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent/50 text-foreground/80",
+                )}
+                onClick={() => selectItem(index)}
+              >
+                <div className="flex items-center justify-center w-5 h-5 shrink-0 mr-2 overflow-hidden rounded-[3px] bg-transparent">
+                  {item.title === "文本" || item.title === "Text" ? (
+                    <span
+                      className={cn(
+                        "text-[15px] font-serif opacity-90 leading-none",
+                        index === selectedIndex
+                          ? "text-accent-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      T
+                    </span>
+                  ) : (
+                    <Icon
+                      className={cn(
+                        "h-[14px] w-[14px] stroke-[1.5]",
+                        index === selectedIndex
+                          ? "text-accent-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col flex-1 overflow-hidden">
                   <span
                     className={cn(
-                      "text-[15px] font-serif opacity-90 leading-none",
-                      index === selectedIndex ? "text-white" : "text-[#CFCFCF]",
+                      "font-medium truncate text-[12px]",
+                      index === selectedIndex
+                        ? "text-accent-foreground"
+                        : "text-foreground",
                     )}
                   >
-                    T
+                    {item.title}
                   </span>
-                ) : (
-                  <Icon
-                    className={cn(
-                      "h-[14px] w-[14px] stroke-[1.5]",
-                      index === selectedIndex ? "text-white" : "text-[#CFCFCF]",
-                    )}
-                  />
-                )}
-              </div>
+                </div>
 
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <span
-                  className={cn(
-                    "font-medium truncate text-[12px]",
-                    index === selectedIndex ? "text-white" : "text-[#CFCFCF]",
-                  )}
-                >
-                  {item.title}
+                {item.shortcut && (
+                  <div className="text-[9px] opacity-40 font-mono ml-1.5 min-w-[12px] text-right">
+                    {item.shortcut}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+
+      </div>
+
+      {selectedItem?.hint && (
+        <div className="w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in slide-in-from-left-1">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+            {selectedItem.icon && (
+              <selectedItem.icon className="h-4 w-4 text-primary" />
+            )}
+            <span className="text-[12px] font-bold text-primary">
+              {selectedItem.hint.title}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {selectedItem.hint.items.map((hint: any, i: number) => (
+              <div key={i} className="flex flex-col gap-1">
+                <span className="flex items-center gap-1">
+                  {hint.key.split(" ").map((k: string, ki: number) => {
+                    const isOperator = k === "+" || k === "/";
+                    if (isOperator) {
+                      return (
+                        <span key={ki} className="text-[9px] opacity-40">
+                          {k}
+                        </span>
+                      );
+                    }
+                    return (
+                      <kbd
+                        key={ki}
+                        className="min-w-[16px] h-4 px-1 flex items-center justify-center rounded-[4px] border border-border bg-background text-[10px] font-mono font-medium shadow-sm text-foreground"
+                      >
+                        {formatShortcut(k)}
+                      </kbd>
+                    );
+                  })}
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-tight px-0.5">
+                  {hint.description}
                 </span>
               </div>
-
-              {item.shortcut && (
-                <div className="text-[9px] opacity-30 font-mono ml-1.5 min-w-[12px] text-right text-[#CFCFCF]">
-                  {item.shortcut}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="px-1 pt-1 border-t border-[#303030]/30">
-        <div className="bg-[#2F2F2F] w-fit rounded-md text-[10px] text-[#CFCFCF] px-1.5 py-0.5 flex items-center gap-1">
-          <span className="opacity-70">/筛选...</span>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 });

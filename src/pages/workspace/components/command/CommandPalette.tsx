@@ -1,6 +1,7 @@
 import { Command } from "cmdk";
 import type { Page } from "@/types";
 import { useCommandSearch } from "./useCommandSearch";
+import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
 export function CommandPalette() {
   const descriptionId = useId();
@@ -121,7 +122,7 @@ export function CommandPalette() {
               return (
                 <Command.Item
                   key={`recent-${page.id}`}
-                  value={`recent-${page.id}-${page.title}`}
+                  value={`recent-${page.id}-${extractTitleFromContent(page.content)}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
@@ -144,7 +145,7 @@ export function CommandPalette() {
                     </div>
                   </div>
                   <span className="truncate flex-1">
-                    <HighlightText text={page.title} query={searchQuery} />
+                    <HighlightText text={extractTitleFromContent(page.content)} query={searchQuery} />
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground/50">
                     {breadcrumb.length > 0
@@ -172,13 +173,13 @@ export function CommandPalette() {
               return (
                 <Command.Item
                   key={`all-${page.id}`}
-                  value={`all-${page.id}-${page.title}`}
+                  value={`all-${page.id}-${extractTitleFromContent(page.content)}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4" />
                   <span className="truncate flex-1">
-                    <HighlightText text={page.title} query={searchQuery} />
+                    <HighlightText text={extractTitleFromContent(page.content)} query={searchQuery} />
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground/50 truncate max-w-[200px]">
                     {breadcrumb.length > 0 ? breadcrumb.join(" > ") : ""}

@@ -31,3 +31,22 @@ export function extractTextFromContent(content: JSONContent): string {
   traverse(content)
   return texts.join(' ').trim()
 }
+
+/**
+ * 从 TipTap content 中提取标题（第一个 h1 节点的文本）
+ */
+export function extractTitleFromContent(content: JSONContent): string {
+  if (!content || !content.content || content.content.length === 0) {
+    return '无标题'
+  }
+
+  const firstNode = content.content[0]
+  
+  if (firstNode.type === 'heading' && firstNode.attrs?.level === 1) {
+    const titleText = extractTextFromContent(firstNode)
+    return titleText || '无标题'
+  }
+
+  return '无标题'
+}
+

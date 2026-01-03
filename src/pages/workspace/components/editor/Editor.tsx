@@ -1,5 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { EditorState, Selection } from "@tiptap/pm/state";
+import { EditorState } from "@tiptap/pm/state";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -60,6 +60,44 @@ export function Editor({ editable = true }: EditorProps) {
       handleKeyDown: (_, event) => {
         if (!editor) return false;
 
+        if (event.key === "Enter") {
+          const { state } = editor;
+          const { selection } = state;
+          const { $from, empty } = selection;
+
+          if (empty && editor.isActive("blockquote")) {
+            const isAtBlockStart = $from.parentOffset === 0;
+            const isFirstNodeInQuote =
+              $from.depth > 1 && $from.index($from.depth - 1) === 0;
+
+            if (isAtBlockStart && isFirstNodeInQuote) {
+              if (event.shiftKey) {
+                return false;
+              } else {
+                event.preventDefault();
+                let depth = $from.depth;
+                while (
+                  depth > 0 &&
+                  state.doc.nodeAt($from.before(depth))?.type.name !==
+                    "blockquote"
+                ) {
+                  depth--;
+                }
+
+                if (depth > 0) {
+                  const quoteStartPos = $from.before(depth);
+                  editor
+                    .chain()
+                    .focus()
+                    .insertContentAt(quoteStartPos, { type: "paragraph" })
+                    .run();
+                  return true;
+                }
+              }
+            }
+          }
+        }
+
         if (event.key === "Tab") {
           event.preventDefault();
 
@@ -70,59 +108,6 @@ export function Editor({ editable = true }: EditorProps) {
               editor.chain().focus().goToNextCell().run();
             }
             return true;
-          }
-        }
-
-        if (event.key === "ArrowLeft") {
-          const { from } = editor.state.selection;
-          const docStartPos = Selection.atStart(editor.state.doc).from;
-          if (from === docStartPos) {
-            event.preventDefault();
-            window.dispatchEvent(new CustomEvent("goose-note:focus-title-end"));
-            return true;
-          }
-        }
-
-        if (event.key === "Backspace") {
-          const { $from } = editor.state.selection;
-
-          if ($from.pos === 1) {
-            const firstChild = editor.state.doc.firstChild;
-            const isFirstChildEmptyParagraph =
-              firstChild?.type.name === "paragraph" &&
-              (!firstChild.content || firstChild.content.size === 0);
-
-            if (isFirstChildEmptyParagraph) {
-              event.preventDefault();
-              editor
-                .chain()
-                .deleteRange({ from: 0, to: firstChild.nodeSize })
-                .run();
-              window.dispatchEvent(
-                new CustomEvent("goose-note:focus-title-end"),
-              );
-              return true;
-            }
-
-            if (
-              firstChild?.type.name === "paragraph" &&
-              firstChild.textContent
-            ) {
-              event.preventDefault();
-              const firstLineText = firstChild.textContent;
-
-              editor
-                .chain()
-                .deleteRange({ from: 0, to: firstChild.nodeSize })
-                .run();
-
-              window.dispatchEvent(
-                new CustomEvent("goose-note:merge-to-title", {
-                  detail: { text: firstLineText },
-                }),
-              );
-              return true;
-            }
           }
         }
 
@@ -151,7 +136,36 @@ export function Editor({ editable = true }: EditorProps) {
     const applyContent = () => {
       if (cancelled) return;
       editor.commands.blur();
-      editor.commands.setContent(page.content, { emitUpdate: false });
+
+      let contentToSet = page.content;
+
+      // 确保内容有标题行（第一行为 h1）
+      if (!contentToSet.content || contentToSet.content.length === 0) {
+        contentToSet = {
+          type: "doc",
+          content: [
+            { type: "heading", attrs: { level: 1 } },
+            { type: "paragraph" },
+          ],
+        };
+      } else {
+        const firstNode = contentToSet.content[0];
+        if (
+          !firstNode ||
+          firstNode.type !== "heading" ||
+          firstNode.attrs?.level !== 1
+        ) {
+          contentToSet = {
+            ...contentToSet,
+            content: [
+              { type: "heading", attrs: { level: 1 } },
+              ...(contentToSet.content || []),
+            ],
+          };
+        }
+      }
+
+      editor.commands.setContent(contentToSet, { emitUpdate: false });
 
       const { state, view } = editor;
       const newState = EditorState.create({
@@ -220,62 +234,6 @@ export function Editor({ editable = true }: EditorProps) {
 
     return () => {
       editorElement.removeEventListener("paste", handlePaste);
-    };
-  }, [editor]);
-
-  useEffect(() => {
-    if (!editor) return;
-
-    const handleFocusStart = () => {
-      editor
-        .chain()
-        .focus("start")
-        .insertContentAt(0, { type: "paragraph" })
-        .focus("start")
-        .run();
-    };
-
-    const handleFocusFirstChar = () => {
-      editor.commands.focus("start");
-    };
-
-    const handleInsertFirstLine = (event: Event) => {
-      const customEvent = event as CustomEvent<{ text: string }>;
-      const text = customEvent.detail.text;
-
-      editor
-        .chain()
-        .focus("start")
-        .insertContentAt(0, {
-          type: "paragraph",
-          content: [{ type: "text", text }],
-        })
-        .focus("start")
-        .run();
-    };
-
-    window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
-    window.addEventListener(
-      "goose-note:focus-editor-first-char",
-      handleFocusFirstChar,
-    );
-    window.addEventListener(
-      "goose-note:insert-first-line",
-      handleInsertFirstLine,
-    );
-    return () => {
-      window.removeEventListener(
-        "goose-note:focus-editor-start",
-        handleFocusStart,
-      );
-      window.removeEventListener(
-        "goose-note:focus-editor-first-char",
-        handleFocusFirstChar,
-      );
-      window.removeEventListener(
-        "goose-note:insert-first-line",
-        handleInsertFirstLine,
-      );
     };
   }, [editor]);
 

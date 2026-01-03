@@ -124,7 +124,9 @@ declare global {
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
+  const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
   const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
+  const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getRandomTip: typeof import('./lib/tips').getRandomTip
@@ -135,6 +137,7 @@ declare global {
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
+  const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const startTransition: typeof import('react').startTransition
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants

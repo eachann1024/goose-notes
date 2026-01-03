@@ -5,8 +5,9 @@ import { Editor } from "./components/editor/Editor";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
-import { PageTitle } from "./components/page/PageTitle";
 import { PageTrashBanner } from "./components/page/PageTrashBanner";
+import { IconSelector } from "./components/shared/IconSelector";
+import * as LucideIcons from "lucide-react";
 
 export function WorkspacePage() {
   const { activePageId, getPage, updatePage, pages, setActivePage } = usePages();
@@ -152,7 +153,8 @@ export function WorkspacePage() {
         const results = Object.values(pages)
           .filter((p) => !p.trashedAt)
           .filter((p) => {
-            const titleMatch = p.title.toLowerCase().includes(query);
+            const title = extractTitleFromContent(p.content);
+            const titleMatch = title.toLowerCase().includes(query);
             const contentText = extractTextFromContent(p.content);
             const contentMatch = contentText.toLowerCase().includes(query);
             return titleMatch || contentMatch;
@@ -160,7 +162,7 @@ export function WorkspacePage() {
           .slice(0, 5);
 
         return results.map((p) => ({
-          title: p.title || "无标题",
+          title: extractTitleFromContent(p.content),
           description: new Date(p.updatedAt).toLocaleString(),
           icon: "./logo.png",
           url: `goose-note://page/${p.id}`,
@@ -227,15 +229,46 @@ export function WorkspacePage() {
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
           {activePageId && page ? (
             <div className="py-12 px-8 min-h-screen">
-              <PageTitle
-                page={page}
-                onUpdate={(payload) => updatePage(activePageId, payload)}
-                onFocusEditorStart={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("goose-note:focus-editor-start"),
-                  )
-                }
-              />
+              <div
+                className={cn(
+                  "mb-8",
+                  page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
+                )}
+              >
+                <div className="group relative mb-4">
+                  <IconSelector
+                    value={page.icon}
+                    onChange={(icon) =>
+                      !page.trashedAt && !page.isLocked && updatePage(activePageId, { icon })
+                    }
+                  >
+                    <button
+                      className={cn(
+                        "flex items-center justify-center transition-opacity",
+                        page.icon ? "opacity-100" : "opacity-0 hover:opacity-100",
+                      )}
+                    >
+                      {page.icon ? (
+                        <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                          {(LucideIcons as any)[page.icon] ? (
+                            (() => {
+                              const Icon = (LucideIcons as any)[page.icon];
+                              return <Icon className="h-14 w-14" />;
+                            })()
+                          ) : (
+                            <span>{page.icon}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                          <LucideIcons.Smile className="h-4 w-4" />
+                          <span>添加图标</span>
+                        </div>
+                      )}
+                    </button>
+                  </IconSelector>
+                </div>
+              </div>
 
               <Editor editable={!page.isLocked && !page.trashedAt} />
             </div>

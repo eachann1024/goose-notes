@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
 import { uToolsStorage } from "@/lib/storage";
 import { useNotebooks } from "./useNotebooks";
+import { extractTitleFromContent, extractTextFromContent } from "@/lib/content-text-extractor";
 
 interface PagesState {
   pages: Record<string, Page>;
@@ -27,6 +28,10 @@ interface PagesState {
 const initialContent: JSONContent = {
   type: "doc",
   content: [
+    {
+      type: "heading",
+      attrs: { level: 1 },
+    },
     {
       type: "paragraph",
     },
@@ -62,7 +67,6 @@ export const usePages = create<PagesState>()(
           id,
           workspaceId,
           parentId,
-          title: "",
           content: initialContent,
           isFolder: false,
           isLocked: false,
@@ -152,10 +156,19 @@ export const usePages = create<PagesState>()(
 
           newId = uuidv4();
           const now = Date.now();
+          
+          // 复制内容并在标题后添加 " 副本"
+          const clonedContent = JSON.parse(JSON.stringify(page.content));
+          if (clonedContent.content?.[0]?.type === 'heading' && clonedContent.content[0].attrs?.level === 1) {
+            const titleNode = clonedContent.content[0];
+            const titleText = extractTitleFromContent(page.content);
+            titleNode.content = [{ type: 'text', text: `${titleText} 副本` }];
+          }
+          
           const newPage: Page = {
             ...page,
             id: newId,
-            title: `${page.title} 副本`,
+            content: clonedContent,
             updatedAt: now,
             createdAt: now,
             trashedAt: undefined,
@@ -288,6 +301,48 @@ export const usePages = create<PagesState>()(
         pages: state.pages,
         activePageId: state.activePageId,
       }),
+      migrate: (persistedState: any, version: number) => {
+        // 迁移旧版 Page 数据：将 title 字段移入 content 的第一个 h1 节点
+        if (persistedState?.pages) {
+          const migratedPages: Record<string, Page> = {};
+          
+          for (const [id, page] of Object.entries(persistedState.pages) as [string, any][]) {
+            // 如果存在 title 字段，说明是旧数据
+            if ('title' in page) {
+              const oldTitle = page.title || '';
+              const content = page.content as JSONContent;
+              
+              // 检查第一个节点
+              const firstNode = content.content?.[0];
+              
+              // 如果第一个节点已经是 h1，更新其内容
+              if (firstNode?.type === 'heading' && firstNode.attrs?.level === 1) {
+                firstNode.content = oldTitle ? [{ type: 'text', text: oldTitle }] : undefined;
+              } else {
+                // 否则在开头插入 h1
+                content.content = [
+                  {
+                    type: 'heading',
+                    attrs: { level: 1 },
+                    content: oldTitle ? [{ type: 'text', text: oldTitle }] : undefined
+                  },
+                  ...(content.content || [])
+                ];
+              }
+              
+              // 移除 title 字段
+              const { title, ...pageWithoutTitle } = page;
+              migratedPages[id] = pageWithoutTitle as Page;
+            } else {
+              migratedPages[id] = page as Page;
+            }
+          }
+          
+          persistedState.pages = migratedPages;
+        }
+        
+        return persistedState;
+      },
     },
   ),
 );

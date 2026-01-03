@@ -63,7 +63,7 @@ function nodeDOMAtCoords(
     "p:not(:first-child)",
     "pre",
     "blockquote",
-    "h1",
+    "h1:not(:first-child)",
     "h2",
     "h3",
     "h4",
@@ -75,6 +75,16 @@ function nodeDOMAtCoords(
   ].join(", ");
   return document.elementsFromPoint(coords.x, coords.y).find((elem) => {
     if (elem.closest(".table-add-control")) return false;
+
+    // 排除 .ProseMirror 的第一个子元素（标题）
+    const parent = elem.parentElement;
+    if (
+      parent?.matches?.(".ProseMirror") &&
+      parent.firstElementChild === elem
+    ) {
+      return false;
+    }
+
     return (
       elem.parentElement?.matches?.(".ProseMirror") || elem.matches(selectors)
     );
@@ -118,6 +128,15 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     const nodePos = resolved.depth > 0 ? resolved.before(1) : pos;
     const domNode = view.nodeDOM(nodePos);
     if (!(domNode instanceof Element)) return false;
+
+    const parent = domNode.parentElement;
+    if (
+      parent?.matches?.(".ProseMirror") &&
+      parent.firstElementChild === domNode
+    ) {
+      hideDragHandle();
+      return false;
+    }
 
     const excludedTagList = options.excludedTags
       .concat(["ol", "ul"])
@@ -202,6 +221,15 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     const domNode = view.nodeDOM(nodePos);
 
     if (domNode instanceof Element) {
+      const parent = domNode.parentElement;
+      if (
+        parent?.matches?.(".ProseMirror") &&
+        parent.firstElementChild === domNode
+      ) {
+        hideDragHandle();
+        return;
+      }
+
       const excludedTagList = options.excludedTags
         .concat(["ol", "ul"])
         .join(", ");

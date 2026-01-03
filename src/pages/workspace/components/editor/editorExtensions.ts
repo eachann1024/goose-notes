@@ -16,6 +16,9 @@ import { ResizableImage } from "@/extensions/ResizableImage";
 import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
 import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
+import { TitleHeading } from "@/extensions/TitleHeading";
+import { InlineCodeFix } from "@/extensions/InlineCodeFix";
+import Heading from "@tiptap/extension-heading";
 
 const lowlight = createLowlight(all);
 
@@ -23,14 +26,24 @@ export const editorExtensions = [
   StarterKit.configure({
     codeBlock: false,
     link: false,
+    heading: false,
     dropcursor: {
       color: "hsl(221.2, 83.2%, 53.3%)",
       width: 3,
     },
   }),
+  Heading.configure({
+    levels: [1, 2, 3, 4, 5, 6],
+  }),
+  TitleHeading,
   AutoJoiner,
   Placeholder.configure({
-    placeholder: "输入 / 以使用命令...",
+    placeholder: ({ node, pos }) => {
+      if (pos === 0 && node.type.name === "heading") {
+        return "无标题";
+      }
+      return "输入 / 以使用命令...";
+    },
   }),
   Link.configure({
     openOnClick: false,
@@ -65,5 +78,6 @@ export const editorExtensions = [
     transformPastedText: true,
     transformCopiedText: false,
   }),
+  InlineCodeFix,
   SmartSelectAll,
 ];
