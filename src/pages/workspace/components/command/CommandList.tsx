@@ -148,7 +148,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                 </div>
 
                 {item.shortcut && (
-                  <div className="text-[9px] opacity-40 font-mono ml-1.5 min-w-[12px] text-right">
+                  <div className="text-[9px] opacity-40 font-mono ml-1.5 mr-2 min-w-[12px] text-right">
                     {item.shortcut}
                   </div>
                 )}
