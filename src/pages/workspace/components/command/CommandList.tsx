@@ -12,11 +12,13 @@ interface CommandListProps {
   items: any[];
   command: any;
   editor: any;
+  placement?: "top" | "bottom";
 }
 
 export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isTopPlacement = props.placement === "top";
 
   const selectItem = useCallback(
     (index: number) => {
@@ -77,7 +79,14 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const selectedItem = props.items[selectedIndex];
 
   return (
-    <div className="flex items-end gap-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+    <div
+      className={cn(
+        "flex gap-2 animate-in fade-in zoom-in-95",
+        isTopPlacement
+          ? "items-end slide-in-from-bottom-2"
+          : "items-start slide-in-from-top-2",
+      )}
+    >
       <div
         ref={containerRef}
         className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border bg-popover text-popover-foreground shadow-2xl transition-all"
@@ -147,8 +156,6 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
             );
           })}
         </div>
-
-
       </div>
 
       {selectedItem?.hint && (

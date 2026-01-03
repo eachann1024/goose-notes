@@ -18,19 +18,33 @@ export const InlineCodeFix = Extension.create({
               if (!empty) return false;
 
               const pos = $from.pos;
-              if (pos === 0) return false;
 
-              const marks = doc.resolve(pos).marks();
-              const isInsideCode = marks.some((m) => m.type.name === "code");
-              const marksBefore = doc.resolve(pos - 1).marks();
-              const isCodeBefore = marksBefore.some(
-                (m) => m.type.name === "code",
-              );
+              const codeAfterCursor =
+                $from.nodeAfter?.marks?.some((m) => m.type.name === "code") ??
+                false;
+              const codeBeforeCursor =
+                $from.nodeBefore?.marks?.some((m) => m.type.name === "code") ??
+                false;
 
-              if (isInsideCode && !isCodeBefore) {
+              const isAtCodeStart = codeAfterCursor && !codeBeforeCursor;
+              if (isAtCodeStart) {
+                const charBefore =
+                  pos > $from.start() ? doc.textBetween(pos - 1, pos) : "";
+
+                // 如果前面没有空格（或内容），插入空格并前移光标
+                if (charBefore !== " ") {
+                  event.preventDefault();
+                  const tr = state.tr.insertText(" ", pos);
+                  tr.setSelection(TextSelection.create(tr.doc, pos));
+                  tr.setStoredMarks([]);
+                  view.dispatch(tr);
+                  return true;
+                }
+
                 event.preventDefault();
+                const newPos = Math.max($from.start(), pos - 1);
                 const tr = state.tr.setSelection(
-                  TextSelection.create(doc, pos - 1),
+                  TextSelection.create(doc, newPos),
                 );
                 tr.setStoredMarks([]);
                 view.dispatch(tr);
@@ -48,16 +62,27 @@ export const InlineCodeFix = Extension.create({
               const pos = $from.pos;
               if (pos >= doc.content.size) return false;
 
-              const marksBefore = doc.resolve(pos - 1).marks();
-              const isCodeBefore = marksBefore.some(
-                (m) => m.type.name === "code",
-              );
-              const marksAfter = doc.resolve(pos).marks();
-              const isCodeAfter = marksAfter.some(
-                (m) => m.type.name === "code",
-              );
+              const codeBeforeCursor =
+                $from.nodeBefore?.marks?.some((m) => m.type.name === "code") ??
+                false;
+              const codeAfterCursor =
+                $from.nodeAfter?.marks?.some((m) => m.type.name === "code") ??
+                false;
 
-              if (isCodeBefore && !isCodeAfter) {
+              const isAtCodeEnd = codeBeforeCursor && !codeAfterCursor;
+              if (isAtCodeEnd) {
+                const charAfter =
+                  pos < $from.end() ? doc.textBetween(pos, pos + 1) : "";
+
+                if (charAfter !== " ") {
+                  event.preventDefault();
+                  const tr = state.tr.insertText(" ", pos);
+                  tr.setSelection(TextSelection.create(tr.doc, pos + 1));
+                  tr.setStoredMarks([]);
+                  view.dispatch(tr);
+                  return true;
+                }
+
                 event.preventDefault();
                 const tr = state.tr.setSelection(
                   TextSelection.create(doc, pos + 1),
@@ -73,14 +98,20 @@ export const InlineCodeFix = Extension.create({
           handleClick: (view, pos) => {
             const { state } = view;
             const { doc } = state;
-            const marks = doc.resolve(pos).marks();
-            const marksBefore = doc.resolve(Math.max(0, pos - 1)).marks();
+            const $pos = doc.resolve(pos);
 
-            const isAtStartOfMark =
-              marks.some((m) => m.type.name === "code") &&
-              (pos === 1 || !marksBefore.some((m) => m.type.name === "code"));
+            const codeAfterCursor =
+              $pos.nodeAfter?.marks?.some((m) => m.type.name === "code") ??
+              false;
+            const codeBeforeCursor =
+              $pos.nodeBefore?.marks?.some((m) => m.type.name === "code") ??
+              false;
 
-            if (isAtStartOfMark) {
+            // 点击在代码边缘时清除 storedMarks
+            if (
+              (codeAfterCursor && !codeBeforeCursor) ||
+              (codeBeforeCursor && !codeAfterCursor)
+            ) {
               setTimeout(() => {
                 view.dispatch(view.state.tr.setStoredMarks([]));
               }, 0);

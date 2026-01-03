@@ -41,7 +41,10 @@ export const SlashCommand = Extension.create({
         editor: this.editor,
         ...this.options.suggestion,
         allow: ({ state, range }: { state: any; range: any }) => {
-          const $from = state.doc.resolve(range.from);
+          const { doc } = state;
+          const $from = doc.resolve(range.from);
+          const $to = doc.resolve(range.to);
+
           const textBefore = $from.parent.textBetween(
             Math.max(0, $from.parentOffset - 1),
             $from.parentOffset,
@@ -49,17 +52,17 @@ export const SlashCommand = Extension.create({
             "\ufffc",
           );
 
-          const textAfter = $from.parent.textBetween(
-            $from.parentOffset,
-            $from.parent.content.size,
+          const textAfterRange = $to.parent.textBetween(
+            $to.parentOffset,
+            $to.parent.content.size,
             null,
             "\ufffc",
           );
 
-          return (
-            (textBefore === "" || textBefore === " " || textBefore === "\n") &&
-            textAfter.slice(1).trim().length === 0
-          );
+          const isValidStart =
+            textBefore === "" || textBefore === " " || textBefore === "\n";
+
+          return isValidStart && textAfterRange.trim().length === 0;
         },
       }),
       new Plugin({
@@ -77,41 +80,40 @@ export const SlashCommand = Extension.create({
             );
             const lastSlashIndex = textBefore.lastIndexOf("/");
 
-            const textAfter = $from.parent.textBetween(
+            if (lastSlashIndex === -1) return DecorationSet.empty;
+
+            const textAfterCursor = $from.parent.textBetween(
               $from.parentOffset,
               $from.parent.content.size,
               null,
               "\ufffc",
             );
 
-            if (lastSlashIndex !== -1 && textAfter.trim().length === 0) {
-              const charBeforeSlash =
-                lastSlashIndex > 0 ? textBefore[lastSlashIndex - 1] : "";
-              const isValidTrigger =
-                charBeforeSlash === "" ||
-                charBeforeSlash === " " ||
-                charBeforeSlash === "\n";
+            const charBeforeSlash =
+              lastSlashIndex > 0 ? textBefore[lastSlashIndex - 1] : "";
+            const isValidTrigger =
+              charBeforeSlash === "" ||
+              charBeforeSlash === " " ||
+              charBeforeSlash === "\n";
 
-              if (isValidTrigger) {
-                const textAfterSlash = textBefore.slice(lastSlashIndex + 1);
+            if (isValidTrigger && textAfterCursor.trim().length === 0) {
+              const textAfterSlash = textBefore.slice(lastSlashIndex + 1);
+              const items = getSuggestionItems({ query: textAfterSlash });
+              const hasMatch = items.length > 0;
 
-                const items = getSuggestionItems({ query: textAfterSlash });
-                const hasMatch = items.length > 0;
+              if (hasMatch && !textAfterSlash.includes(" ")) {
+                const slashPos = $from.start() + lastSlashIndex;
+                const isOnlySlash = textAfterSlash.length === 0;
 
-                if (hasMatch && !textAfterSlash.includes(" ")) {
-                  const slashPos = $from.start() + lastSlashIndex;
-                  const isOnlySlash = textAfterSlash.length === 0;
-
-                  return DecorationSet.create(state.doc, [
-                    Decoration.inline(slashPos, to, {
-                      class: cn(
-                        "slash-command-capsule",
-                        isOnlySlash && "is-empty",
-                      ),
-                      "data-placeholder": "筛选...",
-                    }),
-                  ]);
-                }
+                return DecorationSet.create(state.doc, [
+                  Decoration.inline(slashPos, to, {
+                    class: cn(
+                      "slash-command-capsule",
+                      isOnlySlash && "is-empty",
+                    ),
+                    "data-placeholder": "筛选...",
+                  }),
+                ]);
               }
             }
             return DecorationSet.empty;
@@ -133,7 +135,7 @@ export const configureSlashCommand = () => {
         return {
           onStart: (props: any) => {
             component = new ReactRenderer(CommandList, {
-              props,
+              props: { ...props, placement: "bottom" },
               editor: props.editor,
             });
 
@@ -152,11 +154,25 @@ export const configureSlashCommand = () => {
               arrow: false,
               theme: "notion-slash",
               offset: [0, 8],
+              onMount(instance) {
+                const popperPlacement =
+                  instance.popper?.getAttribute("data-placement") || "bottom";
+                const placement = popperPlacement.startsWith("top")
+                  ? "top"
+                  : "bottom";
+                component.updateProps({ ...props, placement });
+              },
             });
           },
 
           onUpdate(props: any) {
-            component.updateProps(props);
+            const instance = popup?.[0];
+            const popperPlacement =
+              instance?.popper?.getAttribute("data-placement") || "bottom";
+            const placement = popperPlacement.startsWith("top")
+              ? "top"
+              : "bottom";
+            component.updateProps({ ...props, placement });
 
             if (!props.clientRect) {
               return;

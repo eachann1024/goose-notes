@@ -221,23 +221,6 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
           .run();
       },
     },
-    {
-      title: "行内代码",
-      description: "插入简短的代码片段",
-      searchTerms: ["code", "inline", "hangnei"],
-      icon: LucideIcons.Code2,
-      shortcut: "e",
-      hint: {
-        title: "代码提示",
-        items: [
-          { key: "Mod + E", description: "快速切换行内代码" },
-          { key: "`", description: "输入反引号自动包裹" },
-        ],
-      },
-      command: ({ editor, range }: any) => {
-        editor.chain().focus().deleteRange(range).setMark("code").run();
-      },
-    },
   ].filter((item) => {
     if (typeof query === "string" && query.length > 0) {
       const search = query.toLowerCase();
