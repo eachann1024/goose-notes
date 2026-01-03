@@ -161,7 +161,15 @@
   color: hsl(var(--foreground) / 0.5);
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
+.ProseMirror h1.is-empty:first-child::before {
+  color: hsl(var(--muted-foreground));
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror p.is-empty.is-node-empty::before {
   color: hsl(var(--muted-foreground));
   content: attr(data-placeholder);
   float: left;

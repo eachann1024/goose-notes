@@ -44,6 +44,9 @@ export const editorExtensions = [
       }
       return "输入 / 以使用命令...";
     },
+    showOnlyCurrent: false,
+    includeChildren: true,
+    showOnlyWhenEditable: true,
   }),
   Link.configure({
     openOnClick: false,
