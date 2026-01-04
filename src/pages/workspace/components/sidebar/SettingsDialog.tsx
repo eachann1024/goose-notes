@@ -16,6 +16,7 @@ import {
   Check,
   Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -116,10 +117,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         if (firstWorkspaceId) setActiveNotebook(firstWorkspaceId);
         if (firstPageId) setActivePage(firstPageId);
 
-        alert("导入成功！已恢复记事本和页面结构。");
+        toast.success("导入成功", {
+          description: "已恢复记事本和页面结构",
+        });
       } catch (err) {
         console.error("Import failed", err);
-        alert("导入失败，请确保文件是有效的导出 ZIP 包。");
+        toast.error("导入失败", {
+          description: "请确保文件是有效的导出 ZIP 包",
+        });
       } finally {
         setImporting(false);
       }

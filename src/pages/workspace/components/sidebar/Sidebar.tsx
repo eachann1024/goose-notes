@@ -247,7 +247,10 @@ export function Sidebar({ className }: SidebarProps) {
         </ScrollArea>
 
         <SidebarFooter
-          onOpenTrash={() => setCurrentView("trash")}
+          onOpenTrash={() => {
+            setActivePage(null);
+            setCurrentView("trash");
+          }}
           onOpenSettings={() => setShowSettings(true)}
         />
       </div>

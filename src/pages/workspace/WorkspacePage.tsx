@@ -10,7 +10,8 @@ import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
 
 export function WorkspacePage() {
-  const { activePageId, getPage, updatePage, pages, setActivePage } = usePages();
+  const { activePageId, getPage, updatePage, pages, setActivePage } =
+    usePages();
   const {
     utools,
     customFonts,
@@ -212,7 +213,9 @@ export function WorkspacePage() {
         {activePageId && page?.trashedAt && (
           <PageTrashBanner
             onRestore={() => usePages.getState().restorePage(activePageId)}
-            onDelete={() => usePages.getState().permanentlyDeletePage(activePageId)}
+            onDelete={() =>
+              usePages.getState().permanentlyDeletePage(activePageId)
+            }
           />
         )}
 
@@ -226,7 +229,10 @@ export function WorkspacePage() {
           />
         )}
 
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto page-scroll-container"
+        >
           {activePageId && page ? (
             <div className="py-12 px-8 min-h-screen">
               <div
@@ -239,13 +245,17 @@ export function WorkspacePage() {
                   <IconSelector
                     value={page.icon}
                     onChange={(icon) =>
-                      !page.trashedAt && !page.isLocked && updatePage(activePageId, { icon })
+                      !page.trashedAt &&
+                      !page.isLocked &&
+                      updatePage(activePageId, { icon })
                     }
                   >
                     <button
                       className={cn(
                         "flex items-center justify-center transition-opacity",
-                        page.icon ? "opacity-100" : "opacity-0 hover:opacity-100",
+                        page.icon
+                          ? "opacity-100"
+                          : "opacity-0 hover:opacity-100",
                       )}
                     >
                       {page.icon ? (

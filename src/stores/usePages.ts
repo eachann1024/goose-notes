@@ -88,7 +88,9 @@ export const usePages = create<PagesState>()(
         // 新建页面时自动聚焦标题
         if (typeof window !== "undefined") {
           setTimeout(() => {
-            window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+            window.dispatchEvent(
+              new CustomEvent("goose-note:focus-editor-start"),
+            );
           }, 100);
         }
 
@@ -119,7 +121,12 @@ export const usePages = create<PagesState>()(
           const workspaceId = page.workspaceId;
           const newPages = {
             ...state.pages,
-            [id]: { ...page, trashedAt: Date.now(), updatedAt: Date.now() },
+            [id]: {
+              ...page,
+              trashedAt: Date.now(),
+              updatedAt: Date.now(),
+              isFavorite: false,
+            },
           };
 
           let newActivePageId = state.activePageId;

@@ -102,7 +102,7 @@ export function exportToJSON(page: Page) {
 
 export function exportToMarkdown(page: Page) {
   const content = page.content as JSONContent;
-  const markdown = jsonContentToMarkdown(content);
+  const markdown = jsonContentToMarkdown(content, true);
   const title = extractTitleFromContent(page.content);
   const fullMarkdown = `# ${title}\n\n${markdown}`;
   downloadFile(fullMarkdown, `${title || "untitled"}.md`, "text/markdown");
@@ -187,7 +187,7 @@ export async function exportNotebooks(
       switch (format) {
         case "md": {
           const title = extractTitleFromContent(pageClone.content);
-          content = `# ${title}\n\n${jsonContentToMarkdown(pageClone.content)}`;
+          content = `# ${title}\n\n${jsonContentToMarkdown(pageClone.content, true)}`;
           extension = ".md";
           break;
         }
@@ -198,7 +198,9 @@ export async function exportNotebooks(
           extension = ".html";
           break;
         case "json":
-          content = JSON.stringify(pageClone, null, 2);
+          const { title: _legacyTitle, ...pageWithoutTitle } =
+            pageClone as Page & { title?: string };
+          content = JSON.stringify(pageWithoutTitle, null, 2);
           extension = ".json";
           break;
       }
@@ -233,7 +235,9 @@ export async function exportNotebooks(
   }
 
   const content = await zip.generateAsync({ type: "blob" });
-  const timestamp = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
   downloadBlob(content, `goose-note-export-${timestamp}.zip`);
 }
 
@@ -355,14 +359,23 @@ export async function importNotebooksFromZip(
         const text = await file.async("text");
         const imported = importFromMarkdown(text, title);
         const content = imported.content;
-        content.content = [
-          {
-            type: "heading",
-            attrs: { level: 1 },
-            content: [{ type: "text", text: imported.title }],
-          },
-          ...(content.content || []),
-        ];
+        const firstNode = content.content?.[0];
+        const hasH1Title =
+          firstNode?.type === "heading" &&
+          firstNode.attrs?.level === 1 &&
+          firstNode.content?.some(
+            (n: JSONContent) => n.text === imported.title,
+          );
+        if (!hasH1Title) {
+          content.content = [
+            {
+              type: "heading",
+              attrs: { level: 1 },
+              content: [{ type: "text", text: imported.title }],
+            },
+            ...(content.content || []),
+          ];
+        }
         pageData = { content };
         if (pageData.content) restoreImages(pageData.content);
       }
@@ -435,28 +448,6 @@ export function importFromMarkdown(
       }
     }
 
-    if (content.content?.length) {
-      const firstNode = content.content[0];
-      const getPlainText = (nodes?: JSONContent[]) =>
-        (nodes || [])
-          .map((n) => (n.type === "text" ? n.text || "" : ""))
-          .join("")
-          .trim();
-      if (
-        firstNode.type === "heading" &&
-        (firstNode.attrs?.level ?? 1) === 1 &&
-        getPlainText(firstNode.content) === title
-      ) {
-        content.content.shift();
-      }
-      while (
-        content.content[0]?.type === "paragraph" &&
-        !content.content[0].content
-      ) {
-        content.content.shift();
-      }
-    }
-
     return { title, content, success: true };
   } catch (e) {
     return {
@@ -526,10 +517,21 @@ function downloadFile(content: string, filename: string, contentType: string) {
   }
 }
 
-function jsonContentToMarkdown(content: JSONContent): string {
+function jsonContentToMarkdown(
+  content: JSONContent,
+  skipFirstH1 = false,
+): string {
   if (!content.content) return "";
 
-  return content.content.map((node) => nodeToMarkdown(node)).join("\n");
+  let nodes = content.content;
+  if (skipFirstH1 && nodes.length > 0) {
+    const first = nodes[0];
+    if (first.type === "heading" && first.attrs?.level === 1) {
+      nodes = nodes.slice(1);
+    }
+  }
+
+  return nodes.map((node) => nodeToMarkdown(node)).join("\n");
 }
 
 function nodeToMarkdown(node: JSONContent): string {
@@ -683,12 +685,16 @@ function inlineContentToMarkdown(content?: JSONContent[]): string {
 }
 
 function markdownToJsonContent(markdown: string): JSONContent {
-  const lines = markdown.split("\n");
+  const lines = markdown
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n");
   const content: JSONContent[] = [];
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i];
+    const trimmedLine = line.trim();
 
     if (line.startsWith("```")) {
       const lang = line.slice(3).trim();
@@ -724,10 +730,13 @@ function markdownToJsonContent(markdown: string): JSONContent {
       continue;
     }
 
-    if (line.startsWith("> ")) {
+    if (trimmedLine.startsWith(">")) {
       const quoteLines: string[] = [];
-      while (i < lines.length && lines[i].startsWith("> ")) {
-        quoteLines.push(lines[i].slice(2));
+      quoteLines.push(trimmedLine.slice(1).trim());
+      i++;
+
+      while (i < lines.length && lines[i].trim().startsWith(">")) {
+        quoteLines.push(lines[i].trim().slice(1).trim());
         i++;
       }
       content.push({
@@ -742,20 +751,27 @@ function markdownToJsonContent(markdown: string): JSONContent {
       continue;
     }
 
-    const isTableSeparator = (value: string) =>
-      /^(\s*\|?\s*:?-+:?\s*)+\|?\s*$/.test(value) && value.includes("-");
+    const isTableSeparator = (value: string) => {
+      const v = value.trim();
+      return /^\|?(\s*:?-+:?\s*\|?)+$/.test(v) && v.includes("-");
+    };
 
     const splitTableRow = (value: string) => {
       const trimmed = value.trim();
-      const withoutEdgePipes = trimmed.replace(/^\|/, "").replace(/\|$/, "");
-      return withoutEdgePipes.split("|").map((cell) => cell.trim());
+      const content = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+      return content.split("|").map((cell) => cell.trim());
     };
 
-    if (line.includes("|") && isTableSeparator(lines[i + 1] || "")) {
+    if (
+      line.includes("|") &&
+      i + 1 < lines.length &&
+      isTableSeparator(lines[i + 1])
+    ) {
       const headerCells = splitTableRow(line);
       i += 2;
+
       const bodyRows: string[][] = [];
-      while (i < lines.length && lines[i].includes("|")) {
+      while (i < lines.length && lines[i].trim().includes("|")) {
         if (isTableSeparator(lines[i])) {
           i++;
           continue;
@@ -779,6 +795,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
         type: "tableRow",
         content: headerCells.map((cell) => toCell(cell, "tableHeader")),
       };
+
       const bodyRowNodes = bodyRows.map((row) => ({
         type: "tableRow",
         content: row.map((cell) => toCell(cell, "tableCell")),
