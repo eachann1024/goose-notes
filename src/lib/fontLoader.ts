@@ -8,8 +8,8 @@ const DEFAULT_FONTS = {
 
 // 远程字体 URL（体积大，需预加载）
 const REMOTE_FONTS = [
-  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@publish/%E9%B8%BF%E8%92%99%E9%BB%91%E4%BD%93-HarmonyOS%20Sans%20SC.woff2",
-  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@publish/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2",
+  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E9%B8%BF%E8%92%99%E9%BB%91%E4%BD%93-HarmonyOS%20Sans%20SC.woff2",
+  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2",
 ];
 
 const trimFontName = (font: string) =>
