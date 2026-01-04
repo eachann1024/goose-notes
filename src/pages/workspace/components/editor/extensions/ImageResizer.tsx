@@ -125,8 +125,8 @@ export function ImageResizer(props: NodeViewProps) {
             >
               <div
                 className={cn(
-                  "w-1 h-8 rounded-full bg-black/20 transition-colors group-hover/handle:bg-[#2463EB]",
-                  resizing && "bg-[#2463EB]",
+                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0",
+                  resizing && "bg-[#2463EB] ring-0",
                 )}
               />
             </div>
@@ -139,8 +139,8 @@ export function ImageResizer(props: NodeViewProps) {
             >
               <div
                 className={cn(
-                  "w-1 h-8 rounded-full bg-black/20 transition-colors group-hover/handle:bg-[#2463EB]",
-                  resizing && "bg-[#2463EB]",
+                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0",
+                  resizing && "bg-[#2463EB] ring-0",
                 )}
               />
             </div>
