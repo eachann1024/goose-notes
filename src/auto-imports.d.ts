@@ -111,6 +111,7 @@ declare global {
   const Trash2: typeof import('lucide-react').Trash2
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const X: typeof import('lucide-react').X
+  const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
@@ -129,6 +130,8 @@ declare global {
   const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
+  const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
+  const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const importFile: typeof import('./lib/export').importFile
@@ -168,6 +171,7 @@ declare global {
   const useState: typeof import('react').useState
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTransition: typeof import('react').useTransition
+  const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
 }
 // for type re-export
 declare global {

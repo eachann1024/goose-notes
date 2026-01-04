@@ -206,3 +206,30 @@
   font-family: var(--font-mono);
   border: 1px solid hsl(var(--border) / 0.5);
 }
+
+@keyframes editor-skeleton-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.editor-skeleton-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.editor-skeleton-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--foreground) / 0.12),
+    transparent
+  );
+  animation: editor-skeleton-shimmer 1.2s ease-in-out infinite;
+}

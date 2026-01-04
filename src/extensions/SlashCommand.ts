@@ -27,9 +27,20 @@ export const SlashCommand = Extension.create({
     return [
       new InputRule({
         find: /、$/,
-        handler: ({ state, range }) => {
-          const { tr } = state;
-          tr.insertText("/", range.from, range.to);
+        handler: ({ state, range, commands }) => {
+          const $from = state.doc.resolve(range.from);
+          const textBefore = $from.parent.textBetween(
+            0,
+            $from.parentOffset,
+            null,
+            "\ufffc",
+          );
+          const charBefore = textBefore.slice(-1);
+          const isValidStart =
+            textBefore === "" || charBefore === " " || charBefore === "\n";
+          if (!isValidStart) return null;
+          commands.insertContentAt(range, "/");
+          return null;
         },
       }),
     ];

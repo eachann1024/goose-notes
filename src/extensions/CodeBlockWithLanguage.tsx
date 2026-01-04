@@ -25,8 +25,21 @@ function CodeBlockWithLanguageView({
     },
   });
   const language = node.attrs.language || "";
-  const wrap =
-    node.attrs.wrap ?? localStorage.getItem("code-block-wrap") === "true";
+  const normalizeWrap = (value: unknown) => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      if (value === "true") return true;
+      if (value === "false") return false;
+    }
+    return undefined;
+  };
+  const wrapAttr = normalizeWrap(node.attrs.wrap);
+  const wrap = wrapAttr ?? false;
+  const wrapStyle: React.CSSProperties = {
+    whiteSpace: wrap ? "pre-wrap" : "pre",
+    wordBreak: wrap ? "break-word" : "normal",
+    overflowWrap: wrap ? "anywhere" : "normal",
+  };
 
   const getCodeContent = () => {
     let text = "";
@@ -45,7 +58,6 @@ function CodeBlockWithLanguageView({
 
   const handleWrapChange = (newWrap: boolean) => {
     updateAttributes({ wrap: newWrap });
-    localStorage.setItem("code-block-wrap", String(newWrap));
   };
 
   const handleFormat = (formatted: string) => {
@@ -85,12 +97,8 @@ function CodeBlockWithLanguageView({
           ))}
         </div>
       )}
-      <pre
-        className={cn(
-          wrap ? "whitespace-pre-wrap break-all" : "whitespace-pre",
-        )}
-      >
-        <NodeViewContent className="hljs" />
+      <pre>
+        <NodeViewContent className="hljs" style={wrapStyle} />
       </pre>
     </NodeViewWrapper>
   );

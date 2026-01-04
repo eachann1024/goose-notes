@@ -112,7 +112,21 @@ export function NotebookSwitcher() {
               onClick={() => {
                 setActiveNotebook(notebook.id);
                 const lastPageId = getLastActivePage(notebook.id);
-                setActivePage(lastPageId);
+                const { pages } = usePages.getState();
+                const lastPage = lastPageId ? pages[lastPageId] : null;
+                if (lastPage && !lastPage.trashedAt) {
+                  setActivePage(lastPageId);
+                } else {
+                  const firstValidPage = Object.values(pages)
+                    .filter(
+                      (p) => p.workspaceId === notebook.id && !p.trashedAt,
+                    )
+                    .sort(
+                      (a, b) =>
+                        (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+                    )[0];
+                  setActivePage(firstValidPage?.id ?? null);
+                }
                 setIsOpen(false);
               }}
             >

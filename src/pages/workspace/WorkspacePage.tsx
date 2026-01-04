@@ -7,6 +7,11 @@ import { PageHeader } from "./components/page/PageHeader";
 import { PageTrashBanner } from "./components/page/PageTrashBanner";
 import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
+import {
+  applyFontVariables,
+  getEditorFontFamilies,
+  waitForFonts,
+} from "@/lib/fontLoader";
 
 export function WorkspacePage() {
   const { activePageId, getPage, updatePage, pages, setActivePage } =
@@ -22,12 +27,9 @@ export function WorkspacePage() {
   } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const defaultFonts = {
-    default: "DM Sans",
-    serif: "仓耳今楷",
-    mono: "DM Mono",
-  };
+  const [editorFontsReady, setEditorFontsReady] = useState(
+    !UToolsAdapter.isUTools,
+  );
 
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
@@ -55,24 +57,29 @@ export function WorkspacePage() {
   }, [editorFontSize]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const fontDefault = customFonts.default.font || defaultFonts.default;
-    const fontSerif = customFonts.serif.font || defaultFonts.serif;
-    const fontMono = customFonts.mono.font || defaultFonts.mono;
-
-    root.style.setProperty(
-      "--font-default",
-      `"${fontDefault}", "DM Sans", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
-    );
-    root.style.setProperty(
-      "--font-serif",
-      `"${fontSerif}", "仓耳今楷", Georgia, Cambria, "Times New Roman", Times, serif`,
-    );
-    root.style.setProperty(
-      "--font-mono",
-      `"${fontMono}", "DM Mono", "HarmonyOS Sans SC", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
-    );
+    applyFontVariables(customFonts);
   }, [customFonts]);
+
+  useEffect(() => {
+    if (!UToolsAdapter.isUTools || !page || !activePageId) {
+      setEditorFontsReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setEditorFontsReady(false);
+    waitForFonts(getEditorFontFamilies(page.fontFamily, customFonts)).finally(
+      () => {
+        if (!cancelled) {
+          setEditorFontsReady(true);
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePageId, page?.fontFamily, customFonts]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -265,7 +272,22 @@ export function WorkspacePage() {
                 </div>
               </div>
 
-              <Editor editable={!page.isLocked && !page.trashedAt} />
+              {editorFontsReady ? (
+                <Editor editable={!page.isLocked && !page.trashedAt} />
+              ) : (
+                <div
+                  className={cn(
+                    "space-y-4 min-h-[calc(100vh-200px)]",
+                    page.isFullWidth ? "max-w-full px-4" : "max-w-3xl mx-auto",
+                  )}
+                >
+                  <div className="editor-skeleton-line h-10 w-3/4 rounded-md bg-muted/60" />
+                  <div className="editor-skeleton-line h-4 w-full rounded bg-muted/40" />
+                  <div className="editor-skeleton-line h-4 w-11/12 rounded bg-muted/40" />
+                  <div className="editor-skeleton-line h-4 w-10/12 rounded bg-muted/40" />
+                  <div className="editor-skeleton-line h-4 w-9/12 rounded bg-muted/40" />
+                </div>
+              )}
             </div>
           ) : (
             <PageEmptyState />
