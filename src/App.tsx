@@ -1,7 +1,13 @@
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
-  return <WorkspacePage />;
+  return (
+    <>
+      <WorkspacePage />
+      <Toaster />
+    </>
+  );
 }
 
 export default App;

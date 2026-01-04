@@ -131,11 +131,32 @@ export const usePages = create<PagesState>()(
 
           let newActivePageId = state.activePageId;
           if (state.activePageId === id) {
-            const siblings = Object.values(newPages).filter(
-              (p) =>
-                p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
-            );
-            newActivePageId = siblings.length > 0 ? siblings[0].id : null;
+            const siblings = Object.values(newPages)
+              .filter(
+                (p) =>
+                  p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
+              )
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              );
+
+            if (siblings.length > 0) {
+              const deletedPageIndex = Object.values(state.pages)
+                .filter((p) => p.workspaceId === workspaceId && !p.trashedAt)
+                .sort(
+                  (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+                )
+                .findIndex((p) => p.id === id);
+
+              // 如果删除的是最后一个，选中前一个；否则选中后一个
+              const nextIndex =
+                deletedPageIndex >= siblings.length
+                  ? siblings.length - 1
+                  : deletedPageIndex;
+              newActivePageId = siblings[nextIndex].id;
+            } else {
+              newActivePageId = null;
+            }
           }
 
           return {
@@ -212,10 +233,31 @@ export const usePages = create<PagesState>()(
 
           let newActivePageId = state.activePageId;
           if (state.activePageId === id) {
-            const siblings = Object.values(newPages).filter(
-              (p) => p.workspaceId === workspaceId && !p.trashedAt,
-            );
-            newActivePageId = siblings.length > 0 ? siblings[0].id : null;
+            const siblings = Object.values(newPages)
+              .filter(
+                (p) =>
+                  p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
+              )
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              );
+
+            if (siblings.length > 0) {
+              const deletedPageIndex = Object.values(state.pages)
+                .filter((p) => p.workspaceId === workspaceId && !p.trashedAt)
+                .sort(
+                  (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+                )
+                .findIndex((p) => p.id === id);
+
+              const nextIndex =
+                deletedPageIndex >= siblings.length
+                  ? siblings.length - 1
+                  : deletedPageIndex;
+              newActivePageId = siblings[nextIndex].id;
+            } else {
+              newActivePageId = null;
+            }
           }
 
           return {

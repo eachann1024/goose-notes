@@ -102,6 +102,7 @@ declare global {
   const TabsList: typeof import('./components/ui/tabs').TabsList
   const TabsTrigger: typeof import('./components/ui/tabs').TabsTrigger
   const Textarea: typeof import('./components/ui/textarea').Textarea
+  const Toaster: typeof import('./components/ui/sonner').Toaster
   const Toggle: typeof import('./components/ui/toggle').Toggle
   const Tooltip: typeof import('./components/ui/tooltip').Tooltip
   const TooltipContent: typeof import('./components/ui/tooltip').TooltipContent
@@ -149,6 +150,7 @@ declare global {
   const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
+  const useDeletePageWithUndo: typeof import('./hooks/useDeletePageWithUndo').useDeletePageWithUndo
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./hooks/useFormatCode').useFormatCode

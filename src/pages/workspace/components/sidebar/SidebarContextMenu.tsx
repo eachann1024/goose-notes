@@ -1,5 +1,6 @@
 import type { Page } from "@/types";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 
 interface SidebarContextMenuProps {
   page: Page;
@@ -10,13 +11,9 @@ export function SidebarContextMenu({
   page,
   children,
 }: SidebarContextMenuProps) {
-  const {
-    deletePage,
-    updatePage,
-    duplicatePage,
-    restorePage,
-    permanentlyDeletePage,
-  } = usePages();
+  const { updatePage, duplicatePage, restorePage, permanentlyDeletePage } =
+    usePages();
+  const { deletePageWithUndo } = useDeletePageWithUndo();
   const isTrashed = !!page.trashedAt;
 
   const handleRename = () => {
@@ -26,8 +23,13 @@ export function SidebarContextMenu({
     if (newTitle !== null) {
       // 更新 content 第一行的标题
       const newContent = JSON.parse(JSON.stringify(page.content));
-      if (newContent.content?.[0]?.type === 'heading' && newContent.content[0].attrs?.level === 1) {
-        newContent.content[0].content = newTitle ? [{ type: 'text', text: newTitle }] : undefined;
+      if (
+        newContent.content?.[0]?.type === "heading" &&
+        newContent.content[0].attrs?.level === 1
+      ) {
+        newContent.content[0].content = newTitle
+          ? [{ type: "text", text: newTitle }]
+          : undefined;
         updatePage(page.id, { content: newContent });
       }
     }
@@ -107,7 +109,7 @@ export function SidebarContextMenu({
           </>
         ) : (
           <ContextMenuItem
-            onSelect={() => deletePage(page.id)}
+            onSelect={() => deletePageWithUndo(page.id)}
             className="text-muted-foreground focus:text-destructive focus:bg-destructive/10"
           >
             <LucideIcons.Trash2 className="h-4 w-4" />

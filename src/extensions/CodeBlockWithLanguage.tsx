@@ -25,6 +25,8 @@ function CodeBlockWithLanguageView({
     },
   });
   const language = node.attrs.language || "";
+  const wrap =
+    node.attrs.wrap ?? localStorage.getItem("code-block-wrap") === "true";
 
   const getCodeContent = () => {
     let text = "";
@@ -39,6 +41,11 @@ function CodeBlockWithLanguageView({
 
   const handleLanguageChange = (newLanguage: string) => {
     updateAttributes({ language: newLanguage });
+  };
+
+  const handleWrapChange = (newWrap: boolean) => {
+    updateAttributes({ wrap: newWrap });
+    localStorage.setItem("code-block-wrap", String(newWrap));
   };
 
   const handleFormat = (formatted: string) => {
@@ -67,6 +74,8 @@ function CodeBlockWithLanguageView({
         onLanguageChange={handleLanguageChange}
         getCodeContent={getCodeContent}
         onFormat={handleFormat}
+        wrap={wrap}
+        onWrapChange={handleWrapChange}
         editable={editor.isEditable}
       />
       {showLineNumbers && (
@@ -76,14 +85,30 @@ function CodeBlockWithLanguageView({
           ))}
         </div>
       )}
-      <pre>
-        <NodeViewContent className="hljs" style={{ whiteSpace: "pre" }} />
+      <pre
+        className={cn(
+          wrap ? "whitespace-pre-wrap break-all" : "whitespace-pre",
+        )}
+      >
+        <NodeViewContent className="hljs" />
       </pre>
     </NodeViewWrapper>
   );
 }
 
 export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      language: {
+        default: null,
+      },
+      wrap: {
+        default: null,
+      },
+    };
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockWithLanguageView);
   },

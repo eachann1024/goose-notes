@@ -1,5 +1,4 @@
 import "./styles/index.css";
-import { Toaster } from "sonner";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { Editor } from "./components/editor/Editor";
 import { Sidebar } from "./components/sidebar/Sidebar";
@@ -192,20 +191,6 @@ export function WorkspacePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Toaster
-        position="top-center"
-        duration={3000}
-        visibleToasts={1}
-        theme="dark"
-        toastOptions={{
-          style: {
-            borderRadius: "6px",
-            fontSize: "14px",
-            padding: "12px 16px",
-          },
-        }}
-      />
-
       <CommandPalette />
       <Sidebar />
 

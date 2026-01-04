@@ -68,6 +68,18 @@
     @apply bg-background text-foreground;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background-color: rgba(35, 131, 226, 0.28);
+    color: inherit;
+  }
+  ::-moz-selection {
+    background-color: rgba(35, 131, 226, 0.28);
+    color: inherit;
   }
 
   /* 编辑器字体大小 CSS 变量（通过 JS 动态设置）*/
@@ -112,7 +124,7 @@
   .ProseMirror::-webkit-scrollbar,
   .page-scroll-container::-webkit-scrollbar {
     display: block !important;
-    width: 4px;
+    width: 6px;
   }
   .ProseMirror::-webkit-scrollbar-track,
   .page-scroll-container::-webkit-scrollbar-track {
@@ -120,29 +132,38 @@
   }
   .ProseMirror::-webkit-scrollbar-thumb,
   .page-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0);
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+  .ProseMirror:hover::-webkit-scrollbar-thumb,
+  .page-scroll-container:hover::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.15);
-    border-radius: 2px;
   }
   .ProseMirror::-webkit-scrollbar-thumb:hover,
   .page-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0.25) !important;
   }
-  .dark .ProseMirror::-webkit-scrollbar-thumb,
-  .dark .page-scroll-container::-webkit-scrollbar-thumb {
+  .dark .ProseMirror:hover::-webkit-scrollbar-thumb,
+  .dark .page-scroll-container:hover::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
   }
   .dark .ProseMirror::-webkit-scrollbar-thumb:hover,
   .dark .page-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.25) !important;
   }
   .ProseMirror,
   .page-scroll-container {
     -ms-overflow-style: auto;
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .ProseMirror:hover,
+  .page-scroll-container:hover {
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
   }
-  .dark .ProseMirror,
-  .dark .page-scroll-container {
+  .dark .ProseMirror:hover,
+  .dark .page-scroll-container:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
 }

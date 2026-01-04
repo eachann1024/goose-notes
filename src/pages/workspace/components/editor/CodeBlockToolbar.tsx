@@ -10,6 +10,8 @@ interface CodeBlockToolbarProps {
   onLanguageChange: (language: string) => void;
   getCodeContent: () => string;
   onFormat?: (formatted: string) => void;
+  onWrapChange?: (wrap: boolean) => void;
+  wrap?: boolean;
   editable?: boolean;
 }
 
@@ -18,6 +20,8 @@ export function CodeBlockToolbar({
   onLanguageChange,
   getCodeContent,
   onFormat,
+  onWrapChange,
+  wrap = false,
   editable = true,
 }: CodeBlockToolbarProps) {
   const [copied, setCopied] = useState(false);
@@ -138,6 +142,30 @@ export function CodeBlockToolbar({
           >
             {displayLanguage}
           </div>
+        )}
+
+        {editable && onWrapChange && (
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onWrapChange(!wrap)}
+                className={cn(
+                  "h-6 w-6 p-0 rounded-md",
+                  "bg-background/80 hover:bg-background/90",
+                  "border border-border/50",
+                  "backdrop-blur-sm",
+                  wrap && "bg-primary/10 border-primary/30 text-primary",
+                )}
+              >
+                <LucideIcons.WrapText className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{wrap ? "取消换行" : "自动换行"}</p>
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {editable && onFormat && canFormat && (

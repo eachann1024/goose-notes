@@ -14,9 +14,11 @@ export function PageHeader({
   onToggleFavorite,
 }: PageHeaderProps) {
   return (
-    <div className="h-12 flex items-center justify-between px-3 border-b bg-background sticky top-0 z-10 shrink-0">
+    <div className="h-12 flex items-center justify-between px-3 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
       <div className="flex items-center text-sm text-muted-foreground gap-2 overflow-hidden">
-        <span className="truncate max-w-[200px]">{extractTitleFromContent(page.content)}</span>
+        <span className="truncate max-w-[200px]">
+          {extractTitleFromContent(page.content)}
+        </span>
         {page.isLocked && (
           <span className="text-xs bg-muted px-1.5 py-0.5 rounded">已锁定</span>
         )}

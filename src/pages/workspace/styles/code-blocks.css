@@ -2,15 +2,21 @@
 .ProseMirror pre {
   background: var(--code-bg);
   border-radius: 0.75rem;
-  padding: 1.25rem;
-  margin: 1rem 0;
+  padding: 1.25rem 2rem 1.25rem 1.25rem;
+  margin: 1.5rem 0;
   overflow-x: auto;
   border: 1px solid var(--code-border);
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   line-height: 1.7;
   color: var(--code-fg);
   position: relative;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+  white-space: pre;
+}
+
+.dark .ProseMirror pre {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ProseMirror pre code {

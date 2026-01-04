@@ -6,6 +6,7 @@ import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
 
@@ -42,10 +43,10 @@ const isEmptyContent = (content: any) => {
 };
 
 export function Sidebar({ className }: SidebarProps) {
-  const { createPage, deletePage, pages, activePageId, setActivePage } =
-    usePages();
+  const { createPage, pages, activePageId, setActivePage } = usePages();
   const { activeNotebookId } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
+  const { deletePageWithUndo } = useDeletePageWithUndo();
 
   const itemHeight = useItemHeight();
   const rowHeight = itemHeight + 1;
@@ -98,7 +99,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const handleConfirmDelete = () => {
     if (activePageId) {
-      deletePage(activePageId);
+      deletePageWithUndo(activePageId);
       setDeleteDialogOpen(false);
     }
   };
@@ -155,7 +156,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div
         ref={sidebarRef}
         className={cn(
-          "pb-0 border-r bg-muted/30 h-screen flex flex-col relative",
+          "pb-0 border-r bg-background/80 backdrop-blur-md h-screen flex flex-col relative",
           className,
         )}
         style={{ width }}
@@ -200,7 +201,7 @@ export function Sidebar({ className }: SidebarProps) {
     <div
       ref={sidebarRef}
       className={cn(
-        "pb-0 bg-muted/30 h-screen flex flex-col relative group/sidebar",
+        "pb-0 bg-background/80 backdrop-blur-md h-screen flex flex-col relative group/sidebar",
         className,
       )}
       style={{
@@ -234,7 +235,7 @@ export function Sidebar({ className }: SidebarProps) {
             />
           </div>
           {!pagesCollapsed && (
-            <div className="px-2 pb-20">
+            <div className="px-2 pb-10">
               <SidebarTree
                 activeNotebookId={activeNotebookId}
                 width={width - 16}

@@ -28,7 +28,7 @@ export function SidebarDeleteDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button variant="destructive" onClick={onConfirm} autoFocus>
             删除
           </Button>
         </DialogFooter>

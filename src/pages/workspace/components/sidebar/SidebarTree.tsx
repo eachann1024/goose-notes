@@ -61,7 +61,13 @@ type PageNodeProps = NodeRendererProps<TreeNode> & {
   activeNotebookId: string | null;
 };
 
-function PageNode({ node, style, dragHandle, itemHeight, activeNotebookId }: PageNodeProps) {
+function PageNode({
+  node,
+  style,
+  dragHandle,
+  itemHeight,
+  activeNotebookId,
+}: PageNodeProps) {
   const { activePageId, setActivePage, createPage, pages } = usePages();
   const isActive = activePageId === node.id;
   const isPlaceholder = node.data.isPlaceholder;
@@ -223,16 +229,30 @@ export function SidebarTree({
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
 
   const treeData = useMemo(
-    () => buildTree(pages, openPageIds, undefined, activeNotebookId || undefined),
+    () =>
+      buildTree(pages, openPageIds, undefined, activeNotebookId || undefined),
     [pages, openPageIds, activeNotebookId],
   );
 
   const handleMove = useCallback(
-    ({ dragIds, parentId, index }: { dragIds: string[]; parentId: string | null; index: number }) => {
+    ({
+      dragIds,
+      parentId,
+      index,
+    }: {
+      dragIds: string[];
+      parentId: string | null;
+      index: number;
+    }) => {
       const targetParentId = parentId || undefined;
-      const siblings = getChildren(targetParentId, activeNotebookId || undefined);
+      const siblings = getChildren(
+        targetParentId,
+        activeNotebookId || undefined,
+      );
       const filteredSiblings = siblings.filter((p) => !dragIds.includes(p.id));
-      const movedPages = dragIds.map((id) => pages[id]).filter(Boolean) as Page[];
+      const movedPages = dragIds
+        .map((id) => pages[id])
+        .filter(Boolean) as Page[];
       const newSiblings = [...filteredSiblings];
       newSiblings.splice(index, 0, ...movedPages);
       const newOrderIds = newSiblings.map((p) => p.id);
@@ -245,11 +265,16 @@ export function SidebarTree({
     ({ id, name }: { id: string; name: string }) => {
       const page = pages[id];
       if (!page) return;
-      
+
       // 更新 content 第一行的标题
       const newContent = JSON.parse(JSON.stringify(page.content));
-      if (newContent.content?.[0]?.type === 'heading' && newContent.content[0].attrs?.level === 1) {
-        newContent.content[0].content = name ? [{ type: 'text', text: name }] : undefined;
+      if (
+        newContent.content?.[0]?.type === "heading" &&
+        newContent.content[0].attrs?.level === 1
+      ) {
+        newContent.content[0].content = name
+          ? [{ type: "text", text: name }]
+          : undefined;
         updatePage(id, { content: newContent });
       }
     },
@@ -274,6 +299,22 @@ export function SidebarTree({
       return next;
     });
   }, []);
+
+  const getVisibleCount = (nodes: TreeNode[]): number => {
+    let count = nodes.length;
+    nodes.forEach((node) => {
+      if (node.id && openPageIds.has(node.id) && node.children) {
+        count += getVisibleCount(node.children);
+      }
+    });
+    return count;
+  };
+
+  const visibleCount = useMemo(
+    () => getVisibleCount(treeData),
+    [treeData, openPageIds],
+  );
+  const treeHeight = visibleCount * rowHeight;
 
   if (treeData.length === 0) {
     return (
@@ -300,7 +341,7 @@ export function SidebarTree({
       selection={activePageId || undefined}
       openByDefault={false}
       width={width}
-      height={600}
+      height={treeHeight}
       indent={16}
       rowHeight={rowHeight}
       overscanCount={5}
