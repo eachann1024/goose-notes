@@ -43,7 +43,14 @@ const isEmptyContent = (content: any) => {
 };
 
 export function Sidebar({ className }: SidebarProps) {
-  const { createPage, pages, activePageId, setActivePage } = usePages();
+  const {
+    createPage,
+    pages,
+    activePageId,
+    setActivePage,
+    onboardingExpandPageId,
+    setOnboardingExpandPageId,
+  } = usePages();
   const { activeNotebookId } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
   const { deletePageWithUndo } = useDeletePageWithUndo();
@@ -242,6 +249,8 @@ export function Sidebar({ className }: SidebarProps) {
                 rowHeight={rowHeight}
                 itemHeight={itemHeight}
                 onCreatePage={handleCreatePage}
+                onboardingExpandPageId={onboardingExpandPageId}
+                onOnboardingExpandDone={() => setOnboardingExpandPageId(null)}
               />
             </div>
           )}

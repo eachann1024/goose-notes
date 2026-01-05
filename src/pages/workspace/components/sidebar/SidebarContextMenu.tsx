@@ -52,7 +52,9 @@ export function SidebarContextMenu({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="w-full">{children}</ContextMenuTrigger>
+      <ContextMenuTrigger asChild className="w-full">
+        {children}
+      </ContextMenuTrigger>
       <ContextMenuContent className="w-60">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
           页面

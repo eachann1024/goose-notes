@@ -12,10 +12,26 @@ import {
   getEditorFontFamilies,
   waitForFonts,
 } from "@/lib/fontLoader";
+import {
+  ONBOARDING_CHILD_PAGE_CONTENT,
+  ONBOARDING_PAGE_CONTENT,
+} from "@/lib/onboarding";
 
 export function WorkspacePage() {
-  const { activePageId, getPage, updatePage, pages, setActivePage } =
-    usePages();
+  const {
+    activePageId,
+    getPage,
+    updatePage,
+    pages,
+    setActivePage,
+    createPage,
+    onboardingCompleted,
+    setOnboardingCompleted,
+    setOnboardingExpandPageId,
+    hydrated,
+    setHydrated,
+  } = usePages();
+  const { notebooks, activeNotebookId } = useNotebooks();
   const {
     utools,
     customFonts,
@@ -27,6 +43,7 @@ export function WorkspacePage() {
   } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const onboardingInitRef = useRef(false);
   const [editorFontsReady, setEditorFontsReady] = useState(
     !UToolsAdapter.isUTools,
   );
@@ -126,6 +143,60 @@ export function WorkspacePage() {
       }
     }
   }, [activePageId]);
+
+  useEffect(() => {
+    if (usePages.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    const unsubscribe = usePages.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [setHydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (onboardingCompleted || onboardingInitRef.current) return;
+    const visiblePages = Object.values(pages).filter((p) => !p.trashedAt);
+    if (visiblePages.length > 0) return;
+
+    let notebookId = activeNotebookId;
+    if (!notebookId) {
+      const notebookIds = Object.keys(notebooks);
+      notebookId = notebookIds[0];
+    }
+    if (!notebookId) return;
+
+    onboardingInitRef.current = true;
+    setOnboardingCompleted(true);
+
+    const welcomePageId = createPage(undefined, notebookId);
+    updatePage(welcomePageId, {
+      content: ONBOARDING_PAGE_CONTENT,
+      icon: "👋",
+    });
+    const childPageId = createPage(welcomePageId, notebookId);
+    updatePage(childPageId, {
+      content: ONBOARDING_CHILD_PAGE_CONTENT,
+      icon: "✨",
+    });
+    setActivePage(welcomePageId);
+    setOnboardingExpandPageId(welcomePageId);
+  }, [
+    onboardingCompleted,
+    pages,
+    notebooks,
+    activeNotebookId,
+    createPage,
+    updatePage,
+    setActivePage,
+    setOnboardingCompleted,
+    setOnboardingExpandPageId,
+    hydrated,
+  ]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

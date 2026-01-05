@@ -1,0 +1,39 @@
+.sidebar-drop-target {
+  background: hsl(var(--primary) / 0.06);
+  border-radius: 6px;
+  animation: sidebar-drop-glow 1.2s ease-in-out infinite;
+}
+
+@keyframes sidebar-drop-glow {
+  0% {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.35),
+      0 0 0 hsl(var(--primary) / 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.6),
+      0 0 12px hsl(var(--primary) / 0.35);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.35),
+      0 0 0 hsl(var(--primary) / 0);
+  }
+}
+
+.sidebar-drop-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-drop-line {
+  flex: 1;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 9999px;
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.35);
+}

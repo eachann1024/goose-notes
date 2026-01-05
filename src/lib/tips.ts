@@ -9,6 +9,7 @@ export const TIPS = [
   '⌘/Ctrl + +/- 可缩放页面',
   '双击图片可调整大小和对齐方式',
   '支持代码块语法高亮，输入 /code 插入',
+  '设置 → 数据管理 可重置所有数据',
 ]
 
 export function getRandomTip(): string {

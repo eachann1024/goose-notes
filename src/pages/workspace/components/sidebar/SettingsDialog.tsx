@@ -1,13 +1,14 @@
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsSidebar } from "./SettingsSidebar";
-import { useNotebooks } from "@/stores/useNotebooks";
+import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import {
   exportNotebooks,
   importNotebooksFromZip,
   type ExportOptions,
 } from "@/lib/export";
+import { uToolsStorage as dataStorage } from "@/lib/storage";
 import {
   Download,
   FileJson,
@@ -27,6 +28,7 @@ type SettingsTab = "general" | "appearance" | "data";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const descriptionId = useId();
+  const resetDescriptionId = useId();
   const {
     theme,
     setTheme,
@@ -50,10 +52,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [includeTrash, setIncludeTrash] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetInput, setResetInput] = useState("");
 
   const notebookList = Object.values(notebooks);
   const { createNotebook } = useNotebooks();
   const { createPage, updatePage } = usePages();
+  const resetPhrase = "我已知晓风险";
+  const canReset = resetInput.trim() === resetPhrase;
 
   const toggleNotebook = (id: string) => {
     setSelectedIds((prev) =>
@@ -132,7 +138,43 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     input.click();
   };
 
+  useEffect(() => {
+    if (!resetDialogOpen) {
+      setResetInput("");
+    }
+  }, [resetDialogOpen]);
+
+  const handleReset = () => {
+    if (!canReset) return;
+    dataStorage.removeItem("goose-note-storage");
+    dataStorage.removeItem("goose-note-notebooks");
+    const defaultNotebook = {
+      id: DEFAULT_NOTEBOOK,
+      name: "Note",
+      icon: "📓",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    useNotebooks.setState({
+      notebooks: { [DEFAULT_NOTEBOOK]: defaultNotebook },
+      activeNotebookId: DEFAULT_NOTEBOOK,
+      lastActivePageByNotebook: {},
+    });
+    usePages.setState({
+      pages: {},
+      activePageId: null,
+      onboardingCompleted: false,
+      onboardingExpandPageId: null,
+    });
+    setResetDialogOpen(false);
+    onOpenChange(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 60);
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby={descriptionId}
@@ -288,6 +330,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     {exporting ? "导出中..." : "开始导出"}
                     {!exporting && <Download className="ml-2 w-4 h-4" />}
                   </Button>
+
+                  <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium text-destructive">
+                        重置所有数据
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        删除所有记事本和页面，保留设置。此操作不可撤销。
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setResetDialogOpen(true)}
+                    >
+                      重置所有数据
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -295,5 +356,51 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent
+          aria-describedby={resetDescriptionId}
+          className="sm:max-w-[420px]"
+        >
+          <DialogHeader>
+            <DialogTitle>确认重置所有数据？</DialogTitle>
+            <DialogDescription
+              id={resetDescriptionId}
+              className="text-destructive"
+            >
+              这将永久删除所有记事本和页面。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="reset-all" className="text-muted-foreground">
+              请输入
+              <span className="font-bold text-foreground select-all">
+                {resetPhrase}
+              </span>
+              以确认重置
+            </Label>
+            <Input
+              id="reset-all"
+              value={resetInput}
+              onChange={(e) => setResetInput(e.target.value)}
+              placeholder={resetPhrase}
+              className="w-full h-11 mt-2"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReset}
+              disabled={!canReset}
+            >
+              确认重置
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

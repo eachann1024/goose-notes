@@ -9,6 +9,9 @@ import { extractTitleFromContent } from "@/lib/content-text-extractor";
 interface PagesState {
   pages: Record<string, Page>;
   activePageId: string | null;
+  onboardingCompleted: boolean;
+  onboardingExpandPageId: string | null;
+  hydrated: boolean;
 
   createPage: (parentId?: string, workspaceId?: string) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
@@ -18,6 +21,9 @@ interface PagesState {
   permanentlyDeletePage: (id: string) => void;
   reorderPages: (ids: string[], parentId: string | undefined) => void;
   setActivePage: (id: string | null) => void;
+  setOnboardingCompleted: (completed: boolean) => void;
+  setOnboardingExpandPageId: (id: string | null) => void;
+  setHydrated: (hydrated: boolean) => void;
 
   getPage: (id: string) => Page | undefined;
   getChildren: (parentId?: string, workspaceId?: string) => Page[];
@@ -57,6 +63,9 @@ export const usePages = create<PagesState>()(
     (set, get) => ({
       pages: {},
       activePageId: null,
+      onboardingCompleted: false,
+      onboardingExpandPageId: null,
+      hydrated: false,
 
       createPage: (parentId, workspaceId = "default") => {
         flushEditorContent();
@@ -312,6 +321,18 @@ export const usePages = create<PagesState>()(
         }
       },
 
+      setOnboardingCompleted: (completed) => {
+        set({ onboardingCompleted: completed });
+      },
+
+      setOnboardingExpandPageId: (id) => {
+        set({ onboardingExpandPageId: id });
+      },
+
+      setHydrated: (hydrated) => {
+        set({ hydrated });
+      },
+
       getPage: (id) => get().pages[id],
 
       getChildren: (parentId, workspaceId) => {
@@ -359,6 +380,7 @@ export const usePages = create<PagesState>()(
       partialize: (state) => ({
         pages: state.pages,
         activePageId: state.activePageId,
+        onboardingCompleted: state.onboardingCompleted,
       }),
       migrate: (persistedState: any, _version: number) => {
         // 迁移旧版 Page 数据：将 title 字段移入 content 的第一个 h1 节点

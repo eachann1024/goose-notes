@@ -1,5 +1,10 @@
 import { Tree } from "react-arborist";
-import type { NodeApi, NodeRendererProps } from "react-arborist";
+import type {
+  CursorProps,
+  NodeApi,
+  NodeRendererProps,
+  TreeApi,
+} from "react-arborist";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "./SidebarContextMenu";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
@@ -10,6 +15,8 @@ interface SidebarTreeProps {
   rowHeight: number;
   itemHeight: number;
   onCreatePage: () => void;
+  onboardingExpandPageId?: string | null;
+  onOnboardingExpandDone?: () => void;
 }
 
 interface TreeNode {
@@ -71,6 +78,7 @@ function PageNode({
   const { activePageId, setActivePage, createPage, pages } = usePages();
   const isActive = activePageId === node.id;
   const isPlaceholder = node.data.isPlaceholder;
+  const isDropTarget = node.willReceiveDrop && !isPlaceholder;
   const iconName = node.data.icon;
 
   const { paddingLeft: _ignored, height: _ignoredHeight, ...itemStyle } = style;
@@ -131,6 +139,7 @@ function PageNode({
         style={{ ...itemStyle, height: itemHeight }}
         className={cn(
           "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+          isDropTarget && "sidebar-drop-target",
           isActive
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -217,6 +226,8 @@ export function SidebarTree({
   rowHeight,
   itemHeight,
   onCreatePage,
+  onboardingExpandPageId,
+  onOnboardingExpandDone,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -227,6 +238,19 @@ export function SidebarTree({
     getChildren,
   } = usePages();
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
+  const treeRef = useRef<TreeApi<TreeNode> | null>(null);
+
+  useEffect(() => {
+    if (!onboardingExpandPageId) return;
+    const page = pages[onboardingExpandPageId];
+    if (!page || page.trashedAt) {
+      onOnboardingExpandDone?.();
+      return;
+    }
+    if (activeNotebookId && page.workspaceId !== activeNotebookId) return;
+    treeRef.current?.open(onboardingExpandPageId);
+    onOnboardingExpandDone?.();
+  }, [onboardingExpandPageId, pages, activeNotebookId, onOnboardingExpandDone]);
 
   const treeData = useMemo(
     () =>
@@ -334,6 +358,7 @@ export function SidebarTree({
 
   return (
     <Tree
+      ref={treeRef}
       data={treeData}
       onMove={handleMove}
       onRename={handleRename}
@@ -348,6 +373,7 @@ export function SidebarTree({
       disableEdit={false}
       disableDrag={false}
       disableDrop={false}
+      renderCursor={SidebarCursor}
       onToggle={handleToggle}
     >
       {(props) => (
@@ -358,5 +384,16 @@ export function SidebarTree({
         />
       )}
     </Tree>
+  );
+}
+
+function SidebarCursor({ top, left, indent }: CursorProps) {
+  return (
+    <div
+      className="sidebar-drop-cursor"
+      style={{ top: top - 1, left, right: indent }}
+    >
+      <div className="sidebar-drop-line" />
+    </div>
   );
 }

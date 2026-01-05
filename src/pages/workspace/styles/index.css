@@ -2,4 +2,5 @@
 @import "./code-blocks.css";
 @import "./table.css";
 @import "./drag-handlers.css";
+@import "./sidebar-dnd.css";
 @import "./tippy.css";

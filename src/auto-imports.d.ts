@@ -75,6 +75,8 @@ declare global {
   const LucideIcons: typeof import('lucide-react')
   const Menu: typeof import('lucide-react').Menu
   const MoreHorizontal: typeof import('lucide-react').MoreHorizontal
+  const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
+  const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const Plus: typeof import('lucide-react').Plus
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent

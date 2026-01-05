@@ -42,7 +42,7 @@ export const editorExtensions = [
       if (pos === 0 && node.type.name === "heading") {
         return "无标题";
       }
-      return "输入 / 以使用命令...";
+      return "输入 / 以唤起功能菜单";
     },
     showOnlyCurrent: false,
     includeChildren: true,
