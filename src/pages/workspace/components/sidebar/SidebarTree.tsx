@@ -80,23 +80,30 @@ function PageNode({
   const isPlaceholder = node.data.isPlaceholder;
   const isDropTarget = node.willReceiveDrop && !isPlaceholder;
   const iconName = node.data.icon;
+  const childCount =
+    node.data.children?.filter((child) => !child.isPlaceholder).length ?? 0;
+  const showChildCount = childCount > 0;
+  const displayChildCount = childCount > 9 ? "9+" : String(childCount);
 
   const { paddingLeft: _ignored, height: _ignoredHeight, ...itemStyle } = style;
 
   const indent = node.level * 16;
   const paddingLeft = indent;
+  const rowStyle = { ...itemStyle, height: itemHeight };
 
   if (isPlaceholder) {
     return (
       <div
-        style={{ ...itemStyle, height: itemHeight }}
-        className="flex items-center px-2 mx-1 select-none"
+        style={rowStyle}
+        className="relative px-1 select-none"
       >
-        <div
-          style={{ paddingLeft: paddingLeft + 18 }}
-          className="text-[13px] text-muted-foreground/45 italic truncate"
-        >
-          {node.data.name}
+        <div className="flex items-center h-full px-2 rounded-md">
+          <div
+            style={{ paddingLeft: paddingLeft + 18 }}
+            className="text-[13px] text-muted-foreground/45 italic truncate"
+          >
+            {node.data.name}
+          </div>
         </div>
       </div>
     );
@@ -136,84 +143,91 @@ function PageNode({
     <SidebarContextMenu page={node.data.page!}>
       <div
         ref={dragHandle}
-        style={{ ...itemStyle, height: itemHeight }}
-        className={cn(
-          "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
-          isDropTarget && "sidebar-drop-target",
-          isActive
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-          node.state.isDragging && "opacity-50",
-        )}
-        onClick={(e) => {
-          e.stopPropagation();
-          setActivePage(node.id);
-        }}
+        style={rowStyle}
+        className="group relative px-1"
       >
         <div
-          className="flex items-center h-full gap-2 min-w-0 flex-1"
-          style={{ paddingLeft }}
+          className={cn(
+            "relative flex items-center h-full px-2 rounded-md cursor-pointer transition-colors text-sm font-medium",
+            isDropTarget && "sidebar-drop-target",
+            isActive
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            node.state.isDragging && "opacity-50",
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActivePage(node.id);
+          }}
         >
           <div
-            className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              node.toggle();
-            }}
+            className="flex items-center h-full gap-2 min-w-0 flex-1"
+            style={{ paddingLeft }}
           >
-            <div className="relative flex items-center justify-center w-full h-full z-10">
-              <div
-                className={cn(
-                  "flex items-center justify-center",
-                  !node.isOpen && "group-hover/icon:hidden",
-                )}
-              >
-                {node.isOpen ? (
-                  <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
-                ) : (
-                  <>
-                    {iconName ? (
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        {(LucideIcons as any)[iconName] ? (
-                          (() => {
-                            const Icon = (LucideIcons as any)[iconName];
-                            return <Icon className="h-4 w-4" />;
-                          })()
-                        ) : (
-                          <span className="text-sm">{iconName}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <LucideIcons.File className="h-4 w-4 text-muted-foreground/70" />
-                    )}
-                  </>
+            <div
+              className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                node.toggle();
+              }}
+            >
+              <div className="relative flex items-center justify-center w-full h-full z-10">
+                <div
+                  className={cn(
+                    "flex items-center justify-center",
+                    !node.isOpen && "group-hover/icon:hidden",
+                  )}
+                >
+                  {node.isOpen ? (
+                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
+                  ) : (
+                    <>
+                      {iconName ? (
+                        <div className="h-4 w-4 flex items-center justify-center">
+                          {(LucideIcons as any)[iconName] ? (
+                            (() => {
+                              const Icon = (LucideIcons as any)[iconName];
+                              return <Icon className="h-4 w-4" />;
+                            })()
+                          ) : (
+                            <span className="text-sm">{iconName}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70" />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {!node.isOpen && (
+                  <div className="hidden group-hover/icon:flex items-center justify-center">
+                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                  </div>
                 )}
               </div>
-
-              {!node.isOpen && (
-                <div className="hidden group-hover/icon:flex items-center justify-center">
-                  <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70" />
-                </div>
-              )}
             </div>
+
+            <span className="truncate text-sm flex-1 min-w-0">
+              {node.data.name}
+            </span>
           </div>
 
-          <span className="truncate text-sm flex-1">{node.data.name}</span>
-        </div>
-
-        <div
-          className={cn(
-            "absolute right-0 top-0 h-full flex items-center gap-0.5 pr-1 pl-4 opacity-0 group-hover:opacity-100 transition-opacity",
-            "bg-gradient-to-r from-transparent",
-            isActive ? "to-muted" : "to-[hsl(var(--muted)/0.6)]",
-          )}
-        >
-          <button
-            className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-colors"
-            onClick={handleAddChild}
-          >
-            <LucideIcons.Plus className="h-3.5 w-3.5" />
-          </button>
+          <div className="ml-auto flex items-center pl-2 pr-1 shrink-0">
+            <div className="relative w-5 h-5">
+              {showChildCount && (
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-muted-foreground/50 bg-muted-foreground/10 rounded-full transition-opacity group-hover:opacity-0">
+                  {displayChildCount}
+                </span>
+              )}
+              <button
+                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-opacity"
+                onClick={handleAddChild}
+              >
+                <LucideIcons.Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </SidebarContextMenu>

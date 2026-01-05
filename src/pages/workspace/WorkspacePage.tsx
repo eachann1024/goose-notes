@@ -9,8 +9,6 @@ import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
 import {
   applyFontVariables,
-  getEditorFontFamilies,
-  waitForFonts,
 } from "@/lib/fontLoader";
 import {
   ONBOARDING_CHILD_PAGE_CONTENT,
@@ -44,10 +42,6 @@ export function WorkspacePage() {
   const page = activePageId ? getPage(activePageId) : undefined;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const onboardingInitRef = useRef(false);
-  const [editorFontsReady, setEditorFontsReady] = useState(
-    !UToolsAdapter.isUTools,
-  );
-
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
       document.documentElement.classList.add("is-utools");
@@ -76,27 +70,6 @@ export function WorkspacePage() {
   useEffect(() => {
     applyFontVariables(customFonts);
   }, [customFonts]);
-
-  useEffect(() => {
-    if (!UToolsAdapter.isUTools || !page || !activePageId) {
-      setEditorFontsReady(true);
-      return;
-    }
-
-    let cancelled = false;
-    setEditorFontsReady(false);
-    waitForFonts(getEditorFontFamilies(page.fontFamily, customFonts)).finally(
-      () => {
-        if (!cancelled) {
-          setEditorFontsReady(true);
-        }
-      },
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activePageId, page?.fontFamily, customFonts]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -343,22 +316,7 @@ export function WorkspacePage() {
                 </div>
               </div>
 
-              {editorFontsReady ? (
-                <Editor editable={!page.isLocked && !page.trashedAt} />
-              ) : (
-                <div
-                  className={cn(
-                    "space-y-4 min-h-[calc(100vh-200px)]",
-                    page.isFullWidth ? "max-w-full px-4" : "max-w-3xl mx-auto",
-                  )}
-                >
-                  <div className="editor-skeleton-line h-10 w-3/4 rounded-md bg-muted/60" />
-                  <div className="editor-skeleton-line h-4 w-full rounded bg-muted/40" />
-                  <div className="editor-skeleton-line h-4 w-11/12 rounded bg-muted/40" />
-                  <div className="editor-skeleton-line h-4 w-10/12 rounded bg-muted/40" />
-                  <div className="editor-skeleton-line h-4 w-9/12 rounded bg-muted/40" />
-                </div>
-              )}
+              <Editor editable={!page.isLocked && !page.trashedAt} />
             </div>
           ) : (
             <PageEmptyState />

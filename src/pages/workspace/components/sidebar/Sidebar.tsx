@@ -1,5 +1,4 @@
 import { FavoritesSection } from "./FavoritesSection";
-import { SidebarDeleteDialog } from "./SidebarDeleteDialog";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
@@ -68,7 +67,6 @@ export function Sidebar({ className }: SidebarProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pagesCollapsed, setPagesCollapsed] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -83,11 +81,11 @@ export function Sidebar({ className }: SidebarProps) {
 
         if (activePageId && !isInEditor && currentView === "pages") {
           e.preventDefault();
-          setDeleteDialogOpen(true);
+          deletePageWithUndo(activePageId);
         }
       }
     },
-    [activePageId, currentView],
+    [activePageId, currentView, deletePageWithUndo],
   );
 
   useEffect(() => {
@@ -103,13 +101,6 @@ export function Sidebar({ className }: SidebarProps) {
     }, 300);
     return () => clearTimeout(timer);
   }, [width]);
-
-  const handleConfirmDelete = () => {
-    if (activePageId) {
-      deletePageWithUndo(activePageId);
-      setDeleteDialogOpen(false);
-    }
-  };
 
   const handleCreatePage = () => {
     const existingBlankPage = Object.values(pages).find((p) => {
@@ -266,16 +257,6 @@ export function Sidebar({ className }: SidebarProps) {
       </div>
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-      <SidebarDeleteDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        title={
-          activePageId
-            ? extractTitleFromContent(pages[activePageId]?.content) || "无标题"
-            : ""
-        }
-      />
     </div>
   );
 }

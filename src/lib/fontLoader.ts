@@ -18,6 +18,37 @@ const trimFontName = (font: string) =>
 const splitFontList = (font: string | null | undefined) =>
   font ? font.split(",").map(trimFontName).filter(Boolean) : [];
 
+const getPlatformFallbacks = () => {
+  const platform =
+    typeof navigator !== "undefined" ? navigator.platform || "" : "";
+  const isMac = /Mac|iPod|iPhone|iPad/.test(platform);
+  const isWin = /Win/.test(platform);
+
+  if (isMac) {
+    return {
+      ui: ["-apple-system", "BlinkMacSystemFont", '"Helvetica Neue"', "Arial"],
+      serif: ["Georgia", "Times"],
+      mono: ["Menlo", "Monaco"],
+    };
+  }
+
+  if (isWin) {
+    return {
+      ui: ['"Segoe UI"', "Roboto", '"Helvetica Neue"', "Arial"],
+      serif: ['"Times New Roman"', "Georgia", "Times"],
+      mono: ["Consolas", '"Liberation Mono"', '"Courier New"'],
+    };
+  }
+
+  return {
+    ui: ["Roboto", '"Helvetica Neue"', "Arial"],
+    serif: ["Georgia", "Times"],
+    mono: ['"Liberation Mono"', '"Courier New"'],
+  };
+};
+
+const joinFonts = (fonts: string[]) => fonts.filter(Boolean).join(", ");
+
 /**
  * 应用启动时调用，后台静默预加载远程字体
  * 浏览器会自动缓存，下次访问秒加载
@@ -37,6 +68,7 @@ export function preloadFonts() {
 
 export function applyFontVariables(customFonts: CustomFonts) {
   if (typeof document === "undefined") return;
+  const fallbacks = getPlatformFallbacks();
   const root = document.documentElement;
   const fontDefault = customFonts.default.font || DEFAULT_FONTS.default;
   const fontSerif = customFonts.serif.font || DEFAULT_FONTS.serif;
@@ -44,15 +76,33 @@ export function applyFontVariables(customFonts: CustomFonts) {
 
   root.style.setProperty(
     "--font-default",
-    `"${fontDefault}", "DM Sans", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
+    joinFonts([
+      `"${fontDefault}"`,
+      '"DM Sans"',
+      '"HarmonyOS Sans SC"',
+      ...fallbacks.ui,
+      "sans-serif",
+    ]),
   );
   root.style.setProperty(
     "--font-serif",
-    `"${fontSerif}", "仓耳今楷", Georgia, Cambria, "Times New Roman", Times, serif`,
+    joinFonts([
+      `"${fontSerif}"`,
+      '"仓耳今楷"',
+      ...fallbacks.serif,
+      "Cambria",
+      "serif",
+    ]),
   );
   root.style.setProperty(
     "--font-mono",
-    `"${fontMono}", "DM Mono", "HarmonyOS Sans SC", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
+    joinFonts([
+      `"${fontMono}"`,
+      '"DM Mono"',
+      '"HarmonyOS Sans SC"',
+      ...fallbacks.mono,
+      "monospace",
+    ]),
   );
 }
 
