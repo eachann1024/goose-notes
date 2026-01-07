@@ -121,6 +121,7 @@ declare global {
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const compressImage: typeof import('./lib/imageProcessor').compressImage
+  const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
@@ -143,6 +144,8 @@ declare global {
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
+  const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
+  const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const startTransition: typeof import('react').startTransition

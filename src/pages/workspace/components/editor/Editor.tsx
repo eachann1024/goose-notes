@@ -1,5 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
+import { DOMParser as ProseMirrorDOMParser } from "@tiptap/pm/model";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -8,6 +9,7 @@ import { ImageBubbleMenu } from "./ImageBubbleMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
+import { parseMarkdownTableToHtml } from "@/lib/markdownTableParser";
 
 interface EditorProps {
   editable?: boolean;
@@ -16,7 +18,7 @@ interface EditorProps {
 export function Editor({ editable = true }: EditorProps) {
   const { activePageId, getPage, updatePage } = usePages();
   const page = activePageId ? getPage(activePageId) : undefined;
-  const { searchProviders } = useSettings();
+  const { searchProviders, utools } = useSettings();
 
   const prevPageIdRef = useRef<string | null>(null);
   const debouncedUpdateRef = useRef<any>(null);
@@ -95,6 +97,25 @@ export function Editor({ editable = true }: EditorProps) {
 
         return false;
       },
+      handlePaste: (view, event) => {
+        const plainText = event.clipboardData?.getData("text/plain");
+        if (plainText) {
+          const tableHtml = parseMarkdownTableToHtml(plainText);
+          if (tableHtml) {
+            const { state, dispatch } = view;
+            const parser = ProseMirrorDOMParser.fromSchema(state.schema);
+            const doc = new window.DOMParser().parseFromString(
+              tableHtml,
+              "text/html",
+            );
+            const slice = parser.parseSlice(doc.body);
+            const tr = state.tr.replaceSelection(slice);
+            dispatch(tr);
+            return true;
+          }
+        }
+        return false;
+      },
     },
     onUpdate: ({ editor }) => {
       const safePageId = pageIdForUpdateRef.current;
@@ -127,7 +148,10 @@ export function Editor({ editable = true }: EditorProps) {
       flush();
       window.removeEventListener("beforeunload", flush);
       window.removeEventListener("goose-note:flush-editor", flush);
-      window.removeEventListener("goose-note:focus-editor-start", handleFocusStart);
+      window.removeEventListener(
+        "goose-note:focus-editor-start",
+        handleFocusStart,
+      );
     };
   }, [editor]);
 
@@ -187,8 +211,10 @@ export function Editor({ editable = true }: EditorProps) {
       prevPageIdRef.current = activePageId;
 
       // 如果是新页面（标题为空且内容为空），强制聚焦到标题
-      const isNewPage = page.createdAt === page.updatedAt &&
-                        (!page.content?.content?.[0]?.content || page.content.content[0].content.length === 0);
+      const isNewPage =
+        page.createdAt === page.updatedAt &&
+        (!page.content?.content?.[0]?.content ||
+          page.content.content[0].content.length === 0);
 
       if (isNewPage) {
         setTimeout(() => {
@@ -237,15 +263,14 @@ export function Editor({ editable = true }: EditorProps) {
 
     const handlePaste = async (event: ClipboardEvent) => {
       const imageFile = getImageFromClipboard(event);
-      if (!imageFile) return;
-
-      event.preventDefault();
-
-      try {
-        const base64 = await processImageForStorage(imageFile);
-        editor.chain().focus().setImage({ src: base64 }).run();
-      } catch (err) {
-        console.error("Failed to paste image:", err);
+      if (imageFile) {
+        event.preventDefault();
+        try {
+          const base64 = await processImageForStorage(imageFile);
+          editor.chain().focus().setImage({ src: base64 }).run();
+        } catch (err) {
+          console.error("Failed to paste image:", err);
+        }
       }
     };
 
@@ -289,7 +314,11 @@ export function Editor({ editable = true }: EditorProps) {
       <TableHoverControls editor={editor} />
       <TableRowColHandles editor={editor} />
       <ImageBubbleMenu editor={editor} />
-      <EditorContextMenu editor={editor} searchProviders={searchProviders}>
+      <EditorContextMenu
+        editor={editor}
+        searchProviders={searchProviders}
+        openSearchInUtools={utools.openSearchInUtools}
+      >
         <EditorContent editor={editor} />
       </EditorContextMenu>
     </div>

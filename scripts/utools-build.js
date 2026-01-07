@@ -35,19 +35,17 @@ try {
   const pluginConfigPath = path.join(rootDir, 'plugin.json');
   if (fs.existsSync(pluginConfigPath)) {
     const pluginConfig = JSON.parse(fs.readFileSync(pluginConfigPath, 'utf-8'));
-    
+
     // 修改为生产环境路径
     pluginConfig.main = 'index.html';
     pluginConfig.preload = 'preload.js';
-    
+
     // 写入到 dist
     fs.writeFileSync(path.join(distDir, 'plugin.json'), JSON.stringify(pluginConfig, null, 2));
     console.log('✅ plugin.json 已生成并配置为生产路径');
   } else {
     console.error('❌ 未找到根目录 plugin.json');
   }
-
-  console.log('🎉 uTools 发布文件准备就绪！请直接打包 dist 目录。');
 
 } catch (e) {
   console.error('❌ 处理出错:', e);

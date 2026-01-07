@@ -8,49 +8,76 @@ interface EditorContextMenuProps {
     urlTemplate: string;
     isEnabled: boolean;
   }[];
+  openSearchInUtools: boolean;
   children: React.ReactNode;
 }
 
 export function EditorContextMenu({
   editor,
   searchProviders,
+  openSearchInUtools,
   children,
 }: EditorContextMenuProps) {
   const isEditable = editor?.isEditable;
+  const [selectedText, setSelectedText] = useState("");
+
+  useEffect(() => {
+    if (!editor) {
+      setSelectedText("");
+      return;
+    }
+
+    const updateSelectedText = () => {
+      const { state } = editor;
+      if (!state || state.selection.empty) {
+        setSelectedText("");
+        return;
+      }
+      const { from, to } = state.selection;
+      const text = state.doc.textBetween(from, to, " ").trim();
+      setSelectedText(text);
+    };
+
+    updateSelectedText();
+    editor.on("selectionUpdate", updateSelectedText);
+    return () => {
+      editor.off("selectionUpdate", updateSelectedText);
+    };
+  }, [editor]);
+
+  const activeProviders = useMemo(
+    () => searchProviders.filter((p) => p.isEnabled),
+    [searchProviders],
+  );
+  const hasSearchText = selectedText.length > 0;
+  const previewText =
+    selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText;
 
   return (
     <ContextMenu>
       <ContextMenuTrigger>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-[160px]">
-        {editor && !editor.state.selection.empty && (
+        {editor && hasSearchText && activeProviders.length > 0 && (
           <>
             <ContextMenuItem disabled className="text-xs text-muted-foreground">
-              {(() => {
-                const { from, to } = editor.state.selection;
-                const text = editor.state.doc.textBetween(from, to, " ");
-                return text.length > 20 ? text.slice(0, 20) + "..." : text;
-              })()}
+              {previewText}
             </ContextMenuItem>
             <ContextMenuSeparator />
-            {searchProviders
-              .filter((p) => p.isEnabled)
-              .map((provider) => (
-                <ContextMenuItem
-                  key={provider.id}
-                  onSelect={() => {
-                    const { from, to } = editor.state.selection;
-                    const text = editor.state.doc.textBetween(from, to, " ");
-                    const url = provider.urlTemplate.replace(
-                      "%s",
-                      encodeURIComponent(text),
-                    );
-                    window.open(url, "_blank");
-                  }}
-                >
-                  <LucideIcons.Search className="mr-2 h-4 w-4" />用{" "}
-                  {provider.name} 搜索
-                </ContextMenuItem>
-              ))}
+            {activeProviders.map((provider) => (
+              <ContextMenuItem
+                key={provider.id}
+                onSelect={() => {
+                  const url = provider.urlTemplate.replace(
+                    "%s",
+                    encodeURIComponent(selectedText),
+                  );
+                  UToolsAdapter.openUrl(url, openSearchInUtools);
+                }}
+              >
+                <LucideIcons.Search className="mr-2 h-4 w-4" />用{" "}
+                {provider.name} 搜索
+              </ContextMenuItem>
+            ))}
             <ContextMenuSeparator />
           </>
         )}

@@ -1,4 +1,3 @@
-
 /**
  * uTools Adapter
  *
@@ -8,19 +7,19 @@
  */
 
 export interface UserInfo {
-  avatar?: string
-  nickname: string
-  type: string
+  avatar?: string;
+  nickname: string;
+  type: string;
 }
 
 /**
  * Sublist 结果项（用于 uTools 全局搜索）
  */
 export interface SublistItem {
-  title: string
-  description: string
-  icon: string
-  url: string
+  title: string;
+  description: string;
+  icon: string;
+  url: string;
 }
 
 export class UToolsAdapter {
@@ -29,7 +28,7 @@ export class UToolsAdapter {
    */
   static get isUTools(): boolean {
     // @ts-ignore
-    return typeof window !== 'undefined' && !!window.utools
+    return typeof window !== "undefined" && !!window.utools;
   }
 
   /**
@@ -41,28 +40,32 @@ export class UToolsAdapter {
      * @param id Document ID
      * @param data Data to save
      */
-    put: <T>(id: string, data: T, rev?: string): { id: string, ok: boolean, rev?: string, error?: any } => {
+    put: <T>(
+      id: string,
+      data: T,
+      rev?: string,
+    ): { id: string; ok: boolean; rev?: string; error?: any } => {
       if (UToolsAdapter.isUTools) {
         // @ts-ignore
         const result = window.utools.db.put({
           _id: id,
           _rev: rev,
-          data: data
-        })
-        return result
+          data: data,
+        });
+        return result;
       } else {
         // Web Fallback: localStorage
         try {
           const item = {
             _id: id,
             _rev: rev || Date.now().toString(), // Simple mock rev
-            data: data
-          }
-          localStorage.setItem(id, JSON.stringify(item))
-          return { id, ok: true, rev: item._rev }
+            data: data,
+          };
+          localStorage.setItem(id, JSON.stringify(item));
+          return { id, ok: true, rev: item._rev };
         } catch (e) {
-          console.error("Web DB Put Error", e)
-          return { id, ok: false, error: e }
+          console.error("Web DB Put Error", e);
+          return { id, ok: false, error: e };
         }
       }
     },
@@ -71,18 +74,18 @@ export class UToolsAdapter {
      * Get a document
      * @param id Document ID
      */
-    get: <T>(id: string): { _id: string, _rev?: string, data: T } | null => {
+    get: <T>(id: string): { _id: string; _rev?: string; data: T } | null => {
       if (UToolsAdapter.isUTools) {
         // @ts-ignore
-        return window.utools.db.get(id)
+        return window.utools.db.get(id);
       } else {
         // Web Fallback
-        const itemStr = localStorage.getItem(id)
-        if (!itemStr) return null
+        const itemStr = localStorage.getItem(id);
+        if (!itemStr) return null;
         try {
-          return JSON.parse(itemStr)
+          return JSON.parse(itemStr);
         } catch {
-          return null
+          return null;
         }
       }
     },
@@ -91,45 +94,47 @@ export class UToolsAdapter {
      * Delete a document
      * @param id Document ID
      */
-    remove: (id: string): { id: string, ok: boolean, error?: any } => {
-       if (UToolsAdapter.isUTools) {
-         // @ts-ignore
-         return window.utools.db.remove(id)
-       } else {
-         // Web Fallback
-         localStorage.removeItem(id)
-         return { id, ok: true }
-       }
+    remove: (id: string): { id: string; ok: boolean; error?: any } => {
+      if (UToolsAdapter.isUTools) {
+        // @ts-ignore
+        return window.utools.db.remove(id);
+      } else {
+        // Web Fallback
+        localStorage.removeItem(id);
+        return { id, ok: true };
+      }
     },
 
     /**
      * Get all documents with a prefix
      * @param prefix ID prefix
      */
-    allDocs: <T>(prefix: string = ''): Array<{ _id: string, _rev?: string, data: T }> => {
+    allDocs: <T>(
+      prefix: string = "",
+    ): Array<{ _id: string; _rev?: string; data: T }> => {
       if (UToolsAdapter.isUTools) {
         // @ts-ignore
-        return window.utools.db.allDocs(prefix)
+        return window.utools.db.allDocs(prefix);
       } else {
         // Web Fallback: Iterate localStorage
-        const results = []
+        const results = [];
         for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
+          const key = localStorage.key(i);
           if (key && key.startsWith(prefix)) {
-            const val = localStorage.getItem(key)
+            const val = localStorage.getItem(key);
             if (val) {
-               try {
-                 results.push(JSON.parse(val))
-               } catch (e) {
-                 // Ignore malformed
-               }
+              try {
+                results.push(JSON.parse(val));
+              } catch (e) {
+                // Ignore malformed
+              }
             }
           }
         }
-        return results
+        return results;
       }
-    }
-  }
+    },
+  };
 
   /**
    * User Operations
@@ -137,14 +142,14 @@ export class UToolsAdapter {
   static getUser(): UserInfo | null {
     if (UToolsAdapter.isUTools) {
       // @ts-ignore
-      return window.utools.getUser()
+      return window.utools.getUser();
     }
     // Web Fallback: Mock user or null
     return {
-      nickname: 'Local User',
+      nickname: "Local User",
       avatar: undefined,
-      type: 'web'
-    }
+      type: "web",
+    };
   }
 
   /**
@@ -153,33 +158,47 @@ export class UToolsAdapter {
   static copyToClipboard(text: string) {
     if (UToolsAdapter.isUTools) {
       // @ts-ignore
-      window.utools.copyText(text)
+      window.utools.copyText(text);
     } else {
-      navigator.clipboard.writeText(text)
+      navigator.clipboard.writeText(text);
     }
   }
-  
+
   static showNotification(body: string) {
-      if (UToolsAdapter.isUTools) {
-          // @ts-ignore
-          window.utools.showNotification(body)
+    if (UToolsAdapter.isUTools) {
+      // @ts-ignore
+      window.utools.showNotification(body);
+    } else {
+      // You might use a toast library here, but for strict "system" notification:
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("鹅的笔记", { body });
       } else {
-          // You might use a toast library here, but for strict "system" notification:
-          if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('鹅的笔记', { body })
-          } else {
-              console.log('Notification:', body)
-          }
+        console.log("Notification:", body);
       }
+    }
   }
-  
-  static shellOpenExternal(url: string) {
-      if (UToolsAdapter.isUTools) {
-          // @ts-ignore
-          window.utools.shellOpenExternal(url)
+
+  static openUrl(url: string, useInternalBrowser = true) {
+    if (UToolsAdapter.isUTools) {
+      const u = window as any;
+      if (useInternalBrowser) {
+        // 使用 uTools 内置浏览器 ubrowser
+        if (typeof u.utools?.ubrowser?.goto === "function") {
+          u.utools.ubrowser.goto(url).run();
+        } else {
+          u.utools?.shellOpenExternal?.(url);
+        }
       } else {
-          window.open(url, '_blank')
+        u.utools?.shellOpenExternal?.(url);
       }
+    } else {
+      window.open(url, "_blank");
+    }
+  }
+
+  /** @deprecated Use openUrl instead */
+  static shellOpenExternal(url: string) {
+    UToolsAdapter.openUrl(url, false);
   }
 
   /**
@@ -188,10 +207,10 @@ export class UToolsAdapter {
    */
   static setSublistFn(callback: ((keyword: string) => SublistItem[]) | null) {
     if (UToolsAdapter.isUTools) {
-      const utools = (window as any).utools
+      const utools = (window as any).utools;
       // 检查 API 是否存在（sublist 可能不是所有 uTools 版本都支持）
-      if (utools && typeof utools.setSublistFn === 'function') {
-        utools.setSublistFn(callback)
+      if (utools && typeof utools.setSublistFn === "function") {
+        utools.setSublistFn(callback);
       }
     }
   }
@@ -201,15 +220,15 @@ export class UToolsAdapter {
    */
   static removeSublistFn() {
     // 通过设置 null 来移除回调
-    UToolsAdapter.setSublistFn(null)
+    UToolsAdapter.setSublistFn(null);
   }
 
   /**
    * 检查是否支持 sublist 功能
    */
   static get supportsSublist(): boolean {
-    if (!UToolsAdapter.isUTools) return false
-    const utools = (window as any).utools
-    return utools && typeof utools.setSublistFn === 'function'
+    if (!UToolsAdapter.isUTools) return false;
+    const utools = (window as any).utools;
+    return utools && typeof utools.setSublistFn === "function";
   }
 }
