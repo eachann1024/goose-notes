@@ -49,3 +49,10 @@ export const useXxx = create<XxxState>()(
 - Page 类型定义见 `src/types/index.ts`
 - 图片处理见 `src/lib/imageProcessor.ts`（>500KB 压缩 80%）
 - 自动导入范围以 `vite.config.ts` 为准，改动时同步更新说明（避免重复维护清单）
+
+---
+
+## 常用指令
+
+- 提交代码：`git add -A && git commit -m "feat: xxx + xxx"`
+- 详细指令见 `COMMANDS.md`
