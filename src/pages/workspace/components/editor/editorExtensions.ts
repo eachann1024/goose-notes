@@ -38,11 +38,30 @@ export const editorExtensions = [
   TitleHeading,
   AutoJoiner,
   Placeholder.configure({
-    placeholder: ({ node, pos }) => {
-      if (pos === 0 && node.type.name === "heading") {
+    placeholder: ({ node, pos, editor }) => {
+      const doc = editor.state.doc;
+      const { $from } = editor.state.selection;
+      if ($from.depth === 0) return "";
+      const currentBlockPos = $from.before($from.depth);
+      if (pos !== currentBlockPos) return "";
+
+      const resolved = doc.resolve(pos);
+      const isTopLevel = resolved.depth === 1;
+      const isFirstTopLevel = isTopLevel && resolved.index(1) === 0;
+
+      if (
+        node.type.name === "heading" &&
+        node.attrs?.level === 1 &&
+        isFirstTopLevel
+      ) {
         return "无标题";
       }
-      return "输入 / 以唤起功能菜单";
+
+      if (node.type.name === "paragraph") {
+        return "输入文本，按 空格 启用 AI，按 / 启用指令...";
+      }
+
+      return "";
     },
     showOnlyCurrent: false,
     includeChildren: true,

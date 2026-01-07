@@ -169,7 +169,7 @@
   pointer-events: none;
 }
 
-.ProseMirror p.is-empty.is-node-empty::before {
+.ProseMirror p.is-empty::before {
   color: hsl(var(--muted-foreground));
   content: attr(data-placeholder);
   float: left;
