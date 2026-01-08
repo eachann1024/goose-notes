@@ -3,6 +3,9 @@ import type { Page } from "@/types";
 import { useCommandSearch } from "./useCommandSearch";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 
+const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
+const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
+
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const regex = new RegExp(
@@ -58,6 +61,26 @@ export function CommandPalette() {
     setRemovedRecentIds(newIds);
     localStorage.setItem("goose-recent-excludes", JSON.stringify(newIds));
   };
+
+  useEffect(() => {
+    const handleUToolsInput = (event: Event) => {
+      const detail = (event as CustomEvent<{ text: string }>).detail;
+      const text = detail?.text ?? "";
+      setSearchQuery(text);
+      setOpen(true);
+    };
+
+    window.addEventListener(UTOOLS_INPUT_EVENT, handleUToolsInput);
+    return () => {
+      window.removeEventListener(UTOOLS_INPUT_EVENT, handleUToolsInput);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(UTOOLS_SYNC_EVENT, { detail: { text: searchQuery } }),
+    );
+  }, [searchQuery]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
