@@ -36,43 +36,71 @@ export function WorkspacePage() {
 
   // 监听本地文件变更
   useEffect(() => {
-    const handleFileChange = (event: CustomEvent) => {
-      const { filename, dirPath } = event.detail;
+    const handleFileChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { eventType, filename, dirPath } = customEvent.detail;
       if (
         notebook?.source === "local-folder" &&
         notebook.localPath === dirPath
       ) {
-        toast.info(`文件 ${filename} 已外部修改`, {
-          description: "是否重新加载页面内容？",
-          action: {
-            label: "重载",
-            onClick: () => {
-              // 重新加载页面内容
-              const filePath = `${dirPath}/${filename}`;
-              if ((window as any).gooseFs) {
-                const content = (window as any).gooseFs.readFile(filePath);
-                if (content) {
-                  // 简化的重新加载逻辑
-                  window.location.reload();
-                }
+        const filePath = `${dirPath}/${filename}`;
+
+        // 处理文件/文件夹删除或移动
+        if (eventType === "rename") {
+          // 如果路径不再存在，说明是删除或移出
+          if (!(window as any).gooseFs.exists(filePath)) {
+            // 如果删除的是当前活跃页面，或者是当前页面的父级目录
+            if (activePageId && page?.localFilePath) {
+              const isCurrentFile = page.localFilePath === filePath;
+              const isParentDir =
+                page.localFilePath.startsWith(
+                  filePath +
+                    (filePath.endsWith("/") || filePath.endsWith("\\")
+                      ? ""
+                      : "/"),
+                ) || page.localFilePath.startsWith(filePath + "\\");
+
+              if (isCurrentFile || isParentDir) {
+                usePages.getState().setActivePage(null);
               }
+            }
+            // 重新加载侧边栏以同步状态
+            if (notebook.id && notebook.localPath) {
+              usePages
+                .getState()
+                .loadLocalFolderPages(notebook.id, notebook.localPath);
+            }
+            return;
+          }
+        }
+
+        if (eventType === "change") {
+          toast.info(`文件 ${filename} 已外部修改`, {
+            description: "是否重新加载页面内容？",
+            action: {
+              label: "重载",
+              onClick: () => {
+                // 重新加载页面内容
+                const filePath = `${dirPath}/${filename}`;
+                if ((window as any).gooseFs) {
+                  const content = (window as any).gooseFs.readFile(filePath);
+                  if (content) {
+                    // 简化的重新加载逻辑
+                    window.location.reload();
+                  }
+                }
+              },
             },
-          },
-        });
+          });
+        }
       }
     };
 
-    window.addEventListener(
-      "goose-note:file-changed",
-      handleFileChange as EventListener,
-    );
+    window.addEventListener("goose-note:file-changed", handleFileChange);
     return () => {
-      window.removeEventListener(
-        "goose-note:file-changed",
-        handleFileChange as EventListener,
-      );
+      window.removeEventListener("goose-note:file-changed", handleFileChange);
     };
-  }, [notebook]);
+  }, [notebook, activePageId, page]);
 
   // 启动/停止本地文件夹监听
   useEffect(() => {
@@ -141,7 +169,7 @@ export function WorkspacePage() {
       const notebookId = useNotebooks
         .getState()
         .createLocalFolderNotebook(
-          `本地文件夹 - ${folderPath.split("/").pop() || "Unknown"}`,
+          `本地 - ${folderPath.split("/").pop() || "Unknown"}`,
           folderPath,
         );
       usePages.getState().loadLocalFolderPages(notebookId, folderPath);

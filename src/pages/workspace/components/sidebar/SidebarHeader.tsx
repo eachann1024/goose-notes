@@ -28,7 +28,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                   const notebookId = useNotebooks
                     .getState()
                     .createLocalFolderNotebook(
-                      `本地文件夹 - ${result[0].split("/").pop() || "Unknown"}`,
+                      `本地 - ${result[0].split("/").pop() || "Unknown"}`,
                       result[0],
                     );
                   usePages

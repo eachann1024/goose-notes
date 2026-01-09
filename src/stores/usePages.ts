@@ -321,64 +321,51 @@ export const usePages = create<PagesState>()(
             const newPages = { ...state.pages };
             removedIds.forEach((pid) => delete newPages[pid]);
 
-            const remaining = Object.values(newPages)
-              .filter(
-                (p) =>
-                  p.workspaceId === page.workspaceId && !p.trashedAt,
-              )
-              .sort(
-                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-              );
-            const nextActivePageId = remaining[0]?.id ?? null;
+            let nextActivePageId = state.activePageId;
+            if (removedIds.has(state.activePageId || "")) {
+              nextActivePageId = null;
+              // 同步清理 Notebook 中记录的最后活跃页面
+              useNotebooks.getState().setLastActivePage(page.workspaceId, null);
+            }
 
             return {
               pages: newPages,
-              activePageId: removedIds.has(state.activePageId || "")
-                ? nextActivePageId
-                : state.activePageId,
+              activePageId: nextActivePageId,
             };
           }
 
           const workspaceId = page.workspaceId;
           deleted = true;
-          const newPages = {
-            ...state.pages,
-            [id]: {
-              ...page,
-              trashedAt: Date.now(),
-              updatedAt: Date.now(),
-              isFavorite: false,
-            },
-          };
+
+          // 递归获取所有子页面 ID
+          const removedIds = new Set<string>();
+          const stack = [id];
+          while (stack.length) {
+            const currentId = stack.pop()!;
+            removedIds.add(currentId);
+            Object.values(state.pages).forEach((p) => {
+              if (p.parentId === currentId && !p.trashedAt) stack.push(p.id);
+            });
+          }
+
+          const newPages = { ...state.pages };
+          const now = Date.now();
+          removedIds.forEach((pid) => {
+            if (newPages[pid]) {
+              newPages[pid] = {
+                ...newPages[pid],
+                trashedAt: now,
+                updatedAt: now,
+                isFavorite: false,
+              };
+            }
+          });
 
           let newActivePageId = state.activePageId;
-          if (state.activePageId === id) {
-            const siblings = Object.values(newPages)
-              .filter(
-                (p) =>
-                  p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
-              )
-              .sort(
-                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-              );
-
-            if (siblings.length > 0) {
-              const deletedPageIndex = Object.values(state.pages)
-                .filter((p) => p.workspaceId === workspaceId && !p.trashedAt)
-                .sort(
-                  (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-                )
-                .findIndex((p) => p.id === id);
-
-              // 如果删除的是最后一个，选中前一个；否则选中后一个
-              const nextIndex =
-                deletedPageIndex >= siblings.length
-                  ? siblings.length - 1
-                  : deletedPageIndex;
-              newActivePageId = siblings[nextIndex].id;
-            } else {
-              newActivePageId = null;
-            }
+          if (removedIds.has(state.activePageId || "")) {
+            newActivePageId = null;
+            // 清理 Notebook 记录
+            useNotebooks.getState().setLastActivePage(workspaceId, null);
           }
 
           return {
@@ -508,21 +495,17 @@ export const usePages = create<PagesState>()(
           set((state) => {
             const newPages = { ...state.pages };
             removedIds.forEach((pid) => delete newPages[pid]);
-            const remaining = Object.values(newPages)
-              .filter(
-                (p) =>
-                  p.workspaceId === page.workspaceId && !p.trashedAt,
-              )
-              .sort(
-                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-              );
-            const nextActivePageId = remaining[0]?.id ?? null;
+
+            let nextActivePageId = state.activePageId;
+            if (removedIds.has(state.activePageId || "")) {
+              nextActivePageId = null;
+              // 同步清理 Notebook 中记录的最后活跃页面
+              useNotebooks.getState().setLastActivePage(page.workspaceId, null);
+            }
 
             return {
               pages: newPages,
-              activePageId: removedIds.has(state.activePageId || "")
-                ? nextActivePageId
-                : state.activePageId,
+              activePageId: nextActivePageId,
             };
           });
           return;
@@ -762,8 +745,10 @@ export const usePages = create<PagesState>()(
               const markdownContent =
                 (window as any).gooseFs.readFile(entry.path) || "";
               const imported = importFromMarkdown(markdownContent);
-              const jsonContent =
-                imported.content || { type: "doc", content: [] };
+              const jsonContent = imported.content || {
+                type: "doc",
+                content: [],
+              };
 
               const filePage: Page = {
                 id: fileId,
@@ -803,8 +788,9 @@ export const usePages = create<PagesState>()(
 
         const activeNotebookId = useNotebooks.getState().activeNotebookId;
         if (activeNotebookId === notebookId) {
-          const lastActivePageId =
-            useNotebooks.getState().getLastActivePage(notebookId);
+          const lastActivePageId = useNotebooks
+            .getState()
+            .getLastActivePage(notebookId);
           const pageIdSet = new Set(localPages.map((p) => p.id));
 
           if (lastActivePageId && pageIdSet.has(lastActivePageId)) {

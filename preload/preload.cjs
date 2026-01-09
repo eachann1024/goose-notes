@@ -68,10 +68,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           dirPath,
           { recursive: true },
           (eventType, filename) => {
-            if (
-              filename &&
-              (filename.endsWith(".md") || filename.endsWith(".markdown"))
-            ) {
+            if (filename) {
               const fullPath = path.join(dirPath, filename);
               // 检查是否为最近写入的文件，避免误触发重载提示
               const now = Date.now();
