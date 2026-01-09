@@ -167,6 +167,26 @@ export const useNotebooks = create<NotebooksState>()(
 
       setActiveNotebook: (id) => {
         set({ activeNotebookId: id });
+        const notebook = get().notebooks[id];
+        if (
+          notebook?.source === "local-folder" &&
+          notebook.localPath &&
+          typeof window !== "undefined" &&
+          (window as any).gooseFs
+        ) {
+          const exists = (window as any).gooseFs.exists(notebook.localPath);
+          if (exists) {
+            if (notebook.localPathMissing) {
+              get().updateNotebook(id, { localPathMissing: false });
+            }
+            usePages.getState().loadLocalFolderPages(id, notebook.localPath);
+          } else {
+            if (!notebook.localPathMissing) {
+              get().updateNotebook(id, { localPathMissing: true });
+            }
+            usePages.getState().removePagesByWorkspaceId(id);
+          }
+        }
       },
 
       getNotebook: (id) => {

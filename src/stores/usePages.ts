@@ -800,6 +800,27 @@ export const usePages = create<PagesState>()(
             ),
           },
         }));
+
+        const activeNotebookId = useNotebooks.getState().activeNotebookId;
+        if (activeNotebookId === notebookId) {
+          const lastActivePageId =
+            useNotebooks.getState().getLastActivePage(notebookId);
+          const pageIdSet = new Set(localPages.map((p) => p.id));
+
+          if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
+            set({ activePageId: lastActivePageId });
+          } else {
+            const firstPage = localPages
+              .filter((p) => !p.trashedAt)
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              )[0];
+            set({ activePageId: firstPage?.id ?? null });
+            useNotebooks
+              .getState()
+              .setLastActivePage(notebookId, firstPage?.id ?? null);
+          }
+        }
       },
 
       saveLocalPageContent: async (pageId, content) => {
