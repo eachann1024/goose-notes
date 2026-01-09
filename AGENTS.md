@@ -15,9 +15,7 @@
 3. 注释只解释 Why，不解释 What
 4. shadcn/hooks 由 autoimport 处理
 5. 每个模块独立运行不要有耦合关系
-6. auto-import 由 unplugin-auto-import 自动生成，需对照 `vite.config.ts` 配置，避免手动新增或误改
-7. 确保已读取全局规则 `~/AGENTS.md`
-8. utools文档地址：https://www.u-tools.cn/docs/developer/docs.html   ； 多参考而不是自己猜
+6. auto-import 由 unplugin-auto-import 自动生成，需对照 `vite.config.ts` 配置
 
 ---
 
@@ -49,11 +47,4 @@ export const useXxx = create<XxxState>()(
 - 新功能更新 `src/lib/tips.ts` 帮助用户发现
 - Page 类型定义见 `src/types/index.ts`
 - 图片处理见 `src/lib/imageProcessor.ts`（>500KB 压缩 80%）
-- 自动导入范围以 `vite.config.ts` 为准，改动时同步更新说明（避免重复维护清单）
-
----
-
-## 常用指令
-
-- 提交代码：`git add -A && git commit -m "feat: xxx + xxx"`
-- 详细指令见 `COMMANDS.md`
+- 自动导入范围以 `vite.config.ts` 为准
