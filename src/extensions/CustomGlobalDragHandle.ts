@@ -9,7 +9,7 @@ import * as pmView from "@tiptap/pm/view";
 function getPmView() {
   try {
     return pmView;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -282,10 +282,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     }
     if (!(node instanceof Element)) return;
 
-    let pos = nodePosAtDOM(node, view, options);
+    const pos = nodePosAtDOM(node, view, options);
     if (pos == null) return;
 
-    let targetPos = calcNodePos(pos, view);
+    const targetPos = calcNodePos(pos, view);
 
     const selection = NodeSelection.create(view.state.doc, targetPos);
     view.dispatch(view.state.tr.setSelection(selection));
@@ -316,7 +316,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     });
     if (!dropPos) return false;
 
-    let insertPos = dropPoint(view.state.doc, dropPos.pos, dragging.slice);
+    const insertPos = dropPoint(view.state.doc, dropPos.pos, dragging.slice);
     if (insertPos == null) return false;
 
     if (dragging.move) {

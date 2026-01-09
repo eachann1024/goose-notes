@@ -8,9 +8,22 @@ import {
 } from "react";
 import { cn, formatShortcut } from "@/lib/utils";
 
+interface CommandItem {
+  title: string;
+  description: string;
+  searchTerms?: string[];
+  icon: any;
+  shortcut?: string;
+  hint?: {
+    title: string;
+    items: Array<{ key: string; description: string }>;
+  };
+  command: (params: { editor: any; range: any }) => void;
+}
+
 interface CommandListProps {
-  items: any[];
-  command: any;
+  items: CommandItem[];
+  command: (item: CommandItem) => void;
   editor: any;
   placement?: "top" | "bottom";
 }
@@ -33,13 +46,16 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
 
   useEffect(() => {
     setSelectedIndex(0);
+    setShowHint(false);
   }, [props.items]);
 
   // 延迟显示 hint
   useEffect(() => {
-    setShowHint(false);
     const selectedItem = props.items[selectedIndex];
-    if (!selectedItem?.hint) return;
+    if (!selectedItem?.hint) {
+      setShowHint(false);
+      return;
+    }
 
     const timer = setTimeout(() => {
       setShowHint(true);

@@ -17,6 +17,7 @@ interface SidebarTreeProps {
   rowHeight: number;
   itemHeight: number;
   onCreatePage: () => void;
+  onRequestRename: (page: Page) => void;
   onboardingExpandPageId?: string | null;
   onOnboardingExpandDone?: () => void;
 }
@@ -44,7 +45,16 @@ const buildTree = (
       const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true;
       return matchParent && matchWorkspace;
     })
-    .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt));
+    .sort((a, b) => {
+      // 文件夹优先排序
+      if (a.isFolder !== b.isFolder) {
+        return a.isFolder ? -1 : 1;
+      }
+      // 同类型按名称自然排序
+      const nameA = getPageTitle(a);
+      const nameB = getPageTitle(b);
+      return nameA.localeCompare(nameB, "zh-CN", { numeric: true });
+    });
 
   const nodes: TreeNode[] = children.map((page) => ({
     id: page.id,
@@ -70,6 +80,7 @@ const buildTree = (
 type PageNodeProps = NodeRendererProps<TreeNode> & {
   itemHeight: number;
   activeNotebookId: string | null;
+  onRequestRename: (page: Page) => void;
 };
 
 function PageNode({
@@ -78,6 +89,7 @@ function PageNode({
   dragHandle,
   itemHeight,
   activeNotebookId: _activeNotebookId,
+  onRequestRename,
 }: PageNodeProps) {
   const { activePageId, setActivePage, createPage, pages, createLocalPage } =
     usePages();
@@ -154,7 +166,7 @@ function PageNode({
   };
 
   return (
-    <SidebarContextMenu page={node.data.page!}>
+    <SidebarContextMenu page={node.data.page!} onRequestRename={onRequestRename}>
       <div ref={dragHandle} style={rowStyle} className="group relative px-1">
         <div
           className={cn(
@@ -167,6 +179,10 @@ function PageNode({
           )}
           onClick={(e) => {
             e.stopPropagation();
+            if (isLocalFolder && node.data.page?.isFolder) {
+              node.toggle();
+              return;
+            }
             setActivePage(node.id);
           }}
         >
@@ -252,6 +268,7 @@ export function SidebarTree({
   rowHeight,
   itemHeight,
   onCreatePage,
+  onRequestRename,
   onboardingExpandPageId,
   onOnboardingExpandDone,
 }: SidebarTreeProps) {
@@ -407,6 +424,7 @@ export function SidebarTree({
           {...props}
           itemHeight={itemHeight}
           activeNotebookId={activeNotebookId}
+          onRequestRename={onRequestRename}
         />
       )}
     </Tree>

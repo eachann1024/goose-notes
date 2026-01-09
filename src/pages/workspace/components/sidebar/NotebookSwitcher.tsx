@@ -124,8 +124,12 @@ export function NotebookSwitcher() {
           {notebookList.map((notebook) => (
             <DropdownMenuItem
               key={notebook.id}
-              className="flex items-center justify-between gap-2 group"
+              className={cn(
+                "flex items-center justify-between gap-2 group",
+                notebook.localPathMissing && "opacity-50",
+              )}
               onClick={() => {
+                if (notebook.localPathMissing) return;
                 setActiveNotebook(notebook.id);
                 const lastPageId = getLastActivePage(notebook.id);
                 const { pages } = usePages.getState();
@@ -149,6 +153,9 @@ export function NotebookSwitcher() {
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {renderNotebookIcon(notebook.icon || "📓")}
                 <span className="truncate">{notebook.name}</span>
+                {notebook.localPathMissing && (
+                  <span className="text-xs text-destructive">路径失效</span>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {activeNotebookId === notebook.id && (

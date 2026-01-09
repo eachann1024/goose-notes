@@ -8,6 +8,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // 本地文件变更监听映射
   const watchers = new Map();
+  // 最近写入的文件标记，用于避免自己写入触发重载提示
+  const recentWrites = new Map();
 
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）
   window.gooseFs = {
@@ -37,6 +39,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     writeFile: (filePath, content) => {
       try {
         fs.writeFileSync(filePath, content, "utf-8");
+        // 标记最近写入，防止 watch 误触发重载提示
+        recentWrites.set(filePath, Date.now());
         return true;
       } catch (err) {
         console.error("[gooseFs] writeFile failed:", err);
@@ -68,6 +72,22 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
               filename &&
               (filename.endsWith(".md") || filename.endsWith(".markdown"))
             ) {
+              const fullPath = path.join(dirPath, filename);
+              // 检查是否为最近写入的文件，避免误触发重载提示
+              const now = Date.now();
+              let skip = false;
+              for (const [key, time] of recentWrites) {
+                if (now - time >= 1000) {
+                  recentWrites.delete(key);
+                  continue;
+                }
+                if (fullPath === key || fullPath.startsWith(key)) {
+                  skip = true;
+                  break;
+                }
+              }
+              if (skip) return; // 跳过自己写入/删除的文件
+
               // 通知前端有文件变更
               window.dispatchEvent(
                 new CustomEvent("goose-note:file-changed", {
@@ -107,6 +127,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     deleteFile: (filePath) => {
       try {
         fs.unlinkSync(filePath);
+        recentWrites.set(filePath, Date.now());
         return true;
       } catch (err) {
         console.error("[gooseFs] deleteFile failed:", err);
@@ -114,9 +135,22 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
+    deleteDir: (dirPath) => {
+      try {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        recentWrites.set(`${dirPath}${path.sep}`, Date.now());
+        return true;
+      } catch (err) {
+        console.error("[gooseFs] deleteDir failed:", err);
+        return false;
+      }
+    },
+
     rename: (oldPath, newPath) => {
       try {
         fs.renameSync(oldPath, newPath);
+        recentWrites.set(oldPath, Date.now());
+        recentWrites.set(newPath, Date.now());
         return true;
       } catch (err) {
         console.error("[gooseFs] rename failed:", err);

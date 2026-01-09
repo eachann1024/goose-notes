@@ -76,11 +76,7 @@ export function PageMenu() {
 
         {/* Switches Section */}
         <DropdownMenuGroup>
-          <DropdownMenuItem className="text-xs">
-            <LucideIcons.FolderInput className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-            <span className="flex-1">移动到</span>
-            <span className="text-[10px] text-muted-foreground">⌘⇧P</span>
-          </DropdownMenuItem>
+
           <DropdownMenuItem
             className="text-xs text-destructive focus:text-destructive"
             onClick={() => deletePage(activePageId)}

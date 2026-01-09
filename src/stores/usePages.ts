@@ -5,6 +5,7 @@ import type { Page, JSONContent } from "@/types";
 import { uToolsStorage } from "@/lib/storage";
 import { useNotebooks } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { jsonContentToMarkdown } from "@/lib/export";
 import { getPageTitle } from "@/lib/page-title";
 
 // 防抖保存的映射
@@ -32,7 +33,7 @@ interface PagesState {
 
   createPage: (parentId?: string, workspaceId?: string) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
-  deletePage: (id: string) => void;
+  deletePage: (id: string) => boolean;
   restorePage: (id: string) => void;
   duplicatePage: (id: string) => string;
   permanentlyDeletePage: (id: string) => void;
@@ -144,20 +145,43 @@ export const usePages = create<PagesState>()(
           return null;
         }
 
+        const resolveParentPath = () => {
+          if (!parentId) return null;
+          const parentPage = get().pages[parentId];
+          if (parentPage?.localFilePath) return parentPage.localFilePath;
+          const prefix = `local-${workspaceId}-`;
+          if (!parentId.startsWith(prefix)) return null;
+          const encoded = parentId.slice(prefix.length);
+          try {
+            const relativePath = decodeURIComponent(encoded);
+            return `${notebook.localPath}/${relativePath}`;
+          } catch {
+            return null;
+          }
+        };
+
         const now = Date.now();
         const title = "新页面";
-        let filePath = `${notebook.localPath}/${title}.md`;
+        const parentPath = resolveParentPath();
+        const parentPage = parentId ? get().pages[parentId] : undefined;
+        const baseDir = parentPath
+          ? parentPage?.isFolder
+            ? parentPath
+            : parentPath.replace(/[^\/\\]+$/, "")
+          : notebook.localPath;
+        const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
+        let filePath = `${normalizedBaseDir}/${title}.md`;
 
         if ((window as any).gooseFs.exists(filePath)) {
           let suffix = 1;
           while (
             (window as any).gooseFs.exists(
-              `${notebook.localPath}/${title} (${suffix}).md`,
+              `${normalizedBaseDir}/${title} (${suffix}).md`,
             )
           ) {
             suffix++;
           }
-          filePath = `${notebook.localPath}/${title} (${suffix}).md`;
+          filePath = `${normalizedBaseDir}/${title} (${suffix}).md`;
         }
 
         if (!(window as any).gooseFs.writeFile(filePath, `# ${title}\n`)) {
@@ -247,12 +271,76 @@ export const usePages = create<PagesState>()(
 
       deletePage: (id) => {
         flushEditorContent();
+        let deleted = false;
 
         set((state) => {
           const page = state.pages[id];
           if (!page) return state;
 
+          const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+          const isLocalFolder = notebook?.source === "local-folder";
+          if (isLocalFolder && notebook?.localPath) {
+            const resolvePathFromId = (pageId: string) => {
+              const prefix = `local-${page.workspaceId}-`;
+              if (!pageId.startsWith(prefix)) return null;
+              const encoded = pageId.slice(prefix.length);
+              try {
+                const relativePath = decodeURIComponent(encoded);
+                return `${notebook.localPath}/${relativePath}`;
+              } catch {
+                return null;
+              }
+            };
+
+            const targetPath = page.localFilePath || resolvePathFromId(id);
+            if (!targetPath || !(window as any).gooseFs) return state;
+
+            const confirmed = confirm(
+              page.isFolder
+                ? `确定要删除文件夹 "${getPageTitle(page)}" 及其内容吗？`
+                : `确定要删除文件 "${getPageTitle(page)}" 吗？`,
+            );
+            if (!confirmed) return state;
+
+            const removedIds = new Set<string>();
+            const stack = [id];
+            while (stack.length) {
+              const currentId = stack.pop()!;
+              removedIds.add(currentId);
+              Object.values(state.pages).forEach((p) => {
+                if (p.parentId === currentId) stack.push(p.id);
+              });
+            }
+
+            const removeOk = page.isFolder
+              ? (window as any).gooseFs.deleteDir(targetPath)
+              : (window as any).gooseFs.deleteFile(targetPath);
+            if (!removeOk) return state;
+            deleted = true;
+
+            const newPages = { ...state.pages };
+            removedIds.forEach((pid) => delete newPages[pid]);
+
+            const remaining = Object.values(newPages)
+              .filter(
+                (p) =>
+                  p.workspaceId === page.workspaceId && !p.trashedAt,
+              )
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              );
+            const nextActivePageId = remaining[0]?.id ?? null;
+
+            return {
+              pages: newPages,
+              activePageId: removedIds.has(state.activePageId || "")
+                ? nextActivePageId
+                : state.activePageId,
+            };
+          }
+
           const workspaceId = page.workspaceId;
+          deleted = true;
           const newPages = {
             ...state.pages,
             [id]: {
@@ -298,6 +386,8 @@ export const usePages = create<PagesState>()(
             activePageId: newActivePageId,
           };
         });
+
+        return deleted;
       },
 
       restorePage: (id) => {
@@ -374,15 +464,68 @@ export const usePages = create<PagesState>()(
         const isLocalFolder = notebook?.source === "local-folder";
 
         // 本地模式需要确认对话框
-        if (isLocalFolder && page?.localFilePath) {
+        if (isLocalFolder && notebook?.localPath) {
+          if (typeof window === "undefined" || !(window as any).gooseFs) return;
+          if (!page) return;
+
+          const resolvePathFromId = (pageId: string) => {
+            const prefix = `local-${page.workspaceId}-`;
+            if (!pageId.startsWith(prefix)) return null;
+            const encoded = pageId.slice(prefix.length);
+            try {
+              const relativePath = decodeURIComponent(encoded);
+              return `${notebook.localPath}/${relativePath}`;
+            } catch {
+              return null;
+            }
+          };
+
+          const targetPath = page.localFilePath || resolvePathFromId(id);
+          if (!targetPath) return;
+
           const confirmed = confirm(
-            `确定要永久删除 "${getPageTitle(page)}" 及其对应的文件吗？`,
+            page.isFolder
+              ? `确定要永久删除 "${getPageTitle(page)}" 及其内容吗？`
+              : `确定要永久删除 "${getPageTitle(page)}" 及其对应的文件吗？`,
           );
           if (!confirmed) return;
 
-          if (typeof window !== "undefined" && (window as any).gooseFs) {
-            (window as any).gooseFs.deleteFile(page.localFilePath);
+          const removedIds = new Set<string>();
+          const stack = [id];
+          while (stack.length) {
+            const currentId = stack.pop()!;
+            removedIds.add(currentId);
+            Object.values(get().pages).forEach((p) => {
+              if (p.parentId === currentId) stack.push(p.id);
+            });
           }
+
+          const deleted = page.isFolder
+            ? (window as any).gooseFs.deleteDir(targetPath)
+            : (window as any).gooseFs.deleteFile(targetPath);
+          if (!deleted) return;
+
+          set((state) => {
+            const newPages = { ...state.pages };
+            removedIds.forEach((pid) => delete newPages[pid]);
+            const remaining = Object.values(newPages)
+              .filter(
+                (p) =>
+                  p.workspaceId === page.workspaceId && !p.trashedAt,
+              )
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              );
+            const nextActivePageId = remaining[0]?.id ?? null;
+
+            return {
+              pages: newPages,
+              activePageId: removedIds.has(state.activePageId || "")
+                ? nextActivePageId
+                : state.activePageId,
+            };
+          });
+          return;
         }
 
         set((state) => {
@@ -601,6 +744,7 @@ export const usePages = create<PagesState>()(
                 isFullWidth: false,
                 fontSize: "default",
                 fontFamily: "default",
+                localFilePath: entry.path,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               };
@@ -710,19 +854,7 @@ export const usePages = create<PagesState>()(
           processImages(processedContent.content);
         }
 
-        // 转换为 Markdown
-        const markdownContent =
-          processedContent.content
-            ?.map((node) =>
-              node.type === "paragraph"
-                ? node.content?.map((c) => c.text || "").join("") || ""
-                : node.type === "heading"
-                  ? "#".repeat(node.attrs?.level || 1) +
-                    " " +
-                    (node.content?.map((c) => c.text || "").join("") || "")
-                  : "",
-            )
-            .join("\n\n") || "";
+        const markdownContent = jsonContentToMarkdown(processedContent);
 
         return (window as any).gooseFs.writeFile(filePath, markdownContent);
       },

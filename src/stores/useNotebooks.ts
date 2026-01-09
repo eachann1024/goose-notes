@@ -10,6 +10,7 @@ export interface Notebook {
   updatedAt: number;
   source?: "default" | "local-folder";
   localPath?: string; // 本地文件夹路径
+  localPathMissing?: boolean;
 }
 
 interface NotebooksState {
@@ -82,6 +83,7 @@ export const useNotebooks = create<NotebooksState>()(
               [existing.id]: {
                 ...existing,
                 name,
+                localPathMissing: false,
                 updatedAt: Date.now(),
               },
             },
@@ -97,6 +99,7 @@ export const useNotebooks = create<NotebooksState>()(
           icon: "📁", // 使用文件夹图标
           source: "local-folder",
           localPath,
+          localPathMissing: false,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };

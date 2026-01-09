@@ -143,6 +143,7 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
+  const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml

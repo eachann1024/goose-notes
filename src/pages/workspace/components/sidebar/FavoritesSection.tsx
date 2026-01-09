@@ -4,6 +4,7 @@ import { getPageTitle } from "@/lib/page-title";
 
 interface FavoritesSectionProps {
   itemHeight: number;
+  onRequestRename: (page: Page) => void;
 }
 
 interface FavoriteNodeProps {
@@ -17,6 +18,7 @@ interface FavoriteNodeProps {
   activeNotebookId: string | null;
   createPage: (parentId?: string, workspaceId?: string) => void;
   itemHeight: number;
+  onRequestRename: (page: Page) => void;
 }
 
 function FavoriteNode({
@@ -30,7 +32,10 @@ function FavoriteNode({
   activeNotebookId,
   createPage,
   itemHeight,
+  onRequestRename,
 }: FavoriteNodeProps) {
+  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+  const isLocalFolder = notebook?.source === "local-folder";
   const iconName = page.icon;
   const isExpanded = expandedFavorites.has(page.id);
   const isActive = activePageId === page.id;
@@ -42,8 +47,7 @@ function FavoriteNode({
   const hasChildren = children.length > 0;
   const indent = level * 16;
 
-  const toggleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleExpand = () => {
     setExpandedFavorites((prev) => {
       const next = new Set(prev);
       if (next.has(page.id)) {
@@ -89,7 +93,7 @@ function FavoriteNode({
 
   return (
     <>
-      <SidebarContextMenu page={page}>
+      <SidebarContextMenu page={page} onRequestRename={onRequestRename}>
         <div
           style={{ height: itemHeight }}
           className={cn(
@@ -98,7 +102,13 @@ function FavoriteNode({
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
           )}
-          onClick={() => setActivePage(page.id)}
+          onClick={() => {
+            if (isLocalFolder && page.isFolder) {
+              toggleExpand();
+              return;
+            }
+            setActivePage(page.id);
+          }}
         >
           <div
             className="flex items-center h-full gap-2 min-w-0 flex-1"
@@ -106,7 +116,10 @@ function FavoriteNode({
           >
             <div
               className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
-              onClick={toggleExpand}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand();
+              }}
             >
               <div className="relative flex items-center justify-center w-full h-full z-10">
                 <div
@@ -190,6 +203,7 @@ function FavoriteNode({
               activeNotebookId={activeNotebookId}
               createPage={createPage}
               itemHeight={itemHeight}
+              onRequestRename={onRequestRename}
             />
           ))
         ) : (
@@ -206,7 +220,10 @@ function FavoriteNode({
   );
 }
 
-export function FavoritesSection({ itemHeight }: FavoritesSectionProps) {
+export function FavoritesSection({
+  itemHeight,
+  onRequestRename,
+}: FavoritesSectionProps) {
   const { pages, activePageId, setActivePage, createPage, getFavorites } =
     usePages();
   const { activeNotebookId } = useNotebooks();
@@ -252,6 +269,7 @@ export function FavoritesSection({ itemHeight }: FavoritesSectionProps) {
               activeNotebookId={activeNotebookId}
               createPage={createPage}
               itemHeight={itemHeight}
+              onRequestRename={onRequestRename}
             />
           ))}
         </div>

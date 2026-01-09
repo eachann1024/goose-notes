@@ -4,8 +4,10 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
+import type { Page } from "@/types";
 import { getPageTitle } from "@/lib/page-title";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { toast } from "sonner";
 
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
 
@@ -47,6 +49,7 @@ export function Sidebar({ className }: SidebarProps) {
     pages,
     activePageId,
     setActivePage,
+    updatePage,
     onboardingExpandPageId,
     setOnboardingExpandPageId,
   } = usePages();
@@ -68,6 +71,9 @@ export function Sidebar({ className }: SidebarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
   const [pagesCollapsed, setPagesCollapsed] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteShortcut = useCallback(
@@ -161,6 +167,80 @@ export function Sidebar({ className }: SidebarProps) {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
   };
 
+  const openRenameDialog = useCallback((page: Page) => {
+    if (!page || page.trashedAt) return;
+    setRenamePageId(page.id);
+    setRenameValue(getPageTitle(page));
+    setRenameDialogOpen(true);
+  }, []);
+
+  const confirmRename = useCallback(() => {
+    if (!renamePageId) return;
+    const page = pages[renamePageId];
+    const nextTitle = renameValue.trim();
+    if (!page || nextTitle === "") return;
+
+    const newContent = JSON.parse(JSON.stringify(page.content));
+    if (!newContent || newContent.type !== "doc") {
+      newContent.type = "doc";
+      newContent.content = [];
+    }
+    if (
+      newContent.content?.[0]?.type === "heading" &&
+      newContent.content[0].attrs?.level === 1
+    ) {
+      newContent.content[0].content = nextTitle
+        ? [{ type: "text", text: nextTitle }]
+        : undefined;
+    } else {
+      newContent.content = [
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: nextTitle }],
+        },
+        ...(newContent.content || []),
+      ];
+    }
+
+    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+    const isLocalFolder = notebook?.source === "local-folder";
+    if (isLocalFolder && page.localFilePath && (window as any).gooseFs) {
+      const dir = page.localFilePath.replace(/[^\/\\]+$/, "");
+      const extMatch = page.localFilePath.match(/\.(md|markdown)$/i);
+      const ext = extMatch ? extMatch[0] : ".md";
+      const rawTitle = nextTitle.replace(/[\/\\]/g, "-").trim();
+      const safeTitle = rawTitle.replace(/\.(md|markdown)$/i, "");
+      const newPath = `${dir}${safeTitle}${ext}`;
+
+      if ((window as any).gooseFs.exists(newPath)) {
+        toast.error("重命名失败：目标文件已存在");
+        return;
+      }
+      if (newPath !== page.localFilePath) {
+        const renamed = (window as any).gooseFs.rename(
+          page.localFilePath,
+          newPath,
+        );
+        if (!renamed) {
+          toast.error("重命名失败：文件系统错误");
+          return;
+        }
+        updatePage(renamePageId, {
+          content: newContent,
+          localFilePath: newPath,
+        });
+      } else {
+        updatePage(renamePageId, { content: newContent });
+      }
+    } else {
+      updatePage(renamePageId, { content: newContent });
+    }
+
+    setRenameDialogOpen(false);
+    setRenamePageId(null);
+  }, [pages, renamePageId, renameValue, updatePage]);
+
   if (currentView === "trash") {
     return (
       <div
@@ -234,7 +314,10 @@ export function Sidebar({ className }: SidebarProps) {
           onSearch={handleSearch}
         />
 
-        <FavoritesSection itemHeight={itemHeight} />
+        <FavoritesSection
+          itemHeight={itemHeight}
+          onRequestRename={openRenameDialog}
+        />
 
         <ScrollArea className="flex-1">
           <div className="mt-1">
@@ -252,6 +335,7 @@ export function Sidebar({ className }: SidebarProps) {
                 rowHeight={rowHeight}
                 itemHeight={itemHeight}
                 onCreatePage={handleCreatePage}
+                onRequestRename={openRenameDialog}
                 onboardingExpandPageId={onboardingExpandPageId}
                 onOnboardingExpandDone={() => setOnboardingExpandPageId(null)}
               />
@@ -267,6 +351,55 @@ export function Sidebar({ className }: SidebarProps) {
           onOpenSettings={() => setShowSettings(true)}
         />
       </div>
+
+      <Dialog
+        open={renameDialogOpen}
+        onOpenChange={(open) => {
+          setRenameDialogOpen(open);
+          if (!open) {
+            setRenamePageId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px] z-[100]">
+          <DialogHeader>
+            <DialogTitle>重命名页面</DialogTitle>
+          </DialogHeader>
+          <div className="py-6">
+            <div className="grid gap-2">
+              <Label htmlFor="rename-input">新名称</Label>
+              <Input
+                id="rename-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    confirmRename();
+                  } else if (e.key === "Escape") {
+                    setRenameDialogOpen(false);
+                  }
+                }}
+                autoFocus
+                placeholder="输入新的页面名称"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRenameDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={confirmRename}
+              disabled={!renamePageId || renameValue.trim() === ""}
+            >
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>

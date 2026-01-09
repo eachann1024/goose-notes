@@ -25,6 +25,9 @@ export function WorkspacePage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+
+  const isExternalFileDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types || []).includes("Files");
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
       document.documentElement.classList.add("is-utools");
@@ -97,12 +100,14 @@ export function WorkspacePage() {
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isExternalFileDrag(e)) return;
     dragCounter.current++;
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isExternalFileDrag(e)) return;
     dragCounter.current--;
     if (dragCounter.current === 0) {
       setIsDragging(false);
@@ -111,10 +116,12 @@ export function WorkspacePage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isExternalFileDrag(e)) return;
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isExternalFileDrag(e)) return;
     setIsDragging(false);
     dragCounter.current = 0;
 
@@ -214,7 +221,9 @@ export function WorkspacePage() {
                           "flex items-center justify-center transition-opacity",
                           page.icon
                             ? "opacity-100"
-                            : "opacity-0 hover:opacity-100",
+                            : page.trashedAt || page.isLocked
+                              ? "opacity-0"
+                              : "opacity-0 hover:opacity-100",
                         )}
                       >
                         {page.icon ? (

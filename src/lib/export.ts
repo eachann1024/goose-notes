@@ -517,7 +517,7 @@ function downloadFile(content: string, filename: string, contentType: string) {
   }
 }
 
-function jsonContentToMarkdown(
+export function jsonContentToMarkdown(
   content: JSONContent,
   skipFirstH1 = false,
 ): string {
