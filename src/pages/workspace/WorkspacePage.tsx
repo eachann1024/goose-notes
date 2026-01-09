@@ -7,241 +7,163 @@ import { PageHeader } from "./components/page/PageHeader";
 import { PageTrashBanner } from "./components/page/PageTrashBanner";
 import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
-import {
-  applyFontVariables,
-} from "@/lib/fontLoader";
-import {
-  ONBOARDING_CHILD_PAGE_CONTENT,
-  ONBOARDING_PAGE_CONTENT,
-} from "@/lib/onboarding";
+import { toast } from "sonner";
+import { useRef, useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { usePages } from "@/stores/usePages";
+import { useNotebooks } from "@/stores/useNotebooks";
 
 export function WorkspacePage() {
-  const {
-    activePageId,
-    getPage,
-    updatePage,
-    pages,
-    setActivePage,
-    createPage,
-    onboardingCompleted,
-    setOnboardingCompleted,
-    setOnboardingExpandPageId,
-    hydrated,
-    setHydrated,
-  } = usePages();
-  const { notebooks, activeNotebookId } = useNotebooks();
-  const {
-    utools,
-    customFonts,
-    uiFontSize,
-    editorFontSize,
-    increaseEditorFontSize,
-    decreaseEditorFontSize,
-    resetEditorFontSize,
-  } = useSettings();
+  const { activePageId, updatePage, getPage } = usePages();
+  const { activeNotebookId } = useNotebooks();
+
   const page = activePageId ? getPage(activePageId) : undefined;
+  const notebook = activeNotebookId
+    ? useNotebooks.getState().notebooks[activeNotebookId]
+    : undefined;
+  const isLocalFolderPage = notebook?.source === "local-folder";
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const onboardingInitRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
       document.documentElement.classList.add("is-utools");
     }
   }, []);
 
+  // 监听本地文件变更
   useEffect(() => {
-    const root = document.documentElement;
-    const baseFontSize = UToolsAdapter.isUTools ? 14 : 16;
-    const fontSizeMap = {
-      small: baseFontSize - 2,
-      normal: baseFontSize,
-      large: baseFontSize + 2,
-    };
-    root.style.setProperty("--ui-font-size", `${fontSizeMap[uiFontSize]}px`);
-    root.style.fontSize = `${fontSizeMap[uiFontSize]}px`;
-  }, [uiFontSize]);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--editor-font-size",
-      `${editorFontSize}px`,
-    );
-  }, [editorFontSize]);
-
-  useEffect(() => {
-    applyFontVariables(customFonts);
-  }, [customFonts]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
-        if (e.key === "s") {
-          e.preventDefault();
-        } else if (e.key === "=" || e.key === "+") {
-          e.preventDefault();
-          increaseEditorFontSize();
-        } else if (e.key === "-") {
-          e.preventDefault();
-          decreaseEditorFontSize();
-        } else if (e.key === "0") {
-          e.preventDefault();
-          resetEditorFontSize();
-        }
-      }
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("contextmenu", handleContextMenu);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("contextmenu", handleContextMenu);
-    };
-  }, [increaseEditorFontSize, decreaseEditorFontSize, resetEditorFontSize]);
-
-  useEffect(() => {
-    if (activePageId && scrollContainerRef.current) {
-      const savedScroll = sessionStorage.getItem(`scroll-${activePageId}`);
-      if (savedScroll) {
-        requestAnimationFrame(() => {
-          scrollContainerRef.current?.scrollTo({
-            top: Number(savedScroll),
-            behavior: "instant",
-          });
+    const handleFileChange = (event: CustomEvent) => {
+      const { filename, dirPath } = event.detail;
+      if (
+        notebook?.source === "local-folder" &&
+        notebook.localPath === dirPath
+      ) {
+        toast.info(`文件 ${filename} 已外部修改`, {
+          description: "是否重新加载页面内容？",
+          action: {
+            label: "重载",
+            onClick: () => {
+              // 重新加载页面内容
+              const filePath = `${dirPath}/${filename}`;
+              if ((window as any).gooseFs) {
+                const content = (window as any).gooseFs.readFile(filePath);
+                if (content) {
+                  // 简化的重新加载逻辑
+                  window.location.reload();
+                }
+              }
+            },
+          },
         });
-      } else {
-        scrollContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
       }
-    }
-  }, [activePageId]);
+    };
 
+    window.addEventListener(
+      "goose-note:file-changed",
+      handleFileChange as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "goose-note:file-changed",
+        handleFileChange as EventListener,
+      );
+    };
+  }, [notebook]);
+
+  // 启动/停止本地文件夹监听
   useEffect(() => {
-    if (usePages.persist.hasHydrated()) {
-      setHydrated(true);
+    if (
+      notebook?.source === "local-folder" &&
+      notebook.localPath &&
+      (window as any).gooseFs
+    ) {
+      // 启动监听
+      (window as any).gooseFs.watch(
+        notebook.localPath,
+        (_eventType: string, _filename: string) => {
+          // 监听逻辑已在上面的 useEffect 中处理
+        },
+      );
+    }
+
+    return () => {
+      // 清理监听
+      if (notebook?.localPath && (window as any).gooseFs) {
+        (window as any).gooseFs.unwatch(notebook.localPath);
+      }
+    };
+  }, [notebook?.id]);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    dragCounter.current = 0;
+
+    const items = Array.from(e.dataTransfer.items);
+    for (const item of items) {
+      if (item.kind !== "file") continue;
+      const entry = item.webkitGetAsEntry?.();
+      if (!entry || !entry.isDirectory) continue;
+
+      const file = item.getAsFile?.();
+      const folderPath =
+        file && typeof (file as any).path === "string"
+          ? (file as any).path
+          : null;
+      if (!folderPath) continue;
+
+      const notebookId = useNotebooks
+        .getState()
+        .createLocalFolderNotebook(
+          `本地文件夹 - ${folderPath.split("/").pop() || "Unknown"}`,
+          folderPath,
+        );
+      usePages.getState().loadLocalFolderPages(notebookId, folderPath);
+      toast.success("文件夹已打开");
       return;
     }
-    const unsubscribe = usePages.persist.onFinishHydration(() => {
-      setHydrated(true);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, [setHydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (onboardingCompleted || onboardingInitRef.current) return;
-    const visiblePages = Object.values(pages).filter((p) => !p.trashedAt);
-    if (visiblePages.length > 0) return;
-
-    let notebookId = activeNotebookId;
-    if (!notebookId) {
-      const notebookIds = Object.keys(notebooks);
-      notebookId = notebookIds[0];
-    }
-    if (!notebookId) return;
-
-    onboardingInitRef.current = true;
-    setOnboardingCompleted(true);
-
-    const welcomePageId = createPage(undefined, notebookId);
-    updatePage(welcomePageId, {
-      content: ONBOARDING_PAGE_CONTENT,
-      icon: "👋",
-    });
-    const childPageId = createPage(welcomePageId, notebookId);
-    updatePage(childPageId, {
-      content: ONBOARDING_CHILD_PAGE_CONTENT,
-      icon: "✨",
-    });
-    setActivePage(welcomePageId);
-    setOnboardingExpandPageId(welcomePageId);
-  }, [
-    onboardingCompleted,
-    pages,
-    notebooks,
-    activeNotebookId,
-    createPage,
-    updatePage,
-    setActivePage,
-    setOnboardingCompleted,
-    setOnboardingExpandPageId,
-    hydrated,
-  ]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || !activePageId) return;
-
-    let timer: ReturnType<typeof setTimeout>;
-    const handleScroll = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        sessionStorage.setItem(
-          `scroll-${activePageId}`,
-          String(container.scrollTop),
-        );
-      }, 150);
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => {
-      clearTimeout(timer);
-      container.removeEventListener("scroll", handleScroll);
-    };
-  }, [activePageId]);
-
-  useEffect(() => {
-    if (!UToolsAdapter.isUTools || !UToolsAdapter.supportsSublist) return;
-
-    if (utools.globalSearchEnabled) {
-      UToolsAdapter.setSublistFn((keyword: string) => {
-        if (!keyword.trim()) return [];
-
-        const query = keyword.toLowerCase();
-        const results = Object.values(pages)
-          .filter((p) => !p.trashedAt)
-          .filter((p) => {
-            const title = extractTitleFromContent(p.content);
-            const titleMatch = title.toLowerCase().includes(query);
-            const contentText = extractTextFromContent(p.content);
-            const contentMatch = contentText.toLowerCase().includes(query);
-            return titleMatch || contentMatch;
-          })
-          .slice(0, 5);
-
-        return results.map((p) => ({
-          title: extractTitleFromContent(p.content),
-          description: new Date(p.updatedAt).toLocaleString(),
-          icon: "./logo.png",
-          url: `goose-note://page/${p.id}`,
-        }));
-      });
-    } else {
-      UToolsAdapter.removeSublistFn();
-    }
-
-    return () => {
-      UToolsAdapter.removeSublistFn();
-    };
-  }, [pages, utools.globalSearchEnabled]);
-
-  useEffect(() => {
-    const handleNavigate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ pageId: string }>;
-      setActivePage(customEvent.detail.pageId);
-    };
-
-    window.addEventListener("goose-note:navigate", handleNavigate);
-    return () => {
-      window.removeEventListener("goose-note:navigate", handleNavigate);
-    };
-  }, [setActivePage]);
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div
+      className="flex h-screen overflow-hidden bg-background text-foreground"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-background/90 via-background/95 to-background/90 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="text-center">
+            <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
+            <p className="text-lg text-muted-foreground font-medium">
+              拖放文件夹以打开
+            </p>
+            <p className="text-sm text-muted-foreground/60 mt-2">
+              支持 .md / .markdown 文件
+            </p>
+          </div>
+        </div>
+      )}
       <CommandPalette />
       <Sidebar />
 
@@ -277,43 +199,45 @@ export function WorkspacePage() {
                   page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
                 )}
               >
-                <div className="group relative mb-4">
-                  <IconSelector
-                    value={page.icon}
-                    onChange={(icon) =>
-                      !page.trashedAt &&
-                      !page.isLocked &&
-                      updatePage(activePageId, { icon })
-                    }
-                  >
-                    <button
-                      className={cn(
-                        "flex items-center justify-center transition-opacity",
-                        page.icon
-                          ? "opacity-100"
-                          : "opacity-0 hover:opacity-100",
-                      )}
+                {!isLocalFolderPage && (
+                  <div className="group relative mb-4">
+                    <IconSelector
+                      value={page.icon}
+                      onChange={(icon) =>
+                        !page.trashedAt &&
+                        !page.isLocked &&
+                        updatePage(activePageId, { icon })
+                      }
                     >
-                      {page.icon ? (
-                        <div className="flex items-center justify-center h-16 w-16 text-6xl">
-                          {(LucideIcons as any)[page.icon] ? (
-                            (() => {
-                              const Icon = (LucideIcons as any)[page.icon];
-                              return <Icon className="h-14 w-14" />;
-                            })()
-                          ) : (
-                            <span>{page.icon}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
-                          <LucideIcons.Smile className="h-4 w-4" />
-                          <span>添加图标</span>
-                        </div>
-                      )}
-                    </button>
-                  </IconSelector>
-                </div>
+                      <button
+                        className={cn(
+                          "flex items-center justify-center transition-opacity",
+                          page.icon
+                            ? "opacity-100"
+                            : "opacity-0 hover:opacity-100",
+                        )}
+                      >
+                        {page.icon ? (
+                          <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                            {(LucideIcons as any)[page.icon] ? (
+                              (() => {
+                                const Icon = (LucideIcons as any)[page.icon];
+                                return <Icon className="h-14 w-14" />;
+                              })()
+                            ) : (
+                              <span>{page.icon}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                            <LucideIcons.Smile className="h-4 w-4" />
+                            <span>添加图标</span>
+                          </div>
+                        )}
+                      </button>
+                    </IconSelector>
+                  </div>
+                )}
               </div>
 
               <Editor editable={!page.isLocked && !page.trashedAt} />

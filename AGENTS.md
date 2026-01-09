@@ -17,6 +17,7 @@
 5. 每个模块独立运行不要有耦合关系
 6. auto-import 由 unplugin-auto-import 自动生成，需对照 `vite.config.ts` 配置，避免手动新增或误改
 7. 确保已读取全局规则 `~/AGENTS.md`
+8. utools文档地址：https://www.u-tools.cn/docs/developer/docs.html   ； 多参考而不是自己猜
 
 ---
 

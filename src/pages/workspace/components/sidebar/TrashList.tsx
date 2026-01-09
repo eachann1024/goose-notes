@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { extractTitleFromContent } from '@/lib/content-text-extractor'
+import { getPageTitle } from "@/lib/page-title";
 
 interface TrashListProps {
   onBack: () => void
@@ -69,7 +69,7 @@ export function TrashList({ onBack }: TrashListProps) {
 
                   {/* 标题和时间 */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{extractTitleFromContent(page.content)}</div>
+                    <div className="text-sm truncate">{getPageTitle(page)}</div>
                     <div className="text-xs text-muted-foreground">{timeAgo}</div>
                   </div>
 

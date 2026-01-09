@@ -136,6 +136,7 @@ declare global {
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
+  const getPageTitle: typeof import('./lib/page-title').getPageTitle
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON

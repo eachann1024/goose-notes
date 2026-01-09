@@ -4,7 +4,7 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
@@ -103,10 +103,22 @@ export function Sidebar({ className }: SidebarProps) {
   }, [width]);
 
   const handleCreatePage = () => {
+    const notebook = activeNotebookId
+      ? useNotebooks.getState().notebooks[activeNotebookId]
+      : undefined;
+    const isLocalFolder = notebook?.source === "local-folder";
+
+    if (isLocalFolder) {
+      usePages
+        .getState()
+        .createLocalPage(undefined, activeNotebookId || undefined);
+      return;
+    }
+
     const existingBlankPage = Object.values(pages).find((p) => {
       const matchWorkspace = p.workspaceId === (activeNotebookId || "default");
       const notTrashed = !p.trashedAt;
-      const title = extractTitleFromContent(p.content);
+      const title = getPageTitle(p);
       const isBlankTitle = !title || title === "无标题" || title.trim() === "";
       const isBlankContent = isEmptyContent(p.content);
       return matchWorkspace && notTrashed && isBlankTitle && isBlankContent;

@@ -8,6 +8,7 @@ interface NotebookEditDialogProps {
   confirmName: string;
   icon: string;
   isDefault: boolean;
+  openDeleteConfirm?: boolean;
   onOpenChange: (open: boolean) => void;
   onNameChange: (name: string) => void;
   onIconChange: (icon: string) => void;
@@ -22,6 +23,7 @@ export function NotebookEditDialog({
   confirmName,
   icon,
   isDefault,
+  openDeleteConfirm = false,
   onOpenChange,
   onNameChange,
   onIconChange,
@@ -39,6 +41,12 @@ export function NotebookEditDialog({
       setDeleteConfirmInput("");
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setShowDeleteConfirm(openDeleteConfirm);
+    }
+  }, [open, openDeleteConfirm]);
 
   const isDeleteEnabled = deleteConfirmInput === confirmName;
 

@@ -1,4 +1,6 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { usePages } from "@/stores/usePages";
 
 interface SidebarHeaderProps {
   onCreatePage: () => void;
@@ -13,6 +15,35 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
           <div className="flex-1 min-w-0">
             <NotebookSwitcher />
           </div>
+          <Button
+            onClick={async () => {
+              if (
+                typeof (window as any).utools?.showOpenDialog === "function"
+              ) {
+                const result = await (window as any).utools.showOpenDialog({
+                  title: "选择 Markdown 文件夹",
+                  properties: ["openDirectory"],
+                });
+                if (result && result.length > 0) {
+                  const notebookId = useNotebooks
+                    .getState()
+                    .createLocalFolderNotebook(
+                      `本地文件夹 - ${result[0].split("/").pop() || "Unknown"}`,
+                      result[0],
+                    );
+                  usePages
+                    .getState()
+                    .loadLocalFolderPages(notebookId, result[0]);
+                }
+              }
+            }}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            title="打开文件夹"
+          >
+            <LucideIcons.FolderOpen className="h-4 w-4" />
+          </Button>
           <Button
             onClick={onCreatePage}
             variant="ghost"

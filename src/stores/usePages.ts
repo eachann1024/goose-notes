@@ -5,6 +5,23 @@ import type { Page, JSONContent } from "@/types";
 import { uToolsStorage } from "@/lib/storage";
 import { useNotebooks } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
+
+// 防抖保存的映射
+const saveTimeouts = new Map<string, NodeJS.Timeout>();
+
+// 辅助函数：生成本地页面ID（基于相对路径的hash）
+function generateLocalPageId(notebookId: string, filePath: string): string {
+  const notebook = useNotebooks.getState().notebooks[notebookId];
+  if (!notebook?.localPath) return uuidv4();
+
+  const relativePath = filePath
+    .replace(notebook.localPath, "")
+    .replace(/^[\/\\]/, "");
+  // 使用 encodeURIComponent 而不是 btoa，避免中文路径报错
+  const encoded = encodeURIComponent(relativePath);
+  return `local-${notebookId}-${encoded}`;
+}
 
 interface PagesState {
   pages: Record<string, Page>;
@@ -29,6 +46,16 @@ interface PagesState {
   getChildren: (parentId?: string, workspaceId?: string) => Page[];
   getTrashedPages: (workspaceId?: string) => Page[];
   getFavorites: (workspaceId?: string) => Page[];
+  removePagesByWorkspaceId: (workspaceId: string) => void;
+
+  // 本地文件夹相关函数
+  loadLocalFolderPages: (notebookId: string, basePath: string) => Promise<void>;
+  saveLocalPageContent: (
+    pageId: string,
+    content: JSONContent,
+  ) => Promise<boolean>;
+  getLocalFilePath: (pageId: string) => string | null;
+  createLocalPage: (parentId?: string, workspaceId?: string) => string | null;
 }
 
 const initialContent: JSONContent = {
@@ -106,15 +133,113 @@ export const usePages = create<PagesState>()(
         return id;
       },
 
+      createLocalPage: (parentId?: string, workspaceId?: string) => {
+        if (!workspaceId) return null;
+        const notebook = useNotebooks.getState().notebooks[workspaceId];
+        if (
+          !notebook?.localPath ||
+          typeof window === "undefined" ||
+          !(window as any).gooseFs
+        ) {
+          return null;
+        }
+
+        const now = Date.now();
+        const title = "新页面";
+        let filePath = `${notebook.localPath}/${title}.md`;
+
+        if ((window as any).gooseFs.exists(filePath)) {
+          let suffix = 1;
+          while (
+            (window as any).gooseFs.exists(
+              `${notebook.localPath}/${title} (${suffix}).md`,
+            )
+          ) {
+            suffix++;
+          }
+          filePath = `${notebook.localPath}/${title} (${suffix}).md`;
+        }
+
+        if (!(window as any).gooseFs.writeFile(filePath, `# ${title}\n`)) {
+          return null;
+        }
+
+        const id = generateLocalPageId(workspaceId, filePath);
+        const newPage: Page = {
+          id,
+          workspaceId,
+          parentId,
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "heading",
+                attrs: { level: 1 },
+                content: [{ type: "text", text: title }],
+              },
+            ],
+          },
+          isFolder: false,
+          isLocked: false,
+          isFullWidth: false,
+          fontSize: "default",
+          fontFamily: "default",
+          localFilePath: filePath,
+          createdAt: now,
+          updatedAt: now,
+          order: now,
+        };
+
+        set((state) => ({
+          pages: { ...state.pages, [id]: newPage },
+          activePageId: id,
+        }));
+
+        useNotebooks.getState().setLastActivePage(workspaceId, id);
+
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent("goose-note:focus-editor-start"),
+            );
+          }, 100);
+        }
+
+        return id;
+      },
+
       updatePage: (id, updates) => {
         set((state) => {
           const page = state.pages[id];
           if (!page) return state;
 
+          const updatedPage = { ...page, ...updates, updatedAt: Date.now() };
+
+          // 如果是本地文件夹页面且内容有更新，触发防抖保存
+          if (
+            updates.content &&
+            useNotebooks.getState().notebooks[page.workspaceId]?.source ===
+              "local-folder"
+          ) {
+            // 清除之前的定时器
+            const existingTimeout = saveTimeouts.get(id);
+            if (existingTimeout) {
+              clearTimeout(existingTimeout);
+            }
+
+            // 设置新的防抖保存定时器（3秒）
+            const timeout = setTimeout(() => {
+              get().saveLocalPageContent(id, updates.content!);
+              saveTimeouts.delete(id);
+            }, 3000);
+
+            saveTimeouts.set(id, timeout);
+          }
+
           return {
             pages: {
               ...state.pages,
-              [id]: { ...page, ...updates, updatedAt: Date.now() },
+              [id]: updatedPage,
             },
           };
         });
@@ -193,6 +318,14 @@ export const usePages = create<PagesState>()(
       duplicatePage: (id) => {
         flushEditorContent();
 
+        const sourcePage = get().pages[id];
+        const notebook = sourcePage
+          ? useNotebooks.getState().notebooks[sourcePage.workspaceId]
+          : undefined;
+        if (notebook?.source === "local-folder") {
+          return id;
+        }
+
         let newId = "";
         set((state) => {
           const page = state.pages[id];
@@ -234,6 +367,24 @@ export const usePages = create<PagesState>()(
       },
 
       permanentlyDeletePage: (id) => {
+        const page = get().pages[id];
+        const notebook = page
+          ? useNotebooks.getState().notebooks[page.workspaceId]
+          : undefined;
+        const isLocalFolder = notebook?.source === "local-folder";
+
+        // 本地模式需要确认对话框
+        if (isLocalFolder && page?.localFilePath) {
+          const confirmed = confirm(
+            `确定要永久删除 "${getPageTitle(page)}" 及其对应的文件吗？`,
+          );
+          if (!confirmed) return;
+
+          if (typeof window !== "undefined" && (window as any).gooseFs) {
+            (window as any).gooseFs.deleteFile(page.localFilePath);
+          }
+        }
+
         set((state) => {
           const page = state.pages[id];
           const workspaceId = page?.workspaceId;
@@ -372,6 +523,213 @@ export const usePages = create<PagesState>()(
             return isFavorite && matchWorkspace;
           })
           .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt));
+      },
+
+      removePagesByWorkspaceId: (workspaceId) => {
+        set((state) => {
+          const newPages = { ...state.pages };
+          Object.values(state.pages).forEach((page) => {
+            if (page.workspaceId === workspaceId) {
+              delete newPages[page.id];
+            }
+          });
+
+          const activePage = state.activePageId
+            ? state.pages[state.activePageId]
+            : null;
+          const nextActivePageId =
+            activePage?.workspaceId === workspaceId ? null : state.activePageId;
+
+          return {
+            pages: newPages,
+            activePageId: nextActivePageId,
+          };
+        });
+      },
+
+      // 本地文件夹相关函数
+      loadLocalFolderPages: async (notebookId, basePath) => {
+        if (typeof window === "undefined" || !(window as any).gooseFs) return;
+        get().removePagesByWorkspaceId(notebookId);
+
+        // 需要忽略的文件夹
+        const ignoredFolders = new Set([
+          "node_modules",
+          "dist",
+          "build",
+          ".git",
+          ".vscode",
+          ".idea",
+          "target",
+          "__pycache__",
+          ".next",
+          ".nuxt",
+          ".venv",
+          "venv",
+        ]);
+
+        const shouldIgnoreEntry = (name: string) =>
+          name.startsWith(".") || ignoredFolders.has(name);
+
+        const scanDirectory = (dirPath: string, parentId?: string): Page[] => {
+          const entries = (window as any).gooseFs.readDir(dirPath);
+          const pages: Page[] = [];
+
+          entries.forEach((entry: any) => {
+            if (shouldIgnoreEntry(entry.name)) return;
+
+            if (entry.isDirectory) {
+              // 创建文件夹页面
+              const folderId = generateLocalPageId(notebookId, entry.path);
+              const folderTitle = entry.name;
+              const folderPage: Page = {
+                id: folderId,
+                workspaceId: notebookId,
+                parentId,
+                content: {
+                  type: "doc",
+                  content: [
+                    {
+                      type: "heading",
+                      attrs: { level: 1 },
+                      content: [{ type: "text", text: folderTitle }],
+                    },
+                  ],
+                },
+                isFolder: true,
+                isLocked: false,
+                isFullWidth: false,
+                fontSize: "default",
+                fontFamily: "default",
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              pages.push(folderPage);
+
+              // 递归扫描子目录
+              const subPages = scanDirectory(entry.path, folderId);
+              pages.push(...subPages);
+            } else if (
+              entry.isFile &&
+              (entry.name.endsWith(".md") || entry.name.endsWith(".markdown"))
+            ) {
+              // 创建文件页面
+              const fileId = generateLocalPageId(notebookId, entry.path);
+              const markdownContent =
+                (window as any).gooseFs.readFile(entry.path) || "";
+              const imported = importFromMarkdown(markdownContent);
+              const jsonContent =
+                imported.content || { type: "doc", content: [] };
+
+              const filePage: Page = {
+                id: fileId,
+                workspaceId: notebookId,
+                parentId,
+                content: jsonContent,
+                isFolder: false,
+                isLocked: false,
+                isFullWidth: false,
+                fontSize: "default",
+                fontFamily: "default",
+                localFilePath: entry.path,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              pages.push(filePage);
+            }
+          });
+
+          return pages;
+        };
+
+        const localPages = scanDirectory(basePath);
+
+        set((state) => ({
+          pages: {
+            ...state.pages,
+            ...localPages.reduce(
+              (acc, page) => {
+                acc[page.id] = page;
+                return acc;
+              },
+              {} as Record<string, Page>,
+            ),
+          },
+        }));
+      },
+
+      saveLocalPageContent: async (pageId, content) => {
+        if (typeof window === "undefined" || !(window as any).gooseFs)
+          return false;
+
+        const page = get().pages[pageId];
+        if (!page) return false;
+
+        const filePath = get().getLocalFilePath(pageId);
+        if (!filePath) return false;
+
+        // 使用 export.ts 中的 jsonContentToMarkdown 函数进行完整转换
+        // 这里需要实现图片资源处理逻辑
+        let processedContent = content;
+
+        // 处理图片资源：将 base64 图片保存到 assets 文件夹
+        const assetsDir = filePath.replace(/[^\/\\]+$/, "") + "assets";
+        if (!(window as any).gooseFs.exists(assetsDir)) {
+          (window as any).gooseFs.mkdir(assetsDir);
+        }
+
+        // 遍历内容中的图片节点
+        const processImages = (nodes: any[]) => {
+          nodes.forEach((node) => {
+            if (
+              (node.type === "image" || node.type === "imageResize") &&
+              node.attrs?.src?.startsWith("data:image")
+            ) {
+              const match = node.attrs.src.match(
+                /^data:(image\/([a-zA-Z+]+));base64,(.+)$/,
+              );
+              if (match) {
+                const ext = match[2] === "jpeg" ? "jpg" : match[2];
+                const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.${ext}`;
+                const imagePath = `${assetsDir}/${filename}`;
+
+                // 保存图片文件（base64 数据）
+                (window as any).gooseFs.writeFile(imagePath, match[3]);
+
+                // 更新节点中的图片路径为相对路径
+                node.attrs.src = `./assets/${filename}`;
+              }
+            }
+            if (node.content) {
+              processImages(node.content);
+            }
+          });
+        };
+
+        if (processedContent.content) {
+          processImages(processedContent.content);
+        }
+
+        // 转换为 Markdown
+        const markdownContent =
+          processedContent.content
+            ?.map((node) =>
+              node.type === "paragraph"
+                ? node.content?.map((c) => c.text || "").join("") || ""
+                : node.type === "heading"
+                  ? "#".repeat(node.attrs?.level || 1) +
+                    " " +
+                    (node.content?.map((c) => c.text || "").join("") || "")
+                  : "",
+            )
+            .join("\n\n") || "";
+
+        return (window as any).gooseFs.writeFile(filePath, markdownContent);
+      },
+
+      getLocalFilePath: (pageId) => {
+        const page = get().pages[pageId];
+        return page?.localFilePath || null;
       },
     }),
     {

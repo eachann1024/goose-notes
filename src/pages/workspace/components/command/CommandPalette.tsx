@@ -1,7 +1,7 @@
 import { Command } from "cmdk";
 import type { Page } from "@/types";
 import { useCommandSearch } from "./useCommandSearch";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -170,7 +170,7 @@ export function CommandPalette() {
               return (
                 <Command.Item
                   key={`recent-${page.id}`}
-                  value={`recent-${page.id}-${extractTitleFromContent(page.content)}`}
+                  value={`recent-${page.id}-${getPageTitle(page)}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
@@ -194,7 +194,7 @@ export function CommandPalette() {
                   </div>
                   <span className="truncate flex-1">
                     <HighlightText
-                      text={extractTitleFromContent(page.content)}
+                      text={getPageTitle(page)}
                       query={searchQuery}
                     />
                   </span>
@@ -224,14 +224,14 @@ export function CommandPalette() {
               return (
                 <Command.Item
                   key={`all-${page.id}`}
-                  value={`all-${page.id}-${extractTitleFromContent(page.content)}`}
+                  value={`all-${page.id}-${getPageTitle(page)}`}
                   onSelect={() => runCommand(() => setActivePage(page.id))}
                   className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4" />
                   <span className="truncate flex-1">
                     <HighlightText
-                      text={extractTitleFromContent(page.content)}
+                      text={getPageTitle(page)}
                       query={searchQuery}
                     />
                   </span>

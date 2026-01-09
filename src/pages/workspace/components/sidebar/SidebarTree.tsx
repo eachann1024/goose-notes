@@ -7,7 +7,9 @@ import type {
 } from "react-arborist";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "./SidebarContextMenu";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { usePages } from "@/stores/usePages";
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
@@ -18,6 +20,8 @@ interface SidebarTreeProps {
   onboardingExpandPageId?: string | null;
   onOnboardingExpandDone?: () => void;
 }
+
+const DEFAULT_NOTEBOOK = "default-notebook";
 
 interface TreeNode {
   id: string;
@@ -44,7 +48,7 @@ const buildTree = (
 
   const nodes: TreeNode[] = children.map((page) => ({
     id: page.id,
-    name: extractTitleFromContent(page.content),
+    name: getPageTitle(page),
     icon: page.icon,
     children: buildTree(pages, openPageIds, page.id, workspaceId),
     page,
@@ -73,13 +77,20 @@ function PageNode({
   style,
   dragHandle,
   itemHeight,
-  activeNotebookId,
+  activeNotebookId: _activeNotebookId,
 }: PageNodeProps) {
-  const { activePageId, setActivePage, createPage, pages } = usePages();
+  const { activePageId, setActivePage, createPage, pages, createLocalPage } =
+    usePages();
+  const notebookId = node.data.page?.workspaceId;
+  const notebook = notebookId
+    ? useNotebooks.getState().notebooks[notebookId]
+    : undefined;
+  const isLocalFolder = notebook?.source === "local-folder";
   const isActive = activePageId === node.id;
   const isPlaceholder = node.data.isPlaceholder;
   const isDropTarget = node.willReceiveDrop && !isPlaceholder;
   const iconName = node.data.icon;
+  const showFolderIcon = isLocalFolder && node.data.page?.isFolder;
   const childCount =
     node.data.children?.filter((child) => !child.isPlaceholder).length ?? 0;
   const showChildCount = childCount > 0;
@@ -93,10 +104,7 @@ function PageNode({
 
   if (isPlaceholder) {
     return (
-      <div
-        style={rowStyle}
-        className="relative px-1 select-none"
-      >
+      <div style={rowStyle} className="relative px-1 select-none">
         <div className="flex items-center h-full px-2 rounded-md">
           <div
             style={{ paddingLeft: paddingLeft + 18 }}
@@ -112,9 +120,15 @@ function PageNode({
   const handleAddChild = (e: React.MouseEvent) => {
     e.stopPropagation();
 
+    if (isLocalFolder) {
+      createLocalPage(node.id, notebookId || undefined);
+      if (!node.isOpen) node.open();
+      return;
+    }
+
     const existingBlankChild = Object.values(pages).find((p) => {
       const isChild = p.parentId === node.id && !p.trashedAt;
-      const title = extractTitleFromContent(p.content);
+      const title = getPageTitle(p);
       const isBlankTitle = !title || title.trim() === "" || title === "无标题";
       const isBlankContent =
         !p.content ||
@@ -135,17 +149,13 @@ function PageNode({
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
     } else {
       if (!node.isOpen) node.open();
-      createPage(node.id, activeNotebookId || DEFAULT_NOTEBOOK);
+      createPage(node.id, notebookId || DEFAULT_NOTEBOOK);
     }
   };
 
   return (
     <SidebarContextMenu page={node.data.page!}>
-      <div
-        ref={dragHandle}
-        style={rowStyle}
-        className="group relative px-1"
-      >
+      <div ref={dragHandle} style={rowStyle} className="group relative px-1">
         <div
           className={cn(
             "relative flex items-center h-full px-2 rounded-md cursor-pointer transition-colors text-sm font-medium",
@@ -193,6 +203,8 @@ function PageNode({
                             <span className="text-sm">{iconName}</span>
                           )}
                         </div>
+                      ) : showFolderIcon ? (
+                        <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70" />
                       ) : (
                         <LucideIcons.File className="h-4 w-4 text-muted-foreground/70" />
                       )}

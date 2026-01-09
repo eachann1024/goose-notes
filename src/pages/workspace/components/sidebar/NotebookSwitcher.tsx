@@ -21,6 +21,7 @@ export function NotebookSwitcher() {
     name: "",
     confirmName: "",
     icon: "",
+    openDeleteConfirm: false,
   });
   const [createDialog, setCreateDialog] = useState({
     open: false,
@@ -68,6 +69,21 @@ export function NotebookSwitcher() {
       name: notebook.name,
       confirmName: notebook.name,
       icon: notebook.icon || "📓",
+      openDeleteConfirm: false,
+    });
+  };
+
+  const handleOpenDelete = (id: string) => {
+    const notebook = notebooks[id];
+    if (!notebook) return;
+
+    setEditDialog({
+      open: true,
+      id,
+      name: notebook.name,
+      confirmName: notebook.name,
+      icon: notebook.icon || "📓",
+      openDeleteConfirm: true,
     });
   };
 
@@ -108,7 +124,7 @@ export function NotebookSwitcher() {
           {notebookList.map((notebook) => (
             <DropdownMenuItem
               key={notebook.id}
-              className="flex items-center justify-between group"
+              className="flex items-center justify-between gap-2 group"
               onClick={() => {
                 setActiveNotebook(notebook.id);
                 const lastPageId = getLastActivePage(notebook.id);
@@ -130,28 +146,51 @@ export function NotebookSwitcher() {
                 setIsOpen(false);
               }}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 {renderNotebookIcon(notebook.icon || "📓")}
                 <span className="truncate">{notebook.name}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 {activeNotebookId === notebook.id && (
                   <LucideIcons.Check className="h-4 w-4" />
                 )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-                    activeNotebookId === notebook.id && "opacity-0",
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(notebook.id);
-                  }}
-                >
-                  <LucideIcons.Settings className="h-3.5 w-3.5" />
-                </Button>
+                {notebook.source !== "local-folder" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+                      activeNotebookId === notebook.id && "opacity-0",
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(notebook.id);
+                    }}
+                  >
+                    <LucideIcons.Settings className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {notebook.id !== DEFAULT_NOTEBOOK && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+                      activeNotebookId === notebook.id && "opacity-0",
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notebook.source === "local-folder") {
+                        deleteNotebook(notebook.id);
+                        setIsOpen(false);
+                        return;
+                      }
+                      handleOpenDelete(notebook.id);
+                    }}
+                  >
+                    <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </DropdownMenuItem>
           ))}
@@ -170,6 +209,7 @@ export function NotebookSwitcher() {
         confirmName={editDialog.confirmName}
         icon={editDialog.icon}
         isDefault={editDialog.id === DEFAULT_NOTEBOOK}
+        openDeleteConfirm={editDialog.openDeleteConfirm}
         onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
         onNameChange={(name) => setEditDialog({ ...editDialog, name })}
         onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}

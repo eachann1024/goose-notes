@@ -1,33 +1,39 @@
 {
-	"pluginName": "鹅的笔记",
-	"description": "本地化的Notion风格笔记",
-	"author": "Antigravity",
-	"homepage": "https://github.com/your-repo",
-	"version": "0.0.1",
-	"logo": "logo.png",
-	"features": [
-		{
-			"code": "gn",
-			"explain": "打开鹅的笔记",
-			"cmds": [
-				"Goose Note",
-				"Notion",
-				"Note",
-				"笔记",
-				"gn"
-			]
-		},
+  "pluginName": "鹅的笔记",
+  "description": "本地化的Notion风格笔记",
+  "author": "Antigravity",
+  "homepage": "https://github.com/your-repo",
+  "version": "0.0.1",
+  "logo": "logo.png",
+  "features": [
+    {
+      "code": "gn",
+      "explain": "打开鹅的笔记",
+      "cmds": ["Goose Note", "Notion", "Note", "笔记", "gn"]
+    },
+    {
+      "code": "new_page",
+      "explain": "新建笔记",
+      "cmds": [
         {
-            "code": "new_page",
-            "explain": "新建笔记",
-            "cmds": [
-                {
-                    "type": "over",
-                    "label": "新建笔记"
-                }
-            ]
+          "type": "over",
+          "label": "新建笔记"
         }
-	],
-    "main": "dist/index.html",
-    "preload": "preload/preload.cjs" 
+      ]
+    },
+    {
+      "code": "open_folder",
+      "explain": "打开 Markdown 文件夹",
+      "cmds": [
+        {
+          "type": "files",
+          "fileType": "directory",
+          "label": "用鹅的笔记打开",
+          "maxLength": 1
+        }
+      ]
+    }
+  ],
+  "main": "dist/index.html",
+  "preload": "preload/preload.cjs"
 }

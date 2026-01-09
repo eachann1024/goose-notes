@@ -1,5 +1,5 @@
 import type { Page } from "@/types";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
 
 interface CommandSearchState {
   pages: Record<string, Page>;
@@ -19,7 +19,7 @@ export function useCommandSearch({
   const filteredPages = useMemo(() => {
     const allPagesArray = Object.values(pages).filter((p) => {
       if (p.trashedAt) return false;
-      const title = extractTitleFromContent(p.content);
+      const title = getPageTitle(p);
       return title && title !== "无标题";
     });
     if (searchAllNotebooks) {
@@ -35,7 +35,7 @@ export function useCommandSearch({
       let currentPage = page;
 
       while (currentPage) {
-        const title = extractTitleFromContent(currentPage.content);
+      const title = getPageTitle(currentPage);
         if (title && title !== "无标题") {
           breadcrumb.unshift(title);
         }
@@ -66,8 +66,8 @@ export function useCommandSearch({
         .slice(0, 5);
 
       const all = filteredPages.sort((a, b) => {
-        const titleA = extractTitleFromContent(a.content);
-        const titleB = extractTitleFromContent(b.content);
+        const titleA = getPageTitle(a);
+        const titleB = getPageTitle(b);
         return titleA.localeCompare(titleB, "zh-CN");
       });
 
@@ -75,7 +75,7 @@ export function useCommandSearch({
     }
 
     const matched = filteredPages.filter((page) => {
-      const title = extractTitleFromContent(page.content);
+      const title = getPageTitle(page);
       const titleMatch = title.toLowerCase().includes(query);
       const contentText = extractTextFromContent(page.content);
       const contentMatch = contentText.toLowerCase().includes(query);
@@ -88,8 +88,8 @@ export function useCommandSearch({
       .slice(0, 5);
 
     const all = matched.sort((a, b) => {
-      const titleA = extractTitleFromContent(a.content);
-      const titleB = extractTitleFromContent(b.content);
+      const titleA = getPageTitle(a);
+      const titleB = getPageTitle(b);
       return titleA.localeCompare(titleB, "zh-CN");
     });
 

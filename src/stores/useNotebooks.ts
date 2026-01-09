@@ -8,6 +8,8 @@ export interface Notebook {
   icon?: string; // emoji 或 Lucide 图标名
   createdAt: number;
   updatedAt: number;
+  source?: "default" | "local-folder";
+  localPath?: string; // 本地文件夹路径
 }
 
 interface NotebooksState {
@@ -16,6 +18,7 @@ interface NotebooksState {
   lastActivePageByNotebook: Record<string, string | null>;
 
   createNotebook: (name?: string, icon?: string) => string;
+  createLocalFolderNotebook: (name: string, localPath: string) => string;
   updateNotebook: (
     id: string,
     updates: Partial<Omit<Notebook, "id" | "createdAt">>,
@@ -66,6 +69,44 @@ export const useNotebooks = create<NotebooksState>()(
         return id;
       },
 
+      createLocalFolderNotebook: (name, localPath) => {
+        const existing = Object.values(get().notebooks).find(
+          (notebook) =>
+            notebook.source === "local-folder" &&
+            notebook.localPath === localPath,
+        );
+        if (existing) {
+          set((state) => ({
+            notebooks: {
+              ...state.notebooks,
+              [existing.id]: {
+                ...existing,
+                name,
+                updatedAt: Date.now(),
+              },
+            },
+            activeNotebookId: existing.id,
+          }));
+          return existing.id;
+        }
+
+        const id = generateId();
+        const notebook: Notebook = {
+          id,
+          name,
+          icon: "📁", // 使用文件夹图标
+          source: "local-folder",
+          localPath,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        set((state) => ({
+          notebooks: { ...state.notebooks, [id]: notebook },
+          activeNotebookId: id,
+        }));
+        return id;
+      },
+
       updateNotebook: (id, updates) => {
         set((state) => {
           const notebook = state.notebooks[id];
@@ -83,11 +124,18 @@ export const useNotebooks = create<NotebooksState>()(
         const notebookCount = Object.keys(get().notebooks).length;
         if (notebookCount <= 1) return;
 
+        const notebook = get().notebooks[id];
         const pagesStore = usePages.getState();
-        const pagesInNotebook = Object.values(pagesStore.pages).filter(
-          (p) => p.workspaceId === id,
-        );
-        pagesInNotebook.forEach((p) => pagesStore.permanentlyDeletePage(p.id));
+        if (notebook?.source === "local-folder") {
+          pagesStore.removePagesByWorkspaceId(id);
+        } else {
+          const pagesInNotebook = Object.values(pagesStore.pages).filter(
+            (p) => p.workspaceId === id,
+          );
+          pagesInNotebook.forEach((p) =>
+            pagesStore.permanentlyDeletePage(p.id),
+          );
+        }
 
         set((state) => {
           const { [id]: _, ...rest } = state.notebooks;

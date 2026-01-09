@@ -1,6 +1,7 @@
 import type { Page } from "@/types";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { useNotebooks } from "@/stores/useNotebooks";
 
 interface SidebarContextMenuProps {
   page: Page;
@@ -14,11 +15,13 @@ export function SidebarContextMenu({
   const { updatePage, duplicatePage, restorePage, permanentlyDeletePage } =
     usePages();
   const { deletePageWithUndo } = useDeletePageWithUndo();
+  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+  const isLocalFolder = notebook?.source === "local-folder";
   const isTrashed = !!page.trashedAt;
 
   const handleRename = () => {
     if (isTrashed) return;
-    const currentTitle = extractTitleFromContent(page.content);
+    const currentTitle = getPageTitle(page);
     const newTitle = prompt("重命名", currentTitle);
     if (newTitle !== null) {
       // 更新 content 第一行的标题
@@ -59,7 +62,7 @@ export function SidebarContextMenu({
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
           页面
         </div>
-        {!isTrashed && (
+        {!isTrashed && !isLocalFolder && (
           <ContextMenuItem onSelect={toggleFavorite}>
             <LucideIcons.Star
               className={cn(

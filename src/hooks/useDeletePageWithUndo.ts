@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/lib/page-title";
 
 export function useDeletePageWithUndo() {
   const { deletePage, restorePage, setActivePage, pages } = usePages();
@@ -9,7 +9,7 @@ export function useDeletePageWithUndo() {
     const page = pages[pageId];
     if (!page) return;
 
-    const pageTitle = extractTitleFromContent(page.content) || "无标题";
+    const pageTitle = getPageTitle(page) || "无标题";
 
     deletePage(pageId);
 
