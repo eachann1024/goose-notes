@@ -89,9 +89,27 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
   },
   {
     id: "baidu",
-    name: "Baidu",
+    name: "百度",
     urlTemplate: "https://www.baidu.com/s?wd=%s",
     isEnabled: true,
+  },
+  {
+    id: "quark",
+    name: "夸克",
+    urlTemplate: "https://quark.sm.cn/s?q=%s",
+    isEnabled: true,
+  },
+  {
+    id: "metaso",
+    name: "秘塔",
+    urlTemplate: "https://metaso.cn/?q=%s",
+    isEnabled: false,
+  },
+  {
+    id: "fsou",
+    name: "F 搜",
+    urlTemplate: "https://fsoufsou.com/search?q=%s",
+    isEnabled: false,
   },
   {
     id: "duckduckgo",
@@ -106,6 +124,14 @@ const LEGACY_DEFAULT_SEARCH_PROVIDER_STATE = [
   { id: "perplexity", isEnabled: false },
   { id: "bing", isEnabled: false },
   { id: "baidu", isEnabled: false },
+  { id: "duckduckgo", isEnabled: false },
+];
+
+const LEGACY_V2_SEARCH_PROVIDER_STATE = [
+  { id: "google", isEnabled: false },
+  { id: "perplexity", isEnabled: false },
+  { id: "bing", isEnabled: true },
+  { id: "baidu", isEnabled: true },
   { id: "duckduckgo", isEnabled: false },
 ];
 
@@ -154,7 +180,10 @@ function mergeSearchProviders(providers: SearchProvider[] | undefined) {
 
 function migrateSearchProviders(providers: SearchProvider[] | undefined) {
   if (!providers || providers.length === 0) return DEFAULT_SEARCH_PROVIDERS;
-  if (isSameProviderState(providers, LEGACY_DEFAULT_SEARCH_PROVIDER_STATE)) {
+  if (
+    isSameProviderState(providers, LEGACY_DEFAULT_SEARCH_PROVIDER_STATE) ||
+    isSameProviderState(providers, LEGACY_V2_SEARCH_PROVIDER_STATE)
+  ) {
     return DEFAULT_SEARCH_PROVIDERS;
   }
   return mergeSearchProviders(providers);

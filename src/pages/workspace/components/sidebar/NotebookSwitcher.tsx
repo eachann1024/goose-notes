@@ -104,23 +104,35 @@ export function NotebookSwitcher() {
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-between px-1 h-auto py-1 font-medium hover:bg-muted/60 transition-colors"
+          <div
+            className="w-full"
+            onMouseEnter={() => setIsOpen(true)}
+            onMouseLeave={() => setIsOpen(false)}
           >
-            <div className="flex items-center gap-2 truncate">
-              {activeNotebook &&
-                renderNotebookIcon(activeNotebook.icon || "📓", "h-4 w-4")}
-              <span className="truncate text-sm">
-                {activeNotebook?.name || "选择记事本"}
-              </span>
-            </div>
-            <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-between px-1 h-auto py-1 font-medium hover:bg-muted/60 transition-colors"
+            >
+              <div className="flex items-center gap-2 truncate">
+                {activeNotebook &&
+                  renderNotebookIcon(activeNotebook.icon || "📓", "h-4 w-4")}
+                <span className="truncate text-sm">
+                  {activeNotebook?.name || "选择记事本"}
+                </span>
+              </div>
+              <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="start">
+        <DropdownMenuContent
+          className="w-56"
+          align="start"
+          sideOffset={-4}
+          onMouseEnter={() => setIsOpen(true)}
+          onMouseLeave={() => setIsOpen(false)}
+        >
           {notebookList.map((notebook) => (
             <DropdownMenuItem
               key={notebook.id}
