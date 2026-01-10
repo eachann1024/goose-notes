@@ -5,6 +5,7 @@ import {
   useEditorState,
 } from "@tiptap/react";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
 
 function CodeBlockWithLanguageView({
@@ -119,5 +120,220 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
 
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockWithLanguageView);
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      ...this.parent?.(),
+      ArrowUp: ({ editor }) => {
+        const { state } = editor;
+        const { selection, doc } = state;
+        const { $from, empty } = selection;
+
+        if (!empty) return false;
+        if (!editor.isActive("codeBlock")) return false;
+
+        const isAtStart = $from.parentOffset === 0;
+
+        if (isAtStart) {
+          const beforePos = $from.before();
+          if (beforePos > 0) {
+            const tr = state.tr;
+            const newSelection = Selection.near(
+              doc.resolve(beforePos - 1),
+            );
+            tr.setSelection(newSelection);
+            editor.view.dispatch(tr);
+            return true;
+          }
+        }
+
+        return false;
+      },
+      ArrowDown: ({ editor }) => {
+        const { state } = editor;
+        const { selection, doc } = state;
+        const { $from, empty } = selection;
+
+        if (!empty) return false;
+        if (!editor.isActive("codeBlock")) return false;
+
+        const isAtEnd = $from.parentOffset === $from.parent.nodeSize - 2;
+
+        if (isAtEnd) {
+          const afterPos = $from.after();
+          if (afterPos < doc.content.size) {
+            const tr = state.tr;
+            try {
+              const newSelection = Selection.near(
+                doc.resolve(afterPos + 1),
+              );
+              tr.setSelection(newSelection);
+              editor.view.dispatch(tr);
+              return true;
+            } catch (e) {
+              console.warn("Failed to move cursor out of code block", e);
+              return false;
+            }
+          }
+        }
+
+        return false;
+      },
+      Tab: ({ editor }) => {
+        const { state, dispatch } = editor.view;
+        if (!editor.isActive("codeBlock")) return false;
+
+        const { selection } = state;
+        const { $from, $to } = selection;
+        
+        if ($from.parent !== $to.parent) return false;
+
+        const tr = state.tr;
+        const text = $from.parent.textContent;
+        const startOffset = $from.parentOffset;
+        const endOffset = $to.parentOffset;
+
+        if (selection.empty) {
+          dispatch(state.tr.insertText("  ", $from.pos));
+          return true;
+        }
+
+        const lines = text.split("\n");
+        let startLineIndex = -1;
+        let endLineIndex = -1;
+        
+        let currentPos = 0;
+        lines.forEach((line, index) => {
+            const lineLen = line.length + 1;
+            const lineStart = currentPos;
+            const lineEnd = currentPos + line.length;
+            
+            if (startOffset < lineEnd + 1 && endOffset > lineStart) {
+                if (startLineIndex === -1) startLineIndex = index;
+                endLineIndex = index;
+            }
+            
+            if (endOffset === lineStart && !selection.empty) {
+                endLineIndex = index - 1;
+            }
+            
+            currentPos += lineLen;
+        });
+
+        if (startLineIndex === -1) return false;
+
+        let accumulatedOffset = 0;
+        currentPos = 0;
+        
+        lines.forEach((line, index) => {
+            const lineStartAbs = $from.start() + currentPos;
+            
+            if (index >= startLineIndex && index <= endLineIndex) {
+                 tr.insertText("  ", lineStartAbs + accumulatedOffset);
+                 accumulatedOffset += 2;
+            }
+            currentPos += line.length + 1;
+        });
+        
+        if (dispatch) dispatch(tr);
+        return true;
+      },
+      "Shift-Tab": ({ editor }) => {
+        const { state, dispatch } = editor.view;
+        if (!editor.isActive("codeBlock")) return false;
+
+        const { selection } = state;
+        const { $from, $to } = selection;
+        
+        if ($from.parent !== $to.parent) return false;
+
+        const tr = state.tr;
+        const text = $from.parent.textContent;
+        const startOffset = $from.parentOffset;
+        const endOffset = $to.parentOffset;
+
+        const lines = text.split("\n");
+        let startLineIndex = -1;
+        let endLineIndex = -1;
+        
+        let currentPos = 0;
+        lines.forEach((line, index) => {
+            const lineLen = line.length + 1; 
+            const lineStart = currentPos;
+            const lineEnd = currentPos + line.length;
+            
+            if (startOffset < lineEnd + 1 && endOffset > lineStart) {
+                if (startLineIndex === -1) startLineIndex = index;
+                endLineIndex = index;
+            }
+            if (endOffset === lineStart && !selection.empty) {
+                endLineIndex = index - 1;
+            }
+            
+            currentPos += lineLen;
+        });
+
+        if (startLineIndex === -1) return false;
+
+        let accumulatedOffset = 0;
+        currentPos = 0;
+        
+        lines.forEach((line, index) => {
+            const lineStartAbs = $from.start() + currentPos;
+            
+            if (index >= startLineIndex && index <= endLineIndex) {
+                let deleteCount = 0;
+                if (line.startsWith("  ")) deleteCount = 2;
+                else if (line.startsWith(" ")) deleteCount = 1;
+                
+                if (deleteCount > 0) {
+                    tr.delete(lineStartAbs + accumulatedOffset, lineStartAbs + accumulatedOffset + deleteCount);
+                    accumulatedOffset -= deleteCount;
+                }
+            }
+            currentPos += line.length + 1;
+        });
+        
+        if (dispatch) dispatch(tr);
+        return true;
+      },
+    };
+  },
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() || []),
+      new Plugin({
+        key: new PluginKey("auto-language-detect"),
+        appendTransaction: (transactions, oldState, newState) => {
+          const docChanged = transactions.some((tr) => tr.docChanged);
+          if (!docChanged) return;
+
+          const { tr } = newState;
+          let modified = false;
+
+          newState.doc.descendants((node, pos) => {
+            if (
+              node.type.name === this.name &&
+              !node.attrs.language &&
+              node.textContent
+            ) {
+              // @ts-ignore
+              const result = this.options.lowlight.highlightAuto(
+                node.textContent,
+              );
+              const language = result.data.language;
+
+              if (language) {
+                tr.setNodeAttribute(pos, "language", language);
+                modified = true;
+              }
+            }
+          });
+
+          if (modified) return tr;
+        },
+      }),
+    ];
   },
 });

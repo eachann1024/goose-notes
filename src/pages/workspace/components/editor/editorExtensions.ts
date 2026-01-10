@@ -18,7 +18,7 @@ import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
 import { InlineCodeFix } from "@/extensions/InlineCodeFix";
-import Heading from "@tiptap/extension-heading";
+import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
 
 const lowlight = createLowlight(all);
 
@@ -32,7 +32,7 @@ export const editorExtensions = [
       width: 3,
     },
   }),
-  Heading.configure({
+  HeadingWithBackspace.configure({
     levels: [1, 2, 3, 4, 5, 6],
   }),
   TitleHeading,

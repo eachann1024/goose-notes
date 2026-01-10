@@ -135,8 +135,7 @@ ${html}
 }
 
 export interface ExportOptions {
-  format: "md" | "json" | "html";
-  includeTrash: boolean;
+  format: "md" | "html";
   notebookIds: string[];
 }
 
@@ -146,7 +145,7 @@ export async function exportNotebooks(
   allPages: Page[],
 ) {
   const zip = new JSZip();
-  const { format, includeTrash, notebookIds } = options;
+  const { format, notebookIds } = options;
   const assetsFolder = zip.folder("assets");
   const imageMap = new Map<string, string>();
 
@@ -161,7 +160,7 @@ export async function exportNotebooks(
     if (!notebookFolder) continue;
 
     const notebookPages = allPages.filter(
-      (p) => p.workspaceId === notebookId && (includeTrash || !p.trashedAt),
+      (p) => p.workspaceId === notebookId && !p.trashedAt,
     );
 
     const pageMap = new Map<string, Page>();
@@ -197,12 +196,7 @@ export async function exportNotebooks(
           content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleForHtml}</title><style>img { max-width: 100%; }</style></head><body><h1>${titleForHtml}</h1>${html}</body></html>`;
           extension = ".html";
           break;
-        case "json":
-          const { title: _legacyTitle, ...pageWithoutTitle } =
-            pageClone as Page & { title?: string };
-          content = JSON.stringify(pageWithoutTitle, null, 2);
-          extension = ".json";
-          break;
+
       }
 
       const fileName =

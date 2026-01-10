@@ -1,3 +1,5 @@
+import { UToolsAdapter } from "@/lib/utools";
+
 interface SettingsGeneralProps {
   searchProviders: { id: string; name: string; isEnabled: boolean }[];
   toggleSearchProvider: (id: string) => void;
@@ -45,24 +47,26 @@ export function SettingsGeneral({
         </div>
       </div>
 
-      <div>
-        <h4 className="text-sm font-medium mb-3">打开方式</h4>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="open-in-utools" className="cursor-pointer">
-              使用 uTools 打开搜索
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              关闭后将使用系统默认浏览器打开
-            </p>
+      {UToolsAdapter.isUTools && (
+        <div>
+          <h4 className="text-sm font-medium mb-3">打开方式</h4>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="open-in-utools" className="cursor-pointer">
+                使用 uTools 打开搜索
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                关闭后将使用系统默认浏览器打开
+              </p>
+            </div>
+            <Switch
+              id="open-in-utools"
+              checked={openSearchInUtools}
+              onCheckedChange={setOpenSearchInUtools}
+            />
           </div>
-          <Switch
-            id="open-in-utools"
-            checked={openSearchInUtools}
-            onCheckedChange={setOpenSearchInUtools}
-          />
         </div>
-      </div>
+      )}
     </div>
   );
 }

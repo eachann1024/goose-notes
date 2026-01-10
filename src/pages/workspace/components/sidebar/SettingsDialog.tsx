@@ -11,7 +11,7 @@ import {
 import { uToolsStorage as dataStorage } from "@/lib/storage";
 import {
   Download,
-  FileJson,
+
   FileText,
   Globe,
   Check,
@@ -51,7 +51,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   // 数据管理状态
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [format, setFormat] = useState<ExportOptions["format"]>("md");
-  const [includeTrash, setIncludeTrash] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -82,7 +81,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setExporting(true);
     try {
       await exportNotebooks(
-        { format, includeTrash, notebookIds: selectedIds },
+        { format, notebookIds: selectedIds },
         notebooks,
         Object.values(pages),
       );
@@ -285,7 +284,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Label className="text-sm font-medium text-muted-foreground">
                         导出格式
                       </Label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant={format === "md" ? "default" : "outline"}
                           className="flex flex-col gap-1 h-auto py-2"
@@ -302,31 +301,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <Globe className="w-4 h-4" />
                           <span className="text-xs">HTML</span>
                         </Button>
-                        <Button
-                          variant={format === "json" ? "default" : "outline"}
-                          className="flex flex-col gap-1 h-auto py-2"
-                          onClick={() => setFormat("json")}
-                        >
-                          <FileJson className="w-4 h-4" />
-                          <span className="text-xs">JSON</span>
-                        </Button>
+
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border rounded-md p-3 bg-background/50">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium">
-                          包含回收站页面
-                        </Label>
-                        <p className="text-[10px] text-muted-foreground">
-                          勾选后将同时导出已删除但未清空的页面
-                        </p>
-                      </div>
-                      <Switch
-                        checked={includeTrash}
-                        onCheckedChange={setIncludeTrash}
-                      />
-                    </div>
 
                     <Button
                       className="w-full"

@@ -165,7 +165,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   function updateHandlePosition(node: Element) {
     if (!dragHandleElement) return;
     const compStyle = window.getComputedStyle(node);
-    const paddingTop = parseInt(compStyle.paddingTop, 10);
+    const paddingTop = parseFloat(compStyle.paddingTop);
     const rect = absoluteRect(node);
 
     const isTableWrapper = node.matches(".tableWrapper");
@@ -185,6 +185,25 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       rect.top = tableRect.top;
     } else if (!isCodeBlock) {
       rect.top += paddingTop;
+      const lineHeightRaw = compStyle.lineHeight;
+      const fontSize = parseFloat(compStyle.fontSize);
+      let lineHeight = parseFloat(lineHeightRaw);
+
+      // Handle "normal" or invalid
+      if (isNaN(lineHeight)) {
+        lineHeight = fontSize * 1.2;
+      } 
+      // Handle unitless multiplier (unlikely in computed style but safe to handle)
+      else if (lineHeight < 5) {
+        lineHeight = lineHeight * fontSize;
+      }
+
+      // Use actual handle height if available, fallback to 24px
+      const handleHeight = dragHandleElement && dragHandleElement.offsetHeight > 0 
+        ? dragHandleElement.offsetHeight 
+        : 24;
+
+      rect.top += (lineHeight - handleHeight) / 2;
     }
 
     if (node.matches("ul:not([data-type=taskList]) li, ol li")) {
@@ -380,7 +399,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
       return {
         update: () => {
-          requestAnimationFrame(() => updateHandleBySelection(view));
+          updateHandleBySelection(view);
         },
         destroy: () => {
           if (!handleBySelector) {
