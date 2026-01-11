@@ -305,7 +305,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
       ...(this.parent?.() || []),
       new Plugin({
         key: new PluginKey("auto-language-detect"),
-        appendTransaction: (transactions, oldState, newState) => {
+        appendTransaction: (transactions, _oldState, newState) => {
           const docChanged = transactions.some((tr) => tr.docChanged);
           if (!docChanged) return;
 

@@ -266,3 +266,162 @@ export const ONBOARDING_CHILD_PAGE_CONTENT: JSONContent = {
     },
   ],
 };
+
+export const ECOMMERCE_DATA_CONTENT: JSONContent = {
+  type: "doc",
+  content: [
+    {
+      type: "heading",
+      attrs: { level: 1 },
+      content: [{ type: "text", text: "Q4 电商数据概览" }],
+    },
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: "本季度主要品类销售表现复盘。",
+        },
+      ],
+    },
+    {
+      type: "codeBlock",
+      attrs: { language: "infographic" },
+      content: [
+        {
+          type: "text",
+          text: `infographic chart-pie-plain-text
+data
+  title 销售占比
+  items
+    - label 数码3C
+      value 45
+    - label 家居生活
+      value 30
+    - label 服饰美妆
+      value 15
+    - label 其他
+      value 10`,
+        },
+      ],
+    },
+    {
+      type: "heading",
+      attrs: { level: 2 },
+      content: [{ type: "text", text: "核心指标对比" }],
+    },
+    {
+      type: "codeBlock",
+      attrs: { language: "infographic" },
+      content: [
+        {
+          type: "text",
+          text: `infographic list-grid-badge-card
+data
+  title 关键数据
+  items
+    - label GMV
+      desc 1.2亿
+      icon mdi:currency-usd
+    - label 转化率
+      desc 3.5%
+      icon mdi:chart-line
+    - label 客单价
+      desc ¥280
+      icon mdi:tag-outline
+    - label 复购率
+      desc 25%
+      icon mdi:refresh`,
+        },
+      ],
+    },
+  ],
+};
+
+export const CREATOR_FLOW_CONTENT: JSONContent = {
+  type: "doc",
+  content: [
+    {
+      type: "heading",
+      attrs: { level: 1 },
+      content: [{ type: "text", text: "视频制作流程" }],
+    },
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: "高效视频产出 SOP，适用于 B 站/抖音内容创作。",
+        },
+      ],
+    },
+    {
+      type: "heading",
+      attrs: { level: 2 },
+      content: [{ type: "text", text: "制作阶段" }],
+    },
+    {
+      type: "codeBlock",
+      attrs: { language: "infographic" },
+      content: [
+        {
+          type: "text",
+          text: `infographic sequence-snake-steps-simple
+data
+  title 视频SOP
+  items
+    - label 选题
+      desc 确定核心话题
+    - label 脚本
+      desc 撰写逐字稿
+    - label 拍摄
+      desc 画面录制
+    - label 剪辑
+      desc 后期制作
+    - label 发布
+      desc 封面与上传`,
+        },
+      ],
+    },
+    {
+      type: "heading",
+      attrs: { level: 2 },
+      content: [{ type: "text", text: "发布检查清单" }],
+    },
+    {
+      type: "taskList",
+      content: [
+        {
+          type: "taskItem",
+          attrs: { checked: false },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "封面图是否吸睛？" }],
+            },
+          ],
+        },
+        {
+          type: "taskItem",
+          attrs: { checked: false },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "标题是否包含关键词？" }],
+            },
+          ],
+        },
+        {
+          type: "taskItem",
+          attrs: { checked: false },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "简介区是否添加了互动引导？" }],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
