@@ -25,6 +25,7 @@ function App() {
     increaseEditorFontSize,
     decreaseEditorFontSize,
     setEditorFontSize,
+    customFonts,
   } = useSettings();
 
   useEffect(() => {
@@ -151,6 +152,10 @@ function App() {
       `${editorFontSize}px`,
     );
   }, [editorFontSize]);
+
+  useEffect(() => {
+    applyFontVariables(customFonts);
+  }, [customFonts]);
 
   useEffect(() => {
     const handleZoomKeys = (event: KeyboardEvent) => {

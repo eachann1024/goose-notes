@@ -195,7 +195,7 @@ export function SettingsAppearance({
                 <div
                   className="text-center text-2xl h-8 flex items-center justify-center"
                   style={{
-                    fontFamily: `"${customFonts[type].font}"` || getFontPreview(type),
+                    fontFamily: customFonts[type].font || getFontPreview(type),
                   }}
                 >
                   Ag
