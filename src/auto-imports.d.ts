@@ -8,6 +8,7 @@ export {}
 declare global {
   const Activity: typeof import('react').Activity
   const Button: typeof import('./components/ui/button').Button
+  const CREATOR_FLOW_CONTENT: typeof import('./lib/onboarding').CREATOR_FLOW_CONTENT
   const Card: typeof import('./components/ui/card').Card
   const CardContent: typeof import('./components/ui/card').CardContent
   const CardDescription: typeof import('./components/ui/card').CardDescription
@@ -60,6 +61,7 @@ declare global {
   const DropdownMenuSubContent: typeof import('./components/ui/dropdown-menu').DropdownMenuSubContent
   const DropdownMenuSubTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuSubTrigger
   const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
+  const ECOMMERCE_DATA_CONTENT: typeof import('./lib/onboarding').ECOMMERCE_DATA_CONTENT
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN

@@ -41,7 +41,6 @@ import { Toggle } from "@/components/ui/toggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
 export function WelcomePage() {
@@ -260,7 +259,7 @@ export function WelcomePage() {
           <Card className="shadow-lg border-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <LucideIcons.Tabs className="h-5 w-5 text-orange-500" />
+                <LucideIcons.LayoutGrid className="h-5 w-5 text-orange-500" />
                 选项卡组件
               </CardTitle>
               <CardDescription>选项卡切换示例</CardDescription>
