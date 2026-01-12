@@ -1,7 +1,6 @@
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { renderNotebookIcon } from "./notebookUtils";
-import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 export function NotebookSwitcher() {
   const {
@@ -97,7 +96,7 @@ export function NotebookSwitcher() {
   };
 
   const handleDelete = () => {
-    if (!editDialog.id || editDialog.id === "default-notebook") return;
+    if (!editDialog.id) return;
     deleteNotebook(editDialog.id);
     setEditDialog({ ...editDialog, open: false });
   };
@@ -189,7 +188,7 @@ export function NotebookSwitcher() {
                     <LucideIcons.Settings className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {notebook.id !== DEFAULT_NOTEBOOK && (
+                {Object.keys(notebooks).length > 1 && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -227,7 +226,6 @@ export function NotebookSwitcher() {
         name={editDialog.name}
         confirmName={editDialog.confirmName}
         icon={editDialog.icon}
-        isDefault={editDialog.id === DEFAULT_NOTEBOOK}
         openDeleteConfirm={editDialog.openDeleteConfirm}
         onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
         onNameChange={(name) => setEditDialog({ ...editDialog, name })}

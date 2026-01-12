@@ -7,7 +7,6 @@ interface NotebookEditDialogProps {
   name: string;
   confirmName: string;
   icon: string;
-  isDefault: boolean;
   openDeleteConfirm?: boolean;
   onOpenChange: (open: boolean) => void;
   onNameChange: (name: string) => void;
@@ -22,7 +21,6 @@ export function NotebookEditDialog({
   name,
   confirmName,
   icon,
-  isDefault,
   openDeleteConfirm = false,
   onOpenChange,
   onNameChange,
@@ -132,7 +130,7 @@ export function NotebookEditDialog({
             </div>
           ) : (
             <div className="flex w-full justify-between items-center">
-              {!isDefault ? (
+              {notebookId && Object.keys(useNotebooks.getState().notebooks).length > 1 ? (
                 <Button
                   variant="ghost"
                   size="sm"
