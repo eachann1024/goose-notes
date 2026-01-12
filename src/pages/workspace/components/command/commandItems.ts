@@ -3,6 +3,9 @@ import * as LucideIcons from "lucide-react";
 export const getSuggestionItems = ({ query }: { query: string }) => {
   return [
     {
+      type: "divider",
+    },
+    {
       title: "文本",
       description: "开始输入纯文本",
       searchTerms: ["text", "wenben", "p"],
@@ -110,9 +113,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       shortcut: "```",
       hint: {
         title: "代码提示",
-        items: [
-          { key: "连按三下 Enter", description: "快速跳出代码块" },
-        ],
+        items: [{ key: "连按三下 Enter", description: "快速跳出代码块" }],
       },
       command: ({ editor, range }: any) => {
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
@@ -136,9 +137,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       shortcut: "tb",
       hint: {
         title: "表格提示",
-        items: [
-          { key: "Tab", description: "跳至下个单元格 / 末尾加行" },
-        ],
+        items: [{ key: "Tab", description: "跳至下个单元格 / 末尾加行" }],
       },
       command: ({ editor, range }: any) => {
         editor
@@ -150,7 +149,13 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       },
     },
   ].filter((item) => {
-    if (typeof query === "string" && query.length > 0) {
+    if (item.type === "divider") return true;
+    if (
+      typeof query === "string" &&
+      query.length > 0 &&
+      item.title &&
+      item.description
+    ) {
       const search = query.toLowerCase();
       return (
         item.title.toLowerCase().includes(search) ||

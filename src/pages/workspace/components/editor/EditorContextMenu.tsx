@@ -34,7 +34,7 @@ export function EditorContextMenu({
         return;
       }
       const { from, to } = state.selection;
-      const text = state.doc.textBetween(from, to, " ").trim();
+      const text = state.doc.textBetween(from, to, "\n\n").trim();
       setSelectedText(text);
     };
 
@@ -85,7 +85,7 @@ export function EditorContextMenu({
           disabled={!isEditable}
           onSelect={() => {
             const { from, to } = editor.state.selection;
-            const text = editor.state.doc.textBetween(from, to, " ");
+            const text = editor.state.doc.textBetween(from, to, "\n\n");
             navigator.clipboard.writeText(text);
             editor?.commands.deleteSelection();
           }}
@@ -99,7 +99,7 @@ export function EditorContextMenu({
         <ContextMenuItem
           onSelect={() => {
             const { from, to } = editor.state.selection;
-            const text = editor.state.doc.textBetween(from, to, " ");
+            const text = editor.state.doc.textBetween(from, to, "\n\n");
             navigator.clipboard.writeText(text);
           }}
         >

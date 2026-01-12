@@ -6,6 +6,7 @@ import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { ImageBubbleMenu } from "./ImageBubbleMenu";
+import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
@@ -259,6 +260,10 @@ export function Editor({ editable = true }: EditorProps) {
   }, [editor, editable]);
 
   useEffect(() => {
+    (window as any).__gooseNoteSettings = { utools };
+  }, [utools]);
+
+  useEffect(() => {
     if (!editor) return;
 
     const handlePaste = async (event: ClipboardEvent) => {
@@ -311,6 +316,7 @@ export function Editor({ editable = true }: EditorProps) {
   return (
     <div className={cn(fontFamilyClass, fontSizeClass, widthClass)}>
       <EditorBubbleMenu editor={editor} />
+      <LinkHoverMenu editor={editor} />
       <TableHoverControls editor={editor} />
       <TableRowColHandles editor={editor} />
       <ImageBubbleMenu editor={editor} />

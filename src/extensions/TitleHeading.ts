@@ -86,7 +86,11 @@ export const TitleHeading = Extension.create({
               return false;
             }
 
-            if (event.key === "Backspace" && $from.pos === 1) {
+            if (
+              event.key === "Backspace" &&
+              $from.pos === 1 &&
+              selection.empty
+            ) {
               event.preventDefault();
               return true;
             }

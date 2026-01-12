@@ -9,6 +9,7 @@ import {
 import { cn, formatShortcut } from "@/lib/utils";
 
 interface CommandItem {
+  type?: "divider" | "item";
   title: string;
   description: string;
   searchTerms?: string[];
@@ -127,6 +128,15 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
 
         <div className="flex flex-col gap-[1px] max-h-[260px] overflow-y-auto scrollbar-hide">
           {props.items.map((item, index) => {
+            if (item.type === "divider") {
+              return (
+                <div
+                  key={index}
+                  className="h-[2px] bg-gradient-to-r from-transparent via-border to-transparent mx-1 my-1.5 rounded-full"
+                />
+              );
+            }
+
             const Icon = item.icon;
             return (
               <button

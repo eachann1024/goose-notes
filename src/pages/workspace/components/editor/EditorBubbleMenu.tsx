@@ -16,10 +16,10 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           if (!editor.isEditable) return false;
           const { selection } = state;
 
-          // 图片、表格、NodeSelection 时不显示
           if (
             editor.isActive("image") ||
             editor.isActive("table") ||
+            editor.isActive("link") ||
             "node" in selection
           ) {
             return false;

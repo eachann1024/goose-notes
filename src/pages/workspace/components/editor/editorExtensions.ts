@@ -17,8 +17,10 @@ import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
 import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
-import { InlineCodeFix } from "@/extensions/InlineCodeFix";
 import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
+import { InlineCodeFix } from "@/extensions/InlineCodeFix";
+import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
+import { SelectableHorizontalRule } from "@/extensions/SelectableHorizontalRule";
 
 const lowlight = createLowlight(all);
 
@@ -27,11 +29,13 @@ export const editorExtensions = [
     codeBlock: false,
     link: false,
     heading: false,
+    horizontalRule: false,
     dropcursor: {
       color: "hsl(221.2, 83.2%, 53.3%)",
       width: 3,
     },
   }),
+  SelectableHorizontalRule,
   HeadingWithBackspace.configure({
     levels: [1, 2, 3, 4, 5, 6],
   }),
@@ -67,9 +71,11 @@ export const editorExtensions = [
     includeChildren: true,
     showOnlyWhenEditable: true,
   }),
-  Link.configure({
+  Link.extend({ inclusive: false }).configure({
     openOnClick: false,
     autolink: true,
+    linkOnPaste: true,
+    validate: (href) => /^https?:\/\//.test(href),
   }),
   ResizableImage,
   ImagePlaceholder,
@@ -95,11 +101,12 @@ export const editorExtensions = [
   Markdown.configure({
     html: true,
     tightLists: true,
-    linkify: false,
+    linkify: true,
     breaks: false,
     transformPastedText: true,
     transformCopiedText: false,
   }),
   InlineCodeFix,
+  LinkPasteHandler,
   SmartSelectAll,
 ];
