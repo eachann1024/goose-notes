@@ -1,6 +1,5 @@
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
-import { SettingsSidebar } from "./SettingsSidebar";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import {
@@ -11,13 +10,15 @@ import {
 import { uToolsStorage as dataStorage } from "@/lib/storage";
 import {
   Download,
-
   FileText,
   Globe,
   Check,
   Upload,
+  X,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { createPortal } from "react-dom";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -27,8 +28,6 @@ interface SettingsDialogProps {
 type SettingsTab = "general" | "appearance" | "data";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const descriptionId = useId();
-  const resetDescriptionId = useId();
   const {
     theme,
     setTheme,
@@ -174,32 +173,89 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }, 60);
   };
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          aria-describedby={descriptionId}
-          className="sm:max-w-[700px] h-[500px] flex flex-col p-0 gap-0 overflow-hidden"
-        >
-          <DialogHeader className="sr-only">
-            <DialogTitle>设置</DialogTitle>
-            <DialogDescription id={descriptionId}>
-              配置应用的设置选项
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex bg-muted/30 h-full">
-            <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+  if (!open) return null;
 
-            <div className="flex-1 p-6 overflow-y-auto">
-              {activeTab === "general" && (
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in duration-200">
+      {/* 顶部标题栏 */}
+      <div className="flex items-center justify-between px-8 py-6 border-b bg-muted/30">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
+            <SettingsIcon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">设置</h1>
+            <p className="text-sm text-muted-foreground">配置应用偏好与数据管理</p>
+          </div>
+        </div>
+        <button
+          onClick={() => onOpenChange(false)}
+          className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+        >
+          <X className="w-5 h-5 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* 主内容区 */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 左侧导航栏 */}
+        <div className="w-60 border-r bg-muted/30 p-4">
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveTab("general")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                activeTab === "general"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "hover:bg-muted/50 text-muted-foreground"
+              )}
+            >
+              <LucideIcons.Settings className="w-5 h-5" />
+              <span className="font-medium">通用设置</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("appearance")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                activeTab === "appearance"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "hover:bg-muted/50 text-muted-foreground"
+              )}
+            >
+              <LucideIcons.Laptop className="w-5 h-5" />
+              <span className="font-medium">外观主题</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("data")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                activeTab === "data"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "hover:bg-muted/50 text-muted-foreground"
+              )}
+            >
+              <LucideIcons.Database className="w-5 h-5" />
+              <span className="font-medium">数据管理</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* 右侧内容区 */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-3xl mx-auto">
+            {activeTab === "general" && (
+              <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg">
                 <SettingsGeneral
                   searchProviders={searchProviders}
                   toggleSearchProvider={toggleSearchProvider}
                   openSearchInUtools={utools.openSearchInUtools}
                   setOpenSearchInUtools={setOpenSearchInUtools}
                 />
-              )}
-              {activeTab === "appearance" && (
+              </div>
+            )}
+
+            {activeTab === "appearance" && (
+              <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg">
                 <SettingsAppearance
                   theme={theme}
                   setTheme={setTheme}
@@ -211,180 +267,198 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   uiFontSize={uiFontSize}
                   setUIFontSize={setUIFontSize}
                 />
-              )}
-              {activeTab === "data" && (
-                <div className="space-y-6">
+              </div>
+            )}
+
+            {activeTab === "data" && (
+              <div className="space-y-6">
+                {/* 导入导出卡片 */}
+                <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium">数据管理</h3>
-                      <p className="text-xs text-muted-foreground">
-                        管理记事本的导入和导出。
+                      <h3 className="text-xl font-semibold">数据管理</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        管理记事本的导入和导出
                       </p>
                     </div>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="lg"
                       onClick={handleImport}
                       disabled={importing}
-                      className="h-8"
+                      className="h-11"
                     >
                       {importing ? "导入中..." : "导入 ZIP"}
-                      {!importing && <Upload className="ml-2 w-3.5 h-3.5" />}
+                      {!importing && <Upload className="ml-2 w-4 h-4" />}
                     </Button>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium text-muted-foreground">
-                          选择记事本 ({selectedIds.length})
-                        </Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={selectAll}
-                          className="h-8 px-2 text-xs"
-                        >
-                          {selectedIds.length === notebookList.length
-                            ? "取消全选"
-                            : "全选"}
-                        </Button>
-                      </div>
-                      <ScrollArea className="h-[180px] border rounded-md p-2 bg-background/50">
-                        <div className="space-y-1">
-                          {notebookList.map((notebook) => (
-                            <div
-                              key={notebook.id}
-                              onClick={() => toggleNotebook(notebook.id)}
-                              className={cn(
-                                "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors text-sm",
-                                selectedIds.includes(notebook.id)
-                                  ? "bg-primary/10 text-primary"
-                                  : "hover:bg-muted",
-                              )}
-                            >
-                              <div className="flex-1 flex items-center gap-2 overflow-hidden">
-                                <span className="shrink-0">
-                                  {notebook.icon || "📓"}
-                                </span>
-                                <span className="truncate">
-                                  {notebook.name}
-                                </span>
-                              </div>
-                              {selectedIds.includes(notebook.id) && (
-                                <Check className="w-4 h-4" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-
-                    <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium text-muted-foreground">
-                        导出格式
+                        选择记事本 ({selectedIds.length})
                       </Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant={format === "md" ? "default" : "outline"}
-                          className="flex flex-col gap-1 h-auto py-2"
-                          onClick={() => setFormat("md")}
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span className="text-xs">Markdown</span>
-                        </Button>
-                        <Button
-                          variant={format === "html" ? "default" : "outline"}
-                          className="flex flex-col gap-1 h-auto py-2"
-                          onClick={() => setFormat("html")}
-                        >
-                          <Globe className="w-4 h-4" />
-                          <span className="text-xs">HTML</span>
-                        </Button>
-
-                      </div>
-                    </div>
-
-
-                    <Button
-                      className="w-full"
-                      onClick={handleExport}
-                      disabled={selectedIds.length === 0 || exporting}
-                    >
-                      {exporting ? "导出中..." : "开始导出"}
-                      {!exporting && <Download className="ml-2 w-4 h-4" />}
-                    </Button>
-
-                    <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-medium text-destructive">
-                          重置所有数据
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          删除所有记事本和页面，保留设置。此操作不可撤销。
-                        </p>
-                      </div>
                       <Button
-                        variant="destructive"
+                        variant="ghost"
                         size="sm"
-                        className="h-8"
-                        onClick={() => setResetDialogOpen(true)}
+                        onClick={selectAll}
+                        className="h-8 px-3 text-xs"
                       >
-                        重置所有数据
+                        {selectedIds.length === notebookList.length
+                          ? "取消全选"
+                          : "全选"}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1">
+                      {notebookList.map((notebook) => (
+                        <button
+                          key={notebook.id}
+                          onClick={() => toggleNotebook(notebook.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all text-left",
+                            selectedIds.includes(notebook.id)
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/30"
+                          )}
+                        >
+                          <span className="text-xl shrink-0">
+                            {notebook.icon || "📓"}
+                          </span>
+                          <span className="truncate text-sm">{notebook.name}</span>
+                          {selectedIds.includes(notebook.id) && (
+                            <Check className="w-4 h-4 text-primary ml-auto shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      导出格式
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        variant={format === "md" ? "default" : "outline"}
+                        className="h-20 flex flex-col gap-2"
+                        onClick={() => setFormat("md")}
+                      >
+                        <FileText className="w-6 h-6" />
+                        <div className="text-left">
+                          <div className="font-medium">Markdown</div>
+                          <div className="text-xs opacity-60">.md 文件</div>
+                        </div>
+                      </Button>
+                      <Button
+                        variant={format === "html" ? "default" : "outline"}
+                        className="h-20 flex flex-col gap-2"
+                        onClick={() => setFormat("html")}
+                      >
+                        <Globe className="w-6 h-6" />
+                        <div className="text-left">
+                          <div className="font-medium">HTML</div>
+                          <div className="text-xs opacity-60">网页文件</div>
+                        </div>
                       </Button>
                     </div>
                   </div>
+
+                  <Button
+                    className="w-full h-12 text-base"
+                    onClick={handleExport}
+                    disabled={selectedIds.length === 0 || exporting}
+                  >
+                    {exporting ? "导出中..." : "开始导出"}
+                    {!exporting && <Download className="ml-2 w-5 h-5" />}
+                  </Button>
                 </div>
-              )}
+
+                {/* 危险操作卡片 */}
+                <div className="bg-destructive/5 backdrop-blur-sm border-2 border-destructive/30 rounded-2xl p-6 shadow-lg">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
+                        <LucideIcons.AlertTriangle className="w-5 h-5 text-destructive" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-destructive">
+                          重置所有数据
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          删除所有记事本和页面，此操作不可撤销
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setResetDialogOpen(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      重置所有数据
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 重置确认弹窗 */}
+      {resetDialogOpen && (
+        <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-card border-2 border-destructive/30 rounded-2xl p-6 shadow-xl max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                <LucideIcons.AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-destructive">
+                  确认重置所有数据？
+                </h3>
+                <p className="text-sm text-destructive/80 mt-1">
+                  这将永久删除所有记事本和页面
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-6">
+              <Label htmlFor="reset-all" className="text-muted-foreground text-sm">
+                请输入
+                <span className="font-bold text-foreground select-all">
+                  {" "}{resetPhrase}
+                </span>
+                {" "}以确认重置
+              </Label>
+              <Input
+                id="reset-all"
+                value={resetInput}
+                onChange={(e) => setResetInput(e.target.value)}
+                placeholder={resetPhrase}
+                className="w-full h-11"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setResetDialogOpen(false)}
+                className="flex-1"
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReset}
+                disabled={!canReset}
+                className="flex-1"
+              >
+                确认重置
+              </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent
-          aria-describedby={resetDescriptionId}
-          className="sm:max-w-[420px]"
-        >
-          <DialogHeader>
-            <DialogTitle>确认重置所有数据？</DialogTitle>
-            <DialogDescription
-              id={resetDescriptionId}
-              className="text-destructive"
-            >
-              这将永久删除所有记事本和页面。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="reset-all" className="text-muted-foreground">
-              请输入
-              <span className="font-bold text-foreground select-all">
-                {resetPhrase}
-              </span>
-              以确认重置
-            </Label>
-            <Input
-              id="reset-all"
-              value={resetInput}
-              onChange={(e) => setResetInput(e.target.value)}
-              placeholder={resetPhrase}
-              className="w-full h-11 mt-2"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReset}
-              disabled={!canReset}
-            >
-              确认重置
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }

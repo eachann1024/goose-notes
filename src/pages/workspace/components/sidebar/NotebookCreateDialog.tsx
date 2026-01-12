@@ -1,5 +1,7 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
+import { BookOpen, X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 interface NotebookCreateDialogProps {
   open: boolean;
@@ -25,43 +27,69 @@ export function NotebookCreateDialog({
   onClearError,
 }: NotebookCreateDialogProps) {
   const createDialogContentRef = useRef<HTMLDivElement>(null);
-  const descriptionId = useId();
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        ref={createDialogContentRef}
-        aria-describedby={descriptionId}
-        className="sm:max-w-[400px]"
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-background flex items-center justify-center p-6 animate-in fade-in duration-200">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+      </div>
+
+      {/* 关闭按钮 */}
+      <button
+        onClick={() => onOpenChange(false)}
+        className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted/50 transition-colors z-10"
       >
-        <DialogHeader>
-          <DialogTitle>新建记事本</DialogTitle>
-          <DialogDescription id={descriptionId} className="sr-only">
-            创建新的记事本并设置名称与图标
-          </DialogDescription>
-        </DialogHeader>
+        <X className="w-5 h-5 text-muted-foreground" />
+      </button>
 
-        <div className="py-6 space-y-4">
+      {/* 内容卡片 */}
+      <div className="relative w-full max-w-md">
+        {/* Logo 和标题 */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 mb-4 shadow-xl shadow-primary/20">
+            <BookOpen className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">新建记事本</h1>
+          <p className="text-muted-foreground">创建一个新的记事本</p>
+        </div>
+
+        {/* 表单卡片 */}
+        <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-6 shadow-lg space-y-4">
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
               {error}
             </div>
           )}
-          <div className="flex items-center gap-3">
-            <Suspense fallback={<Button variant="outline" className="h-12 w-12 flex items-center justify-center">...</Button>}>
-              <IconSelector
-                value={icon}
-                onChange={(val) => onIconChange(val || "📓")}
-                portalContainerRef={createDialogContentRef}
-              >
-                <Button
-                  variant="outline"
-                  className="h-12 w-12 p-0 flex items-center justify-center shrink-0 text-xl shadow-sm"
+
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-muted-foreground">选择图标</label>
+            <div className="flex justify-center">
+              <Suspense fallback={<Button variant="outline" className="h-16 w-16 text-2xl">...</Button>}>
+                <IconSelector
+                  value={icon}
+                  onChange={(val) => onIconChange(val || "📓")}
+                  portalContainerRef={createDialogContentRef}
                 >
-                  {renderNotebookIcon(icon)}
-                </Button>
-              </IconSelector>
-            </Suspense>
+                  <Button
+                    variant="outline"
+                    className="h-16 w-16 p-0 text-3xl hover:bg-primary/5 hover:border-primary/50 transition-all"
+                  >
+                    {renderNotebookIcon(icon)}
+                  </Button>
+                </IconSelector>
+              </Suspense>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label htmlFor="new-notebook-name" className="text-sm font-medium text-muted-foreground">
+              记事本名称
+            </label>
             <Input
               id="new-notebook-name"
               value={name}
@@ -70,7 +98,7 @@ export function NotebookCreateDialog({
                 onClearError();
               }}
               placeholder="输入记事本名称"
-              className="h-12 flex-1 text-base shadow-sm"
+              className="h-12 text-base"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -82,17 +110,32 @@ export function NotebookCreateDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-between items-center sm:justify-between">
-          <div className="flex w-full justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button size="sm" onClick={onCreate}>
-              创建
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        {/* 操作按钮 */}
+        <div className="flex justify-center gap-3 mt-6">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => onOpenChange(false)}
+            className="min-w-[100px]"
+          >
+            取消
+          </Button>
+          <Button
+            size="lg"
+            onClick={onCreate}
+            disabled={!name.trim()}
+            className="min-w-[100px] shadow-lg shadow-primary/20"
+          >
+            创建
+          </Button>
+        </div>
+
+        {/* 快捷键提示 */}
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          按 <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs">Enter</kbd> 快速创建
+        </p>
+      </div>
+    </div>,
+    document.body
   );
 }

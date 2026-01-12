@@ -1,4 +1,8 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { RotateCw, Download, Copy, X, Maximize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ImageResizer(props: NodeViewProps) {
   const { node, updateAttributes, selected, editor } = props;
@@ -6,6 +10,8 @@ export function ImageResizer(props: NodeViewProps) {
   const [resizing, setResizing] = useState(false);
 
   const isEditable = editor.isEditable;
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [rotation, setRotation] = useState(0);
 
   const parseWidthFromStyle = useCallback(
     (style: string | null | undefined) => {
@@ -109,11 +115,15 @@ export function ImageResizer(props: NodeViewProps) {
           src={node.attrs.src}
           alt={node.attrs.alt}
           title={node.attrs.title}
-          className="rounded-md block max-w-full h-auto !m-0"
+          className={cn(
+            "rounded-md block max-w-full h-auto !m-0",
+            !isEditable && "cursor-pointer hover:opacity-90 transition-opacity"
+          )}
           style={{ width: width === "auto" ? "auto" : "100%" }}
+          onClick={() => !isEditable && setPreviewOpen(true)}
         />
 
-        {/* Resize Handle - visible only on hover or selection */}
+        {/* Resize Handle & Preview Button - visible only on hover or selection */}
         {isEditable && (
           <>
             <div
@@ -130,6 +140,19 @@ export function ImageResizer(props: NodeViewProps) {
                 )}
               />
             </div>
+
+            {/* 预览按钮 - 编辑模式下悬浮显示 */}
+            <button
+              onClick={() => setPreviewOpen(true)}
+              className={cn(
+                "absolute top-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md bg-white/90 backdrop-blur-sm ring-1 ring-black/10 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110",
+                resizing && "opacity-100",
+              )}
+              title="预览图片"
+            >
+              <Maximize2 className="h-4 w-4 text-gray-700" />
+            </button>
+
             <div
               className={cn(
                 "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md group/handle",
@@ -147,6 +170,80 @@ export function ImageResizer(props: NodeViewProps) {
           </>
         )}
       </div>
+
+      {/* Image Preview Dialog - 编辑/只读模式都显示 */}
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-5xl w-[90vw] p-0 bg-transparent border-none shadow-none">
+            <div className="relative flex flex-col items-center justify-center">
+              {/* 关闭按钮 */}
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+
+              {/* 图片容器 */}
+              <div className="relative max-h-[80vh] overflow-hidden rounded-lg bg-black/50 backdrop-blur-sm">
+                <img
+                  src={node.attrs.src}
+                  alt={node.attrs.alt}
+                  style={{
+                    transform: `rotate(${rotation}deg)`,
+                    transition: 'transform 0.3s ease',
+                  }}
+                  className="max-w-full max-h-[75vh] object-contain"
+                />
+              </div>
+
+              {/* 工具栏 */}
+              <div className="mt-4 flex gap-2 bg-black/70 backdrop-blur-sm rounded-lg p-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                  className="text-white hover:bg-white/20"
+                  title="旋转"
+                >
+                  <RotateCw className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = node.attrs.src;
+                    a.download = node.attrs.alt || 'image';
+                    a.click();
+                  }}
+                  className="text-white hover:bg-white/20"
+                  title="下载"
+                >
+                  <Download className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(node.attrs.src);
+                      const blob = await response.blob();
+                      await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                      ]);
+                    } catch (err) {
+                      console.error('Copy failed:', err);
+                    }
+                  }}
+                  className="text-white hover:bg-white/20"
+                  title="复制"
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
     </NodeViewWrapper>
   );
 }
