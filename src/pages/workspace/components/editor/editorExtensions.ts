@@ -42,10 +42,13 @@ export const editorExtensions = [
   TitleHeading,
   AutoJoiner,
   Placeholder.configure({
-    placeholder: ({ node }) => {
+    showOnlyCurrent: false,
+    placeholder: ({ node, hasAnchor }) => {
       if (node.type.name === "heading" && node.attrs?.level === 1) {
         return "无标题";
       }
+
+      if (!hasAnchor) return "";
 
       if (node.type.name === "paragraph") {
         return "输入 '/' 来输入指令...";

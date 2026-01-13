@@ -282,17 +282,31 @@ export function SidebarTree({
   } = usePages();
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const treeRef = useRef<TreeApi<TreeNode> | null>(null);
+  const expandAttemptsRef = useRef(0);
 
   useEffect(() => {
     if (!onboardingExpandPageId) return;
+    expandAttemptsRef.current = 0;
     const page = pages[onboardingExpandPageId];
     if (!page || page.trashedAt) {
       onOnboardingExpandDone?.();
       return;
     }
     if (activeNotebookId && page.workspaceId !== activeNotebookId) return;
-    treeRef.current?.open(onboardingExpandPageId);
-    onOnboardingExpandDone?.();
+
+    const tryOpen = () => {
+      if (!treeRef.current) {
+        if (expandAttemptsRef.current < 3) {
+          expandAttemptsRef.current += 1;
+          requestAnimationFrame(tryOpen);
+        }
+        return;
+      }
+      treeRef.current.open(onboardingExpandPageId);
+      onOnboardingExpandDone?.();
+    };
+
+    requestAnimationFrame(tryOpen);
   }, [onboardingExpandPageId, pages, activeNotebookId, onOnboardingExpandDone]);
 
   const treeData = useMemo(

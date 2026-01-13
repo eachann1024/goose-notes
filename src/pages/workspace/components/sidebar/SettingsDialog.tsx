@@ -169,9 +169,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     usePages.getState().createOnboardingPages();
     setResetDialogOpen(false);
     onOpenChange(false);
-    setTimeout(() => {
-      window.location.reload();
-    }, 60);
   };
 
   if (!open) return null;

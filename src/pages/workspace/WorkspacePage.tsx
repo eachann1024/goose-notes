@@ -283,7 +283,7 @@ export function WorkspacePage() {
                       >
                         <button
                           className={cn(
-                            "flex items-center justify-center transition-all duration-300",
+                            "flex items-center justify-center transition-all duration-300 ml-6",
                             page.icon
                               ? "opacity-100 scale-100"
                               : page.trashedAt || page.isLocked || hasRealContent

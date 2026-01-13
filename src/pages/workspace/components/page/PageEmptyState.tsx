@@ -4,6 +4,8 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { ShortcutDialog } from "./ShortcutDialog";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { getPageTitle } from "@/lib/page-title";
+import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 const tips = [
   "使用 / 命令快速插入内容块",
@@ -16,43 +18,77 @@ function getRandomTip() {
   return tips[Math.floor(Math.random() * tips.length)];
 }
 
+const isEmptyContent = (content: any) => {
+  if (!content || content.type !== "doc") return true;
+  if (!content.content || content.content.length === 0) return true;
+  if (content.content.length === 1) {
+    const first = content.content[0];
+    if (
+      first.type === "paragraph" &&
+      (!first.content || first.content.length === 0)
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export function PageEmptyState() {
   const [shortcutOpen, setShortcutOpen] = useState(false);
+  const { createPage, createLocalPage, pages, setActivePage } = usePages();
+  const { activeNotebookId, notebooks, createNotebook, setActiveNotebook } =
+    useNotebooks();
 
   const onCreatePage = useCallback(() => {
-    console.log("[PageEmptyState] onCreatePage called");
-    const { createPage } = usePages();
-    const notebooks = useNotebooks.getState();
-    const { activeNotebookId, notebooks: allNotebooks } = notebooks;
-
-    console.log("[PageEmptyState] activeNotebookId:", activeNotebookId);
-    console.log("[PageEmptyState] all notebooks:", Object.keys(allNotebooks));
-
     // 如果没有活跃笔记本，创建一个默认笔记本
     let notebookId = activeNotebookId;
     if (!notebookId) {
-      const notebookIds = Object.keys(allNotebooks);
-      console.log("[PageEmptyState] no active notebook, available:", notebookIds);
-
+      const notebookIds = Object.keys(notebooks);
       if (notebookIds.length === 0) {
-        // 创建默认笔记本
-        console.log("[PageEmptyState] creating new notebook");
-        notebookId = notebooks.createNotebook("我的笔记");
+        notebookId = createNotebook("我的笔记");
         toast.success("已自动创建笔记本");
       } else {
-        // 使用第一个笔记本
         notebookId = notebookIds[0];
-        console.log("[PageEmptyState] activating first notebook:", notebookId);
-        notebooks.setActiveNotebook(notebookId);
+        setActiveNotebook(notebookId);
       }
     }
 
-    console.log("[PageEmptyState] creating page in notebook:", notebookId);
-    const newPage = createPage(undefined, notebookId);
-    console.log("[PageEmptyState] new page created:", newPage);
-    usePages.setState({ activePageId: newPage });
-    console.log("[PageEmptyState] activePageId set");
-  }, []);
+    const notebook = notebookId ? notebooks[notebookId] : undefined;
+    const isLocalFolder = notebook?.source === "local-folder";
+
+    if (isLocalFolder) {
+      createLocalPage(undefined, notebookId || undefined);
+      return;
+    }
+
+    const matchWorkspaceId = notebookId || DEFAULT_NOTEBOOK;
+    const existingBlankPage = Object.values(pages).find((p) => {
+      const matchWorkspace = p.workspaceId === matchWorkspaceId;
+      const notTrashed = !p.trashedAt;
+      const title = getPageTitle(p);
+      const isBlankTitle = !title || title === "无标题" || title.trim() === "";
+      const isBlankContent = isEmptyContent(p.content);
+      return matchWorkspace && notTrashed && isBlankTitle && isBlankContent;
+    });
+
+    if (existingBlankPage) {
+      setActivePage(existingBlankPage.id);
+      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+      return;
+    }
+
+    const newPageId = createPage(undefined, matchWorkspaceId);
+    setActivePage(newPageId);
+  }, [
+    activeNotebookId,
+    notebooks,
+    createNotebook,
+    setActiveNotebook,
+    createLocalPage,
+    pages,
+    setActivePage,
+    createPage,
+  ]);
 
   const onSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
@@ -137,9 +173,7 @@ export function PageEmptyState() {
             return (
               <button
                 key={index}
-                onClick={(e) => {
-                  console.log("[PageEmptyState] Button clicked:", action.title);
-                  console.log("[PageEmptyState] Event:", e);
+                onClick={() => {
                   action.onClick();
                 }}
                 type="button"

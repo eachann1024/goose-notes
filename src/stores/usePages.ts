@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
 import { uToolsStorage } from "@/lib/storage";
-import { useNotebooks } from "./useNotebooks";
+import { useNotebooks, DEFAULT_NOTEBOOK } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
 import { getPageTitle } from "@/lib/page-title";
@@ -103,7 +103,7 @@ export const usePages = create<PagesState>()(
       createOnboardingPages: () => {
         const id = uuidv4();
         const now = Date.now();
-        const workspaceId = "default";
+        const workspaceId = DEFAULT_NOTEBOOK;
 
         const mainPage: Page = {
           id,
@@ -147,10 +147,11 @@ export const usePages = create<PagesState>()(
           onboardingExpandPageId: id,
         }));
 
+        useNotebooks.getState().setActiveNotebook(workspaceId);
         useNotebooks.getState().setLastActivePage(workspaceId, id);
       },
 
-      createPage: (parentId, workspaceId = "default") => {
+      createPage: (parentId, workspaceId = DEFAULT_NOTEBOOK) => {
         flushEditorContent();
 
         const id = uuidv4();
@@ -239,7 +240,7 @@ export const usePages = create<PagesState>()(
           filePath = `${normalizedBaseDir}/${title} (${suffix}).md`;
         }
 
-        if (!(window as any).gooseFs.writeFile(filePath, `# ${title}\n`)) {
+        if (!(window as any).gooseFs.writeFile(filePath, `# \n`)) {
           return null;
         }
 
@@ -248,16 +249,7 @@ export const usePages = create<PagesState>()(
           id,
           workspaceId,
           parentId,
-          content: {
-            type: "doc",
-            content: [
-              {
-                type: "heading",
-                attrs: { level: 1 },
-                content: [{ type: "text", text: title }],
-              },
-            ],
-          },
+          content: initialContent,
           isFolder: false,
           isLocked: false,
           isFullWidth: false,

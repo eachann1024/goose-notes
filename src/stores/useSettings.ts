@@ -70,6 +70,12 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
         isEnabled: true,
     },
     {
+        id: 'google',
+        name: 'Google',
+        urlTemplate: 'https://www.google.com/search?q=%s',
+        isEnabled: false,
+    },
+    {
         id: 'quark',
         name: '夸克',
         urlTemplate: 'https://quark.sm.cn/s?q=%s',
@@ -93,12 +99,7 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
         urlTemplate: 'https://www.douyin.com/search/%s',
         isEnabled: false,
     },
-    {
-        id: 'google',
-        name: 'Google',
-        urlTemplate: 'https://www.google.com/search?q=%s',
-        isEnabled: false,
-    },
+    
     {
         id: 'perplexity',
         name: 'Perplexity',
@@ -119,28 +120,6 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
         isEnabled: false,
     },
 ]
-
-const LEGACY_DEFAULT_SEARCH_PROVIDER_STATE = [
-    { id: 'google', isEnabled: true },
-    { id: 'perplexity', isEnabled: false },
-    { id: 'bing', isEnabled: false },
-    { id: 'baidu', isEnabled: false },
-    { id: 'duckduckgo', isEnabled: false },
-]
-
-const LEGACY_V2_SEARCH_PROVIDER_STATE = [
-    { id: 'google', isEnabled: false },
-    { id: 'perplexity', isEnabled: false },
-    { id: 'bing', isEnabled: true },
-    { id: 'baidu', isEnabled: true },
-    { id: 'duckduckgo', isEnabled: false },
-]
-
-function isSameProviderState(providers: SearchProvider[] | undefined, expected: { id: string; isEnabled: boolean }[]) {
-    if (!providers || providers.length !== expected.length) return false
-    const byId = new Map(providers.map((provider) => [provider.id, provider.isEnabled]))
-    return expected.every((provider) => byId.get(provider.id) === provider.isEnabled)
-}
 
 export const useSettings = create<SettingsState>()(
     persist(

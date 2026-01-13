@@ -65,6 +65,8 @@ const COMMON_ICONS = [
   "Calculator", "Ruler", "Pen", "Highlighter",
 ];
 
+const AVAILABLE_ICONS = Array.from(new Set(COMMON_ICONS));
+
 export function IconSelector<T extends HTMLElement = HTMLElement>({
   value,
   onChange,
@@ -79,9 +81,10 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   const hasOpenedRef = useRef(false);
 
   const filteredIcons = useMemo(() => {
-    const icons = COMMON_ICONS.filter(
-      (key) => !search || key.toLowerCase().includes(search.toLowerCase())
-    );
+    const icons = AVAILABLE_ICONS.filter((key) => {
+      if (!LucideIcons || !(key in (LucideIcons as any))) return false;
+      return !search || key.toLowerCase().includes(search.toLowerCase());
+    });
     return icons.slice(0, 144); // 最多显示 144 个（12x12 网格）
   }, [search]);
 
