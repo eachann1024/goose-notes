@@ -42,25 +42,64 @@
   line-height: 1.4;
 }
 
-/* Lists */
-.ProseMirror ul {
-  list-style-type: disc;
-  padding-left: 1.5em;
-  margin: 0.5em 0;
-}
-
-.ProseMirror ul li {
-  margin-bottom: 0.2em;
-}
-
+/* Lists - unified marker column (24px) */
+.ProseMirror ul,
 .ProseMirror ol {
-  list-style-type: decimal;
-  padding-left: 1.5em;
+  list-style: none;
+  padding-left: 24px;
   margin: 0.5em 0;
 }
 
-.ProseMirror ol li {
-  margin-bottom: 0.2em;
+.ProseMirror ul > li,
+.ProseMirror ol > li {
+  position: relative;
+  margin-bottom: 0;
+}
+
+/* Bullet marker */
+.ProseMirror ul:not([data-type="taskList"]) > li::before {
+  content: "•";
+  position: absolute;
+  left: -24px;
+  width: 24px;
+  text-align: center;
+  color: hsl(var(--foreground));
+}
+
+/* Number marker */
+.ProseMirror ol {
+  counter-reset: list-counter;
+}
+
+.ProseMirror ol > li {
+  counter-increment: list-counter;
+}
+
+.ProseMirror ol > li::before {
+  content: counter(list-counter) ".";
+  position: absolute;
+  left: -24px;
+  width: 24px;
+  text-align: center;
+  color: hsl(var(--foreground));
+}
+
+/* Remove extra spacing between adjacent lists */
+.ProseMirror ul + ul,
+.ProseMirror ul + ol,
+.ProseMirror ul + ul[data-type="taskList"],
+.ProseMirror ol + ul,
+.ProseMirror ol + ol,
+.ProseMirror ol + ul[data-type="taskList"],
+.ProseMirror ul[data-type="taskList"] + ul,
+.ProseMirror ul[data-type="taskList"] + ol,
+.ProseMirror ul[data-type="taskList"] + ul[data-type="taskList"] {
+  margin-top: 0.1em;
+}
+
+.ProseMirror ul li p,
+.ProseMirror ol li p {
+  margin: 0;
 }
 
 /* Blockquote */
@@ -96,26 +135,31 @@
   margin-right: 0;
 }
 
-/* Task List */
+/* Task List - aligned with bullet/number markers (24px column) */
 .ProseMirror ul[data-type="taskList"] {
   list-style: none;
-  padding: 0;
-  margin: 0.5rem 0;
+  padding-left: 24px;
+  margin: 0.5em 0;
 }
 
-.ProseMirror ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 0px;
+.ProseMirror ul[data-type="taskList"] > li {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] > li::before {
+  display: none; /* Hide bullet marker */
 }
 
 .ProseMirror ul[data-type="taskList"] li > label {
-  margin-right: 0.6rem;
+  position: absolute;
+  left: -24px;
+  width: 24px;
+  height: 1.7em;
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: calc((1.7em - 1em) / 2); /* 对齐文字第一行中心 */
 }
 
 .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
@@ -146,10 +190,6 @@
   background-size: 0.7em;
   background-position: center;
   background-repeat: no-repeat;
-}
-
-.ProseMirror ul[data-type="taskList"] li > div {
-  flex: 1;
 }
 
 .ProseMirror ul[data-type="taskList"] li > div > p {

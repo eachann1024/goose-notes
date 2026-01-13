@@ -1,6 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
-import { DOMParser as ProseMirrorDOMParser } from "@tiptap/pm/model";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -10,7 +9,6 @@ import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
-import { parseMarkdownTableToHtml } from "@/lib/markdownTableParser";
 
 interface EditorProps {
   editable?: boolean;
@@ -96,25 +94,6 @@ export function Editor({ editable = true }: EditorProps) {
           }
         }
 
-        return false;
-      },
-      handlePaste: (view, event) => {
-        const plainText = event.clipboardData?.getData("text/plain");
-        if (plainText) {
-          const tableHtml = parseMarkdownTableToHtml(plainText);
-          if (tableHtml) {
-            const { state, dispatch } = view;
-            const parser = ProseMirrorDOMParser.fromSchema(state.schema);
-            const doc = new window.DOMParser().parseFromString(
-              tableHtml,
-              "text/html",
-            );
-            const slice = parser.parseSlice(doc.body);
-            const tr = state.tr.replaceSelection(slice);
-            dispatch(tr);
-            return true;
-          }
-        }
         return false;
       },
     },

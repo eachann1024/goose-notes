@@ -9,7 +9,7 @@ import { Markdown } from "tiptap-markdown";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
-import { TableCell } from "@tiptap/extension-table-cell";
+import { TableCellCustom } from "@/extensions/TableCellCustom";
 import { all, createLowlight } from "lowlight";
 import { configureSlashCommand } from "@/extensions/SlashCommand";
 import { ResizableImage } from "@/extensions/ResizableImage";
@@ -21,6 +21,8 @@ import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
 import { InlineCodeFix } from "@/extensions/InlineCodeFix";
 import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
 import { SelectableHorizontalRule } from "@/extensions/SelectableHorizontalRule";
+import { EditorPasteHandler } from "@/extensions/EditorPasteHandler";
+import { ClipboardSerializer } from "@/extensions/ClipboardSerializer";
 
 const lowlight = createLowlight(all);
 
@@ -78,7 +80,7 @@ export const editorExtensions = [
   }),
   TableRow,
   TableHeader,
-  TableCell,
+  TableCellCustom,
   configureSlashCommand(),
   CustomGlobalDragHandle.configure({
     dragHandleWidth: 24,
@@ -94,5 +96,7 @@ export const editorExtensions = [
   }),
   InlineCodeFix,
   LinkPasteHandler,
+  EditorPasteHandler,
   SmartSelectAll,
+  ClipboardSerializer,
 ];

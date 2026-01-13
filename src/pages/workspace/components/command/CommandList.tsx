@@ -112,7 +112,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   return (
     <div
       className={cn(
-        "flex gap-2 animate-in fade-in zoom-in-95",
+        "relative flex gap-2 animate-in fade-in zoom-in-95",
         isTopPlacement
           ? "items-end slide-in-from-bottom-2"
           : "items-start slide-in-from-top-2",
@@ -200,7 +200,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
       </div>
 
       {showHint && selectedItem?.hint && (
-        <div className="fixed z-[60] ml-[248px] w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-left-1">
+        <div className="absolute left-[248px] top-0 z-[60] w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-left-1">
           <div className="flex items-center gap-2 border-b border-border/50 pb-2">
             {selectedItem.icon && (
               <selectedItem.icon className="h-4 w-4 text-primary" />

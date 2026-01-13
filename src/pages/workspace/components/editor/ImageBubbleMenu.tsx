@@ -2,6 +2,45 @@ import type { Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useEditorState } from "@tiptap/react";
 
+function isRemoteUrl(src: string | undefined): boolean {
+  if (!src) return false;
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+async function copyImageToClipboard(src: string): Promise<boolean> {
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = src;
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+
+    ctx.drawImage(img, 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/png"),
+    );
+
+    if (blob) {
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 type ImageBubbleMenuProps = Omit<
   React.ComponentProps<typeof BubbleMenu>,
   "children"
@@ -45,13 +84,35 @@ function setAlignStyle(
 export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   if (!editor) return null;
 
-  const currentAlign = useEditorState({
+  const { currentAlign, imageSrc } = useEditorState({
     editor,
     selector: (ctx) => {
       const attrs = ctx.editor.getAttributes("imageResize");
-      return getAlignFromStyle(attrs?.containerStyle);
+      return {
+        currentAlign: getAlignFromStyle(attrs?.containerStyle),
+        imageSrc: attrs?.src as string | undefined,
+      };
     },
   });
+
+  const isRemote = isRemoteUrl(imageSrc);
+
+  const handleCopy = async () => {
+    if (!imageSrc) return;
+    if (isRemote) {
+      await navigator.clipboard.writeText(imageSrc);
+    } else {
+      await copyImageToClipboard(imageSrc);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!imageSrc) return;
+    const a = document.createElement("a");
+    a.href = imageSrc;
+    a.download = "image";
+    a.click();
+  };
 
   const handleAlign = (align: "left" | "center" | "right") => {
     if (!editor.isActive("imageResize")) return;
@@ -135,6 +196,49 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
         </Tooltip>
 
         <Separator orientation="vertical" className="h-6" />
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="h-8 px-2 text-foreground"
+            >
+              {isRemote ? (
+                <LucideIcons.Link className="h-4 w-4" />
+              ) : (
+                <LucideIcons.Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isRemote ? (
+              <div className="max-w-48 text-center">
+                <p>复制链接</p>
+                <p className="text-xs text-muted-foreground">远程图片只能复制链接，本地图片才可复制原文件</p>
+              </div>
+            ) : (
+              <p>复制图片</p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDownload}
+              className="h-8 px-2 text-foreground"
+            >
+              <LucideIcons.Download className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>下载图片</p>
+          </TooltipContent>
+        </Tooltip>
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
