@@ -140,7 +140,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
   };
 
   const barClasses =
-    "bg-muted/50 hover:bg-primary/20 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[2px] table-add-control";
+    "bg-gradient-to-br from-muted/60 to-muted/40 hover:from-primary/25 hover:to-primary/15 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[2px] table-add-control transition-all duration-200";
 
   const rowBarStyle: React.CSSProperties = {
     ...baseBarStyle,

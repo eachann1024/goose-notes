@@ -1,6 +1,9 @@
 import { Search, Keyboard, Plus, Sparkles, ArrowRight } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
+import { ShortcutDialog } from "./ShortcutDialog";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 const tips = [
   "使用 / 命令快速插入内容块",
@@ -14,14 +17,67 @@ function getRandomTip() {
 }
 
 export function PageEmptyState() {
-  const onCreatePage = () => {
-    const { createPage } = usePages();
-    const { activeNotebookId } = useNotebooks.getState();
-    if (!activeNotebookId) return;
+  const [shortcutOpen, setShortcutOpen] = useState(false);
 
-    const newPage = createPage(undefined, activeNotebookId);
+  const onCreatePage = useCallback(() => {
+    console.log("[PageEmptyState] onCreatePage called");
+    const { createPage } = usePages();
+    const notebooks = useNotebooks.getState();
+    const { activeNotebookId, notebooks: allNotebooks } = notebooks;
+
+    console.log("[PageEmptyState] activeNotebookId:", activeNotebookId);
+    console.log("[PageEmptyState] all notebooks:", Object.keys(allNotebooks));
+
+    // 如果没有活跃笔记本，创建一个默认笔记本
+    let notebookId = activeNotebookId;
+    if (!notebookId) {
+      const notebookIds = Object.keys(allNotebooks);
+      console.log("[PageEmptyState] no active notebook, available:", notebookIds);
+
+      if (notebookIds.length === 0) {
+        // 创建默认笔记本
+        console.log("[PageEmptyState] creating new notebook");
+        notebookId = notebooks.createNotebook("我的笔记");
+        toast.success("已自动创建笔记本");
+      } else {
+        // 使用第一个笔记本
+        notebookId = notebookIds[0];
+        console.log("[PageEmptyState] activating first notebook:", notebookId);
+        notebooks.setActiveNotebook(notebookId);
+      }
+    }
+
+    console.log("[PageEmptyState] creating page in notebook:", notebookId);
+    const newPage = createPage(undefined, notebookId);
+    console.log("[PageEmptyState] new page created:", newPage);
     usePages.setState({ activePageId: newPage });
-  };
+    console.log("[PageEmptyState] activePageId set");
+  }, []);
+
+  const onSearch = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+  }, []);
+
+  // 全局快捷键监听
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Option+P: 新建页面
+      if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === "p") {
+        e.preventDefault();
+        onCreatePage();
+      }
+      // Cmd+/: 快捷键对话框
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        setShortcutOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCreatePage]);
 
   const actions = [
     {
@@ -37,9 +93,7 @@ export function PageEmptyState() {
       title: "搜索内容",
       description: "快速查找已记录的内容",
       shortcut: "⌘ + K",
-      onClick: () => {
-        // 触发命令面板
-      },
+      onClick: onSearch,
       color: "from-blue-500 to-blue-500/60",
     },
     {
@@ -47,9 +101,7 @@ export function PageEmptyState() {
       title: "快捷键",
       description: "查看所有可用快捷键",
       shortcut: "⌘ + /",
-      onClick: () => {
-        // 触发快捷键面板
-      },
+      onClick: () => setShortcutOpen(true),
       color: "from-purple-500 to-purple-500/60",
     },
   ];
@@ -85,8 +137,13 @@ export function PageEmptyState() {
             return (
               <button
                 key={index}
-                onClick={action.onClick}
-                className="group relative p-6 rounded-2xl border-2 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1"
+                onClick={(e) => {
+                  console.log("[PageEmptyState] Button clicked:", action.title);
+                  console.log("[PageEmptyState] Event:", e);
+                  action.onClick();
+                }}
+                type="button"
+                className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/80 hover:to-card/60 cursor-pointer"
               >
                 <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <Icon className="w-7 h-7 text-white" />
@@ -126,6 +183,9 @@ export function PageEmptyState() {
           </p>
         </div>
       </div>
+
+      {/* 快捷键对话框 */}
+      <ShortcutDialog open={shortcutOpen} onOpenChange={setShortcutOpen} />
     </div>
   );
 }

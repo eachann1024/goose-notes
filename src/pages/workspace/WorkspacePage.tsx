@@ -28,6 +28,14 @@ export function WorkspacePage() {
 
   const isExternalFileDrag = (e: React.DragEvent) =>
     Array.from(e.dataTransfer.types || []).includes("Files");
+
+  // 当活跃页面在回收站时，自动清空 activePageId 显示空白状态
+  useEffect(() => {
+    if (page?.trashedAt && activePageId) {
+      usePages.getState().setActivePage(null);
+    }
+  }, [page?.trashedAt, activePageId]);
+
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
       document.documentElement.classList.add("is-utools");
@@ -179,13 +187,23 @@ export function WorkspacePage() {
   };
 
   return (
-    <div
-      className="flex h-screen overflow-hidden bg-background text-foreground"
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
+    <>
+      <style>{`
+        @keyframes slow-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        .animate-slow-pulse {
+          animation: slow-pulse 4s ease-in-out infinite;
+        }
+      `}</style>
+      <div
+        className="flex h-screen overflow-hidden bg-background text-foreground"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
       {isDragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-background/90 via-background/95 to-background/90 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="text-center">
@@ -226,64 +244,87 @@ export function WorkspacePage() {
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto page-scroll-container"
         >
-          {activePageId && page ? (
-            <div className="py-12 px-8 min-h-screen">
-              <div
-                className={cn(
-                  "mb-8",
-                  page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
-                )}
-              >
-                {!isLocalFolderPage && (
-                  <div className="group relative mb-4">
-                    <IconSelector
-                      value={page.icon}
-                      onChange={(icon) =>
-                        !page.trashedAt &&
-                        !page.isLocked &&
-                        updatePage(activePageId, { icon })
-                      }
-                    >
-                      <button
-                        className={cn(
-                          "flex items-center justify-center transition-opacity",
-                          page.icon
-                            ? "opacity-100"
-                            : page.trashedAt || page.isLocked
-                              ? "opacity-0"
-                              : "opacity-0 hover:opacity-100",
-                        )}
-                      >
-                        {page.icon ? (
-                          <div className="flex items-center justify-center h-16 w-16 text-6xl">
-                            {(LucideIcons as any)[page.icon] ? (
-                              (() => {
-                                const Icon = (LucideIcons as any)[page.icon];
-                                return <Icon className="h-14 w-14" />;
-                              })()
-                            ) : (
-                              <span>{page.icon}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
-                            <LucideIcons.Smile className="h-4 w-4" />
-                            <span>添加图标</span>
-                          </div>
-                        )}
-                      </button>
-                    </IconSelector>
-                  </div>
-                )}
-              </div>
+          {activePageId && page ? (() => {
+            // 判断是否是新页面（创建时间等于更新时间且内容为空）
+            const isNewPage =
+              page.createdAt === page.updatedAt &&
+              (!page.content?.content?.[1]?.content ||
+                page.content.content[1].content.length === 0);
 
-              <Editor editable={!page.isLocked && !page.trashedAt} />
-            </div>
-          ) : (
+            // 判断是否有实际内容（除了标题行之外还有内容）
+            const hasRealContent =
+              page.content?.content &&
+              page.content.content.length > 2;
+
+            return (
+              <div className="py-12 px-8 min-h-screen">
+                <div
+                  className={cn(
+                    "mb-8",
+                    page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
+                  )}
+                >
+                  {!isLocalFolderPage && (
+                    <div className="group relative mb-4">
+                      <IconSelector
+                        value={page.icon}
+                        onChange={(icon) =>
+                          !page.trashedAt &&
+                          !page.isLocked &&
+                          updatePage(activePageId, { icon })
+                        }
+                        onFirstOpen={() => {
+                          if (!page.icon) {
+                            const defaultEmojis = ["📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "🔖", "📚", "✨"];
+                            const randomEmoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
+                            updatePage(activePageId, { icon: randomEmoji });
+                          }
+                        }}
+                      >
+                        <button
+                          className={cn(
+                            "flex items-center justify-center transition-all duration-300",
+                            page.icon
+                              ? "opacity-100 scale-100"
+                              : page.trashedAt || page.isLocked || hasRealContent
+                                ? "opacity-0"
+                                : isNewPage
+                                  ? "opacity-100 animate-slow-pulse hover:scale-105"
+                                  : "opacity-0 hover:opacity-100 hover:scale-105",
+                          )}
+                        >
+                          {page.icon ? (
+                            <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                              {(LucideIcons as any)[page.icon] ? (
+                                (() => {
+                                  const Icon = (LucideIcons as any)[page.icon];
+                                  return <Icon className="h-14 w-14" />;
+                                })()
+                              ) : (
+                                <span>{page.icon}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                              <LucideIcons.Smile className="h-4 w-4" />
+                              <span>添加图标</span>
+                            </div>
+                          )}
+                        </button>
+                      </IconSelector>
+                    </div>
+                  )}
+                </div>
+
+                <Editor editable={!page.isLocked && !page.trashedAt} />
+              </div>
+            );
+          })() : (
             <PageEmptyState />
           )}
         </div>
       </main>
     </div>
+    </>
   );
 }

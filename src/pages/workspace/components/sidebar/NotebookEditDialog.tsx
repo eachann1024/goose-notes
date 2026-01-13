@@ -74,7 +74,7 @@ export function NotebookEditDialog({
       {/* 关闭按钮 */}
       <button
         onClick={() => onOpenChange(false)}
-        className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted/50 transition-colors z-10"
+        className="absolute top-6 right-6 p-2 rounded-full hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 transition-all duration-200 z-10"
       >
         <X className="w-5 h-5 text-muted-foreground" />
       </button>
@@ -107,7 +107,7 @@ export function NotebookEditDialog({
 
         {/* 表单卡片 */}
         {showDeleteConfirm ? (
-          <div className="bg-destructive/5 backdrop-blur-sm border-2 border-destructive/20 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-gradient-to-br from-destructive/10 to-destructive/5 backdrop-blur-md border-2 border-destructive/20 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
               <label htmlFor="confirm-delete" className="text-sm font-medium text-destructive">
                 确认删除 <span className="font-bold">{confirmName}</span>
@@ -146,7 +146,7 @@ export function NotebookEditDialog({
             </div>
           </div>
         ) : (
-          <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border-2 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">选择图标</label>
               <div className="flex justify-center">
@@ -158,7 +158,7 @@ export function NotebookEditDialog({
                   >
                     <Button
                       variant="outline"
-                      className="h-16 w-16 p-0 text-3xl hover:bg-primary/5 hover:border-primary/50 transition-all"
+                      className="h-16 w-16 p-0 text-3xl hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/5 hover:border-primary/50 transition-all duration-200"
                     >
                       {renderNotebookIcon(icon)}
                     </Button>

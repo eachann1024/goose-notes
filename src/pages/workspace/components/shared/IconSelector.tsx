@@ -1,10 +1,12 @@
-import EmojiPicker, { EmojiStyle, Theme, Categories } from "emoji-picker-react";
+import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
+import { useEffect, useRef } from "react";
 
 interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   value?: string;
   onChange: (icon: string | undefined) => void;
   children: React.ReactNode;
   portalContainerRef?: React.RefObject<T | null>;
+  onFirstOpen?: () => void;
 }
 
 // 常用图标白名单（移除不常用的图标）
@@ -68,11 +70,13 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   onChange,
   children,
   portalContainerRef,
+  onFirstOpen,
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"emoji" | "icon">("emoji");
   const portalContainer = portalContainerRef?.current ?? undefined;
+  const hasOpenedRef = useRef(false);
 
   const filteredIcons = useMemo(() => {
     const icons = COMMON_ICONS.filter(
@@ -80,6 +84,14 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
     );
     return icons.slice(0, 144); // 最多显示 144 个（12x12 网格）
   }, [search]);
+
+  // 第一次打开时触发 onFirstOpen 回调
+  useEffect(() => {
+    if (open && !hasOpenedRef.current && onFirstOpen) {
+      hasOpenedRef.current = true;
+      onFirstOpen();
+    }
+  }, [open, onFirstOpen]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -106,7 +118,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
             图标
           </button>
           <button
-            className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 rounded-t-2xl"
+            className="px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-1 rounded-t-2xl font-semibold"
             onClick={() => {
               onChange(undefined);
               setOpen(false);
@@ -122,15 +134,23 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
           {tab === "emoji" ? (
             <div
               key="emoji"
-              className="w-full h-full animate-in fade-in duration-150"
+              className="w-full h-full animate-in fade-in duration-150 relative"
             >
               <style>{`
-                .emoji-picker-react .emoji-picker-react {
-                  --emoji-size: 28px;
+                .emoji-picker-react-wrapper .emoji-picker-react {
+                  margin-top: -8px !important;
+                }
+                .emoji-picker-react {
+                  --ep-size: 28px;
                   --category-font-size: 0;
+                  padding-top: 0 !important;
+                }
+                .emoji-picker-react > div:first-child {
+                  padding-top: 0 !important;
+                  margin-top: 0 !important;
                 }
                 .emoji-picker-react .category-label {
-                  display: none;
+                  display: none !important;
                 }
                 .emoji-picker-react .emoji {
                   transition: transform 150ms ease;
@@ -140,38 +160,31 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   transform: scale(1.3);
                 }
                 .emoji-picker-react .emoji-search,
+                .emoji-picker-react .search-container {
+                  display: none !important;
+                }
                 .emoji-picker-react .preview-pane {
                   display: none !important;
                 }
-                .emoji-picker-react .scroll-container {
-                  padding-top: 0 !important;
-                }
-                .emoji-picker-react .categories {
-                  padding: 8px 0;
+                .emoji-picker-react [class*="header"] {
+                  display: none !important;
                 }
               `}</style>
-              <EmojiPicker
-                onEmojiClick={(emojiData) => {
-                  onChange(emojiData.emoji);
-                  setOpen(false);
-                }}
-                width="100%"
-                height="100%"
-                searchDisabled={true}
-                skinTonesDisabled
-                previewConfig={{ showPreview: false }}
-                theme={Theme.AUTO}
-                emojiStyle={EmojiStyle.APPLE}
-                categories={[
-                  { category: Categories.SMILEYS_PEOPLE, name: "" },
-                  { category: Categories.ANIMALS_NATURE, name: "" },
-                  { category: Categories.FOOD_DRINK, name: "" },
-                  { category: Categories.ACTIVITIES, name: "" },
-                  { category: Categories.TRAVEL_PLACES, name: "" },
-                  { category: Categories.OBJECTS, name: "" },
-                  { category: Categories.SYMBOLS, name: "" },
-                ]}
-              />
+              <div className="emoji-picker-react-wrapper absolute inset-0 -ml-3">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    onChange(emojiData.emoji);
+                    setOpen(false);
+                  }}
+                  width="100%"
+                  height="100%"
+                  searchDisabled={true}
+                  skinTonesDisabled
+                  previewConfig={{ showPreview: false }}
+                  theme={Theme.AUTO}
+                  emojiStyle={EmojiStyle.APPLE}
+                />
+              </div>
             </div>
           ) : (
             <div

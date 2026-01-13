@@ -174,7 +174,7 @@ function PageNode({
             isDropTarget && "sidebar-drop-target",
             isActive
               ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              : "text-muted-foreground hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground transition-all duration-200",
             node.state.isDragging && "opacity-50",
           )}
           onClick={(e) => {
@@ -191,7 +191,7 @@ function PageNode({
             style={{ paddingLeft }}
           >
             <div
-              className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-gradient-to-br hover:from-muted-foreground/20 hover:to-muted-foreground/10 transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
                 node.toggle();
@@ -249,7 +249,7 @@ function PageNode({
                 </span>
               )}
               <button
-                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-opacity"
+                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-gradient-to-br hover:from-muted-foreground/25 hover:to-muted-foreground/15 active:from-muted-foreground/30 active:to-muted-foreground/20 text-muted-foreground/70 hover:text-foreground transition-all duration-200"
                 onClick={handleAddChild}
               >
                 <LucideIcons.Plus className="h-3.5 w-3.5" />
@@ -385,7 +385,7 @@ export function SidebarTree({
 
   if (treeData.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-muted/30 rounded mx-2 border border-dashed">
+      <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
         <p>暂无页面</p>
         <Button

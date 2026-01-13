@@ -166,6 +166,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       onboardingCompleted: false,
       onboardingExpandPageId: null,
     });
+    usePages.getState().createOnboardingPages();
     setResetDialogOpen(false);
     onOpenChange(false);
     setTimeout(() => {
@@ -178,7 +179,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return createPortal(
     <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in duration-200">
       {/* 顶部标题栏 */}
-      <div className="flex items-center justify-between px-8 py-6 border-b bg-muted/30">
+      <div className="flex items-center justify-between px-8 py-6 border-b bg-gradient-to-r from-muted/40 to-muted/20">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
             <SettingsIcon className="w-6 h-6 text-white" />
@@ -190,7 +191,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </div>
         <button
           onClick={() => onOpenChange(false)}
-          className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+          className="p-2 rounded-full hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 transition-all duration-200"
         >
           <X className="w-5 h-5 text-muted-foreground" />
         </button>
@@ -199,15 +200,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       {/* 主内容区 */}
       <div className="flex flex-1 overflow-hidden">
         {/* 左侧导航栏 */}
-        <div className="w-60 border-r bg-muted/30 p-4">
+        <div className="w-60 border-r bg-gradient-to-b from-muted/40 to-muted/20 p-4">
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab("general")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "general"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-muted/50 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
               )}
             >
               <LucideIcons.Settings className="w-5 h-5" />
@@ -216,10 +217,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <button
               onClick={() => setActiveTab("appearance")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "appearance"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-muted/50 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
               )}
             >
               <LucideIcons.Laptop className="w-5 h-5" />
@@ -228,10 +229,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <button
               onClick={() => setActiveTab("data")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "data"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-muted/50 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
               )}
             >
               <LucideIcons.Database className="w-5 h-5" />
@@ -244,7 +245,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-3xl mx-auto">
             {activeTab === "general" && (
-              <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg">
+              <div className="bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md border-2 rounded-2xl p-8 shadow-lg">
                 <SettingsGeneral
                   searchProviders={searchProviders}
                   toggleSearchProvider={toggleSearchProvider}
@@ -255,7 +256,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             )}
 
             {activeTab === "appearance" && (
-              <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg">
+              <div className="bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md border-2 rounded-2xl p-8 shadow-lg">
                 <SettingsAppearance
                   theme={theme}
                   setTheme={setTheme}
@@ -273,7 +274,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {activeTab === "data" && (
               <div className="space-y-6">
                 {/* 导入导出卡片 */}
-                <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-8 shadow-lg space-y-6">
+                <div className="bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md border-2 rounded-2xl p-8 shadow-lg space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xl font-semibold">数据管理</h3>
@@ -302,7 +303,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         variant="ghost"
                         size="sm"
                         onClick={selectAll}
-                        className="h-8 px-3 text-xs"
+                        className="h-8 px-3 text-xs hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40"
                       >
                         {selectedIds.length === notebookList.length
                           ? "取消全选"
@@ -315,10 +316,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           key={notebook.id}
                           onClick={() => toggleNotebook(notebook.id)}
                           className={cn(
-                            "flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all text-left",
+                            "flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all duration-200 text-left",
                             selectedIds.includes(notebook.id)
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/30"
+                              ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5"
+                              : "border-border hover:border-primary/30 hover:bg-gradient-to-br hover:from-muted/40 hover:to-muted/20"
                           )}
                         >
                           <span className="text-xl shrink-0">
@@ -340,7 +341,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <div className="grid grid-cols-2 gap-3">
                       <Button
                         variant={format === "md" ? "default" : "outline"}
-                        className="h-20 flex flex-col gap-2"
+                        className="h-20 flex flex-col gap-2 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40"
                         onClick={() => setFormat("md")}
                       >
                         <FileText className="w-6 h-6" />
@@ -351,7 +352,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       </Button>
                       <Button
                         variant={format === "html" ? "default" : "outline"}
-                        className="h-20 flex flex-col gap-2"
+                        className="h-20 flex flex-col gap-2 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40"
                         onClick={() => setFormat("html")}
                       >
                         <Globe className="w-6 h-6" />
@@ -374,7 +375,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
 
                 {/* 危险操作卡片 */}
-                <div className="bg-destructive/5 backdrop-blur-sm border-2 border-destructive/30 rounded-2xl p-6 shadow-lg">
+                <div className="bg-gradient-to-br from-destructive/10 to-destructive/5 backdrop-blur-md border-2 border-destructive/30 rounded-2xl p-6 shadow-lg">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
@@ -406,8 +407,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
       {/* 重置确认弹窗 */}
       {resetDialogOpen && (
-        <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-card border-2 border-destructive/30 rounded-2xl p-6 shadow-xl max-w-md w-full">
+        <div className="fixed inset-0 z-[60] bg-gradient-radial from-background/90 to-background/70 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-gradient-to-br from-card/70 to-card/50 border-2 border-destructive/30 rounded-2xl p-6 shadow-xl max-w-md w-full backdrop-blur-md">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
                 <LucideIcons.AlertTriangle className="w-6 h-6 text-destructive" />

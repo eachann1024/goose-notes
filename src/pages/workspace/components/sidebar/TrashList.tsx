@@ -48,7 +48,7 @@ export function TrashList({ onBack }: TrashListProps) {
               return (
                 <div
                   key={page.id}
-                  className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 group cursor-pointer"
+                  className="flex items-center gap-2 p-2 rounded-md hover:bg-gradient-to-r hover:from-muted/50 hover:to-muted/30 group cursor-pointer transition-all duration-200"
                   onClick={() => setActivePage(page.id)}
                 >
                   {/* 图标 */}

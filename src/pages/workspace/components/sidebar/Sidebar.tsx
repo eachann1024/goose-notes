@@ -246,7 +246,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div
         ref={sidebarRef}
         className={cn(
-          "pb-0 border-r bg-background/80 backdrop-blur-md h-screen flex flex-col relative",
+          "pb-0 bg-background/80 dark:bg-background/85 backdrop-blur-md h-screen flex flex-col relative",
           className,
         )}
         style={{ width }}
@@ -291,7 +291,7 @@ export function Sidebar({ className }: SidebarProps) {
     <div
       ref={sidebarRef}
       className={cn(
-        "pb-0 bg-background/80 backdrop-blur-md h-screen flex flex-col relative group/sidebar",
+        "pb-0 bg-gradient-to-b from-background/85 via-background/80 to-background/70 dark:from-background/70 dark:via-background/65 dark:to-background/55 backdrop-blur-md dark:backdrop-blur-xl h-screen flex flex-col relative group/sidebar",
         className,
       )}
       style={{

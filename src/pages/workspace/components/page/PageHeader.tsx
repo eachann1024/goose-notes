@@ -14,13 +14,13 @@ export function PageHeader({
   onToggleFavorite,
 }: PageHeaderProps) {
   return (
-    <div className="h-12 flex items-center justify-between px-3 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+    <div className="h-12 flex items-center justify-between px-3 border-b bg-gradient-to-b from-background/90 via-background/80 to-background/70 dark:from-background/80 dark:via-background/70 dark:to-background/60 backdrop-blur-md dark:backdrop-blur-xl sticky top-0 z-10 shrink-0">
       <div className="flex items-center text-sm text-muted-foreground gap-2 overflow-hidden">
         <span className="truncate max-w-[200px]">
           {getPageTitle(page)}
         </span>
         {page.isLocked && (
-          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">已锁定</span>
+          <span className="text-xs bg-gradient-to-r from-muted/80 to-muted/60 px-1.5 py-0.5 rounded">已锁定</span>
         )}
         {page.trashedAt && (
           <span className="text-xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">
@@ -31,7 +31,7 @@ export function PageHeader({
       <div className="flex items-center gap-1">
         <button
           onClick={onClose}
-          className="p-1 hover:bg-muted rounded text-muted-foreground/70 hover:text-foreground transition-colors"
+          className="p-1 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 rounded text-muted-foreground/70 hover:text-foreground transition-all duration-200"
           title="关闭页面"
         >
           <LucideIcons.X className="h-4 w-4" />
@@ -40,7 +40,7 @@ export function PageHeader({
         {!page.trashedAt && (
           <button
             onClick={onToggleFavorite}
-            className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground/70 hover:text-foreground"
+            className="p-1 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 rounded transition-all duration-200 text-muted-foreground/70 hover:text-foreground"
             title={page.isFavorite ? "取消收藏" : "收藏页面"}
           >
             <LucideIcons.Star

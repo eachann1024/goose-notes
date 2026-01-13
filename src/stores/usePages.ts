@@ -7,6 +7,10 @@ import { useNotebooks } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
 import { getPageTitle } from "@/lib/page-title";
+import {
+  ONBOARDING_PAGE_CONTENT,
+  ONBOARDING_CHILD_PAGE_CONTENT,
+} from "@/lib/onboarding";
 
 // 防抖保存的映射
 const saveTimeouts = new Map<string, NodeJS.Timeout>();
@@ -31,6 +35,7 @@ interface PagesState {
   onboardingExpandPageId: string | null;
   hydrated: boolean;
 
+  createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
   deletePage: (id: string) => boolean;
@@ -94,6 +99,56 @@ export const usePages = create<PagesState>()(
       onboardingCompleted: false,
       onboardingExpandPageId: null,
       hydrated: false,
+
+      createOnboardingPages: () => {
+        const id = uuidv4();
+        const now = Date.now();
+        const workspaceId = "default";
+
+        const mainPage: Page = {
+          id,
+          workspaceId,
+          parentId: undefined,
+          content: ONBOARDING_PAGE_CONTENT,
+          isFolder: false,
+          isLocked: false,
+          isFullWidth: false,
+          fontSize: "default",
+          fontFamily: "default",
+          createdAt: now,
+          updatedAt: now,
+          order: now,
+        };
+
+        const childId = uuidv4();
+        const childPage: Page = {
+          id: childId,
+          workspaceId,
+          parentId: id,
+          content: ONBOARDING_CHILD_PAGE_CONTENT,
+          isFolder: false,
+          isLocked: false,
+          isFullWidth: false,
+          fontSize: "default",
+          fontFamily: "default",
+          createdAt: now + 1,
+          updatedAt: now + 1,
+          order: now + 1,
+        };
+
+        set((state) => ({
+          pages: {
+            ...state.pages,
+            [id]: mainPage,
+            [childId]: childPage,
+          },
+          activePageId: id,
+          onboardingCompleted: true,
+          onboardingExpandPageId: id,
+        }));
+
+        useNotebooks.getState().setLastActivePage(workspaceId, id);
+      },
 
       createPage: (parentId, workspaceId = "default") => {
         flushEditorContent();

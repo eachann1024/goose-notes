@@ -60,8 +60,8 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-muted-foreground h-8 px-2 bg-muted/40 border-transparent shadow-none",
-            "hover:bg-muted/60 hover:text-foreground transition-colors",
+            "w-full justify-start text-muted-foreground h-8 px-2 bg-gradient-to-r from-muted/40 to-muted/30 border-transparent shadow-none",
+            "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground transition-all duration-200",
           )}
           onClick={onSearch}
         >

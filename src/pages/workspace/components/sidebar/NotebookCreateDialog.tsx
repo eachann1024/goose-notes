@@ -42,7 +42,7 @@ export function NotebookCreateDialog({
       {/* 关闭按钮 */}
       <button
         onClick={() => onOpenChange(false)}
-        className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted/50 transition-colors z-10"
+        className="absolute top-6 right-6 p-2 rounded-full hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 transition-all duration-200 z-10"
       >
         <X className="w-5 h-5 text-muted-foreground" />
       </button>
@@ -59,9 +59,9 @@ export function NotebookCreateDialog({
         </div>
 
         {/* 表单卡片 */}
-        <div className="bg-card/50 backdrop-blur-sm border-2 rounded-2xl p-6 shadow-lg space-y-4">
+        <div className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border-2 rounded-2xl p-6 shadow-lg space-y-4">
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+            <div className="text-sm text-destructive bg-gradient-to-r from-destructive/15 to-destructive/5 px-3 py-2 rounded-lg">
               {error}
             </div>
           )}
@@ -69,7 +69,7 @@ export function NotebookCreateDialog({
           <div className="space-y-3">
             <label className="text-sm font-medium text-muted-foreground">选择图标</label>
             <div className="flex justify-center">
-              <Suspense fallback={<Button variant="outline" className="h-16 w-16 text-2xl">...</Button>}>
+              <Suspense fallback={<Button variant="outline" className="h-20 w-20 text-3xl">...</Button>}>
                 <IconSelector
                   value={icon}
                   onChange={(val) => onIconChange(val || "📓")}
@@ -77,9 +77,9 @@ export function NotebookCreateDialog({
                 >
                   <Button
                     variant="outline"
-                    className="h-16 w-16 p-0 text-3xl hover:bg-primary/5 hover:border-primary/50 transition-all"
+                    className="h-20 w-20 p-0 hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/5 hover:border-primary/50 transition-all duration-200"
                   >
-                    {renderNotebookIcon(icon)}
+                    {renderNotebookIcon(icon, "h-10 w-10 text-4xl")}
                   </Button>
                 </IconSelector>
               </Suspense>
@@ -132,7 +132,7 @@ export function NotebookCreateDialog({
 
         {/* 快捷键提示 */}
         <p className="text-center text-xs text-muted-foreground mt-4">
-          按 <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs">Enter</kbd> 快速创建
+          按 <kbd className="px-1.5 py-0.5 rounded bg-gradient-to-r from-muted/80 to-muted/60 text-muted-foreground text-xs">Enter</kbd> 快速创建
         </p>
       </div>
     </div>,

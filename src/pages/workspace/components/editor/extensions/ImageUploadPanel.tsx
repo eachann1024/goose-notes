@@ -81,7 +81,7 @@ export function ImageUploadPanel({ editor, deleteNode }: NodeViewProps) {
         contentEditable={false}
       >
         {/* Tab 切换 - 与 BubbleMenu 工具栏风格一致 */}
-        <div className="mb-3 flex items-center gap-1 rounded-md bg-muted/50 p-1">
+        <div className="mb-3 flex items-center gap-1 rounded-md bg-gradient-to-r from-muted/60 to-muted/40 p-1">
           <button
             onClick={() => setActiveTab('upload')}
             className={cn(
@@ -122,10 +122,10 @@ export function ImageUploadPanel({ editor, deleteNode }: NodeViewProps) {
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               className={cn(
-                'flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-6 text-sm transition-colors',
+                'flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-6 text-sm transition-all duration-200',
                 isUploading
                   ? 'cursor-not-allowed opacity-50'
-                  : 'text-muted-foreground hover:border-primary hover:bg-muted/50 hover:text-foreground'
+                  : 'text-muted-foreground hover:border-primary hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground'
               )}
             >
               <LucideIcons.Image className="h-5 w-5" />

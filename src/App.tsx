@@ -27,6 +27,13 @@ function App() {
     setEditorFontSize,
     customFonts,
   } = useSettings();
+  const { createOnboardingPages, onboardingCompleted, hydrated } = usePages();
+
+  useEffect(() => {
+    if (hydrated && !onboardingCompleted) {
+      createOnboardingPages();
+    }
+  }, [hydrated, onboardingCompleted, createOnboardingPages]);
 
   useEffect(() => {
     const openFolder = (folderPath: string) => {
