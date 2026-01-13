@@ -1,7 +1,7 @@
 import type { CustomFonts } from "@/stores/useSettings";
 
 const DEFAULT_FONTS = {
-  default: "DM Sans",
+  default: "Inter",
   serif: "仓耳今楷",
   mono: "DM Mono",
 };
@@ -130,7 +130,7 @@ export function applyFontVariables(customFonts: CustomFonts) {
     buildFontStack(
       customDefaultList,
       DEFAULT_FONTS.default,
-      ["DM Sans", "HarmonyOS Sans SC"],
+      ["Inter", "HarmonyOS Sans SC"],
       fallbacks.ui,
       "sans-serif",
     ),
@@ -168,7 +168,7 @@ export function getEditorFontFamilies(
     mono: customFonts.mono.font || DEFAULT_FONTS.mono,
   };
   const fallbackMap = {
-    default: ["DM Sans", "HarmonyOS Sans SC"],
+    default: ["Inter", "HarmonyOS Sans SC"],
     serif: ["仓耳今楷"],
     mono: ["DM Mono", "HarmonyOS Sans SC"],
   };
