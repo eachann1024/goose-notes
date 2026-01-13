@@ -116,6 +116,14 @@ export const EditorPasteHandler = Extension.create({
         key: new PluginKey("editorPasteHandler"),
         props: {
           handlePaste: (view, event) => {
+            const { state } = view;
+            const { selection } = state;
+            
+            // If inside a code block, let the default handler handle it (plain text paste)
+            if (selection.$from.parent.type.name === "codeBlock") {
+              return false;
+            }
+
             const textPlain = event.clipboardData?.getData("text/plain");
             if (!textPlain) return false;
 
