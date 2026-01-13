@@ -42,13 +42,12 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
     if (menuOpen) return;
     clearHideTimeout();
     hideTimeoutRef.current = setTimeout(() => {
-      setVisible(false);
-      hideTimeoutRef.current = setTimeout(() => {
-        setHandles(emptyState);
-        restoreDragHandle();
-      }, 300);
-    }, 150);
-  }, [menuOpen, clearHideTimeout, restoreDragHandle]);
+        setVisible(false);
+        hideTimeoutRef.current = setTimeout(() => {
+          setHandles(emptyState);
+        }, 300);
+      }, 150);
+  }, [menuOpen, clearHideTimeout]);
 
   useEffect(() => {
     if (!editor) return;
@@ -106,8 +105,6 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
 
       try {
         const pos = editor.view.posAtDOM(cell, 0) - 1;
-        suppressDragHandle();
-
         const newState: HandleState = { row: null, col: null };
 
         if (leftEdge) {
@@ -136,7 +133,21 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       document.removeEventListener("mousemove", onMouseMove);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [editor, menuOpen, clearHideTimeout, scheduleHide, suppressDragHandle]);
+  }, [editor, menuOpen, clearHideTimeout, scheduleHide]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      suppressDragHandle();
+    } else {
+      restoreDragHandle();
+    }
+  }, [menuOpen, suppressDragHandle, restoreDragHandle]);
+
+  useEffect(() => {
+    return () => {
+      restoreDragHandle();
+    };
+  }, [restoreDragHandle]);
 
   if (!handles.row && !handles.col) return null;
 
@@ -255,6 +266,8 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
                 height: 24,
               }}
               className={buttonClass}
+              onMouseEnter={suppressDragHandle}
+              onMouseLeave={restoreDragHandle}
             >
               <LucideIcons.GripVertical className="h-4 w-4" />
             </button>
@@ -297,6 +310,8 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
                 height: 24,
               }}
               className={buttonClass}
+              onMouseEnter={suppressDragHandle}
+              onMouseLeave={restoreDragHandle}
             >
               <LucideIcons.GripHorizontal className="h-4 w-4" />
             </button>

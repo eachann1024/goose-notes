@@ -206,12 +206,25 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       rect.top += (lineHeight - handleHeight) / 2;
     }
 
+    rect.width = options.dragHandleWidth;
+
+    const editorRoot = node.closest(".ProseMirror") as HTMLElement | null;
+    const editorRect = editorRoot ? absoluteRect(editorRoot) : null;
+    const editorStyle = editorRoot
+      ? window.getComputedStyle(editorRoot)
+      : null;
+    const editorPaddingLeft = editorStyle
+      ? parseFloat(editorStyle.paddingLeft) || 0
+      : 0;
+    const fixedLeft = editorRect
+      ? editorRect.left + editorPaddingLeft - rect.width - 10
+      : null;
+
     if (node.matches("ul:not([data-type=taskList]) li, ol li")) {
       rect.left -= options.dragHandleWidth;
     }
-    rect.width = options.dragHandleWidth;
 
-    dragHandleElement.style.left = `${rect.left - rect.width}px`;
+    dragHandleElement.style.left = `${fixedLeft ?? rect.left - rect.width}px`;
     dragHandleElement.style.top = `${rect.top}px`;
 
     currentHoveredNode = node;

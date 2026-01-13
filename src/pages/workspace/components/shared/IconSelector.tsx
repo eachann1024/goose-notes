@@ -173,7 +173,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   display: none !important;
                 }
               `}</style>
-              <div className="emoji-picker-react-wrapper absolute inset-0 -ml-3">
+              <div className="emoji-picker-react-wrapper absolute inset-0">
                 <EmojiPicker
                   onEmojiClick={(emojiData) => {
                     onChange(emojiData.emoji);
