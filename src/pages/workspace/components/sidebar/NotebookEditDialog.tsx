@@ -83,16 +83,19 @@ export function NotebookEditDialog({
       <div className="relative w-full max-w-md">
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
-          <div className={cn(
-            "inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-xl",
-            showDeleteConfirm
-              ? "bg-gradient-to-br from-destructive to-destructive/60 shadow-destructive/20"
-              : "bg-gradient-to-br from-primary to-primary/60 shadow-primary/20"
-          )}>
-            {showDeleteConfirm
-              ? <AlertTriangle className="w-8 h-8 text-white" />
-              : <BookOpen className="w-8 h-8 text-white" />
-            }
+          <div
+            className={cn(
+              "inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-xl",
+              showDeleteConfirm
+                ? "bg-gradient-to-br from-destructive to-destructive/60 shadow-destructive/20"
+                : "bg-gradient-to-br from-primary to-primary/60 shadow-primary/20",
+            )}
+          >
+            {showDeleteConfirm ? (
+              <AlertTriangle className="w-8 h-8 text-white" />
+            ) : (
+              <BookOpen className="w-8 h-8 text-white" />
+            )}
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             {showDeleteConfirm ? "永久删除记事本" : "编辑记事本"}
@@ -100,8 +103,7 @@ export function NotebookEditDialog({
           <p className="text-muted-foreground">
             {showDeleteConfirm
               ? "此操作无法撤销，请谨慎操作"
-              : "修改记事本的名称与图标"
-            }
+              : "修改记事本的名称与图标"}
           </p>
         </div>
 
@@ -109,7 +111,10 @@ export function NotebookEditDialog({
         {showDeleteConfirm ? (
           <div className="bg-gradient-to-br from-destructive/10 to-destructive/5 backdrop-blur-md border-2 border-destructive/20 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
-              <label htmlFor="confirm-delete" className="text-sm font-medium text-destructive">
+              <label
+                htmlFor="confirm-delete"
+                className="text-sm font-medium text-destructive"
+              >
                 确认删除 <span className="font-bold">{confirmName}</span>
               </label>
               <Input
@@ -126,7 +131,15 @@ export function NotebookEditDialog({
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => {
+                  if (openDeleteConfirm) {
+                    // 直接删除入口：关闭整个对话框
+                    onOpenChange(false);
+                  } else {
+                    // 编辑进入删除：返回编辑界面
+                    setShowDeleteConfirm(false);
+                  }
+                }}
                 className="flex-1"
               >
                 取消
@@ -148,9 +161,17 @@ export function NotebookEditDialog({
         ) : (
           <div className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border-2 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
-              <label className="text-sm font-medium text-muted-foreground">选择图标</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                选择图标
+              </label>
               <div className="flex justify-center">
-                <Suspense fallback={<Button variant="outline" className="h-16 w-16 text-2xl">...</Button>}>
+                <Suspense
+                  fallback={
+                    <Button variant="outline" className="h-16 w-16 text-2xl">
+                      ...
+                    </Button>
+                  }
+                >
                   <IconSelector
                     value={icon}
                     onChange={(val) => onIconChange(val || "📓")}
@@ -168,7 +189,10 @@ export function NotebookEditDialog({
             </div>
 
             <div className="space-y-3">
-              <label htmlFor="notebook-name" className="text-sm font-medium text-muted-foreground">
+              <label
+                htmlFor="notebook-name"
+                className="text-sm font-medium text-muted-foreground"
+              >
                 记事本名称
               </label>
               <Input
@@ -193,17 +217,18 @@ export function NotebookEditDialog({
         {!showDeleteConfirm && (
           <div className="flex flex-col gap-4 mt-6">
             {/* 删除按钮（仅在有多个记事本时显示） */}
-            {notebookId && Object.keys(useNotebooks.getState().notebooks).length > 1 && (
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full"
-              >
-                <LucideIcons.Trash2 className="mr-2 h-4 w-4" />
-                删除此记事本
-              </Button>
-            )}
+            {notebookId &&
+              Object.keys(useNotebooks.getState().notebooks).length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full"
+                >
+                  <LucideIcons.Trash2 className="mr-2 h-4 w-4" />
+                  删除此记事本
+                </Button>
+              )}
 
             <div className="flex justify-center gap-3">
               <Button
@@ -228,6 +253,6 @@ export function NotebookEditDialog({
         )}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

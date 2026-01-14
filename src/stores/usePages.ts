@@ -633,6 +633,34 @@ export const usePages = create<PagesState>()(
             return { activePageId: id };
           }
 
+          // 本地文件页面：切换时重新从磁盘读取内容
+          const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+          if (
+            notebook?.source === "local-folder" &&
+            page.localFilePath &&
+            !page.isFolder &&
+            (window as any).gooseFs
+          ) {
+            const markdownContent =
+              (window as any).gooseFs.readFile(page.localFilePath) || "";
+            const imported = importFromMarkdown(markdownContent);
+            const jsonContent = imported.content || {
+              type: "doc",
+              content: [],
+            };
+
+            return {
+              activePageId: id,
+              pages: {
+                ...state.pages,
+                [id]: {
+                  ...page,
+                  content: jsonContent,
+                },
+              },
+            };
+          }
+
           // 切换页面不应更新 updatedAt，只在真正编辑内容时更新
           return {
             activePageId: id,

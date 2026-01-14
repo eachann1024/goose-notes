@@ -55,10 +55,23 @@ export const useNotebooks = create<NotebooksState>()(
       lastActivePageByNotebook: {},
 
       createNotebook: (name = "Note", icon = "📓") => {
+        // 检查是否存在同名笔记本，生成唯一名称
+        const existingNames = new Set(
+          Object.values(get().notebooks).map((n) => n.name),
+        );
+
+        let finalName = name;
+        let suffix = 2;
+        const baseName = name;
+        while (existingNames.has(finalName)) {
+          finalName = `${baseName}(${suffix})`;
+          suffix++;
+        }
+
         const id = generateId();
         const notebook: Notebook = {
           id,
-          name,
+          name: finalName,
           icon,
           createdAt: Date.now(),
           updatedAt: Date.now(),

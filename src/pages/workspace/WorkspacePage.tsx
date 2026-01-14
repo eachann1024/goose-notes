@@ -81,26 +81,6 @@ export function WorkspacePage() {
             return;
           }
         }
-
-        if (eventType === "change") {
-          toast.info(`文件 ${filename} 已外部修改`, {
-            description: "是否重新加载页面内容？",
-            action: {
-              label: "重载",
-              onClick: () => {
-                // 重新加载页面内容
-                const filePath = `${dirPath}/${filename}`;
-                if ((window as any).gooseFs) {
-                  const content = (window as any).gooseFs.readFile(filePath);
-                  if (content) {
-                    // 简化的重新加载逻辑
-                    window.location.reload();
-                  }
-                }
-              },
-            },
-          });
-        }
       }
     };
 

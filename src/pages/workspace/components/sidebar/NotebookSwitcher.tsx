@@ -33,6 +33,7 @@ export function NotebookSwitcher() {
   const notebookList = Object.values(notebooks).sort(
     (a, b) => a.createdAt - b.createdAt,
   );
+  const canDeleteNotebook = Object.keys(notebooks).length > 1;
 
   const handleCreate = () => {
     setCreateDialog({ open: true, name: "", icon: "📓", error: "" });
@@ -69,20 +70,6 @@ export function NotebookSwitcher() {
       confirmName: notebook.name,
       icon: notebook.icon || "📓",
       openDeleteConfirm: false,
-    });
-  };
-
-  const handleOpenDelete = (id: string) => {
-    const notebook = notebooks[id];
-    if (!notebook) return;
-
-    setEditDialog({
-      open: true,
-      id,
-      name: notebook.name,
-      confirmName: notebook.name,
-      icon: notebook.icon || "📓",
-      openDeleteConfirm: true,
     });
   };
 
@@ -172,7 +159,25 @@ export function NotebookSwitcher() {
                 {activeNotebookId === notebook.id && (
                   <LucideIcons.Check className="h-4 w-4" />
                 )}
-                {notebook.source !== "local-folder" && (
+                {notebook.source === "local-folder" ? (
+                  canDeleteNotebook && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+                        activeNotebookId === notebook.id && "opacity-0",
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotebook(notebook.id);
+                      }}
+                      title="删除本地记事本"
+                    >
+                      <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )
+                ) : (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -186,27 +191,6 @@ export function NotebookSwitcher() {
                     }}
                   >
                     <LucideIcons.Settings className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {Object.keys(notebooks).length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-                      activeNotebookId === notebook.id && "opacity-0",
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (notebook.source === "local-folder") {
-                        deleteNotebook(notebook.id);
-                        setIsOpen(false);
-                        return;
-                      }
-                      handleOpenDelete(notebook.id);
-                    }}
-                  >
-                    <LucideIcons.Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
