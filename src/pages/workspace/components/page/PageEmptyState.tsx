@@ -1,11 +1,9 @@
-import { Search, Keyboard, Plus, Sparkles, ArrowRight } from "lucide-react";
+import { Search, Plus, Sparkles } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { ShortcutDialog } from "./ShortcutDialog";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { getPageTitle } from "@/lib/page-title";
-import { formatShortcut } from "@/lib/utils";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 const tips = [
@@ -17,22 +15,6 @@ const tips = [
 
 function getRandomTip() {
   return tips[Math.floor(Math.random() * tips.length)];
-}
-
-function formatActionShortcut(shortcut: string) {
-  // 将 "⌘ + ⌥ + P" 格式转换为 formatShortcut 所需的 "mod+alt+p" 格式
-  const mapping: Record<string, string> = {
-    "⌘": "mod",
-    "⌥": "alt",
-    "⇧": "shift",
-    "⌫": "backspace",
-    "↵": "enter",
-  };
-  const normalized = shortcut
-    .split(/[\s+]+/)
-    .map((part) => mapping[part] || part.toLowerCase())
-    .join("+");
-  return formatShortcut(normalized);
 }
 
 const isEmptyContent = (content: any) => {
@@ -51,7 +33,6 @@ const isEmptyContent = (content: any) => {
 };
 
 export function PageEmptyState() {
-  const [shortcutOpen, setShortcutOpen] = useState(false);
   const { createPage, createLocalPage, pages, setActivePage } = usePages();
   const { activeNotebookId, notebooks, createNotebook, setActiveNotebook } =
     useNotebooks();
@@ -119,11 +100,6 @@ export function PageEmptyState() {
         e.preventDefault();
         onCreatePage();
       }
-      // Cmd+/: 快捷键对话框
-      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
-        e.preventDefault();
-        setShortcutOpen(true);
-      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -137,7 +113,6 @@ export function PageEmptyState() {
       icon: Plus,
       title: "新建页面",
       description: "创建一个空白页面开始记录",
-      shortcut: "⌘ + ⌥ + P",
       onClick: onCreatePage,
       color: "from-primary to-primary/60",
     },
@@ -145,17 +120,8 @@ export function PageEmptyState() {
       icon: Search,
       title: "搜索内容",
       description: "快速查找已记录的内容",
-      shortcut: "⌘ + K",
       onClick: onSearch,
       color: "from-blue-500 to-blue-500/60",
-    },
-    {
-      icon: Keyboard,
-      title: "快捷键",
-      description: "查看所有可用快捷键",
-      shortcut: "⌘ + /",
-      onClick: () => setShortcutOpen(true),
-      color: "from-purple-500 to-purple-500/60",
     },
   ];
 
@@ -184,7 +150,7 @@ export function PageEmptyState() {
         </div>
 
         {/* 操作卡片网格 */}
-        <div className="grid md:grid-cols-3 gap-5 mb-12">
+        <div className="grid md:grid-cols-2 gap-5 mb-12 max-w-2xl mx-auto">
           {actions.map((action, index) => {
             const Icon = action.icon;
             return (
@@ -204,29 +170,13 @@ export function PageEmptyState() {
                 <h3 className="text-lg font-semibold text-foreground mb-2 text-left">
                   {action.title}
                 </h3>
-                <p className="text-sm text-muted-foreground text-left mb-4">
+                <p className="text-sm text-muted-foreground text-left">
                   {action.description}
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                    {formatActionShortcut(action.shortcut)}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
               </button>
             );
           })}
         </div>
-
-        {/* 插画区域 */}
-        {/* <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl blur-3xl" />
-          <img
-            src="https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png"
-            alt="Welcome"
-            className="relative w-full h-auto max-h-[40vh] object-contain opacity-90 mx-auto"
-          />
-        </div> */}
 
         {/* 提示信息 */}
         <div className="text-center mt-8">
@@ -236,9 +186,6 @@ export function PageEmptyState() {
           </p>
         </div>
       </div>
-
-      {/* 快捷键对话框 */}
-      <ShortcutDialog open={shortcutOpen} onOpenChange={setShortcutOpen} />
     </div>
   );
 }
