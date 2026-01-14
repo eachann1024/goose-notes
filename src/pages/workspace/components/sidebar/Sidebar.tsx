@@ -319,7 +319,7 @@ export function Sidebar({ className }: SidebarProps) {
           onRequestRename={openRenameDialog}
         />
 
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           <div className="mt-1">
             <SectionHeader
               title="页面"
@@ -341,7 +341,7 @@ export function Sidebar({ className }: SidebarProps) {
               />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <SidebarFooter
           onOpenTrash={() => {

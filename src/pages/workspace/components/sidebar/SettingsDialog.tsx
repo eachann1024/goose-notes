@@ -101,15 +101,19 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       try {
         let firstWorkspaceId: string | null = null;
         let firstPageId: string | null = null;
+        let notebookCount = 0;
+        let pageCount = 0;
 
         await importNotebooksFromZip(
           file,
           (name) => {
+            notebookCount++;
             const id = createNotebook(name);
             if (!firstWorkspaceId) firstWorkspaceId = id;
             return id;
           },
           (data, workspaceId, parentId) => {
+            pageCount++;
             const id = createPage(parentId, workspaceId);
             updatePage(id, data);
             if (!firstPageId) firstPageId = id;
@@ -124,7 +128,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         if (firstPageId) setActivePage(firstPageId);
 
         toast.success("导入成功", {
-          description: "已恢复记事本和页面结构",
+          description: `已恢复 ${notebookCount} 个记事本，共 ${pageCount} 个页面`,
         });
       } catch (err) {
         console.error("Import failed", err);
@@ -183,7 +187,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">设置</h1>
-            <p className="text-sm text-muted-foreground">配置应用偏好与数据管理</p>
+            <p className="text-sm text-muted-foreground">
+              配置应用偏好与数据管理
+            </p>
           </div>
         </div>
         <button
@@ -205,7 +211,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "general"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground",
               )}
             >
               <LucideIcons.Settings className="w-5 h-5" />
@@ -217,7 +223,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "appearance"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground",
               )}
             >
               <LucideIcons.Laptop className="w-5 h-5" />
@@ -229,7 +235,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 activeTab === "data"
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground"
+                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 text-muted-foreground",
               )}
             >
               <LucideIcons.Database className="w-5 h-5" />
@@ -307,7 +313,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           : "全选"}
                       </Button>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 gap-3 p-1">
                       {notebookList.map((notebook) => (
                         <button
                           key={notebook.id}
@@ -316,13 +322,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             "flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all duration-200 text-left",
                             selectedIds.includes(notebook.id)
                               ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5"
-                              : "border-border hover:border-primary/30 hover:bg-gradient-to-br hover:from-muted/40 hover:to-muted/20"
+                              : "border-border hover:border-primary/30 hover:bg-gradient-to-br hover:from-muted/40 hover:to-muted/20",
                           )}
                         >
                           <span className="text-xl shrink-0">
                             {notebook.icon || "📓"}
                           </span>
-                          <span className="truncate text-sm">{notebook.name}</span>
+                          <span className="truncate text-sm">
+                            {notebook.name}
+                          </span>
                           {selectedIds.includes(notebook.id) && (
                             <Check className="w-4 h-4 text-primary ml-auto shrink-0" />
                           )}
@@ -420,12 +428,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </div>
             </div>
             <div className="space-y-3 mb-6">
-              <Label htmlFor="reset-all" className="text-muted-foreground text-sm">
+              <Label
+                htmlFor="reset-all"
+                className="text-muted-foreground text-sm"
+              >
                 请输入
                 <span className="font-bold text-foreground select-all">
-                  {" "}{resetPhrase}
-                </span>
-                {" "}以确认重置
+                  {" "}
+                  {resetPhrase}
+                </span>{" "}
+                以确认重置
               </Label>
               <Input
                 id="reset-all"
@@ -457,6 +469,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </div>
       )}
     </div>,
-    document.body
+    document.body,
   );
 }

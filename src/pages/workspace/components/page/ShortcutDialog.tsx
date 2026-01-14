@@ -1,8 +1,8 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Search as SearchIcon } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { UToolsAdapter } from "@/lib/utools";
 
 interface ShortcutGroup {
   title: string;
@@ -94,23 +94,24 @@ export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
       .filter((group) => group.shortcuts.length > 0);
   }, [searchQuery]);
 
+  const isUTools = UToolsAdapter.isUTools;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent
+        className={cn(
+          "p-0 overflow-hidden flex flex-col",
+          isUTools
+            ? "max-w-2xl w-[95vw] max-h-[70vh]"
+            : "max-w-4xl w-[90vw] max-h-[85vh]"
+        )}
+      >
         {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h2 className="text-2xl font-bold">快捷键</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              查看所有可用的键盘快捷键
-            </p>
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className={cn("border-b", isUTools ? "p-4" : "p-6")}>
+          <h2 className={cn("font-bold", isUTools ? "text-xl" : "text-2xl")}>快捷键</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            查看所有可用的键盘快捷键
+          </p>
         </div>
 
         {/* 搜索框 */}
@@ -127,9 +128,9 @@ export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
           </div>
         </div>
 
-        {/* 快捷键列表 */}
-        <ScrollArea className="flex-1">
-          <div className="p-6 space-y-8">
+        {/* 快捷键列表 - 使用原生滚动 */}
+        <div className="flex-1 overflow-y-auto">
+          <div className={cn("space-y-8", isUTools ? "p-4" : "p-6")}>
             {filteredGroups.map((group) => (
               <div key={group.title}>
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
@@ -169,7 +170,7 @@ export function ShortcutDialog({ open, onOpenChange }: ShortcutDialogProps) {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -51,15 +51,57 @@ export function CodeBlockToolbar({
     }
   };
 
-  const filteredLanguages = search
-    ? POPULAR_LANGUAGES.filter(
-        (lang) =>
-          lang.toLowerCase().includes(search.toLowerCase()) ||
-          LANGUAGE_DISPLAY_NAMES[lang]
-            ?.toLowerCase()
-            .includes(search.toLowerCase()),
-      )
-    : POPULAR_LANGUAGES;
+  /* Fuzzy match logic */
+  const filteredLanguages = useMemo(() => {
+    if (!search) return POPULAR_LANGUAGES;
+
+    const lowerSearch = search.toLowerCase();
+    
+    // Fuzzy match function
+    const fuzzyMatch = (text: string) => {
+      let searchIdx = 0;
+      let textIdx = 0;
+      const lowerText = text.toLowerCase();
+      
+      while (searchIdx < lowerSearch.length && textIdx < lowerText.length) {
+        if (lowerSearch[searchIdx] === lowerText[textIdx]) {
+          searchIdx++;
+        }
+        textIdx++;
+      }
+      return searchIdx === lowerSearch.length;
+    };
+
+    return POPULAR_LANGUAGES.filter((lang) => {
+      const displayName = LANGUAGE_DISPLAY_NAMES[lang] || lang;
+      return fuzzyMatch(lang) || fuzzyMatch(displayName);
+    }).sort((a, b) => {
+      const aName = a.toLowerCase();
+      const bName = b.toLowerCase();
+      const aDisplay = (LANGUAGE_DISPLAY_NAMES[a] || a).toLowerCase();
+      const bDisplay = (LANGUAGE_DISPLAY_NAMES[b] || b).toLowerCase();
+
+      // Priority 1: Exact match
+      if (aName === lowerSearch) return -1;
+      if (bName === lowerSearch) return 1;
+
+      // Priority 2: Starts with (checking key and display name)
+      const aStarts = aName.startsWith(lowerSearch) || aDisplay.startsWith(lowerSearch);
+      const bStarts = bName.startsWith(lowerSearch) || bDisplay.startsWith(lowerSearch);
+      
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      // Priority 3: Contains
+      const aIncludes = aName.includes(lowerSearch) || aDisplay.includes(lowerSearch);
+      const bIncludes = bName.includes(lowerSearch) || bDisplay.includes(lowerSearch);
+
+      if (aIncludes && !bIncludes) return -1;
+      if (!aIncludes && bIncludes) return 1;
+
+      return 0; // Keep original order for fuzzy matches
+    });
+  }, [search]);
 
   useEffect(() => {
     if (isOpen) {
@@ -104,6 +146,7 @@ export function CodeBlockToolbar({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setSearch(e.target.value)
                   }
+                  onKeyDown={(e) => e.stopPropagation()}
                   className="h-7 text-xs"
                 />
               </div>

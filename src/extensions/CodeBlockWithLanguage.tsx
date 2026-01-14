@@ -107,9 +107,13 @@ function CodeBlockWithLanguageView({
 
 export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
   addAttributes() {
+    const parentAttrs = this.parent?.() || {};
+    const languageAttr = (parentAttrs as Record<string, unknown>).language as Record<string, unknown> | undefined;
     return {
-      ...this.parent?.(),
+      ...parentAttrs,
+      // Keep parent's language attribute with its parseHTML intact
       language: {
+        ...languageAttr,
         default: null,
       },
       wrap: {
@@ -315,7 +319,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
           newState.doc.descendants((node, pos) => {
             if (
               node.type.name === this.name &&
-              !node.attrs.language &&
+              (!node.attrs.language || node.attrs.language === "") &&
               node.textContent
             ) {
               // @ts-ignore

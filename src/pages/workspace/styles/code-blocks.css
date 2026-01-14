@@ -113,6 +113,78 @@
 .github-light .ProseMirror pre .hljs-variable {
   color: #953800;
 }
+/* Extended tokens for markdown/yaml/json etc */
+.github-light .ProseMirror pre .hljs-section {
+  color: #0550ae;
+  font-weight: bold;
+}
+.github-light .ProseMirror pre .hljs-strong {
+  font-weight: bold;
+}
+.github-light .ProseMirror pre .hljs-emphasis {
+  font-style: italic;
+}
+.github-light .ProseMirror pre .hljs-bullet {
+  color: #cf222e;
+}
+.github-light .ProseMirror pre .hljs-link {
+  color: #0969da;
+}
+.github-light .ProseMirror pre .hljs-quote {
+  color: #57606a;
+  font-style: italic;
+}
+.github-light .ProseMirror pre .hljs-code {
+  color: #953800;
+  background: rgba(175, 184, 193, 0.2);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+.github-light .ProseMirror pre .hljs-attr {
+  color: #0550ae;
+}
+.github-light .ProseMirror pre .hljs-literal {
+  color: #0550ae;
+}
+.github-light .ProseMirror pre .hljs-meta {
+  color: #8250df;
+}
+.github-light .ProseMirror pre .hljs-name {
+  color: #116329;
+}
+.github-light .ProseMirror pre .hljs-tag {
+  color: #116329;
+}
+.github-light .ProseMirror pre .hljs-selector-tag {
+  color: #116329;
+}
+.github-light .ProseMirror pre .hljs-selector-class {
+  color: #8250df;
+}
+.github-light .ProseMirror pre .hljs-selector-id {
+  color: #0550ae;
+}
+.github-light .ProseMirror pre .hljs-property {
+  color: #0550ae;
+}
+.github-light .ProseMirror pre .hljs-function {
+  color: #8250df;
+}
+.github-light .ProseMirror pre .hljs-class {
+  color: #953800;
+}
+.github-light .ProseMirror pre .hljs-regexp {
+  color: #0a3069;
+}
+.github-light .ProseMirror pre .hljs-operator {
+  color: #cf222e;
+}
+.github-light .ProseMirror pre .hljs-params {
+  color: #24292f;
+}
+.github-light .ProseMirror pre .hljs-punctuation {
+  color: #24292f;
+}
 
 .github-dark {
   --code-bg: #0d1117;
@@ -140,6 +212,78 @@
 }
 .github-dark .ProseMirror pre .hljs-variable {
   color: #79c0ff;
+}
+/* Extended tokens for markdown/yaml/json etc */
+.github-dark .ProseMirror pre .hljs-section {
+  color: #79c0ff;
+  font-weight: bold;
+}
+.github-dark .ProseMirror pre .hljs-strong {
+  font-weight: bold;
+}
+.github-dark .ProseMirror pre .hljs-emphasis {
+  font-style: italic;
+}
+.github-dark .ProseMirror pre .hljs-bullet {
+  color: #ff7b72;
+}
+.github-dark .ProseMirror pre .hljs-link {
+  color: #58a6ff;
+}
+.github-dark .ProseMirror pre .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+.github-dark .ProseMirror pre .hljs-code {
+  color: #ffa657;
+  background: rgba(110, 118, 129, 0.2);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+.github-dark .ProseMirror pre .hljs-attr {
+  color: #79c0ff;
+}
+.github-dark .ProseMirror pre .hljs-literal {
+  color: #79c0ff;
+}
+.github-dark .ProseMirror pre .hljs-meta {
+  color: #d2a8ff;
+}
+.github-dark .ProseMirror pre .hljs-name {
+  color: #7ee787;
+}
+.github-dark .ProseMirror pre .hljs-tag {
+  color: #7ee787;
+}
+.github-dark .ProseMirror pre .hljs-selector-tag {
+  color: #7ee787;
+}
+.github-dark .ProseMirror pre .hljs-selector-class {
+  color: #d2a8ff;
+}
+.github-dark .ProseMirror pre .hljs-selector-id {
+  color: #79c0ff;
+}
+.github-dark .ProseMirror pre .hljs-property {
+  color: #79c0ff;
+}
+.github-dark .ProseMirror pre .hljs-function {
+  color: #d2a8ff;
+}
+.github-dark .ProseMirror pre .hljs-class {
+  color: #ffa657;
+}
+.github-dark .ProseMirror pre .hljs-regexp {
+  color: #a5d6ff;
+}
+.github-dark .ProseMirror pre .hljs-operator {
+  color: #ff7b72;
+}
+.github-dark .ProseMirror pre .hljs-params {
+  color: #c9d1d9;
+}
+.github-dark .ProseMirror pre .hljs-punctuation {
+  color: #c9d1d9;
 }
 
 /* 2. One Light/Dark (Modern) */

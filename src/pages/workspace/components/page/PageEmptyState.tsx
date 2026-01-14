@@ -5,6 +5,7 @@ import { ShortcutDialog } from "./ShortcutDialog";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { getPageTitle } from "@/lib/page-title";
+import { formatShortcut } from "@/lib/utils";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 const tips = [
@@ -16,6 +17,22 @@ const tips = [
 
 function getRandomTip() {
   return tips[Math.floor(Math.random() * tips.length)];
+}
+
+function formatActionShortcut(shortcut: string) {
+  // 将 "⌘ + ⌥ + P" 格式转换为 formatShortcut 所需的 "mod+alt+p" 格式
+  const mapping: Record<string, string> = {
+    "⌘": "mod",
+    "⌥": "alt",
+    "⇧": "shift",
+    "⌫": "backspace",
+    "↵": "enter",
+  };
+  const normalized = shortcut
+    .split(/[\s+]+/)
+    .map((part) => mapping[part] || part.toLowerCase())
+    .join("+");
+  return formatShortcut(normalized);
 }
 
 const isEmptyContent = (content: any) => {
@@ -179,7 +196,9 @@ export function PageEmptyState() {
                 type="button"
                 className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/80 hover:to-card/60 cursor-pointer"
               >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                >
                   <Icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2 text-left">
@@ -190,7 +209,7 @@ export function PageEmptyState() {
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                    {action.shortcut}
+                    {formatActionShortcut(action.shortcut)}
                   </span>
                   <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>

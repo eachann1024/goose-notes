@@ -192,16 +192,17 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       // Handle "normal" or invalid
       if (isNaN(lineHeight)) {
         lineHeight = fontSize * 1.2;
-      } 
+      }
       // Handle unitless multiplier (unlikely in computed style but safe to handle)
       else if (lineHeight < 5) {
         lineHeight = lineHeight * fontSize;
       }
 
       // Use actual handle height if available, fallback to 24px
-      const handleHeight = dragHandleElement && dragHandleElement.offsetHeight > 0 
-        ? dragHandleElement.offsetHeight 
-        : 24;
+      const handleHeight =
+        dragHandleElement && dragHandleElement.offsetHeight > 0
+          ? dragHandleElement.offsetHeight
+          : 24;
 
       rect.top += (lineHeight - handleHeight) / 2;
     }
@@ -210,9 +211,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
     const editorRoot = node.closest(".ProseMirror") as HTMLElement | null;
     const editorRect = editorRoot ? absoluteRect(editorRoot) : null;
-    const editorStyle = editorRoot
-      ? window.getComputedStyle(editorRoot)
-      : null;
+    const editorStyle = editorRoot ? window.getComputedStyle(editorRoot) : null;
     const editorPaddingLeft = editorStyle
       ? parseFloat(editorStyle.paddingLeft) || 0
       : 0;
@@ -476,6 +475,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         },
         mousewheel: () => {
           hideDragHandle();
+          return false;
         },
         dragstart: (view) => {
           view.dom.classList.add("dragging");
