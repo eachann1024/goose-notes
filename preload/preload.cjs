@@ -181,64 +181,67 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   };
 
   utools.onPluginEnter(({ code, type, payload }) => {
-    if (code !== "open_folder") return;
-    if (type !== "files" && type !== "file") return;
-    if (!payload || payload.length === 0) return;
+    // 确保每次进入插件都重新设置 subInput
+    if (typeof utools.setSubInput === "function") {
+      const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
+      utools.setSubInput(
+        ({ text }) => {
+          // 只有当不是因为应用同步导致的变化时才派发事件
+          if (window.__gooseNoteSuppressNextChange && text === window.__gooseNoteLastAppValue) {
+            window.__gooseNoteSuppressNextChange = false;
+            return;
+          }
 
-    const folderPath = payload[0]?.path;
-    if (!folderPath) return;
+          window.dispatchEvent(
+            new CustomEvent(UTOOLS_INPUT_EVENT, {
+              detail: { text },
+            }),
+          );
+        },
+        "搜索笔记",
+        true,
+      );
+    }
 
-    try {
-      const stat = fs.statSync(folderPath);
-      if (!stat.isDirectory()) return;
-    } catch (err) {
-      console.error("[gooseFs] stat failed:", err);
+    if (code === "open_folder") {
+      if ((type === "files" || type === "file") && payload && payload.length > 0) {
+        const folderPath = payload[0]?.path;
+        if (folderPath) {
+          try {
+            const stat = fs.statSync(folderPath);
+            if (stat.isDirectory()) {
+              dispatchOpenFolder(folderPath);
+            }
+          } catch (err) {
+            console.error("[gooseFs] stat failed:", err);
+          }
+        }
+      }
       return;
     }
-
-    dispatchOpenFolder(folderPath);
   });
 
-  if (typeof utools.setSubInput === "function") {
-    const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
-    const APP_SYNC_EVENT = "goose-note:utools-search-sync";
-    let suppressNextChange = false;
-    let lastAppValue = "";
+  // 移出原有的全局 setSubInput，并优化同步逻辑
+  const APP_SYNC_EVENT = "goose-note:utools-search-sync";
+  window.__gooseNoteSuppressNextChange = false;
+  window.__gooseNoteLastAppValue = "";
 
-    utools.setSubInput(
-      ({ text }) => {
-        if (suppressNextChange && text === lastAppValue) {
-          suppressNextChange = false;
-          return;
-        }
-
-        window.dispatchEvent(
-          new CustomEvent(UTOOLS_INPUT_EVENT, {
-            detail: { text },
-          }),
-        );
-      },
-      "搜索笔记",
-      true,
-    );
-
-    if (typeof utools.onPluginOut === "function") {
-      utools.onPluginOut(() => {
-        if (typeof utools.removeSubInput === "function") {
-          utools.removeSubInput();
-        }
-      });
-    }
-
-    window.addEventListener(APP_SYNC_EVENT, (event) => {
-      const detail = event.detail || {};
-      const text = typeof detail.text === "string" ? detail.text : "";
-      if (text === lastAppValue) return;
-      lastAppValue = text;
-      if (typeof utools.setSubInputValue === "function") {
-        suppressNextChange = true;
-        utools.setSubInputValue(text);
+  if (typeof utools.onPluginOut === "function") {
+    utools.onPluginOut(() => {
+      if (typeof utools.removeSubInput === "function") {
+        utools.removeSubInput();
       }
     });
   }
+
+  window.addEventListener(APP_SYNC_EVENT, (event) => {
+    const detail = event.detail || {};
+    const text = typeof detail.text === "string" ? detail.text : "";
+    if (text === window.__gooseNoteLastAppValue) return;
+    window.__gooseNoteLastAppValue = text;
+    if (typeof utools.setSubInputValue === "function") {
+      window.__gooseNoteSuppressNextChange = true;
+      utools.setSubInputValue(text);
+    }
+  });
 }
