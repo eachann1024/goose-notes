@@ -196,7 +196,6 @@ export async function exportNotebooks(
           content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleForHtml}</title><style>img { max-width: 100%; }</style></head><body><h1>${titleForHtml}</h1>${html}</body></html>`;
           extension = ".html";
           break;
-
       }
 
       const fileName =
@@ -573,6 +572,12 @@ function nodeToMarkdown(node: JSONContent): string {
 
     case "codeBlock": {
       const lang = node.attrs?.language || "";
+      if (lang === "math") {
+        return "$$\n" + (node.content?.[0]?.text || "") + "\n$$\n";
+      }
+      if (lang === "yaml-frontmatter") {
+        return "---\n" + (node.content?.[0]?.text || "") + "\n---\n";
+      }
       return "```" + lang + "\n" + (node.content?.[0]?.text || "") + "\n```\n";
     }
 
@@ -634,6 +639,22 @@ function nodeToMarkdown(node: JSONContent): string {
       return [headerLine, separatorLine, ...bodyLines].join("\n") + "\n";
     }
 
+    case "details": {
+      const summary = node.content?.find((c) => c.type === "detailsSummary");
+      const content = node.content?.find((c) => c.type === "detailsContent");
+      const summaryText = summary
+        ? inlineContentToMarkdown(summary.content)
+        : "详情";
+      const contentMarkdown = content ? jsonContentToMarkdown(content) : "";
+      return `<details>\n<summary>${summaryText}</summary>\n\n${contentMarkdown}\n</details>\n`;
+    }
+
+    case "callout": {
+      const emoji = node.attrs?.emoji || "💡";
+      const text = inlineContentToMarkdown(node.content);
+      return `> [!INFO] ${emoji} ${text}\n`;
+    }
+
     default:
       return inlineContentToMarkdown(node.content) + "\n";
   }
@@ -649,6 +670,10 @@ function inlineContentToMarkdown(content?: JSONContent[]): string {
 
   return content
     .map((node) => {
+      if (node.type === "inlineMath") {
+        return `$${node.attrs?.value || ""}$`;
+      }
+
       let text = node.text || "";
 
       if (node.marks) {
@@ -669,6 +694,18 @@ function inlineContentToMarkdown(content?: JSONContent[]): string {
             case "link":
               text = `[${text}](${mark.attrs?.href || ""})`;
               break;
+            case "underline":
+              text = `<u>${text}</u>`;
+              break;
+            case "superscript":
+              text = `<sup>${text}</sup>`;
+              break;
+            case "subscript":
+              text = `<sub>${text}</sub>`;
+              break;
+            case "highlight":
+              text = `==${text}==`;
+              break;
           }
         }
       }
@@ -686,9 +723,79 @@ function markdownToJsonContent(markdown: string): JSONContent {
   const content: JSONContent[] = [];
   let i = 0;
 
+  // 识别 YAML Frontmatter
+  if (lines.length > 0 && lines[0].trim() === "---") {
+    const frontmatterLines: string[] = [];
+    i++;
+    while (i < lines.length && lines[i].trim() !== "---") {
+      frontmatterLines.push(lines[i]);
+      i++;
+    }
+    if (i < lines.length && lines[i].trim() === "---") {
+      // 将 Frontmatter 存为一个特殊的代码块，以便还原
+      content.push({
+        type: "codeBlock",
+        attrs: { language: "yaml-frontmatter" },
+        content: [{ type: "text", text: frontmatterLines.join("\n") }],
+      });
+      i++;
+    } else {
+      // 如果没找到结尾的 ---，重置指针，按普通内容处理
+      i = 0;
+    }
+  }
+
   while (i < lines.length) {
     const line = lines[i];
     const trimmedLine = line.trim();
+
+    if (trimmedLine.startsWith("<details>")) {
+      const detailsLines: string[] = [];
+      let summaryText = "详情";
+      i++;
+      while (i < lines.length && !lines[i].trim().includes("</details>")) {
+        const line = lines[i].trim();
+        if (line.startsWith("<summary>") && line.endsWith("</summary>")) {
+          summaryText = line.replace("<summary>", "").replace("</summary>", "");
+        } else {
+          detailsLines.push(lines[i]);
+        }
+        i++;
+      }
+
+      const subContent = markdownToJsonContent(detailsLines.join("\n"));
+      content.push({
+        type: "details",
+        content: [
+          {
+            type: "detailsSummary",
+            content: [{ type: "text", text: summaryText }],
+          },
+          {
+            type: "detailsContent",
+            content: subContent.content || [],
+          },
+        ],
+      });
+      i++;
+      continue;
+    }
+
+    if (trimmedLine === "$$") {
+      const mathLines: string[] = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== "$$") {
+        mathLines.push(lines[i]);
+        i++;
+      }
+      content.push({
+        type: "codeBlock",
+        attrs: { language: "math" },
+        content: [{ type: "text", text: mathLines.join("\n") }],
+      });
+      i++;
+      continue;
+    }
 
     if (line.startsWith("```")) {
       const lang = line.slice(3).trim();
@@ -726,7 +833,24 @@ function markdownToJsonContent(markdown: string): JSONContent {
 
     if (trimmedLine.startsWith(">")) {
       const quoteLines: string[] = [];
-      quoteLines.push(trimmedLine.slice(1).trim());
+      const firstLine = trimmedLine.slice(1).trim();
+
+      // 识别 Callout 语法: > [!INFO] 💡 内容
+      const calloutMatch = firstLine.match(
+        /^\[!INFO\]\s+(?:([\uD800-\uDBFF][\uDC00-\uDFFF]|\S))\s+(.+)$/i,
+      );
+
+      if (calloutMatch) {
+        content.push({
+          type: "callout",
+          attrs: { emoji: calloutMatch[1] },
+          content: parseInlineMarkdown(calloutMatch[2]),
+        });
+        i++;
+        continue;
+      }
+
+      quoteLines.push(firstLine);
       i++;
 
       while (i < lines.length && lines[i].trim().startsWith(">")) {
@@ -885,12 +1009,50 @@ function markdownToJsonContent(markdown: string): JSONContent {
     }
 
     if (line.trim()) {
-      const inline = parseInlineMarkdown(line);
-      content.push(
-        inline.length > 0
-          ? { type: "paragraph", content: inline }
-          : { type: "paragraph" },
-      );
+      // 收集连续的非特殊行作为一个段落，防止 HTML 块或长文本被拆散
+      const paragraphLines: string[] = [];
+
+      while (i < lines.length) {
+        const currentLine = lines[i];
+        const trimmed = currentLine.trim();
+
+        // 如果遇到空行或特殊语法的起始符，结束当前段落收集
+        if (!trimmed) break;
+
+        // 检查是否是其他语法的起始
+        if (paragraphLines.length > 0) {
+          if (
+            currentLine.startsWith("#") ||
+            currentLine.startsWith(">") ||
+            currentLine.startsWith("```") ||
+            currentLine.startsWith("$$") ||
+            currentLine.match(/^-\s+\[[ x]\]/) ||
+            currentLine.match(/^[-*+]\s+/) ||
+            currentLine.match(/^\d+\.\s+/) ||
+            currentLine.match(/^---+$/) ||
+            currentLine.match(/^\|/)
+          ) {
+            break;
+          }
+        }
+
+        paragraphLines.push(currentLine);
+        i++;
+      }
+
+      if (paragraphLines.length > 0) {
+        // 如果内容以 < 开头，可能是 HTML 块，使用换行符保留结构；否则使用空格按普通段落合并
+        const isHtmlBlock = paragraphLines[0].trim().startsWith("<");
+        const combinedText = paragraphLines.join(isHtmlBlock ? "\n" : " ");
+
+        const inline = parseInlineMarkdown(combinedText);
+        content.push(
+          inline.length > 0
+            ? { type: "paragraph", content: inline }
+            : { type: "paragraph" },
+        );
+        continue;
+      }
     } else if (
       content.length > 0 &&
       content[content.length - 1].type !== "paragraph"
@@ -908,7 +1070,7 @@ function parseInlineMarkdown(text: string): JSONContent[] {
   if (!text) return result;
 
   const regex =
-    /(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
+    /(\$((?:\\\$|[^\$])+?)\$|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
   let lastIndex = 0;
   let match;
 
@@ -918,26 +1080,35 @@ function parseInlineMarkdown(text: string): JSONContent[] {
     }
 
     if (match[2]) {
-      result.push({ type: "text", text: match[2], marks: [{ type: "bold" }] });
+      // 匹配到 $...$，创建 inlineMath 节点，使其在编辑器中以公式形式显示
+      result.push({ type: "inlineMath", attrs: { value: match[2] } });
     } else if (match[3]) {
       result.push({
         type: "text",
         text: match[3],
-        marks: [{ type: "italic" }],
+        marks: [{ type: "highlight" }],
       });
     } else if (match[4]) {
+      result.push({ type: "text", text: match[4], marks: [{ type: "bold" }] });
+    } else if (match[5]) {
       result.push({
         type: "text",
-        text: match[4],
-        marks: [{ type: "strike" }],
+        text: match[5],
+        marks: [{ type: "italic" }],
       });
-    } else if (match[5]) {
-      result.push({ type: "text", text: match[5], marks: [{ type: "code" }] });
-    } else if (match[6] && match[7]) {
+    } else if (match[6]) {
       result.push({
         type: "text",
         text: match[6],
-        marks: [{ type: "link", attrs: { href: match[7] } }],
+        marks: [{ type: "strike" }],
+      });
+    } else if (match[7]) {
+      result.push({ type: "text", text: match[7], marks: [{ type: "code" }] });
+    } else if (match[8] && match[9]) {
+      result.push({
+        type: "text",
+        text: match[8],
+        marks: [{ type: "link", attrs: { href: match[9] } }],
       });
     }
 

@@ -114,6 +114,8 @@ export const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
   objectc: "Objective-C",
   vim: "Vim Script",
   wasm: "WebAssembly",
+  math: "数学公式 ($$)",
+  "yaml-frontmatter": "文档元数据 (YAML)",
 };
 
 export const FORMAT_SUPPORTED_LANGUAGES = [

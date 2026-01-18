@@ -293,7 +293,10 @@ export function Editor({ editable = true }: EditorProps) {
   }
 
   return (
-    <div className={cn(fontFamilyClass, fontSizeClass, widthClass)}>
+    <div
+      className={cn(fontFamilyClass, fontSizeClass, widthClass)}
+      data-onboarding="editor"
+    >
       <EditorBubbleMenu editor={editor} />
       <LinkHoverMenu editor={editor} />
       <TableHoverControls editor={editor} />
@@ -304,7 +307,9 @@ export function Editor({ editable = true }: EditorProps) {
         searchProviders={searchProviders}
         openSearchInUtools={utools.openSearchInUtools}
       >
-        <EditorContent editor={editor} />
+        <div data-onboarding="editor-content">
+          <EditorContent editor={editor} />
+        </div>
       </EditorContextMenu>
     </div>
   );

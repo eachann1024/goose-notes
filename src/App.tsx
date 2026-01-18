@@ -3,11 +3,9 @@ import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
-import {
-  useSettings,
-  type UIFontSize,
-  EDITOR_FONT_SIZE_DEFAULT,
-} from "@/stores/useSettings";
+import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
+import { useOnboardingGuide } from "./stores/useOnboardingGuide";
+import { OnboardingOverlay } from "./components/onboarding/OnboardingOverlay";
 
 const UI_FONT_SIZE_MAP = {
   small: 14,
@@ -15,25 +13,34 @@ const UI_FONT_SIZE_MAP = {
   large: 18,
 } as const;
 
-const UI_FONT_SEQUENCE: UIFontSize[] = ["small", "normal", "large"];
-
 function App() {
   const {
     uiFontSize,
     editorFontSize,
-    setUIFontSize,
     increaseEditorFontSize,
     decreaseEditorFontSize,
     setEditorFontSize,
     customFonts,
   } = useSettings();
   const { createOnboardingPages, onboardingCompleted, hydrated } = usePages();
+  const { start: startGuide, completed: guideCompleted } = useOnboardingGuide();
 
   useEffect(() => {
     if (hydrated && !onboardingCompleted) {
       createOnboardingPages();
     }
   }, [hydrated, onboardingCompleted, createOnboardingPages]);
+
+  // 当基础页面加载完成，且交互引导从未展示过时，自动开启
+  useEffect(() => {
+    if (hydrated && onboardingCompleted && !guideCompleted) {
+      // 稍微延迟一点开启，确保界面渲染稳定
+      const timer = setTimeout(() => {
+        startGuide();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hydrated, onboardingCompleted, guideCompleted, startGuide]);
 
   useEffect(() => {
     const openFolder = (folderPath: string) => {
@@ -133,9 +140,7 @@ function App() {
           pagesStore.setActivePage(lastPageId);
         } else {
           const firstValidPage = Object.values(pages)
-            .filter(
-              (p) => p.workspaceId === nextNotebook.id && !p.trashedAt,
-            )
+            .filter((p) => p.workspaceId === nextNotebook.id && !p.trashedAt)
             .sort(
               (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
             )[0];
@@ -177,22 +182,12 @@ function App() {
 
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
-        const currentIndex = UI_FONT_SEQUENCE.indexOf(uiFontSize);
-        const nextIndex = Math.min(
-          UI_FONT_SEQUENCE.length - 1,
-          currentIndex + 1,
-        );
-        setUIFontSize(UI_FONT_SEQUENCE[nextIndex]);
         increaseEditorFontSize();
       } else if (event.key === "-") {
         event.preventDefault();
-        const currentIndex = UI_FONT_SEQUENCE.indexOf(uiFontSize);
-        const nextIndex = Math.max(0, currentIndex - 1);
-        setUIFontSize(UI_FONT_SEQUENCE[nextIndex]);
         decreaseEditorFontSize();
       } else if (event.key === "0") {
         event.preventDefault();
-        setUIFontSize("normal");
         setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
       }
     };
@@ -203,7 +198,6 @@ function App() {
     };
   }, [
     uiFontSize,
-    setUIFontSize,
     increaseEditorFontSize,
     decreaseEditorFontSize,
     setEditorFontSize,
@@ -213,6 +207,7 @@ function App() {
     <>
       <WorkspacePage />
       <Toaster />
+      <OnboardingOverlay />
     </>
   );
 }

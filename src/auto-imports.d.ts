@@ -79,6 +79,7 @@ declare global {
   const MoreHorizontal: typeof import('lucide-react').MoreHorizontal
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
+  const ONBOARDING_STEPS: typeof import('./stores/useOnboardingGuide').ONBOARDING_STEPS
   const Plus: typeof import('lucide-react').Plus
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
@@ -172,6 +173,7 @@ declare global {
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
+  const useOnboardingGuide: typeof import('./stores/useOnboardingGuide').useOnboardingGuide
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/usePages').usePages
   const useReducer: typeof import('react').useReducer

@@ -1,4 +1,5 @@
 @import "./pages/workspace/styles/editor-base.css";
+@import "katex/dist/katex.min.css";
 
 @tailwind base;
 @tailwind components;
@@ -170,7 +171,52 @@
   }
 }
 
-/* CMDK Overlay Style */
+/* --- Editor Extensions Styles --- */
+
+/* Inline Math */
+.inline-math-node {
+  @apply mx-0.5 px-1 rounded bg-muted/30 border border-transparent hover:border-border transition-colors;
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* Details / Toggle List */
+.details-wrapper {
+  @apply my-2 border rounded-lg overflow-hidden border-border/40;
+}
+
+.details-wrapper summary {
+  @apply px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors font-medium list-none flex items-center gap-2;
+}
+
+.details-wrapper summary::-webkit-details-marker {
+  display: none;
+}
+
+.details-wrapper summary::before {
+  content: "▶";
+  @apply text-[10px] text-muted-foreground transition-transform duration-200;
+}
+
+.details-wrapper[open] summary::before {
+  @apply rotate-90;
+}
+
+.details-wrapper > div[data-type="details-content"] {
+  @apply p-3 pt-1 border-t border-border/20 bg-muted/5;
+}
+
+/* Callout Node */
+.callout-node {
+  @apply transition-all duration-200;
+}
+
+.callout-content p {
+  @apply m-0;
+}
+
+/* --- CMDK Overlay Style --- */
 [cmdk-overlay] {
   @apply fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0;
 }
@@ -178,6 +224,10 @@
 /* 径向渐变工具类 */
 @layer utilities {
   .bg-gradient-radial {
-    background: radial-gradient(circle, var(--tw-gradient-from) 0%, var(--tw-gradient-to) 70%);
+    background: radial-gradient(
+      circle,
+      var(--tw-gradient-from) 0%,
+      var(--tw-gradient-to) 70%
+    );
   }
 }

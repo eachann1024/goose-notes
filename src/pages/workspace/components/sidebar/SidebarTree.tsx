@@ -166,8 +166,16 @@ function PageNode({
   };
 
   return (
-    <SidebarContextMenu page={node.data.page!} onRequestRename={onRequestRename}>
-      <div ref={dragHandle} style={rowStyle} className="group relative px-1">
+    <SidebarContextMenu
+      page={node.data.page!}
+      onRequestRename={onRequestRename}
+    >
+      <div
+        ref={dragHandle}
+        style={rowStyle}
+        className="group relative px-1"
+        data-onboarding="page-item"
+      >
         <div
           className={cn(
             "relative flex items-center h-full px-2 rounded-md cursor-pointer transition-colors text-sm font-medium",
@@ -414,34 +422,36 @@ export function SidebarTree({
   }
 
   return (
-    <Tree
-      ref={treeRef}
-      data={treeData}
-      onMove={handleMove}
-      onRename={handleRename}
-      onActivate={handleActivate}
-      selection={activePageId || undefined}
-      openByDefault={false}
-      width={width}
-      height={treeHeight}
-      indent={16}
-      rowHeight={rowHeight}
-      overscanCount={5}
-      disableEdit={false}
-      disableDrag={false}
-      disableDrop={false}
-      renderCursor={SidebarCursor}
-      onToggle={handleToggle}
-    >
-      {(props) => (
-        <PageNode
-          {...props}
-          itemHeight={itemHeight}
-          activeNotebookId={activeNotebookId}
-          onRequestRename={onRequestRename}
-        />
-      )}
-    </Tree>
+    <div className="sidebar-tree-container" data-onboarding="sidebar-tree">
+      <Tree
+        ref={treeRef}
+        data={treeData}
+        onMove={handleMove}
+        onRename={handleRename}
+        onActivate={handleActivate}
+        selection={activePageId || undefined}
+        openByDefault={false}
+        width={width}
+        height={treeHeight}
+        indent={16}
+        rowHeight={rowHeight}
+        overscanCount={5}
+        disableEdit={false}
+        disableDrag={false}
+        disableDrop={false}
+        renderCursor={SidebarCursor}
+        onToggle={handleToggle}
+      >
+        {(props) => (
+          <PageNode
+            {...props}
+            itemHeight={itemHeight}
+            activeNotebookId={activeNotebookId}
+            onRequestRename={onRequestRename}
+          />
+        )}
+      </Tree>
+    </div>
   );
 }
 

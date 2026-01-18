@@ -938,6 +938,20 @@ export const usePages = create<PagesState>()(
 
         const markdownContent = jsonContentToMarkdown(processedContent);
 
+        // 数据完整性保护：如果原始文件很大但生成的 markdown 为空，拒绝保存
+        if (
+          !markdownContent.trim() &&
+          (window as any).gooseFs.exists(filePath)
+        ) {
+          const oldContent = (window as any).gooseFs.readFile(filePath);
+          if (oldContent && oldContent.trim().length > 10) {
+            console.error(
+              "[Data Integrity] Refusing to save empty content to a non-empty file.",
+            );
+            return false;
+          }
+        }
+
         return (window as any).gooseFs.writeFile(filePath, markdownContent);
       },
 

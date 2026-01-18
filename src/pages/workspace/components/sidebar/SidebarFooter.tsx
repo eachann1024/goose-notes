@@ -8,7 +8,10 @@ export function SidebarFooter({
   onOpenSettings,
 }: SidebarFooterProps) {
   return (
-    <div className="p-2 mt-auto border-t bg-background/50 backdrop-blur-sm space-y-1">
+    <div
+      className="p-2 mt-auto border-t bg-background/50 backdrop-blur-sm space-y-1"
+      data-onboarding="footer-tips"
+    >
       <Button
         variant="ghost"
         className="w-full justify-start text-muted-foreground hover:text-foreground h-8 px-2"

@@ -19,10 +19,24 @@ import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
 import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
 import { InlineCodeFix } from "@/extensions/InlineCodeFix";
+import { InlineMath } from "@/extensions/InlineMath";
+import { Callout } from "@/extensions/Callout";
 import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
 import { SelectableHorizontalRule } from "@/extensions/SelectableHorizontalRule";
 import { EditorPasteHandler } from "@/extensions/EditorPasteHandler";
 import { ClipboardSerializer } from "@/extensions/ClipboardSerializer";
+import Youtube from "@tiptap/extension-youtube";
+import Typography from "@tiptap/extension-typography";
+import Underline from "@tiptap/extension-underline";
+import Superscript from "@tiptap/extension-superscript";
+import Subscript from "@tiptap/extension-subscript";
+import Details from "@tiptap/extension-details";
+import DetailsSummary from "@tiptap/extension-details-summary";
+import DetailsContent from "@tiptap/extension-details-content";
+import Highlight from "@tiptap/extension-highlight";
+import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { InputRule } from "@tiptap/core";
 
 const lowlight = createLowlight(all);
 
@@ -63,6 +77,10 @@ export const editorExtensions = [
     openOnClick: false,
     autolink: true,
     linkOnPaste: true,
+    HTMLAttributes: {
+      rel: "noopener noreferrer nofollow",
+      target: "_blank",
+    },
     validate: (href) => /^https?:\/\//.test(href),
   }),
   ResizableImage,
@@ -95,6 +113,41 @@ export const editorExtensions = [
     transformCopiedText: false,
   }),
   InlineCodeFix,
+  InlineMath,
+  Callout,
+  Underline,
+  TextStyle,
+  Superscript,
+  Subscript,
+  Highlight.configure({
+    multicolor: true,
+  }),
+  TextAlign.configure({
+    types: ["heading", "paragraph"],
+  }),
+  Details.configure({
+    HTMLAttributes: {
+      class: "details-wrapper",
+    },
+  }).extend({
+    addInputRules() {
+      return [
+        new InputRule({
+          find: /^>>\s$/,
+          handler: ({ chain, range }) => {
+            chain().deleteRange(range).setDetails().run();
+          },
+        }),
+      ];
+    },
+  }),
+  DetailsSummary,
+  DetailsContent,
+  Youtube.configure({
+    controls: false,
+    nocookie: true,
+  }),
+  Typography,
   LinkPasteHandler,
   EditorPasteHandler,
   SmartSelectAll,

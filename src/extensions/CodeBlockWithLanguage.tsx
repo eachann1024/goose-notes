@@ -7,6 +7,8 @@ import {
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
+import { MathView } from "@/pages/workspace/components/editor/extensions/MathView";
+import { MermaidView } from "@/pages/workspace/components/editor/extensions/MermaidView";
 
 function CodeBlockWithLanguageView({
   node,
@@ -98,9 +100,24 @@ function CodeBlockWithLanguageView({
           ))}
         </div>
       )}
-      <pre>
+      <pre
+        className={cn(
+          (language === "math" || language === "mermaid") &&
+            !isActive &&
+            "hidden",
+        )}
+      >
         <NodeViewContent className="hljs" style={wrapStyle} />
       </pre>
+
+      {(language === "math" || language === "mermaid") && (
+        <div contentEditable={false} className="preview-container select-none">
+          {language === "math" && (
+            <MathView value={textContent} displayMode={true} />
+          )}
+          {language === "mermaid" && <MermaidView value={textContent} />}
+        </div>
+      )}
     </NodeViewWrapper>
   );
 }
@@ -108,7 +125,9 @@ function CodeBlockWithLanguageView({
 export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
   addAttributes() {
     const parentAttrs = this.parent?.() || {};
-    const languageAttr = (parentAttrs as Record<string, unknown>).language as Record<string, unknown> | undefined;
+    const languageAttr = (parentAttrs as Record<string, unknown>).language as
+      | Record<string, unknown>
+      | undefined;
     return {
       ...parentAttrs,
       // Keep parent's language attribute with its parseHTML intact
@@ -143,9 +162,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
           const beforePos = $from.before();
           if (beforePos > 0) {
             const tr = state.tr;
-            const newSelection = Selection.near(
-              doc.resolve(beforePos - 1),
-            );
+            const newSelection = Selection.near(doc.resolve(beforePos - 1));
             tr.setSelection(newSelection);
             editor.view.dispatch(tr);
             return true;
@@ -169,9 +186,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
           if (afterPos < doc.content.size) {
             const tr = state.tr;
             try {
-              const newSelection = Selection.near(
-                doc.resolve(afterPos + 1),
-              );
+              const newSelection = Selection.near(doc.resolve(afterPos + 1));
               tr.setSelection(newSelection);
               editor.view.dispatch(tr);
               return true;
@@ -190,7 +205,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
 
         const { selection } = state;
         const { $from, $to } = selection;
-        
+
         if ($from.parent !== $to.parent) return false;
 
         const tr = state.tr;
@@ -206,40 +221,40 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
         const lines = text.split("\n");
         let startLineIndex = -1;
         let endLineIndex = -1;
-        
+
         let currentPos = 0;
         lines.forEach((line, index) => {
-            const lineLen = line.length + 1;
-            const lineStart = currentPos;
-            const lineEnd = currentPos + line.length;
-            
-            if (startOffset < lineEnd + 1 && endOffset > lineStart) {
-                if (startLineIndex === -1) startLineIndex = index;
-                endLineIndex = index;
-            }
-            
-            if (endOffset === lineStart && !selection.empty) {
-                endLineIndex = index - 1;
-            }
-            
-            currentPos += lineLen;
+          const lineLen = line.length + 1;
+          const lineStart = currentPos;
+          const lineEnd = currentPos + line.length;
+
+          if (startOffset < lineEnd + 1 && endOffset > lineStart) {
+            if (startLineIndex === -1) startLineIndex = index;
+            endLineIndex = index;
+          }
+
+          if (endOffset === lineStart && !selection.empty) {
+            endLineIndex = index - 1;
+          }
+
+          currentPos += lineLen;
         });
 
         if (startLineIndex === -1) return false;
 
         let accumulatedOffset = 0;
         currentPos = 0;
-        
+
         lines.forEach((line, index) => {
-            const lineStartAbs = $from.start() + currentPos;
-            
-            if (index >= startLineIndex && index <= endLineIndex) {
-                 tr.insertText("  ", lineStartAbs + accumulatedOffset);
-                 accumulatedOffset += 2;
-            }
-            currentPos += line.length + 1;
+          const lineStartAbs = $from.start() + currentPos;
+
+          if (index >= startLineIndex && index <= endLineIndex) {
+            tr.insertText("  ", lineStartAbs + accumulatedOffset);
+            accumulatedOffset += 2;
+          }
+          currentPos += line.length + 1;
         });
-        
+
         if (dispatch) dispatch(tr);
         return true;
       },
@@ -249,7 +264,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
 
         const { selection } = state;
         const { $from, $to } = selection;
-        
+
         if ($from.parent !== $to.parent) return false;
 
         const tr = state.tr;
@@ -260,45 +275,48 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
         const lines = text.split("\n");
         let startLineIndex = -1;
         let endLineIndex = -1;
-        
+
         let currentPos = 0;
         lines.forEach((line, index) => {
-            const lineLen = line.length + 1; 
-            const lineStart = currentPos;
-            const lineEnd = currentPos + line.length;
-            
-            if (startOffset < lineEnd + 1 && endOffset > lineStart) {
-                if (startLineIndex === -1) startLineIndex = index;
-                endLineIndex = index;
-            }
-            if (endOffset === lineStart && !selection.empty) {
-                endLineIndex = index - 1;
-            }
-            
-            currentPos += lineLen;
+          const lineLen = line.length + 1;
+          const lineStart = currentPos;
+          const lineEnd = currentPos + line.length;
+
+          if (startOffset < lineEnd + 1 && endOffset > lineStart) {
+            if (startLineIndex === -1) startLineIndex = index;
+            endLineIndex = index;
+          }
+          if (endOffset === lineStart && !selection.empty) {
+            endLineIndex = index - 1;
+          }
+
+          currentPos += lineLen;
         });
 
         if (startLineIndex === -1) return false;
 
         let accumulatedOffset = 0;
         currentPos = 0;
-        
+
         lines.forEach((line, index) => {
-            const lineStartAbs = $from.start() + currentPos;
-            
-            if (index >= startLineIndex && index <= endLineIndex) {
-                let deleteCount = 0;
-                if (line.startsWith("  ")) deleteCount = 2;
-                else if (line.startsWith(" ")) deleteCount = 1;
-                
-                if (deleteCount > 0) {
-                    tr.delete(lineStartAbs + accumulatedOffset, lineStartAbs + accumulatedOffset + deleteCount);
-                    accumulatedOffset -= deleteCount;
-                }
+          const lineStartAbs = $from.start() + currentPos;
+
+          if (index >= startLineIndex && index <= endLineIndex) {
+            let deleteCount = 0;
+            if (line.startsWith("  ")) deleteCount = 2;
+            else if (line.startsWith(" ")) deleteCount = 1;
+
+            if (deleteCount > 0) {
+              tr.delete(
+                lineStartAbs + accumulatedOffset,
+                lineStartAbs + accumulatedOffset + deleteCount,
+              );
+              accumulatedOffset -= deleteCount;
             }
-            currentPos += line.length + 1;
+          }
+          currentPos += line.length + 1;
         });
-        
+
         if (dispatch) dispatch(tr);
         return true;
       },
