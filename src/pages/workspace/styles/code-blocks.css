@@ -67,7 +67,8 @@
 }
 
 /* Pre block adjustment when line numbers are present */
-.code-block-with-lines pre {
+.code-block-with-lines pre,
+.code-block-with-lines .preview-container {
   padding-left: 3rem;
 }
 

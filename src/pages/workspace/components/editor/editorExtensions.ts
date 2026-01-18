@@ -36,6 +36,7 @@ import DetailsContent from "@tiptap/extension-details-content";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
 import { InputRule } from "@tiptap/core";
 
 const lowlight = createLowlight(all);
@@ -117,6 +118,7 @@ export const editorExtensions = [
   Callout,
   Underline,
   TextStyle,
+  Color,
   Superscript,
   Subscript,
   Highlight.configure({

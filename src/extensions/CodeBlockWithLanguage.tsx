@@ -78,7 +78,7 @@ function CodeBlockWithLanguageView({
 
   const textContent = node.content?.firstChild?.text || node.textContent || "";
   const lineCount = textContent.split("\n").length;
-  const showLineNumbers = true;
+  const showLineNumbers = !(language === "math" || language === "mermaid");
 
   return (
     <NodeViewWrapper
@@ -111,7 +111,15 @@ function CodeBlockWithLanguageView({
       </pre>
 
       {(language === "math" || language === "mermaid") && (
-        <div contentEditable={false} className="preview-container select-none">
+        <div
+          contentEditable={false}
+          className="preview-container select-none cursor-pointer"
+          onClick={() => {
+             if (typeof getPos === "function") {
+               editor.commands.focus(getPos() + 1);
+             }
+          }}
+        >
           {language === "math" && (
             <MathView value={textContent} displayMode={true} />
           )}

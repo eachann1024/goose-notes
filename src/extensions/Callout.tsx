@@ -1,6 +1,7 @@
 import { Node, mergeAttributes, ReactNodeViewRenderer } from "@tiptap/react";
 import { NodeViewWrapper, NodeViewContent } from "@tiptap/react";
 import { InputRule } from "@tiptap/core";
+import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -10,24 +11,23 @@ declare module "@tiptap/core" {
   }
 }
 
-const CalloutView = ({ node, updateAttributes, editor }: any) => {
+const CalloutView = ({ node, updateAttributes }: any) => {
   const emoji = node.attrs.emoji || "💡";
-  const emojis = ["💡", "⚠️", "ℹ️", "✅", "❌", "🔥", "📌", "🚀"];
 
   return (
     <NodeViewWrapper className="callout-node flex gap-3 p-4 my-4 rounded-lg border bg-muted/20 border-border/50 items-start group">
-      <div
-        contentEditable={false}
-        className="text-xl cursor-pointer select-none hover:scale-110 transition-transform"
-        onClick={() => {
-          if (!editor.isEditable) return;
-          const nextIdx = (emojis.indexOf(emoji) + 1) % emojis.length;
-          updateAttributes({ emoji: emojis[nextIdx] });
-        }}
-      >
-        {emoji}
+      <div contentEditable={false} className="select-none pt-0.5">
+        <IconSelector
+          value={emoji}
+          onChange={(icon) => updateAttributes({ emoji: icon })}
+          emojiOnly
+        >
+          <div className="cursor-pointer hover:scale-110 transition-transform text-2xl h-7 w-7 flex items-center justify-center rounded hover:bg-muted">
+            {emoji}
+          </div>
+        </IconSelector>
       </div>
-      <div className="flex-1 min-w-0 pt-0.5">
+      <div className="flex-1 min-w-0">
         <NodeViewContent className="callout-content outline-none" />
       </div>
     </NodeViewWrapper>

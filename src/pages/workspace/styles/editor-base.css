@@ -247,6 +247,14 @@
   border: 1px solid hsl(var(--border) / 0.5);
 }
 
+/* Highlight styling for better readability */
+.ProseMirror mark {
+  padding: 2px 4px;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 /* Links */
 .ProseMirror a {
   color: #3b82f6;

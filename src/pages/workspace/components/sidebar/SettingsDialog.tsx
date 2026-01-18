@@ -2,6 +2,7 @@ import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { useOnboardingGuide } from "@/stores/useOnboardingGuide";
 import {
   exportNotebooks,
   importNotebooksFromZip,
@@ -16,6 +17,7 @@ import {
   Upload,
   X,
   Settings as SettingsIcon,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createPortal } from "react-dom";
@@ -58,6 +60,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const notebookList = Object.values(notebooks);
   const { createNotebook } = useNotebooks();
   const { createPage, updatePage } = usePages();
+  const { restart: restartGuide } = useOnboardingGuide();
   const resetPhrase = "我已知晓风险";
   const canReset = resetInput.trim() === resetPhrase;
 
@@ -248,13 +251,42 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-3xl mx-auto">
             {activeTab === "general" && (
-              <div className="bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md border-2 rounded-2xl p-8 shadow-lg">
-                <SettingsGeneral
-                  searchProviders={searchProviders}
-                  toggleSearchProvider={toggleSearchProvider}
-                  openSearchInUtools={utools.openSearchInUtools}
-                  setOpenSearchInUtools={setOpenSearchInUtools}
-                />
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md border-2 rounded-2xl p-8 shadow-lg">
+                  <SettingsGeneral
+                    searchProviders={searchProviders}
+                    toggleSearchProvider={toggleSearchProvider}
+                    openSearchInUtools={utools.openSearchInUtools}
+                    setOpenSearchInUtools={setOpenSearchInUtools}
+                  />
+                </div>
+
+                {/* 新手指引 */}
+                <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-md border-2 border-primary/20 rounded-2xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">新手指引</h3>
+                        <p className="text-sm text-muted-foreground">
+                          重新展示交互式引导教程
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        restartGuide();
+                        onOpenChange(false);
+                        toast.info("即将开始引导教程");
+                      }}
+                    >
+                      重新展示
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 

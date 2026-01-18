@@ -1,4 +1,6 @@
 import { BubbleMenu } from "@tiptap/react/menus";
+import { ColorPicker } from "./ColorPicker";
+
 type EditorBubbleMenuProps = Omit<
   React.ComponentProps<typeof BubbleMenu>,
   "children"
@@ -84,24 +86,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Toggle
-              size="sm"
-              pressed={editor.isActive("highlight")}
-              onPressedChange={() =>
-                editor.chain().focus().toggleHighlight().run()
-              }
-              aria-label="文字高亮"
-              className="text-foreground"
-            >
-              <LucideIcons.Highlighter className="h-4 w-4" />
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>文字高亮</p>
-          </TooltipContent>
-        </Tooltip>
+        <ColorPicker editor={editor} />
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -128,46 +113,6 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("superscript")}
-              onPressedChange={() =>
-                editor.chain().focus().toggleSuperscript().run()
-              }
-              aria-label="上标"
-              className="text-foreground"
-            >
-              <LucideIcons.Superscript className="h-4 w-4" />
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>上标</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Toggle
-              size="sm"
-              pressed={editor.isActive("subscript")}
-              onPressedChange={() =>
-                editor.chain().focus().toggleSubscript().run()
-              }
-              aria-label="下标"
-              className="text-foreground"
-            >
-              <LucideIcons.Subscript className="h-4 w-4" />
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>下标</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Separator orientation="vertical" className="h-6" />
-
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Toggle
-              size="sm"
               pressed={editor.isActive("code")}
               onPressedChange={() => editor.chain().focus().toggleCode().run()}
               aria-label="行内代码"
@@ -178,35 +123,6 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           </TooltipTrigger>
           <TooltipContent>
             <p>行内代码</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Toggle
-              size="sm"
-              pressed={editor.isActive("inlineMath")}
-              onPressedChange={() => {
-                const { from, to } = editor.state.selection;
-                const text = editor.state.doc.textBetween(from, to);
-                editor
-                  .chain()
-                  .focus()
-                  .deleteSelection()
-                  .insertContent({
-                    type: "inlineMath",
-                    attrs: { value: text },
-                  })
-                  .run();
-              }}
-              aria-label="数学公式"
-              className="text-foreground"
-            >
-              <LucideIcons.Sigma className="h-4 w-4" />
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>数学公式</p>
           </TooltipContent>
         </Tooltip>
 
@@ -276,7 +192,9 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().unsetAllMarks().run()}
+              onClick={() =>
+                editor.chain().focus().unsetAllMarks().unsetTextAlign().run()
+              }
               aria-label="清除格式"
               className="h-8 w-8 p-0 text-foreground"
             >

@@ -29,6 +29,7 @@
     "@tiptap/extension-bubble-menu": "^3.14.0",
     "@tiptap/extension-code-block-lowlight": "^3.14.0",
     "@tiptap/extension-collaboration": "^3.14.0",
+    "@tiptap/extension-color": "^3.15.3",
     "@tiptap/extension-details": "^3.15.3",
     "@tiptap/extension-details-content": "^2.26.2",
     "@tiptap/extension-details-summary": "^2.26.2",

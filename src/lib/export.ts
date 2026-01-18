@@ -704,7 +704,16 @@ function inlineContentToMarkdown(content?: JSONContent[]): string {
               text = `<sub>${text}</sub>`;
               break;
             case "highlight":
-              text = `==${text}==`;
+              if (mark.attrs?.color) {
+                text = `<span style="background-color: ${mark.attrs.color}">${text}</span>`;
+              } else {
+                text = `==${text}==`;
+              }
+              break;
+            case "textStyle":
+              if (mark.attrs?.color) {
+                text = `<span style="color: ${mark.attrs.color}">${text}</span>`;
+              }
               break;
           }
         }
@@ -1070,7 +1079,7 @@ function parseInlineMarkdown(text: string): JSONContent[] {
   if (!text) return result;
 
   const regex =
-    /(\$((?:\\\$|[^\$])+?)\$|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
+    /(\$((?:\\\$|[^\$])+?)\$|<span\s+style="([^"]+)">(.+?)<\/span>|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
   let lastIndex = 0;
   let match;
 
@@ -1082,33 +1091,53 @@ function parseInlineMarkdown(text: string): JSONContent[] {
     if (match[2]) {
       // 匹配到 $...$，创建 inlineMath 节点，使其在编辑器中以公式形式显示
       result.push({ type: "inlineMath", attrs: { value: match[2] } });
-    } else if (match[3]) {
-      result.push({
-        type: "text",
-        text: match[3],
-        marks: [{ type: "highlight" }],
-      });
-    } else if (match[4]) {
-      result.push({ type: "text", text: match[4], marks: [{ type: "bold" }] });
+    } else if (match[3] && match[4]) {
+      // 匹配到 <span style="...">...</span>
+      const style = match[3];
+      const innerText = match[4];
+      const marks: any[] = [];
+
+      const colorMatch = style.match(/color:\s*([^;]+)/);
+      if (colorMatch) {
+        marks.push({
+          type: "textStyle",
+          attrs: { color: colorMatch[1].trim() },
+        });
+      }
+
+      const bgMatch = style.match(/background-color:\s*([^;]+)/);
+      if (bgMatch) {
+        marks.push({ type: "highlight", attrs: { color: bgMatch[1].trim() } });
+      }
+
+      result.push({ type: "text", text: innerText, marks });
     } else if (match[5]) {
       result.push({
         type: "text",
         text: match[5],
-        marks: [{ type: "italic" }],
+        marks: [{ type: "highlight" }],
       });
     } else if (match[6]) {
+      result.push({ type: "text", text: match[6], marks: [{ type: "bold" }] });
+    } else if (match[7]) {
       result.push({
         type: "text",
-        text: match[6],
-        marks: [{ type: "strike" }],
+        text: match[7],
+        marks: [{ type: "italic" }],
       });
-    } else if (match[7]) {
-      result.push({ type: "text", text: match[7], marks: [{ type: "code" }] });
-    } else if (match[8] && match[9]) {
+    } else if (match[8]) {
       result.push({
         type: "text",
         text: match[8],
-        marks: [{ type: "link", attrs: { href: match[9] } }],
+        marks: [{ type: "strike" }],
+      });
+    } else if (match[9]) {
+      result.push({ type: "text", text: match[9], marks: [{ type: "code" }] });
+    } else if (match[10] && match[11]) {
+      result.push({
+        type: "text",
+        text: match[10],
+        marks: [{ type: "link", attrs: { href: match[11] } }],
       });
     }
 

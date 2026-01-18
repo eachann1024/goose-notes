@@ -62,7 +62,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
             setVisible(false);
             hideTimeoutRef.current = setTimeout(() => {
               setHoverState(null);
-            }, 300);
+            }, 50);
           }
         }
         return;
@@ -134,13 +134,13 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    transition: "opacity 0.2s ease-out, background-color 0.2s",
+    transition: "opacity 0.1s ease-out, background-color 0.1s",
     opacity: visible ? 1 : 0,
     pointerEvents: visible ? "auto" : "none",
   };
 
   const barClasses =
-    "bg-gradient-to-br from-muted/60 to-muted/40 hover:from-primary/25 hover:to-primary/15 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[2px] table-add-control transition-all duration-200";
+    "bg-gradient-to-br from-muted/60 to-muted/40 hover:from-primary/25 hover:to-primary/15 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[2px] table-add-control transition-all duration-100";
 
   const rowBarStyle: React.CSSProperties = {
     ...baseBarStyle,

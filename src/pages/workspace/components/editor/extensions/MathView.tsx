@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import katex from "katex";
+import "katex/dist/katex.min.css";
 
 interface MathViewProps {
   value: string;

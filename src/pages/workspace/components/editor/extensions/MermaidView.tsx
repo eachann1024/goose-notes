@@ -38,12 +38,16 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
         setError(null);
       } catch (err) {
         console.error("Mermaid rendering error:", err);
-        setError("图表语法错误");
+        setError("语法错误");
       }
     };
 
-    renderMermaid();
-  }, [value]);
+    const debounceTimer = setTimeout(() => {
+      renderMermaid();
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [value, theme]);
 
   if (error) {
     return (

@@ -61,6 +61,7 @@ interface OnboardingGuideState {
   currentStepIndex: number;
   completed: boolean;
   start: () => void;
+  restart: () => void;
   next: () => void;
   prev: () => void;
   skip: () => void;
@@ -78,6 +79,10 @@ export const useOnboardingGuide = create<OnboardingGuideState>()(
         if (!get().completed) {
           set({ isActive: true, currentStepIndex: 0 });
         }
+      },
+
+      restart: () => {
+        set({ isActive: true, currentStepIndex: 0, completed: false });
       },
 
       next: () => {

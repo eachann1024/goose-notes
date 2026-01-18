@@ -38,7 +38,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const selectItem = useCallback(
     (index: number) => {
       const item = props.items[index];
-      if (item) {
+      if (item && item.type !== "divider") {
         props.command(item);
       }
     },
@@ -46,7 +46,11 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   );
 
   useEffect(() => {
-    setSelectedIndex(0);
+    // 默认选中第一个不是分割线的项
+    const firstSelectableIndex = props.items.findIndex(
+      (item) => item.type !== "divider",
+    );
+    setSelectedIndex(firstSelectableIndex >= 0 ? firstSelectableIndex : 0);
     setShowHint(false);
   }, [props.items]);
 
@@ -82,14 +86,30 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
       onKeyDown: ({ event }: { event: KeyboardEvent }) => {
         if (event.key === "ArrowUp") {
           event.preventDefault();
-          setSelectedIndex(
-            (prev) => (prev - 1 + props.items.length) % props.items.length,
-          );
+          let nextIndex =
+            (selectedIndex - 1 + props.items.length) % props.items.length;
+          // 跳过分割线
+          while (
+            props.items[nextIndex]?.type === "divider" &&
+            nextIndex !== selectedIndex
+          ) {
+            nextIndex =
+              (nextIndex - 1 + props.items.length) % props.items.length;
+          }
+          setSelectedIndex(nextIndex);
           return true;
         }
         if (event.key === "ArrowDown") {
           event.preventDefault();
-          setSelectedIndex((prev) => (prev + 1) % props.items.length);
+          let nextIndex = (selectedIndex + 1) % props.items.length;
+          // 跳过分割线
+          while (
+            props.items[nextIndex]?.type === "divider" &&
+            nextIndex !== selectedIndex
+          ) {
+            nextIndex = (nextIndex + 1) % props.items.length;
+          }
+          setSelectedIndex(nextIndex);
           return true;
         }
         if (event.key === "Enter") {
@@ -100,7 +120,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         return false;
       },
     }),
-    [props.items.length, selectItem, selectedIndex],
+    [props.items, selectItem, selectedIndex],
   );
 
   if (props.items.length === 0) {
