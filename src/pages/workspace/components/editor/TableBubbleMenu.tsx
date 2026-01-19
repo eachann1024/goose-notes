@@ -4,7 +4,11 @@ type TableBubbleMenuProps = Omit<
   "children"
 >;
 
+import { useScrollHide } from "@/hooks/useScrollHide";
+
 export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
+  const isHidden = useScrollHide(editor);
+
   if (!editor) return null;
 
   const cellAlign = editor.getAttributes("tableCell").align || "left";
@@ -14,16 +18,14 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
       <BubbleMenu
         editor={editor}
         pluginKey="tableBubbleMenu"
+        appendTo={() => document.body}
         shouldShow={({ editor }: { editor: any }) => {
           return editor.isEditable && editor.isActive("table");
         }}
-        className="flex flex-row items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md !z-50"
-        // @ts-ignore
-        tippyOptions={{
-          zIndex: 9999,
-          maxWidth: "none",
-          appendTo: () => document.body,
-        }}
+        className={cn(
+          "flex flex-row items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md transition-opacity duration-200 z-[9999] max-w-none",
+          isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
         {...props}
       >
         {/* 行操作 */}

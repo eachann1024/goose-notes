@@ -39,6 +39,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     toggleSearchProvider,
     utools,
     setOpenSearchInUtools,
+    setUToolsWindowHeight,
     customFonts,
     setCustomLabel,
     setCustomFont,
@@ -258,6 +259,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     toggleSearchProvider={toggleSearchProvider}
                     openSearchInUtools={utools.openSearchInUtools}
                     setOpenSearchInUtools={setOpenSearchInUtools}
+                    windowHeight={utools.windowHeight ?? 600}
+                    setWindowHeight={setUToolsWindowHeight}
                   />
                 </div>
 

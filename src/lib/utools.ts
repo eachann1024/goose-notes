@@ -231,4 +231,18 @@ export class UToolsAdapter {
     const utools = (window as any).utools;
     return utools && typeof utools.setSublistFn === "function";
   }
+
+  /**
+   * 设置插件窗口高度
+   * @param height 窗口高度（像素）
+   */
+  static setExpendHeight(height: number): boolean {
+    if (UToolsAdapter.isUTools) {
+      const utools = (window as any).utools;
+      if (utools && typeof utools.setExpendHeight === "function") {
+        return utools.setExpendHeight(height);
+      }
+    }
+    return false;
+  }
 }

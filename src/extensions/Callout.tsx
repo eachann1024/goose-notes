@@ -15,14 +15,14 @@ const CalloutView = ({ node, updateAttributes }: any) => {
   const emoji = node.attrs.emoji || "💡";
 
   return (
-    <NodeViewWrapper className="callout-node flex gap-3 p-4 my-4 rounded-lg border bg-muted/20 border-border/50 items-start group">
-      <div contentEditable={false} className="select-none pt-0.5">
+    <NodeViewWrapper className="callout-node flex gap-3 p-4 my-4 rounded-lg border bg-muted/20 border-border/50 items-center group">
+      <div contentEditable={false} className="select-none flex-shrink-0">
         <IconSelector
           value={emoji}
           onChange={(icon) => updateAttributes({ emoji: icon })}
           emojiOnly
         >
-          <div className="cursor-pointer hover:scale-110 transition-transform text-2xl h-7 w-7 flex items-center justify-center rounded hover:bg-muted">
+          <div className="cursor-pointer hover:scale-110 transition-transform text-2xl flex items-center justify-center rounded hover:bg-muted">
             {emoji}
           </div>
         </IconSelector>

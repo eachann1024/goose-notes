@@ -6,22 +6,37 @@ type EditorBubbleMenuProps = Omit<
   "children"
 >;
 
+import { useScrollHide } from "@/hooks/useScrollHide";
+
 export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
+  const isHidden = useScrollHide(editor);
+
   if (!editor) return null;
 
   return (
     <TooltipProvider>
       <BubbleMenu
         editor={editor}
-        className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm"
+        appendTo={() => document.body}
+        className={cn(
+          "flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm transition-opacity duration-200 z-[9999]",
+          isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
         shouldShow={({ editor, state }) => {
           if (!editor.isEditable) return false;
           const { selection } = state;
+
+          // 标题不显示工具栏
+          if (editor.isActive("heading", { level: 1 })) {
+            return false;
+          }
 
           if (
             editor.isActive("image") ||
             editor.isActive("table") ||
             editor.isActive("link") ||
+            editor.isActive("codeBlock") ||
+            editor.isActive("inlineMath") ||
             "node" in selection
           ) {
             return false;

@@ -4,8 +4,6 @@
 
 **必须**: React 18 + Vite, @tiptap/react, shadcn/ui, TailwindCSS, zustand, unplugin-auto-import
 
-**禁止**: Redux/MobX, styled-components, moment.js
-
 ---
 
 ## 开发约定
@@ -15,7 +13,11 @@
 3. 注释只解释 Why，不解释 What
 4. shadcn/hooks 由 autoimport 处理
 5. 每个模块独立运行不要有耦合关系
-6. auto-import 由 unplugin-auto-import 自动生成，需对照 `vite.config.ts` 配置
+6. 永远不要手动写 import 语句！
+7. 项目已开启全面 auto-import（components、composables、utils、stores 等全部自动可用）
+8. 除非是 node_modules 里的第三方包，否则禁止出现任何 import XXX from '...' 语句，除了图标需要 import 之外
+9. 如果你不确定组件路径 → 直接写组件名，依靠 LSP 和 auto-import
+10. 所有交互控件严禁直接手动编写，而是使用 “shadcn vue” 组件，没有应该到官网查找，例如：`npx shadcn-vue@latest add slider`，严禁 AI 冒充编写 shadcn vue 组件
 
 ---
 
@@ -39,12 +41,3 @@ export const useXxx = create<XxxState>()(
 ```
 
 **例外**: 临时 UI 状态（如 useContextMenu）无需持久化
-
----
-
-## 功能开发同步
-
-- 新功能更新 `src/lib/tips.ts` 帮助用户发现
-- Page 类型定义见 `src/types/index.ts`
-- 图片处理见 `src/lib/imageProcessor.ts`（>500KB 压缩 80%）
-- 自动导入范围以 `vite.config.ts` 为准

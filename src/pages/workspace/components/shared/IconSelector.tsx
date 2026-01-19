@@ -10,274 +10,160 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   emojiOnly?: boolean;
 }
 
-// 常用图标白名单（移除不常用的图标）
+// 常用图标白名单（精简去除了非代表性的 UI 控件图标）
 const COMMON_ICONS = [
-  // 基础
+  // 核心/通用
+  "Home",
+  "Search",
+  "Menu",
+  "Settings",
+  "User",
+  "Users",
+  "Star",
+  "Heart",
+  "Flag",
+  "Bookmark",
+  "Tag",
+  "Check",
+  "X",
+  "AlertCircle",
+  "Info",
+  "HelpCircle",
+  "MoreHorizontal",
+  
+  // 文档/工作
+  "File",
   "FileText",
   "Folder",
   "FolderOpen",
-  "Home",
-  "Settings",
-  "Search",
-  "Menu",
-  "X",
-  "Check",
-  // 箭头
-  "ArrowUp",
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "ChevronDown",
-  "ChevronUp",
-  "ChevronLeft",
-  "ChevronRight",
-  // 操作
-  "Plus",
-  "Minus",
-  "Edit",
-  "Trash2",
-  "Copy",
-  "Move",
-  "RefreshCw",
-  "RotateCcw",
-  "Undo",
-  "Redo",
-  "ZoomIn",
-  "ZoomOut",
-  "Maximize",
-  "Minimize",
-  // 媒体
-  "Play",
-  "Pause",
-  "Stop",
-  "SkipBack",
-  "SkipForward",
-  "Volume2",
-  "VolumeX",
-  "Mute",
-  "Image",
-  "Video",
-  "Mic",
-  "MicOff",
-  "Camera",
-  "CameraOff",
-  // 通信
+  "Archive",
+  "Briefcase",
+  "Clipboard",
+  "Calendar",
+  "Clock",
+  "Target",
+  "Award",
+  "Trophy",
+  "MapPin",
+  "Link",
+  "Paperclip",
+  
+  // 沟通/媒体
   "Mail",
-  "Send",
   "MessageSquare",
   "MessageCircle",
   "Phone",
-  "PhoneCall",
-  "PhoneIncoming",
-  "PhoneOutgoing",
   "Bell",
-  "BellOff",
-  "AtSign",
-  "Hash",
-  // 用户
-  "User",
-  "Users",
-  "UserPlus",
-  "UserMinus",
-  "UserCheck",
-  "UserX",
-  "Shield",
-  "ShieldCheck",
-  "ShieldAlert",
-  // 时间
-  "Calendar",
-  "Clock",
-  "Timer",
-  "AlarmClock",
-  "Hourglass",
-  // 标记
-  "Star",
-  "StarHalf",
-  "Heart",
-  "Bookmark",
-  "BookmarkCheck",
-  "BookmarkX",
-  "Flag",
-  "FlagCheckered",
-  "FlagOff",
-  "Tag",
-  "Tags",
-  "Badge",
-  "Award",
-  "Trophy",
-  "Medal",
-  // 工具
-  "Wrench",
-  "Hammer",
-  "Screwdriver",
-  "Tool",
-  "Settings2",
-  "MoreHorizontal",
-  "MoreVertical",
-  "Filter",
-  "Sliders",
-  "Tune",
-  "Equal",
-  "PlusCircle",
-  "MinusCircle",
-  // 文档
-  "File",
-  "FileCode",
-  "FileSpreadsheet",
-  "FileImage",
-  "FileVideo",
-  "FileAudio",
-  "FileArchive",
-  "FileCheck",
-  "Clipboard",
-  "ClipboardCopy",
-  "ClipboardCheck",
-  "ClipboardX",
-  "List",
-  "ListTodo",
-  "ListChecks",
-  // 导航
-  "Layout",
-  "LayoutDashboard",
-  "LayoutGrid",
-  "LayoutList",
-  "Sidebar",
-  "PanelLeft",
-  "PanelRight",
-  "PanelTop",
-  "PanelBottom",
-  "Tabs",
-  "AppWindow",
-  "Layers",
-  "Grid",
-  // 云/同步
-  "Cloud",
-  "CloudDownload",
-  "CloudUpload",
-  "CloudOff",
+  "Image",
+  "Video",
+  "Mic",
+  "Music",
+  "Camera",
+  "Headphones",
+  "Speaker",
+  "Radio",
+  
+  // 科技/设备
+  "Smartphone",
+  "Laptop",
+  "Monitor",
+  "Cpu",
   "Database",
-  "Server",
   "HardDrive",
-  "Download",
-  "Upload",
-  "Sync",
-  "RefreshCw",
-  "Loader",
-  "Loader2",
-  // 安全
+  "Server",
+  "Wifi",
+  "Bluetooth",
+  "Battery",
+  "Tv",
+  "Watch",
+  
+  // 生活/物品
+  "Coffee",
+  "CupSoda",
+  "Pizza",
+  "Cake",
+  "Gift",
+  "ShoppingBag",
+  "ShoppingCart",
+  "CreditCard",
+  "Wallet",
+  "Key",
   "Lock",
   "Unlock",
-  "Key",
-  "Eye",
-  "EyeOff",
-  "Fingerprint",
-  "ShieldAlert",
-  // 状态
-  "AlertCircle",
-  "AlertTriangle",
-  "AlertOctagon",
-  "Info",
-  "HelpCircle",
-  "HelpCircle",
-  "CheckCircle",
-  "XCircle",
-  "Circle",
-  "CircleDot",
-  "Fingerprint",
-  "Zap",
-  "ZapOff",
-  "Flame",
-  "Sparkles",
-  // 编辑器
-  "Bold",
-  "Italic",
-  "Underline",
-  "Strikethrough",
-  "Code",
-  "Heading1",
-  "Heading2",
-  "Heading3",
-  "List",
-  "ListOrdered",
-  "Quote",
-  "AlignLeft",
-  "AlignCenter",
-  "AlignRight",
-  "AlignJustify",
-  "Indent",
-  "Outdent",
-  "Link",
-  "Link2",
-  "Unlink",
-  "Highlight",
-  "Palette",
-  // 图表
-  "BarChart",
-  "BarChart2",
-  "BarChart3",
-  "BarChart4",
-  "PieChart",
-  "LineChart",
-  "TrendingUp",
-  "TrendingDown",
-  "Activity",
-  // 位置
-  "MapPin",
   "Map",
-  "Compass",
-  "Navigation",
-  "Navigation2",
   "Globe",
-  "Locate",
-  "LocateFixed",
-  "Crosshair",
-  // 其他
+  "Anchor",
+  "Compass",
+  "Package",
+  "Box",
+  "Truck",
+  "Car",
+  "Plane",
+  "Rocket",
+  
+  // 自然/天气
   "Sun",
   "Moon",
-  "CloudSun",
-  "CloudMoon",
+  "Cloud",
   "CloudRain",
   "CloudSnow",
   "CloudLightning",
-  "CloudDrizzle",
-  "Thermometer",
+  "Zap",
   "Droplet",
+  "Flame",
   "Wind",
   "Snowflake",
-  "Fire",
-  "Flame",
-  "Lightbulb",
-  "LightbulbOff",
-  "Candle",
-  "Cigarette",
-  "Plug",
-  "PlugZap",
-  "Power",
-  "PowerOff",
-  "Coffee",
-  "Pizza",
-  "Cake",
-  "Cookie",
-  "Apple",
-  "Cherry",
-  "Grape",
-  "Lemon",
-  "Citrus",
+  "Umbrella",
+  "Mountain",
+  "TreeDeciduous",
+  "TreePine",
+  "Flower2",
+  
+  // 学术/工具
   "Book",
   "BookOpen",
-  "Bookmark",
-  "Library",
   "GraduationCap",
-  "PenTool",
+  "Lightbulb",
+  "Pen",
   "Pencil",
-  "Eraser",
   "Calculator",
   "Ruler",
-  "Pen",
-  "Highlighter",
+  "Hammer",
+  "Wrench",
+  "Puzzle",
+  "Palette",
+  "Glasses",
+  "Scissors",
+];
+
+const POPULAR_EMOJIS = [
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
+  "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
+  "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩",
+  "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
+  "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬",
+  "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗",
+  "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯",
+  "👋", "🤚", "🖐", "✋", "🖖", "👌", "🤏", "✌️", "🤞", "🤟",
+  "🤙", "👈", "👉", "👆", "👇", "👍", "👎", "✊", "👊", "🤛",
+  "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳",
+  "💪", "🧠", "👀", "👁", "👅", "👄", "💋", "❤", "🧡", "💛",
+  "💚", "💙", "💜", "🤎", "🖤", "🤍", "💔", "❣", "💕", "💞",
+  "💓", "💗", "💖", "💘", "💝", "🐶", "🐱", "🐭", "🐹", "🐰",
+  "🐻", "🧸", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵",
+  "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🍈", "🍒",
+  "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🥑", "🍆", "🌶", "🥕",
+  "⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱",
+  "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑", "🚒", "🚐",
+  "🏠", "🏡", "🏢", "🏣", "🏤", "🏥", "🏦", "🏨", "🏩", "🏪",
 ];
 
 const AVAILABLE_ICONS = Array.from(new Set(COMMON_ICONS));
+
+const NOTION_TABS = [
+  { id: "emoji", label: "表情符号" },
+  { id: "icon", label: "图标" },
+] as const;
 
 export function IconSelector<T extends HTMLElement = HTMLElement>({
   value,
@@ -289,18 +175,20 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"emoji" | "icon">(
-    emojiOnly ? "emoji" : "emoji",
-  );
+  const [tab, setTab] = useState<"emoji" | "icon">("emoji");
   const portalContainer = portalContainerRef?.current ?? undefined;
   const hasOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (emojiOnly) setTab("emoji");
+  }, [emojiOnly]);
 
   const filteredIcons = useMemo(() => {
     const icons = AVAILABLE_ICONS.filter((key) => {
       if (!LucideIcons || !(key in (LucideIcons as any))) return false;
       return !search || key.toLowerCase().includes(search.toLowerCase());
     });
-    return icons.slice(0, 144); // 最多显示 144 个（12x12 网格）
+    return icons.slice(0, 200); 
   }, [search]);
 
   // 第一次打开时触发 onFirstOpen 回调
@@ -311,147 +199,157 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
     }
   }, [open, onFirstOpen]);
 
+  const handleRandomIcon = () => {
+    if (tab === "icon") {
+      const randomIcon =
+        AVAILABLE_ICONS[Math.floor(Math.random() * AVAILABLE_ICONS.length)];
+      onChange(randomIcon);
+    } else {
+       const randomEmoji = POPULAR_EMOJIS[Math.floor(Math.random() * POPULAR_EMOJIS.length)];
+       onChange(randomEmoji);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className="w-[340px] p-0 rounded-2xl"
+        className="w-[380px] p-0 rounded-xl shadow-xl overflow-hidden"
         align="start"
-        side="right"
+        side="bottom"
         collisionPadding={10}
         container={portalContainer}
-        data-side="right"
       >
-        <div className="flex border-b rounded-t-2xl">
-          {!emojiOnly && (
-            <>
-              <button
-                className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-all duration-200 ${tab === "emoji" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-                onClick={() => setTab("emoji")}
-              >
-                表情符号
-              </button>
-              <button
-                className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-all duration-200 ${tab === "icon" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-                onClick={() => setTab("icon")}
-              >
-                图标
-              </button>
-            </>
-          )}
-          <button
-            className={`px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-1 ${emojiOnly ? "flex-1" : ""} rounded-t-2xl font-semibold`}
-            onClick={() => {
-              onChange(undefined);
-              setOpen(false);
-            }}
-            title="移除图标"
-          >
-            <LucideIcons.X className="h-4 w-4" />
-            <span>移除</span>
-          </button>
+        {/* Header Tabs */}
+        <div className="flex items-center justify-between px-3 pt-2 text-[14px] border-b bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex gap-4">
+            {!emojiOnly &&
+              NOTION_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  className={cn(
+                    "pb-2 border-b-2 transition-colors px-0.5",
+                    tab === t.id
+                      ? "border-foreground font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setTab(t.id as any)}
+                >
+                  {t.label}
+                </button>
+              ))}
+              {emojiOnly && (
+                 <div className="pb-2 border-b-2 border-foreground font-medium text-foreground px-0.5">
+                   表情符号
+                 </div>
+              )}
+          </div>
+          <div className="flex items-center gap-1">
+             <button 
+                className="pb-2 text-muted-foreground hover:text-foreground transition-colors mr-2"
+                title="随机图标"
+                onClick={handleRandomIcon}
+             >
+                <LucideIcons.Shuffle className="h-4 w-4" />
+             </button>
+             <button
+               className="pb-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+               onClick={() => {
+                 onChange(undefined);
+                 setOpen(false);
+               }}
+             >
+               移除
+             </button>
+          </div>
         </div>
 
-        <div className="h-[320px]">
-          {tab === "emoji" ? (
-            <div
-              key="emoji"
-              className="w-full h-full animate-in fade-in duration-150 relative"
-            >
+        {/* Content Area */}
+        <div className="h-[360px]">
+          {tab === "emoji" && (
+            <div className="h-full w-full">
               <style>{`
-                .emoji-picker-react-wrapper .emoji-picker-react {
-                  margin-top: -8px !important;
+                .emoji-picker-react-wrapper {
+                   --epr-search-input-height: 0px !important;
+                   --epr-category-navigation-button-size: 28px !important;
                 }
                 .emoji-picker-react {
-                  --ep-size: 28px;
-                  --category-font-size: 0;
-                  padding-top: 0 !important;
+                  width: 100% !important;
+                  height: 100% !important;
+                  border: none !important;
+                  background: transparent !important;
+                  display: flex !important;
+                  flex-direction: column !important;
                 }
-                .emoji-picker-react > div:first-child {
-                  padding-top: 0 !important;
-                  margin-top: 0 !important;
+                .emoji-picker-react .epr-body {
+                   flex: 1 !important;
+                   min-height: 0 !important;
                 }
-                .emoji-picker-react .category-label {
+                .emoji-picker-react .epr-category-nav {
+                   order: 2 !important;
+                   padding-top: 0 !important;
+                   padding-bottom: 8px !important;
+                }
+                .emoji-picker-react .epr-search-container {
                   display: none !important;
                 }
-                .emoji-picker-react .emoji {
-                  transition: transform 150ms ease;
-                  cursor: pointer;
-                }
-                .emoji-picker-react .emoji:hover {
-                  transform: scale(1.3);
-                }
-                .emoji-picker-react .emoji-search,
-                .emoji-picker-react .search-container {
+                .emoji-picker-react .epr-preview {
                   display: none !important;
                 }
-                .emoji-picker-react .preview-pane {
-                  display: none !important;
-                }
-                .emoji-picker-react [class*="header"] {
-                  display: none !important;
-                }
+                /* Use CSS to make icons larger to match Notion */
+                 .emoji-picker-react img.emoji {
+                   width: 28px !important;
+                   height: 28px !important;
+                 }
               `}</style>
-              <div className="emoji-picker-react-wrapper absolute inset-0">
-                <EmojiPicker
-                  onEmojiClick={(emojiData) => {
-                    onChange(emojiData.emoji);
-                    setOpen(false);
-                  }}
-                  width="100%"
-                  height="100%"
-                  searchDisabled={true}
-                  skinTonesDisabled
-                  previewConfig={{ showPreview: false }}
-                  theme={Theme.AUTO}
-                  emojiStyle={EmojiStyle.APPLE}
-                />
-              </div>
+               <div className="emoji-picker-react-wrapper h-full w-full">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => {
+                      onChange(emojiData.emoji);
+                      setOpen(false);
+                    }}
+                    width="100%"
+                    height="100%"
+                    searchDisabled
+                    skinTonesDisabled
+                    previewConfig={{ showPreview: false }}
+                    theme={Theme.AUTO}
+                    emojiStyle={EmojiStyle.APPLE}
+                  />
+               </div>
             </div>
-          ) : (
-            <div
-              key="icon"
-              className="flex flex-col h-full animate-in fade-in duration-150"
-            >
-              <div className="flex items-center border-b px-3 pb-2 pt-3">
-                <LucideIcons.Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                <input
-                  className="flex h-5 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  placeholder="搜索图标..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <ScrollArea className="flex-1">
-                <div className="p-2 grid grid-cols-8 gap-1">
-                  {filteredIcons.map((iconName) => {
-                    const Icon = (LucideIcons as any)[iconName];
-                    return (
-                      <button
-                        key={iconName}
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-all duration-150 hover:scale-105 active:scale-95",
-                          value === iconName &&
-                            "bg-accent text-accent-foreground",
-                        )}
-                        onClick={() => {
-                          onChange(iconName);
-                          setOpen(false);
-                        }}
-                        title={iconName}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </button>
-                    );
-                  })}
-                  {filteredIcons.length === 0 && (
-                    <div className="col-span-8 text-center py-8 text-sm text-muted-foreground">
-                      未找到匹配的图标
-                    </div>
-                  )}
+          )}
+
+          {tab === "icon" && (
+             <ScrollArea className="h-full">
+                <div className="p-3 grid grid-cols-6 gap-1">
+                   {filteredIcons.map((iconName) => {
+                     const Icon = (LucideIcons as any)[iconName];
+                     return (
+                       <button
+                         key={iconName}
+                         className={cn(
+                           "flex aspect-square w-full items-center justify-center rounded-md hover:bg-muted transition-all duration-150",
+                           value === iconName &&
+                             "bg-accent text-accent-foreground shadow-sm",
+                         )}
+                         onClick={() => {
+                           onChange(iconName);
+                           setOpen(false);
+                         }}
+                         title={iconName}
+                       >
+                         <Icon className="h-6 w-6 stroke-[1.5]" />
+                       </button>
+                     );
+                   })}
+                   {filteredIcons.length === 0 && (
+                     <div className="col-span-6 text-center py-12 text-sm text-muted-foreground">
+                       未找到匹配的图标
+                     </div>
+                   )}
                 </div>
-              </ScrollArea>
-            </div>
+             </ScrollArea>
           )}
         </div>
       </PopoverContent>

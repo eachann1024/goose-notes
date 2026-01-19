@@ -136,6 +136,17 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   }, [editor, menuOpen, clearHideTimeout, scheduleHide]);
 
   useEffect(() => {
+    const handleScroll = () => {
+      setVisible(false);
+      setHandles(emptyState);
+    };
+    window.addEventListener("scroll", handleScroll, { capture: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll, { capture: true });
+    };
+  }, []);
+
+  useEffect(() => {
     if (menuOpen) {
       suppressDragHandle();
     } else {

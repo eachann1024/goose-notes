@@ -77,9 +77,18 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     editorDom.addEventListener("mouseover", handleMouseEnterLink);
     editorDom.addEventListener("mouseout", handleMouseLeaveLink);
 
+    const handleScroll = () => {
+      setIsVisible(false);
+      setIsEditing(false);
+      setLinkElement(null);
+    };
+
+    window.addEventListener("scroll", handleScroll, { capture: true });
+
     return () => {
       editorDom.removeEventListener("mouseover", handleMouseEnterLink);
       editorDom.removeEventListener("mouseout", handleMouseLeaveLink);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
       clearHideTimeout();
     };
   }, [editor, handleMouseEnterLink, handleMouseLeaveLink]);

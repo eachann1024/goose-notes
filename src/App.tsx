@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { UToolsAdapter } from "@/lib/utools";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
@@ -21,9 +22,17 @@ function App() {
     decreaseEditorFontSize,
     setEditorFontSize,
     customFonts,
+    utools,
   } = useSettings();
   const { createOnboardingPages, onboardingCompleted, hydrated } = usePages();
   const { start: startGuide, completed: guideCompleted } = useOnboardingGuide();
+
+  useEffect(() => {
+    if (utools.windowHeight) {
+      UToolsAdapter.setExpendHeight(utools.windowHeight);
+    }
+  }, [utools.windowHeight]);
+
 
   useEffect(() => {
     if (hydrated && !onboardingCompleted) {

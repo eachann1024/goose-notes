@@ -104,9 +104,17 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
       }
     };
 
+    const handleScroll = () => {
+      setVisible(false);
+      setHoverState(null);
+    };
+
     document.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("scroll", handleScroll, { capture: true });
+
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
   }, [editor, hoverState, clearHideTimeout]);

@@ -16,6 +16,7 @@ export type CodeStyle = 'default' | 'github' | 'modern' | 'vivid' | 'night'
 export interface UToolsSettings {
     globalSearchEnabled: boolean
     openSearchInUtools: boolean
+    windowHeight: number
 }
 
 export interface FontConfig {
@@ -51,6 +52,7 @@ interface SettingsState {
     toggleSearchProvider: (id: string) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
     setOpenSearchInUtools: (enabled: boolean) => void
+    setUToolsWindowHeight: (height: number) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
     setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
@@ -130,6 +132,7 @@ export const useSettings = create<SettingsState>()(
             utools: {
                 globalSearchEnabled: false,
                 openSearchInUtools: true,
+                windowHeight: 600,
             },
             searchAllNotebooks: false,
             customFonts: {
@@ -158,6 +161,10 @@ export const useSettings = create<SettingsState>()(
             setOpenSearchInUtools: (enabled) =>
                 set((state) => ({
                     utools: { ...state.utools, openSearchInUtools: enabled },
+                })),
+            setUToolsWindowHeight: (height) =>
+                set((state) => ({
+                    utools: { ...state.utools, windowHeight: height },
                 })),
             setSearchAllNotebooks: (searchAll) => set({ searchAllNotebooks: searchAll }),
             setCustomLabel: (type, label) =>

@@ -99,6 +99,7 @@ declare global {
   const SheetPortal: typeof import('./components/ui/sheet').SheetPortal
   const SheetTitle: typeof import('./components/ui/sheet').SheetTitle
   const SheetTrigger: typeof import('./components/ui/sheet').SheetTrigger
+  const Slider: typeof import('./components/ui/slider').Slider
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
   const TIPS: typeof import('./lib/tips').TIPS
@@ -115,6 +116,9 @@ declare global {
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
   const Trash2: typeof import('lucide-react').Trash2
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
+  const WINDOW_HEIGHT_DEFAULT: typeof import('./stores/useSettings').WINDOW_HEIGHT_DEFAULT
+  const WINDOW_HEIGHT_MAX: typeof import('./stores/useSettings').WINDOW_HEIGHT_MAX
+  const WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').WINDOW_HEIGHT_MIN
   const X: typeof import('lucide-react').X
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
@@ -178,6 +182,7 @@ declare global {
   const usePages: typeof import('./stores/usePages').usePages
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
+  const useScrollHide: typeof import('./hooks/useScrollHide').useScrollHide
   const useSettings: typeof import('./stores/useSettings').useSettings
   const useState: typeof import('react').useState
   const useSyncExternalStore: typeof import('react').useSyncExternalStore

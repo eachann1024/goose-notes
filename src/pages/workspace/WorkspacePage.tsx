@@ -237,15 +237,23 @@ export function WorkspacePage() {
               page.content.content.length > 2;
 
             return (
-              <div className="py-12 px-8 min-h-screen">
+              <div
+                className={cn(
+                  "px-8 min-h-screen",
+                  page.icon ? "py-12" : "pt-8 pb-12",
+                )}
+              >
                 <div
                   className={cn(
-                    "mb-8",
+                    page.icon ? "mb-8" : "mb-2",
                     page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
                   )}
                 >
                   {!isLocalFolderPage && (
-                    <div className="group relative mb-4">
+                    <div className={cn(
+                      "group relative mb-4",
+                      !page.icon && "min-h-[40px]"
+                    )}>
                       <IconSelector
                         value={page.icon}
                         onChange={(icon) =>
@@ -266,11 +274,11 @@ export function WorkspacePage() {
                             "flex items-center justify-center transition-all duration-300 ml-6",
                             page.icon
                               ? "opacity-100 scale-100"
-                              : page.trashedAt || page.isLocked || hasRealContent
+                              : page.trashedAt || page.isLocked
                                 ? "opacity-0"
                                 : isNewPage
                                   ? "opacity-100 animate-slow-pulse hover:scale-105"
-                                  : "opacity-0 hover:opacity-100 hover:scale-105",
+                                  : "opacity-0 group-hover:opacity-100 hover:scale-105",
                           )}
                         >
                           {page.icon ? (

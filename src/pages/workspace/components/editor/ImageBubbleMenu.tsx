@@ -81,7 +81,11 @@ function setAlignStyle(
   return `${baseStyle} ${marginMap[align]}`.trim();
 }
 
+import { useScrollHide } from "@/hooks/useScrollHide";
+
 export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
+  const isHidden = useScrollHide(editor);
+
   if (!editor) return null;
 
   const { currentAlign, imageSrc } = useEditorState({
@@ -129,7 +133,11 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
     <TooltipProvider>
       <BubbleMenu
         editor={editor}
-        className="flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150"
+        appendTo={() => document.body}
+        className={cn(
+          "flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity z-[9999]",
+          isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
         shouldShow={({ editor }: { editor: Editor }) => {
           return editor.isEditable && editor.isActive("imageResize");
         }}
@@ -216,7 +224,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
             {isRemote ? (
               <div className="max-w-48 text-center">
                 <p>复制链接</p>
-                <p className="text-xs text-muted-foreground">远程图片只能复制链接，本地图片才可复制原文件</p>
+                <p className="text-xs text-muted-foreground">
+                  远程图片只能复制链接，本地图片才可复制原文件
+                </p>
               </div>
             ) : (
               <p>复制图片</p>
