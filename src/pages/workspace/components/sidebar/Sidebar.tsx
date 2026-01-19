@@ -364,6 +364,9 @@ export function Sidebar({ className }: SidebarProps) {
         <DialogContent className="sm:max-w-[400px] z-[100]">
           <DialogHeader>
             <DialogTitle>重命名页面</DialogTitle>
+            <DialogDescription className="sr-only">
+              输入新的页面名称
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6">
             <div className="grid gap-2">

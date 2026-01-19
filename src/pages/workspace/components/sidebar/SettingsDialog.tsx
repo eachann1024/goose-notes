@@ -39,7 +39,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     toggleSearchProvider,
     utools,
     setOpenSearchInUtools,
-    setAutoOpenSearch,
     setUToolsWindowHeight,
     customFonts,
     setCustomLabel,
@@ -260,8 +259,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     toggleSearchProvider={toggleSearchProvider}
                     openSearchInUtools={utools.openSearchInUtools}
                     setOpenSearchInUtools={setOpenSearchInUtools}
-                    autoOpenSearch={utools.autoOpenSearch}
-                    setAutoOpenSearch={setAutoOpenSearch}
+
                     windowHeight={utools.windowHeight ?? 600}
                     setWindowHeight={setUToolsWindowHeight}
                   />
@@ -284,9 +282,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        restartGuide();
                         onOpenChange(false);
-                        toast.info("即将开始引导教程");
+                        setTimeout(() => {
+                          restartGuide();
+                          toast.info("即将开始引导教程");
+                        }, 300);
                       }}
                     >
                       重新展示

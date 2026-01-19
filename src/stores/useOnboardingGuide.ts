@@ -82,7 +82,7 @@ export const useOnboardingGuide = create<OnboardingGuideState>()(
       },
 
       restart: () => {
-        set({ isActive: true, currentStepIndex: 0, completed: false });
+        set({ isActive: true, currentStepIndex: 0 });
       },
 
       next: () => {

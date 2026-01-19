@@ -16,7 +16,7 @@ export type CodeStyle = 'default' | 'github' | 'modern' | 'vivid' | 'night'
 export interface UToolsSettings {
     globalSearchEnabled: boolean
     openSearchInUtools: boolean
-    autoOpenSearch: boolean
+
     windowHeight: number
 }
 
@@ -53,7 +53,7 @@ interface SettingsState {
     toggleSearchProvider: (id: string) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
     setOpenSearchInUtools: (enabled: boolean) => void
-    setAutoOpenSearch: (enabled: boolean) => void
+
     setUToolsWindowHeight: (height: number) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -134,7 +134,7 @@ export const useSettings = create<SettingsState>()(
             utools: {
                 globalSearchEnabled: false,
                 openSearchInUtools: true,
-                autoOpenSearch: false,
+
                 windowHeight: 600,
             },
             searchAllNotebooks: false,
@@ -165,10 +165,7 @@ export const useSettings = create<SettingsState>()(
                 set((state) => ({
                     utools: { ...state.utools, openSearchInUtools: enabled },
                 })),
-            setAutoOpenSearch: (enabled) =>
-                set((state) => ({
-                    utools: { ...state.utools, autoOpenSearch: enabled },
-                })),
+
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
                     utools: { ...state.utools, windowHeight: height },

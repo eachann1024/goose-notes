@@ -30,9 +30,7 @@ import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
 import Superscript from "@tiptap/extension-superscript";
 import Subscript from "@tiptap/extension-subscript";
-import Details from "@tiptap/extension-details";
-import DetailsSummary from "@tiptap/extension-details-summary";
-import DetailsContent from "@tiptap/extension-details-content";
+
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -116,7 +114,7 @@ export const editorExtensions = [
   InlineCodeFix,
   InlineMath,
   Callout,
-  Underline,
+  // Underline, // Duplicate extension names found: ['underline']
   TextStyle,
   Color,
   Superscript,
@@ -127,24 +125,24 @@ export const editorExtensions = [
   TextAlign.configure({
     types: ["heading", "paragraph"],
   }),
-  Details.configure({
-    HTMLAttributes: {
-      class: "details-wrapper",
-    },
-  }).extend({
-    addInputRules() {
-      return [
-        new InputRule({
-          find: /^>>\s$/,
-          handler: ({ chain, range }) => {
-            chain().deleteRange(range).setDetails().run();
-          },
-        }),
-      ];
-    },
-  }),
-  DetailsSummary,
-  DetailsContent,
+  // Details.configure({
+  //   HTMLAttributes: {
+  //     class: "details-wrapper",
+  //   },
+  // }).extend({
+  //   addInputRules() {
+  //     return [
+  //       new InputRule({
+  //         find: /^>>\s$/,
+  //         handler: ({ chain, range }) => {
+  //           chain().deleteRange(range).setDetails().run();
+  //         },
+  //       }),
+  //     ];
+  //   },
+  // }),
+  // DetailsSummary,
+  // DetailsContent,
   Youtube.configure({
     controls: false,
     nocookie: true,

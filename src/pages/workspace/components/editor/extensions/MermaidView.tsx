@@ -22,6 +22,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
       theme: isDark ? "dark" : "default",
       securityLevel: "loose",
       fontFamily: "inherit",
+      suppressErrorRendering: true, // 防止 mermaid 自动在页面底部插入错误信息
     });
 
     const renderMermaid = async () => {
@@ -37,7 +38,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
         setSvg(svg);
         setError(null);
       } catch (err) {
-        console.error("Mermaid rendering error:", err);
+        // console.error("Mermaid rendering error:", err);
         setError("语法错误");
       }
     };
@@ -50,11 +51,9 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
   }, [value, theme]);
 
   if (error) {
-    return (
-      <div className="bg-destructive/10 text-destructive text-xs p-2 rounded border border-destructive/20 my-2 font-mono">
-        {error}
-      </div>
-    );
+    // 用户要求出错时不显示任何报错 UI，也不要显示原来的文本（或者保持空白，避免界面跳动）
+    // 返回 null 或者保留之前的 svg（如果有的话），这里暂时返回 null 保持清净
+    return null;
   }
 
   return (

@@ -46,11 +46,11 @@ function App() {
 
         // 确保 CommandPalette 已挂载并能接收事件
         // 使用 requestAnimationFrame 略微延迟以确保 UI 响应
-        requestAnimationFrame(() => {
-          if (state.utools.autoOpenSearch) {
-             window.dispatchEvent(new CustomEvent("goose-note:open-search"));
-          }
-        });
+        // requestAnimationFrame(() => {
+        //   if (state.utools.autoOpenSearch) {
+        //      window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+        //   }
+        // });
       });
     }
   }, []);
