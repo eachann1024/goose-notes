@@ -33,6 +33,28 @@ function App() {
     }
   }, [utools.windowHeight]);
 
+  useEffect(() => {
+    // 注册 uTools 进入插件事件监听，用于处理自动打开搜索等逻辑
+    if (typeof window !== "undefined" && (window as any).utools) {
+      (window as any).utools.onPluginEnter(() => {
+        const state = useSettings.getState();
+        
+        // 立即应用窗口高度
+        if (state.utools.windowHeight) {
+          UToolsAdapter.setExpendHeight(state.utools.windowHeight);
+        }
+
+        // 确保 CommandPalette 已挂载并能接收事件
+        // 使用 requestAnimationFrame 略微延迟以确保 UI 响应
+        requestAnimationFrame(() => {
+          if (state.utools.autoOpenSearch) {
+             window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+          }
+        });
+      });
+    }
+  }, []);
+
 
   useEffect(() => {
     if (hydrated && !onboardingCompleted) {

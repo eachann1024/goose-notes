@@ -101,7 +101,7 @@ export function SettingsAppearance({
           <div>
             <Label>界面字体大小</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              调整整体界面的文字大小
+              调整整体界面的文字大小（小技巧：在界面按下 Command+= 可以临时修改编辑器界面大小, Windows 下是 Ctrl+=）
             </p>
           </div>
           <div className="flex items-center gap-2 border rounded-full p-1 bg-muted">

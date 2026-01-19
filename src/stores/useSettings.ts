@@ -16,6 +16,7 @@ export type CodeStyle = 'default' | 'github' | 'modern' | 'vivid' | 'night'
 export interface UToolsSettings {
     globalSearchEnabled: boolean
     openSearchInUtools: boolean
+    autoOpenSearch: boolean
     windowHeight: number
 }
 
@@ -52,6 +53,7 @@ interface SettingsState {
     toggleSearchProvider: (id: string) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
     setOpenSearchInUtools: (enabled: boolean) => void
+    setAutoOpenSearch: (enabled: boolean) => void
     setUToolsWindowHeight: (height: number) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -132,6 +134,7 @@ export const useSettings = create<SettingsState>()(
             utools: {
                 globalSearchEnabled: false,
                 openSearchInUtools: true,
+                autoOpenSearch: false,
                 windowHeight: 600,
             },
             searchAllNotebooks: false,
@@ -161,6 +164,10 @@ export const useSettings = create<SettingsState>()(
             setOpenSearchInUtools: (enabled) =>
                 set((state) => ({
                     utools: { ...state.utools, openSearchInUtools: enabled },
+                })),
+            setAutoOpenSearch: (enabled) =>
+                set((state) => ({
+                    utools: { ...state.utools, autoOpenSearch: enabled },
                 })),
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
@@ -211,6 +218,27 @@ export const useSettings = create<SettingsState>()(
                 const codeStyle = (state?.codeStyle || 'default') as CodeStyle
                 applyTheme(theme)
                 applyCodeStyle(codeStyle)
+                
+                // Apply window height immediately upon rehydration
+                if (state?.utools?.windowHeight) {
+                    // Try to apply directly if possible, or via adapter
+                    // We need to import UToolsAdapter dynamically or assume it's available globally or rely on side effects
+                    // Since UToolsAdapter is in lib, we can access it if we import it.
+                    // However, we are in the store file.
+                    // Check if we can import UToolsAdapter at top level (we already do).
+                    // So we can use it.
+                    // Delaying slightly can safeguard against race conditions in uTools init
+                    try {
+                         // @ts-ignore
+                         if (window.utools) {
+                             // @ts-ignore
+                             window.utools.setExpendHeight(state.utools.windowHeight);
+                         }
+                    } catch (e) {
+                        console.error("Failed to apply window height on rehydrate", e)
+                    }
+                }
+
                 if (state) {
                     // Always apply DEFAULT_SEARCH_PROVIDERS order, preserving user's enabled state
                     const enabledMap = new Map(state.searchProviders.map((p) => [p.id, p.isEnabled]))

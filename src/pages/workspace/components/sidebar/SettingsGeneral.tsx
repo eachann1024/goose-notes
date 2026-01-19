@@ -6,6 +6,8 @@ interface SettingsGeneralProps {
   toggleSearchProvider: (id: string) => void;
   openSearchInUtools: boolean;
   setOpenSearchInUtools: (enabled: boolean) => void;
+  autoOpenSearch: boolean;
+  setAutoOpenSearch: (enabled: boolean) => void;
   windowHeight: number;
   setWindowHeight: (height: number) => void;
 }
@@ -15,6 +17,8 @@ export function SettingsGeneral({
   toggleSearchProvider,
   openSearchInUtools,
   setOpenSearchInUtools,
+  autoOpenSearch,
+  setAutoOpenSearch,
   windowHeight,
   setWindowHeight,
 }: SettingsGeneralProps) {
@@ -56,10 +60,27 @@ export function SettingsGeneral({
         <div className="space-y-4 pt-4 border-t">
           <div>
             <h4 className="text-sm font-medium mb-3">插件设置</h4>
+            
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <Label htmlFor="auto-open-search" className="cursor-pointer">
+                  进入插件自动打开搜索
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  每次进入插件时自动激活搜索框
+                </p>
+              </div>
+              <Switch
+                id="auto-open-search"
+                checked={autoOpenSearch}
+                onCheckedChange={setAutoOpenSearch}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="open-in-utools" className="cursor-pointer">
-                  使用 uTools 打开搜索
+                  使用 uTools 打开搜索结果
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
                   关闭后将使用系统默认浏览器打开
@@ -83,7 +104,7 @@ export function SettingsGeneral({
             <Slider
               value={[windowHeight]}
               min={300}
-              max={1000}
+              max={900}
               step={10}
               onValueChange={([val]) => {
                 setWindowHeight(val);
