@@ -109,7 +109,7 @@ export const editorExtensions = [
     linkify: true,
     breaks: false,
     transformPastedText: true,
-    transformCopiedText: false,
+    transformCopiedText: true,
   }),
   InlineCodeFix,
   InlineMath,

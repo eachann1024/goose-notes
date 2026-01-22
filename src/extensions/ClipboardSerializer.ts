@@ -1,120 +1,6 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
-
-function serializeNode(node: ProseMirrorNode, depth = 0): string {
-  const results: string[] = [];
-
-  if (node.isText) {
-    return node.text || "";
-  }
-
-  if (node.type.name === "paragraph") {
-    const textParts: string[] = [];
-    node.forEach((child) => {
-      textParts.push(serializeNode(child, depth));
-    });
-    return textParts.join("");
-  }
-
-  if (node.type.name === "heading") {
-    const textParts: string[] = [];
-    node.forEach((child) => {
-      textParts.push(serializeNode(child, depth));
-    });
-    return textParts.join("");
-  }
-
-  if (node.type.name === "bulletList") {
-    node.forEach((child) => {
-      results.push(serializeNode(child, depth));
-    });
-    return results.join("\n");
-  }
-
-  if (node.type.name === "orderedList") {
-    let index = 1;
-    node.forEach((child) => {
-      const content = serializeListItemContent(child);
-      results.push(`${index}. ${content}`);
-      index++;
-    });
-    return results.join("\n");
-  }
-
-  if (node.type.name === "taskList") {
-    node.forEach((child) => {
-      results.push(serializeNode(child, depth));
-    });
-    return results.join("\n");
-  }
-
-  if (node.type.name === "listItem") {
-    const content = serializeListItemContent(node);
-    return `• ${content}`;
-  }
-
-  if (node.type.name === "taskItem") {
-    const checked = node.attrs.checked;
-    const content = serializeListItemContent(node);
-    return `${checked ? "☑" : "☐"} ${content}`;
-  }
-
-  if (node.type.name === "blockquote") {
-    const textParts: string[] = [];
-    node.forEach((child) => {
-      textParts.push(serializeNode(child, depth));
-    });
-    return textParts.map((line) => `> ${line}`).join("\n");
-  }
-
-  if (node.type.name === "codeBlock") {
-    const textParts: string[] = [];
-    node.forEach((child) => {
-      textParts.push(serializeNode(child, depth));
-    });
-    const lang = node.attrs.language || "";
-    return `\`\`\`${lang}\n${textParts.join("")}\n\`\`\``;
-  }
-
-  if (node.type.name === "horizontalRule") {
-    return "---";
-  }
-
-  if (node.type.name === "hardBreak") {
-    return "\n";
-  }
-
-  // Default: serialize children
-  node.forEach((child) => {
-    results.push(serializeNode(child, depth));
-  });
-
-  return results.join("\n");
-}
-
-function serializeListItemContent(node: ProseMirrorNode): string {
-  const textParts: string[] = [];
-  node.forEach((child) => {
-    if (child.type.name === "paragraph") {
-      child.forEach((grandChild) => {
-        textParts.push(serializeNode(grandChild, 0));
-      });
-    } else {
-      textParts.push(serializeNode(child, 0));
-    }
-  });
-  return textParts.join("");
-}
-
-function serializeSlice(slice: Slice): string {
-  const results: string[] = [];
-  slice.content.forEach((node) => {
-    results.push(serializeNode(node, 0));
-  });
-  return results.join("\n");
-}
 
 async function copyImageToClipboard(src: string): Promise<boolean> {
   try {
@@ -192,6 +78,30 @@ function getSelectedImageSrc(view: EditorView): string | null {
   return null;
 }
 
+function getCodeBlockTextContent(view: EditorView): string | null {
+  const { state } = view;
+  const { selection, doc } = state;
+
+  if (selection.empty) return null;
+
+  let text = "";
+  let hasCodeBlock = false;
+
+  doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+    if (node.type.name === "codeBlock") {
+      hasCodeBlock = true;
+      // 计算选中范围与代码块节点的交集
+      const start = Math.max(pos, selection.from) - pos - 1;
+      const end = Math.min(pos + node.nodeSize, selection.to) - pos - 1;
+      text += node.textContent.slice(Math.max(0, start), Math.max(0, end));
+    } else if (!hasCodeBlock) {
+      text += node.textContent;
+    }
+  });
+
+  return hasCodeBlock ? text : null;
+}
+
 export const ClipboardSerializer = Extension.create({
   name: "clipboardSerializer",
 
@@ -200,9 +110,6 @@ export const ClipboardSerializer = Extension.create({
       new Plugin({
         key: new PluginKey("clipboardSerializer"),
         props: {
-          clipboardTextSerializer: (slice) => {
-            return serializeSlice(slice);
-          },
           handleDOMEvents: {
             copy: (view, event) => {
               const imageSrc = getSelectedImageSrc(view);
@@ -211,6 +118,15 @@ export const ClipboardSerializer = Extension.create({
                 copyImageToClipboard(imageSrc);
                 return true;
               }
+
+              // 处理代码块复制 - 只复制纯代码内容，不包含 ``` 标记
+              const codeBlockText = getCodeBlockTextContent(view);
+              if (codeBlockText) {
+                event.preventDefault();
+                navigator.clipboard.writeText(codeBlockText);
+                return true;
+              }
+
               return false;
             },
             cut: (view, event) => {
