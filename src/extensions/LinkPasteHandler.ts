@@ -10,6 +10,12 @@ export const LinkPasteHandler = Extension.create({
     const linkType = this.editor.schema.marks.link;
     if (!linkType) return [];
 
+    const applyPasteTransaction = (view: any, tr: any) => {
+      tr.setMeta("uiEvent", "paste");
+      tr.setMeta("addToHistory", true);
+      view.dispatch(tr);
+    };
+
     return [
       new Plugin({
         key: new PluginKey("linkPasteHandler"),
@@ -35,7 +41,7 @@ export const LinkPasteHandler = Extension.create({
               tr.addMark(from, to, linkType.create({ href: text }));
             }
 
-            view.dispatch(tr);
+            applyPasteTransaction(view, tr);
             return true;
           },
         },

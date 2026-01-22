@@ -99,8 +99,8 @@ function FavoriteNode({
           className={cn(
             "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
             isActive
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              ? "bg-muted text-foreground dark:text-foreground/85"
+              : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/60 hover:text-foreground dark:hover:text-foreground/85",
           )}
           onClick={() => {
             if (isLocalFolder && page.isFolder) {
@@ -129,7 +129,7 @@ function FavoriteNode({
                   )}
                 >
                   {isExpanded ? (
-                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
+                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   ) : (
                     <>
                       {iconName ? (
@@ -144,7 +144,7 @@ function FavoriteNode({
                           )}
                         </div>
                       ) : (
-                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70" />
+                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                       )}
                     </>
                   )}
@@ -152,7 +152,7 @@ function FavoriteNode({
 
                 {!isExpanded && (
                   <div className="hidden group-hover/icon:flex items-center justify-center">
-                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   </div>
                 )}
               </div>
@@ -167,7 +167,7 @@ function FavoriteNode({
               {getPageTitle(page)}
             </span>
             {page.trashedAt && (
-              <LucideIcons.Trash2 className="h-3 w-3 text-muted-foreground/50 ml-1" />
+              <LucideIcons.Trash2 className="h-3 w-3 text-muted-foreground/50 dark:text-muted-foreground/40 ml-1" />
             )}
           </div>
 
@@ -179,7 +179,7 @@ function FavoriteNode({
             )}
           >
             <button
-              className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 hover:text-foreground transition-colors"
+              className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 transition-colors"
               onClick={handleAddChild}
             >
               <LucideIcons.Plus className="h-3.5 w-3.5" />
@@ -211,7 +211,7 @@ function FavoriteNode({
             style={{ height: itemHeight, paddingLeft: indent + 18 }}
             className="flex items-center px-2 mx-1 select-none"
           >
-            <span className="text-[13px] text-muted-foreground/45 italic truncate">
+            <span className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate">
               内无页面
             </span>
           </div>
@@ -242,7 +242,7 @@ export function FavoritesSection({
   return (
     <div className="py-1">
       <div
-        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 dark:text-muted-foreground/50 hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
         onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
       >
         <span>收藏</span>

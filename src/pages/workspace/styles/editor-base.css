@@ -119,6 +119,10 @@
   display: block;
 }
 
+.dark .ProseMirror img {
+  filter: brightness(0.9) saturate(0.95);
+}
+
 /* 图片对齐 */
 .ProseMirror img[align="left"] {
   margin-left: 0;

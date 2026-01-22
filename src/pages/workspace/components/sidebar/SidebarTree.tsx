@@ -120,7 +120,7 @@ function PageNode({
         <div className="flex items-center h-full px-2 rounded-md">
           <div
             style={{ paddingLeft: paddingLeft + 18 }}
-            className="text-[13px] text-muted-foreground/45 italic truncate"
+            className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
           >
             {node.data.name}
           </div>
@@ -181,8 +181,8 @@ function PageNode({
             "relative flex items-center h-full px-2 rounded-md cursor-pointer transition-colors text-sm font-medium",
             isDropTarget && "sidebar-drop-target",
             isActive
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground transition-all duration-200",
+              ? "bg-muted text-foreground dark:text-foreground/85"
+              : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200",
             node.state.isDragging && "opacity-50",
           )}
           onClick={(e) => {
@@ -213,7 +213,7 @@ function PageNode({
                   )}
                 >
                   {node.isOpen ? (
-                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70" />
+                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   ) : (
                     <>
                       {iconName ? (
@@ -228,9 +228,9 @@ function PageNode({
                           )}
                         </div>
                       ) : showFolderIcon ? (
-                        <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70" />
+                        <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                       ) : (
-                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70" />
+                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                       )}
                     </>
                   )}
@@ -238,7 +238,7 @@ function PageNode({
 
                 {!node.isOpen && (
                   <div className="hidden group-hover/icon:flex items-center justify-center">
-                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   </div>
                 )}
               </div>
@@ -252,12 +252,12 @@ function PageNode({
           <div className="ml-auto flex items-center pl-2 pr-1 shrink-0">
             <div className="relative w-5 h-5">
               {showChildCount && (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-muted-foreground/50 bg-muted-foreground/10 rounded-full transition-opacity group-hover:opacity-0">
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-muted-foreground/50 dark:text-muted-foreground/40 bg-muted-foreground/10 rounded-full transition-opacity group-hover:opacity-0">
                   {displayChildCount}
                 </span>
               )}
               <button
-                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-gradient-to-br hover:from-muted-foreground/25 hover:to-muted-foreground/15 active:from-muted-foreground/30 active:to-muted-foreground/20 text-muted-foreground/70 hover:text-foreground transition-all duration-200"
+                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-gradient-to-br hover:from-muted-foreground/25 hover:to-muted-foreground/15 active:from-muted-foreground/30 active:to-muted-foreground/20 text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200"
                 onClick={handleAddChild}
               >
                 <LucideIcons.Plus className="h-3.5 w-3.5" />
@@ -407,7 +407,7 @@ export function SidebarTree({
 
   if (treeData.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
         <p>暂无页面</p>
         <Button

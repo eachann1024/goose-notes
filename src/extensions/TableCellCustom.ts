@@ -5,6 +5,12 @@ export const TableCellCustom = TableCell.extend({
   name: "tableCell",
 
   addProseMirrorPlugins() {
+    const applyPasteTransaction = (view: any, tr: any) => {
+      tr.setMeta("uiEvent", "paste");
+      tr.setMeta("addToHistory", true);
+      view.dispatch(tr);
+    };
+
     return [
       new Plugin({
         key: new PluginKey("tableCellCustom"),
@@ -18,12 +24,12 @@ export const TableCellCustom = TableCell.extend({
                 ancestor.type.name === "tableRow" ||
                 ancestor.type.name === "tableHeaderRow"
               ) {
-                const sanitized = text.replace(/\n\s*\n/g, "\n");
+                const sanitized = text.replace(/\n{2,}/g, "\n");
                 if (sanitized !== text) {
-                  const { state, dispatch } = _view;
+                  const { state } = _view;
                   const fragment = state.schema.text(sanitized);
                   const tr = state.tr.replaceSelectionWith(fragment, false);
-                  dispatch(tr);
+                  applyPasteTransaction(_view, tr);
                   return true;
                 }
               }

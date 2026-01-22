@@ -273,7 +273,7 @@ export function Sidebar({ className }: SidebarProps) {
     onToggle: () => void;
   }) => (
     <div
-      className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+      className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 dark:text-muted-foreground/50 hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
       onClick={onToggle}
     >
       <span>{title}</span>

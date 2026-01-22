@@ -1,5 +1,4 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { EditorState } from "@tiptap/pm/state";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -180,13 +179,6 @@ export function Editor({ editable = true }: EditorProps) {
 
       editor.commands.setContent(contentToSet, { emitUpdate: false });
 
-      const { state, view } = editor;
-      const newState = EditorState.create({
-        doc: state.doc,
-        plugins: state.plugins,
-      });
-      view.updateState(newState);
-
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
 
@@ -245,13 +237,23 @@ export function Editor({ editable = true }: EditorProps) {
   useEffect(() => {
     if (!editor) return;
 
+    (window as any).__gooseNoteEditor = editor;
+
     const handlePaste = async (event: ClipboardEvent) => {
       const imageFile = getImageFromClipboard(event);
       if (imageFile) {
         event.preventDefault();
         try {
           const base64 = await processImageForStorage(imageFile);
-          editor.chain().focus().setImage({ src: base64 }).run();
+          const { state, view } = editor;
+          const nodeType =
+            state.schema.nodes.imageResize || state.schema.nodes.image;
+          if (!nodeType) return;
+          const imageNode = nodeType.create({ src: base64 });
+          const tr = state.tr.replaceSelectionWith(imageNode, false);
+          tr.setMeta("uiEvent", "paste");
+          tr.setMeta("addToHistory", true);
+          view.dispatch(tr.scrollIntoView());
         } catch (err) {
           console.error("Failed to paste image:", err);
         }
@@ -262,6 +264,9 @@ export function Editor({ editable = true }: EditorProps) {
     editorElement.addEventListener("paste", handlePaste);
 
     return () => {
+      if ((window as any).__gooseNoteEditor === editor) {
+        (window as any).__gooseNoteEditor = null;
+      }
       editorElement.removeEventListener("paste", handlePaste);
     };
   }, [editor]);

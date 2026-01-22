@@ -39,7 +39,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
             }}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
             title="打开文件夹"
           >
             <LucideIcons.FolderOpen className="h-4 w-4" />
@@ -48,7 +48,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
             onClick={onCreatePage}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
             title="新建页面"
           >
             <LucideIcons.SquarePen className="h-4 w-4" />
@@ -60,14 +60,14 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-muted-foreground h-8 px-2 bg-gradient-to-r from-muted/40 to-muted/30 border-transparent shadow-none",
-            "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground transition-all duration-200",
+            "w-full justify-start text-muted-foreground dark:text-muted-foreground/70 h-8 px-2 bg-gradient-to-r from-muted/40 to-muted/30 border-transparent shadow-none",
+            "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200",
           )}
           onClick={onSearch}
         >
           <LucideIcons.Search className="mr-2 h-4 w-4 opacity-50" />
           <span className="text-sm">搜索</span>
-          <span className="ml-auto text-xs text-muted-foreground/50">⌘K</span>
+          <span className="ml-auto text-xs text-muted-foreground/50 dark:text-muted-foreground/40">⌘K</span>
         </Button>
       </div>
     </>

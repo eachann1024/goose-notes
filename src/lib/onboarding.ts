@@ -146,6 +146,52 @@ export const ONBOARDING_PAGE_CONTENT: JSONContent = {
     {
       type: "heading",
       attrs: { level: 2 },
+      content: [{ type: "text", text: "公式与图表" }],
+    },
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "行内公式示例：" },
+        { type: "inlineMath", attrs: { value: "E=mc^2" } },
+        { type: "text", text: "，适合写在句子里。" },
+      ],
+    },
+    {
+      type: "codeBlock",
+      attrs: { language: "math" },
+      content: [
+        {
+          type: "text",
+          text: "f(x)=\\int_0^1 x^2 \\, dx",
+        },
+      ],
+    },
+    {
+      type: "codeBlock",
+      attrs: { language: "mermaid" },
+      content: [
+        {
+          type: "text",
+          text: "flowchart LR\nA[灵感] --> B{整理}\nB --> C[行动]",
+        },
+      ],
+    },
+    {
+      type: "heading",
+      attrs: { level: 2 },
+      content: [{ type: "text", text: "提示与分隔" }],
+    },
+    {
+      type: "callout",
+      attrs: { emoji: "✨" },
+      content: [{ type: "text", text: "提示框可以强调重点信息。" }],
+    },
+    {
+      type: "horizontalRule",
+    },
+    {
+      type: "heading",
+      attrs: { level: 2 },
       content: [{ type: "text", text: "图片与表格" }],
     },
     {
@@ -259,6 +305,20 @@ export const ONBOARDING_CHILD_PAGE_CONTENT: JSONContent = {
             {
               type: "paragraph",
               content: [{ type: "text", text: "输入 / 打开功能菜单" }],
+            },
+          ],
+        },
+        {
+          type: "listItem",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "新增控件：提示框、公式块、Mermaid 图表、分隔线",
+                },
+              ],
             },
           ],
         },

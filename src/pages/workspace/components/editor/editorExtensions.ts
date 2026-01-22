@@ -35,9 +35,20 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
-import { InputRule } from "@tiptap/core";
+import { Extension, InputRule } from "@tiptap/core";
 
 const lowlight = createLowlight(all);
+
+const UndoRedoKeymap = Extension.create({
+  name: "undoRedoKeymap",
+  addKeyboardShortcuts() {
+    return {
+      "Mod-z": () => this.editor.commands.undo(),
+      "Shift-Mod-z": () => this.editor.commands.redo(),
+      "Mod-y": () => this.editor.commands.redo(),
+    };
+  },
+});
 
 export const editorExtensions = [
   StarterKit.configure({
@@ -50,6 +61,7 @@ export const editorExtensions = [
       width: 3,
     },
   }),
+  UndoRedoKeymap,
   SelectableHorizontalRule,
   HeadingWithBackspace.configure({
     levels: [1, 2, 3, 4, 5, 6],

@@ -7,6 +7,10 @@ import { parseMarkdownTableToHtml } from "@/lib/markdownTableParser";
 const md = new MarkdownIt({ html: true }).enable("table");
 
 function convertChineseLists(text: string): string {
+  if (!text.includes("\n")) {
+    return text;
+  }
+
   const lines = text.split("\n");
   const result: string[] = [];
   let inCodeBlock = false;
@@ -107,6 +111,73 @@ function convertCodeLines(text: string): string {
   return result.join("\n");
 }
 
+// 预处理粘贴的文本：还原被转义的格式，移除多余空行
+function preprocessPastedText(text: string): string {
+  // 还原被转义的 task list: \[ \] -> [ ], \[x\] -> [x]
+  text = text.replace(/^(\s*-?\s*)\\\[\s*([x ]?)\s*\\\]/gim, "$1[$2]");
+
+  // 移除列表/引用间的多余空行
+  text = text.replace(/(\n\s*[-*>\d]\s.*)\n{2,}(\s*[-*>\d]\s)/g, "$1\n$2");
+
+  return text;
+}
+
+function applyPasteTransaction(view: any, tr: any) {
+  tr.setMeta("uiEvent", "paste");
+  tr.setMeta("addToHistory", true);
+  view.dispatch(tr);
+}
+
+function isInsideNodeTypes($pos: any, names: string[]): boolean {
+  for (let depth = $pos.depth; depth >= 0; depth--) {
+    if (names.includes($pos.node(depth).type.name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function shouldForceInlinePaste($pos: any): boolean {
+  if ($pos.parent.type.name === "heading") {
+    return true;
+  }
+  return isInsideNodeTypes($pos, ["listItem", "taskItem"]);
+}
+
+function hasInlineCode(text: string): boolean {
+  return /`[^`]+`/.test(text);
+}
+
+function extractInlineCode(text: string): { content: string; ranges: number[][] } | null {
+  let content = "";
+  const ranges: number[][] = [];
+  let inCode = false;
+  let codeStart = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const prevChar = i > 0 ? text[i - 1] : "";
+
+    if (char === "`" && prevChar !== "\\") {
+      if (inCode) {
+        ranges.push([codeStart, content.length]);
+      } else {
+        codeStart = content.length;
+      }
+      inCode = !inCode;
+      continue;
+    }
+
+    content += char;
+  }
+
+  if (inCode) {
+    return null;
+  }
+
+  return { content, ranges };
+}
+
 // 检测文本是否包含 markdown 结构
 function hasMarkdownStructure(text: string): boolean {
   const patterns = [
@@ -117,6 +188,7 @@ function hasMarkdownStructure(text: string): boolean {
     /^```/m, // 代码块
     /^\|.*\|.*\|/m, // 表格（至少两个 |）
     /^- \[[ x]\]/im, // 任务列表
+    /^\[[ x]\]/im, // 孤立的任务项（无 - 前缀）
   ];
   return patterns.some((p) => p.test(text));
 }
@@ -142,6 +214,9 @@ export const EditorPasteHandler = Extension.create({
             const textPlain = event.clipboardData?.getData("text/plain");
             if (!textPlain) return false;
 
+            // 预处理粘贴的文本：还原被转义的格式，移除多余空行
+            const processedTextPlain = preprocessPastedText(textPlain);
+
             // 判断是否在"块内"粘贴
             // 方法1：检查父节点是否是 textblock（标准文本块如 paragraph、heading）
             const isTextblock = $from.parent.type.isTextblock;
@@ -153,17 +228,39 @@ export const EditorPasteHandler = Extension.create({
             const notAtStart = $from.parentOffset > 0;
             const isInlineContext = isTextBlock && (hasContent || notAtStart);
 
-            // 块内粘贴简单文本：去掉换行直接插入
-            if (isInlineContext && !hasMarkdownStructure(textPlain)) {
-              const cleanText = textPlain.replace(/\r?\n/g, "");
+            if (isInlineContext && hasInlineCode(processedTextPlain)) {
+              const extracted = extractInlineCode(processedTextPlain);
+              const codeMark = state.schema.marks.code;
+              if (extracted && codeMark && !processedTextPlain.includes("\n")) {
+                const insertPos = selection.from;
+                const tr = state.tr.insertText(extracted.content);
+                extracted.ranges.forEach(([start, end]) => {
+                  if (start === end) return;
+                  tr.addMark(insertPos + start, insertPos + end, codeMark.create());
+                });
+                applyPasteTransaction(view, tr);
+                return true;
+              }
+            }
+
+            if (isInlineContext && shouldForceInlinePaste($from)) {
+              const cleanText = processedTextPlain.replace(/\r?\n+/g, " ");
               const tr = state.tr.insertText(cleanText);
-              view.dispatch(tr);
+              applyPasteTransaction(view, tr);
               return true;
             }
 
-            const tableHtml = parseMarkdownTableToHtml(textPlain);
+            // 块内粘贴简单文本：去掉换行直接插入
+            if (isInlineContext && !hasMarkdownStructure(processedTextPlain)) {
+              const cleanText = processedTextPlain.replace(/\r?\n/g, "");
+              const tr = state.tr.insertText(cleanText);
+              applyPasteTransaction(view, tr);
+              return true;
+            }
+
+            const tableHtml = parseMarkdownTableToHtml(processedTextPlain);
             if (tableHtml) {
-              const { state, dispatch } = view;
+              const { state } = view;
               const parser = DOMParser.fromSchema(state.schema);
               const doc = new window.DOMParser().parseFromString(
                 tableHtml,
@@ -171,16 +268,16 @@ export const EditorPasteHandler = Extension.create({
               );
               const slice = parser.parseSlice(doc.body);
               const tr = state.tr.replaceSelection(slice);
-              dispatch(tr);
+              applyPasteTransaction(view, tr);
               return true;
             }
 
-            let processedText = convertChineseLists(textPlain);
+            let processedText = convertChineseLists(processedTextPlain);
             processedText = convertCodeLines(processedText);
 
             const html = md.render(processedText);
             if (html) {
-              const { state, dispatch } = view;
+              const { state } = view;
               const parser = DOMParser.fromSchema(state.schema);
               const doc = new window.DOMParser().parseFromString(
                 html,
@@ -190,7 +287,7 @@ export const EditorPasteHandler = Extension.create({
                 preserveWhitespace: true,
               });
               const tr = state.tr.replaceSelection(slice);
-              dispatch(tr);
+              applyPasteTransaction(view, tr);
               return true;
             }
 

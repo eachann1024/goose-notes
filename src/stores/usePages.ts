@@ -963,6 +963,9 @@ export const usePages = create<PagesState>()(
     {
       name: "goose-note-storage",
       storage: createJSONStorage(() => uToolsStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
       partialize: (state) => ({
         pages: state.pages,
         activePageId: state.activePageId,
