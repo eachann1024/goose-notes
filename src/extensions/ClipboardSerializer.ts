@@ -230,10 +230,23 @@ function isSingleListItemSelection(view: EditorView): boolean {
 
   if (fromDepth === null || toDepth === null) return false;
 
-  return (
+  const sameListItem =
     selection.$from.start(fromDepth) === selection.$to.start(toDepth) &&
-    selection.$from.end(fromDepth) === selection.$to.end(toDepth)
-  );
+    selection.$from.end(fromDepth) === selection.$to.end(toDepth);
+
+  if (!sameListItem) return false;
+
+  // 整行选中时返回 false，保留列表格式
+  const paragraphNode = selection.$from.parent;
+  if (paragraphNode.isTextblock) {
+    const paragraphStart = selection.$from.start();
+    const paragraphEnd = selection.$from.end();
+    if (selection.from === paragraphStart && selection.to === paragraphEnd) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function isSingleTextblockSelection(view: EditorView): boolean {
@@ -531,7 +544,7 @@ export const ClipboardSerializer = Extension.create({
         key: new PluginKey("clipboardSerializer"),
         props: {
           // 覆盖 tiptap-markdown 的 clipboardTextSerializer
-          clipboardTextSerializer: (slice) => {
+          clipboardTextSerializer: (slice, view) => {
             // 检查 slice 内容是否包含需要特殊处理的节点
             let hasSpecialNodes = false;
             let hasPartialSpecial = false;
@@ -650,8 +663,8 @@ export const ClipboardSerializer = Extension.create({
               return markdown.trim();
             }
 
-            // 其他内容返回 null，使用默认处理
-            return null;
+            // 其他内容返回空字符串，使用默认处理
+            return "";
           },
           handleDOMEvents: {
             copy: (view, event) => {
@@ -707,15 +720,13 @@ export const ClipboardSerializer = Extension.create({
                 }
               }
 
-              // 4. 处理完整节点选中（列表、引用、Callout 等）
-              // 使用自定义序列化，避免多余空行
-              if (hasSpecialBlockNodes(view)) {
-                const markdown = customSerializeSelection(view);
-                if (markdown) {
-                  event.preventDefault();
-                  navigator.clipboard.writeText(markdown);
-                  return true;
-                }
+              // 4. 处理多行/多块选中（列表、标题、引用等）
+              // 使用自定义序列化，保留格式
+              const markdown = customSerializeSelection(view);
+              if (markdown) {
+                event.preventDefault();
+                navigator.clipboard.writeText(markdown);
+                return true;
               }
 
               return false;

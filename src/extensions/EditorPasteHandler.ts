@@ -226,7 +226,9 @@ export const EditorPasteHandler = Extension.create({
             const isTextBlock = isTextblock || containsInline;
             const hasContent = $from.parent.textContent.length > 0;
             const notAtStart = $from.parentOffset > 0;
-            const isInlineContext = isTextBlock && (hasContent || notAtStart);
+            // 列表项内始终视为行内上下文（修复粘贴空行问题）
+            const isInListItem = isInsideNodeTypes($from, ["listItem", "taskItem"]);
+            const isInlineContext = isTextBlock && (hasContent || notAtStart || isInListItem);
 
             if (isInlineContext && hasInlineCode(processedTextPlain)) {
               const extracted = extractInlineCode(processedTextPlain);
@@ -244,7 +246,13 @@ export const EditorPasteHandler = Extension.create({
             }
 
             if (isInlineContext && shouldForceInlinePaste($from)) {
-              const cleanText = processedTextPlain.replace(/\r?\n+/g, " ");
+              let cleanText = processedTextPlain;
+              // 如果粘贴内容有列表前缀，去除它（避免粘贴时产生空行）
+              cleanText = cleanText
+                .replace(/^[-*+]\s+/gm, '')           // 无序列表
+                .replace(/^\d+\.\s+/gm, '')           // 有序列表
+                .replace(/^- \[[ x]\]\s*/gim, '');    // 任务列表
+              cleanText = cleanText.replace(/\r?\n+/g, " ").trim();
               const tr = state.tr.insertText(cleanText);
               applyPasteTransaction(view, tr);
               return true;
