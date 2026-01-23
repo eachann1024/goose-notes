@@ -14,6 +14,8 @@ export function OnboardingOverlay() {
   const { isActive, currentStepIndex, next, prev, skip } = useOnboardingGuide();
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [mounted, setMounted] = useState(false);
+  const bubbleRef = React.useRef<HTMLDivElement | null>(null);
+  const [bubbleSize, setBubbleSize] = useState({ width: 288, height: 200 });
 
   const step = ONBOARDING_STEPS[currentStepIndex];
 
@@ -51,9 +53,40 @@ export function OnboardingOverlay() {
     };
   }, [isActive, currentStepIndex, step?.target]);
 
+  React.useLayoutEffect(() => {
+    if (!isActive) return;
+    let frame: number | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const updateBubbleSize = () => {
+      const element = bubbleRef.current;
+      if (!element) return;
+      const { width, height } = element.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setBubbleSize({ width, height });
+      }
+    };
+
+    updateBubbleSize();
+    frame = window.requestAnimationFrame(updateBubbleSize);
+    window.addEventListener("resize", updateBubbleSize);
+
+    if (bubbleRef.current) {
+      resizeObserver = new ResizeObserver(updateBubbleSize);
+      resizeObserver.observe(bubbleRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateBubbleSize);
+      if (frame) window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+    };
+  }, [isActive, currentStepIndex, step?.title, step?.description]);
+
   if (!mounted || !isActive || !step) return null;
 
   const padding = 8;
+  const viewportPadding = 12;
   const highlightStyle: React.CSSProperties = rect
     ? {
         top: rect.top - padding,
@@ -101,29 +134,58 @@ export function OnboardingOverlay() {
 
       {/* 引导气泡 */}
       {rect && (
+        (() => {
+          const bubbleWidth = bubbleSize.width || 288;
+          const bubbleHeight = bubbleSize.height || 200;
+          const canShowTop =
+            rect.top - padding - bubbleHeight >= viewportPadding;
+          const canShowBottom =
+            rect.bottom + padding + bubbleHeight <=
+            window.innerHeight - viewportPadding;
+          const resolvedPosition =
+            step.position === "top" && !canShowTop && canShowBottom
+              ? "bottom"
+              : step.position === "bottom" && !canShowBottom && canShowTop
+                ? "top"
+                : step.position;
+
+          const desiredTop =
+            resolvedPosition === "bottom"
+              ? rect.bottom + padding
+              : resolvedPosition === "top"
+                ? rect.top - padding - bubbleHeight
+                : rect.top;
+          const desiredLeft =
+            resolvedPosition === "right"
+              ? rect.right + padding
+              : resolvedPosition === "left"
+                ? rect.left - padding - bubbleWidth
+                : rect.left + rect.width / 2 - bubbleWidth / 2;
+
+          const maxTop = window.innerHeight - bubbleHeight - viewportPadding;
+          const maxLeft = window.innerWidth - bubbleWidth - viewportPadding;
+          const clamp = (value: number, min: number, max: number) =>
+            max < min ? min : Math.min(Math.max(value, min), max);
+          const top = clamp(desiredTop, viewportPadding, maxTop);
+          const left = clamp(desiredLeft, viewportPadding, maxLeft);
+
+          return (
         <div
           className={cn(
             "absolute pointer-events-auto bg-popover text-popover-foreground rounded-xl shadow-2xl border p-5 w-72 transition-all duration-300 animate-in fade-in slide-in-from-top-2",
             // 根据位置自动调整
-            step.position === "right" && "ml-4",
-            step.position === "left" && "mr-4",
-            step.position === "top" && "mb-4",
-            step.position === "bottom" && "mt-4",
+            resolvedPosition === "right" && "ml-4",
+            resolvedPosition === "left" && "mr-4",
+            resolvedPosition === "top" && "mb-4",
+            resolvedPosition === "bottom" && "mt-4",
           )}
           style={{
-            top:
-              step.position === "bottom"
-                ? rect.bottom + padding
-                : step.position === "top"
-                  ? rect.top - padding - 200 // 粗略估算
-                  : rect.top,
-            left:
-              step.position === "right"
-                ? rect.right + padding
-                : step.position === "left"
-                  ? rect.left - padding - 288
-                  : rect.left + rect.width / 2 - 144, // 居中
+            top,
+            left,
+            maxHeight: `calc(100vh - ${viewportPadding * 2}px)`,
+            overflowY: "auto",
           }}
+          ref={bubbleRef}
         >
           <div className="flex justify-between items-start mb-2">
             <h3 className="font-bold text-lg">{step.title}</h3>
@@ -173,17 +235,19 @@ export function OnboardingOverlay() {
           <div
             className={cn(
               "absolute w-3 h-3 bg-popover border-l border-t rotate-45",
-              step.position === "right" &&
+              resolvedPosition === "right" &&
                 "-left-1.5 top-8 border-l-border border-t-border",
-              step.position === "left" &&
+              resolvedPosition === "left" &&
                 "-right-1.5 top-8 border-r-border border-b-border rotate-[225deg]",
-              step.position === "bottom" &&
+              resolvedPosition === "bottom" &&
                 "-top-1.5 left-1/2 -translate-x-1/2 border-l-border border-t-border",
-              step.position === "top" &&
+              resolvedPosition === "top" &&
                 "-bottom-1.5 left-1/2 -translate-x-1/2 border-r-border border-b-border rotate-[225deg]",
             )}
           />
         </div>
+          );
+        })()
       )}
     </div>,
     document.body,

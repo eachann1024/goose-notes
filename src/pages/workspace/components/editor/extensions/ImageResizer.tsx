@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RotateCw, Download, Copy, X, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { imageStorage } from "@/lib/imageStorage";
 
 export function ImageResizer(props: NodeViewProps) {
   const { node, updateAttributes, selected, editor } = props;
@@ -12,6 +13,8 @@ export function ImageResizer(props: NodeViewProps) {
   const isEditable = editor.isEditable;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   const parseWidthFromStyle = useCallback(
     (style: string | null | undefined) => {
@@ -45,6 +48,41 @@ export function ImageResizer(props: NodeViewProps) {
         "auto",
     );
   }, [node.attrs.width, node.attrs.containerStyle, parseWidthFromStyle]);
+
+  // Load image from IndexedDB if src is uuid:...
+  useEffect(() => {
+    const loadUuidImage = async () => {
+      const src = node.attrs.src;
+
+      // 如果是 uuid: 引用，从 IndexedDB 加载
+      if (src.startsWith("uuid:")) {
+        try {
+          const blob = await imageStorage.load(src);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            setResolvedSrc(url);
+            setBlobUrl(url); // 保存用于清理
+          } else {
+            setResolvedSrc(src); // fallback
+          }
+        } catch (err) {
+          console.error("Failed to load image from storage:", err);
+          setResolvedSrc(src);
+        }
+      } else {
+        setResolvedSrc(src);
+      }
+    };
+
+    loadUuidImage();
+
+    // 清理函数：组件卸载时释放 blob URL
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [node.attrs.src]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, direction: "left" | "right") => {
@@ -112,7 +150,7 @@ export function ImageResizer(props: NodeViewProps) {
         }}
       >
         <img
-          src={node.attrs.src}
+          src={resolvedSrc || node.attrs.src}
           alt={node.attrs.alt}
           title={node.attrs.title}
           className={cn(
@@ -186,7 +224,7 @@ export function ImageResizer(props: NodeViewProps) {
               {/* 图片容器 */}
               <div className="relative max-h-[80vh] overflow-hidden rounded-lg bg-black/50 backdrop-blur-sm">
                 <img
-                  src={node.attrs.src}
+                  src={resolvedSrc || node.attrs.src}
                   alt={node.attrs.alt}
                   style={{
                     transform: `rotate(${rotation}deg)`,
@@ -212,7 +250,7 @@ export function ImageResizer(props: NodeViewProps) {
                   size="icon"
                   onClick={() => {
                     const a = document.createElement('a');
-                    a.href = node.attrs.src;
+                    a.href = resolvedSrc || node.attrs.src;
                     a.download = node.attrs.alt || 'image';
                     a.click();
                   }}

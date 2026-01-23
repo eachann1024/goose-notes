@@ -8,6 +8,8 @@ import Image from "@tiptap/extension-image";
 import Highlight from "@tiptap/extension-highlight";
 import JSZip from "jszip";
 import { extractTitleFromContent } from "./content-text-extractor";
+import { imageStorage } from "./imageStorage";
+import { blobToBase64 } from "./imageStorage/utils";
 
 const extensions = [StarterKit, Link, TaskList, TaskItem, Image, Highlight];
 
@@ -57,6 +59,8 @@ async function extractImagesFromContent(
   imageMap: Map<string, string>,
   depth: number,
 ) {
+  const fallbackBase64 =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2NkYGD4DwABBAEAf6S4JwAAAABJRU5ErkJggg==";
   if (!content.content) return;
 
   for (const node of content.content) {
@@ -64,20 +68,40 @@ async function extractImagesFromContent(
       (node.type === "image" || node.type === "imageResize") &&
       node.attrs?.src
     ) {
-      const src = node.attrs.src;
+      let src = node.attrs.src;
+      let finalSrc = src;
 
-      if (imageMap.has(src)) {
-        node.attrs.src = getRelativeAssetPath(imageMap.get(src)!, depth);
+      // 处理 uuid: 引用（IndexedDB）
+      if (src.startsWith("uuid:")) {
+        const blob = await imageStorage.load(src);
+        if (blob) {
+          finalSrc = await blobToBase64(blob);
+        } else {
+          // 防止导出残留 uuid 引用
+          finalSrc = fallbackBase64;
+        }
+      }
+
+      // 处理 ./assets/ 引用（uTools 本地文件）
+      if (src.startsWith("./assets/") && (window as any).gooseFs) {
+        // 需要获取笔记本路径，这里暂时跳过
+        // 因为导出时可能没有上下文信息
+      }
+
+      // 检查是否已经处理过这个图片
+      if (imageMap.has(finalSrc)) {
+        node.attrs.src = getRelativeAssetPath(imageMap.get(finalSrc)!, depth);
         continue;
       }
 
-      if (src.startsWith("data:image")) {
-        const parsed = parseBase64Image(src);
+      // 处理 base64 图片
+      if (finalSrc.startsWith("data:image")) {
+        const parsed = parseBase64Image(finalSrc);
         if (parsed) {
           const filename = `img_${Math.random().toString(36).slice(2, 9)}_${Date.now()}.${parsed.extension}`;
           assetsFolder.file(filename, parsed.data, { base64: true });
 
-          imageMap.set(src, filename);
+          imageMap.set(finalSrc, filename);
           node.attrs.src = getRelativeAssetPath(filename, depth);
         }
       }

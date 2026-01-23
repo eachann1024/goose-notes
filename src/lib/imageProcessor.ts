@@ -82,6 +82,29 @@ export async function processImageForStorage(file: File): Promise<string> {
 }
 
 /**
+ * 处理图片用于存储（V2 - 使用策略模式）
+ * - 小图片（< 100KB）：base64 内嵌
+ * - 大图片（≥ 100KB）：根据环境选择最优存储
+ *   - Web 端：IndexedDB
+ *   - uTools 默认：base64（支持同步）
+ *   - uTools 本地文件：./assets/
+ */
+export async function processImageForStorageV2(file: File): Promise<string> {
+  let blob: Blob = file
+
+  // 超过阈值则压缩
+  if (file.size > MAX_SIZE_BEFORE_COMPRESS) {
+    blob = await compressImage(file)
+  }
+
+  // 动态导入 imageStorage 避免循环依赖
+  const { imageStorage } = await import('./imageStorage')
+
+  // 使用策略存储
+  return imageStorage.save(blob, blob.type || 'image/jpeg')
+}
+
+/**
  * 从剪切板事件提取图片文件
  */
 export function getImageFromClipboard(event: ClipboardEvent): File | null {

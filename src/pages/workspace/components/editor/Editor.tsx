@@ -8,6 +8,7 @@ import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
+import { getImageFromClipboard, processImageForStorageV2 } from "@/lib/imageProcessor";
 
 interface EditorProps {
   editable?: boolean;
@@ -244,12 +245,12 @@ export function Editor({ editable = true }: EditorProps) {
       if (imageFile) {
         event.preventDefault();
         try {
-          const base64 = await processImageForStorage(imageFile);
+          const src = await processImageForStorageV2(imageFile);
           const { state, view } = editor;
           const nodeType =
             state.schema.nodes.imageResize || state.schema.nodes.image;
           if (!nodeType) return;
-          const imageNode = nodeType.create({ src: base64 });
+          const imageNode = nodeType.create({ src });
           const tr = state.tr.replaceSelectionWith(imageNode, false);
           tr.setMeta("uiEvent", "paste");
           tr.setMeta("addToHistory", true);

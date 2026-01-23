@@ -164,6 +164,16 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       },
     },
     {
+      title: "图片",
+      description: "插入图片选择器模块",
+      searchTerms: ["image", "photo", "tupian", "img"],
+      icon: LucideIcons.Image,
+      shortcut: "img",
+      command: ({ editor, range }: any) => {
+        editor.chain().focus().deleteRange(range).setImagePlaceholder().run();
+      },
+    },
+    {
       type: "divider",
     },
     {

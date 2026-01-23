@@ -118,6 +118,9 @@ function calcNodePos(pos: number, view: any) {
 function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   let dragHandleElement: HTMLElement | null = null;
   let currentHoveredNode: Element | null = null;
+  let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isDragging = false;
+  let justDropped = false;
 
   function updateHandleBySelectionFallback(view: any) {
     const { selection } = view.state;
@@ -231,6 +234,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   }
 
   function updateHandleBySelection(view: any) {
+    // drop 后跳过基于 selection 的更新，等待 mousemove 重新设置
+    if (justDropped) return;
+
     if (!view.editable || !dragHandleElement) {
       hideDragHandle();
       return;
@@ -276,11 +282,18 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   }
 
   function hideHandleOnEditorOut(event: MouseEvent) {
+    // 如果正在拖拽，不隐藏
+    if (isDragging) return;
+
+    // 扩大安全区域判定
     if (dragHandleElement) {
       const handleRect = dragHandleElement.getBoundingClientRect();
+      const safeMargin = 30;
       if (
-        event.clientX <= handleRect.right + 20 &&
-        event.clientX >= handleRect.left - 10
+        event.clientX <= handleRect.right + safeMargin &&
+        event.clientX >= handleRect.left - safeMargin &&
+        event.clientY <= handleRect.bottom + safeMargin &&
+        event.clientY >= handleRect.top - safeMargin
       ) {
         return;
       }
@@ -294,7 +307,12 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         relatedTarget?.classList.contains("drag-handle");
       if (isInsideEditor) return;
     }
-    hideDragHandle();
+
+    // 延迟隐藏，给用户更多容错时间
+    if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      hideDragHandle();
+    }, 100);
   }
 
   function handleDragStart(event: DragEvent, view: any) {
@@ -365,6 +383,12 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       const mappedPos = tr.mapping.map(insertPos);
       tr.insert(mappedPos, dragging.slice.content);
       view.dispatch(tr.scrollIntoView());
+
+      // 清除旧节点缓存，防止下次拖拽时引用失效的 DOM
+      currentHoveredNode = null;
+      // 标记刚完成 drop，阻止 updateHandleBySelection 根据旧 selection 更新手柄
+      justDropped = true;
+
       event.preventDefault();
       return true;
     }
@@ -386,9 +410,16 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       dragHandleElement.classList.add("drag-handle");
 
       function onDragHandleDragStart(e: DragEvent) {
+        isDragging = true;
         handleDragStart(e, view);
       }
       dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
+
+      function onDragHandleDragEnd() {
+        isDragging = false;
+        hideDragHandle();
+      }
+      dragHandleElement.addEventListener("dragend", onDragHandleDragEnd);
 
       function onDragHandleDrag() {
         hideDragHandle();
@@ -396,6 +427,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       dragHandleElement.addEventListener("drag", onDragHandleDrag);
 
       function onDocumentDrop(e: DragEvent) {
+        hideDragHandle();
         handleDrop(view, e);
       }
       // Attach to document to catch wide drops
@@ -415,6 +447,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           updateHandleBySelection(view);
         },
         destroy: () => {
+          if (hideTimeout) clearTimeout(hideTimeout);
           if (!handleBySelector) {
             dragHandleElement?.remove();
           }
@@ -428,6 +461,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             "mouseout",
             hideHandleOnEditorOut as any,
           );
+          dragHandleElement?.removeEventListener("dragend", onDragHandleDragEnd);
           dragHandleElement = null;
         },
       };
@@ -435,6 +469,11 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     props: {
       handleDOMEvents: {
         mousemove: (view, event) => {
+          // 重置 justDropped 标志，允许正常的手柄更新
+          justDropped = false;
+
+          if (isDragging) return;
+
           if (!view.editable) {
             hideDragHandle();
             return;
@@ -471,6 +510,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
           updateHandlePosition(node);
         },
+        mousedown: () => {
+          justDropped = false;
+          hideDragHandle();
+        },
         keydown: () => {
           hideDragHandle();
         },
@@ -479,6 +522,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           return false;
         },
         dragstart: (view) => {
+          isDragging = true;
           view.dom.classList.add("dragging");
         },
         dragover: (_view, event) => {
@@ -494,7 +538,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           return handleDrop(view, event);
         },
         dragend: (view) => {
+          isDragging = false;
           view.dom.classList.remove("dragging");
+          hideDragHandle();
         },
       },
     },

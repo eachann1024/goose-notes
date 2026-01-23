@@ -157,6 +157,7 @@ declare global {
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
+  const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const startTransition: typeof import('react').startTransition
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
