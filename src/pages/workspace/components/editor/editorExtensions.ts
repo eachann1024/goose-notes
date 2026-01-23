@@ -18,6 +18,7 @@ import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
 import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
+import { HeadingCollapse } from "@/extensions/HeadingCollapse";
 import { InlineCodeFix } from "@/extensions/InlineCodeFix";
 import { InlineMath } from "@/extensions/InlineMath";
 import { Callout } from "@/extensions/Callout";
@@ -66,6 +67,7 @@ export const editorExtensions = [
   HeadingWithBackspace.configure({
     levels: [1, 2, 3, 4, 5, 6],
   }),
+  HeadingCollapse,
   TitleHeading,
   AutoJoiner,
   Placeholder.configure({

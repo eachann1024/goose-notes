@@ -547,7 +547,7 @@ export const ClipboardSerializer = Extension.create({
           clipboardTextSerializer: (slice, view) => {
             // 检查 slice 内容是否包含需要特殊处理的节点
             let hasSpecialNodes = false;
-            let hasPartialSpecial = false;
+            const hasPartialSpecial = false;
 
             slice.content.forEach((node) => {
               if (

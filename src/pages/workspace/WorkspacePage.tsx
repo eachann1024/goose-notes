@@ -240,12 +240,12 @@ export function WorkspacePage() {
               <div
                 className={cn(
                   "px-8 min-h-screen",
-                  page.icon ? "py-12" : "pt-8 pb-12",
+                  page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
                 )}
               >
                 <div
                   className={cn(
-                    page.icon ? "mb-8" : "mb-2",
+                    page.icon ? "mb-4 mt-4" : "mt-4",
                     page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
                   )}
                 >

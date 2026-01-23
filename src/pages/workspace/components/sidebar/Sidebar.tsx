@@ -75,6 +75,8 @@ export function Sidebar({ className }: SidebarProps) {
   const [renameValue, setRenameValue] = useState("");
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
 
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
@@ -107,6 +109,18 @@ export function Sidebar({ className }: SidebarProps) {
     }, 300);
     return () => clearTimeout(timer);
   }, [width]);
+
+  useEffect(() => {
+    if (!scrollAreaRef.current) return;
+    const updateHeight = () => {
+      const height = scrollAreaRef.current?.clientHeight ?? 0;
+      setScrollAreaHeight(height);
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(scrollAreaRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleCreatePage = () => {
     const notebook = activeNotebookId
@@ -319,7 +333,7 @@ export function Sidebar({ className }: SidebarProps) {
           onRequestRename={openRenameDialog}
         />
 
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
           <div className="mt-1">
             <SectionHeader
               title="页面"
@@ -334,6 +348,7 @@ export function Sidebar({ className }: SidebarProps) {
                 width={width - 16}
                 rowHeight={rowHeight}
                 itemHeight={itemHeight}
+                viewportHeight={scrollAreaHeight}
                 onCreatePage={handleCreatePage}
                 onRequestRename={openRenameDialog}
                 onboardingExpandPageId={onboardingExpandPageId}

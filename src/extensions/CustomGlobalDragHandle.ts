@@ -121,15 +121,22 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   let hideTimeout: ReturnType<typeof setTimeout> | null = null;
   let isDragging = false;
   let justDropped = false;
+  let keepVisibleUntil = 0;
 
   function updateHandleBySelectionFallback(view: any) {
     const { selection } = view.state;
     if (!selection || selection.empty === undefined) return false;
 
-    const pos = selection.$from.pos;
-    const resolved = view.state.doc.resolve(pos);
-    const nodePos = resolved.depth > 0 ? resolved.before(1) : pos;
-    const domNode = view.nodeDOM(nodePos);
+    const resolved = selection.$from;
+    let targetPos = resolved.pos;
+    for (let d = resolved.depth; d > 0; d--) {
+      const node = resolved.node(d);
+      if (node.isBlock && node.type.name !== "doc") {
+        targetPos = resolved.before(d);
+        break;
+      }
+    }
+    const domNode = view.nodeDOM(targetPos);
     if (!(domNode instanceof Element)) return false;
 
     const parent = domNode.parentElement;
@@ -153,8 +160,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   }
 
   function hideDragHandle() {
+    if (Date.now() < keepVisibleUntil) return;
     if (dragHandleElement) {
       dragHandleElement.classList.add("hide");
+      dragHandleElement.classList.remove("has-folding-arrow");
     }
     currentHoveredNode = null;
   }
@@ -167,6 +176,11 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
   function updateHandlePosition(node: Element) {
     if (!dragHandleElement) return;
+    const parent = node.parentElement;
+    if (parent?.matches?.(".ProseMirror") && parent.firstElementChild === node) {
+      hideDragHandle();
+      return;
+    }
     const compStyle = window.getComputedStyle(node);
     const paddingTop = parseFloat(compStyle.paddingTop);
     const rect = absoluteRect(node);
@@ -230,7 +244,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     dragHandleElement.style.top = `${rect.top}px`;
 
     currentHoveredNode = node;
+    currentHoveredNode = node;
     showDragHandle();
+
   }
 
   function updateHandleBySelection(view: any) {
@@ -252,10 +268,16 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       }
     }
 
-    const pos = selection.$from.pos;
-    const resolved = view.state.doc.resolve(pos);
-    const nodePos = resolved.depth > 0 ? resolved.before(1) : pos;
-    const domNode = view.nodeDOM(nodePos);
+    const resolved = selection.$from;
+    let targetPos = resolved.pos;
+    for (let d = resolved.depth; d > 0; d--) {
+      const node = resolved.node(d);
+      if (node.isBlock && node.type.name !== "doc") {
+        targetPos = resolved.before(d);
+        break;
+      }
+    }
+    const domNode = view.nodeDOM(targetPos);
 
     if (domNode instanceof Element) {
       const parent = domNode.parentElement;
@@ -284,6 +306,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   function hideHandleOnEditorOut(event: MouseEvent) {
     // 如果正在拖拽，不隐藏
     if (isDragging) return;
+    if (Date.now() < keepVisibleUntil) return;
 
     // 扩大安全区域判定
     if (dragHandleElement) {
@@ -329,6 +352,33 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         options,
       ) as Element | null;
     }
+
+    // Fallback: Use posAtCoords if DOM element search fails
+    // This handles cases where drag starts immediately before hover state stabilizes
+    if (!node || !(node instanceof Element)) {
+       const coords = view.posAtCoords({
+          left: event.clientX + 50 + options.dragHandleWidth,
+          top: event.clientY,
+        });
+
+        if (coords) {
+          const $pos = view.state.doc.resolve(coords.pos);
+          for (let d = $pos.depth; d > 0; d--) {
+            const nodeAtPos = $pos.node(d);
+            if (
+              nodeAtPos.isBlock &&
+              nodeAtPos.type.name !== "doc"
+            ) {
+              const domNode = view.nodeDOM($pos.before(d));
+              if (domNode instanceof Element) {
+                  node = domNode;
+                  break;
+              }
+            }
+          }
+        }
+    }
+
     if (!(node instanceof Element)) return;
 
     const pos = nodePosAtDOM(node, view, options);
@@ -437,9 +487,85 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       if (!handleBySelector) {
         view?.dom?.parentElement?.appendChild(dragHandleElement);
       }
+      
+      const handleMouseMove = (event: MouseEvent) => {
+        // 重置 justDropped 标志，允许正常的手柄更新
+        justDropped = false;
+
+        if (isDragging) return;
+
+        if (!view.editable) {
+          hideDragHandle();
+          return;
+        }
+        if ((event.target as HTMLElement).closest(".table-add-control")) {
+          // Do NOT hide handle here, just ignore.
+          // Hiding it causes flickering if we hover over table controls near the handle
+          return; 
+        }
+
+        // Use more robust node detection logic
+        let node = nodeDOMAtCoords(
+          {
+            x: event.clientX + 50 + options.dragHandleWidth,
+            y: event.clientY,
+          },
+          options,
+        );
+
+        // Fallback mechanism: using view.posAtCoords to find the nearest node
+        if (!node || !(node instanceof Element)) {
+          const coords = view.posAtCoords({
+            left: event.clientX + 50 + options.dragHandleWidth,
+            top: event.clientY,
+          });
+
+          if (coords) {
+            const $pos = view.state.doc.resolve(coords.pos);
+            for (let d = $pos.depth; d > 0; d--) {
+              const nodeAtPos = $pos.node(d);
+              if (
+                nodeAtPos.isBlock &&
+                nodeAtPos.type.name !== "doc"
+              ) {
+                const domNode = view.nodeDOM($pos.before(d));
+                if (domNode instanceof Element) {
+                   node = domNode;
+                   break;
+                }
+              }
+            }
+          }
+        }
+
+        if (!node || !(node instanceof Element)) {
+          if (!updateHandleBySelectionFallback(view)) {
+            hideDragHandle();
+          }
+          return;
+        }
+
+        const excludedTagList = options.excludedTags
+          .concat(["ol", "ul"])
+          .join(", ");
+        
+        if (node.matches(excludedTagList) || node.closest(".not-draggable")) {
+           if (!updateHandleBySelectionFallback(view)) {
+             hideDragHandle();
+           }
+           return;
+        }
+
+        updateHandlePosition(node);
+      };
+
       view?.dom?.parentElement?.addEventListener(
         "mouseout",
         hideHandleOnEditorOut as any,
+      );
+      view?.dom?.parentElement?.addEventListener(
+        "mousemove",
+        handleMouseMove as any
       );
 
       return {
@@ -461,6 +587,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             "mouseout",
             hideHandleOnEditorOut as any,
           );
+          view?.dom?.parentElement?.removeEventListener(
+            "mousemove",
+            handleMouseMove as any
+          );
           dragHandleElement?.removeEventListener("dragend", onDragHandleDragEnd);
           dragHandleElement = null;
         },
@@ -469,50 +599,24 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     props: {
       handleDOMEvents: {
         mousemove: (view, event) => {
-          // 重置 justDropped 标志，允许正常的手柄更新
-          justDropped = false;
-
-          if (isDragging) return;
-
-          if (!view.editable) {
-            hideDragHandle();
-            return;
-          }
-          if ((event.target as HTMLElement).closest(".table-add-control")) {
-            hideDragHandle();
-            return;
-          }
-
-          const node = nodeDOMAtCoords(
-            {
-              x: event.clientX + 50 + options.dragHandleWidth,
-              y: event.clientY,
-            },
-            options,
-          );
-
-          if (!node || !(node instanceof Element)) {
-            if (!updateHandleBySelectionFallback(view)) {
-              hideDragHandle();
-            }
-            return;
-          }
-
-          const excludedTagList = options.excludedTags
-            .concat(["ol", "ul"])
-            .join(", ");
-          if (node.matches(excludedTagList) || node.closest(".not-draggable")) {
-            if (!updateHandleBySelectionFallback(view)) {
-              hideDragHandle();
-            }
-            return;
-          }
-
-          updateHandlePosition(node);
+          // No-op here, let the parent/global listener handle it 
+          // to ensure consistent behavior across gutter and content
+          // But we retain the hook if needed, or we can just return false.
+          // Actually, relying on parentElement listener is safer for gutter.
+          // To be safe, we can leave it empty or remove it. 
+          // Since we attach to parentElement which contains view.dom, it will bubble.
+          // So we don't need duplicate logic provided propagation isn't stopped.
+          return false;
         },
-        mousedown: () => {
+        mousedown: (_view, event) => {
           justDropped = false;
-          hideDragHandle();
+          if (
+            event.target instanceof Element &&
+            event.target.closest(".folding-arrow")
+          ) {
+            return false;
+          }
+          return false;
         },
         keydown: () => {
           hideDragHandle();
@@ -532,9 +636,6 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         drop: (view, event) => {
           view.dom.classList.remove("dragging");
           hideDragHandle();
-          // We rely on document listener for broad coverage, but keeping this for specificity
-          // If return true, proseMirror doesn't fire other handlers.
-          // Let's rely on handleDrop returning boolean.
           return handleDrop(view, event);
         },
         dragend: (view) => {

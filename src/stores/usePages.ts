@@ -61,7 +61,10 @@ interface PagesState {
     content: JSONContent,
   ) => Promise<boolean>;
   getLocalFilePath: (pageId: string) => string | null;
-  createLocalPage: (parentId?: string, workspaceId?: string) => string | null;
+  createLocalPage: (
+    parentId?: string,
+    workspaceId?: string,
+  ) => Promise<string | null> | string | null;
 }
 
 const initialContent: JSONContent = {
@@ -190,13 +193,13 @@ export const usePages = create<PagesState>()(
         return id;
       },
 
-      createLocalPage: (parentId?: string, workspaceId?: string) => {
+      createLocalPage: async (parentId?: string, workspaceId?: string) => {
         if (!workspaceId) return null;
         const notebook = useNotebooks.getState().notebooks[workspaceId];
         if (
           !notebook?.localPath ||
           typeof window === "undefined" ||
-          !(window as any).gooseFs
+          !window.gooseFs
         ) {
           return null;
         }
@@ -228,20 +231,30 @@ export const usePages = create<PagesState>()(
         const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
         let filePath = `${normalizedBaseDir}/${title}.md`;
 
-        if ((window as any).gooseFs.exists(filePath)) {
+        const checkExists = async (path: string) => {
+          if (window.gooseFs?.existsAsync) {
+            return await window.gooseFs.existsAsync(path);
+          }
+          return window.gooseFs?.exists(path) ?? false;
+        };
+
+        if (await checkExists(filePath)) {
           let suffix = 1;
           while (
-            (window as any).gooseFs.exists(
-              `${normalizedBaseDir}/${title} (${suffix}).md`,
-            )
+            await checkExists(`${normalizedBaseDir}/${title} (${suffix}).md`)
           ) {
             suffix++;
           }
           filePath = `${normalizedBaseDir}/${title} (${suffix}).md`;
         }
 
-        if (!(window as any).gooseFs.writeFile(filePath, `# \n`)) {
-          return null;
+        if (window.gooseFs.writeFileAsync) {
+          const ok = await window.gooseFs.writeFileAsync(filePath, `# \n`);
+          if (!ok) return null;
+        } else {
+          if (!window.gooseFs.writeFile(filePath, `# \n`)) {
+            return null;
+          }
         }
 
         const id = generateLocalPageId(workspaceId, filePath);
@@ -340,7 +353,7 @@ export const usePages = create<PagesState>()(
             };
 
             const targetPath = page.localFilePath || resolvePathFromId(id);
-            if (!targetPath || !(window as any).gooseFs) return state;
+            if (!targetPath || !window.gooseFs) return state;
 
             const confirmed = confirm(
               page.isFolder
@@ -360,8 +373,8 @@ export const usePages = create<PagesState>()(
             }
 
             const removeOk = page.isFolder
-              ? (window as any).gooseFs.deleteDir(targetPath)
-              : (window as any).gooseFs.deleteFile(targetPath);
+              ? window.gooseFs.deleteDir(targetPath)
+              : window.gooseFs.deleteFile(targetPath);
             if (!removeOk) return state;
             deleted = true;
 
@@ -499,7 +512,7 @@ export const usePages = create<PagesState>()(
 
         // 本地模式需要确认对话框
         if (isLocalFolder && notebook?.localPath) {
-          if (typeof window === "undefined" || !(window as any).gooseFs) return;
+          if (typeof window === "undefined" || !window.gooseFs) return;
           if (!page) return;
 
           const resolvePathFromId = (pageId: string) => {
@@ -535,8 +548,8 @@ export const usePages = create<PagesState>()(
           }
 
           const deleted = page.isFolder
-            ? (window as any).gooseFs.deleteDir(targetPath)
-            : (window as any).gooseFs.deleteFile(targetPath);
+            ? window.gooseFs.deleteDir(targetPath)
+            : window.gooseFs.deleteFile(targetPath);
           if (!deleted) return;
 
           set((state) => {
@@ -619,7 +632,7 @@ export const usePages = create<PagesState>()(
         });
       },
 
-      setActivePage: (id) => {
+      setActivePage: async (id) => {
         flushEditorContent();
 
         if (!id) {
@@ -627,43 +640,55 @@ export const usePages = create<PagesState>()(
           return;
         }
 
-        set((state) => {
-          const page = state.pages[id];
-          if (!page) {
-            return { activePageId: id };
-          }
+        const page = get().pages[id];
+        if (!page) {
+          set({ activePageId: id });
+          return;
+        }
 
-          // 本地文件页面：切换时重新从磁盘读取内容
-          const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-          if (
-            notebook?.source === "local-folder" &&
-            page.localFilePath &&
-            !page.isFolder &&
-            (window as any).gooseFs
-          ) {
-            const markdownContent =
-              (window as any).gooseFs.readFile(page.localFilePath) || "";
+        let newContent = page.content;
+        const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+
+        // 本地文件页面：切换时重新从磁盘读取内容
+        if (
+          notebook?.source === "local-folder" &&
+          page.localFilePath &&
+          !page.isFolder &&
+          window.gooseFs
+        ) {
+          try {
+            let markdownContent = "";
+            if (window.gooseFs.readFileAsync) {
+              markdownContent =
+                (await window.gooseFs.readFileAsync(
+                  page.localFilePath,
+                )) || "";
+            } else {
+              markdownContent =
+                window.gooseFs.readFile(page.localFilePath) || "";
+            }
             const imported = importFromMarkdown(markdownContent);
-            const jsonContent = imported.content || {
-              type: "doc",
-              content: [],
-            };
-
-            return {
-              activePageId: id,
-              pages: {
-                ...state.pages,
-                [id]: {
-                  ...page,
-                  content: jsonContent,
-                },
-              },
-            };
+            if (imported.content) {
+              newContent = imported.content;
+            }
+          } catch (e) {
+            console.error("Failed to read local file", e);
           }
+        }
 
-          // 切换页面不应更新 updatedAt，只在真正编辑内容时更新
+        set((state) => {
+          const currentPage = state.pages[id];
+          if (!currentPage) return { activePageId: id };
+
           return {
             activePageId: id,
+            pages: {
+              ...state.pages,
+              [id]: {
+                ...currentPage,
+                content: newContent,
+              },
+            },
           };
         });
 
@@ -697,7 +722,12 @@ export const usePages = create<PagesState>()(
               : true;
             return matchParent && matchWorkspace;
           })
-          .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt));
+          .sort((a, b) => {
+            const valA = a.order ?? a.createdAt;
+            const valB = b.order ?? b.createdAt;
+            if (valA !== valB) return valA - valB;
+            return a.id.localeCompare(b.id);
+          });
       },
 
       getTrashedPages: (workspaceId) => {
@@ -750,7 +780,7 @@ export const usePages = create<PagesState>()(
 
       // 本地文件夹相关函数
       loadLocalFolderPages: async (notebookId, basePath) => {
-        if (typeof window === "undefined" || !(window as any).gooseFs) return;
+        if (typeof window === "undefined" || !window.gooseFs) return;
         get().removePagesByWorkspaceId(notebookId);
 
         // 需要忽略的文件夹
@@ -772,12 +802,31 @@ export const usePages = create<PagesState>()(
         const shouldIgnoreEntry = (name: string) =>
           name.startsWith(".") || ignoredFolders.has(name);
 
-        const scanDirectory = (dirPath: string, parentId?: string): Page[] => {
-          const entries = (window as any).gooseFs.readDir(dirPath);
-          const pages: Page[] = [];
+        const scanDirectory = async (
+          dirPath: string,
+          parentId?: string,
+        ): Promise<Page[]> => {
+          let entries: any[] = [];
+          
+          if (window.gooseFs?.readDirAsync) {
+            try {
+              entries = await window.gooseFs.readDirAsync(dirPath);
+            } catch (e) {
+              console.error("readDirAsync failed", e);
+              return [];
+            }
+          } else {
+            try {
+              entries = window.gooseFs?.readDir(dirPath) || [];
+            } catch (e) {
+              console.error("readDir sync failed", e);
+              return [];
+            }
+          }
+          let pages: Page[] = [];
 
-          entries.forEach((entry: any) => {
-            if (shouldIgnoreEntry(entry.name)) return;
+          for (const entry of entries) {
+            if (shouldIgnoreEntry(entry.name)) continue;
 
             if (entry.isDirectory) {
               // 创建文件夹页面
@@ -805,11 +854,12 @@ export const usePages = create<PagesState>()(
                 localFilePath: entry.path,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
+                order: 0,
               };
               pages.push(folderPage);
 
-              // 递归扫描子目录
-              const subPages = scanDirectory(entry.path, folderId);
+              // 递归扫描子目录 (Async await)
+              const subPages = await scanDirectory(entry.path, folderId);
               pages.push(...subPages);
             } else if (
               entry.isFile &&
@@ -817,13 +867,22 @@ export const usePages = create<PagesState>()(
             ) {
               // 创建文件页面
               const fileId = generateLocalPageId(notebookId, entry.path);
-              const markdownContent =
-                (window as any).gooseFs.readFile(entry.path) || "";
+              let markdownContent = "";
+              if (window.gooseFs?.readFileAsync) {
+                markdownContent =
+                  (await window.gooseFs.readFileAsync(entry.path)) ||
+                  "";
+              } else {
+                markdownContent =
+                  window.gooseFs?.readFile(entry.path) || "";
+              }
+
               const imported = importFromMarkdown(markdownContent);
               const jsonContent = imported.content || {
                 type: "doc",
                 content: [],
               };
+
 
               const filePage: Page = {
                 id: fileId,
@@ -841,12 +900,11 @@ export const usePages = create<PagesState>()(
               };
               pages.push(filePage);
             }
-          });
-
+          }
           return pages;
         };
 
-        const localPages = scanDirectory(basePath);
+        const localPages = await scanDirectory(basePath);
 
         set((state) => ({
           pages: {
@@ -885,7 +943,7 @@ export const usePages = create<PagesState>()(
       },
 
       saveLocalPageContent: async (pageId, content) => {
-        if (typeof window === "undefined" || !(window as any).gooseFs)
+        if (typeof window === "undefined" || !window.gooseFs)
           return false;
 
         const page = get().pages[pageId];
@@ -896,15 +954,23 @@ export const usePages = create<PagesState>()(
 
         // 使用 export.ts 中的 jsonContentToMarkdown 函数进行完整转换
         // 这里需要实现图片资源处理逻辑
-        let processedContent = content;
+        const processedContent = content;
 
         // 处理图片资源：将 base64 图片保存到 assets 文件夹
         const assetsDir = filePath.replace(/[^\/\\]+$/, "") + "assets";
-        if (!(window as any).gooseFs.exists(assetsDir)) {
-          (window as any).gooseFs.mkdir(assetsDir);
-        }
+        // 简单处理：尝试创建文件夹（如果不存在）
+        try {
+           if (window.gooseFs.mkdir) {
+              await window.gooseFs.mkdir(assetsDir);
+           }
+        } catch {}
 
         // 遍历内容中的图片节点
+        // Async processing needed if we want to write files asynchronously
+        // But traversing JSON is sync.
+        // We collect write promises.
+        const writePromises: Promise<any>[] = [];
+
         const processImages = (nodes: any[]) => {
           nodes.forEach((node) => {
             if (
@@ -920,7 +986,11 @@ export const usePages = create<PagesState>()(
                 const imagePath = `${assetsDir}/${filename}`;
 
                 // 保存图片文件（base64 数据）
-                (window as any).gooseFs.writeFile(imagePath, match[3]);
+                if (window.gooseFs?.writeFileAsync) {
+                     writePromises.push(window.gooseFs.writeFileAsync(imagePath, match[3]));
+                } else {
+                     window.gooseFs?.writeFile(imagePath, match[3]);
+                }
 
                 // 更新节点中的图片路径为相对路径
                 node.attrs.src = `./assets/${filename}`;
@@ -935,24 +1005,43 @@ export const usePages = create<PagesState>()(
         if (processedContent.content) {
           processImages(processedContent.content);
         }
+        
+        // Wait for images to be written
+        if (writePromises.length > 0) {
+            await Promise.all(writePromises);
+        }
 
         const markdownContent = jsonContentToMarkdown(processedContent);
 
-        // 数据完整性保护：如果原始文件很大但生成的 markdown 为空，拒绝保存
-        if (
-          !markdownContent.trim() &&
-          (window as any).gooseFs.exists(filePath)
-        ) {
-          const oldContent = (window as any).gooseFs.readFile(filePath);
-          if (oldContent && oldContent.trim().length > 10) {
-            console.error(
-              "[Data Integrity] Refusing to save empty content to a non-empty file.",
-            );
-            return false;
-          }
+        // 数据完整性保护
+        // Note: Async read for integrity check?
+        // Browsers might not support sync read.
+        // For now, in browser, we skip this integrity check or rely on async read.
+        // Let's implement async read check.
+        if (!markdownContent.trim()) {
+            let exists = false;
+            // exists check might be sync mock in browser
+            try { exists = window.gooseFs?.exists(filePath) ?? false; } catch {}
+            
+            if (exists) {
+                 let oldContent = "";
+                 if (window.gooseFs?.readFileAsync) {
+                     oldContent = await window.gooseFs.readFileAsync(filePath) || "";
+                 } else {
+                     oldContent = window.gooseFs?.readFile(filePath) || "";
+                 }
+                 
+                 if (oldContent && oldContent.trim().length > 10) {
+                    console.error("[Data Integrity] Refusing to save empty content.");
+                    return false;
+                 }
+            }
         }
 
-        return (window as any).gooseFs.writeFile(filePath, markdownContent);
+        if (window.gooseFs?.writeFileAsync) {
+             return await window.gooseFs.writeFileAsync(filePath, markdownContent);
+        }
+        return window.gooseFs?.writeFile(filePath, markdownContent) ?? false;
       },
 
       getLocalFilePath: (pageId) => {

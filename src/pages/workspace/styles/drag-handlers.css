@@ -4,7 +4,12 @@
 .drag-handle {
   position: fixed;
   opacity: 1;
-  transition: opacity 0.2s ease-out;
+  transition:
+    opacity 0.18s ease-out,
+    top 0.12s ease-out,
+    left 0.12s ease-out,
+    transform 0.18s ease-out;
+  transform: translate3d(0, 0, 0);
   border-radius: 0.25rem;
   pointer-events: auto;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(55, 53, 47, 0.35)'%3E%3Cpath d='M3,0a1,1 0 1,0 0,2a1,1 0 1,0 0,-2M3,4a1,1 0 1,0 0,2a1,1 0 1,0 0,-2M3,8a1,1 0 1,0 0,2a1,1 0 1,0 0,-2M7,0a1,1 0 1,0 0,2a1,1 0 1,0 0,-2M7,4a1,1 0 1,0 0,2a1,1 0 1,0 0,-2M7,8a1,1 0 1,0 0,2a1,1 0 1,0 0,-2'/%3E%3C/svg%3E");
@@ -20,7 +25,10 @@
 .drag-handle.hide {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease-out;
+  transform: translate3d(-4px, 0, 0);
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
 }
 
 body.drag-handle-suppressed .drag-handle {

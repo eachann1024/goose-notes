@@ -68,7 +68,7 @@ async function extractImagesFromContent(
       (node.type === "image" || node.type === "imageResize") &&
       node.attrs?.src
     ) {
-      let src = node.attrs.src;
+      const src = node.attrs.src;
       let finalSrc = src;
 
       // 处理 uuid: 引用（IndexedDB）

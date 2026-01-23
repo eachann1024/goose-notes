@@ -9,17 +9,17 @@ import { useNotebooks } from '@/stores/useNotebooks'
 import { usePages } from '@/stores/usePages'
 
 // 声明 gooseFs 类型
-declare global {
-  interface Window {
-    gooseFs?: {
-      exists(path: string): boolean
-      mkdir(path: string): boolean
-      writeFile(path: string, data: string, encoding: string): boolean
-      readFile(path: string, encoding: string): string
-      deleteFile(path: string): boolean
-    }
-  }
-}
+// declare global {
+//   interface Window {
+//     gooseFs?: {
+//       exists(path: string): boolean
+//       mkdir(path: string): boolean
+//       writeFile(path: string, data: string, encoding: string): boolean
+//       readFile(path: string, encoding: string): string
+//       deleteFile(path: string): boolean
+//     }
+//   }
+// }
 
 export class FileSystemStrategy implements IImageStorageStrategy {
   /**

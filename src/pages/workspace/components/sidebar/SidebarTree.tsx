@@ -10,12 +10,14 @@ import { SidebarContextMenu } from "./SidebarContextMenu";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { IconSelector } from "../shared/IconSelector";
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
   width: number;
   rowHeight: number;
   itemHeight: number;
+  viewportHeight: number;
   onCreatePage: () => void;
   onRequestRename: (page: Page) => void;
   onboardingExpandPageId?: string | null;
@@ -36,45 +38,99 @@ interface TreeNode {
 const buildTree = (
   pages: Record<string, Page>,
   openPageIds: Set<string>,
-  parentId?: string,
-  workspaceId?: string,
+  parentId: string | undefined, // Changed to allow specific parent query or undefined for root
+  workspaceId: string | undefined,
+  isLocalNotebook: boolean = false,
 ): TreeNode[] => {
-  const children = Object.values(pages)
-    .filter((p) => {
-      const matchParent = p.parentId === parentId && !p.trashedAt;
-      const matchWorkspace = workspaceId ? p.workspaceId === workspaceId : true;
-      return matchParent && matchWorkspace;
-    })
-    .sort((a, b) => {
-      // 文件夹优先排序
-      if (a.isFolder !== b.isFolder) {
-        return a.isFolder ? -1 : 1;
+  // 1. Group pages by parentId (Pre-computation step - O(N))
+  // We compute this ONCE for the entire tree is not possible inside a recursive function efficiently 
+  // without passing the map around.
+  // So we will perform the grouping inside the component's useMemo and this function will be deprecated 
+  // or we rewrite this to simple helper that expects grouped data.
+  
+  // However, to keep the diff small and clean, let's implement the `useMemo` logic in the component
+  // and remove this standalone `buildTree` if possible, or make this `buildTree` the "optimized builder".
+  
+  // Strategy: We will replace this implementation with a wrapper that computes the map, 
+  // then calls separate recursive function.
+  
+  const groupMap = new Map<string, Page[]>();
+  const rootPages: Page[] = [];
+
+  Object.values(pages).forEach((p) => {
+    if (p.trashedAt) return;
+    if (workspaceId && p.workspaceId !== workspaceId) return;
+
+    if (!p.parentId) {
+      rootPages.push(p);
+    } else {
+      if (!groupMap.has(p.parentId)) {
+        groupMap.set(p.parentId, []);
       }
-      // 同类型按名称自然排序
-      const nameA = getPageTitle(a);
-      const nameB = getPageTitle(b);
-      return nameA.localeCompare(nameB, "zh-CN", { numeric: true });
+      groupMap.get(p.parentId)!.push(p);
+    }
+  });
+
+  const sortPages = (items: Page[]) => {
+    return items.sort((a, b) => {
+      if (isLocalNotebook) {
+        if (a.isFolder !== b.isFolder) {
+          return a.isFolder ? -1 : 1;
+        }
+        const nameA = getPageTitle(a);
+        const nameB = getPageTitle(b);
+        return nameA.localeCompare(nameB, "zh-CN", { numeric: true });
+      }
+
+      const orderA = a.order ?? a.createdAt;
+      const orderB = b.order ?? b.createdAt;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.id.localeCompare(b.id);
     });
+  };
 
-  const nodes: TreeNode[] = children.map((page) => ({
-    id: page.id,
-    name: getPageTitle(page),
-    icon: page.icon,
-    children: buildTree(pages, openPageIds, page.id, workspaceId),
-    page,
-  }));
+    const recursiveBuild = (currentPages: Page[]): TreeNode[] => {
+    const sorted = sortPages(currentPages);
+    return sorted.map((p) => {
+      const childrenPages = groupMap.get(p.id) || [];
+      const childrenNodes = recursiveBuild(childrenPages);
 
-  if (parentId && openPageIds.has(parentId) && nodes.length === 0) {
-    return [
-      {
-        id: `${parentId}-empty`,
-        name: "内无页面",
-        isPlaceholder: true,
-      },
-    ];
+      const node: TreeNode = {
+        id: p.id,
+        name: getPageTitle(p),
+        icon: p.icon,
+        page: p,
+      };
+
+      // Only attach children if it's NOT a local notebook OR if it IS a folder
+      // This ensures local files are treated as leaves by the tree component
+      if (!isLocalNotebook || p.isFolder) {
+          if (openPageIds.has(p.id) && childrenNodes.length === 0) {
+              node.children = [
+                  {
+                      id: `${p.id}-empty`,
+                      name: "内无页面",
+                      isPlaceholder: true,
+                  },
+              ];
+          } else {
+              node.children = childrenNodes;
+          }
+      }
+
+      return node;
+    });
+  };
+
+  // If parentId is specified (not likely used in main tree build anymore but good for compatibility),
+  // we would start from there. But the main usage is building the whole tree.
+  // If parentId is provided, we just return the children of that parent.
+  if (parentId) {
+    const children = groupMap.get(parentId) || [];
+    return recursiveBuild(children);
   }
 
-  return nodes;
+  return recursiveBuild(rootPages);
 };
 
 type PageNodeProps = NodeRendererProps<TreeNode> & {
@@ -82,6 +138,7 @@ type PageNodeProps = NodeRendererProps<TreeNode> & {
   activeNotebookId: string | null;
   onRequestRename: (page: Page) => void;
 };
+
 
 function PageNode({
   node,
@@ -91,8 +148,17 @@ function PageNode({
   activeNotebookId: _activeNotebookId,
   onRequestRename,
 }: PageNodeProps) {
-  const { activePageId, setActivePage, createPage, pages, createLocalPage } =
-    usePages();
+  const activePageId = usePages((state) => state.activePageId);
+  const setActivePage = usePages((state) => state.setActivePage);
+  const createPage = usePages((state) => state.createPage);
+  const createLocalPage = usePages((state) => state.createLocalPage);
+  const updatePage = usePages((state) => state.updatePage);
+  
+  // Note: We access pages[id] via node.data.page usually, but for child creation we need the store
+  // To avoid subscribing to the WHOLE pages object, we should use a callback or selector if possible.
+  // However, handleAddChild needs to scan pages. We can use `usePages.getState()` in event handler
+  // to avoid rendering dependency!
+  
   const notebookId = node.data.page?.workspaceId;
   const notebook = notebookId
     ? useNotebooks.getState().notebooks[notebookId]
@@ -100,17 +166,22 @@ function PageNode({
   const isLocalFolder = notebook?.source === "local-folder";
   const isActive = activePageId === node.id;
   const isPlaceholder = node.data.isPlaceholder;
-  const isDropTarget = node.willReceiveDrop && !isPlaceholder;
+  const isDropTarget = node.willReceiveDrop && !isPlaceholder && !node.state.isDragging;
   const iconName = node.data.icon;
   const showFolderIcon = isLocalFolder && node.data.page?.isFolder;
-  const childCount =
-    node.data.children?.filter((child) => !child.isPlaceholder).length ?? 0;
-  const showChildCount = childCount > 0;
-  const displayChildCount = childCount > 9 ? "9+" : String(childCount);
+  
+  // Logic for showing arrow: ONLY if it has children
+  const hasChildren = node.data.children && node.data.children.length > 0;
+  // If we want to strictly follow "Show arrow if it has children", we use hasChildren.
+  // Note: Some trees show arrow for all folders. Feishu usually hides arrow if leaf.
+  const showArrow = hasChildren && !isPlaceholder;
+
+  // We are removing the childCount indicator as requested.
 
   const { paddingLeft: _ignored, height: _ignoredHeight, ...itemStyle } = style;
 
-  const indent = node.level * 16;
+  // Visual indentation (decoupled from logical drop zone)
+  const indent = node.level * 24;
   const paddingLeft = indent;
   const rowStyle = { ...itemStyle, height: itemHeight };
 
@@ -119,7 +190,7 @@ function PageNode({
       <div style={rowStyle} className="relative px-1 select-none">
         <div className="flex items-center h-full px-2 rounded-md">
           <div
-            style={{ paddingLeft: paddingLeft + 18 }}
+            style={{ paddingLeft: paddingLeft + 24 }} // Adjust padding to align with text
             className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
           >
             {node.data.name}
@@ -138,7 +209,8 @@ function PageNode({
       return;
     }
 
-    const existingBlankChild = Object.values(pages).find((p) => {
+    const currentPages = usePages.getState().pages;
+    const existingBlankChild = Object.values(currentPages).find((p) => {
       const isChild = p.parentId === node.id && !p.trashedAt;
       const title = getPageTitle(p);
       const isBlankTitle = !title || title.trim() === "" || title === "无标题";
@@ -157,7 +229,6 @@ function PageNode({
     if (existingBlankChild) {
       if (!node.isOpen) node.open();
       setActivePage(existingBlankChild.id);
-      // 即使是复用空白页，也要聚焦标题
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
     } else {
       if (!node.isOpen) node.open();
@@ -173,17 +244,17 @@ function PageNode({
       <div
         ref={dragHandle}
         style={rowStyle}
-        className="group relative px-1"
+        className="group relative px-2"
         data-onboarding="page-item"
       >
         <div
           className={cn(
-            "relative flex items-center h-full px-2 rounded-md cursor-pointer transition-colors text-sm font-medium",
+            "relative flex items-center h-full pl-2 pr-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
             isDropTarget && "sidebar-drop-target",
-            isActive
-              ? "bg-muted text-foreground dark:text-foreground/85"
-              : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200",
             node.state.isDragging && "opacity-50",
+            // Unify hover effect: Use a clearer background color
+            !isActive && "hover:bg-muted/60 dark:hover:bg-muted/40 text-muted-foreground dark:text-muted-foreground/65 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
+            isActive && "bg-muted text-foreground dark:text-foreground/85"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -191,78 +262,89 @@ function PageNode({
               node.toggle();
               return;
             }
-            setActivePage(node.id);
+            // Single click selects the page
+            if (activePageId !== node.id) {
+              setActivePage(node.id);
+            }
           }}
         >
-          <div
-            className="flex items-center h-full gap-2 min-w-0 flex-1"
-            style={{ paddingLeft }}
+           {/* Indentation Wrapper */}
+          <div 
+             className="flex items-center h-full flex-1 min-w-0"
+             style={{ paddingLeft }}
           >
-            <div
-              className="group/icon relative flex items-center justify-center w-5 h-5 shrink-0 -ml-0.5 rounded hover:bg-gradient-to-br hover:from-muted-foreground/20 hover:to-muted-foreground/10 transition-all duration-200"
+            {/* Arrow Area - Fixed width */}
+            <div 
+              className={cn(
+                "flex items-center justify-center w-5 h-5 shrink-0 -ml-1 mr-0.5 rounded transition-all duration-300 ease-out",
+                showArrow 
+                  ? "hover:bg-muted-foreground/10 cursor-pointer opacity-0 group-hover:opacity-100" 
+                  : "opacity-0 pointer-events-none"
+              )}
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                node.toggle();
+                if (showArrow) node.toggle();
               }}
             >
-              <div className="relative flex items-center justify-center w-full h-full z-10">
-                <div
-                  className={cn(
-                    "flex items-center justify-center",
-                    !node.isOpen && "group-hover/icon:hidden",
-                  )}
-                >
-                  {node.isOpen ? (
-                    <LucideIcons.ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                  ) : (
-                    <>
-                      {iconName ? (
-                        <div className="h-4 w-4 flex items-center justify-center">
-                          {(LucideIcons as any)[iconName] ? (
-                            (() => {
-                              const Icon = (LucideIcons as any)[iconName];
-                              return <Icon className="h-4 w-4" />;
-                            })()
-                          ) : (
-                            <span className="text-sm">{iconName}</span>
-                          )}
-                        </div>
-                      ) : showFolderIcon ? (
-                        <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                      ) : (
-                        <LucideIcons.File className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {!node.isOpen && (
-                  <div className="hidden group-hover/icon:flex items-center justify-center">
-                    <LucideIcons.ChevronRight className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                  </div>
-                )}
-              </div>
+              <LucideIcons.ChevronRight 
+                className={cn(
+                  "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-200", 
+                  node.isOpen && "rotate-90"
+                )} 
+              />
             </div>
 
-            <span className="truncate text-sm flex-1 min-w-0">
+            {/* Icon Area - Fixed width */}
+            <div 
+              className="flex items-center justify-center w-5 h-5 shrink-0 mr-1.5 select-none"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <IconSelector
+                value={iconName}
+                onChange={(newIcon) => updatePage(node.id, { icon: newIcon as string })}
+              >
+                <div 
+                  className={cn(
+                    "flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer",
+                    // If the icon selector expects to control the ref, it should be fine with a div here
+                  )}
+                >
+                  {iconName ? (
+                      <div className="h-4 w-4 flex items-center justify-center">
+                        {(LucideIcons as any)[iconName] ? (
+                          (() => {
+                            const Icon = (LucideIcons as any)[iconName];
+                            return <Icon className="h-4 w-4" />;
+                          })()
+                        ) : (
+                          <span className="text-sm">{iconName}</span>
+                        )}
+                      </div>
+                    ) : showFolderIcon ? (
+                      <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
+                    ) : (
+                      <LucideIcons.FileText className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
+                    )}
+                </div>
+              </IconSelector>
+            </div>
+
+            {/* Title */}
+            <span className="truncate text-sm flex-1 min-w-0 select-none">
               {node.data.name}
             </span>
           </div>
 
-          <div className="ml-auto flex items-center pl-2 pr-1 shrink-0">
-            <div className="relative w-5 h-5">
-              {showChildCount && (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-muted-foreground/50 dark:text-muted-foreground/40 bg-muted-foreground/10 rounded-full transition-opacity group-hover:opacity-0">
-                  {displayChildCount}
-                </span>
-              )}
-              <button
-                className="absolute inset-0 p-1 rounded opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-gradient-to-br hover:from-muted-foreground/25 hover:to-muted-foreground/15 active:from-muted-foreground/30 active:to-muted-foreground/20 text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200"
+          {/* Actions (Plus Button) */}
+          <div className="ml-auto hidden group-hover:flex items-center pl-1 shrink-0">
+             <button
+                className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground/70 hover:text-foreground transition-colors"
                 onClick={handleAddChild}
               >
                 <LucideIcons.Plus className="h-3.5 w-3.5" />
               </button>
-            </div>
           </div>
         </div>
       </div>
@@ -270,11 +352,13 @@ function PageNode({
   );
 }
 
+
 export function SidebarTree({
   activeNotebookId,
   width,
   rowHeight,
   itemHeight,
+  viewportHeight,
   onCreatePage,
   onRequestRename,
   onboardingExpandPageId,
@@ -317,11 +401,20 @@ export function SidebarTree({
     requestAnimationFrame(tryOpen);
   }, [onboardingExpandPageId, pages, activeNotebookId, onOnboardingExpandDone]);
 
-  const treeData = useMemo(
-    () =>
-      buildTree(pages, openPageIds, undefined, activeNotebookId || undefined),
-    [pages, openPageIds, activeNotebookId],
-  );
+  const treeData = useMemo(() => {
+    const notebook = activeNotebookId
+      ? useNotebooks.getState().notebooks[activeNotebookId]
+      : undefined;
+    const isLocalNotebook = notebook?.source === "local-folder";
+    // We pass undefined for parentId to build from root
+    return buildTree(
+      pages,
+      openPageIds,
+      undefined,
+      activeNotebookId || undefined,
+      isLocalNotebook,
+    );
+  }, [pages, openPageIds, activeNotebookId]);
 
   const handleMove = useCallback(
     ({
@@ -343,7 +436,9 @@ export function SidebarTree({
         .map((id) => pages[id])
         .filter(Boolean) as Page[];
       const newSiblings = [...filteredSiblings];
-      newSiblings.splice(index, 0, ...movedPages);
+      // Bound index to ensure it's valid
+      const safeIndex = Math.max(0, Math.min(index, newSiblings.length));
+      newSiblings.splice(safeIndex, 0, ...movedPages);
       const newOrderIds = newSiblings.map((p) => p.id);
       reorderPages(newOrderIds, targetParentId);
     },
@@ -403,7 +498,14 @@ export function SidebarTree({
     () => getVisibleCount(treeData),
     [treeData, openPageIds],
   );
-  const treeHeight = visibleCount * rowHeight;
+  // Add buffer to ensure bottom drop zone is captureable even if mouse is slightly below the last item
+  const contentHeight = visibleCount * rowHeight + 100;
+  const treeHeight = Math.max(contentHeight, viewportHeight || 0);
+
+  const notebook = activeNotebookId
+    ? useNotebooks.getState().notebooks[activeNotebookId]
+    : undefined;
+  const isLocalNotebook = notebook?.source === "local-folder";
 
   if (treeData.length === 0) {
     return (
@@ -433,12 +535,20 @@ export function SidebarTree({
         openByDefault={false}
         width={width}
         height={treeHeight}
-        indent={16}
+        indent={64}
         rowHeight={rowHeight}
         overscanCount={5}
         disableEdit={false}
         disableDrag={false}
-        disableDrop={false}
+        disableDrop={({ parentNode }) => {
+          if (parentNode.isRoot) return false;
+          // In local folder mode, strictly prevent dropping into files
+          if (isLocalNotebook) {
+            return !parentNode.data.page?.isFolder;
+          }
+          // In virtual/cloud mode, any page can be a parent (Notion-style), so allow it
+          return false;
+        }}
         renderCursor={SidebarCursor}
         onToggle={handleToggle}
       >
@@ -456,10 +566,16 @@ export function SidebarTree({
 }
 
 function SidebarCursor({ top, left, indent }: CursorProps) {
+  // We use a large logical indent (64px) for easier drag detection,
+  // but we want the visual cursor to align with our visual indent (24px).
+  // We calculate the level based on the logical left position.
+  const level = left / indent;
+  const visualLeft = level * 24;
+
   return (
     <div
       className="sidebar-drop-cursor"
-      style={{ top: top - 1, left, right: indent }}
+      style={{ top: top - 1, left: visualLeft, right: 12 }}
     >
       <div className="sidebar-drop-line" />
     </div>

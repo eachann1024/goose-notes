@@ -122,6 +122,7 @@ declare global {
   const X: typeof import('lucide-react').X
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
+  const browserGooseFs: typeof import('./lib/browser-fs').browserGooseFs
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal

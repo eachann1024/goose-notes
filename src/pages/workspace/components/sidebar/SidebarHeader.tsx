@@ -1,6 +1,7 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { toast } from "sonner";
 
 interface SidebarHeaderProps {
   onCreatePage: () => void;
@@ -34,6 +35,25 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                   usePages
                     .getState()
                     .loadLocalFolderPages(notebookId, result[0]);
+                }
+              } else {
+                try {
+                  const { browserGooseFs } = await import("@/lib/browser-fs");
+                  const path = await browserGooseFs.selectDirectory();
+                  if (path) {
+                    const notebookId = useNotebooks
+                      .getState()
+                      .createLocalFolderNotebook(
+                        `本地 - ${path}`,
+                        path,
+                      );
+                    await usePages
+                      .getState()
+                      .loadLocalFolderPages(notebookId, path);
+                  }
+                } catch (e) {
+                  console.error(e);
+                  toast.error("打开文件夹失败: " + String(e));
                 }
               }
             }}

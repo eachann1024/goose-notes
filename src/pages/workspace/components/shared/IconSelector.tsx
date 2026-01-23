@@ -1,4 +1,4 @@
-import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
+import EmojiPicker, { EmojiStyle, Theme, Categories } from "emoji-picker-react";
 import { useEffect, useRef } from "react";
 
 interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
@@ -161,9 +161,21 @@ const POPULAR_EMOJIS = [
 const AVAILABLE_ICONS = Array.from(new Set(COMMON_ICONS));
 
 const NOTION_TABS = [
-  { id: "emoji", label: "表情符号" },
+  { id: "emoji", label: "表情" },
   { id: "icon", label: "图标" },
 ] as const;
+
+const EMOJI_CATEGORIES = [
+  { category: Categories.SUGGESTED, name: "最近使用" },
+  { category: Categories.SMILEYS_PEOPLE, name: "表情 & 人物" },
+  { category: Categories.ANIMALS_NATURE, name: "动物 & 自然" },
+  { category: Categories.FOOD_DRINK, name: "食物 & 饮品" },
+  { category: Categories.TRAVEL_PLACES, name: "旅行 & 地点" },
+  { category: Categories.ACTIVITIES, name: "活动" },
+  { category: Categories.OBJECTS, name: "物品" },
+  { category: Categories.SYMBOLS, name: "符号" },
+  { category: Categories.FLAGS, name: "旗帜" },
+];
 
 export function IconSelector<T extends HTMLElement = HTMLElement>({
   value,
@@ -174,7 +186,6 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   emojiOnly = false,
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"emoji" | "icon">("emoji");
   const portalContainer = portalContainerRef?.current ?? undefined;
   const hasOpenedRef = useRef(false);
@@ -186,10 +197,10 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   const filteredIcons = useMemo(() => {
     const icons = AVAILABLE_ICONS.filter((key) => {
       if (!LucideIcons || !(key in (LucideIcons as any))) return false;
-      return !search || key.toLowerCase().includes(search.toLowerCase());
+      return true;
     });
-    return icons.slice(0, 200); 
-  }, [search]);
+    return icons.slice(0, 200);
+  }, []);
 
   // 第一次打开时触发 onFirstOpen 回调
   useEffect(() => {
@@ -214,24 +225,25 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className="w-[380px] p-0 rounded-xl shadow-xl overflow-hidden"
+        className="w-[380px] p-0 rounded-xl shadow-xl overflow-hidden bg-background text-foreground border border-border"
         align="start"
         side="bottom"
         collisionPadding={10}
         container={portalContainer}
       >
         {/* Header Tabs */}
-        <div className="flex items-center justify-between px-3 pt-2 text-[14px] border-b bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+        {/* Header Tabs */}
+        <div className="flex items-center justify-between px-3 pt-2 pb-2 text-[14px] border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex gap-4">
             {!emojiOnly &&
               NOTION_TABS.map((t) => (
                 <button
                   key={t.id}
                   className={cn(
-                    "pb-2 border-b-2 transition-colors px-0.5",
+                    "pb-1 border-b-2 transition-all duration-200 px-1 text-sm rounded-t-sm",
                     tab === t.id
-                      ? "border-foreground font-medium text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
+                      ? "border-primary font-medium text-foreground bg-accent/50"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
                   )}
                   onClick={() => setTab(t.id as any)}
                 >
@@ -239,21 +251,21 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                 </button>
               ))}
               {emojiOnly && (
-                 <div className="pb-2 border-b-2 border-foreground font-medium text-foreground px-0.5">
+                 <div className="pb-1 border-b-2 border-primary font-medium text-foreground px-1 text-sm">
                    表情符号
                  </div>
               )}
           </div>
           <div className="flex items-center gap-1">
              <button 
-                className="pb-2 text-muted-foreground hover:text-foreground transition-colors mr-2"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="随机图标"
                 onClick={handleRandomIcon}
              >
-                <LucideIcons.Shuffle className="h-4 w-4" />
+                <LucideIcons.Shuffle className="h-3.5 w-3.5" />
              </button>
              <button
-               className="pb-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+               className="p-1.5 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                onClick={() => {
                  onChange(undefined);
                  setOpen(false);
@@ -270,8 +282,9 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
             <div className="h-full w-full">
               <style>{`
                 .emoji-picker-react-wrapper {
-                   --epr-search-input-height: 0px !important;
-                   --epr-category-navigation-button-size: 28px !important;
+                   --epr-search-input-height: 40px !important;
+                   --epr-category-navigation-button-size: 24px !important;
+                   --epr-preview-height: 0px !important;
                 }
                 .emoji-picker-react {
                   width: 100% !important;
@@ -280,26 +293,66 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   background: transparent !important;
                   display: flex !important;
                   flex-direction: column !important;
+                  --epr-bg-color: transparent !important;
+                  --epr-category-label-bg-color: transparent !important;
+                  --epr-picker-border-color: transparent !important;
+                  --epr-text-color: hsl(var(--foreground)) !important;
+                  --epr-hover-bg-color: hsl(var(--accent)) !important;
+                  --epr-focus-bg-color: hsl(var(--accent)) !important;
+                  --epr-highlight-color: hsl(var(--foreground)) !important;
+                  --epr-category-label-text-color: hsl(var(--muted-foreground)) !important;
+                  --epr-search-input-bg-color: hsl(var(--background)) !important;
+                  --epr-search-input-text-color: hsl(var(--foreground)) !important;
+                  --epr-search-input-placeholder-color: hsl(var(--muted-foreground)) !important;
+                  --epr-category-icon-active-color: hsl(var(--foreground)) !important;
+                  --epr-category-icon-inactive-color: hsl(var(--muted-foreground)) !important;
                 }
                 .emoji-picker-react .epr-body {
                    flex: 1 !important;
                    min-height: 0 !important;
                 }
+                /* Hide category nav if user wants no grouping? 
+                   We keep it but make it minimal at bottom as Feishu 
+                   Feishu actually has top tabs for types, and bottom for categories for Emoji 
+                */
                 .emoji-picker-react .epr-category-nav {
                    order: 2 !important;
-                   padding-top: 0 !important;
-                   padding-bottom: 8px !important;
+                   padding-top: 4px !important;
+                   padding-bottom: 4px !important;
+                   border-top: 1px solid var(--border);
                 }
+                /* Style the internal search bar to match our custom one */
                 .emoji-picker-react .epr-search-container {
                   display: none !important;
+                  padding: 8px 12px !important;
+                  background: transparent !important;
+                }
+                .emoji-picker-react .epr-search-container input.epr-search-input {
+                  height: 32px !important;
+                  border-radius: 6px !important;
+                  border: 1px solid var(--input) !important;
+                  background-color: transparent !important; 
+                  font-size: 14px !important;
+                  padding-left: 32px !important; /* Space for icon if we could inject one, default has one */
                 }
                 .emoji-picker-react .epr-preview {
                   display: none !important;
                 }
-                /* Use CSS to make icons larger to match Notion */
                  .emoji-picker-react img.emoji {
                    width: 28px !important;
                    height: 28px !important;
+                 }
+                 /* Hide specific category labels if needed for "flat" look, 
+                    but headers are useful. User said "no grouping" but 
+                    maybe meant "collapsible" or "complex" grouping. 
+                    Let's keep headers but simpler styles 
+                 */
+                 .emoji-picker-react .epr-category-label {
+                   font-size: 12px !important;
+                   color: var(--muted-foreground) !important;
+                   padding: 4px 12px !important;
+                   top: 0 !important;
+                   backdrop-filter: blur(4px);
                  }
               `}</style>
                <div className="emoji-picker-react-wrapper h-full w-full">
@@ -315,6 +368,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                     previewConfig={{ showPreview: false }}
                     theme={Theme.AUTO}
                     emojiStyle={EmojiStyle.APPLE}
+                    categories={EMOJI_CATEGORIES}
                   />
                </div>
             </div>

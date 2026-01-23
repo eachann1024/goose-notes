@@ -362,3 +362,100 @@
     transparent
   );
 }
+
+/* Collapsible Headings */
+.ProseMirror .is-folded {
+  display: none !important;
+}
+
+/* Folding Arrow in Handle */
+.drag-handle .folding-arrow {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 24px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  border-radius: 4px;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.drag-handle.has-folding-arrow .folding-arrow {
+  opacity: 1;
+}
+
+.drag-handle:hover .folding-arrow,
+.drag-handle .folding-arrow:hover {
+  opacity: 1;
+}
+
+.drag-handle .folding-arrow:hover {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.drag-handle .folding-arrow svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s;
+}
+
+/* Collapsed state: pointing right */
+.drag-handle .folding-arrow.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.ProseMirror .heading-collapse-anchor {
+  position: relative;
+  margin-left: -2rem;
+  padding-left: 2rem;
+  width: calc(100% + 2rem);
+  box-sizing: border-box;
+}
+
+.ProseMirror .heading-collapse-indicator {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 11;
+  transition: opacity 0.12s ease;
+}
+
+.ProseMirror .heading-collapse-anchor:not(:hover)
+  .heading-collapse-indicator:not(.is-collapsed):not(.is-active) {
+  opacity: 0;
+}
+
+.ProseMirror .heading-collapse-indicator:hover {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.ProseMirror .heading-collapse-indicator svg {
+  width: 18px;
+  height: 18px;
+  transform: rotate(-90deg);
+}
+
+.ProseMirror .heading-collapse-indicator.is-collapsed svg {
+  transform: rotate(0deg);
+}
