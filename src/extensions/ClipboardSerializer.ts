@@ -451,7 +451,7 @@ function customSerializeSelection(view: EditorView): string {
         }
         markdown += serializeList(node, false);
         prevNodeType = "bulletList";
-        break;
+        return false; // 阻止遍历子节点，避免重复序列化
 
       case "orderedList":
         if (prevNodeType && prevNodeType !== "orderedList") {
@@ -459,7 +459,7 @@ function customSerializeSelection(view: EditorView): string {
         }
         markdown += serializeList(node, true);
         prevNodeType = "orderedList";
-        break;
+        return false; // 阻止遍历子节点，避免重复序列化
 
       case "taskList":
         if (prevNodeType && prevNodeType !== "taskList") {
@@ -467,7 +467,7 @@ function customSerializeSelection(view: EditorView): string {
         }
         markdown += serializeTaskList(node);
         prevNodeType = "taskList";
-        break;
+        return false; // 阻止遍历子节点，避免重复序列化
 
       case "blockquote":
         if (prevNodeType && prevNodeType !== "blockquote") {
@@ -475,7 +475,7 @@ function customSerializeSelection(view: EditorView): string {
         }
         markdown += serializeBlockquote(node);
         prevNodeType = "blockquote";
-        break;
+        return false; // 阻止遍历子节点，避免重复序列化
 
       case "callout":
         if (prevNodeType) {
@@ -484,7 +484,7 @@ function customSerializeSelection(view: EditorView): string {
         const emoji = node.attrs.emoji || "💡";
         markdown += `> ${emoji} ${node.textContent}\n`;
         prevNodeType = "callout";
-        break;
+        return false; // 阻止遍历子节点，避免重复序列化
 
       case "paragraph":
         if (prevNodeType && prevNodeType !== "paragraph") {
