@@ -9,15 +9,25 @@ import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 const tips = [
   "使用 / 命令快速插入内容块",
   "拖拽调整页面顺序",
-  "Ctrl/Cmd + D 快速复制当前行",
-  "Ctrl/Cmd + / 插入代码块",
+  "打开本地文件夹可批量管理 Markdown 笔记",
 ];
 
 function getRandomTip() {
   return tips[Math.floor(Math.random() * tips.length)];
 }
 
-const isEmptyContent = (content: any) => {
+const isEmptyContent = (
+  content:
+    | {
+        type?: string;
+        content?: Array<{
+          type?: string;
+          content?: unknown[];
+        }>;
+      }
+    | null
+    | undefined,
+) => {
   if (!content || content.type !== "doc") return true;
   if (!content.content || content.content.length === 0) return true;
   if (content.content.length === 1) {
@@ -33,9 +43,20 @@ const isEmptyContent = (content: any) => {
 };
 
 export function PageEmptyState() {
-  const { createPage, createLocalPage, pages, setActivePage } = usePages();
-  const { activeNotebookId, notebooks, createNotebook, setActiveNotebook } =
-    useNotebooks();
+  const {
+    createPage,
+    createLocalPage,
+    pages,
+    setActivePage,
+    loadLocalFolderPages,
+  } = usePages();
+  const {
+    activeNotebookId,
+    notebooks,
+    createNotebook,
+    setActiveNotebook,
+    createLocalFolderNotebook,
+  } = useNotebooks();
 
   const onCreatePage = useCallback(() => {
     // 如果没有活跃笔记本，创建一个默认笔记本
@@ -92,6 +113,47 @@ export function PageEmptyState() {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
   }, []);
 
+  const onOpenLocalFolder = useCallback(async () => {
+    const utools = (
+      window as {
+        utools?: {
+          showOpenDialog?: (options: {
+            title: string;
+            properties: string[];
+          }) => Promise<string[]>;
+        };
+      }
+    ).utools;
+    if (typeof utools?.showOpenDialog === "function") {
+      const result = await utools.showOpenDialog({
+        title: "选择 Markdown 文件夹",
+        properties: ["openDirectory"],
+      });
+      if (result && result.length > 0) {
+        const folderPath = result[0];
+        const folderName = folderPath.split("/").pop() || "Unknown";
+        const notebookId = createLocalFolderNotebook(
+          `本地 - ${folderName}`,
+          folderPath,
+        );
+        await loadLocalFolderPages(notebookId, folderPath);
+      }
+      return;
+    }
+
+    try {
+      const { browserGooseFs } = await import("@/lib/browser-fs");
+      const path = await browserGooseFs.selectDirectory();
+      if (path) {
+        const notebookId = createLocalFolderNotebook(`本地 - ${path}`, path);
+        await loadLocalFolderPages(notebookId, path);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("打开文件夹失败: " + String(e));
+    }
+  }, [createLocalFolderNotebook, loadLocalFolderPages]);
+
   // 全局快捷键监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,6 +177,14 @@ export function PageEmptyState() {
       description: "创建一个空白页面开始记录",
       onClick: onCreatePage,
       color: "from-primary to-primary/60",
+    },
+    {
+      icon: Sparkles,
+      title: "打开本地文件夹",
+      description: "批量管理 Markdown 笔记",
+      onClick: onOpenLocalFolder,
+      color: "from-emerald-500 to-emerald-500/60",
+      dataOnboarding: "open-local-folder",
     },
     {
       icon: Search,
@@ -150,7 +220,7 @@ export function PageEmptyState() {
         </div>
 
         {/* 操作卡片网格 */}
-        <div className="grid md:grid-cols-2 gap-5 mb-12 max-w-2xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-5 mb-12 max-w-4xl mx-auto">
           {actions.map((action, index) => {
             const Icon = action.icon;
             return (
@@ -160,6 +230,7 @@ export function PageEmptyState() {
                   action.onClick();
                 }}
                 type="button"
+                data-onboarding={action.dataOnboarding}
                 className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/80 hover:to-card/60 cursor-pointer"
               >
                 <div
