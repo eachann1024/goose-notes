@@ -109,7 +109,7 @@ const buildTree = (
               node.children = [
                   {
                       id: `${p.id}-empty`,
-                      name: "内无页面",
+                      name: isLocalNotebook ? "内无文件" : "内无页面",
                       isPlaceholder: true,
                   },
               ];
@@ -301,17 +301,27 @@ function PageNode({
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
-              <IconSelector
-                value={iconName}
-                onChange={(newIcon) => updatePage(node.id, { icon: newIcon as string })}
-              >
-                <div 
-                  className={cn(
-                    "flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer",
-                    // If the icon selector expects to control the ref, it should be fine with a div here
+              {isLocalFolder ? (
+                <div className="flex items-center justify-center w-5 h-5">
+                  {showFolderIcon ? (
+                    <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
+                  ) : (
+                    <LucideIcons.FileText className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   )}
+                </div>
+              ) : (
+                <IconSelector
+                  value={iconName}
+                  onChange={(newIcon) =>
+                    updatePage(node.id, { icon: newIcon as string })
+                  }
                 >
-                  {iconName ? (
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer",
+                    )}
+                  >
+                    {iconName ? (
                       <div className="h-4 w-4 flex items-center justify-center">
                         {(LucideIcons as any)[iconName] ? (
                           (() => {
@@ -327,8 +337,9 @@ function PageNode({
                     ) : (
                       <LucideIcons.FileText className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                     )}
-                </div>
-              </IconSelector>
+                  </div>
+                </IconSelector>
+              )}
             </div>
 
             {/* Title */}
@@ -498,6 +509,31 @@ export function SidebarTree({
       newSiblings.splice(safeIndex, 0, ...movedPages);
       const newOrderIds = newSiblings.map((p) => p.id);
       reorderPages(newOrderIds, targetParentId);
+
+      // 检查之前的父节点，如果变空了，则自动收起
+      const oldParentIds = new Set<string>();
+      dragIds.forEach((id) => {
+        const p = pages[id];
+        if (p?.parentId) oldParentIds.add(p.parentId);
+      });
+
+      oldParentIds.forEach((pid) => {
+        // 如果只是在同一个父节点下移动，忽略
+        if (pid === targetParentId) return;
+
+        // 获取原来的子节点（getChildren 返回的是移动前的状态）
+        const children = getChildren(pid, activeNotebookId || undefined);
+        // 排除掉正在拖走的
+        const remaining = children.filter((p) => !dragIds.includes(p.id));
+        
+        if (remaining.length === 0) {
+          setOpenPageIds((prev) => {
+            const next = new Set(prev);
+            next.delete(pid);
+            return next;
+          });
+        }
+      });
     },
     [getChildren, activeNotebookId, pages, reorderPages],
   );
@@ -568,13 +604,13 @@ export function SidebarTree({
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
-        <p>暂无页面</p>
+        <p>{isLocalNotebook ? "暂无文件" : "暂无页面"}</p>
         <Button
           variant="link"
           onClick={onCreatePage}
           className="h-auto p-0 mt-1"
         >
-          创建第一个页面
+          {isLocalNotebook ? "创建第一个文件" : "创建第一个页面"}
         </Button>
       </div>
     );
@@ -592,7 +628,7 @@ export function SidebarTree({
         openByDefault={false}
         width={width}
         height={treeHeight}
-        indent={64}
+        indent={18}
         rowHeight={rowHeight}
         overscanCount={5}
         disableEdit={false}
@@ -623,9 +659,8 @@ export function SidebarTree({
 }
 
 function SidebarCursor({ top, left, indent }: CursorProps) {
-  // We use a large logical indent (64px) for easier drag detection,
-  // but we want the visual cursor to align with our visual indent (24px).
-  // We calculate the level based on the logical left position.
+  // We align logical indent (18px) with visual indent (24px).
+  // The cursor position corresponds directly to the visual level.
   const level = left / indent;
   const visualLeft = level * 24;
 

@@ -57,6 +57,8 @@ export function PageEmptyState() {
     setActiveNotebook,
     createLocalFolderNotebook,
   } = useNotebooks();
+  const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
+  const isLocalFolder = activeNotebook?.source === "local-folder";
 
   const onCreatePage = useCallback(() => {
     // 如果没有活跃笔记本，创建一个默认笔记本
@@ -131,9 +133,9 @@ export function PageEmptyState() {
       });
       if (result && result.length > 0) {
         const folderPath = result[0];
-        const folderName = folderPath.split("/").pop() || "Unknown";
+        const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
         const notebookId = createLocalFolderNotebook(
-          `本地 - ${folderName}`,
+          folderName,
           folderPath,
         );
         await loadLocalFolderPages(notebookId, folderPath);
@@ -145,7 +147,8 @@ export function PageEmptyState() {
       const { browserGooseFs } = await import("@/lib/browser-fs");
       const path = await browserGooseFs.selectDirectory();
       if (path) {
-        const notebookId = createLocalFolderNotebook(`本地 - ${path}`, path);
+        const folderName = path.split(/[\\/]/).pop() || "Unknown";
+        const notebookId = createLocalFolderNotebook(folderName, path);
         await loadLocalFolderPages(notebookId, path);
       }
     } catch (e) {
@@ -173,8 +176,10 @@ export function PageEmptyState() {
   const actions = [
     {
       icon: Plus,
-      title: "新建页面",
-      description: "创建一个空白页面开始记录",
+      title: isLocalFolder ? "新建文件" : "新建页面",
+      description: isLocalFolder
+        ? "在当前文件夹创建 Markdown 文件"
+        : "创建一个空白页面开始记录",
       onClick: onCreatePage,
       color: "from-primary to-primary/60",
     },
@@ -215,7 +220,9 @@ export function PageEmptyState() {
             准备好记录想法了吗？
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            点击左侧侧边栏新建页面，或选择现有页面开始记录
+            {isLocalFolder
+              ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
+              : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
           </p>
         </div>
 

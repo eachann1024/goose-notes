@@ -15,6 +15,12 @@ import {
 // 防抖保存的映射
 const saveTimeouts = new Map<string, NodeJS.Timeout>();
 
+// 本地页面元数据缓存 (用于在重新加载本地文件夹时防止元数据丢失)
+const localPageMetadataCache = new Map<
+  string,
+  { isFavorite?: boolean; icon?: string }
+>();
+
 // 辅助函数：生成本地页面ID（基于相对路径的hash）
 function generateLocalPageId(notebookId: string, filePath: string): string {
   const notebook = useNotebooks.getState().notebooks[notebookId];
@@ -853,6 +859,66 @@ export const usePages = create<PagesState>()(
       // 本地文件夹相关函数
       loadLocalFolderPages: async (notebookId, basePath) => {
         if (typeof window === "undefined" || !window.gooseFs) return;
+
+        const normalizeLocalFileTitle = (name: string) => {
+          const base = name.replace(/\.(md|markdown)$/i, "").trim();
+          return base || "无标题";
+        };
+
+        const ensureLocalFileTitle = (content: JSONContent, title: string) => {
+          const safeContent =
+            content && content.type === "doc"
+              ? content
+              : { type: "doc", content: [] };
+          const nodes = Array.isArray(safeContent.content)
+            ? [...safeContent.content]
+            : [];
+          const first = nodes[0];
+          const hasTitleNode =
+            first?.type === "heading" && first.attrs?.level === 1;
+          const nextTitle = title.trim();
+
+          if (hasTitleNode) {
+            const hasText = first.content && first.content.length > 0;
+            if (!hasText) {
+              first.content = [{ type: "text", text: nextTitle }];
+            }
+            return { ...safeContent, content: nodes };
+          }
+
+          return {
+            ...safeContent,
+            content: [
+              {
+                type: "heading",
+                attrs: { level: 1 },
+                content: [{ type: "text", text: nextTitle }],
+              },
+              ...nodes,
+            ],
+          };
+        };
+
+
+
+        // 备份当前页面元数据到缓存
+        // 注意：只在存在页面时更新缓存，以防在快速连续调用时（此时 store 可能已被清空）覆盖了有效的缓存
+        const currentPages = get().pages;
+        const hasExistingPages = Object.values(currentPages).some(
+          (p) => p.workspaceId === notebookId,
+        );
+        
+        if (hasExistingPages) {
+          Object.values(currentPages).forEach((p) => {
+            if (p.workspaceId === notebookId) {
+              localPageMetadataCache.set(p.id, {
+                isFavorite: p.isFavorite,
+                icon: p.icon,
+              });
+            }
+          });
+        }
+
         get().removePagesByWorkspaceId(notebookId);
 
         // 需要忽略的文件夹
@@ -950,11 +1016,16 @@ export const usePages = create<PagesState>()(
               }
 
               const imported = importFromMarkdown(markdownContent);
-              const jsonContent = imported.content || {
+              let jsonContent = imported.content || {
                 type: "doc",
                 content: [],
               };
 
+              const existingTitle = extractTitleFromContent(jsonContent);
+              if (!existingTitle || existingTitle === "无标题") {
+                const fallbackTitle = normalizeLocalFileTitle(entry.name);
+                jsonContent = ensureLocalFileTitle(jsonContent, fallbackTitle);
+              }
 
               const filePage: Page = {
                 id: fileId,
@@ -983,6 +1054,17 @@ export const usePages = create<PagesState>()(
             ...state.pages,
             ...localPages.reduce(
               (acc, page) => {
+                // 尝试从缓存中恢复元数据
+                const existing = localPageMetadataCache.get(page.id);
+                if (existing) {
+                  if (existing.isFavorite !== undefined) {
+                    page.isFavorite = existing.isFavorite;
+                  }
+                  if (existing.icon) {
+                    page.icon = existing.icon;
+                  }
+                }
+
                 acc[page.id] = page;
                 return acc;
               },
@@ -990,39 +1072,63 @@ export const usePages = create<PagesState>()(
             ),
           };
 
-          // Handle pending cross-notebook navigation
+          // Handle navigation priority:
+          // 1. Pending cross-notebook navigation (highest priority)
+          // 2. Restore last active page for this notebook
+          // 3. Default to first page (for non-local folders)
+          
           const { pendingNavigatePageId } = state;
           const result: any = { pages: updated };
+          let nextActivePageId = state.activePageId;
+          let handledNavigation = false;
+
+          // 1. Try Pending Navigation
           if (pendingNavigatePageId && updated[pendingNavigatePageId]) {
-            result.activePageId = pendingNavigatePageId;
-            result.expandPageId = pendingNavigatePageId;
+            nextActivePageId = pendingNavigatePageId;
+            result.activePageId = nextActivePageId;
+            result.expandPageId = nextActivePageId;
             result.pendingNavigatePageId = null;
+            handledNavigation = true;
+          }
+
+          // 2 & 3. If no pending navigation, check if we need to restore/init active page
+          if (!handledNavigation) {
+            const activeNotebookId = useNotebooks.getState().activeNotebookId;
+            // Only update if this is the active notebook
+            if (activeNotebookId === notebookId) {
+                const lastActivePageId = useNotebooks.getState().getLastActivePage(notebookId);
+                const pageIdSet = new Set(localPages.map((p) => p.id));
+
+                if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
+                   nextActivePageId = lastActivePageId;
+                } else {
+                    const notebook = useNotebooks.getState().notebooks[notebookId];
+                    const isLocalFolder = notebook?.source === "local-folder";
+                    if (!isLocalFolder) {
+                        const firstPage = localPages
+                            .filter((p) => !p.trashedAt)
+                            .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))[0];
+                        if (firstPage) {
+                            nextActivePageId = firstPage.id;
+                        }
+                    }
+                }
+                
+                if (nextActivePageId !== state.activePageId) {
+                    result.activePageId = nextActivePageId;
+                }
+            }
+          }
+
+          // Sync to Notebook store
+          const currentActive = result.activePageId || state.activePageId; // Use the potentially updated activePageId
+          const activeNotebookId = useNotebooks.getState().activeNotebookId;
+          if (activeNotebookId === notebookId && currentActive) {
+               useNotebooks.getState().setLastActivePage(notebookId, currentActive);
           }
 
           return result;
         });
-
-        const activeNotebookId = useNotebooks.getState().activeNotebookId;
-        if (activeNotebookId === notebookId) {
-          const lastActivePageId = useNotebooks
-            .getState()
-            .getLastActivePage(notebookId);
-          const pageIdSet = new Set(localPages.map((p) => p.id));
-
-          if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
-            set({ activePageId: lastActivePageId });
-          } else {
-            const firstPage = localPages
-              .filter((p) => !p.trashedAt)
-              .sort(
-                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-              )[0];
-            set({ activePageId: firstPage?.id ?? null });
-            useNotebooks
-              .getState()
-              .setLastActivePage(notebookId, firstPage?.id ?? null);
-          }
-        }
       },
 
       saveLocalPageContent: async (pageId, content) => {

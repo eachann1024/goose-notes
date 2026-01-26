@@ -76,10 +76,11 @@ function App() {
 
   useEffect(() => {
     const openFolder = (folderPath: string) => {
+      const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
       const notebookId = useNotebooks
         .getState()
         .createLocalFolderNotebook(
-          `本地 - ${folderPath.split("/").pop() || "Unknown"}`,
+          folderName,
           folderPath,
         );
       usePages.getState().loadLocalFolderPages(notebookId, folderPath);

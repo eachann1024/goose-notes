@@ -208,7 +208,18 @@ export const useNotebooks = create<NotebooksState>()(
           if (pendingPage && pendingPage.workspaceId === id) {
             pagesStore.setActivePage(pendingId);
             pagesStore.setExpandPageId(pendingId);
-            pagesStore.setPendingNavigatePageId(null);
+
+            // 如果是本地文件夹笔记本，且正在重新加载页面，暂不清除 pendingNavigatePageId
+            // 让 loadLocalFolderPages 在加载完成后处理（能够确保页面存在且触发展开）
+            const isLoadingLocal =
+              notebook?.source === "local-folder" &&
+              notebook.localPath &&
+              typeof window !== "undefined" &&
+              (window as any).gooseFs;
+
+            if (!isLoadingLocal) {
+              pagesStore.setPendingNavigatePageId(null);
+            }
           }
         }
       },

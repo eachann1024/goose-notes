@@ -116,6 +116,12 @@ export function Editor({ editable = true }: EditorProps) {
     },
   });
 
+  const getLocalFileTitle = (filePath: string) => {
+    const name = filePath.split(/[\\/]/).pop() || "";
+    const base = name.replace(/\.(md|markdown)$/i, "").trim();
+    return base || "无标题";
+  };
+
   useEffect(() => {
     const flush = () => debouncedUpdateRef.current?.flush();
 
@@ -189,10 +195,33 @@ export function Editor({ editable = true }: EditorProps) {
         }
       }
 
+      let shouldPersistTitle = false;
+      if (page.localFilePath) {
+        const firstNode = contentToSet.content?.[0];
+        if (
+          firstNode?.type === "heading" &&
+          firstNode.attrs?.level === 1 &&
+          (!firstNode.content || firstNode.content.length === 0)
+        ) {
+          const nextTitle = getLocalFileTitle(page.localFilePath);
+          const nextNodes = [...(contentToSet.content || [])];
+          nextNodes[0] = {
+            ...firstNode,
+            content: [{ type: "text", text: nextTitle }],
+          };
+          contentToSet = { ...contentToSet, content: nextNodes };
+          shouldPersistTitle = true;
+        }
+      }
+
       editor.commands.setContent(contentToSet, { emitUpdate: false });
 
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
+
+      if (shouldPersistTitle) {
+        updatePage(activePageId, { content: contentToSet });
+      }
 
       // 如果是新页面（标题为空且内容为空），强制聚焦到标题
       const isNewPage =

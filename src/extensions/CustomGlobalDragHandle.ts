@@ -118,10 +118,21 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     const { isTableWrapper, isTable, isCodeBlock, targetNode } =
       isSpecialBlockType(node);
 
+    // 分割线特殊处理：相对于整个容器（包括 padding）垂直居中
+    const isHorizontalRule = node.matches(".horizontal-rule-wrapper");
+    
     // 表格和代码块特殊处理
     if (isTableWrapper || isTable) {
       const tableRect = absoluteRect(targetNode);
       rect.top = tableRect.top;
+    } else if (isHorizontalRule) {
+      // 分割线：把手相对于整个容器垂直居中
+      const handleHeight =
+        dragHandleElement && dragHandleElement.offsetHeight > 0
+          ? dragHandleElement.offsetHeight
+          : 24;
+      const containerHeight = node.getBoundingClientRect().height;
+      rect.top += (containerHeight - handleHeight) / 2;
     } else if (!isCodeBlock) {
       // 普通块：计算手柄在内容中的垂直位置
       rect.top += paddingTop;

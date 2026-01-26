@@ -40,6 +40,52 @@ declare global {
 let rootHandle: FileSystemDirectoryHandle | null = null;
 let rootPathPrefix: string = "";
 
+const DB_NAME = "goose-note-fs";
+const STORE_NAME = "handles";
+const ROOT_HANDLE_KEY = "root-handle";
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbGet<T>(key: string): Promise<T | null> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+    tx.onabort = () => db.close();
+  });
+}
+
+async function idbSet<T>(key: string, value: T): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+    tx.onabort = () => db.close();
+  });
+}
+
 // 路径处理辅助函数
 function normalizePath(p: string): string {
   // 移除开头和结尾的斜杠，统一分隔符
@@ -101,11 +147,31 @@ export const browserGooseFs = {
          const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
          rootHandle = handle;
          rootPathPrefix = handle.name;
+         try {
+           await idbSet(ROOT_HANDLE_KEY, handle);
+         } catch (e) {
+           console.error("Persist handle failed", e);
+         }
          return handle.name;
      } catch (e) {
          console.error("User cancelled or API not supported", e);
          return null;
      }
+  },
+  async restoreLastDirectory() {
+      try {
+          const handle = await idbGet<FileSystemDirectoryHandle>(ROOT_HANDLE_KEY);
+          if (!handle) return null;
+          // @ts-ignore
+          const permission = await handle.queryPermission?.({ mode: "readwrite" });
+          if (permission !== "granted") return null;
+          rootHandle = handle;
+          rootPathPrefix = handle.name;
+          return handle.name;
+      } catch (e) {
+          console.error("Restore handle failed", e);
+          return null;
+      }
   },
 
   readDir(dirPath: string) {

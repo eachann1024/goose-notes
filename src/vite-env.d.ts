@@ -16,6 +16,7 @@ interface GooseFs {
   deleteFile: (path: string) => boolean | Promise<boolean>;
   deleteDir: (path: string) => boolean | Promise<boolean>;
   rename: (oldPath: string, newPath: string) => boolean | Promise<boolean>;
+  restoreLastDirectory?: () => Promise<string | null>;
 }
 
 declare global {

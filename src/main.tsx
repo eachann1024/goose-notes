@@ -16,17 +16,21 @@ const settings = useSettings.getState();
 const initBrowserFs = async () => {
   if (typeof window !== "undefined" && !window.utools) {
     const { browserGooseFs } = await import("./lib/browser-fs");
+    await browserGooseFs.restoreLastDirectory?.();
     window.gooseFs = browserGooseFs;
   }
 };
 
-void initBrowserFs();
+const bootstrap = async () => {
+  await initBrowserFs();
+  applyFontVariables(settings.customFonts);
+  preloadFonts();
 
-applyFontVariables(settings.customFonts);
-preloadFonts();
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+};
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+void bootstrap();

@@ -53,9 +53,11 @@ export function Sidebar({ className }: SidebarProps) {
     onboardingExpandPageId,
     setOnboardingExpandPageId,
   } = usePages();
-  const { activeNotebookId } = useNotebooks();
+  const { activeNotebookId, notebooks } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
   const { deletePageWithUndo } = useDeletePageWithUndo();
+  const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
+  const isLocalFolder = activeNotebook?.source === "local-folder";
 
   const itemHeight = useItemHeight();
   const rowHeight = itemHeight + 1;
@@ -336,7 +338,7 @@ export function Sidebar({ className }: SidebarProps) {
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
           <div className="mt-1">
             <SectionHeader
-              title="页面"
+              title={isLocalFolder ? "本地文件夹" : "页面"}
               collapsed={pagesCollapsed}
               onToggle={() => setPagesCollapsed(!pagesCollapsed)}
             />
@@ -378,9 +380,11 @@ export function Sidebar({ className }: SidebarProps) {
       >
         <DialogContent className="sm:max-w-[400px] z-[100]">
           <DialogHeader>
-            <DialogTitle>重命名页面</DialogTitle>
+            <DialogTitle>
+              {isLocalFolder ? "重命名文件" : "重命名页面"}
+            </DialogTitle>
             <DialogDescription className="sr-only">
-              输入新的页面名称
+              {isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
             </DialogDescription>
           </DialogHeader>
           <div className="py-6">
@@ -398,7 +402,7 @@ export function Sidebar({ className }: SidebarProps) {
                   }
                 }}
                 autoFocus
-                placeholder="输入新的页面名称"
+                placeholder={isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
               />
             </div>
           </div>

@@ -8,6 +8,7 @@ export function NotebookSwitcher() {
     activeNotebookId,
     setActiveNotebook,
     createNotebook,
+    createLocalFolderNotebook,
     updateNotebook,
     deleteNotebook,
     getLastActivePage,
@@ -57,6 +58,46 @@ export function NotebookSwitcher() {
     createNotebook(createDialog.name.trim(), createDialog.icon);
     setActivePage(null);
     setCreateDialog({ open: false, name: "", icon: "📓", error: "" });
+  };
+
+  const handleOpenLocalFolder = async () => {
+    try {
+      const utools = (window as Window & {
+        utools?: {
+          showOpenDialog?: (options: {
+            title?: string;
+            properties: string[];
+          }) => Promise<string[] | null>;
+        };
+      }).utools;
+      if (typeof utools?.showOpenDialog === "function") {
+        const result = await utools.showOpenDialog({
+          title: "选择 Markdown 文件夹",
+          properties: ["openDirectory"],
+        });
+        if (result && result.length > 0) {
+          const folderName = result[0].split(/[\\/]/).pop() || "Unknown";
+          const notebookId = createLocalFolderNotebook(folderName, result[0]);
+          await usePages.getState().loadLocalFolderPages(notebookId, result[0]);
+          setActiveNotebook(notebookId);
+          setActivePage(null);
+        }
+      } else {
+        const { browserGooseFs } = await import("@/lib/browser-fs");
+        const path = await browserGooseFs.selectDirectory();
+        if (path) {
+          const folderName = path.split(/[\\/]/).pop() || "Unknown";
+          const notebookId = createLocalFolderNotebook(folderName, path);
+          await usePages.getState().loadLocalFolderPages(notebookId, path);
+          setActiveNotebook(notebookId);
+          setActivePage(null);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsOpen(false);
+    }
   };
 
   const handleEdit = (id: string) => {
@@ -113,7 +154,7 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-56"
+          className="w-64"
           align="start"
           sideOffset={-4}
           onMouseEnter={() => setIsOpen(true)}
@@ -155,19 +196,13 @@ export function NotebookSwitcher() {
                   <span className="text-xs text-destructive">路径失效</span>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {activeNotebookId === notebook.id && (
-                  <LucideIcons.Check className="h-4 w-4" />
-                )}
+              <div className="flex items-center gap-1 shrink-0 justify-end">
                 {notebook.source === "local-folder" ? (
                   canDeleteNotebook && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={cn(
-                        "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-                        activeNotebookId === notebook.id && "opacity-0",
-                      )}
+                      className="h-6 w-0 opacity-0 overflow-hidden px-0 group-hover:w-6 group-hover:opacity-100 group-hover:px-0 transition-all pointer-events-none group-hover:pointer-events-auto"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteNotebook(notebook.id);
@@ -181,10 +216,7 @@ export function NotebookSwitcher() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn(
-                      "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-                      activeNotebookId === notebook.id && "opacity-0",
-                    )}
+                    className="h-6 w-0 opacity-0 overflow-hidden px-0 group-hover:w-6 group-hover:opacity-100 group-hover:px-0 transition-all pointer-events-none group-hover:pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(notebook.id);
@@ -193,14 +225,29 @@ export function NotebookSwitcher() {
                     <LucideIcons.Settings className="h-3.5 w-3.5" />
                   </Button>
                 )}
+                {activeNotebookId === notebook.id && (
+                  <LucideIcons.Check className="h-4 w-4" />
+                )}
               </div>
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleCreate}>
-            <LucideIcons.Plus className="mr-2 h-4 w-4" />
-            新建记事本
-          </DropdownMenuItem>
+          <DropdownMenuGroup className="flex items-center gap-2 px-2 py-1.5">
+            <DropdownMenuItem
+              className="flex-1 justify-center gap-2"
+              onClick={handleCreate}
+            >
+              <LucideIcons.BookPlus className="h-4 w-4" />
+              新建记事本
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex-1 justify-center gap-2"
+              onClick={handleOpenLocalFolder}
+            >
+              <LucideIcons.FolderOpen className="h-4 w-4" />
+              打开
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 

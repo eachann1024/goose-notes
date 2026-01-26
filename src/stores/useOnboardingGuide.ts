@@ -15,7 +15,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "sidebar",
     target: '[data-onboarding="sidebar-tree"]',
     title: "页面管理",
-    description: "无限层级的页面结构，点击图标可以为页面设置图标，点击加号可以新增子页面。",
+    description: "无限层级的页面结构，拖动修改页面顺序与层级，点击图标为页面设置图标，点击加号新增子页面。",
     position: "right",
   },
   {

@@ -154,10 +154,11 @@ export function WorkspacePage() {
           : null;
       if (!folderPath) continue;
 
+      const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
       const notebookId = useNotebooks
         .getState()
         .createLocalFolderNotebook(
-          `本地 - ${folderPath.split("/").pop() || "Unknown"}`,
+          folderName,
           folderPath,
         );
       usePages.getState().loadLocalFolderPages(notebookId, folderPath);

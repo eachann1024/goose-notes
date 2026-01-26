@@ -20,6 +20,11 @@ export function SidebarContextMenu({
   const notebook = useNotebooks.getState().notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";
   const isTrashed = !!page.trashedAt;
+  const menuLabel = isLocalFolder
+    ? page.isFolder
+      ? "本地文件夹"
+      : "本地文件"
+    : "页面";
 
   const handleDuplicate = () => {
     if (isTrashed) return;
@@ -44,7 +49,7 @@ export function SidebarContextMenu({
         </ContextMenuTrigger>
         <ContextMenuContent className="w-60">
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
-            页面
+            {menuLabel}
           </div>
           {!isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={toggleFavorite}>
@@ -94,7 +99,13 @@ export function SidebarContextMenu({
             <>
               <ContextMenuItem onSelect={() => restorePage(page.id)}>
                 <LucideIcons.RotateCcw className="h-4 w-4" />
-                <span>恢复页面</span>
+                <span>
+                  {isLocalFolder
+                    ? page.isFolder
+                      ? "恢复文件夹"
+                      : "恢复文件"
+                    : "恢复页面"}
+                </span>
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() => permanentlyDeletePage(page.id)}

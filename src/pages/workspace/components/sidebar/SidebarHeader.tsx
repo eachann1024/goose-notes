@@ -9,6 +9,10 @@ interface SidebarHeaderProps {
 }
 
 export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
+  const { activeNotebookId, notebooks } = useNotebooks();
+  const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
+  const isLocalFolder = activeNotebook?.source === "local-folder";
+
   return (
     <>
       <div className="px-3 h-12 flex items-center shrink-0">
@@ -26,10 +30,12 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                   properties: ["openDirectory"],
                 });
                 if (result && result.length > 0) {
+                  const folderName =
+                    result[0].split(/[\\/]/).pop() || "Unknown";
                   const notebookId = useNotebooks
                     .getState()
                     .createLocalFolderNotebook(
-                      `本地 - ${result[0].split("/").pop() || "Unknown"}`,
+                      folderName,
                       result[0],
                     );
                   usePages
@@ -41,10 +47,11 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                   const { browserGooseFs } = await import("@/lib/browser-fs");
                   const path = await browserGooseFs.selectDirectory();
                   if (path) {
+                    const folderName = path.split(/[\\/]/).pop() || "Unknown";
                     const notebookId = useNotebooks
                       .getState()
                       .createLocalFolderNotebook(
-                        `本地 - ${path}`,
+                        folderName,
                         path,
                       );
                     await usePages
@@ -61,6 +68,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
             title="打开文件夹"
+            data-onboarding="open-local-folder"
           >
             <LucideIcons.FolderOpen className="h-4 w-4" />
           </Button>
@@ -69,7 +77,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
-            title="新建页面"
+            title={isLocalFolder ? "新建文件" : "新建页面"}
           >
             <LucideIcons.SquarePen className="h-4 w-4" />
           </Button>
