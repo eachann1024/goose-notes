@@ -1,7 +1,7 @@
 // 节点类型对应的位置偏移（单位：像素）
 export const HANDLE_OFFSETS: Record<string, number> = {
   default: 0,
-  headingWithCollapse: -15,  // 折叠箭头左边
+  headingWithCollapse: 15,   // 折叠箭头左边
   listItem: -10,              // 列表项微调
 };
 
