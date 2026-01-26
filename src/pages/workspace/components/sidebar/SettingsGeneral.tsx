@@ -1,5 +1,11 @@
 import { UToolsAdapter } from "@/lib/utools";
 import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import * as LucideIcons from "lucide-react";
+import type { CustomAction } from "@/stores/useSettings";
 
 interface SettingsGeneralProps {
   searchProviders: { id: string; name: string; isEnabled: boolean }[];
@@ -9,6 +15,10 @@ interface SettingsGeneralProps {
 
   windowHeight: number;
   setWindowHeight: (height: number) => void;
+  customActions?: CustomAction[];
+  addCustomAction?: (action: Omit<CustomAction, 'id'>) => void;
+  updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void;
+  removeCustomAction?: (id: string) => void;
 }
 
 export function SettingsGeneral({
@@ -19,6 +29,10 @@ export function SettingsGeneral({
 
   windowHeight,
   setWindowHeight,
+  customActions = [],
+  addCustomAction = () => {},
+  updateCustomAction = () => {},
+  removeCustomAction = () => {},
 }: SettingsGeneralProps) {
   return (
     <div className="space-y-6">
@@ -97,6 +111,96 @@ export function SettingsGeneral({
               }}
               className="py-2"
             />
+          </div>
+
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="text-sm font-medium">快捷动作</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  右键菜单中跳转到其他插件，必填项必须要填写完整，否则无法启用
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  addCustomAction({
+                    name: "",
+                    command: "",
+                    isEnabled: true,
+                  });
+                }}
+              >
+                <LucideIcons.Plus className="h-4 w-4 mr-1" />
+                添加
+              </Button>
+            </div>
+
+            {customActions.length > 0 && (
+              <div className="space-y-2">
+                {customActions.map((action) => (
+                  <div
+                    key={action.id}
+                    className="flex items-center gap-2 py-2 px-2 rounded border bg-muted/30"
+                  >
+                    <Input
+                      placeholder="名称"
+                      value={action.name}
+                      onChange={(e) =>
+                        updateCustomAction(action.id, { name: e.target.value })
+                      }
+                      onBlur={(e) =>
+                        updateCustomAction(action.id, { name: e.target.value.trim() })
+                      }
+                      className="text-sm h-8"
+                    />
+                    <Input
+                      placeholder="指令"
+                      value={action.command}
+                      onChange={(e) =>
+                        updateCustomAction(action.id, {
+                          command: e.target.value,
+                        })
+                      }
+                      onBlur={(e) =>
+                        updateCustomAction(action.id, { command: e.target.value.trim() })
+                      }
+                      className="text-sm h-8"
+                    />
+                    <Input
+                      placeholder="插件名（可选）"
+                      value={action.pluginName || ""}
+                      onChange={(e) =>
+                        updateCustomAction(action.id, {
+                          pluginName: e.target.value || undefined,
+                        })
+                      }
+                      onBlur={(e) =>
+                        updateCustomAction(action.id, {
+                          pluginName: e.target.value.trim() || undefined,
+                        })
+                      }
+                      className="text-sm h-8"
+                    />
+                    <Switch
+                      checked={action.isEnabled}
+                      onCheckedChange={(checked) =>
+                        updateCustomAction(action.id, { isEnabled: checked })
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => removeCustomAction(action.id)}
+                    >
+                      <LucideIcons.Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

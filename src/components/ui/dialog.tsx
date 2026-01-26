@@ -38,18 +38,21 @@ const DialogContent = React.forwardRef<
   const isUTools = UToolsAdapter.isUTools;
   const topPosition = isUTools ? "top-[50%]" : "top-[10%]";
   const translateY = isUTools ? "translate-y-[-50%]" : "";
+  const { "aria-describedby": ariaDescribedby, ...rest } = props;
 
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
-        aria-describedby={props["aria-describedby"] ?? undefined}
         className={cn(
           `fixed left-[50%] ${topPosition} z-50 grid w-full max-w-lg translate-x-[-50%] ${translateY} gap-4 border bg-background p-6 shadow-lg duration-200 overflow-visible data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-lg`,
           className,
         )}
-        {...props}
+        {...(ariaDescribedby === undefined
+          ? {}
+          : { "aria-describedby": ariaDescribedby })}
+        {...rest}
       >
         {children}
         {!hideClose && (

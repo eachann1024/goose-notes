@@ -200,6 +200,17 @@ export const useNotebooks = create<NotebooksState>()(
             usePages.getState().removePagesByWorkspaceId(id);
           }
         }
+
+        const pagesStore = usePages.getState();
+        const pendingId = pagesStore.pendingNavigatePageId;
+        if (pendingId) {
+          const pendingPage = pagesStore.pages[pendingId];
+          if (pendingPage && pendingPage.workspaceId === id) {
+            pagesStore.setActivePage(pendingId);
+            pagesStore.setExpandPageId(pendingId);
+            pagesStore.setPendingNavigatePageId(null);
+          }
+        }
       },
 
       getNotebook: (id) => {

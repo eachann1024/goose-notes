@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import mermaid from "mermaid";
 import { useSettings } from "@/stores/useSettings";
 
 interface MermaidViewProps {
@@ -12,18 +11,12 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
   const { theme } = useSettings();
 
   useEffect(() => {
+    let active = true;
+    let debounceTimer: number | undefined;
     const isDark =
       theme === "dark" ||
       (theme === "system" &&
         window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: isDark ? "dark" : "default",
-      securityLevel: "loose",
-      fontFamily: "inherit",
-      suppressErrorRendering: true, // 防止 mermaid 自动在页面底部插入错误信息
-    });
 
     const renderMermaid = async () => {
       if (!value) {
@@ -33,21 +26,34 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
       }
 
       try {
+        const { default: mermaid } = await import("mermaid");
+        if (!active) return;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDark ? "dark" : "default",
+          securityLevel: "loose",
+          fontFamily: "inherit",
+          suppressErrorRendering: true, // 防止 mermaid 自动在页面底部插入错误信息
+        });
         const id = `mermaid-${Math.random().toString(36).slice(2, 11)}`;
         const { svg } = await mermaid.render(id, value);
+        if (!active) return;
         setSvg(svg);
         setError(null);
       } catch (err) {
         // console.error("Mermaid rendering error:", err);
-        setError("语法错误");
+        if (active) setError("语法错误");
       }
     };
 
-    const debounceTimer = setTimeout(() => {
-      renderMermaid();
+    debounceTimer = window.setTimeout(() => {
+      void renderMermaid();
     }, 500);
 
-    return () => clearTimeout(debounceTimer);
+    return () => {
+      active = false;
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, [value, theme]);
 
   if (error) {

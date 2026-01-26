@@ -5,7 +5,6 @@ import "./fonts.css";
 import App from "./App.tsx";
 import { applyFontVariables, preloadFonts } from "./lib/fontLoader";
 import { useSettings } from "./stores/useSettings";
-import { browserGooseFs } from "./lib/browser-fs";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -14,9 +13,14 @@ if (!rootElement) {
 
 const settings = useSettings.getState();
 
-if (typeof window !== "undefined" && !window.utools) {
-  window.gooseFs = browserGooseFs;
-}
+const initBrowserFs = async () => {
+  if (typeof window !== "undefined" && !window.utools) {
+    const { browserGooseFs } = await import("./lib/browser-fs");
+    window.gooseFs = browserGooseFs;
+  }
+};
+
+void initBrowserFs();
 
 applyFontVariables(settings.customFonts);
 preloadFonts();

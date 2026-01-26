@@ -8,10 +8,20 @@ import Image from "@tiptap/extension-image";
 import Highlight from "@tiptap/extension-highlight";
 import JSZip from "jszip";
 import { extractTitleFromContent } from "./content-text-extractor";
-import { imageStorage } from "./imageStorage";
 import { blobToBase64 } from "./imageStorage/utils";
 
 const extensions = [StarterKit, Link, TaskList, TaskItem, Image, Highlight];
+
+let imageStoragePromise: Promise<{
+  imageStorage: { load: (ref: string) => Promise<Blob | null> };
+}> | null = null;
+
+const getImageStorage = async () => {
+  if (!imageStoragePromise) {
+    imageStoragePromise = import("./imageStorage");
+  }
+  return imageStoragePromise;
+};
 
 function parseBase64Image(
   src: string,
@@ -73,6 +83,7 @@ async function extractImagesFromContent(
 
       // 处理 uuid: 引用（IndexedDB）
       if (src.startsWith("uuid:")) {
+        const { imageStorage } = await getImageStorage();
         const blob = await imageStorage.load(src);
         if (blob) {
           finalSrc = await blobToBase64(blob);

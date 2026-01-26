@@ -31,6 +31,14 @@ export interface CustomFonts {
     mono: FontConfig
 }
 
+export interface CustomAction {
+    id: string
+    name: string
+    pluginName?: string
+    command: string
+    isEnabled: boolean
+}
+
 // 界面字体大小选项
 export type UIFontSize = 'small' | 'normal' | 'large'
 
@@ -48,6 +56,7 @@ interface SettingsState {
     customFonts: CustomFonts
     uiFontSize: UIFontSize
     editorFontSize: number
+    customActions: CustomAction[]
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
     toggleSearchProvider: (id: string) => void
@@ -64,6 +73,9 @@ interface SettingsState {
     increaseEditorFontSize: () => void
     decreaseEditorFontSize: () => void
     resetEditorFontSize: () => void
+    addCustomAction: (action: Omit<CustomAction, 'id'>) => void
+    updateCustomAction: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void
+    removeCustomAction: (id: string) => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -145,6 +157,14 @@ export const useSettings = create<SettingsState>()(
             },
             uiFontSize: 'normal',
             editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
+            customActions: [
+                {
+                    id: 'default-translate',
+                    name: '跳转到翻译',
+                    command: '翻译',
+                    isEnabled: true,
+                }
+            ],
             setTheme: (theme) => {
                 set({ theme })
                 applyTheme(theme)
@@ -206,6 +226,27 @@ export const useSettings = create<SettingsState>()(
                     editorFontSize: Math.max(EDITOR_FONT_SIZE_MIN, state.editorFontSize - 1),
                 })),
             resetEditorFontSize: () => set({ editorFontSize: EDITOR_FONT_SIZE_DEFAULT }),
+            addCustomAction: (action) =>
+                set((state) => ({
+                    customActions: [...state.customActions, {
+                        ...action,
+                        id: Date.now().toString(),
+                    }],
+                })),
+            updateCustomAction: (id, updates) =>
+                set((state) => ({
+                    customActions: state.customActions.map((a) => {
+                        if (a.id !== id) return a
+                        const newAction = { ...a, ...updates }
+                        // 名称为空时自动关闭
+                        if (!newAction.name.trim()) newAction.isEnabled = false
+                        return newAction
+                    }),
+                })),
+            removeCustomAction: (id) =>
+                set((state) => ({
+                    customActions: state.customActions.filter((a) => a.id !== id),
+                })),
         }),
         {
             name: 'goose-note-settings',

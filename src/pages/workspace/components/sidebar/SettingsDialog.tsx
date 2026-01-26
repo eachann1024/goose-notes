@@ -3,6 +3,7 @@ import { SettingsGeneral } from "./SettingsGeneral";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useOnboardingGuide } from "@/stores/useOnboardingGuide";
+import { useSettings } from "@/stores/useSettings";
 import {
   exportNotebooks,
   importNotebooksFromZip,
@@ -45,6 +46,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setCustomFont,
     uiFontSize,
     setUIFontSize,
+    customActions,
+    addCustomAction,
+    updateCustomAction,
+    removeCustomAction,
   } = useSettings();
   const { notebooks } = useNotebooks();
   const { pages } = usePages();
@@ -262,6 +267,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                     windowHeight={utools.windowHeight ?? 600}
                     setWindowHeight={setUToolsWindowHeight}
+                    customActions={customActions}
+                    addCustomAction={addCustomAction}
+                    updateCustomAction={updateCustomAction}
+                    removeCustomAction={removeCustomAction}
                   />
                 </div>
 

@@ -423,7 +423,7 @@
 
 .ProseMirror .heading-collapse-indicator {
   position: absolute;
-  left: 12px;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
   width: 22px;
@@ -458,4 +458,83 @@
 
 .ProseMirror .heading-collapse-indicator.is-collapsed svg {
   transform: rotate(0deg);
+}
+
+/* 搜索高亮闪烁动画 */
+.search-highlight-flash {
+  position: relative;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    hsl(48 96% 53% / 0.45),
+    hsl(191 95% 63% / 0.45),
+    hsl(266 90% 65% / 0.45),
+    hsl(337 90% 60% / 0.45),
+    hsl(48 96% 53% / 0.45)
+  );
+  background-size: 220% 100%;
+  animation: search-highlight-wave 3s linear forwards;
+  text-shadow:
+    0 0 4px hsl(48 96% 70% / 0.9),
+    0 0 6px hsl(191 95% 70% / 0.7),
+    0 0 8px hsl(266 90% 75% / 0.6),
+    0 0 10px hsl(337 90% 70% / 0.5);
+  box-shadow:
+    0 0 6px hsl(48 96% 60% / 0.35),
+    0 0 10px hsl(191 95% 60% / 0.25),
+    inset 0 0 0 1px hsl(48 96% 60% / 0.25);
+}
+
+.ProseMirror mark[style*="--goose-search-highlight"] {
+  position: relative;
+  padding: 0;
+  border-radius: 4px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: hsl(210 60% 85% / 0.7);
+  text-underline-offset: 3px;
+  background: linear-gradient(
+    90deg,
+    hsl(48 70% 88% / 0.5),
+    hsl(190 65% 90% / 0.5),
+    hsl(255 55% 90% / 0.5),
+    hsl(330 60% 90% / 0.5),
+    hsl(48 70% 88% / 0.5)
+  );
+  background-size: 260% 100%;
+  animation: search-highlight-wave 4s ease-in-out forwards;
+  text-shadow:
+    0 0 4px hsl(48 80% 90% / 0.6),
+    0 0 6px hsl(190 70% 92% / 0.5),
+    0 0 8px hsl(255 60% 92% / 0.45),
+    0 0 10px hsl(330 65% 92% / 0.4);
+  box-shadow:
+    0 0 0 3px hsl(48 70% 90% / 0.22),
+    0 0 8px hsl(48 70% 90% / 0.35),
+    0 0 14px hsl(190 65% 90% / 0.25),
+    inset 0 0 0 1px hsl(48 70% 90% / 0.2);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@keyframes search-highlight-wave {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.2;
+    filter: brightness(1.02);
+  }
+  55% {
+    background-position: 100% 50%;
+    opacity: 0.85;
+    filter: brightness(1.08);
+  }
+  75% {
+    opacity: 0.6;
+  }
+  100% {
+    background-position: 200% 50%;
+    opacity: 0.25;
+    filter: brightness(1);
+  }
 }

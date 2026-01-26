@@ -1,4 +1,18 @@
 import type { Editor } from "@tiptap/react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+} from "@/components/ui/context-menu";
+import * as LucideIcons from "lucide-react";
+import { UToolsAdapter } from "@/lib/utools";
+import type { CustomAction } from "@/stores/useSettings";
 
 interface EditorContextMenuProps {
   editor: Editor;
@@ -9,6 +23,7 @@ interface EditorContextMenuProps {
     isEnabled: boolean;
   }[];
   openSearchInUtools: boolean;
+  customActions?: CustomAction[];
   children: React.ReactNode;
 }
 
@@ -16,6 +31,7 @@ export function EditorContextMenu({
   editor,
   searchProviders,
   openSearchInUtools,
+  customActions = [],
   children,
 }: EditorContextMenuProps) {
   const isEditable = editor?.isEditable;
@@ -49,6 +65,10 @@ export function EditorContextMenu({
     () => searchProviders.filter((p) => p.isEnabled),
     [searchProviders],
   );
+  const enabledActions = useMemo(
+    () => customActions.filter((a) => a.isEnabled && a.name.trim() && a.command.trim()),
+    [customActions],
+  );
   const hasSearchText = selectedText.length > 0;
   const previewText =
     selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText;
@@ -78,6 +98,32 @@ export function EditorContextMenu({
                 {provider.name} 搜索
               </ContextMenuItem>
             ))}
+            {enabledActions.length > 0 && <ContextMenuSeparator />}
+          </>
+        )}
+        {hasSearchText && enabledActions.length > 0 && (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <LucideIcons.Zap className="mr-2 h-4 w-4" />
+                快捷动作
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {enabledActions.map((action) => (
+                  <ContextMenuItem
+                    key={action.id}
+                    onSelect={() => {
+                      const label = action.pluginName
+                        ? [action.pluginName, action.command]
+                        : action.command;
+                      UToolsAdapter.redirect(label as string | [string, string], selectedText);
+                    }}
+                  >
+                    {action.name}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
             <ContextMenuSeparator />
           </>
         )}

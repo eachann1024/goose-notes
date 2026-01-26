@@ -245,4 +245,20 @@ export class UToolsAdapter {
     }
     return false;
   }
+
+  /**
+   * 跳转到其他 uTools 插件
+   * @param label 插件名称或 [插件名, 指令] 元组
+   * @param payload 传递给目标插件的数据
+   */
+  static redirect(label: string | [string, string], payload?: any): boolean {
+    if (UToolsAdapter.isUTools) {
+      const utools = (window as any).utools;
+      if (utools && typeof utools.redirect === "function") {
+        return utools.redirect(label, payload);
+      }
+    }
+    console.warn('[Web] redirect not supported');
+    return false;
+  }
 }

@@ -17,6 +17,8 @@ export class ImageStorage {
   private strategy: IImageStorageStrategy | null = null
   private strategyPromise: Promise<IImageStorageStrategy> | null = null
   private inlinedStrategy: InlinedStrategy
+  private localFolderAccessResolver: (() => boolean | Promise<boolean>) | null =
+    null
 
   constructor() {
     // 小图片策略（< 100KB）
@@ -54,16 +56,18 @@ export class ImageStorage {
    * 检测是否有本地文件夹访问权限
    */
   private async checkLocalFolderAccess(): Promise<boolean> {
-    const { usePages } = await import('@/stores/usePages')
-    const { useNotebooks } = await import('@/stores/useNotebooks')
-    const activePageId = usePages.getState().activePageId
-    if (!activePageId) return false
+    if (!this.localFolderAccessResolver) return false
+    const resolved = this.localFolderAccessResolver()
+    return await Promise.resolve(resolved)
+  }
 
-    const page = usePages.getState().pages[activePageId]
-    if (!page) return false
-
-    const notebook = useNotebooks.getState().notebooks[page.workspaceId]
-    return notebook?.source === 'local-folder' && !!notebook.localPath
+  /**
+   * 注入本地文件夹访问检测器（避免依赖 store 造成循环）
+   */
+  setLocalFolderAccessResolver(
+    resolver: () => boolean | Promise<boolean>,
+  ): void {
+    this.localFolderAccessResolver = resolver
   }
 
   /**

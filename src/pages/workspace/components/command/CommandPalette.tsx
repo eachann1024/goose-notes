@@ -3,6 +3,9 @@ import { Command } from "cmdk";
 import type { Page } from "@/types";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
 import { getPageTitle } from "@/lib/page-title";
+import { usePages } from "@/stores/usePages";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { useSettings } from "@/stores/useSettings";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -37,8 +40,16 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { pages, setActivePage } = usePages();
-  const { activeNotebookId } = useNotebooks();
+  const {
+    pages,
+    setActivePage,
+    setPendingNavigatePageId,
+    setExpandPageId,
+    setSearchHighlightQuery,
+    setSearchHighlightPageId,
+    setSearchHighlightNonce,
+  } = usePages();
+  const { activeNotebookId, setActiveNotebook } = useNotebooks();
   const { searchAllNotebooks, setSearchAllNotebooks } = useSettings();
   const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
     try {
@@ -81,6 +92,7 @@ export function CommandPalette() {
   useEffect(() => {
     // 只有在 uTools 环境下才同步搜索词
     if (typeof window !== "undefined" && (window as any).utools) {
+      if (document.activeElement === inputRef.current) return;
       window.dispatchEvent(
         new CustomEvent(UTOOLS_SYNC_EVENT, { detail: { text: searchQuery } }),
       );
@@ -133,6 +145,16 @@ export function CommandPalette() {
       focusInput();
     }
   }, [open, focusInput]);
+
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open, searchQuery]);
 
   return (
     <Command.Dialog
@@ -196,7 +218,24 @@ export function CommandPalette() {
                 <Command.Item
                   key={`recent-${page.id}`}
                   value={`recent-${page.id}-${getPageTitle(page)}`}
-                  onSelect={() => runCommand(() => setActivePage(page.id))}
+                  onSelect={() => {
+                    const targetNotebookId = page.workspaceId;
+                    if (
+                      targetNotebookId &&
+                      targetNotebookId !== activeNotebookId
+                    ) {
+                      // 跨笔记本：先暂存目标页面，再切换笔记本
+                      setPendingNavigatePageId(page.id);
+                      setActiveNotebook(targetNotebookId);
+                      setOpen(false);
+                    } else {
+                      // 同笔记本：直接激活并触发展开
+                      runCommand(() => {
+                        setActivePage(page.id);
+                        setExpandPageId(page.id);
+                      });
+                    }
+                  }}
                   className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
@@ -250,7 +289,36 @@ export function CommandPalette() {
                 <Command.Item
                   key={`all-${page.id}`}
                   value={`all-${page.id}-${getPageTitle(page)}`}
-                  onSelect={() => runCommand(() => setActivePage(page.id))}
+                  onSelect={() => {
+                    const targetNotebookId = page.workspaceId;
+                    // 有搜索词时设置高亮
+                    const highlightQuery = searchQuery.trim() || null;
+                    if (
+                      targetNotebookId &&
+                      targetNotebookId !== activeNotebookId
+                    ) {
+                      // 跨笔记本：先暂存目标页面，再切换笔记本
+                      setPendingNavigatePageId(page.id);
+                      setSearchHighlightQuery(highlightQuery);
+                      if (highlightQuery) {
+                        setSearchHighlightPageId(page.id);
+                        setSearchHighlightNonce(Date.now());
+                      }
+                      setActiveNotebook(targetNotebookId);
+                      setOpen(false);
+                    } else {
+                      // 同笔记本：直接激活并触发展开
+                      runCommand(() => {
+                        setActivePage(page.id);
+                        setExpandPageId(page.id);
+                        setSearchHighlightQuery(highlightQuery);
+                        if (highlightQuery) {
+                          setSearchHighlightPageId(page.id);
+                          setSearchHighlightNonce(Date.now());
+                        }
+                      });
+                    }
+                  }}
                   className="relative flex cursor-pointer select-none items-start rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4 mt-0.5 shrink-0" />

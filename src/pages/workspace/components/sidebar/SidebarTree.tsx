@@ -254,7 +254,7 @@ function PageNode({
             node.state.isDragging && "opacity-50",
             // Unify hover effect: Use a clearer background color
             !isActive && "hover:bg-muted/60 dark:hover:bg-muted/40 text-muted-foreground dark:text-muted-foreground/65 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
-            isActive && "bg-muted text-foreground dark:text-foreground/85"
+            isActive && "bg-muted/60 dark:bg-muted/40 text-foreground dark:text-foreground/85"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -274,11 +274,11 @@ function PageNode({
              style={{ paddingLeft }}
           >
             {/* Arrow Area - Fixed width */}
-            <div 
+            <div
               className={cn(
                 "flex items-center justify-center w-5 h-5 shrink-0 -ml-1 mr-0.5 rounded transition-all duration-300 ease-out",
-                showArrow 
-                  ? "hover:bg-muted-foreground/10 cursor-pointer opacity-0 group-hover:opacity-100" 
+                showArrow
+                  ? "hover:bg-muted-foreground/10 cursor-pointer"
                   : "opacity-0 pointer-events-none"
               )}
               onMouseDown={(e) => e.stopPropagation()}
@@ -371,35 +371,92 @@ export function SidebarTree({
     updatePage,
     reorderPages,
     getChildren,
+    expandPageId,
+    setExpandPageId,
   } = usePages();
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const treeRef = useRef<TreeApi<TreeNode> | null>(null);
   const expandAttemptsRef = useRef(0);
 
   useEffect(() => {
-    if (!onboardingExpandPageId) return;
+    // 统一处理 onboardingExpandPageId 和 expandPageId
+    const targetExpandId = expandPageId || onboardingExpandPageId;
+    if (!targetExpandId) return;
+
     expandAttemptsRef.current = 0;
-    const page = pages[onboardingExpandPageId];
-    if (!page || page.trashedAt) {
-      onOnboardingExpandDone?.();
-      return;
-    }
-    if (activeNotebookId && page.workspaceId !== activeNotebookId) return;
+
+    const pageIdToExpand = targetExpandId;
+    const maxAttempts = 20; // 增加重试次数，等待页面加载
 
     const tryOpen = () => {
-      if (!treeRef.current) {
-        if (expandAttemptsRef.current < 3) {
-          expandAttemptsRef.current += 1;
-          requestAnimationFrame(tryOpen);
+      expandAttemptsRef.current += 1;
+
+      // 检查页面是否已加载到 store
+      const page = pages[pageIdToExpand];
+      if (!page) {
+        // 页面还没加载，继续等待
+        if (expandAttemptsRef.current < maxAttempts) {
+          setTimeout(tryOpen, 100);
+        } else {
+          // 超时放弃
+          if (expandPageId) setExpandPageId(null);
+          onOnboardingExpandDone?.();
         }
         return;
       }
-      treeRef.current.open(onboardingExpandPageId);
+
+      if (page.trashedAt) {
+        if (expandPageId) setExpandPageId(null);
+        onOnboardingExpandDone?.();
+        return;
+      }
+
+      if (activeNotebookId && page.workspaceId !== activeNotebookId) {
+        // 笔记本不匹配，等待切换
+        if (expandAttemptsRef.current < maxAttempts) {
+          setTimeout(tryOpen, 100);
+        }
+        return;
+      }
+
+      // 检查 tree 是否已渲染
+      if (!treeRef.current) {
+        if (expandAttemptsRef.current < maxAttempts) {
+          setTimeout(tryOpen, 100);
+        }
+        return;
+      }
+
+      // 收集祖先链（从当前页面向上）
+      const ancestorIds: string[] = [];
+      let current = page;
+      while (current.parentId && pages[current.parentId]) {
+        ancestorIds.push(current.parentId);
+        current = pages[current.parentId];
+      }
+
+      // 展开所有祖先节点（从根到叶）
+      ancestorIds.reverse().forEach((id) => treeRef.current!.open(id));
+
+      // 滚动到目标节点（延迟等待展开动画）
+      setTimeout(() => {
+        treeRef.current?.scrollTo(pageIdToExpand);
+      }, 100);
+
+      if (expandPageId) setExpandPageId(null);
       onOnboardingExpandDone?.();
     };
 
-    requestAnimationFrame(tryOpen);
-  }, [onboardingExpandPageId, pages, activeNotebookId, onOnboardingExpandDone]);
+    // 延迟启动，等待 React 状态更新完成
+    setTimeout(tryOpen, 50);
+  }, [
+    expandPageId,
+    onboardingExpandPageId,
+    pages,
+    activeNotebookId,
+    onOnboardingExpandDone,
+    setExpandPageId,
+  ]);
 
   const treeData = useMemo(() => {
     const notebook = activeNotebookId

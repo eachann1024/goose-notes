@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
@@ -211,7 +212,10 @@ function App() {
         ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
       if (isEditableInput) return;
 
-      if (event.key === "+" || event.key === "=") {
+      if (event.key === "s") {
+        event.preventDefault();
+        toast("内容已自动保存", { duration: 1500 });
+      } else if (event.key === "+" || event.key === "=") {
         event.preventDefault();
         increaseEditorFontSize();
       } else if (event.key === "-") {

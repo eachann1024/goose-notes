@@ -15,9 +15,20 @@ interface EditorProps {
 }
 
 export function Editor({ editable = true }: EditorProps) {
-  const { activePageId, getPage, updatePage } = usePages();
+  const {
+    activePageId,
+    getPage,
+    updatePage,
+    searchHighlightQuery,
+    searchHighlightPageId,
+    searchHighlightNonce,
+    handledSearchHighlightNonce,
+    setSearchHighlightQuery,
+    setSearchHighlightPageId,
+    setHandledSearchHighlightNonce,
+  } = usePages();
   const page = activePageId ? getPage(activePageId) : undefined;
-  const { searchProviders, utools } = useSettings();
+  const { searchProviders, utools, customActions } = useSettings();
 
   const prevPageIdRef = useRef<string | null>(null);
   const debouncedUpdateRef = useRef<any>(null);
@@ -272,6 +283,172 @@ export function Editor({ editable = true }: EditorProps) {
     };
   }, [editor]);
 
+  // 搜索高亮：跳转到匹配位置并闪烁高亮
+  useEffect(() => {
+    if (!editor || !searchHighlightQuery || !activePageId) return;
+    if (searchHighlightPageId && searchHighlightPageId !== activePageId) {
+      return;
+    }
+    if (handledSearchHighlightNonce === searchHighlightNonce) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    let retryTimer: number | null = null;
+    let clearTimer: number | null = null;
+
+    const clearTimers = () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      if (clearTimer) clearTimeout(clearTimer);
+      retryTimer = null;
+      clearTimer = null;
+    };
+
+    const clearHighlightMarks = () => {
+      const { state, view } = editor;
+      const markType = state.schema.marks.highlight;
+      if (!markType) return;
+      const tr = state.tr;
+      state.doc.descendants((node, pos) => {
+        if (!node.isText) return true;
+        const marks = node.marks.filter(
+          (mark) =>
+            mark.type === markType &&
+            mark.attrs?.color === "var(--goose-search-highlight)",
+        );
+        if (marks.length) {
+          const from = pos;
+          const to = pos + node.nodeSize;
+          marks.forEach((mark) => {
+            tr.removeMark(from, to, mark);
+          });
+        }
+        return true;
+      });
+      if (tr.steps.length > 0) {
+        view.dispatch(tr);
+      }
+      clearStoredHighlightMarks();
+    };
+
+    const clearStoredHighlightMarks = () => {
+      const { state, view } = editor;
+      const markType = state.schema.marks.highlight;
+      if (!markType || !state.storedMarks?.length) return;
+      const remainingMarks = state.storedMarks.filter(
+        (mark) =>
+          !(
+            mark.type === markType &&
+            mark.attrs?.color === "var(--goose-search-highlight)"
+          ),
+      );
+      if (remainingMarks.length !== state.storedMarks.length) {
+        view.dispatch(
+          state.tr.setStoredMarks(remainingMarks.length ? remainingMarks : null),
+        );
+      }
+    };
+
+    const schedule = (delay: number) => {
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(runHighlight, delay);
+    };
+
+    const runHighlight = () => {
+      if (cancelled) return;
+      if (pageIdForUpdateRef.current !== activePageId) {
+        if (attempts < 20) {
+          attempts += 1;
+          schedule(80);
+        }
+        return;
+      }
+
+      const doc = editor.state.doc;
+      const query = searchHighlightQuery.toLowerCase();
+      let foundPos: number | null = null;
+      let foundEnd: number | null = null;
+
+      // 遍历文档查找匹配文本
+      doc.descendants((node, pos) => {
+        if (foundPos !== null) return false;
+        if (node.isText && node.text) {
+          const index = node.text.toLowerCase().indexOf(query);
+          if (index !== -1) {
+            foundPos = pos + index;
+            foundEnd = foundPos + searchHighlightQuery.length;
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (foundPos !== null && foundEnd !== null) {
+        editor.commands.setTextSelection({ from: foundPos, to: foundEnd });
+        const container = document.querySelector(".page-scroll-container");
+        try {
+          const coords = editor.view.coordsAtPos(foundPos);
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            const targetTop =
+              coords.top - rect.top + container.scrollTop - rect.height / 3;
+            container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+          } else {
+            editor.commands.scrollIntoView();
+          }
+        } catch {
+          editor.commands.scrollIntoView();
+        }
+
+        // 使用 ProseMirror mark 方式高亮，保证稳定显示
+        editor.commands.setMark("highlight", {
+          color: "var(--goose-search-highlight)",
+        });
+
+        if (clearTimer) clearTimeout(clearTimer);
+        clearTimer = window.setTimeout(() => {
+          if (cancelled) return;
+          clearHighlightMarks();
+          setSearchHighlightQuery(null);
+          setSearchHighlightPageId(null);
+        }, 4000);
+
+        // 取消选中，仅保留闪烁高亮
+        editor.commands.setTextSelection(foundEnd);
+        setHandledSearchHighlightNonce(searchHighlightNonce);
+        return;
+      }
+
+      if (attempts < 20) {
+        attempts += 1;
+        schedule(80);
+        return;
+      }
+
+      setSearchHighlightQuery(null);
+      setSearchHighlightPageId(null);
+      setHandledSearchHighlightNonce(searchHighlightNonce);
+    };
+
+    schedule(120);
+
+    return () => {
+      cancelled = true;
+      clearTimers();
+      clearHighlightMarks();
+    };
+  }, [
+    editor,
+    searchHighlightQuery,
+    searchHighlightPageId,
+    searchHighlightNonce,
+    activePageId,
+    setSearchHighlightQuery,
+    setSearchHighlightPageId,
+    setHandledSearchHighlightNonce,
+  ]);
+
   const fontFamilyClass = useMemo(() => {
     if (!page) return "";
     switch (page.fontFamily) {
@@ -312,6 +489,7 @@ export function Editor({ editable = true }: EditorProps) {
         editor={editor}
         searchProviders={searchProviders}
         openSearchInUtools={utools.openSearchInUtools}
+        customActions={customActions}
       >
         <div data-onboarding="editor-content">
           <EditorContent editor={editor} />

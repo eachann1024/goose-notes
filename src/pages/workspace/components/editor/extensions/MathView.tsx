@@ -1,11 +1,21 @@
 import React, { useEffect, useRef } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
 
 interface MathViewProps {
   value: string;
   displayMode?: boolean;
 }
+
+let katexPromise: Promise<{ default: any }> | null = null;
+
+const getKatex = async () => {
+  if (!katexPromise) {
+    katexPromise = Promise.all([
+      import("katex"),
+      import("katex/dist/katex.min.css"),
+    ]).then(([katexModule]) => katexModule);
+  }
+  return katexPromise;
+};
 
 export const MathView: React.FC<MathViewProps> = ({
   value,
@@ -14,8 +24,12 @@ export const MathView: React.FC<MathViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current) {
+    let active = true;
+    const renderMath = async () => {
+      if (!containerRef.current) return;
       try {
+        const { default: katex } = await getKatex();
+        if (!containerRef.current || !active) return;
         katex.render(value || "\\text{empty}", containerRef.current, {
           displayMode,
           throwOnError: false,
@@ -23,7 +37,11 @@ export const MathView: React.FC<MathViewProps> = ({
       } catch (err) {
         console.error("KaTeX rendering error:", err);
       }
-    }
+    };
+    void renderMath();
+    return () => {
+      active = false;
+    };
   }, [value, displayMode]);
 
   return (

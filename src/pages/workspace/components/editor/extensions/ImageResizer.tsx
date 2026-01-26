@@ -3,12 +3,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RotateCw, Download, Copy, X, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { imageStorage } from "@/lib/imageStorage";
 
 export function ImageResizer(props: NodeViewProps) {
   const { node, updateAttributes, selected, editor } = props;
   const resizeRef = useRef<HTMLDivElement>(null);
   const [resizing, setResizing] = useState(false);
+  const previewDescriptionId = useId();
 
   const isEditable = editor.isEditable;
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -57,6 +57,7 @@ export function ImageResizer(props: NodeViewProps) {
       // 如果是 uuid: 引用，从 IndexedDB 加载
       if (src.startsWith("uuid:")) {
         try {
+          const { imageStorage } = await import("@/lib/imageStorage");
           const blob = await imageStorage.load(src);
           if (blob) {
             const url = URL.createObjectURL(blob);
@@ -211,7 +212,14 @@ export function ImageResizer(props: NodeViewProps) {
 
       {/* Image Preview Dialog - 编辑/只读模式都显示 */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-5xl w-[90vw] p-0 bg-transparent border-none shadow-none">
+          <DialogContent
+            aria-describedby={previewDescriptionId}
+            className="max-w-5xl w-[90vw] p-0 bg-transparent border-none shadow-none"
+          >
+            <DialogTitle className="sr-only">图片预览</DialogTitle>
+            <DialogDescription id={previewDescriptionId} className="sr-only">
+              预览图片并进行旋转、下载或复制
+            </DialogDescription>
             <div className="relative flex flex-col items-center justify-center">
               {/* 关闭按钮 */}
               <button

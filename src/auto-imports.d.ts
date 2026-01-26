@@ -197,7 +197,7 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts, UIFontSize } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'

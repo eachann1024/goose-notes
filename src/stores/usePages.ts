@@ -33,6 +33,12 @@ interface PagesState {
   activePageId: string | null;
   onboardingCompleted: boolean;
   onboardingExpandPageId: string | null;
+  pendingNavigatePageId: string | null;
+  expandPageId: string | null;
+  searchHighlightQuery: string | null; // 搜索跳转后高亮的关键词
+  searchHighlightPageId: string | null;
+  searchHighlightNonce: number;
+  handledSearchHighlightNonce: number;
   hydrated: boolean;
 
   createOnboardingPages: () => void;
@@ -46,7 +52,14 @@ interface PagesState {
   setActivePage: (id: string | null) => void;
   setOnboardingCompleted: (completed: boolean) => void;
   setOnboardingExpandPageId: (id: string | null) => void;
+  setPendingNavigatePageId: (id: string | null) => void;
+  setExpandPageId: (id: string | null) => void;
+  setSearchHighlightQuery: (query: string | null) => void;
+  setSearchHighlightPageId: (id: string | null) => void;
+  setSearchHighlightNonce: (nonce: number) => void;
+  setHandledSearchHighlightNonce: (nonce: number) => void;
   setHydrated: (hydrated: boolean) => void;
+  getAncestorIds: (pageId: string) => string[];
 
   getPage: (id: string) => Page | undefined;
   getChildren: (parentId?: string, workspaceId?: string) => Page[];
@@ -101,6 +114,12 @@ export const usePages = create<PagesState>()(
       activePageId: null,
       onboardingCompleted: false,
       onboardingExpandPageId: null,
+      pendingNavigatePageId: null,
+      expandPageId: null,
+      searchHighlightQuery: null,
+      searchHighlightPageId: null,
+      searchHighlightNonce: 0,
+      handledSearchHighlightNonce: 0,
       hydrated: false,
 
       createOnboardingPages: () => {
@@ -440,14 +459,35 @@ export const usePages = create<PagesState>()(
       restorePage: (id) => {
         set((state) => {
           const page = state.pages[id];
-          if (!page) return state;
+          if (!page || !page.trashedAt) return state;
 
-          const { trashedAt, ...rest } = page;
+          const trashStamp = page.trashedAt;
+          const now = Date.now();
+          const restoredPages = { ...state.pages };
+
+          const stack = [id];
+          const visited = new Set<string>();
+          while (stack.length) {
+            const currentId = stack.pop()!;
+            if (visited.has(currentId)) continue;
+            visited.add(currentId);
+            const current = restoredPages[currentId];
+            if (current?.trashedAt === trashStamp) {
+              const { trashedAt, ...rest } = current;
+              restoredPages[currentId] = {
+                ...rest,
+                updatedAt: now,
+              } as Page;
+            }
+            Object.values(restoredPages).forEach((p) => {
+              if (p.parentId === currentId && !visited.has(p.id)) {
+                stack.push(p.id);
+              }
+            });
+          }
+
           return {
-            pages: {
-              ...state.pages,
-              [id]: { ...rest, updatedAt: Date.now() } as Page,
-            },
+            pages: restoredPages,
           };
         });
       },
@@ -706,6 +746,38 @@ export const usePages = create<PagesState>()(
         set({ onboardingExpandPageId: id });
       },
 
+      setPendingNavigatePageId: (id) => {
+        set({ pendingNavigatePageId: id });
+      },
+
+      setExpandPageId: (id) => {
+        set({ expandPageId: id });
+      },
+
+      setSearchHighlightQuery: (query) => {
+        set({ searchHighlightQuery: query });
+      },
+      setSearchHighlightPageId: (id) => {
+        set({ searchHighlightPageId: id });
+      },
+      setSearchHighlightNonce: (nonce) => {
+        set({ searchHighlightNonce: nonce });
+      },
+      setHandledSearchHighlightNonce: (nonce) => {
+        set({ handledSearchHighlightNonce: nonce });
+      },
+
+      getAncestorIds: (pageId) => {
+        const pages = get().pages;
+        const ancestorIds: string[] = [];
+        let current = pages[pageId];
+        while (current && current.parentId && pages[current.parentId]) {
+          ancestorIds.push(current.parentId);
+          current = pages[current.parentId];
+        }
+        return ancestorIds;
+      },
+
       setHydrated: (hydrated) => {
         set({ hydrated });
       },
@@ -906,8 +978,8 @@ export const usePages = create<PagesState>()(
 
         const localPages = await scanDirectory(basePath);
 
-        set((state) => ({
-          pages: {
+        set((state) => {
+          const updated = {
             ...state.pages,
             ...localPages.reduce(
               (acc, page) => {
@@ -916,8 +988,19 @@ export const usePages = create<PagesState>()(
               },
               {} as Record<string, Page>,
             ),
-          },
-        }));
+          };
+
+          // Handle pending cross-notebook navigation
+          const { pendingNavigatePageId } = state;
+          const result: any = { pages: updated };
+          if (pendingNavigatePageId && updated[pendingNavigatePageId]) {
+            result.activePageId = pendingNavigatePageId;
+            result.expandPageId = pendingNavigatePageId;
+            result.pendingNavigatePageId = null;
+          }
+
+          return result;
+        });
 
         const activeNotebookId = useNotebooks.getState().activeNotebookId;
         if (activeNotebookId === notebookId) {
@@ -1115,3 +1198,19 @@ export const usePages = create<PagesState>()(
     },
   ),
 );
+
+const setupImageStorageResolver = async () => {
+  const { imageStorage } = await import("@/lib/imageStorage");
+  imageStorage.setLocalFolderAccessResolver(() => {
+    const activePageId = usePages.getState().activePageId;
+    if (!activePageId) return false;
+
+    const page = usePages.getState().pages[activePageId];
+    if (!page) return false;
+
+    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+    return notebook?.source === "local-folder" && !!notebook.localPath;
+  });
+};
+
+void setupImageStorageResolver();
