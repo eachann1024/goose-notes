@@ -465,7 +465,22 @@ export function Editor({ editable = true }: EditorProps) {
     return () => {
       cancelled = true;
       clearTimers();
+      
+      // 1. 先清除编辑器中的高亮 Mark (view.dispatch 是同步更新 state 的)
       clearHighlightMarks();
+
+      // 2. 关键修复：取消之前挂起的 debounce，因为那个挂起的调用可能包含带有高亮 Mark 的脏数据
+      debouncedUpdateRef.current?.cancel();
+
+      // 3. 获取清除高亮后的最新内容，并手动立即保存，确保落盘的是干净数据
+      if (activePageId && editor && !editor.isDestroyed) {
+          const cleanContent = editor.getJSON();
+          updatePage(activePageId, { content: cleanContent });
+      }
+
+      // 4. 清除搜索状态
+      setSearchHighlightQuery(null);
+      setSearchHighlightPageId(null);
     };
   }, [
     editor,
