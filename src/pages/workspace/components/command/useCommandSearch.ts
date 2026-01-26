@@ -120,7 +120,14 @@ export function useCommandSearch({
 
     const matched: SearchResultPage[] = [];
     
+    const notebooks = useNotebooks.getState().notebooks;
+
     for (const page of filteredPages) {
+      // 如果是本地文件夹，排除文件夹本身（isFolder=true），只搜索文件
+      if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) {
+        continue;
+      }
+
       const title = getPageTitle(page);
       const titleMatch = title.toLowerCase().includes(query);
       const contentText = extractTextFromContent(page.content);
