@@ -489,11 +489,12 @@
 .ProseMirror .heading-collapse-indicator svg {
   width: 18px;
   height: 18px;
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
 }
 
 .ProseMirror .heading-collapse-indicator.is-collapsed svg {
-  transform: rotate(0deg);
+  transform: rotate(-90deg);
 }
 
 /* 搜索高亮闪烁动画 */

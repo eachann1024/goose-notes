@@ -1,4 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
+import { Selection } from "@tiptap/pm/state";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -79,14 +80,51 @@ export function Editor({ editable = true }: EditorProps) {
                 }
 
                 if (depth > 0) {
-                  const quoteStartPos = $from.before(depth);
+                  const quoteEndPos = $from.after(depth);
                   editor
                     .chain()
                     .focus()
-                    .insertContentAt(quoteStartPos, { type: "paragraph" })
+                    .insertContentAt(quoteEndPos, { type: "paragraph" })
                     .run();
                   return true;
                 }
+              }
+            }
+          }
+        }
+
+        if (event.key === "Backspace") {
+          const { state } = editor;
+          const { selection } = state;
+          const { $from, empty } = selection;
+
+          if (empty && $from.parentOffset === 0) {
+            const parent = $from.parent;
+            // 如果在空段落的开头，检查前面是什么块
+            if (parent.type.name === "paragraph" && parent.content.size === 0) {
+              const paragraphStart = $from.before($from.depth);
+              const paragraphEnd = $from.after($from.depth);
+
+              // 用 nodeBefore 获取真正的前一个兄弟节点
+              const $start = state.doc.resolve(paragraphStart);
+              const prevNode = $start.nodeBefore;
+
+              if (
+                prevNode &&
+                (prevNode.type.name === "blockquote" ||
+                  prevNode.type.name === "heading")
+              ) {
+                event.preventDefault();
+                const { view } = editor;
+
+                // 删除空段落并将光标移到前一个节点末尾
+                let tr = state.tr.delete(paragraphStart, paragraphEnd);
+                const cursorPos = paragraphStart - 1;
+                tr = tr.setSelection(
+                  Selection.near(tr.doc.resolve(cursorPos), -1),
+                );
+                view.dispatch(tr);
+                return true;
               }
             }
           }
