@@ -71,6 +71,9 @@ function nodeDOMAtCoords(
   return document.elementsFromPoint(coords.x, coords.y).find((elem) => {
     if (elem.closest(".table-add-control")) return false;
     if (isFirstChildOfEditor(elem)) return false;
+    // blockquote/table 内部的元素只允许容器自身显示把手
+    if (elem.closest("blockquote") && !elem.matches("blockquote")) return false;
+    if (elem.closest(".tableWrapper") && !elem.matches(".tableWrapper")) return false;
     return (
       elem.parentElement?.matches?.(".ProseMirror") || elem.matches(selectors)
     );
@@ -192,11 +195,21 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
     const resolved = selection.$from;
     const targetPos = findBlockNodePos(resolved);
-    const domNode = view.nodeDOM(targetPos);
+    let domNode = view.nodeDOM(targetPos);
 
     if (!(domNode instanceof Element)) {
       hideDragHandle();
       return;
+    }
+
+    // blockquote/table 内部元素统一定位到容器本身
+    const blockquoteParent = domNode.closest("blockquote");
+    if (blockquoteParent && !domNode.matches("blockquote")) {
+      domNode = blockquoteParent;
+    }
+    const tableWrapper = domNode.closest(".tableWrapper");
+    if (tableWrapper && !domNode.matches(".tableWrapper")) {
+      domNode = tableWrapper;
     }
 
     if (isFirstChildOfEditor(domNode)) {

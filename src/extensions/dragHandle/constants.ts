@@ -3,6 +3,8 @@ export const HANDLE_OFFSETS: Record<string, number> = {
   default: 0,
   headingWithCollapse: 15,   // 折叠箭头左边
   listItem: -10,              // 列表项微调
+  taskListItem: -15,          // 待办列表：远离 checkbox 15px
+  table: -15,                 // 表格左移 15px
 };
 
 // 通用常量

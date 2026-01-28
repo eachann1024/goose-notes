@@ -15,7 +15,18 @@ export function getNodeOffsetType(node: Element): NodeOffsetType {
     return "headingWithCollapse";
   }
 
-  // 列表项需要偏移（包括 li 内部的元素）
+  // 表格左移 10px
+  if (node.matches(".tableWrapper, table") || node.closest(".tableWrapper")) {
+    return "table";
+  }
+
+  // 待办列表项需要更大偏移（checkbox 在左侧 -24px）
+  if (node.matches('ul[data-type="taskList"] > li') ||
+      node.closest('ul[data-type="taskList"] > li')) {
+    return "taskListItem";
+  }
+
+  // 普通列表项需要偏移（包括 li 内部的元素）
   if (node.matches("ul:not([data-type=taskList]) li, ol li") ||
       node.closest("ul:not([data-type=taskList]) > li, ol > li")) {
     return "listItem";
