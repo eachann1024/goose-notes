@@ -12,7 +12,7 @@ export const uToolsStorage: StateStorage = {
     }
   },
 
-  setItem: (name: string, value: string): void => {
+  setItem: async (name: string, value: string): Promise<void> => {
     const MAX_RETRIES = 3
 
     const tryPut = (rev?: string, retryCount = 0): boolean => {
@@ -55,11 +55,8 @@ export const uToolsStorage: StateStorage = {
         console.error('[uToolsStorage] retry failed', { name, attempt: i, err })
       }
 
-      // 每次重试间隔 100ms
-      const start = Date.now()
-      while (Date.now() - start < 100) {
-        // busy wait
-      }
+      // 异步等待 100ms
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
   },
   

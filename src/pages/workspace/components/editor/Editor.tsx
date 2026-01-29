@@ -189,6 +189,12 @@ export function Editor({ editable = true }: EditorProps) {
         "goose-note:focus-editor-start",
         handleFocusStart,
       );
+      if ((window as any).utools) {
+        // 传递 null 或空函数来清除/覆盖之前的监听器
+        // 注意：utools 文档未明确 remove 方法，但在 React effect 中通常重新绑定会覆盖
+        // 如果 onPluginOut 支持覆盖，直接设为 null 或空操作
+        (window as any).utools.onPluginOut(null);
+      }
     };
   }, [editor]);
 
@@ -254,7 +260,12 @@ export function Editor({ editable = true }: EditorProps) {
         }
       }
 
-      editor.commands.setContent(contentToSet, { emitUpdate: false });
+      // 使用 transaction 设置内容，明确不记录到历史
+      const { tr } = editor.state;
+      const newDoc = editor.schema.nodeFromJSON(contentToSet);
+      tr.replaceWith(0, editor.state.doc.content.size, newDoc.content);
+      tr.setMeta("addToHistory", false);
+      editor.view.dispatch(tr);
 
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;

@@ -41,6 +41,25 @@ export const Callout = Node.create({
   selectable: true,
   draggable: true,
 
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: any, node: any) {
+          const emoji = node.attrs.emoji || "💡";
+          state.write(`> ${emoji} `);
+          state.renderInline(node);
+          state.closeBlock(node);
+        },
+        parse: {
+          setup(markdownit: any) {
+            // 解析逻辑比较复杂，通常不需要反向解析 markdown 到 callout，因为我们主要关注复制输出
+            // Tiptap 的 Markdown extension 负责解析常规 markdown
+          },
+        },
+      },
+    };
+  },
+
   addAttributes() {
     return {
       emoji: {

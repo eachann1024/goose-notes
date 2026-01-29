@@ -26,7 +26,7 @@ export const TitleHeading = Extension.create({
             if (!firstNode) {
               tr.insert(
                 0,
-                schema.nodes.heading.create({ level: 1 }, schema.text("")),
+                schema.nodes.heading.create({ level: 1 }),
               );
               return tr;
             }
@@ -50,7 +50,7 @@ export const TitleHeading = Extension.create({
             if (firstNode.type.name !== "heading") {
               tr.insert(
                 0,
-                schema.nodes.heading.create({ level: 1 }, schema.text("")),
+                schema.nodes.heading.create({ level: 1 }),
               );
               return tr;
             }
@@ -98,26 +98,9 @@ export const TitleHeading = Extension.create({
             if (event.key === "Enter") {
               event.preventDefault();
               const { tr } = state;
-              const titleNode = doc.firstChild;
-              const endOfTitle = titleNode ? titleNode.nodeSize : 0;
-
-              const cursorPos = $from.pos;
-              const titleContent = titleNode?.textContent || "";
-              const afterCursor = titleContent.slice(cursorPos - 1);
-
-              if (afterCursor) {
-                tr.setNodeMarkup(0, schema.nodes.heading, { level: 1 });
-                tr.delete(cursorPos, endOfTitle - 1);
-                tr.insert(
-                  cursorPos,
-                  schema.nodes.paragraph.create(null, schema.text(afterCursor)),
-                );
-                tr.setSelection(Selection.near(tr.doc.resolve(cursorPos + 1)));
-              } else {
-                tr.insert(endOfTitle, schema.nodes.paragraph.create());
-                tr.setSelection(Selection.near(tr.doc.resolve(endOfTitle + 1)));
-              }
-
+              // 使用 split 方法分割节点，并指定新节点的类型为 paragraph
+              // 这样处理更符合 ProseMirror 的事务逻辑，避免无效的嵌套节点
+              tr.split($from.pos, 1, [{ type: schema.nodes.paragraph }]);
               view.dispatch(tr);
               return true;
             }
