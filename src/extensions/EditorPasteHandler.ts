@@ -247,11 +247,14 @@ export const EditorPasteHandler = Extension.create({
 
             if (isInlineContext && shouldForceInlinePaste($from)) {
               let cleanText = processedTextPlain;
-              // 如果粘贴内容有列表前缀，去除它（避免粘贴时产生空行）
-              cleanText = cleanText
-                .replace(/^[-*+]\s+/gm, '')           // 无序列表
-                .replace(/^\d+\.\s+/gm, '')           // 有序列表
-                .replace(/^- \[[ x]\]\s*/gim, '');    // 任务列表
+              // 修复：只在单行且有列表前缀时才移除
+              if (!cleanText.includes('\n')) {
+                cleanText = cleanText
+                  .replace(/^[-*+]\s+/, '')           // 无序列表
+                  .replace(/^\d+\.\s+/, '')           // 有序列表
+                  .replace(/^- \[[ x]\]\s*/i, '');   // 任务列表
+              }
+              // 多行时保留前缀，避免误伤
               cleanText = cleanText.replace(/\r?\n+/g, " ").trim();
               const tr = state.tr.insertText(cleanText);
               applyPasteTransaction(view, tr);
@@ -278,6 +281,30 @@ export const EditorPasteHandler = Extension.create({
               const tr = state.tr.replaceSelection(slice);
               applyPasteTransaction(view, tr);
               return true;
+            }
+
+            // 尝试处理外部 HTML 格式粘贴（如 Word、浏览器复制）
+            const htmlData = event.clipboardData?.getData("text/html");
+            if (htmlData && !hasMarkdownStructure(processedTextPlain)) {
+              try {
+                const parser = DOMParser.fromSchema(state.schema);
+                const tempDiv = new window.DOMParser().parseFromString(
+                  htmlData,
+                  "text/html",
+                );
+
+                // 解析为 ProseMirror Slice
+                const slice = parser.parseSlice(tempDiv.body);
+
+                if (slice.content.size > 0) {
+                  const tr = state.tr.replaceSelection(slice);
+                  applyPasteTransaction(view, tr);
+                  return true;
+                }
+              } catch (e) {
+                console.warn('[EditorPasteHandler] HTML parse failed, fallback to markdown', e);
+                // 降级到 Markdown 处理
+              }
             }
 
             let processedText = convertChineseLists(processedTextPlain);

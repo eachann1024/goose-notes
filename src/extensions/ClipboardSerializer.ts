@@ -236,16 +236,16 @@ function isSingleListItemSelection(view: EditorView): boolean {
 
   if (!sameListItem) return false;
 
-  // 整行选中时返回 false，保留列表格式
-  const paragraphNode = selection.$from.parent;
-  if (paragraphNode.isTextblock) {
-    const paragraphStart = selection.$from.start();
-    const paragraphEnd = selection.$from.end();
-    if (selection.from === paragraphStart && selection.to === paragraphEnd) {
-      return false;
-    }
+  // 修复：判断选区是否覆盖整个 listItem 节点（包括前缀 `- `）
+  const listItemStart = selection.$from.before(fromDepth);
+  const listItemEnd = selection.$from.after(fromDepth);
+
+  // 如果选中整个 listItem（从开头到结尾），视为多行，保留格式
+  if (selection.from <= listItemStart + 1 && selection.to >= listItemEnd - 1) {
+    return false; // 整行选中，走格式化复制（带 `- ` 前缀）
   }
 
+  // 否则是部分选中，走纯文本复制（去掉格式）
   return true;
 }
 

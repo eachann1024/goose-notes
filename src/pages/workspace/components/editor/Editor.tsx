@@ -161,7 +161,9 @@ export function Editor({ editable = true }: EditorProps) {
   };
 
   useEffect(() => {
-    const flush = () => debouncedUpdateRef.current?.flush();
+    const flush = () => {
+      debouncedUpdateRef.current?.flush();
+    };
 
     window.addEventListener("beforeunload", flush);
 

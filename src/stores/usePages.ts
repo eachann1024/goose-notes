@@ -99,17 +99,34 @@ const initialContent: JSONContent = {
   ],
 };
 
-export const flushEditorContent = () => {
+export const flushEditorContent = (immediate = false) => {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("goose-note:flush-editor"));
+    window.dispatchEvent(
+      new CustomEvent("goose-note:flush-editor", { detail: { immediate } })
+    );
   }
 };
 
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", flushEditorContent);
+  window.addEventListener("beforeunload", () => {
+    flushEditorContent(true);
+  });
 
   if ((window as any).utools) {
-    (window as any).utools.onPluginOut(flushEditorContent);
+    (window as any).utools.onPluginOut(() => {
+      flushEditorContent(true);
+
+      // 強制立即保存本地文件夾的 pending 內容
+      const state = usePages.getState();
+      saveTimeouts.forEach((timeout, pageId) => {
+        clearTimeout(timeout);
+        const page = state.pages[pageId];
+        if (page?.content) {
+          state.saveLocalPageContent(pageId, page.content);
+        }
+      });
+      saveTimeouts.clear();
+    });
   }
 }
 
@@ -336,11 +353,11 @@ export const usePages = create<PagesState>()(
               clearTimeout(existingTimeout);
             }
 
-            // 设置新的防抖保存定时器（3秒）
+            // 设置新的防抖保存定时器（1秒）
             const timeout = setTimeout(() => {
               get().saveLocalPageContent(id, updates.content!);
               saveTimeouts.delete(id);
-            }, 3000);
+            }, 1000);
 
             saveTimeouts.set(id, timeout);
           }
