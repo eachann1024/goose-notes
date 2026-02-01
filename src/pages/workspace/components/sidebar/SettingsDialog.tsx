@@ -41,6 +41,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     utools,
     setOpenSearchInUtools,
     setUToolsWindowHeight,
+    privacy,
+    setAutoOpenLastNote,
     customFonts,
     setCustomLabel,
     setCustomFont,
@@ -267,6 +269,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                     windowHeight={utools.windowHeight ?? 600}
                     setWindowHeight={setUToolsWindowHeight}
+                    autoOpenLastNote={privacy.autoOpenLastNote}
+                    setAutoOpenLastNote={setAutoOpenLastNote}
                     customActions={customActions}
                     addCustomAction={addCustomAction}
                     updateCustomAction={updateCustomAction}

@@ -14,6 +14,8 @@ import * as LucideIcons from "lucide-react";
 import { UToolsAdapter } from "@/lib/utools";
 import type { CustomAction } from "@/stores/useSettings";
 
+const isUTools = UToolsAdapter.isUTools;
+
 interface EditorContextMenuProps {
   editor: Editor;
   searchProviders: {
@@ -101,7 +103,7 @@ export function EditorContextMenu({
             {enabledActions.length > 0 && <ContextMenuSeparator />}
           </>
         )}
-        {hasSearchText && enabledActions.length > 0 && (
+        {isUTools && hasSearchText && enabledActions.length > 0 && (
           <>
             <ContextMenuSub>
               <ContextMenuSubTrigger>

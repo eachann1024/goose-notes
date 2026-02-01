@@ -130,6 +130,7 @@ declare global {
   const cn: typeof import('./lib/utils').cn
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
+  const countWords: typeof import('./lib/content-text-extractor').countWords
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
@@ -197,7 +198,7 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'

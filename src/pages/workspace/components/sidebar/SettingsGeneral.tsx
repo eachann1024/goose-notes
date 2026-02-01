@@ -15,6 +15,8 @@ interface SettingsGeneralProps {
 
   windowHeight: number;
   setWindowHeight: (height: number) => void;
+  autoOpenLastNote: boolean;
+  setAutoOpenLastNote: (enabled: boolean) => void;
   customActions?: CustomAction[];
   addCustomAction?: (action: Omit<CustomAction, 'id'>) => void;
   updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void;
@@ -29,6 +31,8 @@ export function SettingsGeneral({
 
   windowHeight,
   setWindowHeight,
+  autoOpenLastNote,
+  setAutoOpenLastNote,
   customActions = [],
   addCustomAction = () => {},
   updateCustomAction = () => {},
@@ -42,6 +46,25 @@ export function SettingsGeneral({
       </div>
 
       <div>
+        <h4 className="text-sm font-medium mb-3">隐私设置</h4>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="auto-open-last-note" className="cursor-pointer">
+              自动打开上次笔记
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              启动应用时自动打开上次编辑的笔记
+            </p>
+          </div>
+          <Switch
+            id="auto-open-last-note"
+            checked={autoOpenLastNote}
+            onCheckedChange={setAutoOpenLastNote}
+          />
+        </div>
+      </div>
+
+      <div className="pt-4 border-t">
         <h4 className="text-sm font-medium mb-3">搜索引擎</h4>
         <p className="text-xs text-muted-foreground mb-4">
           配置右键菜单中显示的搜索引擎。
@@ -68,7 +91,7 @@ export function SettingsGeneral({
         </div>
       </div>
 
-      {(UToolsAdapter.isUTools || import.meta.env.DEV) && (
+      {UToolsAdapter.isUTools && (
         <div className="space-y-4 pt-4 border-t">
           <div>
             <h4 className="text-sm font-medium mb-3">插件设置</h4>

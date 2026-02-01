@@ -29,12 +29,7 @@ export function WorkspacePage() {
   const isExternalFileDrag = (e: React.DragEvent) =>
     Array.from(e.dataTransfer.types || []).includes("Files");
 
-  // 当活跃页面在回收站时，自动清空 activePageId 显示空白状态
-  useEffect(() => {
-    if (page?.trashedAt && activePageId) {
-      usePages.getState().setActivePage(null);
-    }
-  }, [page?.trashedAt, activePageId]);
+
 
   useEffect(() => {
     if (UToolsAdapter.isUTools) {

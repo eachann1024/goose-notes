@@ -20,6 +20,10 @@ export interface UToolsSettings {
     windowHeight: number
 }
 
+export interface PrivacySettings {
+    autoOpenLastNote: boolean
+}
+
 export interface FontConfig {
     label: string | null
     font: string | null
@@ -52,6 +56,7 @@ interface SettingsState {
     codeStyle: CodeStyle
     searchProviders: SearchProvider[]
     utools: UToolsSettings
+    privacy: PrivacySettings
     searchAllNotebooks: boolean
     customFonts: CustomFonts
     uiFontSize: UIFontSize
@@ -64,6 +69,7 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
+    setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
     setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
@@ -149,6 +155,9 @@ export const useSettings = create<SettingsState>()(
 
                 windowHeight: 600,
             },
+            privacy: {
+                autoOpenLastNote: true,
+            },
             searchAllNotebooks: false,
             customFonts: {
                 default: { label: null, font: null },
@@ -189,6 +198,10 @@ export const useSettings = create<SettingsState>()(
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
                     utools: { ...state.utools, windowHeight: height },
+                })),
+            setAutoOpenLastNote: (enabled) =>
+                set((state) => ({
+                    privacy: { ...state.privacy, autoOpenLastNote: enabled },
                 })),
             setSearchAllNotebooks: (searchAll) => set({ searchAllNotebooks: searchAll }),
             setCustomLabel: (type, label) =>

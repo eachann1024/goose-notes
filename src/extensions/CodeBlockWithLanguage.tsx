@@ -9,6 +9,29 @@ import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
 import { MathView } from "@/pages/workspace/components/editor/extensions/MathView";
 import { MermaidView } from "@/pages/workspace/components/editor/extensions/MermaidView";
+import { InputRule } from "@tiptap/core";
+
+// LaTeX 常用语法提示
+const LATEX_SNIPPETS = [
+  { label: "分数", code: "\\frac{a}{b}", example: "\\frac{1}{2}" },
+  { label: "上标", code: "x^{n}", example: "x^{2}" },
+  { label: "下标", code: "x_{n}", example: "x_{i}" },
+  { label: "根号", code: "\\sqrt{x}", example: "\\sqrt{2}" },
+  { label: "n次根", code: "\\sqrt[n]{x}", example: "\\sqrt[3]{8}" },
+  { label: "求和", code: "\\sum_{i=1}^{n}", example: "\\sum_{i=1}^{n} i" },
+  { label: "积分", code: "\\int_{a}^{b}", example: "\\int_{0}^{1} x dx" },
+  { label: "极限", code: "\\lim_{x \\to a}", example: "\\lim_{x \\to 0}" },
+  { label: "希腊字母 α", code: "\\alpha", example: "\\alpha" },
+  { label: "希腊字母 β", code: "\\beta", example: "\\beta" },
+  { label: "希腊字母 π", code: "\\pi", example: "\\pi" },
+  { label: "无穷大", code: "\\infty", example: "\\infty" },
+  { label: "不等于", code: "\\neq", example: "\\neq" },
+  { label: "小于等于", code: "\\leq", example: "\\leq" },
+  { label: "大于等于", code: "\\geq", example: "\\geq" },
+  { label: "箭头", code: "\\rightarrow", example: "\\rightarrow" },
+  { label: "向量", code: "\\vec{a}", example: "\\vec{v}" },
+  { label: "矩阵", code: "\\begin{matrix} a & b \\\\ c & d \\end{matrix}", example: "matrix" },
+];
 
 function CodeBlockWithLanguageView({
   node,
@@ -43,6 +66,7 @@ function CodeBlockWithLanguageView({
     wordBreak: wrap ? "break-word" : "normal",
     overflowWrap: wrap ? "anywhere" : "normal",
   };
+  const [showLatexHint, setShowLatexHint] = useState(false);
 
   const getCodeContent = () => {
     let text = "";
@@ -126,6 +150,78 @@ function CodeBlockWithLanguageView({
           {language === "mermaid" && <MermaidView value={textContent} />}
         </div>
       )}
+
+      {/* LaTeX 语法提示面板 */}
+      {language === "math" && editor.isEditable && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <TooltipProvider>
+            <Tooltip open={showLatexHint} onOpenChange={setShowLatexHint}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowLatexHint(!showLatexHint)}
+                  className={cn(
+                    "h-6 w-6 p-0 rounded-md",
+                    "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                    "border border-border/50",
+                    "backdrop-blur-sm transition-all duration-200",
+                    showLatexHint && "bg-primary/10 border-primary/30 text-primary",
+                  )}
+                >
+                  <LucideIcons.HelpCircle className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="end"
+                className="w-72 p-0 bg-popover border shadow-lg"
+              >
+                <div className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium">LaTeX 语法参考</span>
+                    <button
+                      onClick={() => setShowLatexHint(false)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <LucideIcons.X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
+                    {LATEX_SNIPPETS.map((snippet, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const pos = getPos();
+                          if (typeof pos === "number") {
+                            const { tr } = editor.view.state;
+                            const insertPos = pos + node.nodeSize - 1;
+                            editor.view.dispatch(
+                              tr.insertText(snippet.code, insertPos)
+                            );
+                            editor.commands.focus(insertPos + snippet.code.length);
+                          }
+                          setShowLatexHint(false);
+                        }}
+                        className="flex items-center justify-between px-2 py-1.5 text-left text-xs rounded hover:bg-accent group"
+                      >
+                        <span className="text-muted-foreground group-hover:text-foreground">
+                          {snippet.label}
+                        </span>
+                        <code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono">
+                          {snippet.code.length > 12
+                            ? snippet.code.slice(0, 12) + "..."
+                            : snippet.code}
+                        </code>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </NodeViewWrapper>
   );
 }
@@ -147,6 +243,35 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
         default: null,
       },
     };
+  },
+
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /^\$\$\s$/,
+        handler: ({ state, range, commands }) => {
+          const $from = state.doc.resolve(range.from);
+          const textBefore = $from.parent.textBetween(
+            0,
+            $from.parentOffset,
+            null,
+            "\ufffc"
+          );
+          // 确保在段落开头
+          const isValidStart =
+            textBefore === "" ||
+            textBefore === " " ||
+            textBefore.endsWith("\n");
+          if (!isValidStart) return null;
+
+          commands.insertContentAt(range, {
+            type: "codeBlock",
+            attrs: { language: "math" },
+          });
+          return null;
+        },
+      }),
+    ];
   },
 
   addNodeView() {

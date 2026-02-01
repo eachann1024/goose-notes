@@ -46,6 +46,7 @@ interface PagesState {
   searchHighlightNonce: number;
   handledSearchHighlightNonce: number;
   hydrated: boolean;
+  lastSavedAt: number | null;
 
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
@@ -65,6 +66,7 @@ interface PagesState {
   setSearchHighlightNonce: (nonce: number) => void;
   setHandledSearchHighlightNonce: (nonce: number) => void;
   setHydrated: (hydrated: boolean) => void;
+  setLastSavedAt: (timestamp: number | null) => void;
   getAncestorIds: (pageId: string) => string[];
 
   getPage: (id: string) => Page | undefined;
@@ -144,6 +146,7 @@ export const usePages = create<PagesState>()(
       searchHighlightNonce: 0,
       handledSearchHighlightNonce: 0,
       hydrated: false,
+      lastSavedAt: null,
 
       createOnboardingPages: () => {
         const id = uuidv4();
@@ -425,9 +428,20 @@ export const usePages = create<PagesState>()(
 
             let nextActivePageId = state.activePageId;
             if (removedIds.has(state.activePageId || "")) {
-              nextActivePageId = null;
+              // 获取同层级剩余页面，选中最后一个
+              const remainingPages = Object.values(newPages).filter(
+                (p) =>
+                  p.workspaceId === page.workspaceId &&
+                  !p.trashedAt &&
+                  p.parentId === page.parentId,
+              );
+              if (remainingPages.length > 0) {
+                nextActivePageId = remainingPages[remainingPages.length - 1].id;
+              } else {
+                nextActivePageId = null;
+              }
               // 同步清理 Notebook 中记录的最后活跃页面
-              useNotebooks.getState().setLastActivePage(page.workspaceId, null);
+              useNotebooks.getState().setLastActivePage(page.workspaceId, nextActivePageId);
             }
 
             return {
@@ -465,9 +479,20 @@ export const usePages = create<PagesState>()(
 
           let newActivePageId = state.activePageId;
           if (removedIds.has(state.activePageId || "")) {
-            newActivePageId = null;
+            // 获取同层级剩余页面，选中最后一个
+            const remainingPages = Object.values(newPages).filter(
+              (p) =>
+                p.workspaceId === workspaceId &&
+                !p.trashedAt &&
+                p.parentId === page.parentId,
+            );
+            if (remainingPages.length > 0) {
+              newActivePageId = remainingPages[remainingPages.length - 1].id;
+            } else {
+              newActivePageId = null;
+            }
             // 清理 Notebook 记录
-            useNotebooks.getState().setLastActivePage(workspaceId, null);
+            useNotebooks.getState().setLastActivePage(workspaceId, newActivePageId);
           }
 
           return {
@@ -788,6 +813,10 @@ export const usePages = create<PagesState>()(
       },
       setHandledSearchHighlightNonce: (nonce) => {
         set({ handledSearchHighlightNonce: nonce });
+      },
+
+      setLastSavedAt: (timestamp) => {
+        set({ lastSavedAt: timestamp });
       },
 
       getAncestorIds: (pageId) => {
@@ -1244,10 +1273,17 @@ export const usePages = create<PagesState>()(
             }
         }
 
+        let result: boolean;
         if (window.gooseFs?.writeFileAsync) {
-             return await window.gooseFs.writeFileAsync(filePath, markdownContent);
+             result = await window.gooseFs.writeFileAsync(filePath, markdownContent);
+        } else {
+             result = window.gooseFs?.writeFile(filePath, markdownContent) ?? false;
         }
-        return window.gooseFs?.writeFile(filePath, markdownContent) ?? false;
+
+        if (result) {
+          set({ lastSavedAt: Date.now() });
+        }
+        return result;
       },
 
       getLocalFilePath: (pageId) => {
@@ -1260,6 +1296,26 @@ export const usePages = create<PagesState>()(
       storage: createJSONStorage(() => uToolsStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
+        
+        // 自动清理超过 30 天的已删除页面
+        if (state?.pages) {
+          const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+          const now = Date.now();
+          const pagesToDelete: string[] = [];
+          
+          Object.values(state.pages).forEach((page) => {
+            if (page.trashedAt && now - page.trashedAt > THIRTY_DAYS) {
+              pagesToDelete.push(page.id);
+            }
+          });
+          
+          if (pagesToDelete.length > 0) {
+            pagesToDelete.forEach((id) => {
+              delete state.pages[id];
+            });
+            console.log(`[Auto Cleanup] Permanently deleted ${pagesToDelete.length} expired trashed pages`);
+          }
+        }
       },
       partialize: (state) => ({
         pages: state.pages,

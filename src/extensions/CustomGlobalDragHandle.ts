@@ -268,6 +268,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     if (!event.dataTransfer) return;
 
     let node = currentHoveredNode;
+    if (node && !view.dom.contains(node)) {
+      node = null;
+    }
+    
     if (!node) {
       const coords = getAdjustedCoords(event, options.dragHandleWidth);
       node = nodeDOMAtCoords(coords, options) as Element | null;
@@ -344,6 +348,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       tr.insert(mappedPos, dragging.slice.content);
       view.dispatch(tr.scrollIntoView());
 
+      view.dragging = null;
+      isDragging = false;
       currentHoveredNode = null;
       justDropped = true;
 
@@ -368,6 +374,10 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       dragHandleElement.classList.add("drag-handle");
 
       function onDragHandleDragStart(e: DragEvent) {
+        // Enforce state reset to prevent stale state from blocking new drag
+        view.dragging = null;
+        view.dom.classList.remove("dragging");
+        
         isDragging = true;
         handleDragStart(e, view);
       }
@@ -375,6 +385,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
 
       function onDragHandleDragEnd() {
         isDragging = false;
+        view.dragging = null;
         hideDragHandle();
       }
       dragHandleElement.addEventListener("dragend", onDragHandleDragEnd);
@@ -520,6 +531,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         },
         dragend: (view) => {
           isDragging = false;
+          view.dragging = null;
           view.dom.classList.remove("dragging");
           hideDragHandle();
           return false;

@@ -63,6 +63,17 @@ function App() {
     }
   }, [hydrated, onboardingCompleted, createOnboardingPages]);
 
+  // 根据隐私设置决定是否自动打开上次笔记
+  useEffect(() => {
+    if (!hydrated || !onboardingCompleted) return;
+
+    const { privacy } = useSettings.getState();
+    if (!privacy.autoOpenLastNote) {
+      // 关闭自动打开，清空当前活跃页面
+      usePages.getState().setActivePage(null);
+    }
+  }, [hydrated, onboardingCompleted]);
+
   // 当基础页面加载完成，且交互引导从未展示过时，自动开启
   useEffect(() => {
     if (hydrated && onboardingCompleted && !guideCompleted) {
@@ -225,6 +236,14 @@ function App() {
       } else if (event.key === "0") {
         event.preventDefault();
         setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
+      } else if (event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        const { createPage } = usePages.getState();
+        const { activeNotebookId } = useNotebooks.getState();
+        if (activeNotebookId) {
+          createPage(undefined, activeNotebookId);
+          toast("已创建新笔记", { duration: 1500 });
+        }
       }
     };
 

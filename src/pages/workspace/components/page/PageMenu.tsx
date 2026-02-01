@@ -9,8 +9,10 @@ export function PageMenu() {
     createPage,
     setActivePage,
   } = usePages();
-  const { activeNotebookId } = useNotebooks();
+  const { activeNotebookId, notebooks } = useNotebooks();
   const page = activePageId ? getPage(activePageId) : undefined;
+  const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
+  const isLocalFolderPage = notebook?.source === "local-folder";
 
   const handleImport = async () => {
     const result = await importFile();
@@ -76,6 +78,20 @@ export function PageMenu() {
 
         {/* Switches Section */}
         <DropdownMenuGroup>
+          {!isLocalFolderPage && (
+            <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
+              <div className="flex items-center gap-2">
+                <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="ml-2.5">全宽</span>
+              </div>
+              <Switch
+                checked={page.isFullWidth}
+                onCheckedChange={(checked) =>
+                  updatePage(activePageId, { isFullWidth: checked })
+                }
+              />
+            </div>
+          )}
 
           <DropdownMenuItem
             className="text-xs text-destructive focus:text-destructive"
@@ -125,12 +141,20 @@ export function PageMenu() {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1.5 text-xs  text-muted-foreground">
-          <div className="flex flex-col gap-0.5 ">
-            <span>最后编辑于</span>
-            <span className="text-[10px] opacity-80">
-              {new Date(page.updatedAt).toLocaleString("zh-CN")}
-            </span>
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span>字数</span>
+              <span className="text-[10px] opacity-80">
+                {countWords(page.content)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span>最后编辑于</span>
+              <span className="text-[10px] opacity-80">
+                {new Date(page.updatedAt).toLocaleString("zh-CN")}
+              </span>
+            </div>
           </div>
         </div>
       </DropdownMenuContent>

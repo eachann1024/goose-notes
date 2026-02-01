@@ -1,16 +1,25 @@
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { getPageTitle } from "@/lib/page-title";
+import { useEffect } from 'react';
+import { countWords } from "@/lib/content-text-extractor";
 
 interface TrashListProps {
   onBack: () => void
 }
 
 export function TrashList({ onBack }: TrashListProps) {
-  const { getTrashedPages, restorePage, permanentlyDeletePage, setActivePage } = usePages()
+  const { getTrashedPages, restorePage, permanentlyDeletePage, setActivePage, activePageId } = usePages()
   const { activeNotebookId } = useNotebooks()
   
   const trashedPages = getTrashedPages(activeNotebookId || undefined)
+  
+  // 默认选中第一个文件
+  useEffect(() => {
+    if (trashedPages.length > 0 && !activePageId) {
+      setActivePage(trashedPages[0].id)
+    }
+  }, [trashedPages, activePageId, setActivePage])
 
   return (
     <div className="flex flex-col h-full">
@@ -44,6 +53,7 @@ export function TrashList({ onBack }: TrashListProps) {
               const timeAgo = page.trashedAt
                 ? formatDistanceToNow(page.trashedAt, { addSuffix: true, locale: zhCN })
                 : ''
+              const wordCount = countWords(page.content)
 
               return (
                 <div
@@ -72,6 +82,13 @@ export function TrashList({ onBack }: TrashListProps) {
                     <div className="text-sm truncate">{getPageTitle(page)}</div>
                     <div className="text-xs text-muted-foreground">{timeAgo}</div>
                   </div>
+
+                  {/* 字数 - 最右边 */}
+                  {wordCount > 0 && (
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      {wordCount} 字
+                    </div>
+                  )}
 
                   {/* 操作按钮 */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

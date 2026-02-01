@@ -50,3 +50,23 @@ export function extractTitleFromContent(content: JSONContent): string {
   return '无标题'
 }
 
+/**
+ * 统计字数
+ * - 中文字符：每个算 1 字
+ * - 英文单词：每个算 1 字
+ * - 连续数字：算 1 字
+ */
+export function countWords(content: JSONContent): number {
+  const text = extractTextFromContent(content)
+  if (!text) return 0
+
+  // 匹配中文字符
+  const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || []
+  // 匹配英文单词
+  const englishWords = text.match(/[a-zA-Z]+/g) || []
+  // 匹配连续数字
+  const numberGroups = text.match(/\d+/g) || []
+
+  return chineseChars.length + englishWords.length + numberGroups.length
+}
+

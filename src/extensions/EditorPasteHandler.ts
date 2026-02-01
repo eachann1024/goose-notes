@@ -52,6 +52,18 @@ function convertChineseLists(text: string): string {
       continue;
     }
 
+    // 修复：将孤立的 [ ] item 转换为标准的 markdown task item
+    // 使用特殊标记避免 markdown-it 渲染干扰，确保 dom 处理阶段能精准识别
+    const checkboxMatch = line.match(/^(\s*)\[([ xX])\]\s*(.*)$/);
+    if (checkboxMatch) {
+      const isChecked = checkboxMatch[2].toLowerCase() === 'x';
+      const marker = isChecked ? '__AG_TASK_DONE__' : '__AG_TASK_OPEN__';
+      // 注意：我们在 marker 和内容之间加一个空格，以免粘连，但其实不加也行，因为后面处理会删除 marker
+      // 使用 -前缀是为了让 markdown-it 把它渲染成 li
+      result.push(`${checkboxMatch[1]}- ${marker}${checkboxMatch[3]}`);
+      continue;
+    }
+
     if (i > 0) {
       const prevLine = lines[i - 1] || "";
       if (
@@ -190,7 +202,13 @@ function preserveEmptyLines(text: string): string {
     }
 
     const emptyCount = extraNewlines.length;
-    return '\n' + (EMPTY_LINE_PLACEHOLDER + '\n').repeat(emptyCount);
+    // 修复：只有当有 2 个以上额外换行符（即 \n\n\n，视觉上空一行）时，才插入占位符
+    // \n\n (emptyCount=1) 只是标准的块分隔符，不应该产生空段落
+    if (emptyCount === 1) {
+      return match;
+    }
+
+    return '\n' + (EMPTY_LINE_PLACEHOLDER + '\n').repeat(emptyCount - 1);
   });
 }
 
@@ -322,29 +340,7 @@ export const EditorPasteHandler = Extension.create({
               }
             }
 
-            if (isInlineContext && shouldForceInlinePaste($from)) {
-              let cleanText = processedTextPlain;
-              // 修复：只在单行且有列表前缀时才移除
-              if (!cleanText.includes('\n')) {
-                cleanText = cleanText
-                  .replace(/^[-*+]\s+/, '')           // 无序列表
-                  .replace(/^\d+\.\s+/, '')           // 有序列表
-                  .replace(/^- \[[ x]\]\s*/i, '');   // 任务列表
-              }
-              // 多行时保留前缀，避免误伤
-              cleanText = cleanText.replace(/\r?\n+/g, " ").trim();
-              const tr = state.tr.insertText(cleanText);
-              applyPasteTransaction(view, tr);
-              return true;
-            }
 
-            // 块内粘贴简单文本：去掉换行直接插入
-            if (isInlineContext && !hasMarkdownStructure(processedTextPlain)) {
-              const cleanText = processedTextPlain.replace(/\r?\n/g, "");
-              const tr = state.tr.insertText(cleanText);
-              applyPasteTransaction(view, tr);
-              return true;
-            }
 
             const tableHtml = parseMarkdownTableToHtml(processedTextPlain);
             if (tableHtml) {
@@ -386,14 +382,13 @@ export const EditorPasteHandler = Extension.create({
 
             let processedText = convertChineseLists(processedTextPlain);
             processedText = convertCodeLines(processedText);
-            // 保留空行信息（markdown 会吃掉）
-            processedText = preserveEmptyLines(processedText);
+            // processedText = preserveEmptyLines(processedText);
             
             let html = md.render(processedText);
             
             if (html) {
               // 还原空行为空 paragraph
-              html = restoreEmptyLines(html);
+              // html = restoreEmptyLines(html);
               
               // 清理块级标签之间的空白（但保留空 paragraph）
               html = html.replace(/(<\/(h[1-6]|div|ul|ol|li|blockquote|table|tr|td|th)>)\s+(<)/gi, '$1$3');
@@ -410,18 +405,26 @@ export const EditorPasteHandler = Extension.create({
                    
                    let hasTaskItem = false;
                    lis.forEach(li => {
-                     let found: { match: RegExpMatchArray; node: Node; text: string } | null = null;
+                     let found: { isChecked: boolean; node: Node; text: string; markerLength: number; markerStr: string } | null = null;
 
-                     // 辅助函数：检查节点是否包含 task marker
+                     // 辅助函数：检查节点是否包含 AG TASK marker
                      const findTaskMarker = (node: Node) => {
                        if (node.nodeType === Node.TEXT_NODE) {
                          const text = node.textContent || '';
-                         // 忽略纯空白文本节点
                          if (!text.trim()) return null;
                          
-                         const m = text.match(/^\s*\[([ x])\]\s*/i);
+                         // 使用精确的标记匹配
+                         if (text.includes('__AG_TASK_OPEN__')) {
+                           return { isChecked: false, node, text, markerLength: '__AG_TASK_OPEN__'.length, markerStr: '__AG_TASK_OPEN__' };
+                         }
+                         if (text.includes('__AG_TASK_DONE__')) {
+                            return { isChecked: true, node, text, markerLength: '__AG_TASK_DONE__'.length, markerStr: '__AG_TASK_DONE__' };
+                         }
+
+                         // 向下兼容：依然支持 markdown-it 自带的 - [ ] (如果有) 或者漏网之鱼
+                         const m = text.match(/^\s*\[([ xX])\]\s*/);
                          if (m) {
-                           return { match: m, node: node, text: text };
+                            return { isChecked: m[1].toLowerCase() === 'x', node, text, markerLength: m[0].length, markerStr: '' };
                          }
                        }
                        return null;
@@ -429,30 +432,39 @@ export const EditorPasteHandler = Extension.create({
 
                      // 1. 遍历 li 的直接子节点
                      for (let i = 0; i < li.childNodes.length; i++) {
-                       found = findTaskMarker(li.childNodes[i]);
-                       if (found) break;
+                        const res = findTaskMarker(li.childNodes[i]);
+                        if (res) {
+                            found = res;
+                            break;
+                        }
                      }
 
                      // 2. 如果没找到，且包含 P 标签，检查 P 的子节点
-                     // 这是为了处理 markdown-it 在 loose list 中生成的 <li>\n<p>... 结构
                      if (!found) {
                        const p = Array.from(li.children).find(c => c.tagName === 'P');
                        if (p) {
                          for (let i = 0; i < p.childNodes.length; i++) {
-                           found = findTaskMarker(p.childNodes[i]);
-                           if (found) break;
+                           const res = findTaskMarker(p.childNodes[i]);
+                           if (res) {
+                               found = res;
+                               break;
+                           }
                          }
                        }
                      }
                      
                      if (found) {
-                        const { match, node, text } = found;
-                        const isChecked = match[1].toLowerCase() === 'x';
+                        const { isChecked, node, text, markerLength, markerStr } = found;
                         li.setAttribute('data-type', 'taskItem');
                         li.setAttribute('data-checked', String(isChecked));
                         
-                        // 移除 [ ] 标记
-                        node.textContent = text.substring(match[0].length);
+                        // 移除标记
+                        if (markerStr) {
+                             node.textContent = text.replace(markerStr, '');
+                        } else {
+                             node.textContent = text.substring(markerLength);
+                        }
+                        
                         hasTaskItem = true;
                      }
                    });

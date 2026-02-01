@@ -155,22 +155,7 @@ export const ClipboardSerializer = Extension.create({
                 return true;
               }
 
-              // 3. 处理单行/块内局部选区复制 - 强制纯文本，避免带上列表项符号等 block 格式
-              const { selection } = view.state;
-              if (!selection.empty && selection.from !== selection.to) {
-                const { $from, $to } = selection;
-                
-                // 检查是否在同一个 textblock 内（例如同一个 list item 的 paragraph 内）
-                if ($from.sameParent($to) && $from.parent.isTextblock) {
-                   // 获取纯文本
-                   const text = view.state.doc.textBetween(selection.from, selection.to, "\n");
-                   event.clipboardData?.setData("text/plain", text);
-                   event.preventDefault();
-                   return true;
-                }
-              }
-
-              // 4. 其他情况返回 false，交给 tiptap-markdown 处理
+              // 3. 其他情况返回 false，交给 tiptap-markdown 处理
               return false;
             },
             cut: (view, event) => {
