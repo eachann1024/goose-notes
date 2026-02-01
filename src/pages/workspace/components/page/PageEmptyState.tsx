@@ -189,7 +189,6 @@ export function PageEmptyState() {
       description: "批量管理 Markdown 笔记",
       onClick: onOpenLocalFolder,
       color: "from-emerald-500 to-emerald-500/60",
-      dataOnboarding: "open-local-folder",
     },
     {
       icon: Search,
@@ -237,7 +236,6 @@ export function PageEmptyState() {
                   action.onClick();
                 }}
                 type="button"
-                data-onboarding={action.dataOnboarding}
                 className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/80 hover:to-card/60 cursor-pointer"
               >
                 <div

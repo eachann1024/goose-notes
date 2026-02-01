@@ -388,7 +388,6 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         (handleBySelector as HTMLElement) ?? document.createElement("div");
       dragHandleElement.draggable = true;
       dragHandleElement.dataset.dragHandle = "";
-      dragHandleElement.dataset.onboarding = "drag-handle";
       dragHandleElement.classList.add("drag-handle");
 
       function onDragHandleDragStart(e: DragEvent) {

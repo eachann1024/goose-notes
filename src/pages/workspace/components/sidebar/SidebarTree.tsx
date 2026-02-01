@@ -20,8 +20,6 @@ interface SidebarTreeProps {
   viewportHeight: number;
   onCreatePage: () => void;
   onRequestRename: (page: Page) => void;
-  onboardingExpandPageId?: string | null;
-  onOnboardingExpandDone?: () => void;
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -245,7 +243,6 @@ function PageNode({
         ref={dragHandle}
         style={rowStyle}
         className="group relative px-2"
-        data-onboarding="page-item"
       >
         <div
           className={cn(
@@ -372,8 +369,6 @@ export function SidebarTree({
   viewportHeight,
   onCreatePage,
   onRequestRename,
-  onboardingExpandPageId,
-  onOnboardingExpandDone,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -390,13 +385,11 @@ export function SidebarTree({
   const expandAttemptsRef = useRef(0);
 
   useEffect(() => {
-    // 统一处理 onboardingExpandPageId 和 expandPageId
-    const targetExpandId = expandPageId || onboardingExpandPageId;
-    if (!targetExpandId) return;
+    if (!expandPageId) return;
 
     expandAttemptsRef.current = 0;
 
-    const pageIdToExpand = targetExpandId;
+    const pageIdToExpand = expandPageId;
     const maxAttempts = 20; // 增加重试次数，等待页面加载
 
     const tryOpen = () => {
@@ -410,15 +403,13 @@ export function SidebarTree({
           setTimeout(tryOpen, 100);
         } else {
           // 超时放弃
-          if (expandPageId) setExpandPageId(null);
-          onOnboardingExpandDone?.();
+          setExpandPageId(null);
         }
         return;
       }
 
       if (page.trashedAt) {
-        if (expandPageId) setExpandPageId(null);
-        onOnboardingExpandDone?.();
+        setExpandPageId(null);
         return;
       }
 
@@ -454,18 +445,15 @@ export function SidebarTree({
         treeRef.current?.scrollTo(pageIdToExpand);
       }, 100);
 
-      if (expandPageId) setExpandPageId(null);
-      onOnboardingExpandDone?.();
+      setExpandPageId(null);
     };
 
     // 延迟启动，等待 React 状态更新完成
     setTimeout(tryOpen, 50);
   }, [
     expandPageId,
-    onboardingExpandPageId,
     pages,
     activeNotebookId,
-    onOnboardingExpandDone,
     setExpandPageId,
   ]);
 
@@ -617,7 +605,7 @@ export function SidebarTree({
   }
 
   return (
-    <div className="sidebar-tree-container" data-onboarding="sidebar-tree">
+    <div className="sidebar-tree-container">
       <Tree
         ref={treeRef}
         data={treeData}

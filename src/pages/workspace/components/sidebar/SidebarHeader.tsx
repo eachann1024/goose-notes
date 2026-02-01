@@ -68,7 +68,6 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
             title="打开文件夹"
-            data-onboarding="open-local-folder"
           >
             <LucideIcons.FolderOpen className="h-4 w-4" />
           </Button>

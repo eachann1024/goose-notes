@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
@@ -6,8 +6,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
-import { useOnboardingGuide } from "./stores/useOnboardingGuide";
-import { OnboardingOverlay } from "./components/onboarding/OnboardingOverlay";
 
 const UI_FONT_SIZE_MAP = {
   small: 14,
@@ -25,14 +23,22 @@ function App() {
     customFonts,
     utools,
   } = useSettings();
-  const { createOnboardingPages, onboardingCompleted, hydrated } = usePages();
-  const { start: startGuide, completed: guideCompleted } = useOnboardingGuide();
+  const { hydrated, onboardingCompleted } = usePages();
+  const onboardingCreatedRef = useRef(false);
 
   useEffect(() => {
     if (utools.windowHeight) {
       UToolsAdapter.setExpendHeight(utools.windowHeight);
     }
   }, [utools.windowHeight]);
+
+  // 首次打开应用时创建新手引导页面
+  useEffect(() => {
+    if (hydrated && !onboardingCompleted && !onboardingCreatedRef.current) {
+      onboardingCreatedRef.current = true;
+      usePages.getState().createOnboardingPages();
+    }
+  }, [hydrated, onboardingCompleted]);
 
   useEffect(() => {
     // 注册 uTools 进入插件事件监听，用于处理自动打开搜索等逻辑
@@ -57,33 +63,16 @@ function App() {
   }, []);
 
 
-  useEffect(() => {
-    if (hydrated && !onboardingCompleted) {
-      createOnboardingPages();
-    }
-  }, [hydrated, onboardingCompleted, createOnboardingPages]);
-
   // 根据隐私设置决定是否自动打开上次笔记
   useEffect(() => {
-    if (!hydrated || !onboardingCompleted) return;
+    if (!hydrated) return;
 
     const { privacy } = useSettings.getState();
     if (!privacy.autoOpenLastNote) {
       // 关闭自动打开，清空当前活跃页面
       usePages.getState().setActivePage(null);
     }
-  }, [hydrated, onboardingCompleted]);
-
-  // 当基础页面加载完成，且交互引导从未展示过时，自动开启
-  useEffect(() => {
-    if (hydrated && onboardingCompleted && !guideCompleted) {
-      // 稍微延迟一点开启，确保界面渲染稳定
-      const timer = setTimeout(() => {
-        startGuide();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [hydrated, onboardingCompleted, guideCompleted, startGuide]);
+  }, [hydrated]);
 
   useEffect(() => {
     const openFolder = (folderPath: string) => {
@@ -264,7 +253,6 @@ function App() {
     <>
       <WorkspacePage />
       <Toaster />
-      <OnboardingOverlay />
     </>
   );
 }

@@ -10,6 +10,7 @@ import { getPageTitle } from "@/lib/page-title";
 import {
   ONBOARDING_PAGE_CONTENT,
   ONBOARDING_CHILD_PAGE_CONTENT,
+  ONBOARDING_SECOND_CHILD_CONTENT,
 } from "@/lib/onboarding";
 
 // 防抖保存的映射
@@ -37,8 +38,6 @@ function generateLocalPageId(notebookId: string, filePath: string): string {
 interface PagesState {
   pages: Record<string, Page>;
   activePageId: string | null;
-  onboardingCompleted: boolean;
-  onboardingExpandPageId: string | null;
   pendingNavigatePageId: string | null;
   expandPageId: string | null;
   searchHighlightQuery: string | null; // 搜索跳转后高亮的关键词
@@ -47,6 +46,7 @@ interface PagesState {
   handledSearchHighlightNonce: number;
   hydrated: boolean;
   lastSavedAt: number | null;
+  onboardingCompleted: boolean;
 
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
@@ -57,8 +57,6 @@ interface PagesState {
   permanentlyDeletePage: (id: string) => void;
   reorderPages: (ids: string[], parentId: string | undefined) => void;
   setActivePage: (id: string | null) => void;
-  setOnboardingCompleted: (completed: boolean) => void;
-  setOnboardingExpandPageId: (id: string | null) => void;
   setPendingNavigatePageId: (id: string | null) => void;
   setExpandPageId: (id: string | null) => void;
   setSearchHighlightQuery: (query: string | null) => void;
@@ -137,8 +135,6 @@ export const usePages = create<PagesState>()(
     (set, get) => ({
       pages: {},
       activePageId: null,
-      onboardingCompleted: false,
-      onboardingExpandPageId: null,
       pendingNavigatePageId: null,
       expandPageId: null,
       searchHighlightQuery: null,
@@ -147,14 +143,17 @@ export const usePages = create<PagesState>()(
       handledSearchHighlightNonce: 0,
       hydrated: false,
       lastSavedAt: null,
+      onboardingCompleted: false,
 
       createOnboardingPages: () => {
-        const id = uuidv4();
+        const mainId = uuidv4();
+        const childId1 = uuidv4();
+        const childId2 = uuidv4();
         const now = Date.now();
         const workspaceId = DEFAULT_NOTEBOOK;
 
         const mainPage: Page = {
-          id,
+          id: mainId,
           workspaceId,
           parentId: undefined,
           content: ONBOARDING_PAGE_CONTENT,
@@ -168,11 +167,10 @@ export const usePages = create<PagesState>()(
           order: now,
         };
 
-        const childId = uuidv4();
-        const childPage: Page = {
-          id: childId,
+        const childPage1: Page = {
+          id: childId1,
           workspaceId,
-          parentId: id,
+          parentId: mainId,
           content: ONBOARDING_CHILD_PAGE_CONTENT,
           isFolder: false,
           isLocked: false,
@@ -184,19 +182,35 @@ export const usePages = create<PagesState>()(
           order: now + 1,
         };
 
+        const childPage2: Page = {
+          id: childId2,
+          workspaceId,
+          parentId: mainId,
+          content: ONBOARDING_SECOND_CHILD_CONTENT,
+          isFolder: false,
+          isLocked: false,
+          isFullWidth: false,
+          fontSize: "default",
+          fontFamily: "default",
+          createdAt: now + 2,
+          updatedAt: now + 2,
+          order: now + 2,
+        };
+
         set((state) => ({
           pages: {
             ...state.pages,
-            [id]: mainPage,
-            [childId]: childPage,
+            [mainId]: mainPage,
+            [childId1]: childPage1,
+            [childId2]: childPage2,
           },
-          activePageId: id,
+          activePageId: mainId,
           onboardingCompleted: true,
-          onboardingExpandPageId: id,
+          expandPageId: mainId,
         }));
 
         useNotebooks.getState().setActiveNotebook(workspaceId);
-        useNotebooks.getState().setLastActivePage(workspaceId, id);
+        useNotebooks.getState().setLastActivePage(workspaceId, mainId);
       },
 
       createPage: (parentId, workspaceId = DEFAULT_NOTEBOOK) => {
@@ -784,14 +798,6 @@ export const usePages = create<PagesState>()(
         if (notebookId) {
           useNotebooks.getState().setLastActivePage(notebookId, id);
         }
-      },
-
-      setOnboardingCompleted: (completed) => {
-        set({ onboardingCompleted: completed });
-      },
-
-      setOnboardingExpandPageId: (id) => {
-        set({ onboardingExpandPageId: id });
       },
 
       setPendingNavigatePageId: (id) => {

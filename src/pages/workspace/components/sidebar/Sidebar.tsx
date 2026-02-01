@@ -50,8 +50,6 @@ export function Sidebar({ className }: SidebarProps) {
     activePageId,
     setActivePage,
     updatePage,
-    onboardingExpandPageId,
-    setOnboardingExpandPageId,
   } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
@@ -353,8 +351,6 @@ export function Sidebar({ className }: SidebarProps) {
                 viewportHeight={scrollAreaHeight}
                 onCreatePage={handleCreatePage}
                 onRequestRename={openRenameDialog}
-                onboardingExpandPageId={onboardingExpandPageId}
-                onOnboardingExpandDone={() => setOnboardingExpandPageId(null)}
               />
             </div>
           )}
