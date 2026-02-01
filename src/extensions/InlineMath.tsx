@@ -4,7 +4,8 @@ import { NodeViewWrapper } from "@tiptap/react";
 import React, { useState, useEffect } from "react";
 import { MathView } from "@/pages/workspace/components/editor/extensions/MathView";
 import { Input } from "@/components/ui/input";
-import { InputRule } from "@tiptap/core";
+import { InputRule, textblockTypeInputRule } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 
 const InlineMathView = (props: NodeViewProps) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -105,13 +106,27 @@ export const InlineMath = Node.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /\$([^$]+)\$/,
-        handler: ({ range, match }) => {
-          const { tr } = this.editor.state;
+        find: /\$([^$]+)\$$/,
+        handler: ({ state, range, match, commands }) => {
+          const { tr } = state;
+          const matchLength = match[0].length;
+          // range.from 是匹配开始的位置，range.to 是当前光标位置（输入 $ 后）
           const start = range.from;
           const end = range.to;
 
-          tr.replaceWith(start, end, this.type.create({ value: match[1] }));
+          // 确保起始位置有效
+          if (start < 0 || end <= start) return null;
+
+          // 删除匹配的文本并插入公式节点
+          tr.delete(start, end);
+          const node = this.type.create({ value: match[1] });
+          tr.insert(start, node);
+
+          // 将光标移到公式节点后面
+          const newPos = start + node.nodeSize;
+          tr.setSelection(TextSelection.create(tr.doc, newPos));
+
+          state.apply(tr);
         },
       }),
     ];

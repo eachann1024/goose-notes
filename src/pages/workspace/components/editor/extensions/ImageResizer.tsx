@@ -167,7 +167,7 @@ export function ImageResizer(props: NodeViewProps) {
           <>
             <div
               className={cn(
-                "absolute top-0 left-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md group/handle",
+                "absolute top-0 left-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md group/handle z-[9998]",
                 resizing && "opacity-100",
               )}
               onMouseDown={(e) => handleMouseDown(e, "left")}
@@ -194,7 +194,7 @@ export function ImageResizer(props: NodeViewProps) {
 
             <div
               className={cn(
-                "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md group/handle",
+                "absolute top-0 right-0 w-4 h-full cursor-col-resize flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md group/handle z-[9998]",
                 resizing && "opacity-100",
               )}
               onMouseDown={(e) => handleMouseDown(e, "right")}

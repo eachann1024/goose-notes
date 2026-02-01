@@ -20,6 +20,7 @@ import { TitleHeading } from "@/extensions/TitleHeading";
 import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
 import { HeadingCollapse } from "@/extensions/HeadingCollapse";
 import { InlineCodeFix } from "@/extensions/InlineCodeFix";
+import { InlineCodeInputRule } from "@/extensions/InlineCodeInputRule";
 import { InlineMath } from "@/extensions/InlineMath";
 import { Callout } from "@/extensions/Callout";
 import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
@@ -126,6 +127,7 @@ export const editorExtensions = [
     transformCopiedText: true,
   }),
   InlineCodeFix,
+  InlineCodeInputRule,
   InlineMath,
   Callout,
   // Underline, // Duplicate extension names found: ['underline']

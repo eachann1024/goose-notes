@@ -15,6 +15,12 @@ interface ColorPickerProps {
   editor: Editor;
 }
 
+interface PositionState {
+  top: number;
+  left: number;
+  showAbove: boolean;
+}
+
 const TEXT_COLORS = [
   { name: "默认", color: "inherit" },
   { name: "灰色", color: "#787774" },
@@ -43,7 +49,7 @@ const HIGHLIGHT_COLORS = [
 
 export function ColorPicker({ editor }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState<PositionState>({ top: 0, left: 0, showAbove: true });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -51,9 +57,16 @@ export function ColorPicker({ editor }: ColorPickerProps) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const panelHeight = 280;
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      const showAbove = spaceAbove >= panelHeight || spaceAbove > spaceBelow;
+
       setPosition({
-        top: rect.top - 8,
+        top: showAbove ? rect.top - 8 : rect.bottom + 8,
         left: rect.left + rect.width / 2,
+        showAbove,
       });
     }
     setIsOpen(true);
@@ -71,7 +84,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       style={{
         top: position.top,
         left: position.left,
-        transform: "translate(-50%, -100%)",
+        transform: position.showAbove ? "translate(-50%, -100%)" : "translate(-50%, 0)",
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

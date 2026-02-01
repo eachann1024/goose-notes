@@ -51,6 +51,7 @@ interface DragHandleOptions {
 function nodeDOMAtCoords(
   coords: { x: number; y: number },
   options: DragHandleOptions,
+  handleElement?: HTMLElement | null,
 ) {
   const selectors = [
     "li",
@@ -68,7 +69,13 @@ function nodeDOMAtCoords(
     ...options.customNodes.map((node) => `[data-type=${node}]`),
   ].join(", ");
 
-  return document.elementsFromPoint(coords.x, coords.y).find((elem) => {
+  // 临时隐藏把手，防止干扰节点查找
+  const originalDisplay = handleElement?.style.display;
+  if (handleElement) {
+    handleElement.style.display = "none";
+  }
+
+  const result = document.elementsFromPoint(coords.x, coords.y).find((elem) => {
     if (elem.closest(".table-add-control")) return false;
     if (isFirstChildOfEditor(elem)) return false;
     // blockquote/table 内部的元素只允许容器自身显示把手
@@ -78,6 +85,13 @@ function nodeDOMAtCoords(
       elem.parentElement?.matches?.(".ProseMirror") || elem.matches(selectors)
     );
   });
+
+  // 恢复把手显示
+  if (handleElement) {
+    handleElement.style.display = originalDisplay || "";
+  }
+
+  return result;
 }
 
 // --- Main Plugin ---
@@ -89,6 +103,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   let isDragging = false;
   let justDropped = false;
   let keepVisibleUntil = 0;
+  let isHoveringHandle = false;
 
   function hideDragHandle() {
     if (Date.now() < keepVisibleUntil) return;
@@ -176,6 +191,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   function updateHandleBySelection(view: any) {
     // drop 后跳过基于 selection 的更新，等待 mousemove 重新设置
     if (justDropped) return;
+
+    // 鼠标悬停在把手上时，不根据选区更新位置（防止拖拽前把手跳动）
+    if (isHoveringHandle) return;
 
     if (!view.editable || !dragHandleElement) {
       hideDragHandle();
@@ -274,7 +292,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     
     if (!node) {
       const coords = getAdjustedCoords(event, options.dragHandleWidth);
-      node = nodeDOMAtCoords(coords, options) as Element | null;
+      node = nodeDOMAtCoords(coords, options, dragHandleElement) as Element | null;
     }
 
     // Fallback: 尝试通过 posAtCoords 查找
@@ -395,6 +413,16 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       }
       dragHandleElement.addEventListener("drag", onDragHandleDrag);
 
+      function onDragHandleMouseEnter() {
+        isHoveringHandle = true;
+      }
+      dragHandleElement.addEventListener("mouseenter", onDragHandleMouseEnter);
+
+      function onDragHandleMouseLeave() {
+        isHoveringHandle = false;
+      }
+      dragHandleElement.addEventListener("mouseleave", onDragHandleMouseLeave);
+
       function onDocumentDrop(e: DragEvent) {
         hideDragHandle();
         handleDrop(view, e);
@@ -420,8 +448,22 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           return;
         }
 
+        // 如果鼠标在把手区域内，不更新把手位置（防止拖拽前把手跳动）
+        if (dragHandleElement) {
+          const handleRect = dragHandleElement.getBoundingClientRect();
+          const margin = 5; // 额外边距，提高容错
+          if (
+            event.clientX >= handleRect.left - margin &&
+            event.clientX <= handleRect.right + margin &&
+            event.clientY >= handleRect.top - margin &&
+            event.clientY <= handleRect.bottom + margin
+          ) {
+            return;
+          }
+        }
+
         const coords = getAdjustedCoords(event, options.dragHandleWidth);
-        let node = nodeDOMAtCoords(coords, options);
+        let node = nodeDOMAtCoords(coords, options, dragHandleElement);
 
         // Fallback: 尝试通过 posAtCoords 查找
         if (!node || !(node instanceof Element)) {
@@ -480,6 +522,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             "dragstart",
             onDragHandleDragStart,
           );
+          dragHandleElement?.removeEventListener("mouseenter", onDragHandleMouseEnter);
+          dragHandleElement?.removeEventListener("mouseleave", onDragHandleMouseLeave);
           document.removeEventListener("drop", onDocumentDrop);
           view?.dom?.parentElement?.removeEventListener(
             "mouseout",
