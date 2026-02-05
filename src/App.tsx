@@ -21,6 +21,7 @@ function App() {
     decreaseEditorFontSize,
     setEditorFontSize,
     customFonts,
+    privacy,
     utools,
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
@@ -31,6 +32,11 @@ function App() {
       UToolsAdapter.setExpendHeight(utools.windowHeight);
     }
   }, [utools.windowHeight]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    (window as any).__gooseNoteAutoOpenLastNote = privacy.autoOpenLastNote;
+  }, [privacy.autoOpenLastNote]);
 
   // 首次打开应用时创建新手引导页面
   useEffect(() => {
