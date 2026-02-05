@@ -52,6 +52,22 @@ const UndoRedoKeymap = Extension.create({
   },
 });
 
+const PipeQuoteInputRule = Extension.create({
+  name: "pipeQuoteInputRule",
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /^(\||｜)\s$/,
+        handler: ({ state, range, chain }) => {
+          const $from = state.doc.resolve(range.from);
+          if ($from.parentOffset > range.to - range.from) return null;
+          chain().deleteRange(range).toggleBlockquote().run();
+        },
+      }),
+    ];
+  },
+});
+
 export const editorExtensions = [
   StarterKit.configure({
     codeBlock: false,
@@ -64,6 +80,7 @@ export const editorExtensions = [
     },
   }),
   UndoRedoKeymap,
+  PipeQuoteInputRule,
   SelectableHorizontalRule,
   HeadingWithBackspace.configure({
     levels: [1, 2, 3, 4, 5, 6],
