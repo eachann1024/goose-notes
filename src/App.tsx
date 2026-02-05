@@ -25,7 +25,7 @@ function App() {
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
-  const initialLocalWelcomeRef = useRef(false);
+  const COLD_START_GAP_MS = 30 * 60 * 1000;
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -46,11 +46,28 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
-        
+        const now = Date.now();
+        const lastEnterAt = state.utools.lastEnterAt || 0;
+        const isColdStart = now - lastEnterAt > COLD_START_GAP_MS;
+
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
         }
+
+        if (isColdStart) {
+          const notebooksState = useNotebooks.getState();
+          const activeNotebookId = notebooksState.activeNotebookId;
+          const activeNotebook = activeNotebookId
+            ? notebooksState.notebooks[activeNotebookId]
+            : null;
+          if (activeNotebook?.source === "local-folder") {
+            (window as any).__gooseNoteForceWelcomeOnce = true;
+            usePages.getState().setActivePage(null);
+          }
+        }
+
+        useSettings.getState().setUToolsLastEnterAt(now);
 
         // 确保 CommandPalette 已挂载并能接收事件
         // 使用 requestAnimationFrame 略微延迟以确保 UI 响应
@@ -71,24 +88,6 @@ function App() {
     const { privacy } = useSettings.getState();
     if (!privacy.autoOpenLastNote) {
       // 关闭自动打开，清空当前活跃页面
-      usePages.getState().setActivePage(null);
-    }
-  }, [hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (initialLocalWelcomeRef.current) return;
-    initialLocalWelcomeRef.current = true;
-    if (typeof window === "undefined" || !(window as any).utools) return;
-
-    const notebooksState = useNotebooks.getState();
-    const activeNotebookId = notebooksState.activeNotebookId;
-    const activeNotebook = activeNotebookId
-      ? notebooksState.notebooks[activeNotebookId]
-      : null;
-
-    if (activeNotebook?.source === "local-folder") {
-      (window as any).__gooseNoteForceWelcomeOnce = true;
       usePages.getState().setActivePage(null);
     }
   }, [hydrated]);
