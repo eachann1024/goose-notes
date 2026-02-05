@@ -416,8 +416,8 @@ export const usePages = create<PagesState>()(
 
             const confirmed = confirm(
               page.isFolder
-                ? `确定要删除文件夹 "${getPageTitle(page)}" 及其内容吗？`
-                : `确定要删除文件 "${getPageTitle(page)}" 吗？`,
+                ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`
+                : `确定要删除本地文件 "${getPageTitle(page)}" 吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`,
             );
             if (!confirmed) return state;
 
@@ -634,8 +634,8 @@ export const usePages = create<PagesState>()(
 
           const confirmed = confirm(
             page.isFolder
-              ? `确定要永久删除 "${getPageTitle(page)}" 及其内容吗？`
-              : `确定要永久删除 "${getPageTitle(page)}" 及其对应的文件吗？`,
+              ? `确定要永久删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`
+              : `确定要永久删除本地文件 "${getPageTitle(page)}" 及其对应的文件吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`,
           );
           if (!confirmed) return;
 
