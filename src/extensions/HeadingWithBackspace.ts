@@ -4,6 +4,13 @@ export const HeadingWithBackspace = Heading.extend({
   addKeyboardShortcuts() {
     return {
       ...this.parent?.(),
+      "Shift-Enter": () => {
+        const { $from } = this.editor.state.selection;
+        if ($from.parent.type.name !== "heading") {
+          return false;
+        }
+        return true;
+      },
       Backspace: () => {
         const { selection } = this.editor.state;
         const { empty, $anchor } = selection;

@@ -248,6 +248,20 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
   addInputRules() {
     return [
       new InputRule({
+        find: /^```([a-zA-Z0-9_-]+)?\s$/,
+        handler: ({ state, range, match, chain }) => {
+          const $from = state.doc.resolve(range.from);
+          if ($from.parentOffset > range.to - range.from) return null;
+
+          const language = match?.[1] ? match[1].trim() : null;
+          chain()
+            .deleteRange(range)
+            .setNode("codeBlock", { language })
+            .run();
+          return null;
+        },
+      }),
+      new InputRule({
         find: /^\$\$\s$/,
         handler: ({ state, range, commands }) => {
           const $from = state.doc.resolve(range.from);
@@ -281,6 +295,35 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
   addKeyboardShortcuts() {
     return {
       ...this.parent?.(),
+      Enter: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        if (!empty) return false;
+        if (editor.isActive("codeBlock")) return false;
+        if ($from.parent.type.name !== "paragraph") return false;
+        if ($from.parentOffset !== $from.parent.content.size) return false;
+
+        const text = $from.parent.textBetween(
+          0,
+          $from.parent.content.size,
+          undefined,
+          "\ufffc",
+        );
+        const trimmed = text.trim();
+        const match = trimmed.match(/^```([a-zA-Z0-9_-]+)?$/);
+        if (!match) return false;
+
+        const language = match?.[1] ? match[1].trim() : null;
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: $from.start(), to: $from.end() })
+          .setNode("codeBlock", { language })
+          .run();
+        return true;
+      },
       ArrowUp: ({ editor }) => {
         const { state } = editor;
         const { selection, doc } = state;
