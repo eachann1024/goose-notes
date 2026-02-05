@@ -22,6 +22,14 @@
 
 ---
 
+## 欢迎页定义
+
+- 欢迎页 = “开始页面”，提供搜索、打开本地文件夹、新建页面等入口
+- 欢迎页不是空白页
+- 初始页（“准备好记录想法了吗？”）路径：src/pages/workspace/components/page/PageEmptyState.tsx
+
+---
+
 ## ⚠️ 数据持久化（CRITICAL）
 
 **Zustand store 必须用 uToolsStorage**（uTools 关闭后 localStorage 会清空）

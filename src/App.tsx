@@ -45,10 +45,19 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
+        const notebooksState = useNotebooks.getState();
         
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
+        }
+
+        const activeNotebookId = notebooksState.activeNotebookId;
+        const activeNotebook = activeNotebookId
+          ? notebooksState.notebooks[activeNotebookId]
+          : null;
+        if (activeNotebook?.source === "local-folder") {
+          usePages.getState().setActivePage(null);
         }
 
         // 确保 CommandPalette 已挂载并能接收事件

@@ -1155,32 +1155,53 @@ export const usePages = create<PagesState>()(
             const activeNotebookId = useNotebooks.getState().activeNotebookId;
             // Only update if this is the active notebook
             if (activeNotebookId === notebookId) {
-                const lastActivePageId = useNotebooks.getState().getLastActivePage(notebookId);
-                const pageIdSet = new Set(localPages.map((p) => p.id));
+                const notebook = useNotebooks.getState().notebooks[notebookId];
+                const isLocalFolder = notebook?.source === "local-folder";
+                const forceWelcome =
+                  isLocalFolder &&
+                  typeof window !== "undefined" &&
+                  (window as any).utools;
 
-                if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
-                   nextActivePageId = lastActivePageId;
+                if (forceWelcome) {
+                  nextActivePageId = null;
+                  result.activePageId = null;
+                  result.expandPageId = null;
                 } else {
-                    const notebook = useNotebooks.getState().notebooks[notebookId];
-                    const isLocalFolder = notebook?.source === "local-folder";
-                    if (!isLocalFolder) {
-                        const firstPage = localPages
-                            .filter((p) => !p.trashedAt)
-                            .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))[0];
-                        if (firstPage) {
-                            nextActivePageId = firstPage.id;
-                        }
+                  const lastActivePageId = useNotebooks
+                    .getState()
+                    .getLastActivePage(notebookId);
+                  const pageIdSet = new Set(localPages.map((p) => p.id));
+
+                  if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
+                    nextActivePageId = lastActivePageId;
+                  } else if (!isLocalFolder) {
+                    const firstPage = localPages
+                      .filter((p) => !p.trashedAt)
+                      .sort(
+                        (a, b) =>
+                          (a.order ?? a.createdAt) -
+                          (b.order ?? b.createdAt),
+                      )[0];
+                    if (firstPage) {
+                      nextActivePageId = firstPage.id;
                     }
-                }
-                
-                if (nextActivePageId !== state.activePageId) {
+                  }
+
+                  if (nextActivePageId !== state.activePageId) {
                     result.activePageId = nextActivePageId;
+                  }
                 }
             }
           }
 
           // Sync to Notebook store
-          const currentActive = result.activePageId || state.activePageId; // Use the potentially updated activePageId
+          const hasActivePageUpdate = Object.prototype.hasOwnProperty.call(
+            result,
+            "activePageId",
+          );
+          const currentActive = hasActivePageUpdate
+            ? result.activePageId
+            : state.activePageId;
           const activeNotebookId = useNotebooks.getState().activeNotebookId;
           if (activeNotebookId === notebookId && currentActive) {
                useNotebooks.getState().setLastActivePage(notebookId, currentActive);
