@@ -138,7 +138,9 @@ export function PageEmptyState() {
           folderName,
           folderPath,
         );
-        await loadLocalFolderPages(notebookId, folderPath);
+        await loadLocalFolderPages(notebookId, folderPath, {
+          showWelcome: true,
+        });
       }
       return;
     }
@@ -149,7 +151,7 @@ export function PageEmptyState() {
       if (path) {
         const folderName = path.split(/[\\/]/).pop() || "Unknown";
         const notebookId = createLocalFolderNotebook(folderName, path);
-        await loadLocalFolderPages(notebookId, path);
+        await loadLocalFolderPages(notebookId, path, { showWelcome: true });
       }
     } catch (e) {
       console.error(e);

@@ -40,7 +40,9 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                     );
                   usePages
                     .getState()
-                    .loadLocalFolderPages(notebookId, result[0]);
+                    .loadLocalFolderPages(notebookId, result[0], {
+                      showWelcome: true,
+                    });
                 }
               } else {
                 try {
@@ -56,7 +58,9 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                       );
                     await usePages
                       .getState()
-                      .loadLocalFolderPages(notebookId, path);
+                      .loadLocalFolderPages(notebookId, path, {
+                        showWelcome: true,
+                      });
                   }
                 } catch (e) {
                   console.error(e);

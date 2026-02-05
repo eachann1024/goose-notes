@@ -4,10 +4,6 @@ const path = require("path");
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
-  window.__gooseNoteRuntime = {
-    pid: process.pid,
-    uptime: () => process.uptime(),
-  };
   const PENDING_OPEN_FOLDER_KEY = "__gooseNotePendingOpenFolder";
 
   // 本地文件变更监听映射

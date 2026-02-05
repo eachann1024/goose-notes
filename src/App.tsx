@@ -25,16 +25,6 @@ function App() {
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
-  const runtimeSnapshot = () => {
-    if (typeof window === "undefined") {
-      return { pid: null as number | null, uptime: null as number | null };
-    }
-    const runtime = (window as any).__gooseNoteRuntime;
-    const pid = typeof runtime?.pid === "number" ? runtime.pid : null;
-    const uptime =
-      typeof runtime?.uptime === "function" ? Number(runtime.uptime()) : null;
-    return { pid, uptime };
-  };
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -55,36 +45,10 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
-        const runtime = runtimeSnapshot();
-        const lastPid = state.utools.runtimePid;
-        const lastUptime = state.utools.runtimeUptime || 0;
-        const isProcessRestart =
-          runtime.pid !== null &&
-          (lastPid === null ||
-            runtime.pid !== lastPid ||
-            (runtime.uptime !== null && runtime.uptime + 0.5 < lastUptime));
 
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
-        }
-
-        if (runtime.pid !== null) {
-          useSettings
-            .getState()
-            .setUToolsRuntimeInfo(runtime.pid, runtime.uptime ?? 0);
-        }
-
-        if (isProcessRestart) {
-          const notebooksState = useNotebooks.getState();
-          const activeNotebookId = notebooksState.activeNotebookId;
-          const activeNotebook = activeNotebookId
-            ? notebooksState.notebooks[activeNotebookId]
-            : null;
-          if (activeNotebook?.source === "local-folder") {
-            (window as any).__gooseNoteForceWelcomeOnce = true;
-            usePages.getState().setActivePage(null);
-          }
         }
 
         // 确保 CommandPalette 已挂载并能接收事件
@@ -104,30 +68,14 @@ function App() {
     if (!hydrated) return;
 
     const { privacy } = useSettings.getState();
-    const runtime = runtimeSnapshot();
-    const state = useSettings.getState();
-    const lastPid = state.utools.runtimePid;
-    const lastUptime = state.utools.runtimeUptime || 0;
-    const isProcessRestart =
-      runtime.pid !== null &&
-      (lastPid === null ||
-        runtime.pid !== lastPid ||
-        (runtime.uptime !== null && runtime.uptime + 0.5 < lastUptime));
-
-    if (runtime.pid !== null) {
-      useSettings
-        .getState()
-        .setUToolsRuntimeInfo(runtime.pid, runtime.uptime ?? 0);
-    }
-
-    if (!privacy.autoOpenLastNote && isProcessRestart) {
+    if (!privacy.autoOpenLastNote) {
       // 关闭自动打开，清空当前活跃页面
       usePages.getState().setActivePage(null);
     }
   }, [hydrated]);
 
   useEffect(() => {
-    const openFolder = (folderPath: string) => {
+    const openFolder = async (folderPath: string) => {
       const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
       const notebookId = useNotebooks
         .getState()
@@ -135,14 +83,16 @@ function App() {
           folderName,
           folderPath,
         );
-      usePages.getState().loadLocalFolderPages(notebookId, folderPath);
+      await usePages
+        .getState()
+        .loadLocalFolderPages(notebookId, folderPath, { showWelcome: true });
     };
 
     const handleOpenFolder = (event: Event & { detail?: { path: string } }) => {
       const customEvent = event as Event & { detail?: { path: string } };
       const { path: folderPath } = customEvent.detail || {};
       if (typeof folderPath === "string" && folderPath.length > 0) {
-        openFolder(folderPath);
+        void openFolder(folderPath);
       }
     };
 
@@ -157,7 +107,7 @@ function App() {
       (
         window as Window & { __gooseNotePendingOpenFolder?: string | null }
       ).__gooseNotePendingOpenFolder = null;
-      openFolder(pending);
+      void openFolder(pending);
     }
 
     return () => {

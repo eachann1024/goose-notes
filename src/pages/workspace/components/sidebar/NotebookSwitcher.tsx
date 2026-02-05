@@ -78,7 +78,11 @@ export function NotebookSwitcher() {
         if (result && result.length > 0) {
           const folderName = result[0].split(/[\\/]/).pop() || "Unknown";
           const notebookId = createLocalFolderNotebook(folderName, result[0]);
-          await usePages.getState().loadLocalFolderPages(notebookId, result[0]);
+          await usePages
+            .getState()
+            .loadLocalFolderPages(notebookId, result[0], {
+              showWelcome: true,
+            });
           setActiveNotebook(notebookId);
           setActivePage(null);
         }
@@ -88,7 +92,11 @@ export function NotebookSwitcher() {
         if (path) {
           const folderName = path.split(/[\\/]/).pop() || "Unknown";
           const notebookId = createLocalFolderNotebook(folderName, path);
-          await usePages.getState().loadLocalFolderPages(notebookId, path);
+          await usePages
+            .getState()
+            .loadLocalFolderPages(notebookId, path, {
+              showWelcome: true,
+            });
           setActiveNotebook(notebookId);
           setActivePage(null);
         }

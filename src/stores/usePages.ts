@@ -74,7 +74,11 @@ interface PagesState {
   removePagesByWorkspaceId: (workspaceId: string) => void;
 
   // 本地文件夹相关函数
-  loadLocalFolderPages: (notebookId: string, basePath: string) => Promise<void>;
+  loadLocalFolderPages: (
+    notebookId: string,
+    basePath: string,
+    options?: { showWelcome?: boolean },
+  ) => Promise<void>;
   saveLocalPageContent: (
     pageId: string,
     content: JSONContent,
@@ -916,7 +920,7 @@ export const usePages = create<PagesState>()(
       },
 
       // 本地文件夹相关函数
-      loadLocalFolderPages: async (notebookId, basePath) => {
+      loadLocalFolderPages: async (notebookId, basePath, options) => {
         if (typeof window === "undefined" || !window.gooseFs) return;
 
         const normalizeLocalFileTitle = (name: string) => {
@@ -1157,41 +1161,37 @@ export const usePages = create<PagesState>()(
             if (activeNotebookId === notebookId) {
                 const notebook = useNotebooks.getState().notebooks[notebookId];
                 const isLocalFolder = notebook?.source === "local-folder";
-                const forceWelcomeOnce =
-                  typeof window !== "undefined" &&
-                  (window as any).__gooseNoteForceWelcomeOnce === true;
 
-                if (forceWelcomeOnce && isLocalFolder) {
-                  (window as any).__gooseNoteForceWelcomeOnce = false;
-                  nextActivePageId = null;
-                  result.activePageId = null;
-                  result.expandPageId = null;
-                } else {
-                  const lastActivePageId = useNotebooks
-                    .getState()
-                    .getLastActivePage(notebookId);
-                  const pageIdSet = new Set(localPages.map((p) => p.id));
+                const lastActivePageId = useNotebooks
+                  .getState()
+                  .getLastActivePage(notebookId);
+                const pageIdSet = new Set(localPages.map((p) => p.id));
 
-                  if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
-                    nextActivePageId = lastActivePageId;
-                  } else if (!isLocalFolder) {
-                    const firstPage = localPages
-                      .filter((p) => !p.trashedAt)
-                      .sort(
-                        (a, b) =>
-                          (a.order ?? a.createdAt) -
-                          (b.order ?? b.createdAt),
-                      )[0];
-                    if (firstPage) {
-                      nextActivePageId = firstPage.id;
-                    }
-                  }
-
-                  if (nextActivePageId !== state.activePageId) {
-                    result.activePageId = nextActivePageId;
+                if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
+                  nextActivePageId = lastActivePageId;
+                } else if (!isLocalFolder) {
+                  const firstPage = localPages
+                    .filter((p) => !p.trashedAt)
+                    .sort(
+                      (a, b) =>
+                        (a.order ?? a.createdAt) -
+                        (b.order ?? b.createdAt),
+                    )[0];
+                  if (firstPage) {
+                    nextActivePageId = firstPage.id;
                   }
                 }
+
+                if (nextActivePageId !== state.activePageId) {
+                  result.activePageId = nextActivePageId;
+                }
             }
+          }
+
+          if (options?.showWelcome) {
+            result.activePageId = null;
+            result.expandPageId = null;
+            result.pendingNavigatePageId = null;
           }
 
           // Sync to Notebook store

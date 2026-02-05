@@ -156,7 +156,9 @@ export function WorkspacePage() {
           folderName,
           folderPath,
         );
-      usePages.getState().loadLocalFolderPages(notebookId, folderPath);
+      await usePages
+        .getState()
+        .loadLocalFolderPages(notebookId, folderPath, { showWelcome: true });
       toast.success("文件夹已打开");
       return;
     }
