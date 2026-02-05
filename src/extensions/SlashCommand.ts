@@ -4,10 +4,40 @@ import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 import { CommandList } from "@/pages/workspace/components/command/CommandList";
 import { getSuggestionItems } from "@/pages/workspace/components/command/commandItems";
-import { InputRule } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { cn } from "@/lib/utils";
+
+const TRIGGER_CHARS = ["/", "、"];
+
+const findTriggerMatch = ({ $position }: { $position: any }) => {
+  const text = $position.nodeBefore?.isText && $position.nodeBefore.text;
+  if (!text) return null;
+
+  const lastIndex = TRIGGER_CHARS.reduce((best, ch) => {
+    const idx = text.lastIndexOf(ch);
+    return idx > best ? idx : best;
+  }, -1);
+
+  if (lastIndex === -1) return null;
+
+  const charBefore = lastIndex > 0 ? text[lastIndex - 1] : "";
+  const isValidStart =
+    charBefore === "" || charBefore === " " || charBefore === "\n";
+  if (!isValidStart) return null;
+
+  const query = text.slice(lastIndex + 1);
+  if (query.includes(" ")) return null;
+
+  const from = $position.pos - text.length + lastIndex;
+  const to = $position.pos;
+
+  return {
+    range: { from, to },
+    query,
+    text: text.slice(lastIndex),
+  };
+};
 
 export const SlashCommand = Extension.create({
   name: "slashCommand",
@@ -23,34 +53,13 @@ export const SlashCommand = Extension.create({
     };
   },
 
-  addInputRules() {
-    return [
-      new InputRule({
-        find: /、$/,
-        handler: ({ state, range, commands }) => {
-          const $from = state.doc.resolve(range.from);
-          const textBefore = $from.parent.textBetween(
-            0,
-            $from.parentOffset,
-            null,
-            "\ufffc",
-          );
-          const charBefore = textBefore.slice(-1);
-          const isValidStart =
-            textBefore === "" || charBefore === " " || charBefore === "\n";
-          if (!isValidStart) return null;
-          commands.insertContentAt(range, "/");
-          return null;
-        },
-      }),
-    ];
-  },
-
   addProseMirrorPlugins() {
     return [
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
+        findSuggestionMatch: ({ $position }: { $position: any }) =>
+          findTriggerMatch({ $position }),
         allow: ({ state, range }: { state: any; range: any }) => {
           if (!this.editor.isFocused) {
             return false;
@@ -97,9 +106,12 @@ export const SlashCommand = Extension.create({
               null,
               "\ufffc",
             );
-            const lastSlashIndex = textBefore.lastIndexOf("/");
+            const lastTriggerIndex = TRIGGER_CHARS.reduce((best, ch) => {
+              const idx = textBefore.lastIndexOf(ch);
+              return idx > best ? idx : best;
+            }, -1);
 
-            if (lastSlashIndex === -1) return DecorationSet.empty;
+            if (lastTriggerIndex === -1) return DecorationSet.empty;
 
             const textAfterCursor = $from.parent.textBetween(
               $from.parentOffset,
@@ -108,27 +120,27 @@ export const SlashCommand = Extension.create({
               "\ufffc",
             );
 
-            const charBeforeSlash =
-              lastSlashIndex > 0 ? textBefore[lastSlashIndex - 1] : "";
+            const charBeforeTrigger =
+              lastTriggerIndex > 0 ? textBefore[lastTriggerIndex - 1] : "";
             const isValidTrigger =
-              charBeforeSlash === "" ||
-              charBeforeSlash === " " ||
-              charBeforeSlash === "\n";
+              charBeforeTrigger === "" ||
+              charBeforeTrigger === " " ||
+              charBeforeTrigger === "\n";
 
             if (isValidTrigger && textAfterCursor.trim().length === 0) {
-              const textAfterSlash = textBefore.slice(lastSlashIndex + 1);
-              const items = getSuggestionItems({ query: textAfterSlash });
+              const textAfterTrigger = textBefore.slice(lastTriggerIndex + 1);
+              const items = getSuggestionItems({ query: textAfterTrigger });
               const hasMatch = items.length > 0;
 
-              if (hasMatch && !textAfterSlash.includes(" ")) {
-                const slashPos = $from.start() + lastSlashIndex;
-                const isOnlySlash = textAfterSlash.length === 0;
+              if (hasMatch && !textAfterTrigger.includes(" ")) {
+                const triggerPos = $from.start() + lastTriggerIndex;
+                const isOnlyTrigger = textAfterTrigger.length === 0;
 
                 return DecorationSet.create(state.doc, [
-                  Decoration.inline(slashPos, to, {
+                  Decoration.inline(triggerPos, to, {
                     class: cn(
                       "slash-command-capsule",
-                      isOnlySlash && "is-empty",
+                      isOnlyTrigger && "is-empty",
                     ),
                     "data-placeholder": "筛选...",
                   }),
