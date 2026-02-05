@@ -25,7 +25,16 @@ function App() {
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
-  const hasEnteredRef = useRef(false);
+  const runtimeSnapshot = () => {
+    if (typeof window === "undefined") {
+      return { pid: null as number | null, uptime: null as number | null };
+    }
+    const runtime = (window as any).__gooseNoteRuntime;
+    const pid = typeof runtime?.pid === "number" ? runtime.pid : null;
+    const uptime =
+      typeof runtime?.uptime === "function" ? Number(runtime.uptime()) : null;
+    return { pid, uptime };
+  };
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -46,14 +55,27 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
-        const isFirstEnter = !hasEnteredRef.current;
+        const runtime = runtimeSnapshot();
+        const lastPid = state.utools.runtimePid;
+        const lastUptime = state.utools.runtimeUptime || 0;
+        const isProcessRestart =
+          runtime.pid !== null &&
+          (lastPid === null ||
+            runtime.pid !== lastPid ||
+            (runtime.uptime !== null && runtime.uptime + 0.5 < lastUptime));
 
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
         }
 
-        if (isFirstEnter) {
+        if (runtime.pid !== null) {
+          useSettings
+            .getState()
+            .setUToolsRuntimeInfo(runtime.pid, runtime.uptime ?? 0);
+        }
+
+        if (isProcessRestart) {
           const notebooksState = useNotebooks.getState();
           const activeNotebookId = notebooksState.activeNotebookId;
           const activeNotebook = activeNotebookId
@@ -64,7 +86,6 @@ function App() {
             usePages.getState().setActivePage(null);
           }
         }
-        hasEnteredRef.current = true;
 
         // 确保 CommandPalette 已挂载并能接收事件
         // 使用 requestAnimationFrame 略微延迟以确保 UI 响应
@@ -83,7 +104,23 @@ function App() {
     if (!hydrated) return;
 
     const { privacy } = useSettings.getState();
-    if (!privacy.autoOpenLastNote) {
+    const runtime = runtimeSnapshot();
+    const state = useSettings.getState();
+    const lastPid = state.utools.runtimePid;
+    const lastUptime = state.utools.runtimeUptime || 0;
+    const isProcessRestart =
+      runtime.pid !== null &&
+      (lastPid === null ||
+        runtime.pid !== lastPid ||
+        (runtime.uptime !== null && runtime.uptime + 0.5 < lastUptime));
+
+    if (runtime.pid !== null) {
+      useSettings
+        .getState()
+        .setUToolsRuntimeInfo(runtime.pid, runtime.uptime ?? 0);
+    }
+
+    if (!privacy.autoOpenLastNote && isProcessRestart) {
       // 关闭自动打开，清空当前活跃页面
       usePages.getState().setActivePage(null);
     }

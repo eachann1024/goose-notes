@@ -18,6 +18,8 @@ export interface UToolsSettings {
     openSearchInUtools: boolean
 
     windowHeight: number
+    runtimePid: number | null
+    runtimeUptime: number
 }
 
 export interface PrivacySettings {
@@ -69,6 +71,7 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
+    setUToolsRuntimeInfo: (pid: number | null, uptime: number) => void
     setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -154,6 +157,8 @@ export const useSettings = create<SettingsState>()(
                 openSearchInUtools: true,
 
                 windowHeight: 600,
+                runtimePid: null,
+                runtimeUptime: 0,
             },
             privacy: {
                 autoOpenLastNote: false,
@@ -198,6 +203,14 @@ export const useSettings = create<SettingsState>()(
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
                     utools: { ...state.utools, windowHeight: height },
+                })),
+            setUToolsRuntimeInfo: (pid, uptime) =>
+                set((state) => ({
+                    utools: {
+                        ...state.utools,
+                        runtimePid: pid,
+                        runtimeUptime: uptime,
+                    },
                 })),
             setAutoOpenLastNote: (enabled) =>
                 set((state) => ({
