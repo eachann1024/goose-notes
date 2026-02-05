@@ -57,7 +57,7 @@ const PipeQuoteInputRule = Extension.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /^(\||｜)\s$/,
+        find: /^(\||｜|》)\s$/,
         handler: ({ state, range, chain }) => {
           const $from = state.doc.resolve(range.from);
           if ($from.parentOffset > range.to - range.from) return null;
