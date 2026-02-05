@@ -95,7 +95,7 @@ export function PageMenu() {
 
           <DropdownMenuItem
             className="text-xs text-destructive focus:text-destructive"
-            onClick={() => deletePage(activePageId)}
+            onClick={() => void deletePage(activePageId)}
           >
             <LucideIcons.Trash2 className="mr-2 h-3.5 w-3.5" />
             <span>移至垃圾箱</span>

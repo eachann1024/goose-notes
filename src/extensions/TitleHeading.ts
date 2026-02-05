@@ -95,6 +95,11 @@ export const TitleHeading = Extension.create({
               return true;
             }
 
+            if (event.key === "Enter" && event.shiftKey) {
+              event.preventDefault();
+              return true;
+            }
+
             if (event.key === "Enter") {
               event.preventDefault();
               const { tr } = state;

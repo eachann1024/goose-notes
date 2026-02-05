@@ -201,7 +201,7 @@ export function WorkspacePage() {
           <PageTrashBanner
             onRestore={() => usePages.getState().restorePage(activePageId)}
             onDelete={() =>
-              usePages.getState().permanentlyDeletePage(activePageId)
+              void usePages.getState().permanentlyDeletePage(activePageId)
             }
           />
         )}

@@ -149,7 +149,7 @@ export const useNotebooks = create<NotebooksState>()(
             (p) => p.workspaceId === id,
           );
           pagesInNotebook.forEach((p) =>
-            pagesStore.permanentlyDeletePage(p.id),
+            void pagesStore.permanentlyDeletePage(p.id),
           );
         }
 

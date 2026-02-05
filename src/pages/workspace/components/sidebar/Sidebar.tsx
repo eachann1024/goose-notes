@@ -89,7 +89,7 @@ export function Sidebar({ className }: SidebarProps) {
 
         if (activePageId && !isInEditor && currentView === "pages") {
           e.preventDefault();
-          deletePageWithUndo(activePageId);
+          void deletePageWithUndo(activePageId);
         }
       }
     },

@@ -300,53 +300,12 @@ export const browserGooseFs = {
   watch: () => {},
   unwatch: () => {},
   deleteFile: async (path: string) => {
-      // Implement delete
-      const relativePath = path.startsWith(rootPathPrefix) ? path.slice(rootPathPrefix.length) : path;
-      const normalized = normalizePath(relativePath);
-      const parts = normalized.split("/");
-      const fileName = parts.pop();
-       if (!fileName || !rootHandle) return false;
-       
-       let current = rootHandle;
-       for (const part of parts) {
-           if (!part) continue;
-           try {
-               current = await current.getDirectoryHandle(part);
-           } catch {
-               return false;
-           }
-       }
-       try {
-           await current.removeEntry(fileName);
-           return true;
-       } catch {
-           return false;
-       }
+      console.warn("Browser mode does not support system trash, delete blocked:", path);
+      return false;
   },
   deleteDir: async (path: string) => {
-      // Same as deleteFile, removeEntry handles both (if recursive option supported? removeEntry supports recursive)
-      // Actually standard removeEntry on DirectoryHandle: removeEntry(name, { recursive: boolean })
-      const relativePath = path.startsWith(rootPathPrefix) ? path.slice(rootPathPrefix.length) : path;
-      const normalized = normalizePath(relativePath);
-      const parts = normalized.split("/");
-      const dirName = parts.pop();
-       if (!dirName || !rootHandle) return false;
-       
-       let current = rootHandle;
-       for (const part of parts) {
-           if (!part) continue;
-           try {
-               current = await current.getDirectoryHandle(part);
-           } catch {
-               return false;
-           }
-       }
-       try {
-           await current.removeEntry(dirName, { recursive: true });
-           return true;
-       } catch {
-           return false;
-       }
+      console.warn("Browser mode does not support system trash, delete blocked:", path);
+      return false;
   },
   rename: async () => true // Rename not easily supported in File System Access yet (move)
 };

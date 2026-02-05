@@ -11,6 +11,30 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 最近写入的文件标记，用于避免自己写入触发重载提示
   const recentWrites = new Map();
 
+  const tryTrash = async (targetPath) => {
+    try {
+      if (utools?.shellTrashItem) {
+        await utools.shellTrashItem(targetPath);
+        return true;
+      }
+    } catch (err) {
+      console.error("[gooseFs] shellTrashItem failed:", err);
+    }
+
+    try {
+      // Electron fallback
+      const { shell } = require("electron");
+      if (shell?.trashItem) {
+        await shell.trashItem(targetPath);
+        return true;
+      }
+    } catch (err) {
+      console.error("[gooseFs] electron shell.trashItem failed:", err);
+    }
+
+    return false;
+  };
+
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）
   window.gooseFs = {
     readDir: (dir) => {
@@ -121,22 +145,26 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
-    deleteFile: (filePath) => {
+    deleteFile: async (filePath) => {
       try {
-        fs.unlinkSync(filePath);
-        recentWrites.set(filePath, Date.now());
-        return true;
+        const ok = await tryTrash(filePath);
+        if (ok) {
+          recentWrites.set(filePath, Date.now());
+        }
+        return ok;
       } catch (err) {
         console.error("[gooseFs] deleteFile failed:", err);
         return false;
       }
     },
 
-    deleteDir: (dirPath) => {
+    deleteDir: async (dirPath) => {
       try {
-        fs.rmSync(dirPath, { recursive: true, force: true });
-        recentWrites.set(`${dirPath}${path.sep}`, Date.now());
-        return true;
+        const ok = await tryTrash(dirPath);
+        if (ok) {
+          recentWrites.set(`${dirPath}${path.sep}`, Date.now());
+        }
+        return ok;
       } catch (err) {
         console.error("[gooseFs] deleteDir failed:", err);
         return false;

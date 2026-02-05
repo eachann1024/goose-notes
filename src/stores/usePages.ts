@@ -51,10 +51,10 @@ interface PagesState {
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
-  deletePage: (id: string) => boolean;
+  deletePage: (id: string) => Promise<boolean>;
   restorePage: (id: string) => void;
   duplicatePage: (id: string) => string;
-  permanentlyDeletePage: (id: string) => void;
+  permanentlyDeletePage: (id: string) => Promise<void>;
   reorderPages: (ids: string[], parentId: string | undefined) => void;
   setActivePage: (id: string | null) => void;
   setPendingNavigatePageId: (id: string | null) => void;
@@ -388,55 +388,53 @@ export const usePages = create<PagesState>()(
         });
       },
 
-      deletePage: (id) => {
+      deletePage: async (id) => {
         flushEditorContent();
-        let deleted = false;
+        const page = get().pages[id];
+        if (!page) return false;
 
-        set((state) => {
-          const page = state.pages[id];
-          if (!page) return state;
-
-          const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-          const isLocalFolder = notebook?.source === "local-folder";
-          if (isLocalFolder && notebook?.localPath) {
-            const resolvePathFromId = (pageId: string) => {
-              const prefix = `local-${page.workspaceId}-`;
-              if (!pageId.startsWith(prefix)) return null;
-              const encoded = pageId.slice(prefix.length);
-              try {
-                const relativePath = decodeURIComponent(encoded);
-                return `${notebook.localPath}/${relativePath}`;
-              } catch {
-                return null;
-              }
-            };
-
-            const targetPath = page.localFilePath || resolvePathFromId(id);
-            if (!targetPath || !window.gooseFs) return state;
-
-            const confirmed = confirm(
-              page.isFolder
-                ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`
-                : `确定要删除本地文件 "${getPageTitle(page)}" 吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`,
-            );
-            if (!confirmed) return state;
-
-            const removedIds = new Set<string>();
-            const stack = [id];
-            while (stack.length) {
-              const currentId = stack.pop()!;
-              removedIds.add(currentId);
-              Object.values(state.pages).forEach((p) => {
-                if (p.parentId === currentId) stack.push(p.id);
-              });
+        const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+        const isLocalFolder = notebook?.source === "local-folder";
+        if (isLocalFolder && notebook?.localPath) {
+          const resolvePathFromId = (pageId: string) => {
+            const prefix = `local-${page.workspaceId}-`;
+            if (!pageId.startsWith(prefix)) return null;
+            const encoded = pageId.slice(prefix.length);
+            try {
+              const relativePath = decodeURIComponent(encoded);
+              return `${notebook.localPath}/${relativePath}`;
+            } catch {
+              return null;
             }
+          };
 
-            const removeOk = page.isFolder
-              ? window.gooseFs.deleteDir(targetPath)
-              : window.gooseFs.deleteFile(targetPath);
-            if (!removeOk) return state;
-            deleted = true;
+          const targetPath = page.localFilePath || resolvePathFromId(id);
+          if (!targetPath || !window.gooseFs) return false;
 
+          const confirmed = confirm(
+            page.isFolder
+              ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？将移入系统回收站。`
+              : `确定要删除本地文件 "${getPageTitle(page)}" 吗？将移入系统回收站。`,
+          );
+          if (!confirmed) return false;
+
+          const removedIds = new Set<string>();
+          const stack = [id];
+          const snapshotPages = get().pages;
+          while (stack.length) {
+            const currentId = stack.pop()!;
+            removedIds.add(currentId);
+            Object.values(snapshotPages).forEach((p) => {
+              if (p.parentId === currentId) stack.push(p.id);
+            });
+          }
+
+          const removeOk = page.isFolder
+            ? await window.gooseFs.deleteDir(targetPath)
+            : await window.gooseFs.deleteFile(targetPath);
+          if (!removeOk) return false;
+
+          set((state) => {
             const newPages = { ...state.pages };
             removedIds.forEach((pid) => delete newPages[pid]);
 
@@ -455,18 +453,24 @@ export const usePages = create<PagesState>()(
                 nextActivePageId = null;
               }
               // 同步清理 Notebook 中记录的最后活跃页面
-              useNotebooks.getState().setLastActivePage(page.workspaceId, nextActivePageId);
+              useNotebooks.getState().setLastActivePage(
+                page.workspaceId,
+                nextActivePageId,
+              );
             }
 
             return {
               pages: newPages,
               activePageId: nextActivePageId,
             };
-          }
+          });
 
-          const workspaceId = page.workspaceId;
-          deleted = true;
+          return true;
+        }
 
+        const workspaceId = page.workspaceId;
+
+        set((state) => {
           // 递归获取所有子页面 ID
           const removedIds = new Set<string>();
           const stack = [id];
@@ -506,7 +510,10 @@ export const usePages = create<PagesState>()(
               newActivePageId = null;
             }
             // 清理 Notebook 记录
-            useNotebooks.getState().setLastActivePage(workspaceId, newActivePageId);
+            useNotebooks.getState().setLastActivePage(
+              workspaceId,
+              newActivePageId,
+            );
           }
 
           return {
@@ -515,7 +522,7 @@ export const usePages = create<PagesState>()(
           };
         });
 
-        return deleted;
+        return true;
       },
 
       restorePage: (id) => {
@@ -605,7 +612,7 @@ export const usePages = create<PagesState>()(
         return newId;
       },
 
-      permanentlyDeletePage: (id) => {
+      permanentlyDeletePage: async (id) => {
         const page = get().pages[id];
         const notebook = page
           ? useNotebooks.getState().notebooks[page.workspaceId]
@@ -634,8 +641,8 @@ export const usePages = create<PagesState>()(
 
           const confirmed = confirm(
             page.isFolder
-              ? `确定要永久删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`
-              : `确定要永久删除本地文件 "${getPageTitle(page)}" 及其对应的文件吗？此操作会直接从磁盘移除，垃圾箱/回收站不会保留。`,
+              ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？将移入系统回收站。`
+              : `确定要删除本地文件 "${getPageTitle(page)}" 及其对应的文件吗？将移入系统回收站。`,
           );
           if (!confirmed) return;
 
@@ -650,8 +657,8 @@ export const usePages = create<PagesState>()(
           }
 
           const deleted = page.isFolder
-            ? window.gooseFs.deleteDir(targetPath)
-            : window.gooseFs.deleteFile(targetPath);
+            ? await window.gooseFs.deleteDir(targetPath)
+            : await window.gooseFs.deleteFile(targetPath);
           if (!deleted) return;
 
           set((state) => {

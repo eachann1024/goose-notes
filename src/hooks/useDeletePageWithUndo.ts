@@ -6,7 +6,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 export function useDeletePageWithUndo() {
   const { deletePage, restorePage, setActivePage, pages } = usePages();
 
-  const deletePageWithUndo = (pageId: string) => {
+  const deletePageWithUndo = async (pageId: string) => {
     const page = pages[pageId];
     if (!page) return;
     const notebook = useNotebooks.getState().notebooks[page.workspaceId];
@@ -14,12 +14,12 @@ export function useDeletePageWithUndo() {
 
     const pageTitle = getPageTitle(page) || "无标题";
 
-    const deleted = deletePage(pageId);
+    const deleted = await deletePage(pageId);
 
     if (!deleted) return;
 
     if (isLocalFolder) {
-      toast(`已删除「${pageTitle}」`, {
+      toast(`已删除「${pageTitle}」，已移入系统回收站`, {
         duration: 3000,
         position: "bottom-right",
       });

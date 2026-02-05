@@ -114,7 +114,7 @@ export function TrashList({ onBack }: TrashListProps) {
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        permanentlyDeletePage(page.id)
+                        void permanentlyDeletePage(page.id)
                       }}
                       title="永久删除"
                     >

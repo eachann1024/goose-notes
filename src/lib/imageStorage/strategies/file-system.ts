@@ -79,7 +79,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
     if (!notebookPath) return
 
     const fullPath = `${notebookPath}/assets/${filename}`
-    gooseFs.deleteFile(fullPath)
+    await gooseFs.deleteFile(fullPath)
   }
 
   /**
