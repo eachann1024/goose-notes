@@ -923,6 +923,15 @@ export const usePages = create<PagesState>()(
       loadLocalFolderPages: async (notebookId, basePath, options) => {
         if (typeof window === "undefined" || !window.gooseFs) return;
 
+        const previousActivePageId = get().activePageId;
+        const previousActivePage = previousActivePageId
+          ? get().pages[previousActivePageId]
+          : undefined;
+        const previousActiveInNotebook =
+          previousActivePage?.workspaceId === notebookId
+            ? previousActivePageId
+            : null;
+
         const normalizeLocalFileTitle = (name: string) => {
           const base = name.replace(/\.(md|markdown)$/i, "").trim();
           return base || "无标题";
@@ -1169,6 +1178,11 @@ export const usePages = create<PagesState>()(
 
                 if (lastActivePageId && pageIdSet.has(lastActivePageId)) {
                   nextActivePageId = lastActivePageId;
+                } else if (
+                  previousActiveInNotebook &&
+                  pageIdSet.has(previousActiveInNotebook)
+                ) {
+                  nextActivePageId = previousActiveInNotebook;
                 } else if (!isLocalFolder) {
                   const firstPage = localPages
                     .filter((p) => !p.trashedAt)
