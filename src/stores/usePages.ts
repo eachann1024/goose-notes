@@ -1157,12 +1157,12 @@ export const usePages = create<PagesState>()(
             if (activeNotebookId === notebookId) {
                 const notebook = useNotebooks.getState().notebooks[notebookId];
                 const isLocalFolder = notebook?.source === "local-folder";
-                const forceWelcome =
-                  isLocalFolder &&
+                const forceWelcomeOnce =
                   typeof window !== "undefined" &&
-                  (window as any).utools;
+                  (window as any).__gooseNoteForceWelcomeOnce === true;
 
-                if (forceWelcome) {
+                if (forceWelcomeOnce && isLocalFolder) {
+                  (window as any).__gooseNoteForceWelcomeOnce = false;
                   nextActivePageId = null;
                   result.activePageId = null;
                   result.expandPageId = null;

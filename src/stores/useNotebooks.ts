@@ -183,13 +183,6 @@ export const useNotebooks = create<NotebooksState>()(
         const notebook = get().notebooks[id];
         if (
           notebook?.source === "local-folder" &&
-          typeof window !== "undefined" &&
-          (window as any).utools
-        ) {
-          usePages.getState().setActivePage(null);
-        }
-        if (
-          notebook?.source === "local-folder" &&
           notebook.localPath &&
           typeof window !== "undefined" &&
           (window as any).gooseFs

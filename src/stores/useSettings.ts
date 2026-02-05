@@ -156,7 +156,7 @@ export const useSettings = create<SettingsState>()(
                 windowHeight: 600,
             },
             privacy: {
-                autoOpenLastNote: true,
+                autoOpenLastNote: false,
             },
             searchAllNotebooks: false,
             customFonts: {

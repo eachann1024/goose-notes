@@ -25,6 +25,7 @@ function App() {
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
+  const initialLocalWelcomeRef = useRef(false);
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -45,19 +46,10 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
-        const notebooksState = useNotebooks.getState();
         
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
-        }
-
-        const activeNotebookId = notebooksState.activeNotebookId;
-        const activeNotebook = activeNotebookId
-          ? notebooksState.notebooks[activeNotebookId]
-          : null;
-        if (activeNotebook?.source === "local-folder") {
-          usePages.getState().setActivePage(null);
         }
 
         // 确保 CommandPalette 已挂载并能接收事件
@@ -79,6 +71,24 @@ function App() {
     const { privacy } = useSettings.getState();
     if (!privacy.autoOpenLastNote) {
       // 关闭自动打开，清空当前活跃页面
+      usePages.getState().setActivePage(null);
+    }
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (initialLocalWelcomeRef.current) return;
+    initialLocalWelcomeRef.current = true;
+    if (typeof window === "undefined" || !(window as any).utools) return;
+
+    const notebooksState = useNotebooks.getState();
+    const activeNotebookId = notebooksState.activeNotebookId;
+    const activeNotebook = activeNotebookId
+      ? notebooksState.notebooks[activeNotebookId]
+      : null;
+
+    if (activeNotebook?.source === "local-folder") {
+      (window as any).__gooseNoteForceWelcomeOnce = true;
       usePages.getState().setActivePage(null);
     }
   }, [hydrated]);
