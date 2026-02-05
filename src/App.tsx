@@ -25,7 +25,7 @@ function App() {
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
-  const COLD_START_GAP_MS = 30 * 60 * 1000;
+  const hasEnteredRef = useRef(false);
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -46,16 +46,14 @@ function App() {
     if (typeof window !== "undefined" && (window as any).utools) {
       (window as any).utools.onPluginEnter(() => {
         const state = useSettings.getState();
-        const now = Date.now();
-        const lastEnterAt = state.utools.lastEnterAt || 0;
-        const isColdStart = now - lastEnterAt > COLD_START_GAP_MS;
+        const isFirstEnter = !hasEnteredRef.current;
 
         // 立即应用窗口高度
         if (state.utools.windowHeight) {
           UToolsAdapter.setExpendHeight(state.utools.windowHeight);
         }
 
-        if (isColdStart) {
+        if (isFirstEnter) {
           const notebooksState = useNotebooks.getState();
           const activeNotebookId = notebooksState.activeNotebookId;
           const activeNotebook = activeNotebookId
@@ -66,8 +64,7 @@ function App() {
             usePages.getState().setActivePage(null);
           }
         }
-
-        useSettings.getState().setUToolsLastEnterAt(now);
+        hasEnteredRef.current = true;
 
         // 确保 CommandPalette 已挂载并能接收事件
         // 使用 requestAnimationFrame 略微延迟以确保 UI 响应

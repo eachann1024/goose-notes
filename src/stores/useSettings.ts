@@ -18,7 +18,6 @@ export interface UToolsSettings {
     openSearchInUtools: boolean
 
     windowHeight: number
-    lastEnterAt: number
 }
 
 export interface PrivacySettings {
@@ -70,7 +69,6 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
-    setUToolsLastEnterAt: (timestamp: number) => void
     setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -156,7 +154,6 @@ export const useSettings = create<SettingsState>()(
                 openSearchInUtools: true,
 
                 windowHeight: 600,
-                lastEnterAt: 0,
             },
             privacy: {
                 autoOpenLastNote: false,
@@ -201,10 +198,6 @@ export const useSettings = create<SettingsState>()(
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
                     utools: { ...state.utools, windowHeight: height },
-                })),
-            setUToolsLastEnterAt: (timestamp) =>
-                set((state) => ({
-                    utools: { ...state.utools, lastEnterAt: timestamp },
                 })),
             setAutoOpenLastNote: (enabled) =>
                 set((state) => ({
