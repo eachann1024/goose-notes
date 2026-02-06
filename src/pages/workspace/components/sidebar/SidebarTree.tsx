@@ -246,12 +246,13 @@ function PageNode({
       >
         <div
           className={cn(
-            "relative flex items-center h-full pl-2 pr-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
+            "relative flex items-center h-full pl-2 pr-1 rounded-[8px] cursor-pointer transition-colors text-sm font-medium",
             isDropTarget && "sidebar-drop-target",
             node.state.isDragging && "opacity-50",
-            // Unify hover effect: Use a clearer background color
-            !isActive && "hover:bg-muted/60 dark:hover:bg-muted/40 text-muted-foreground dark:text-muted-foreground/65 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
-            isActive && "bg-muted/60 dark:bg-muted/40 text-foreground dark:text-foreground/85"
+            !isActive &&
+              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/55 dark:hover:bg-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
+            isActive &&
+              "border workspace-divider-strong bg-background/98 text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.08)] dark:bg-background/94 dark:text-foreground/90"
           )}
           onClick={(e) => {
             e.stopPropagation();

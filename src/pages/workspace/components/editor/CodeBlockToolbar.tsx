@@ -126,9 +126,9 @@ export function CodeBlockToolbar({
                 size="sm"
                 className={cn(
                   "h-6 px-2 text-xs font-mono rounded-md",
-                  "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                  "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                   "border border-border/50",
-                  "backdrop-blur-sm transition-all duration-200",
+                  "backdrop-blur-[1px] transition-all duration-200",
                 )}
               >
                 {displayLanguage}
@@ -178,9 +178,9 @@ export function CodeBlockToolbar({
           <div
             className={cn(
               "h-6 px-2 flex items-center text-[10px] font-mono rounded-md",
-              "bg-gradient-to-r from-background/90 to-background/80 text-muted-foreground/70",
+              "bg-gradient-to-r from-background/98 to-background/94 text-muted-foreground/70",
               "border border-border/50",
-              "backdrop-blur-sm",
+              "backdrop-blur-[1px]",
             )}
           >
             {displayLanguage}
@@ -196,9 +196,9 @@ export function CodeBlockToolbar({
                 onClick={() => onWrapChange(!wrap)}
                 className={cn(
                   "h-6 w-6 p-0 rounded-md",
-                  "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                  "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                   "border border-border/50",
-                  "backdrop-blur-sm transition-all duration-200",
+                  "backdrop-blur-[1px] transition-all duration-200",
                   wrap && "bg-primary/10 border-primary/30 text-primary",
                 )}
               >
@@ -221,9 +221,9 @@ export function CodeBlockToolbar({
                 disabled={isLoading}
                 className={cn(
                   "h-6 w-6 p-0 rounded-md",
-                  "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                  "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                   "border border-border/50",
-                  "backdrop-blur-sm transition-all duration-200",
+                  "backdrop-blur-[1px] transition-all duration-200",
                 )}
               >
                 {isLoading ? (
@@ -247,9 +247,9 @@ export function CodeBlockToolbar({
               onClick={handleCopy}
               className={cn(
                 "h-6 w-6 p-0 rounded-md",
-                "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                 "border border-border/50",
-                "backdrop-blur-sm transition-all duration-200",
+                "backdrop-blur-[1px] transition-all duration-200",
               )}
             >
               {copied ? (

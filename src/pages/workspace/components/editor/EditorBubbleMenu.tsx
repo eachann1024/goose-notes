@@ -9,7 +9,7 @@ type EditorBubbleMenuProps = Omit<
 import { useScrollHide } from "@/hooks/useScrollHide";
 
 const TOOLTIP_STYLE =
-  "rounded-lg border-0 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)]";
+  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)]";
 
 function BubbleMenuTooltip({
   label,
@@ -53,7 +53,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         editor={editor}
         appendTo={() => document.body}
         className={cn(
-          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-black/10 bg-popover/95 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.18),0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-opacity duration-200 dark:border-white/10 dark:bg-[#2f3437]/95",
+          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover/99 p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]/99",
           shouldHideMenu ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor, state }) => {

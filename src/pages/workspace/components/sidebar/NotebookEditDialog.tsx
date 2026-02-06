@@ -56,18 +56,18 @@ export function NotebookEditDialog({
       {/* 背景装饰 - 编辑模式 */}
       {!showDeleteConfirm && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/3 to-transparent rounded-full" />
         </div>
       )}
 
       {/* 背景装饰 - 删除确认模式（红色渐变） */}
       {showDeleteConfirm && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-destructive/5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-destructive/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-destructive/5 to-transparent rounded-full" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-destructive/3 rounded-full blur-2xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-destructive/4 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-destructive/3 to-transparent rounded-full" />
         </div>
       )}
 
@@ -109,7 +109,7 @@ export function NotebookEditDialog({
 
         {/* 表单卡片 */}
         {showDeleteConfirm ? (
-          <div className="bg-gradient-to-br from-destructive/10 to-destructive/5 backdrop-blur-md border-2 border-destructive/20 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-gradient-to-br from-destructive/14 to-destructive/10 backdrop-blur-[1px] border-2 border-destructive/25 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
               <label
                 htmlFor="confirm-delete"
@@ -159,7 +159,7 @@ export function NotebookEditDialog({
             </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border-2 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] border-2 rounded-2xl p-6 shadow-lg space-y-4">
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">
                 选择图标

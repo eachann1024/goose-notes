@@ -21,7 +21,7 @@ interface PositionState {
 }
 
 const TOOLTIP_STYLE =
-  "rounded-lg border-0 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)]";
+  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)]";
 
 const TEXT_COLORS = [
   { name: "默认", color: "inherit" },
@@ -82,7 +82,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
 
   const panelContent = isOpen ? (
     <div
-      className="fixed z-[20000] w-fit rounded-[10px] border border-border/70 bg-popover/98 p-1 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.08)] backdrop-blur-sm"
+      className="fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover/99 p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px]"
       style={{
         top: position.top,
         left: position.left,

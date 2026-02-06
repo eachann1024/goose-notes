@@ -162,7 +162,7 @@ export function CommandPalette() {
       onOpenChange={setOpen}
       label="Global Search"
       filter={() => 1}
-      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] bg-popover rounded-xl shadow-2xl border p-0 overflow-hidden z-[51] text-popover-foreground data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-xl bg-popover/90"
+      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-xl border p-0 overflow-hidden z-[51] text-popover-foreground data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-[1px] bg-popover/98 shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
       aria-describedby={descriptionId}
     >
       <DialogTitle className="sr-only">搜索</DialogTitle>

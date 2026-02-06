@@ -163,9 +163,9 @@ function CodeBlockWithLanguageView({
                   onClick={() => setShowLatexHint(!showLatexHint)}
                   className={cn(
                     "h-6 w-6 p-0 rounded-md",
-                    "bg-gradient-to-r from-background/90 to-background/80 hover:from-background/95 hover:to-background/85",
+                    "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                     "border border-border/50",
-                    "backdrop-blur-sm transition-all duration-200",
+                    "backdrop-blur-[1px] transition-all duration-200",
                     showLatexHint && "bg-primary/10 border-primary/30 text-primary",
                   )}
                 >

@@ -25,8 +25,11 @@ export function PageHeader({
     }
   }, [lastSavedAt, isLocalItem]);
 
+  const actionButtonClass =
+    "inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground/70 dark:text-muted-foreground/55 transition-colors duration-150 hover:bg-muted/65 dark:hover:bg-muted/45 hover:text-foreground dark:hover:text-foreground/85";
+
   return (
-    <div className="workspace-divider h-12 flex items-center justify-between px-3 border-b bg-gradient-to-b from-background/90 via-background/80 to-background/70 dark:from-background/80 dark:via-background/70 dark:to-background/60 backdrop-blur-md dark:backdrop-blur-xl sticky top-0 z-10 shrink-0">
+    <div className="workspace-divider h-12 flex items-center justify-between px-3 border-b bg-background/96 dark:bg-background/94 backdrop-blur-[1px] sticky top-0 z-10 shrink-0">
       <div className="flex items-center text-sm text-muted-foreground dark:text-muted-foreground/70 gap-2 overflow-hidden">
         <span className="truncate max-w-[200px]">
           {getPageTitle(page)}
@@ -47,7 +50,7 @@ export function PageHeader({
         {!page.trashedAt && (
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 rounded text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200"
+            className={actionButtonClass}
             title={isLocalItem ? "关闭文件" : "关闭页面"}
           >
             <LucideIcons.X className="h-4 w-4" />
@@ -57,7 +60,7 @@ export function PageHeader({
         {!page.trashedAt && (
           <button
             onClick={onToggleFavorite}
-            className="p-1 hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 rounded transition-all duration-200 text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85"
+            className={actionButtonClass}
             title={
               page.isFavorite
                 ? "取消收藏"

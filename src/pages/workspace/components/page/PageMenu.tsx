@@ -45,7 +45,11 @@ export function PageMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-[7px] text-muted-foreground/70 transition-colors duration-150 hover:bg-muted/65 hover:text-foreground"
+        >
           <LucideIcons.MoreHorizontal className="h-4 w-4" />
           <span className="sr-only">Open menu</span>
         </Button>

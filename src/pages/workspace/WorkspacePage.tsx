@@ -183,7 +183,7 @@ export function WorkspacePage() {
         onDrop={handleDrop}
       >
       {isDragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-background/90 via-background/95 to-background/90 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-background/96 via-background/98 to-background/97 backdrop-blur-[1px] animate-in fade-in duration-300">
           <div className="text-center">
             <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
             <p className="text-lg text-muted-foreground font-medium">
@@ -196,9 +196,10 @@ export function WorkspacePage() {
         </div>
       )}
       <CommandPalette />
-      <Sidebar />
+      <div className="workspace-stage">
+      <Sidebar className="workspace-panel workspace-panel-sidebar" />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="workspace-panel workspace-panel-main flex-1 flex flex-col h-full overflow-hidden">
         {activePageId && page?.trashedAt && (
           <PageTrashBanner
             onRestore={() => usePages.getState().restorePage(activePageId)}
@@ -310,6 +311,7 @@ export function WorkspacePage() {
           )}
         </div>
       </main>
+      </div>
     </div>
     </>
   );

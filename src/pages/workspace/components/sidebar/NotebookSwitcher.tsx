@@ -252,7 +252,7 @@ export function NotebookSwitcher() {
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-4 w-4" />
-              打开
+              打开文件夹
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

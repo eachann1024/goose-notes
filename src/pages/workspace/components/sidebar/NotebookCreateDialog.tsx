@@ -34,9 +34,9 @@ export function NotebookCreateDialog({
     <div className="fixed inset-0 z-50 bg-background flex items-center justify-center p-6 animate-in fade-in duration-200">
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/3 to-transparent rounded-full" />
       </div>
 
       {/* 关闭按钮 */}
@@ -59,7 +59,7 @@ export function NotebookCreateDialog({
         </div>
 
         {/* 表单卡片 */}
-        <div className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border-2 rounded-2xl p-6 shadow-lg space-y-4">
+        <div className="bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] border-2 rounded-2xl p-6 shadow-lg space-y-4">
           {error && (
             <div className="text-sm text-destructive bg-gradient-to-r from-destructive/15 to-destructive/5 px-3 py-2 rounded-lg">
               {error}

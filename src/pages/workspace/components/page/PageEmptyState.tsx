@@ -204,8 +204,8 @@ export function PageEmptyState() {
     <div className="h-full flex items-center justify-center p-8 relative overflow-hidden">
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
       </div>
 
@@ -237,7 +237,7 @@ export function PageEmptyState() {
                   action.onClick();
                 }}
                 type="button"
-                className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/70 to-card/50 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/80 hover:to-card/60 cursor-pointer"
+                className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] transition-all duration-300 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/96 hover:to-card/92 cursor-pointer"
               >
                 <div
                   className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}

@@ -140,7 +140,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
     >
       <div
         ref={containerRef}
-        className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border bg-popover text-popover-foreground shadow-2xl transition-all"
+        className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border border-border/75 bg-popover/99 text-popover-foreground shadow-[0_10px_26px_rgba(15,23,42,0.12)] transition-all"
       >
         <div className="text-[10px] font-medium text-muted-foreground px-2 py-1 select-none">
           基本区块
@@ -220,7 +220,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
       </div>
 
       {showHint && selectedItem?.hint && (
-        <div className="absolute left-[248px] top-0 z-[60] w-[200px] h-fit bg-muted/95 backdrop-blur-md border border-border text-foreground rounded-xl p-3 shadow-xl flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-left-1">
+        <div className="absolute left-[248px] top-0 z-[60] w-[200px] h-fit bg-muted/98 backdrop-blur-[1px] border border-border/75 text-foreground rounded-xl p-3 shadow-[0_10px_24px_rgba(15,23,42,0.1)] flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-left-1">
           <div className="flex items-center gap-2 border-b border-border/50 pb-2">
             {selectedItem.icon && (
               <selectedItem.icon className="h-4 w-4 text-primary" />

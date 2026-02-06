@@ -148,7 +148,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
   };
 
   const barClasses =
-    "bg-gradient-to-br from-muted/60 to-muted/40 hover:from-primary/25 hover:to-primary/15 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[2px] table-add-control transition-all duration-100";
+    "bg-gradient-to-br from-muted/85 to-muted/78 hover:from-primary/25 hover:to-primary/15 text-muted-foreground border border-border/50 rounded-sm backdrop-blur-[1px] table-add-control transition-all duration-100";
 
   const rowBarStyle: React.CSSProperties = {
     ...baseBarStyle,
