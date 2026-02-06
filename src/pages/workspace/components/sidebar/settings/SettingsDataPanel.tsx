@@ -36,6 +36,9 @@ export function SettingsDataPanel({
   onExport,
   onOpenResetDialog,
 }: SettingsDataPanelProps) {
+  const selectedCount = selectedIds.length;
+  const totalCount = notebookList.length;
+
   return (
     <div className="space-y-4">
       <SettingsSectionCard
@@ -51,16 +54,21 @@ export function SettingsDataPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium text-muted-foreground">
-              选择记事本 ({selectedIds.length})
+              选择记事本 ({selectedCount})
             </Label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onSelectAll}
-              className="h-8 rounded-[10px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground"
-            >
-              {selectedIds.length === notebookList.length ? "取消全选" : "全选"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-muted-foreground">
+                已选 {selectedCount}/{totalCount}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSelectAll}
+                className="h-8 rounded-[10px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground"
+              >
+                {selectedCount === totalCount ? "取消全选" : "全选"}
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -121,11 +129,14 @@ export function SettingsDataPanel({
         <Button
           className="w-full rounded-[12px]"
           onClick={onExport}
-          disabled={selectedIds.length === 0 || exporting}
+          disabled={selectedCount === 0 || exporting}
         >
           {exporting ? "导出中..." : "开始导出"}
           {!exporting && <Download className="ml-2 h-4 w-4" />}
         </Button>
+        <p className="text-xs text-muted-foreground">
+          建议在重置前先导出备份，避免误删造成数据丢失。
+        </p>
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -133,9 +144,19 @@ export function SettingsDataPanel({
         title="重置所有数据"
         description="删除所有记事本和页面，此操作不可撤销"
         actions={
-          <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
-            重置所有数据
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExport}
+              disabled={selectedCount === 0 || exporting}
+            >
+              先导出备份
+            </Button>
+            <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
+              重置所有数据
+            </Button>
+          </div>
         }
       >
         <div className="flex items-center gap-3 rounded-[12px] border border-destructive/20 bg-[hsl(var(--goose-shell-bg)/0.42)] p-3">

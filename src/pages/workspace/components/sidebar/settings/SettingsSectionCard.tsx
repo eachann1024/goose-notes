@@ -26,8 +26,8 @@ export function SettingsSectionCard({
       className={cn(
         "rounded-[14px] border p-5 transition-colors",
         tone === "danger"
-          ? "border-destructive/25 bg-destructive/[0.04] dark:bg-destructive/[0.08]"
-          : "border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-editor-bg))] shadow-[0_6px_18px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]",
+          ? "border-destructive/25 bg-[hsl(var(--goose-editor-bg))] shadow-[0_6px_18px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]"
+          : "border-[hsl(var(--foreground)/0.08)] dark:border-[hsl(var(--foreground)/0.12)] bg-[hsl(var(--goose-editor-bg))] shadow-[0_6px_18px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]",
         className,
       )}
     >
