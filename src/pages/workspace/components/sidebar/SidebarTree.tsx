@@ -105,6 +105,7 @@ interface SortablePageRowProps {
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
   nestPointerLeft: number;
+  nestPointerPlacement: "above" | "below";
   onToggleOpen: (id: string) => void;
   onRequestRename: (page: Page) => void;
 }
@@ -146,6 +147,7 @@ function SortablePageRow({
   dropLinePosition,
   dropLineLeft,
   nestPointerLeft,
+  nestPointerPlacement,
   onToggleOpen,
   onRequestRename,
 }: SortablePageRowProps) {
@@ -249,6 +251,7 @@ function SortablePageRow({
         <div
           className={cn(
             "sidebar-drop-parent-pointer",
+            nestPointerPlacement === "below" && "sidebar-drop-parent-pointer-below",
             isEmptyNestTarget && "sidebar-drop-parent-pointer-empty"
           )}
           style={{ left: nestPointerLeft }}
@@ -841,6 +844,8 @@ export function SidebarTree({
                 const dropLineLeft = rowDepth * TREE_INDENT + 16;
                 const nestPointerLeft = (item.depth + 1) * TREE_INDENT + 16;
                 const dropLinePosition = dropPlacement === "after" ? "bottom" : "top";
+                const nestPointerPlacement =
+                  virtualRow.start < rowHeight * 1.2 ? "below" : "above";
 
                 return (
                   <SortablePageRow
@@ -858,6 +863,7 @@ export function SidebarTree({
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     nestPointerLeft={nestPointerLeft}
+                    nestPointerPlacement={nestPointerPlacement}
                     onToggleOpen={handleToggle}
                     onRequestRename={onRequestRename}
                   />
