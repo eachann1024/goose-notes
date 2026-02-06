@@ -29,7 +29,7 @@ export function PageHeader({
     "inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground/70 dark:text-muted-foreground/55 transition-colors duration-150 hover:bg-muted/65 dark:hover:bg-muted/45 hover:text-foreground dark:hover:text-foreground/85";
 
   return (
-    <div className="workspace-divider h-12 flex items-center justify-between px-3 border-b bg-background/96 dark:bg-background/94 backdrop-blur-[1px] sticky top-0 z-10 shrink-0">
+    <div className="workspace-divider h-12 flex items-center justify-between px-3 border-b bg-background dark:bg-background backdrop-blur-[1px] sticky top-0 z-10 shrink-0">
       <div className="flex items-center text-sm text-muted-foreground dark:text-muted-foreground/70 gap-2 overflow-hidden">
         <span className="truncate max-w-[200px]">
           {getPageTitle(page)}

@@ -233,7 +233,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
       >
         {/* Header Tabs */}
         {/* Header Tabs */}
-        <div className="flex items-center justify-between px-3 pt-2 pb-2 text-[14px] border-b bg-background/96 dark:bg-background/94 backdrop-blur-[1px] sticky top-0 z-10">
+        <div className="flex items-center justify-between px-3 pt-2 pb-2 text-[14px] border-b bg-background dark:bg-background backdrop-blur-[1px] sticky top-0 z-10">
           <div className="flex gap-4">
             {!emojiOnly &&
               NOTION_TABS.map((t) => (

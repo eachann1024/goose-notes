@@ -252,7 +252,7 @@ function PageNode({
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/55 dark:hover:bg-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
             isActive &&
-              "border workspace-divider-strong bg-background/98 text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.08)] dark:bg-background/94 dark:text-foreground/90"
+              "border workspace-divider-strong bg-background text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.08)] dark:bg-background dark:text-foreground/90"
           )}
           onClick={(e) => {
             e.stopPropagation();

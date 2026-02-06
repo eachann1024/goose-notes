@@ -244,7 +244,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
 
   const buttonClass = cn(
     "flex items-center justify-center rounded-sm cursor-grab",
-    "bg-muted/82 hover:bg-primary/20 text-muted-foreground hover:text-foreground",
+    "bg-muted/80 hover:bg-primary/20 text-muted-foreground hover:text-foreground",
     "border border-border/50 backdrop-blur-[1px]",
     "transition-all duration-200 ease-out",
     visible

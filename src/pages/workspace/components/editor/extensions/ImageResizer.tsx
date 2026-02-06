@@ -184,7 +184,7 @@ export function ImageResizer(props: NodeViewProps) {
             <button
               onClick={() => setPreviewOpen(true)}
               className={cn(
-                "absolute top-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md bg-white/96 backdrop-blur-[1px] ring-1 ring-black/10 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110",
+                "absolute top-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md bg-white backdrop-blur-[1px] ring-1 ring-black/10 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110",
                 resizing && "opacity-100",
               )}
               title="预览图片"
@@ -230,7 +230,7 @@ export function ImageResizer(props: NodeViewProps) {
               </button>
 
               {/* 图片容器 */}
-              <div className="relative max-h-[80vh] overflow-hidden rounded-lg bg-black/65 backdrop-blur-[1px]">
+              <div className="relative max-h-[80vh] overflow-hidden rounded-lg bg-black/70 backdrop-blur-[1px]">
                 <img
                   src={resolvedSrc || node.attrs.src}
                   alt={node.attrs.alt}
@@ -243,7 +243,7 @@ export function ImageResizer(props: NodeViewProps) {
               </div>
 
               {/* 工具栏 */}
-              <div className="mt-4 flex gap-2 bg-black/82 backdrop-blur-[1px] rounded-lg p-2">
+              <div className="mt-4 flex gap-2 bg-black/80 backdrop-blur-[1px] rounded-lg p-2">
                 <Button
                   variant="ghost"
                   size="icon"
