@@ -71,6 +71,7 @@ interface SortablePageRowProps {
   isNestDropTarget: boolean;
   isEmptyNestTarget: boolean;
   showDropLine: boolean;
+  dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
   nestPointerLeft: number;
   onToggleOpen: (id: string) => void;
@@ -111,6 +112,7 @@ function SortablePageRow({
   isNestDropTarget,
   isEmptyNestTarget,
   showDropLine,
+  dropLinePosition,
   dropLineLeft,
   nestPointerLeft,
   onToggleOpen,
@@ -204,7 +206,12 @@ function SortablePageRow({
       {showDropLine && (
         <div
           className="absolute h-0.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
-          style={{ left: dropLineLeft, right: 12, top: 0 }}
+          style={{
+            left: dropLineLeft,
+            right: 12,
+            top: dropLinePosition === "top" ? 0 : undefined,
+            bottom: dropLinePosition === "bottom" ? 0 : undefined,
+          }}
         />
       )}
       {isNestDropTarget && (
@@ -359,6 +366,7 @@ export function SidebarTree({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [dropPlacement, setDropPlacement] = useState<"before" | "after">("before");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
@@ -493,17 +501,39 @@ export function SidebarTree({
     }
   };
 
+  const autoScrollVertical = (activeRect: { top: number; bottom: number } | null) => {
+    const container = scrollRef.current;
+    if (!container || !activeRect) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const edge = 42;
+    const step = 18;
+
+    if (activeRect.top < containerRect.top + edge) {
+      container.scrollTop -= step;
+      return;
+    }
+
+    if (activeRect.bottom > containerRect.bottom - edge) {
+      container.scrollTop += step;
+    }
+  };
+
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveId(String(active.id));
     setOverId(null);
     setDragOffsetX(0);
+    setDropPlacement("before");
   };
 
-  const handleDragMove = ({ delta }: DragMoveEvent) => {
+  const handleDragMove = ({ delta, active }: DragMoveEvent) => {
     setDragOffsetX(delta.x);
+
+    const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
+    autoScrollVertical(translatedRect);
   };
 
-  const handleDragOver = ({ over }: DragOverEvent) => {
+  const handleDragOver = ({ over, active }: DragOverEvent) => {
     if (!over) {
       setOverId(null);
       return;
@@ -514,6 +544,13 @@ export function SidebarTree({
       return;
     }
     setOverId(overItemId);
+
+    const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
+    if (translatedRect) {
+      const activeCenterY = translatedRect.top + translatedRect.height / 2;
+      const overMiddleY = over.rect.top + over.rect.height / 2;
+      setDropPlacement(activeCenterY > overMiddleY ? "after" : "before");
+    }
 
     const overItem = flatItems.find((item) => item.id === overItemId);
     if (!overItem || !overItem.hasChildren || overItem.isOpen) {
@@ -541,6 +578,8 @@ export function SidebarTree({
     setActiveId(null);
     setOverId(null);
     setDragOffsetX(0);
+    const currentPlacement = dropPlacement;
+    setDropPlacement("before");
 
     if (!overNodeId) return;
     if (activeDescendantIds.has(overNodeId)) return;
@@ -589,7 +628,15 @@ export function SidebarTree({
       return;
     }
 
-    const reordered = arrayMove(flatItems, activeIndex, overIndex).map((item) => {
+    const nextIndex = (() => {
+      if (currentPlacement === "after") {
+        return activeIndex < overIndex ? overIndex : overIndex + 1;
+      }
+      return activeIndex < overIndex ? overIndex - 1 : overIndex;
+    })();
+    const boundedIndex = Math.max(0, Math.min(nextIndex, flatItems.length - 1));
+
+    const reordered = arrayMove(flatItems, activeIndex, boundedIndex).map((item) => {
       if (item.id !== activeNodeId) return item;
       return {
         ...item,
@@ -651,6 +698,7 @@ export function SidebarTree({
     setActiveId(null);
     setOverId(null);
     setDragOffsetX(0);
+    setDropPlacement("before");
   };
 
   if (flatItems.length === 0) {
@@ -675,7 +723,7 @@ export function SidebarTree({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
-        autoScroll
+        autoScroll={false}
       >
         <SortableContext
           items={flatItems.map((item) => item.id)}
@@ -683,7 +731,7 @@ export function SidebarTree({
         >
           <div
             ref={scrollRef}
-            className="h-full overflow-y-auto"
+            className="h-full overflow-y-auto overflow-x-hidden"
             style={{ width, minHeight: viewportHeight || 0 }}
           >
             <div
@@ -733,6 +781,7 @@ export function SidebarTree({
                   dragOffsetX >= -TREE_INDENT / 8;
                 const dropLineLeft = rowDepth * TREE_INDENT + 16;
                 const nestPointerLeft = (item.depth + 1) * TREE_INDENT + 16;
+                const dropLinePosition = dropPlacement === "after" ? "bottom" : "top";
 
                 return (
                   <SortablePageRow
@@ -747,6 +796,7 @@ export function SidebarTree({
                     isNestDropTarget={isNestDropTarget}
                     isEmptyNestTarget={!item.hasChildren}
                     showDropLine={isDropTarget && !isNestDropTarget}
+                    dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     nestPointerLeft={nestPointerLeft}
                     onToggleOpen={handleToggle}
