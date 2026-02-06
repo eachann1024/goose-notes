@@ -90,7 +90,7 @@ export function SettingsAppearance({
       >
         <div className="flex items-center justify-between gap-4">
           <Label htmlFor="dark-mode">深色模式</Label>
-          <div className="flex items-center gap-1 rounded-full border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+          <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
             <Button
               size="icon"
               variant="ghost"
@@ -127,7 +127,7 @@ export function SettingsAppearance({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
+        <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
           <div>
             <Label>界面字体大小</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -136,7 +136,7 @@ export function SettingsAppearance({
               在界面按下 {primaryModifier} + / - / 0 可以临时调整字体大小
             </p>
           </div>
-          <div className="flex items-center gap-1 rounded-full border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+          <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
             <Button
               size="sm"
               variant="ghost"
@@ -184,7 +184,7 @@ export function SettingsAppearance({
               key={t.value}
               selected={codeStyle === t.value}
               onClick={() => setCodeStyle(t.value)}
-              className="flex items-center gap-3 rounded-[12px] border-[hsl(var(--foreground)/0.08)] px-3 py-3"
+              className="flex items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.48)] px-3 py-3 hover:bg-[hsl(var(--goose-selected-bg)/0.76)]"
             >
               <LucideIcons.Code2 className="h-5 w-5 shrink-0" />
               <div className="flex-1">
@@ -228,7 +228,7 @@ export function SettingsAppearance({
                 />
               </div>
               <div
-                className="flex h-8 min-w-0 items-center overflow-hidden rounded-md border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] px-3 text-sm md:text-base"
+                className="flex h-8 min-w-0 items-center overflow-hidden rounded-md bg-[hsl(var(--goose-selected-bg)/0.58)] px-3 text-sm md:text-base"
                 style={{
                   fontFamily: customFonts[type].font || getFontPreview(type),
                 }}

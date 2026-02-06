@@ -45,7 +45,7 @@ export function SettingsDataPanel({
         title="数据管理"
         description="管理记事本的导入和导出"
         actions={
-          <Button variant="outline" size="sm" onClick={onImport} disabled={importing}>
+          <Button variant="secondary" size="sm" onClick={onImport} disabled={importing}>
             {importing ? "导入中..." : "导入 ZIP"}
             {!importing && <Upload className="ml-2 h-4 w-4" />}
           </Button>
@@ -80,11 +80,11 @@ export function SettingsDataPanel({
                   type="button"
                   onClick={() => onToggleNotebook(notebook.id)}
                   className={cn(
-                    "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
+                    "flex items-center gap-2 rounded-[12px] px-3 py-2.5 text-left transition-all duration-200",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected
-                      ? "border-[hsl(var(--foreground)/0.12)] bg-[hsl(var(--goose-selected-bg))]"
-                      : "border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.36)] hover:bg-[hsl(var(--goose-selected-bg)/0.76)]",
+                      ? "bg-[hsl(var(--goose-selected-bg))]"
+                      : "bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[hsl(var(--goose-selected-bg)/0.76)]",
                   )}
                 >
                   <span className="shrink-0 text-lg">{notebook.icon || "📓"}</span>
@@ -104,7 +104,7 @@ export function SettingsDataPanel({
             <SelectableCard
               selected={format === "md"}
               onClick={() => onFormatChange("md")}
-              className="flex h-16 items-center gap-3 rounded-[12px] border-[hsl(var(--foreground)/0.08)] px-3 py-2"
+              className="flex h-16 items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.58)] px-3 py-2 hover:bg-[hsl(var(--goose-selected-bg)/0.76)]"
             >
               <FileText className="h-5 w-5 shrink-0" />
               <div className="text-left">
@@ -115,7 +115,7 @@ export function SettingsDataPanel({
             <SelectableCard
               selected={format === "html"}
               onClick={() => onFormatChange("html")}
-              className="flex h-16 items-center gap-3 rounded-[12px] border-[hsl(var(--foreground)/0.08)] px-3 py-2"
+              className="flex h-16 items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.58)] px-3 py-2 hover:bg-[hsl(var(--goose-selected-bg)/0.76)]"
             >
               <Globe className="h-5 w-5 shrink-0" />
               <div className="text-left">
@@ -146,7 +146,7 @@ export function SettingsDataPanel({
         actions={
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={onExport}
               disabled={selectedCount === 0 || exporting}
@@ -159,7 +159,7 @@ export function SettingsDataPanel({
           </div>
         }
       >
-        <div className="flex items-center gap-3 rounded-[12px] border border-destructive/20 bg-[hsl(var(--goose-shell-bg)/0.42)] p-3">
+        <div className="flex items-center gap-3 rounded-[12px] bg-destructive/10 p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive/15">
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </div>

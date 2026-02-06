@@ -19,7 +19,7 @@ export function SettingsScaffold({
 }: SettingsScaffoldProps) {
   return (
     <div className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground">
-      <div className="workspace-divider flex h-14 items-center justify-between border-b bg-[hsl(var(--goose-shell-bg))] px-6 pr-14">
+      <div className="flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] px-6 pr-14">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
             <SettingsIcon className="h-5 w-5 text-foreground/80" />
@@ -46,7 +46,7 @@ export function SettingsScaffold({
                   className={cn(
                     "h-auto w-full justify-start gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
-                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[inset_0_0_0_1px_hsl(var(--foreground)/0.05)]"
+                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground"
                       : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground",
                   )}
                 >
@@ -57,9 +57,7 @@ export function SettingsScaffold({
             })}
           </nav>
 
-          {appsBanner ? (
-            <div className="workspace-divider border-t p-3">{appsBanner}</div>
-          ) : null}
+          {appsBanner ? <div className="p-3">{appsBanner}</div> : null}
         </div>
 
         <div className="workspace-main-sheet flex-1 overflow-hidden rounded-[18px]">

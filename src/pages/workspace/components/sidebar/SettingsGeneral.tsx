@@ -207,7 +207,7 @@ export function SettingsGeneral({
       </div>
 
       <SettingsSectionCard title="隐私设置">
-        <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
+        <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
           <div>
             <Label htmlFor="auto-open-last-note" className="cursor-pointer">
               自动打开上次笔记
@@ -238,7 +238,7 @@ export function SettingsGeneral({
       {UToolsAdapter.isUTools && (
         <>
           <SettingsSectionCard title="插件设置">
-            <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
+            <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
               <div>
                 <Label htmlFor="open-in-utools" className="cursor-pointer">
                   使用 uTools 打开搜索结果
@@ -281,7 +281,7 @@ export function SettingsGeneral({
             actions={
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 className="rounded-[10px]"
                 onClick={() => {
                   addCustomAction({
@@ -301,7 +301,7 @@ export function SettingsGeneral({
                 {customActions.map((action) => (
                   <div
                     key={action.id}
-                    className="flex items-center gap-2 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] px-2 py-2"
+                    className="flex items-center gap-2 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] px-2 py-2"
                   >
                     <Input
                       placeholder="名称"
@@ -373,7 +373,7 @@ export function SettingsGeneral({
       {UToolsAdapter.isTauri && (
         <>
           <SettingsSectionCard title="桌面唤醒">
-            <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
+            <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
               <div>
                 <Label htmlFor="wake-hotkey-enabled" className="cursor-pointer">
                   启用全局唤醒快捷键
@@ -395,12 +395,12 @@ export function SettingsGeneral({
             description="点击“录制快捷键”后直接按键触发，不需要手动输入。"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg border bg-background/90 px-3 font-mono text-sm text-foreground">
+              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg bg-[hsl(var(--goose-selected-bg)/0.72)] px-3 font-mono text-sm text-foreground">
                 {wakeHotkey || DEFAULT_WAKE_HOTKEY}
               </div>
               <Button
                 type="button"
-                variant={isCapturingWakeHotkey ? "default" : "outline"}
+                variant={isCapturingWakeHotkey ? "default" : "secondary"}
                 size="sm"
                 disabled={!wakeHotkeyEnabled}
                 onClick={() => {
@@ -454,12 +454,12 @@ export function SettingsGeneral({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg border bg-background/90 px-3 font-mono text-sm text-foreground">
+              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg bg-[hsl(var(--goose-selected-bg)/0.72)] px-3 font-mono text-sm text-foreground">
                 {searchHotkey || DEFAULT_SEARCH_HOTKEY}
               </div>
               <Button
                 type="button"
-                variant={isCapturingSearchHotkey ? "default" : "outline"}
+                variant={isCapturingSearchHotkey ? "default" : "secondary"}
                 size="sm"
                 disabled={!searchHotkeyEnabled}
                 onClick={() => {
