@@ -5,11 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import * as LucideIcons from "lucide-react";
-import type { CustomAction } from "@/stores/useSettings";
+import {
+  DEFAULT_SEARCH_HOTKEY,
+  DEFAULT_WAKE_HOTKEY,
+  type CustomAction,
+  type SearchProvider,
+} from "@/stores/useSettings";
+import { SearchProviderSortableGrid } from "./SearchProviderSortableGrid";
+import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 
 interface SettingsGeneralProps {
-  searchProviders: { id: string; name: string; isEnabled: boolean }[];
+  searchProviders: SearchProvider[];
   toggleSearchProvider: (id: string) => void;
+  reorderSearchProviders: (nextIds: string[]) => void;
   openSearchInUtools: boolean;
   setOpenSearchInUtools: (enabled: boolean) => void;
 
@@ -17,15 +25,77 @@ interface SettingsGeneralProps {
   setWindowHeight: (height: number) => void;
   autoOpenLastNote: boolean;
   setAutoOpenLastNote: (enabled: boolean) => void;
+  wakeHotkey: string;
+  wakeHotkeyEnabled: boolean;
+  searchHotkey: string;
+  searchHotkeyEnabled: boolean;
+  setWakeHotkey: (hotkey: string) => void;
+  setWakeHotkeyEnabled: (enabled: boolean) => void;
+  setSearchHotkey: (hotkey: string) => void;
+  setSearchHotkeyEnabled: (enabled: boolean) => void;
   customActions?: CustomAction[];
   addCustomAction?: (action: Omit<CustomAction, 'id'>) => void;
   updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void;
   removeCustomAction?: (id: string) => void;
 }
 
+const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
+
+const SPECIAL_KEY_LABEL_MAP: Record<string, string> = {
+  " ": "Space",
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+  Escape: "Esc",
+  Enter: "Enter",
+  Tab: "Tab",
+  Backspace: "Backspace",
+  Delete: "Delete",
+};
+
+const toHotkeyString = (event: KeyboardEvent): string | null => {
+  const modifiers: string[] = [];
+
+  if (event.metaKey || event.ctrlKey) {
+    modifiers.push("CmdOrCtrl");
+  }
+  if (event.altKey) {
+    modifiers.push("Alt");
+  }
+  if (event.shiftKey) {
+    modifiers.push("Shift");
+  }
+
+  if (modifiers.length === 0) {
+    return null;
+  }
+
+  const key = event.key;
+  if (!key || MODIFIER_KEYS.has(key)) {
+    return null;
+  }
+
+  const mappedKey = SPECIAL_KEY_LABEL_MAP[key];
+  if (mappedKey) {
+    return [...modifiers, mappedKey].join("+");
+  }
+
+  if (/^F\d{1,2}$/i.test(key)) {
+    return [...modifiers, key.toUpperCase()].join("+");
+  }
+
+  if (key.length === 1) {
+    return [...modifiers, key.toUpperCase()].join("+");
+  }
+
+  return [...modifiers, key.slice(0, 1).toUpperCase() + key.slice(1)].join("+");
+};
+
 export function SettingsGeneral({
   searchProviders,
   toggleSearchProvider,
+  reorderSearchProviders,
   openSearchInUtools,
   setOpenSearchInUtools,
 
@@ -33,11 +103,102 @@ export function SettingsGeneral({
   setWindowHeight,
   autoOpenLastNote,
   setAutoOpenLastNote,
+  wakeHotkey,
+  wakeHotkeyEnabled,
+  searchHotkey,
+  searchHotkeyEnabled,
+  setWakeHotkey,
+  setWakeHotkeyEnabled,
+  setSearchHotkey,
+  setSearchHotkeyEnabled,
   customActions = [],
   addCustomAction = () => {},
   updateCustomAction = () => {},
   removeCustomAction = () => {},
 }: SettingsGeneralProps) {
+  const [isCapturingWakeHotkey, setIsCapturingWakeHotkey] = useState(false);
+  const [hotkeyCaptureError, setHotkeyCaptureError] = useState<string | null>(
+    null,
+  );
+  const [isCapturingSearchHotkey, setIsCapturingSearchHotkey] = useState(false);
+  const [searchHotkeyCaptureError, setSearchHotkeyCaptureError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isCapturingWakeHotkey || !wakeHotkeyEnabled) return;
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setIsCapturingWakeHotkey(false);
+        setHotkeyCaptureError(null);
+        return;
+      }
+
+      const nextHotkey = toHotkeyString(event);
+      if (!nextHotkey) {
+        setHotkeyCaptureError("请至少包含一个修饰键（Cmd/Ctrl、Alt、Shift）");
+        return;
+      }
+
+      setWakeHotkey(nextHotkey);
+      setHotkeyCaptureError(null);
+      setIsCapturingWakeHotkey(false);
+    };
+
+    window.addEventListener("keydown", handleKeydown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeydown, true);
+    };
+  }, [isCapturingWakeHotkey, setWakeHotkey, wakeHotkeyEnabled]);
+
+  const handleWakeHotkeyEnabledChange = (enabled: boolean) => {
+    setWakeHotkeyEnabled(enabled);
+    if (enabled) return;
+    setIsCapturingWakeHotkey(false);
+    setHotkeyCaptureError(null);
+  };
+
+  useEffect(() => {
+    if (!isCapturingSearchHotkey || !searchHotkeyEnabled) return;
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setIsCapturingSearchHotkey(false);
+        setSearchHotkeyCaptureError(null);
+        return;
+      }
+
+      const nextHotkey = toHotkeyString(event);
+      if (!nextHotkey) {
+        setSearchHotkeyCaptureError("请至少包含一个修饰键（Cmd/Ctrl、Alt、Shift）");
+        return;
+      }
+
+      setSearchHotkey(nextHotkey);
+      setSearchHotkeyCaptureError(null);
+      setIsCapturingSearchHotkey(false);
+    };
+
+    window.addEventListener("keydown", handleKeydown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeydown, true);
+    };
+  }, [isCapturingSearchHotkey, searchHotkeyEnabled, setSearchHotkey]);
+
+  const handleSearchHotkeyEnabledChange = (enabled: boolean) => {
+    setSearchHotkeyEnabled(enabled);
+    if (enabled) return;
+    setIsCapturingSearchHotkey(false);
+    setSearchHotkeyCaptureError(null);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,9 +206,8 @@ export function SettingsGeneral({
         <p className="text-sm text-muted-foreground">配置应用的通用设置。</p>
       </div>
 
-      <div>
-        <h4 className="text-sm font-medium mb-3">隐私设置</h4>
-        <div className="rounded-xl border bg-muted/20 p-4 flex items-center justify-between gap-4">
+      <SettingsSectionCard title="隐私设置">
+        <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
           <div>
             <Label htmlFor="auto-open-last-note" className="cursor-pointer">
               自动打开上次笔记
@@ -62,44 +222,23 @@ export function SettingsGeneral({
             onCheckedChange={setAutoOpenLastNote}
           />
         </div>
-      </div>
+      </SettingsSectionCard>
 
-      <div className="pt-4 border-t">
-        <h4 className="text-sm font-medium mb-3">搜索引擎</h4>
-        <p className="text-xs text-muted-foreground mb-4">
-          配置右键菜单中显示的搜索引擎。
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-          {searchProviders.map((provider) => (
-            <div
-              key={provider.id}
-              className="rounded-lg border bg-background px-3 py-2.5 flex items-center justify-between gap-2"
-            >
-              <Label
-                htmlFor={`provider-${provider.id}`}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                {provider.name}
-              </Label>
-              <Switch
-                id={`provider-${provider.id}`}
-                checked={provider.isEnabled ?? false}
-                onCheckedChange={() => toggleSearchProvider(provider.id)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
+      <SettingsSectionCard
+        title="搜索引擎"
+        description="配置右键菜单中显示的搜索引擎，支持拖拽排序。"
+      >
+        <SearchProviderSortableGrid
+          providers={searchProviders}
+          toggleSearchProvider={toggleSearchProvider}
+          reorderSearchProviders={reorderSearchProviders}
+        />
+      </SettingsSectionCard>
 
       {UToolsAdapter.isUTools && (
-        <div className="space-y-4 pt-4 border-t">
-          <div>
-            <h4 className="text-sm font-medium mb-3">插件设置</h4>
-            
-            {/* 自动搜索开关已移除 */}
-
-
-            <div className="rounded-xl border bg-muted/20 p-4 flex items-center justify-between gap-4">
+        <>
+          <SettingsSectionCard title="插件设置">
+            <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
               <div>
                 <Label htmlFor="open-in-utools" className="cursor-pointer">
                   使用 uTools 打开搜索结果
@@ -114,9 +253,9 @@ export function SettingsGeneral({
                 onCheckedChange={setOpenSearchInUtools}
               />
             </div>
-          </div>
+          </SettingsSectionCard>
 
-          <div className="pt-4 border-t">
+          <SettingsSectionCard title="窗口高度">
             <div className="flex items-center justify-between mb-2">
               <Label>窗口高度</Label>
               <span className="text-sm text-muted-foreground">
@@ -134,19 +273,16 @@ export function SettingsGeneral({
               }}
               className="py-2"
             />
-          </div>
+          </SettingsSectionCard>
 
-          <div className="pt-4 border-t">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h4 className="text-sm font-medium">快捷动作</h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  右键菜单中跳转到其他插件，必填项必须要填写完整，否则无法启用
-                </p>
-              </div>
+          <SettingsSectionCard
+            title="快捷动作"
+            description="右键菜单中跳转到其他插件，必填项必须填写完整。"
+            actions={
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-[10px]"
                 onClick={() => {
                   addCustomAction({
                     name: "",
@@ -155,17 +291,17 @@ export function SettingsGeneral({
                   });
                 }}
               >
-                <LucideIcons.Plus className="h-4 w-4 mr-1" />
+                <LucideIcons.Plus className="mr-1 h-4 w-4" />
                 添加
               </Button>
-            </div>
-
-            {customActions.length > 0 && (
+            }
+          >
+            {customActions.length > 0 ? (
               <div className="space-y-2">
                 {customActions.map((action) => (
                   <div
                     key={action.id}
-                    className="flex items-center gap-2 py-2 px-2 rounded border bg-muted/30"
+                    className="flex items-center gap-2 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] px-2 py-2"
                   >
                     <Input
                       placeholder="名称"
@@ -174,9 +310,11 @@ export function SettingsGeneral({
                         updateCustomAction(action.id, { name: e.target.value })
                       }
                       onBlur={(e) =>
-                        updateCustomAction(action.id, { name: e.target.value.trim() })
+                        updateCustomAction(action.id, {
+                          name: e.target.value.trim(),
+                        })
                       }
-                      className="text-sm h-8"
+                      className="h-8 text-sm"
                     />
                     <Input
                       placeholder="指令"
@@ -187,9 +325,11 @@ export function SettingsGeneral({
                         })
                       }
                       onBlur={(e) =>
-                        updateCustomAction(action.id, { command: e.target.value.trim() })
+                        updateCustomAction(action.id, {
+                          command: e.target.value.trim(),
+                        })
                       }
-                      className="text-sm h-8"
+                      className="h-8 text-sm"
                     />
                     <Input
                       placeholder="插件名（可选）"
@@ -204,7 +344,7 @@ export function SettingsGeneral({
                           pluginName: e.target.value.trim() || undefined,
                         })
                       }
-                      className="text-sm h-8"
+                      className="h-8 text-sm"
                     />
                     <Switch
                       checked={action.isEnabled}
@@ -215,7 +355,7 @@ export function SettingsGeneral({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 rounded-[10px]"
                       onClick={() => removeCustomAction(action.id)}
                     >
                       <LucideIcons.Trash2 className="h-4 w-4" />
@@ -223,9 +363,138 @@ export function SettingsGeneral({
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">暂无快捷动作，点击右上角添加。</p>
             )}
-          </div>
-        </div>
+          </SettingsSectionCard>
+        </>
+      )}
+
+      {UToolsAdapter.isTauri && (
+        <>
+          <SettingsSectionCard title="桌面唤醒">
+            <div className="flex items-center justify-between gap-4 rounded-[12px] border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--goose-shell-bg)/0.35)] p-4">
+              <div>
+                <Label htmlFor="wake-hotkey-enabled" className="cursor-pointer">
+                  启用全局唤醒快捷键
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  仅支持唤醒已运行的应用，不能冷启动
+                </p>
+              </div>
+              <Switch
+                id="wake-hotkey-enabled"
+                checked={wakeHotkeyEnabled}
+                onCheckedChange={handleWakeHotkeyEnabledChange}
+              />
+            </div>
+          </SettingsSectionCard>
+
+          <SettingsSectionCard
+            title="全局唤醒快捷键"
+            description="点击“录制快捷键”后直接按键触发，不需要手动输入。"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg border bg-background/90 px-3 font-mono text-sm text-foreground">
+                {wakeHotkey || DEFAULT_WAKE_HOTKEY}
+              </div>
+              <Button
+                type="button"
+                variant={isCapturingWakeHotkey ? "default" : "outline"}
+                size="sm"
+                disabled={!wakeHotkeyEnabled}
+                onClick={() => {
+                  setSearchHotkeyCaptureError(null);
+                  setIsCapturingSearchHotkey(false);
+                  setHotkeyCaptureError(null);
+                  setIsCapturingWakeHotkey(true);
+                }}
+              >
+                {isCapturingWakeHotkey ? "请按下快捷键..." : "录制快捷键"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!wakeHotkeyEnabled}
+                onClick={() => {
+                  setWakeHotkey(DEFAULT_WAKE_HOTKEY);
+                  setHotkeyCaptureError(null);
+                  setIsCapturingWakeHotkey(false);
+                }}
+              >
+                恢复默认
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isCapturingWakeHotkey
+                ? "正在录制：请按下组合键，按 Esc 取消。"
+                : "默认启用组合键，建议避免与系统级快捷键冲突。"}
+            </p>
+            {hotkeyCaptureError && (
+              <p className="text-xs text-destructive">{hotkeyCaptureError}</p>
+            )}
+          </SettingsSectionCard>
+
+          <SettingsSectionCard title="全局搜索快捷键">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="search-hotkey-enabled" className="cursor-pointer">
+                  启用全局搜索快捷键
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  仅对运行中的应用生效，退出后不生效
+                </p>
+              </div>
+              <Switch
+                id="search-hotkey-enabled"
+                checked={searchHotkeyEnabled}
+                onCheckedChange={handleSearchHotkeyEnabledChange}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg border bg-background/90 px-3 font-mono text-sm text-foreground">
+                {searchHotkey || DEFAULT_SEARCH_HOTKEY}
+              </div>
+              <Button
+                type="button"
+                variant={isCapturingSearchHotkey ? "default" : "outline"}
+                size="sm"
+                disabled={!searchHotkeyEnabled}
+                onClick={() => {
+                  setHotkeyCaptureError(null);
+                  setIsCapturingWakeHotkey(false);
+                  setSearchHotkeyCaptureError(null);
+                  setIsCapturingSearchHotkey(true);
+                }}
+              >
+                {isCapturingSearchHotkey ? "请按下快捷键..." : "录制搜索快捷键"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!searchHotkeyEnabled}
+                onClick={() => {
+                  setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
+                  setSearchHotkeyCaptureError(null);
+                  setIsCapturingSearchHotkey(false);
+                }}
+              >
+                恢复默认
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isCapturingSearchHotkey
+                ? "正在录制：请按下组合键，按 Esc 取消。"
+                : "默认：CmdOrCtrl+Shift+K。按下后会唤醒窗口并打开搜索。"}
+            </p>
+            {searchHotkeyCaptureError && (
+              <p className="text-xs text-destructive">{searchHotkeyCaptureError}</p>
+            )}
+          </SettingsSectionCard>
+        </>
       )}
     </div>
   );
