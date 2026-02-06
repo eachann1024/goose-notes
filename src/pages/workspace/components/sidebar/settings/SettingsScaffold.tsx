@@ -32,7 +32,7 @@ export function SettingsScaffold({
       </div>
 
       <div className="workspace-stage flex-1 overflow-hidden p-3">
-        <div className="workspace-editor-surface flex w-60 shrink-0 flex-col overflow-hidden rounded-[16px]">
+        <div className="workspace-main-sheet flex w-60 shrink-0 flex-col overflow-hidden rounded-[16px] bg-[hsl(var(--goose-shell-bg))]">
           <nav className="flex-1 space-y-1 p-3">
             {tabs.map((tab) => {
               const Icon = tab.icon;
