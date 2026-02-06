@@ -53,6 +53,33 @@ interface SidebarTreeProps {
 
 const DEFAULT_NOTEBOOK = "default-notebook";
 const TREE_INDENT = 24;
+const PROMOTE_TRIGGER_THRESHOLD = Math.round(TREE_INDENT * 0.85);
+const NEST_TRIGGER_THRESHOLD = Math.round(TREE_INDENT * 0.65);
+const GUIDE_ENTER_THRESHOLD = Math.round(TREE_INDENT * 0.8);
+const GUIDE_EXIT_THRESHOLD = Math.round(TREE_INDENT * 0.45);
+
+type DragGuideDirection = "left" | "right" | "neutral";
+
+function resolveGuideDirection(
+  offsetX: number,
+  previous: DragGuideDirection
+): DragGuideDirection {
+  if (previous === "neutral") {
+    if (offsetX <= -GUIDE_ENTER_THRESHOLD) return "left";
+    if (offsetX >= GUIDE_ENTER_THRESHOLD) return "right";
+    return "neutral";
+  }
+
+  if (previous === "left") {
+    if (offsetX >= GUIDE_ENTER_THRESHOLD) return "right";
+    if (offsetX >= -GUIDE_EXIT_THRESHOLD) return "neutral";
+    return "left";
+  }
+
+  if (offsetX <= -GUIDE_ENTER_THRESHOLD) return "left";
+  if (offsetX <= GUIDE_EXIT_THRESHOLD) return "neutral";
+  return "right";
+}
 
 class LeftButtonPointerSensor extends PointerSensor {
   static activators = [
@@ -375,6 +402,7 @@ export function SidebarTree({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
+  const dragGuideDirectionRef = useRef<DragGuideDirection>("neutral");
 
   const visibleItems = useMemo(
     () =>
@@ -502,17 +530,16 @@ export function SidebarTree({
   useEffect(() => {
     if (!onDragGuideChange) return;
     if (!activeId) {
+      dragGuideDirectionRef.current = "neutral";
       onDragGuideChange({ isDragging: false, direction: "neutral" });
       return;
     }
 
-    const threshold = TREE_INDENT / 3;
-    const direction =
-      dragOffsetX <= -threshold
-        ? "left"
-        : dragOffsetX >= threshold
-          ? "right"
-          : "neutral";
+    const direction = resolveGuideDirection(
+      dragOffsetX,
+      dragGuideDirectionRef.current
+    );
+    dragGuideDirectionRef.current = direction;
 
     onDragGuideChange({ isDragging: true, direction });
   }, [activeId, dragOffsetX, onDragGuideChange]);
@@ -553,6 +580,7 @@ export function SidebarTree({
     setOverId(null);
     setDragOffsetX(0);
     setDropPlacement("before");
+    dragGuideDirectionRef.current = "neutral";
   };
 
   const handleDragMove = ({ delta, active }: DragMoveEvent) => {
@@ -609,6 +637,7 @@ export function SidebarTree({
     setDragOffsetX(0);
     const currentPlacement = dropPlacement;
     setDropPlacement("before");
+    dragGuideDirectionRef.current = "neutral";
 
     if (!overNodeId) return;
     if (activeDescendantIds.has(overNodeId)) return;
@@ -632,13 +661,13 @@ export function SidebarTree({
 
     const overItem = flatItems.find((item) => item.id === overNodeId);
     const wantsPromoteToRoot =
-      activeItem.depth > 0 && dragOffsetX < -TREE_INDENT / 3;
+      activeItem.depth > 0 && dragOffsetX <= -PROMOTE_TRIGGER_THRESHOLD;
     const canNestIntoOver =
       !!overItem &&
       overNodeId !== activeNodeId &&
       !isDescendant(activeNodeId, overNodeId, pages) &&
       (!isLocalNotebook || !!overItem.page.isFolder);
-    const wantsNestIntoOver = canNestIntoOver && dragOffsetX >= -TREE_INDENT / 8;
+    const wantsNestIntoOver = canNestIntoOver && dragOffsetX >= NEST_TRIGGER_THRESHOLD;
 
     const nextParentId = wantsPromoteToRoot
       ? undefined
@@ -728,6 +757,7 @@ export function SidebarTree({
     setOverId(null);
     setDragOffsetX(0);
     setDropPlacement("before");
+    dragGuideDirectionRef.current = "neutral";
   };
 
   if (flatItems.length === 0) {
@@ -797,7 +827,7 @@ export function SidebarTree({
                 const wantsPromoteToRoot =
                   !!activeDragItem &&
                   activeDragItem.depth > 0 &&
-                  dragOffsetX < -TREE_INDENT / 3;
+                  dragOffsetX <= -PROMOTE_TRIGGER_THRESHOLD;
                 const canNestIntoItem =
                   !!activeDragItem &&
                   activeId !== item.id &&
@@ -807,7 +837,7 @@ export function SidebarTree({
                   isDropTarget &&
                   !wantsPromoteToRoot &&
                   canNestIntoItem &&
-                  dragOffsetX >= -TREE_INDENT / 8;
+                  dragOffsetX >= NEST_TRIGGER_THRESHOLD;
                 const dropLineLeft = rowDepth * TREE_INDENT + 16;
                 const nestPointerLeft = (item.depth + 1) * TREE_INDENT + 16;
                 const dropLinePosition = dropPlacement === "after" ? "bottom" : "top";

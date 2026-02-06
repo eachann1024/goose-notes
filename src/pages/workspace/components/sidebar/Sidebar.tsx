@@ -414,11 +414,6 @@ export function Sidebar({ className }: SidebarProps) {
 
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
           <div className="mt-1">
-            <SidebarDragGuide
-              visible={!pagesCollapsed && treeDragGuide.isDragging}
-              direction={treeDragGuide.direction}
-              isLocalFolder={!!isLocalFolder}
-            />
             <SectionHeader
               title={isLocalFolder ? "本地文件夹" : "页面"}
               collapsed={pagesCollapsed}
@@ -439,6 +434,15 @@ export function Sidebar({ className }: SidebarProps) {
               />
             </div>
           )}
+          <div className="sticky bottom-0 z-20 pointer-events-none">
+            <div className="bg-gradient-to-t from-background via-background/90 to-transparent pt-5 pb-2">
+              <SidebarDragGuide
+                visible={!pagesCollapsed && treeDragGuide.isDragging}
+                direction={treeDragGuide.direction}
+                isLocalFolder={!!isLocalFolder}
+              />
+            </div>
+          </div>
         </div>
 
         <SidebarFooter

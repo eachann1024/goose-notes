@@ -20,11 +20,11 @@ export function SidebarDragGuide({
     <AnimatePresence initial={false}>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-          animate={{ opacity: 1, height: "auto", marginBottom: 8 }}
-          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+          initial={{ opacity: 0, y: 10, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.985 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="overflow-hidden px-2"
+          className="overflow-hidden px-2 pointer-events-none"
         >
           <motion.div
             layout
