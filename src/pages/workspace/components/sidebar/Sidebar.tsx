@@ -1,5 +1,4 @@
 import { FavoritesSection } from "./FavoritesSection";
-import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
@@ -59,6 +58,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const itemHeight = useItemHeight();
   const rowHeight = itemHeight + 1;
+  const trashItemHeight = Math.max(itemHeight + 20, 48);
 
   const DEFAULT_SIDEBAR_WIDTH = UToolsAdapter.isUTools ? 180 : 220;
   const [width, setWidth] = useState(() => {
@@ -70,9 +70,6 @@ export function Sidebar({ className }: SidebarProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
-  const [pagesCollapsed, setPagesCollapsed] = useState(false);
-  const [isResizeHandleHovered, setIsResizeHandleHovered] = useState(false);
-  const [handleY, setHandleY] = useState<number | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
@@ -168,7 +165,6 @@ export function Sidebar({ className }: SidebarProps) {
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsResizing(true);
 
     const startX = e.clientX;
@@ -181,10 +177,9 @@ export function Sidebar({ className }: SidebarProps) {
 
     const onMouseUp = () => {
       setIsResizing(false);
-      setHandleY(null);
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
-      document.body.style.cursor = "default";
+      document.body.style.cursor = "";
     };
 
     document.addEventListener("mousemove", onMouseMove);
@@ -192,55 +187,28 @@ export function Sidebar({ className }: SidebarProps) {
     document.body.style.cursor = "col-resize";
   };
 
-  const renderResizeHandle = () => (
+  const renderResizeEdge = () => (
     <div
-      className="absolute top-0 h-full z-[60] flex"
-      style={{
-        right: "calc(var(--workspace-stage-gap) * -1)",
-        width: "calc(var(--workspace-stage-gap) - 2px)",
-      }}
-      onMouseEnter={() => setIsResizeHandleHovered(true)}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        setHandleY(e.clientY - rect.top);
-      }}
-      onMouseLeave={() => {
-        setIsResizeHandleHovered(false);
-        if (!isResizing) setHandleY(null);
-      }}
+      className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
+      style={{ right: "-8px", width: "16px" }}
+      onMouseDown={startResizing}
+      role="separator"
     >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="调整侧边栏宽度"
+      <div
         className={cn(
-          "absolute h-20 w-full rounded-full border transition-all duration-200 ease-out backdrop-blur-md bg-[hsl(var(--goose-editor-bg)/0.64)]",
-          "cursor-col-resize select-none touch-none",
-          "shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:bg-[hsl(var(--goose-editor-bg)/0.4)] dark:shadow-[0_10px_28px_rgba(2,6,23,0.45)]",
-          isResizeHandleHovered || isResizing
-            ? "pointer-events-auto opacity-100 scale-100 border-border/70"
-            : "pointer-events-none opacity-0 scale-90 border-transparent",
-          isResizing &&
-            "border-ring/70 bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--goose-selected-bg)/0.9)] shadow-[0_0_0_1px_hsl(var(--ring)/0.45),0_12px_30px_rgba(15,23,42,0.2)]",
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150",
+          isResizing ? "opacity-100" : "opacity-0 group-hover/resize:opacity-100",
         )}
         style={{
-          top: handleY != null
-            ? `clamp(0px, calc(${handleY}px - 2.5rem), calc(100% - 5rem))`
-            : '50%',
-          transform: handleY != null ? 'none' : 'translateY(-50%)',
+          width: "2px",
+          height: "100%",
+          marginLeft: "-1px",
+          borderRadius: 0,
+          background: isResizing
+            ? "var(--workspace-resize-line-active)"
+            : "var(--workspace-resize-line)",
         }}
-        onMouseDown={startResizing}
-      >
-        <span className="sr-only">拖动调整侧边栏宽度</span>
-        <span
-          aria-hidden="true"
-          className={cn(
-            "mx-auto block h-8 w-[2px] rounded-full bg-foreground/35 transition-colors",
-            isResizing && "bg-primary",
-          )}
-        />
-      </Button>
+      />
     </div>
   );
 
@@ -327,44 +295,38 @@ export function Sidebar({ className }: SidebarProps) {
     setRenamePageId(null);
   }, [pages, renamePageId, renameValue, updatePage]);
 
-  if (currentView === "trash") {
-    return (
-      <div
-        ref={sidebarRef}
-        className={cn(
-          "pb-0 bg-[hsl(var(--goose-shell-bg))] backdrop-blur-[1px] h-full flex flex-col relative",
-          className,
-        )}
-        style={{ width, overflow: "visible" }}
-      >
-        {renderResizeHandle()}
-        <div className="flex-1 overflow-hidden rounded-[inherit]">
-          <TrashList onBack={() => setCurrentView("pages")} />
-        </div>
-      </div>
-    );
-  }
-
   const SectionHeader = ({
     title,
-    collapsed,
-    onToggle,
+    onSearch,
+    onCreate,
+    createTitle,
   }: {
     title: string;
-    collapsed: boolean;
-    onToggle: () => void;
+    onSearch: () => void;
+    onCreate: () => void;
+    createTitle: string;
   }) => (
-    <div
-      className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
-      onClick={onToggle}
-    >
+    <div className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
       <span>{title}</span>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-        {collapsed ? (
-          <LucideIcons.ChevronRight className="h-3 w-3" />
-        ) : (
-          <LucideIcons.ChevronDown className="h-3 w-3" />
-        )}
+      <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title="搜索"
+          onClick={onSearch}
+        >
+          <LucideIcons.Search className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title={createTitle}
+          onClick={onCreate}
+        >
+          <LucideIcons.Plus className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
@@ -373,54 +335,64 @@ export function Sidebar({ className }: SidebarProps) {
     <div
       ref={sidebarRef}
       className={cn(
-        "pb-0 bg-[hsl(var(--goose-shell-bg))] backdrop-blur-[1px] h-full flex flex-col relative group/sidebar",
+        "pb-0 bg-[hsl(var(--goose-shell-bg))] h-full flex flex-col relative group/sidebar",
         className,
       )}
       style={{ width, overflow: "visible" }}
     >
-      {renderResizeHandle()}
+      {renderResizeEdge()}
 
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
-          onCreatePage={handleCreatePage}
-          onSearch={handleSearch}
-        />
-
-        <FavoritesSection
-          itemHeight={itemHeight}
-          onRequestRename={openRenameDialog}
-        />
-
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
-          <div className="mt-1">
-            <SectionHeader
-              title={isLocalFolder ? "本地文件夹" : "页面"}
-              collapsed={pagesCollapsed}
-              onToggle={() => setPagesCollapsed(!pagesCollapsed)}
-            />
-          </div>
-          {!pagesCollapsed && (
-            <div className="px-2 pb-10">
-              <SidebarTree
-                activeNotebookId={activeNotebookId}
-                width={width - 16}
-                rowHeight={rowHeight}
-                itemHeight={itemHeight}
-                viewportHeight={scrollAreaHeight}
-                onCreatePage={handleCreatePage}
-                onRequestRename={openRenameDialog}
-              />
-            </div>
-          )}
-        </div>
-
-        <SidebarFooter
-          onOpenTrash={() => {
+          currentView={currentView}
+          isSettingsOpen={showSettings}
+          onSwitchToPages={() => {
+            setCurrentView("pages");
+            setShowSettings(false);
             setActivePage(null);
+          }}
+          onSwitchToTrash={() => {
             setCurrentView("trash");
+            setShowSettings(false);
+            setActivePage(null);
           }}
           onOpenSettings={() => setShowSettings(true)}
         />
+
+        {currentView === "pages" ? (
+          <>
+            <FavoritesSection
+              itemHeight={itemHeight}
+              onRequestRename={openRenameDialog}
+            />
+
+            <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
+              <div className="mt-1">
+                <SectionHeader
+                  title={isLocalFolder ? "本地文件夹" : "页面"}
+                  onSearch={handleSearch}
+                  onCreate={handleCreatePage}
+                  createTitle={isLocalFolder ? "新建文件" : "新建页面"}
+                />
+              </div>
+              <div className="px-2 pb-10">
+                <SidebarTree
+                  activeNotebookId={activeNotebookId}
+                  width={width - 16}
+                  rowHeight={rowHeight}
+                  itemHeight={itemHeight}
+                  viewportHeight={scrollAreaHeight}
+                  onCreatePage={handleCreatePage}
+                  onRequestRename={openRenameDialog}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-hidden">
+            <TrashList showHeader={false} itemHeight={trashItemHeight} />
+          </div>
+        )}
       </div>
 
       <Dialog

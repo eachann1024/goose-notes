@@ -242,11 +242,11 @@ function PageNode({
       <div
         ref={dragHandle}
         style={rowStyle}
-        className="group relative px-2"
+        className="group relative px-1"
       >
         <div
           className={cn(
-            "relative flex items-center h-full pl-2 pr-1 rounded-[8px] cursor-pointer transition-colors text-sm font-medium",
+            "relative flex items-center h-full px-1 rounded-[8px] cursor-pointer transition-colors text-sm font-medium",
             isDropTarget && "sidebar-drop-target",
             node.state.isDragging && "opacity-50",
             !isActive &&
@@ -348,15 +348,13 @@ function PageNode({
 
           {/* Actions (Plus Button) */}
           <div className="ml-auto hidden group-hover:flex items-center pl-1 shrink-0">
-             <IconButton
+             <button
                 type="button"
-                tone="muted"
-                size="sm"
-                className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground/70 hover:text-foreground transition-colors"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 hover:text-foreground"
                 onClick={handleAddChild}
               >
                 <LucideIcons.Plus className="h-3.5 w-3.5" />
-              </IconButton>
+              </button>
           </div>
         </div>
       </div>

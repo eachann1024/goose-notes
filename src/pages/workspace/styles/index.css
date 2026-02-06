@@ -6,14 +6,32 @@
 @import "./tippy.css";
 
 .workspace-shell {
-  --workspace-stage-gap: 10px;
   --workspace-divider: hsl(var(--foreground) / 0.06);
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-panel-shadow:
-    0 8px 24px rgba(15, 23, 42, 0.06),
-    0 2px 6px rgba(15, 23, 42, 0.04);
+  --workspace-resize-line:
+    linear-gradient(
+      180deg,
+      hsl(218 18% 60% / 0) 0%,
+      hsl(218 18% 60% / 0.18) 22%,
+      hsl(218 18% 60% / 0.9) 50%,
+      hsl(218 18% 60% / 0.18) 78%,
+      hsl(218 18% 60% / 0) 100%
+    );
+  --workspace-resize-line-active:
+    linear-gradient(
+      180deg,
+      hsl(218 22% 52% / 0) 0%,
+      hsl(218 22% 52% / 0.28) 22%,
+      hsl(218 22% 52% / 1) 50%,
+      hsl(218 22% 52% / 0.28) 78%,
+      hsl(218 22% 52% / 0) 100%
+    );
+  --workspace-resize-line-glow: none;
+  --workspace-main-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.03),
+    0 0 8px rgba(15, 23, 42, 0.05);
   background: hsl(var(--goose-shell-bg));
 }
 
@@ -22,9 +40,28 @@
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-panel-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.38),
-    0 2px 8px rgba(0, 0, 0, 0.26);
+  --workspace-resize-line:
+    linear-gradient(
+      180deg,
+      hsl(210 18% 92% / 0) 0%,
+      hsl(210 18% 92% / 0.16) 22%,
+      hsl(210 18% 92% / 0.82) 50%,
+      hsl(210 18% 92% / 0.16) 78%,
+      hsl(210 18% 92% / 0) 100%
+    );
+  --workspace-resize-line-active:
+    linear-gradient(
+      180deg,
+      hsl(210 20% 95% / 0) 0%,
+      hsl(210 20% 95% / 0.24) 22%,
+      hsl(210 20% 95% / 0.96) 50%,
+      hsl(210 20% 95% / 0.24) 78%,
+      hsl(210 20% 95% / 0) 100%
+    );
+  --workspace-resize-line-glow: none;
+  --workspace-main-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 12px rgba(0, 0, 0, 0.32);
 }
 
 .workspace-shell .workspace-divider {
@@ -47,21 +84,40 @@
   display: flex;
   height: 100%;
   width: 100%;
-  gap: var(--workspace-stage-gap);
+  gap: 0;
   padding: 10px 10px 12px;
 }
 
-.workspace-shell .workspace-panel {
+.workspace-shell .workspace-sidebar-pane {
+  background: var(--workspace-sidebar-surface);
   border: 0;
-  border-radius: 18px;
-  box-shadow: var(--workspace-panel-shadow);
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
 }
 
-.workspace-shell .workspace-panel-sidebar {
+.workspace-shell .workspace-main-sheet {
   background: var(--workspace-sidebar-surface);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: none;
+  margin-left: 0;
 }
 
-.workspace-shell .workspace-panel-main {
+.workspace-shell .workspace-editor-surface {
   background: var(--workspace-main-surface);
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--workspace-main-shadow);
+}
+
+@media (max-width: 768px) {
+  .workspace-shell .workspace-main-sheet {
+    border-radius: 14px;
+    margin-left: 0;
+  }
+
+  .workspace-shell .workspace-editor-surface {
+    border-radius: 12px;
+  }
 }
