@@ -34,16 +34,23 @@ function BubbleMenuTooltip({
 
 export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
   const isHidden = useScrollHide(editor);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    menuRef.current.style.zIndex = "20000";
+  }, []);
 
   if (!editor) return null;
 
   return (
     <TooltipProvider>
       <BubbleMenu
+        ref={menuRef}
         editor={editor}
         appendTo={() => document.body}
         className={cn(
-          "z-[9999] flex items-center gap-0.5 rounded-[10px] border border-black/10 bg-popover/95 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.18),0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-opacity duration-200 dark:border-white/10 dark:bg-[#2f3437]/95",
+          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-black/10 bg-popover/95 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.18),0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-opacity duration-200 dark:border-white/10 dark:bg-[#2f3437]/95",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor, state }) => {

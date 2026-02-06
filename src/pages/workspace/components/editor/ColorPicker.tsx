@@ -82,7 +82,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
 
   const panelContent = isOpen ? (
     <div
-      className="fixed p-2 z-[9999] rounded-md border border-border bg-popover shadow-md"
+      className="fixed p-2 z-[20000] rounded-md border border-border bg-popover shadow-md"
       style={{
         top: position.top,
         left: position.left,
