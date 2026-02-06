@@ -34,6 +34,23 @@ function App() {
   }, [utools.windowHeight]);
 
   useEffect(() => {
+    if (typeof document === "undefined" || UToolsAdapter.isUTools) return;
+
+    const preventBrowserContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+
+    document.addEventListener("contextmenu", preventBrowserContextMenu, {
+      capture: true,
+    });
+    return () => {
+      document.removeEventListener("contextmenu", preventBrowserContextMenu, {
+        capture: true,
+      });
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     (window as any).__gooseNoteAutoOpenLastNote = privacy.autoOpenLastNote;
   }, [privacy.autoOpenLastNote]);
