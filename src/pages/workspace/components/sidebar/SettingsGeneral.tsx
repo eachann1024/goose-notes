@@ -202,8 +202,8 @@ export function SettingsGeneral({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">通用</h3>
-        <p className="text-sm text-muted-foreground">配置应用的通用设置。</p>
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">通用</h3>
+        <p className="mt-1 text-sm text-muted-foreground">配置应用的通用设置。</p>
       </div>
 
       <SettingsSectionCard title="隐私设置">

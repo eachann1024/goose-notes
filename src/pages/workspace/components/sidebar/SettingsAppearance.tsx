@@ -78,8 +78,8 @@ export function SettingsAppearance({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">外观</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">外观</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           自定义界面的外观和感觉。
         </p>
       </div>

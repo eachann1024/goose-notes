@@ -42,8 +42,10 @@ export function SettingsDataPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">数据管理</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+          数据管理
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           管理记事本的导入和导出。
         </p>
       </div>
