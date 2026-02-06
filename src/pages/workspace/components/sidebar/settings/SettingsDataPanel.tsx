@@ -40,10 +40,17 @@ export function SettingsDataPanel({
   const totalCount = notebookList.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">数据管理</h3>
+        <p className="text-sm text-muted-foreground">
+          管理记事本的导入和导出。
+        </p>
+      </div>
+
       <SettingsSectionCard
-        title="数据管理"
-        description="管理记事本的导入和导出"
+        title="导入与导出"
+        description="选择记事本并导入或导出备份。"
         actions={
           <Button variant="secondary" size="sm" onClick={onImport} disabled={importing}>
             {importing ? "导入中..." : "导入 ZIP"}
