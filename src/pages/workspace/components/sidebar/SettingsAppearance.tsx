@@ -216,7 +216,7 @@ export function SettingsAppearance({
                   value={customFonts[type].label || ""}
                   onChange={(e) => setCustomLabel(type, e.target.value || null)}
                   placeholder={defaultLabels[type]}
-                  className="h-8 px-2 text-sm"
+                  className="h-8 border-0 px-2 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
               <div className="flex flex-1 items-center gap-2">
@@ -224,7 +224,7 @@ export function SettingsAppearance({
                   value={customFonts[type].font || ""}
                   onChange={(e) => setCustomFont(type, e.target.value || null)}
                   placeholder={fontPlaceholders[type]}
-                  className="h-8 w-[200px] text-sm"
+                  className="h-8 w-[200px] border-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
               <div
