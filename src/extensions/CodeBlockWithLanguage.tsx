@@ -152,7 +152,7 @@ function CodeBlockWithLanguageView({
       )}
 
       {/* LaTeX 语法提示面板 */}
-      {language === "math" && editor.isEditable && (
+      {language === "math" && editor.isEditable && isActive && (
         <div className="absolute bottom-2 right-2 z-10">
           <TooltipProvider>
             <Tooltip open={showLatexHint} onOpenChange={setShowLatexHint}>
@@ -175,46 +175,46 @@ function CodeBlockWithLanguageView({
               <TooltipContent
                 side="top"
                 align="end"
-                className="w-72 p-0 bg-popover border shadow-lg"
+                className="w-[44rem] max-w-[calc(100vw-2rem)] p-0 rounded-xl border border-border/70 bg-background shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
               >
-                <div className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium">LaTeX 语法参考</span>
+                <div>
+                  <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+                    <span className="text-sm font-semibold tracking-tight">LaTeX 语法参考</span>
                     <button
                       onClick={() => setShowLatexHint(false)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
-                      <LucideIcons.X className="h-3 w-3" />
+                      <LucideIcons.X className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
-                    {LATEX_SNIPPETS.map((snippet, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          const pos = getPos();
-                          if (typeof pos === "number") {
-                            const { tr } = editor.view.state;
-                            const insertPos = pos + node.nodeSize - 1;
-                            editor.view.dispatch(
-                              tr.insertText(snippet.code, insertPos)
-                            );
-                            editor.commands.focus(insertPos + snippet.code.length);
-                          }
-                          setShowLatexHint(false);
-                        }}
-                        className="flex items-center justify-between px-2 py-1.5 text-left text-xs rounded hover:bg-accent group"
-                      >
-                        <span className="text-muted-foreground group-hover:text-foreground">
-                          {snippet.label}
-                        </span>
-                        <code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono">
-                          {snippet.code.length > 12
-                            ? snippet.code.slice(0, 12) + "..."
-                            : snippet.code}
-                        </code>
-                      </button>
-                    ))}
+                  <div className="max-h-[20rem] overflow-y-auto p-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      {LATEX_SNIPPETS.map((snippet, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            const pos = getPos();
+                            if (typeof pos === "number") {
+                              const { tr } = editor.view.state;
+                              const insertPos = pos + node.nodeSize - 1;
+                              editor.view.dispatch(
+                                tr.insertText(snippet.code, insertPos)
+                              );
+                              editor.commands.focus(insertPos + snippet.code.length);
+                            }
+                            setShowLatexHint(false);
+                          }}
+                          className="group flex min-h-[72px] flex-col items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/60"
+                        >
+                          <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                            {snippet.label}
+                          </span>
+                          <code className="w-full rounded-md bg-background px-2 py-1 font-mono text-[11px] leading-5 text-foreground whitespace-pre-wrap break-all">
+                            {snippet.code}
+                          </code>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </TooltipContent>
