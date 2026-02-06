@@ -5,7 +5,12 @@ import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
-import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
+import {
+  useSettings,
+  EDITOR_FONT_SIZE_DEFAULT,
+  DEFAULT_SEARCH_HOTKEY,
+  DEFAULT_WAKE_HOTKEY,
+} from "@/stores/useSettings";
 
 const UI_FONT_SIZE_MAP = {
   small: 14,
@@ -23,9 +28,129 @@ function App() {
     customFonts,
     privacy,
     utools,
+    desktop,
+    setSearchHotkey,
+    setWakeHotkey,
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const onboardingCreatedRef = useRef(false);
+  const registeredWakeHotkeyRef = useRef<string | null>(null);
+  const registeredSearchHotkeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!UToolsAdapter.isTauri) return;
+
+    let disposed = false;
+
+    const cleanupRegisteredHotkeys = async () => {
+      const previousWakeHotkey = registeredWakeHotkeyRef.current;
+      if (previousWakeHotkey) {
+        await UToolsAdapter.unregisterWakeHotkey(previousWakeHotkey);
+        registeredWakeHotkeyRef.current = null;
+      }
+
+      const previousSearchHotkey = registeredSearchHotkeyRef.current;
+      if (previousSearchHotkey) {
+        await UToolsAdapter.unregisterSearchHotkey(previousSearchHotkey);
+        registeredSearchHotkeyRef.current = null;
+      }
+    };
+
+    const applyDesktopHotkeys = async () => {
+      await cleanupRegisteredHotkeys();
+
+      const nextWakeHotkey =
+        (desktop.wakeHotkey ?? "").trim() || DEFAULT_WAKE_HOTKEY;
+      if (desktop.wakeHotkeyEnabled) {
+        const wakeResult = await UToolsAdapter.registerWakeHotkey(nextWakeHotkey);
+        if (disposed) {
+          if (wakeResult.ok) {
+            await UToolsAdapter.unregisterWakeHotkey(nextWakeHotkey);
+          }
+        } else if (wakeResult.ok) {
+          registeredWakeHotkeyRef.current = nextWakeHotkey;
+        } else {
+          toast.error(
+            `全局唤醒快捷键注册失败：${wakeResult.error || "快捷键冲突或受系统限制"}`,
+            {
+              id: "wake-hotkey-register-error",
+              duration: 3200,
+            },
+          );
+
+          if (nextWakeHotkey !== DEFAULT_WAKE_HOTKEY) {
+            setWakeHotkey(DEFAULT_WAKE_HOTKEY);
+            toast.message(`已回退到默认唤醒快捷键：${DEFAULT_WAKE_HOTKEY}`, {
+              id: "wake-hotkey-fallback-default",
+              duration: 2600,
+            });
+          } else {
+            toast.message("请在设置中更换可用的唤醒快捷键", {
+              id: "wake-hotkey-change-required",
+              duration: 2600,
+            });
+          }
+        }
+      }
+
+      const nextSearchHotkey =
+        (desktop.searchHotkey ?? "").trim() || DEFAULT_SEARCH_HOTKEY;
+      if (desktop.searchHotkeyEnabled) {
+        const searchResult = await UToolsAdapter.registerSearchHotkey(nextSearchHotkey);
+        if (disposed) {
+          if (searchResult.ok) {
+            await UToolsAdapter.unregisterSearchHotkey(nextSearchHotkey);
+          }
+        } else if (searchResult.ok) {
+          registeredSearchHotkeyRef.current = nextSearchHotkey;
+        } else {
+          toast.error(
+            `全局搜索快捷键注册失败：${searchResult.error || "快捷键冲突或受系统限制"}`,
+            {
+              id: "search-hotkey-register-error",
+              duration: 3200,
+            },
+          );
+
+          if (nextSearchHotkey !== DEFAULT_SEARCH_HOTKEY) {
+            setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
+            toast.message(`已回退到默认搜索快捷键：${DEFAULT_SEARCH_HOTKEY}`, {
+              id: "search-hotkey-fallback-default",
+              duration: 2600,
+            });
+          } else {
+            toast.message("请在设置中更换可用的搜索快捷键", {
+              id: "search-hotkey-change-required",
+              duration: 2600,
+            });
+          }
+        }
+      }
+    };
+
+    void applyDesktopHotkeys();
+
+    return () => {
+      disposed = true;
+      const previousWakeHotkey = registeredWakeHotkeyRef.current;
+      if (previousWakeHotkey) {
+        registeredWakeHotkeyRef.current = null;
+        void UToolsAdapter.unregisterWakeHotkey(previousWakeHotkey);
+      }
+      const previousSearchHotkey = registeredSearchHotkeyRef.current;
+      if (previousSearchHotkey) {
+        registeredSearchHotkeyRef.current = null;
+        void UToolsAdapter.unregisterSearchHotkey(previousSearchHotkey);
+      }
+    };
+  }, [
+    desktop.searchHotkey,
+    desktop.searchHotkeyEnabled,
+    desktop.wakeHotkey,
+    desktop.wakeHotkeyEnabled,
+    setSearchHotkey,
+    setWakeHotkey,
+  ]);
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -37,6 +162,19 @@ function App() {
     if (typeof document === "undefined" || UToolsAdapter.isUTools) return;
 
     const preventBrowserContextMenu = (event: MouseEvent) => {
+      const target = event.target;
+      const element =
+        target instanceof Element
+          ? target
+          : target instanceof Node
+            ? target.parentElement
+            : null;
+
+      if (
+        element?.closest("[data-goose-context-trigger='true']")
+      ) {
+        return;
+      }
       event.preventDefault();
     };
 
@@ -142,7 +280,30 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePluginOut = () => {
+      void (async () => {
+        window.dispatchEvent(
+          new CustomEvent("goose-note:flush-editor", {
+            detail: { immediate: true },
+          }),
+        );
+        await usePages.getState().flushPendingLocalSaves();
+        const { flushUToolsStorageWrites } = await import("@/lib/storage");
+        await flushUToolsStorageWrites();
+      })();
+    };
+
+    window.addEventListener("goose-note:plugin-out", handlePluginOut);
+    return () => {
+      window.removeEventListener("goose-note:plugin-out", handlePluginOut);
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined" || !(window as any).gooseFs) return;
+    const gooseFs = (window as any).gooseFs as GooseFs;
     const notebooksStore = useNotebooks.getState();
     const pagesStore = usePages.getState();
     const notebooks = Object.values(notebooksStore.notebooks).sort(
@@ -153,59 +314,63 @@ function App() {
       (notebook) => notebook.source === "local-folder",
     );
 
-    localNotebooks.forEach((notebook) => {
-      const localPath = notebook.localPath;
-      const exists =
-        typeof localPath === "string" &&
-        localPath.length > 0 &&
-        (window as any).gooseFs.exists(localPath);
+    void (async () => {
+      for (const notebook of localNotebooks) {
+        const localPath = notebook.localPath;
+        const exists =
+          typeof localPath === "string" &&
+          localPath.length > 0 &&
+          (gooseFs.existsAsync
+            ? await gooseFs.existsAsync(localPath)
+            : gooseFs.exists(localPath));
 
-      if (exists) {
-        if (notebook.localPathMissing) {
-          notebooksStore.updateNotebook(notebook.id, {
-            localPathMissing: false,
-          });
-        }
-        pagesStore.loadLocalFolderPages(notebook.id, localPath!);
-      } else {
-        if (!notebook.localPathMissing) {
-          notebooksStore.updateNotebook(notebook.id, {
-            localPathMissing: true,
-          });
-        }
-        pagesStore.removePagesByWorkspaceId(notebook.id);
-      }
-    });
-
-    const activeNotebookId = notebooksStore.activeNotebookId;
-    const activeNotebook = activeNotebookId
-      ? notebooksStore.notebooks[activeNotebookId]
-      : null;
-    const activeInvalid =
-      activeNotebook?.source === "local-folder" &&
-      activeNotebook.localPathMissing;
-
-    if (activeInvalid) {
-      const nextNotebook =
-        notebooks.find((notebook) => !notebook.localPathMissing) ||
-        notebooks[0];
-      if (nextNotebook && nextNotebook.id !== activeNotebookId) {
-        notebooksStore.setActiveNotebook(nextNotebook.id);
-        const lastPageId = notebooksStore.getLastActivePage(nextNotebook.id);
-        const { pages } = pagesStore;
-        const lastPage = lastPageId ? pages[lastPageId] : null;
-        if (lastPage && !lastPage.trashedAt) {
-          pagesStore.setActivePage(lastPageId);
+        if (exists) {
+          if (notebook.localPathMissing) {
+            notebooksStore.updateNotebook(notebook.id, {
+              localPathMissing: false,
+            });
+          }
+          await pagesStore.loadLocalFolderPages(notebook.id, localPath!);
         } else {
-          const firstValidPage = Object.values(pages)
-            .filter((p) => p.workspaceId === nextNotebook.id && !p.trashedAt)
-            .sort(
-              (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-            )[0];
-          pagesStore.setActivePage(firstValidPage?.id ?? null);
+          if (!notebook.localPathMissing) {
+            notebooksStore.updateNotebook(notebook.id, {
+              localPathMissing: true,
+            });
+          }
+          pagesStore.removePagesByWorkspaceId(notebook.id);
         }
       }
-    }
+
+      const activeNotebookId = notebooksStore.activeNotebookId;
+      const activeNotebook = activeNotebookId
+        ? notebooksStore.notebooks[activeNotebookId]
+        : null;
+      const activeInvalid =
+        activeNotebook?.source === "local-folder" &&
+        activeNotebook.localPathMissing;
+
+      if (activeInvalid) {
+        const nextNotebook =
+          notebooks.find((notebook) => !notebook.localPathMissing) ||
+          notebooks[0];
+        if (nextNotebook && nextNotebook.id !== activeNotebookId) {
+          notebooksStore.setActiveNotebook(nextNotebook.id);
+          const lastPageId = notebooksStore.getLastActivePage(nextNotebook.id);
+          const { pages } = pagesStore;
+          const lastPage = lastPageId ? pages[lastPageId] : null;
+          if (lastPage && !lastPage.trashedAt) {
+            pagesStore.setActivePage(lastPageId);
+          } else {
+            const firstValidPage = Object.values(pages)
+              .filter((p) => p.workspaceId === nextNotebook.id && !p.trashedAt)
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              )[0];
+            pagesStore.setActivePage(firstValidPage?.id ?? null);
+          }
+        }
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -236,11 +401,42 @@ function App() {
       const isEditableInput =
         target instanceof HTMLElement &&
         ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+      const isRichTextEditing =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || !!target.closest(".ProseMirror"));
+
+      if ((event.key === "," || (event.key.toLowerCase() === "k" && event.shiftKey)) &&
+          (isEditableInput || isRichTextEditing)) {
+        return;
+      }
+
+      if (event.key === ",") {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent("goose-note:open-settings"));
+        return;
+      }
+
+      if (event.key.toLowerCase() === "k" && event.shiftKey) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+        return;
+      }
+
       if (isEditableInput) return;
 
-      if (event.key === "s") {
+      if (event.key.toLowerCase() === "s") {
         event.preventDefault();
-        toast("内容已自动保存", { duration: 1500 });
+        void (async () => {
+          window.dispatchEvent(
+            new CustomEvent("goose-note:flush-editor", {
+              detail: { immediate: true },
+            }),
+          );
+          await usePages.getState().flushPendingLocalSaves();
+          const { flushUToolsStorageWrites } = await import("@/lib/storage");
+          await flushUToolsStorageWrites();
+          toast("内容已保存", { duration: 1500 });
+        })();
       } else if (event.key === "+" || event.key === "=") {
         event.preventDefault();
         increaseEditorFontSize();
