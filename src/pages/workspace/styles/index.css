@@ -4,3 +4,21 @@
 @import "./drag-handlers.css";
 @import "./sidebar-dnd.css";
 @import "./tippy.css";
+
+.workspace-shell {
+  --workspace-divider: rgba(15, 23, 42, 0.12);
+  --workspace-divider-strong: rgba(15, 23, 42, 0.18);
+}
+
+.dark .workspace-shell {
+  --workspace-divider: rgba(248, 250, 252, 0.13);
+  --workspace-divider-strong: rgba(248, 250, 252, 0.2);
+}
+
+.workspace-shell .workspace-divider {
+  border-color: var(--workspace-divider) !important;
+}
+
+.workspace-shell .workspace-divider-strong {
+  border-color: var(--workspace-divider-strong) !important;
+}

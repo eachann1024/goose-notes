@@ -26,7 +26,7 @@ export function PageHeader({
   }, [lastSavedAt, isLocalItem]);
 
   return (
-    <div className="h-12 flex items-center justify-between px-3 border-b bg-gradient-to-b from-background/90 via-background/80 to-background/70 dark:from-background/80 dark:via-background/70 dark:to-background/60 backdrop-blur-md dark:backdrop-blur-xl sticky top-0 z-10 shrink-0">
+    <div className="workspace-divider h-12 flex items-center justify-between px-3 border-b bg-gradient-to-b from-background/90 via-background/80 to-background/70 dark:from-background/80 dark:via-background/70 dark:to-background/60 backdrop-blur-md dark:backdrop-blur-xl sticky top-0 z-10 shrink-0">
       <div className="flex items-center text-sm text-muted-foreground dark:text-muted-foreground/70 gap-2 overflow-hidden">
         <span className="truncate max-w-[200px]">
           {getPageTitle(page)}

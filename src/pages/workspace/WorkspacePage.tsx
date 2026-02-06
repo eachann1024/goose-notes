@@ -176,7 +176,7 @@ export function WorkspacePage() {
         }
       `}</style>
       <div
-        className="flex h-screen overflow-hidden bg-background text-foreground"
+        className="workspace-shell flex h-screen overflow-hidden bg-background text-foreground"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
