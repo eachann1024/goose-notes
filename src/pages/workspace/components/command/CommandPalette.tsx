@@ -23,7 +23,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
         regex.test(part) ? (
           <mark
             key={i}
-            className="bg-yellow-200/50 dark:bg-yellow-500/30 rounded-sm px-0.5"
+            className="rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground"
           >
             {part}
           </mark>
@@ -209,7 +209,7 @@ export function CommandPalette() {
         </kbd>
       </div>
 
-      <Command.List className="max-h-[300px] overflow-y-auto overflow-x-hidden py-2 px-2">
+      <Command.List className="max-h-[300px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-foreground/90">
         <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
         </Command.Empty>
@@ -240,7 +240,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.72)] aria-selected:bg-[hsl(var(--goose-selected-bg))] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
                     <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
@@ -255,7 +255,7 @@ export function CommandPalette() {
                         e.stopPropagation();
                         handleRemoveRecent(e, page.id);
                       }}
-                      className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted-foreground/20 cursor-pointer opacity-0 group-hover/icon:opacity-100 transition-opacity duration-200 absolute inset-0"
+                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 hover:bg-[hsl(var(--goose-selected-bg))]"
                     >
                       <LucideIcons.X className="h-3 w-3 text-muted-foreground" />
                     </div>
@@ -323,7 +323,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="relative flex cursor-pointer select-none items-start rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.72)] aria-selected:bg-[hsl(var(--goose-selected-bg))] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
