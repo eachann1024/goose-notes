@@ -32,7 +32,7 @@ interface FileSystemWritableFileStream extends WritableStream {
 
 declare global {
   interface Window {
-    showDirectoryPicker(options?: any): Promise<FileSystemDirectoryHandle>;
+    showDirectoryPicker?: (options?: any) => Promise<FileSystemDirectoryHandle>;
   }
 }
 
@@ -92,6 +92,21 @@ function normalizePath(p: string): string {
   return p.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isInterceptedFileChooser(error: unknown): boolean {
+  return getErrorMessage(error).includes("Page.setInterceptFileChooserDialog");
+}
+
 async function getHandleByPath(path: string, create = false): Promise<FileSystemHandle | null> {
   if (!rootHandle) return null;
 
@@ -143,19 +158,29 @@ async function getHandleByPath(path: string, create = false): Promise<FileSystem
 export const browserGooseFs = {
   // 初始化根目录选择
   async selectDirectory() {
+     if (typeof window.showDirectoryPicker !== "function") {
+       throw new Error("当前浏览器不支持目录选择，请使用 Chromium 浏览器或 uTools。");
+     }
+
      try {
-         const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-         rootHandle = handle;
-         rootPathPrefix = handle.name;
-         try {
-           await idbSet(ROOT_HANDLE_KEY, handle);
-         } catch (e) {
-           console.error("Persist handle failed", e);
-         }
-         return handle.name;
+       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+       rootHandle = handle;
+       rootPathPrefix = handle.name;
+       try {
+         await idbSet(ROOT_HANDLE_KEY, handle);
+       } catch (e) {
+         console.error("Persist handle failed", e);
+       }
+       return handle.name;
      } catch (e) {
-         console.error("User cancelled or API not supported", e);
+       if (isAbortError(e) && !isInterceptedFileChooser(e)) {
+         // 用户主动取消时，不需要打错误日志，也不提示失败。
          return null;
+       }
+       if (isInterceptedFileChooser(e)) {
+         throw new Error("当前浏览器环境拦截了文件选择器，请在普通浏览器窗口打开，或关闭自动化拦截后重试。");
+       }
+       throw new Error(`打开文件夹失败：${getErrorMessage(e)}`);
      }
   },
   async restoreLastDirectory() {

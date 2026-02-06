@@ -87,8 +87,7 @@ export function NotebookSwitcher() {
           setActivePage(null);
         }
       } else {
-        const { browserGooseFs } = await import("@/lib/browser-fs");
-        const path = await browserGooseFs.selectDirectory();
+        const path = await window.gooseFs?.selectDirectory?.();
         if (path) {
           const folderName = path.split(/[\\/]/).pop() || "Unknown";
           const notebookId = createLocalFolderNotebook(folderName, path);

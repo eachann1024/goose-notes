@@ -46,8 +46,7 @@ export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
                 }
               } else {
                 try {
-                  const { browserGooseFs } = await import("@/lib/browser-fs");
-                  const path = await browserGooseFs.selectDirectory();
+                  const path = await window.gooseFs?.selectDirectory?.();
                   if (path) {
                     const folderName = path.split(/[\\/]/).pop() || "Unknown";
                     const notebookId = useNotebooks
