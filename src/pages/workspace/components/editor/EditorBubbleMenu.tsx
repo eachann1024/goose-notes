@@ -9,7 +9,7 @@ type EditorBubbleMenuProps = Omit<
 import { useScrollHide } from "@/hooks/useScrollHide";
 
 const TOOLTIP_STYLE =
-  "z-[12050] rounded-lg border-0 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)]";
+  "rounded-lg border-0 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)]";
 
 function BubbleMenuTooltip({
   label,

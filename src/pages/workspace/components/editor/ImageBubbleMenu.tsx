@@ -85,6 +85,12 @@ import { useScrollHide } from "@/hooks/useScrollHide";
 
 export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   const isHidden = useScrollHide(editor);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    menuRef.current.style.zIndex = "20000";
+  }, []);
 
   if (!editor) return null;
 
@@ -132,10 +138,11 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   return (
     <TooltipProvider>
       <BubbleMenu
+        ref={menuRef}
         editor={editor}
         appendTo={() => document.body}
         className={cn(
-          "flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity z-[10000]",
+          "z-[20000] flex items-center space-x-1 rounded-md border border-border bg-popover p-1 shadow-md backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor }: { editor: Editor }) => {

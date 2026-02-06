@@ -8,6 +8,12 @@ import { useScrollHide } from "@/hooks/useScrollHide";
 
 export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
   const isHidden = useScrollHide(editor);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    menuRef.current.style.zIndex = "20000";
+  }, []);
 
   if (!editor) return null;
 
@@ -16,6 +22,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
   return (
     <TooltipProvider>
       <BubbleMenu
+        ref={menuRef}
         editor={editor}
         pluginKey="tableBubbleMenu"
         appendTo={() => document.body}
@@ -23,7 +30,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           return editor.isEditable && editor.isActive("table");
         }}
         className={cn(
-          "flex flex-row items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md transition-opacity duration-200 z-[9999] max-w-none",
+          "z-[20000] flex flex-row items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md transition-opacity duration-200 max-w-none",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         {...props}
