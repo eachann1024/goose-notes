@@ -161,7 +161,7 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-64"
+          className="w-[312px]"
           align="start"
           sideOffset={-4}
           onMouseEnter={() => setIsOpen(true)}
@@ -239,16 +239,16 @@ export function NotebookSwitcher() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuGroup className="flex items-center gap-2 px-2 py-1.5">
+          <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-2 pt-1.5 pb-2">
             <DropdownMenuItem
-              className="flex-1 justify-center gap-2"
+              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2"
               onClick={handleCreate}
             >
               <LucideIcons.BookPlus className="h-4 w-4" />
               新建记事本
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="flex-1 justify-center gap-2"
+              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-4 w-4" />
