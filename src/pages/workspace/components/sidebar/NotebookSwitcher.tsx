@@ -161,7 +161,7 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[312px]"
+          className="w-[248px]"
           align="start"
           sideOffset={-4}
           onMouseEnter={() => setIsOpen(true)}

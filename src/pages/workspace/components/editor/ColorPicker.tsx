@@ -82,7 +82,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
 
   const panelContent = isOpen ? (
     <div
-      className="fixed z-[20000] w-[258px] rounded-[10px] border border-border/70 bg-popover/98 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.08)] backdrop-blur-sm"
+      className="fixed z-[20000] w-fit rounded-[10px] border border-border/70 bg-popover/98 p-1 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.08)] backdrop-blur-sm"
       style={{
         top: position.top,
         left: position.left,
@@ -92,11 +92,11 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       onMouseLeave={handleMouseLeave}
     >
       <TooltipProvider delayDuration={0}>
-        <div className="flex flex-col gap-1.5">
-          <div className="px-1.5 pt-0.5 text-[12px] font-semibold text-muted-foreground">
+        <div className="flex flex-col gap-1">
+          <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
             文本颜色
           </div>
-          <div className="grid grid-cols-5 gap-0.5 px-0.5">
+          <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1">
             {TEXT_COLORS.map((item) => (
               <Tooltip key={item.color}>
                 <TooltipTrigger asChild>
@@ -134,10 +134,10 @@ export function ColorPicker({ editor }: ColorPickerProps) {
 
           <div className="my-1 border-t border-border/60" />
 
-          <div className="px-1.5 text-[12px] font-semibold text-muted-foreground">
+          <div className="px-1 text-[12px] font-semibold text-muted-foreground">
             背景颜色
           </div>
-          <div className="grid grid-cols-5 gap-0.5 px-0.5 pb-0.5">
+          <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1 pb-0.5">
             {HIGHLIGHT_COLORS.map((item) => (
               <Tooltip key={item.color}>
                 <TooltipTrigger asChild>
