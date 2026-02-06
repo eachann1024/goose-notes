@@ -2,6 +2,7 @@ import { FavoritesSection } from "./FavoritesSection";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
+import { SidebarDragGuide, type TreeDragGuideDirection } from "./SidebarDragGuide";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import type { Page } from "@/types";
@@ -71,9 +72,18 @@ export function Sidebar({ className }: SidebarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
   const [pagesCollapsed, setPagesCollapsed] = useState(false);
+  const [isResizeHandleHovered, setIsResizeHandleHovered] = useState(false);
+  const [handleY, setHandleY] = useState<number | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
+  const [treeDragGuide, setTreeDragGuide] = useState<{
+    isDragging: boolean;
+    direction: TreeDragGuideDirection;
+  }>({
+    isDragging: false,
+    direction: "neutral",
+  });
   const sidebarRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
@@ -102,6 +112,17 @@ export function Sidebar({ className }: SidebarProps) {
       document.removeEventListener("keydown", handleDeleteShortcut);
     };
   }, [handleDeleteShortcut]);
+
+  useEffect(() => {
+    const handleOpenSettings = () => {
+      setShowSettings(true);
+    };
+
+    window.addEventListener("goose-note:open-settings", handleOpenSettings);
+    return () => {
+      window.removeEventListener("goose-note:open-settings", handleOpenSettings);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -155,6 +176,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
 
     const startX = e.clientX;
@@ -167,6 +189,7 @@ export function Sidebar({ className }: SidebarProps) {
 
     const onMouseUp = () => {
       setIsResizing(false);
+      setHandleY(null);
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
       document.body.style.cursor = "default";
@@ -176,6 +199,56 @@ export function Sidebar({ className }: SidebarProps) {
     document.addEventListener("mouseup", onMouseUp);
     document.body.style.cursor = "col-resize";
   };
+
+  const renderResizeHandle = () => (
+    <div
+      className="absolute top-0 h-full z-[60] flex"
+      style={{
+        right: "calc(var(--workspace-stage-gap) * -1)",
+        width: "calc(var(--workspace-stage-gap) - 2px)",
+      }}
+      onMouseEnter={() => setIsResizeHandleHovered(true)}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setHandleY(e.clientY - rect.top);
+      }}
+      onMouseLeave={() => {
+        setIsResizeHandleHovered(false);
+        if (!isResizing) setHandleY(null);
+      }}
+    >
+      <button
+        type="button"
+        aria-label="调整侧边栏宽度"
+        className={cn(
+          "absolute h-20 w-full rounded-full border transition-all duration-200 ease-out backdrop-blur-md bg-background/55",
+          "cursor-col-resize select-none touch-none",
+          "shadow-[0_8px_24px_rgba(15,23,42,0.14)] dark:bg-background/35 dark:shadow-[0_10px_28px_rgba(2,6,23,0.45)]",
+          isResizeHandleHovered || isResizing
+            ? "pointer-events-auto opacity-100 scale-100 border-border/70"
+            : "pointer-events-none opacity-0 scale-90 border-transparent",
+          isResizing &&
+            "border-primary/70 bg-primary/10 dark:bg-primary/20 shadow-[0_0_0_1px_hsl(var(--primary)/0.45),0_12px_30px_rgba(15,23,42,0.2)]",
+        )}
+        style={{
+          top: handleY != null
+            ? `clamp(0px, calc(${handleY}px - 2.5rem), calc(100% - 5rem))`
+            : '50%',
+          transform: handleY != null ? 'none' : 'translateY(-50%)',
+        }}
+        onMouseDown={startResizing}
+      >
+        <span className="sr-only">拖动调整侧边栏宽度</span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mx-auto block h-8 w-[2px] rounded-full bg-foreground/35 transition-colors",
+            isResizing && "bg-primary",
+          )}
+        />
+      </button>
+    </div>
+  );
 
   const handleSearch = () => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
@@ -188,7 +261,7 @@ export function Sidebar({ className }: SidebarProps) {
     setRenameDialogOpen(true);
   }, []);
 
-  const confirmRename = useCallback(() => {
+  const confirmRename = useCallback(async () => {
     if (!renamePageId) return;
     const page = pages[renamePageId];
     const nextTitle = renameValue.trim();
@@ -220,6 +293,7 @@ export function Sidebar({ className }: SidebarProps) {
     const notebook = useNotebooks.getState().notebooks[page.workspaceId];
     const isLocalFolder = notebook?.source === "local-folder";
     if (isLocalFolder && page.localFilePath && (window as any).gooseFs) {
+      const gooseFs = (window as any).gooseFs as GooseFs;
       const dir = page.localFilePath.replace(/[^\/\\]+$/, "");
       const extMatch = page.localFilePath.match(/\.(md|markdown)$/i);
       const ext = extMatch ? extMatch[0] : ".md";
@@ -227,15 +301,19 @@ export function Sidebar({ className }: SidebarProps) {
       const safeTitle = rawTitle.replace(/\.(md|markdown)$/i, "");
       const newPath = `${dir}${safeTitle}${ext}`;
 
-      if ((window as any).gooseFs.exists(newPath)) {
+      const exists = gooseFs.existsAsync
+        ? await gooseFs.existsAsync(newPath)
+        : gooseFs.exists(newPath);
+      if (exists) {
         toast.error("重命名失败：目标文件已存在");
         return;
       }
       if (newPath !== page.localFilePath) {
-        const renamed = (window as any).gooseFs.rename(
-          page.localFilePath,
-          newPath,
-        );
+        const renamedResult = gooseFs.rename(page.localFilePath, newPath);
+        const renamed =
+          renamedResult instanceof Promise
+            ? await renamedResult
+            : renamedResult;
         if (!renamed) {
           toast.error("重命名失败：文件系统错误");
           return;
@@ -255,6 +333,21 @@ export function Sidebar({ className }: SidebarProps) {
     setRenamePageId(null);
   }, [pages, renamePageId, renameValue, updatePage]);
 
+  const handleTreeDragGuideChange = useCallback(
+    (next: { isDragging: boolean; direction: TreeDragGuideDirection }) => {
+      setTreeDragGuide((prev) => {
+        if (
+          prev.isDragging === next.isDragging &&
+          prev.direction === next.direction
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   if (currentView === "trash") {
     return (
       <div
@@ -263,16 +356,12 @@ export function Sidebar({ className }: SidebarProps) {
           "pb-0 bg-background dark:bg-background backdrop-blur-[1px] h-full flex flex-col relative",
           className,
         )}
-        style={{ width }}
+        style={{ width, overflow: "visible" }}
       >
-        <div
-          className={cn(
-            "absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50",
-            isResizing && "bg-primary",
-          )}
-          onMouseDown={startResizing}
-        />
-        <TrashList onBack={() => setCurrentView("pages")} />
+        {renderResizeHandle()}
+        <div className="flex-1 overflow-hidden rounded-[inherit]">
+          <TrashList onBack={() => setCurrentView("pages")} />
+        </div>
       </div>
     );
   }
@@ -308,17 +397,11 @@ export function Sidebar({ className }: SidebarProps) {
         "pb-0 bg-background dark:bg-background backdrop-blur-[1px] h-full flex flex-col relative group/sidebar",
         className,
       )}
-      style={{ width }}
+      style={{ width, overflow: "visible" }}
     >
-      <div
-        className={cn(
-          "absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-50",
-          isResizing && "bg-primary",
-        )}
-        onMouseDown={startResizing}
-      />
+      {renderResizeHandle()}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
           onCreatePage={handleCreatePage}
           onSearch={handleSearch}
@@ -331,6 +414,11 @@ export function Sidebar({ className }: SidebarProps) {
 
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
           <div className="mt-1">
+            <SidebarDragGuide
+              visible={!pagesCollapsed && treeDragGuide.isDragging}
+              direction={treeDragGuide.direction}
+              isLocalFolder={!!isLocalFolder}
+            />
             <SectionHeader
               title={isLocalFolder ? "本地文件夹" : "页面"}
               collapsed={pagesCollapsed}
@@ -347,6 +435,7 @@ export function Sidebar({ className }: SidebarProps) {
                 viewportHeight={scrollAreaHeight}
                 onCreatePage={handleCreatePage}
                 onRequestRename={openRenameDialog}
+                onDragGuideChange={handleTreeDragGuideChange}
               />
             </div>
           )}
@@ -388,7 +477,7 @@ export function Sidebar({ className }: SidebarProps) {
                 onChange={(e) => setRenameValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    confirmRename();
+                    void confirmRename();
                   } else if (e.key === "Escape") {
                     setRenameDialogOpen(false);
                   }
@@ -406,7 +495,9 @@ export function Sidebar({ className }: SidebarProps) {
               取消
             </Button>
             <Button
-              onClick={confirmRename}
+              onClick={() => {
+                void confirmRename();
+              }}
               disabled={!renamePageId || renameValue.trim() === ""}
             >
               确认

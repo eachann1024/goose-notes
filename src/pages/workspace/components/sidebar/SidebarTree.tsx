@@ -45,6 +45,10 @@ interface SidebarTreeProps {
   viewportHeight: number;
   onCreatePage: () => void;
   onRequestRename: (page: Page) => void;
+  onDragGuideChange?: (next: {
+    isDragging: boolean;
+    direction: "left" | "right" | "neutral";
+  }) => void;
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -347,6 +351,7 @@ export function SidebarTree({
   viewportHeight,
   onCreatePage,
   onRequestRename,
+  onDragGuideChange,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -493,6 +498,30 @@ export function SidebarTree({
     setExpandPageId(null);
     return () => window.clearTimeout(timer);
   }, [expandPageId, pages, activeNotebookId, setExpandPageId, visibleItems, virtualizer]);
+
+  useEffect(() => {
+    if (!onDragGuideChange) return;
+    if (!activeId) {
+      onDragGuideChange({ isDragging: false, direction: "neutral" });
+      return;
+    }
+
+    const threshold = TREE_INDENT / 3;
+    const direction =
+      dragOffsetX <= -threshold
+        ? "left"
+        : dragOffsetX >= threshold
+          ? "right"
+          : "neutral";
+
+    onDragGuideChange({ isDragging: true, direction });
+  }, [activeId, dragOffsetX, onDragGuideChange]);
+
+  useEffect(() => {
+    return () => {
+      onDragGuideChange?.({ isDragging: false, direction: "neutral" });
+    };
+  }, [onDragGuideChange]);
 
   const clearAutoExpandTimer = () => {
     if (autoExpandTimerRef.current !== null) {
