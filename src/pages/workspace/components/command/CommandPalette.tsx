@@ -101,9 +101,13 @@ export function CommandPalette() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        if (e.shiftKey) {
+          setOpen(true);
+        } else {
+          setOpen((open) => !open);
+        }
       }
       if (open && e.key === "Tab") {
         e.preventDefault();
@@ -162,14 +166,14 @@ export function CommandPalette() {
       onOpenChange={setOpen}
       label="Global Search"
       filter={() => 1}
-      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-xl border p-0 overflow-hidden z-[51] text-popover-foreground data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-[1px] bg-popover shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[51] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-[1px] bg-[hsl(var(--goose-shell-bg))] shadow-none"
       aria-describedby={descriptionId}
     >
       <DialogTitle className="sr-only">搜索</DialogTitle>
       <DialogDescription id={descriptionId} className="sr-only">
         搜索和快速访问页面
       </DialogDescription>
-      <div className="flex items-center border-b px-4" cmdk-input-wrapper="">
+      <div className="flex items-center px-4 shadow-[inset_0_-1px_0_hsl(var(--foreground)/0.08)]" cmdk-input-wrapper="">
         <LucideIcons.Search className="mr-2 h-5 w-5 shrink-0 opacity-50" />
         <Command.Input
           ref={inputRef}
@@ -200,7 +204,7 @@ export function CommandPalette() {
           </Label>
         </div>
         <div className="w-px h-4 bg-border mx-2" />
-        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded-[10px] border border-transparent bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--input)/0.7)]">
           <span className="text-xs">Tab</span>
         </kbd>
       </div>
