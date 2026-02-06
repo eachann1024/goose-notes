@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { useState, useEffect, useMemo } from "react";
 import {
   ContextMenu,
@@ -29,6 +30,29 @@ interface EditorContextMenuProps {
   children: React.ReactNode;
 }
 
+function getSelectionTextForClipboard(editor: Editor): string {
+  const { selection, doc } = editor.state;
+  const selectedNode =
+    selection instanceof NodeSelection ? selection.node : null;
+
+  if (selectedNode?.type?.name === "codeBlock") {
+    return selectedNode.textContent || "";
+  }
+
+  if (selection.empty && selection.$from.parent.type.name === "codeBlock") {
+    return selection.$from.parent.textContent || "";
+  }
+
+  const text = doc.textBetween(selection.from, selection.to, "\n\n");
+  if (text) return text;
+
+  if (selectedNode?.isTextblock) {
+    return selectedNode.textContent || "";
+  }
+
+  return "";
+}
+
 export function EditorContextMenu({
   editor,
   searchProviders,
@@ -40,10 +64,7 @@ export function EditorContextMenu({
   const [selectedText, setSelectedText] = useState("");
 
   useEffect(() => {
-    if (!editor) {
-      setSelectedText("");
-      return;
-    }
+    if (!editor) return;
 
     const updateSelectedText = () => {
       const { state } = editor;
@@ -56,7 +77,7 @@ export function EditorContextMenu({
       setSelectedText(text);
     };
 
-    updateSelectedText();
+    queueMicrotask(updateSelectedText);
     editor.on("selectionUpdate", updateSelectedText);
     return () => {
       editor.off("selectionUpdate", updateSelectedText);
@@ -132,9 +153,8 @@ export function EditorContextMenu({
         <ContextMenuItem
           disabled={!isEditable}
           onSelect={() => {
-            const { from, to } = editor.state.selection;
-            const text = editor.state.doc.textBetween(from, to, "\n\n");
-            navigator.clipboard.writeText(text);
+            const text = getSelectionTextForClipboard(editor);
+            UToolsAdapter.copyToClipboard(text);
             editor?.commands.deleteSelection();
           }}
         >
@@ -146,9 +166,8 @@ export function EditorContextMenu({
         </ContextMenuItem>
         <ContextMenuItem
           onSelect={() => {
-            const { from, to } = editor.state.selection;
-            const text = editor.state.doc.textBetween(from, to, "\n\n");
-            navigator.clipboard.writeText(text);
+            const text = getSelectionTextForClipboard(editor);
+            UToolsAdapter.copyToClipboard(text);
           }}
         >
           <LucideIcons.Copy className="mr-2 h-4 w-4" />

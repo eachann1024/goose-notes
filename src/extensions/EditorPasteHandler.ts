@@ -288,6 +288,27 @@ function hasMarkdownStructure(text: string): boolean {
   return patterns.some((p) => p.test(text));
 }
 
+function hasHtmlLikeTag(text: string): boolean {
+  return /<\s*\/?\s*[a-zA-Z][^>\n]*>/.test(text);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function renderLiteralTextAsHtml(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  return lines
+    .map((line) => {
+      if (!line.length) return "<p></p>";
+      return `<p>${escapeHtml(line)}</p>`;
+    })
+    .join("");
+}
+
 export const EditorPasteHandler = Extension.create({
   name: "editorPasteHandler",
 
@@ -348,6 +369,29 @@ export const EditorPasteHandler = Extension.create({
               const parser = DOMParser.fromSchema(state.schema);
               const doc = new window.DOMParser().parseFromString(
                 tableHtml,
+                "text/html",
+              );
+              const slice = parser.parseSlice(doc.body);
+              const tr = state.tr.replaceSelection(slice);
+              applyPasteTransaction(view, tr);
+              return true;
+            }
+
+            const shouldLiteralPasteHtmlTagText =
+              !hasMarkdownStructure(processedTextPlain) &&
+              hasHtmlLikeTag(processedTextPlain);
+
+            if (shouldLiteralPasteHtmlTagText) {
+              if (shouldForceInlinePaste($from)) {
+                const tr = state.tr.insertText(processedTextPlain);
+                applyPasteTransaction(view, tr);
+                return true;
+              }
+
+              const literalHtml = renderLiteralTextAsHtml(processedTextPlain);
+              const parser = DOMParser.fromSchema(state.schema);
+              const doc = new window.DOMParser().parseFromString(
+                literalHtml,
                 "text/html",
               );
               const slice = parser.parseSlice(doc.body);

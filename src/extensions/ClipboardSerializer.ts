@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import type { Node } from "@tiptap/pm/model";
 
@@ -65,9 +65,8 @@ function getSelectedImageSrc(view: EditorView): string | null {
   }
 
   // Check NodeSelection
-  const nodeSelection = selection as any;
-  if (nodeSelection.node) {
-    const selectedNode = nodeSelection.node;
+  if (selection instanceof NodeSelection) {
+    const selectedNode = selection.node;
     if (
       selectedNode.type.name === "image" ||
       selectedNode.type.name === "imageResize"
@@ -79,11 +78,59 @@ function getSelectedImageSrc(view: EditorView): string | null {
   return null;
 }
 
+function writePlainTextToClipboard(event: Event, text: string): boolean {
+  const clipboardEvent = event as ClipboardEvent;
+  const clipboardData = clipboardEvent.clipboardData;
+
+  if (clipboardData) {
+    clipboardData.setData("text/plain", text);
+    return true;
+  }
+
+  try {
+    UToolsAdapter.copyToClipboard(text);
+    return true;
+  } catch (err) {
+    console.error("Failed to copy plain text:", err);
+    return false;
+  }
+}
+
+function getSelectedCodeBlockText(view: EditorView): string | null {
+  const { state } = view;
+  const { selection } = state;
+
+  if (selection instanceof NodeSelection) {
+    const selectedNode = selection.node;
+    if (selectedNode?.type?.name === "codeBlock") {
+      return selectedNode.textContent || "";
+    }
+  }
+
+  const inCodeBlock =
+    selection.$from.parent.type.name === "codeBlock" &&
+    selection.$to.parent.type.name === "codeBlock" &&
+    selection.$from.sameParent(selection.$to);
+
+  if (!inCodeBlock) return null;
+
+  if (selection.empty) {
+    return selection.$from.parent.textContent || "";
+  }
+
+  return selection.$from.parent.textBetween(
+    selection.$from.parentOffset,
+    selection.$to.parentOffset,
+    undefined,
+    "\n",
+  );
+}
+
 function normalizePlainText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function applyCutTransaction(view: EditorView, tr: any) {
+function applyCutTransaction(view: EditorView, tr: Transaction) {
   tr.setMeta("uiEvent", "cut");
   tr.setMeta("addToHistory", true);
   view.dispatch(tr);
@@ -92,15 +139,17 @@ function applyCutTransaction(view: EditorView, tr: any) {
 function getTableSelectionText(view: EditorView): string | null {
   const { state } = view;
   const { selection } = state;
-  const selectionAny = selection as any;
+  const tableSelection = selection as {
+    forEachCell?: (callback: (cell: Node, pos: number) => void) => void;
+  };
 
-  if (typeof selectionAny.forEachCell !== "function") {
+  if (typeof tableSelection.forEachCell !== "function") {
     return null;
   }
 
   const rows = new Map<number, string[]>();
 
-  selectionAny.forEachCell((cell: Node, pos: number) => {
+  tableSelection.forEachCell((cell: Node, pos: number) => {
     const $pos = state.doc.resolve(pos);
     let rowKey = pos;
 
@@ -138,6 +187,20 @@ export const ClipboardSerializer = Extension.create({
         props: {
           handleDOMEvents: {
             copy: (view, event) => {
+              const codeBlockText = getSelectedCodeBlockText(view);
+              if (codeBlockText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, codeBlockText);
+                if (!copied) {
+                  Promise.resolve()
+                    .then(() => UToolsAdapter.copyToClipboard(codeBlockText))
+                    .catch((err) => {
+                    console.error("Failed to copy code block:", err);
+                  });
+                }
+                return true;
+              }
+
               // 1. 处理图片复制
               const imageSrc = getSelectedImageSrc(view);
               if (imageSrc) {
@@ -151,7 +214,7 @@ export const ClipboardSerializer = Extension.create({
               const tableSelectionText = getTableSelectionText(view);
               if (tableSelectionText) {
                 event.preventDefault();
-                navigator.clipboard.writeText(tableSelectionText);
+                UToolsAdapter.copyToClipboard(tableSelectionText);
                 return true;
               }
 
@@ -159,6 +222,27 @@ export const ClipboardSerializer = Extension.create({
               return false;
             },
             cut: (view, event) => {
+              const codeBlockText = getSelectedCodeBlockText(view);
+              if (codeBlockText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, codeBlockText);
+
+                if (copied) {
+                  const { state } = view;
+                  const tr = state.tr.deleteSelection();
+                  applyCutTransaction(view, tr);
+                } else {
+                  navigator.clipboard.writeText(codeBlockText).then(() => {
+                    const { state } = view;
+                    const tr = state.tr.deleteSelection();
+                    applyCutTransaction(view, tr);
+                  }).catch((err) => {
+                    console.error("Failed to cut code block:", err);
+                  });
+                }
+                return true;
+              }
+
               const imageSrc = getSelectedImageSrc(view);
               if (imageSrc) {
                 event.preventDefault();

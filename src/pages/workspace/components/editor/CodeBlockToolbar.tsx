@@ -35,7 +35,7 @@ export function CodeBlockToolbar({
     : "Code";
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(getCodeContent());
+    UToolsAdapter.copyToClipboard(getCodeContent());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
