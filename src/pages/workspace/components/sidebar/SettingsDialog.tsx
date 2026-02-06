@@ -31,6 +31,16 @@ interface SettingsDialogProps {
 
 type SettingsTab = "general" | "appearance" | "data";
 
+const SETTINGS_TABS: {
+  id: SettingsTab;
+  label: string;
+  icon: typeof LucideIcons.Settings;
+}[] = [
+  { id: "general", label: "通用设置", icon: LucideIcons.Settings },
+  { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
+  { id: "data", label: "数据管理", icon: LucideIcons.Database },
+];
+
 // 推荐应用数据
 const RECOMMENDED_APPS = [
   {
@@ -245,42 +255,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         {/* 左侧导航栏 - 白色卡片 */}
         <div className="w-56 bg-background rounded-xl flex flex-col shadow-sm">
           <nav className="flex-1 p-3 space-y-1">
-            <button
-              onClick={() => setActiveTab("general")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm",
-                activeTab === "general"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-muted text-muted-foreground",
-              )}
-            >
-              <LucideIcons.Settings className="w-4 h-4" />
-              <span className="font-medium">通用设置</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("appearance")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm",
-                activeTab === "appearance"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-muted text-muted-foreground",
-              )}
-            >
-              <LucideIcons.Laptop className="w-4 h-4" />
-              <span className="font-medium">外观主题</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("data")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm",
-                activeTab === "data"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-muted text-muted-foreground",
-              )}
-            >
-              <LucideIcons.Database className="w-4 h-4" />
-              <span className="font-medium">数据管理</span>
-            </button>
+            {SETTINGS_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm",
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "hover:bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           {/* 推荐应用菜单 */}
@@ -316,8 +308,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         {/* 右侧内容区 - 白色卡片 */}
         <div className="flex-1 bg-background rounded-xl overflow-hidden shadow-sm flex flex-col">
           <div className="flex-1 overflow-y-auto p-6">
+            <div className="mx-auto w-full max-w-5xl">
               {activeTab === "general" && (
-                <div className="space-y-4 max-w-2xl">
+                <div className="space-y-4">
                   <SettingsGeneral
                     searchProviders={searchProviders}
                     toggleSearchProvider={toggleSearchProvider}
@@ -355,7 +348,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               )}
 
               {activeTab === "appearance" && (
-                <div className="max-w-2xl">
+                <div>
                   <SettingsAppearance
                     theme={theme}
                     setTheme={setTheme}
@@ -371,7 +364,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               )}
 
               {activeTab === "data" && (
-                <div className="space-y-4 max-w-2xl">
+                <div className="space-y-4">
                   {/* 导入导出卡片 */}
                   <div className="space-y-5">
                     <div className="flex items-center justify-between">
@@ -408,7 +401,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             : "全选"}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                         {notebookList.map((notebook) => (
                           <button
                             key={notebook.id}
@@ -501,6 +494,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                 </div>
               )}
+            </div>
           </div>
         </div>
       </div>

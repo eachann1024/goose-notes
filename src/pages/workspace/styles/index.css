@@ -8,8 +8,8 @@
 .workspace-shell {
   --workspace-divider: rgba(96, 114, 136, 0.16);
   --workspace-divider-strong: rgba(96, 114, 136, 0.24);
-  --workspace-sidebar-surface: hsl(var(--background) / 0.96);
-  --workspace-main-surface: hsl(var(--background) / 0.985);
+  --workspace-sidebar-surface: hsl(var(--background) / 0.995);
+  --workspace-main-surface: hsl(var(--background) / 0.998);
   --workspace-panel-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
     0 6px 18px rgba(15, 23, 42, 0.05);
@@ -22,8 +22,8 @@
 .dark .workspace-shell {
   --workspace-divider: rgba(156, 175, 196, 0.24);
   --workspace-divider-strong: rgba(189, 202, 218, 0.34);
-  --workspace-sidebar-surface: hsl(var(--background) / 0.93);
-  --workspace-main-surface: hsl(var(--background) / 0.96);
+  --workspace-sidebar-surface: hsl(var(--background) / 0.985);
+  --workspace-main-surface: hsl(var(--background) / 0.99);
   --workspace-panel-shadow:
     0 1px 2px rgba(2, 6, 23, 0.38),
     0 8px 20px rgba(2, 6, 23, 0.28);

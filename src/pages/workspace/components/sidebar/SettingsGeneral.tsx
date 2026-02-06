@@ -47,7 +47,7 @@ export function SettingsGeneral({
 
       <div>
         <h4 className="text-sm font-medium mb-3">隐私设置</h4>
-        <div className="flex items-center justify-between">
+        <div className="rounded-xl border bg-muted/20 p-4 flex items-center justify-between gap-4">
           <div>
             <Label htmlFor="auto-open-last-note" className="cursor-pointer">
               自动打开上次笔记
@@ -69,11 +69,11 @@ export function SettingsGeneral({
         <p className="text-xs text-muted-foreground mb-4">
           配置右键菜单中显示的搜索引擎。
         </p>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
           {searchProviders.map((provider) => (
             <div
               key={provider.id}
-              className="flex items-center justify-between"
+              className="rounded-lg border bg-background px-3 py-2.5 flex items-center justify-between gap-2"
             >
               <Label
                 htmlFor={`provider-${provider.id}`}
@@ -99,7 +99,7 @@ export function SettingsGeneral({
             {/* 自动搜索开关已移除 */}
 
 
-            <div className="flex items-center justify-between">
+            <div className="rounded-xl border bg-muted/20 p-4 flex items-center justify-between gap-4">
               <div>
                 <Label htmlFor="open-in-utools" className="cursor-pointer">
                   使用 uTools 打开搜索结果

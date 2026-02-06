@@ -42,6 +42,16 @@ const defaultFonts = {
   serif: "仓耳今楷",
   mono: "DM Mono",
 };
+const fontPlaceholders = {
+  default: "例：PingFang SC, DM Sans",
+  serif: "例：Songti SC, Source Han Serif SC",
+  mono: "例：JetBrains Mono, Fira Code",
+};
+const fontPreviewText = {
+  default: "Goose Note 字体预览 Aa123",
+  serif: "春风又绿江南岸 Aa123",
+  mono: "const font = 'Aa123_鹅';",
+};
 
 export function SettingsAppearance({
   theme,
@@ -138,7 +148,7 @@ export function SettingsAppearance({
             选择代码块的视觉风格（自动适配深浅模式）
           </p>
 
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {codeStyles.map((t) => (
               <button
                 key={t.value}
@@ -174,7 +184,7 @@ export function SettingsAppearance({
             {(["default", "serif", "mono"] as const).map((type) => (
               <div
                 key={type}
-                className="grid grid-cols-[80px_1fr_100px] gap-3 items-center"
+                className="grid grid-cols-1 md:grid-cols-[88px_200px_minmax(0,1fr)] gap-3 items-center"
               >
                 <div className="flex items-center gap-1">
                   <Input
@@ -188,17 +198,17 @@ export function SettingsAppearance({
                   <Input
                     value={customFonts[type].font || ""}
                     onChange={(e) => setCustomFont(type, e.target.value || null)}
-                    placeholder="例：PingFang SC"
-                    className="h-8 text-sm min-w-[200px]"
+                    placeholder={fontPlaceholders[type]}
+                    className="h-8 text-sm w-[200px]"
                   />
                 </div>
                 <div
-                  className="text-center text-2xl h-8 flex items-center justify-center"
+                  className="min-w-0 h-10 rounded-lg border bg-muted/20 px-3 text-sm md:text-base flex items-center overflow-hidden"
                   style={{
                     fontFamily: customFonts[type].font || getFontPreview(type),
                   }}
                 >
-                  Ag
+                  <span className="min-w-0 block truncate">{fontPreviewText[type]}</span>
                 </div>
               </div>
             ))}
