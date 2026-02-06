@@ -82,7 +82,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
 
   const panelContent = isOpen ? (
     <div
-      className="fixed p-2 z-[20000] rounded-md border border-border bg-popover shadow-md"
+      className="fixed z-[20000] w-[258px] rounded-[10px] border border-border/70 bg-popover/98 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.08)] backdrop-blur-sm"
       style={{
         top: position.top,
         left: position.left,
@@ -92,19 +92,19 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       onMouseLeave={handleMouseLeave}
     >
       <TooltipProvider delayDuration={0}>
-        <div className="flex flex-col gap-2">
-          <div className="text-xs font-semibold text-muted-foreground px-1">
+        <div className="flex flex-col gap-1.5">
+          <div className="px-1.5 pt-0.5 text-[12px] font-semibold text-muted-foreground">
             文本颜色
           </div>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-5 gap-0.5 px-0.5">
             {TEXT_COLORS.map((item) => (
               <Tooltip key={item.color}>
                 <TooltipTrigger asChild>
                   <button
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md border border-transparent hover:bg-accent hover:text-accent-foreground",
+                      "flex h-7 w-7 items-center justify-center rounded-[6px] border border-transparent hover:bg-accent hover:text-accent-foreground",
                       editor.isActive("textStyle", { color: item.color }) &&
-                        "bg-accent border-primary/20",
+                        "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]",
                     )}
                     onClick={() => {
                       if (item.color === "inherit") {
@@ -115,7 +115,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
                     }}
                   >
                     <div
-                      className="font-serif text-lg leading-none"
+                      className="font-serif text-[34px] leading-none scale-[0.56]"
                       style={{
                         color:
                           item.color === "inherit" ? undefined : item.color,
@@ -132,20 +132,20 @@ export function ColorPicker({ editor }: ColorPickerProps) {
             ))}
           </div>
 
-          <div className="border-t border-border/50 my-1" />
+          <div className="my-1 border-t border-border/60" />
 
-          <div className="text-xs font-semibold text-muted-foreground px-1">
+          <div className="px-1.5 text-[12px] font-semibold text-muted-foreground">
             背景颜色
           </div>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-5 gap-0.5 px-0.5 pb-0.5">
             {HIGHLIGHT_COLORS.map((item) => (
               <Tooltip key={item.color}>
                 <TooltipTrigger asChild>
                   <button
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md border border-transparent hover:border-border",
+                      "flex h-7 w-7 items-center justify-center rounded-[6px] border border-transparent hover:border-border/80 hover:bg-accent/40",
                       editor.isActive("highlight", { color: item.color }) &&
-                        "border-primary ring-1 ring-primary/20",
+                        "border-primary ring-1 ring-primary/25",
                     )}
                     onClick={() => {
                       if (item.color === "transparent") {
@@ -160,7 +160,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
                     }}
                   >
                     <div
-                      className="h-6 w-6 rounded-sm border border-border/20"
+                      className="h-5 w-5 rounded-[4px] border border-border/20"
                       style={{ backgroundColor: item.color }}
                     />
                   </button>
