@@ -19,7 +19,7 @@ export function SettingsScaffold({
 }: SettingsScaffoldProps) {
   return (
     <div className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground">
-      <div className="flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] px-6 pr-14">
+      <div className="flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] pt-4 px-6 pr-14">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
             <SettingsIcon className="h-5 w-5 text-foreground/80" />
@@ -46,8 +46,8 @@ export function SettingsScaffold({
                   className={cn(
                     "h-auto w-full justify-start gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
-                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground"
-                      : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground",
+                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:bg-[hsl(var(--foreground)/0.14)]"
+                      : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground dark:hover:bg-[hsl(var(--foreground)/0.12)]",
                   )}
                 >
                   <Icon className="h-4 w-4" />

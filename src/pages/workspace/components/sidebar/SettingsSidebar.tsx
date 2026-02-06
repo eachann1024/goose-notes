@@ -19,8 +19,10 @@ export function SettingsSidebar({
           variant="ghost"
           size="sm"
           className={cn(
-            "justify-start w-full",
-            activeTab === "general" && "bg-accent/50",
+            "justify-start w-full rounded-[10px] transition-colors",
+            activeTab === "general"
+              ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:bg-[hsl(var(--foreground)/0.14)]"
+              : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground dark:hover:bg-[hsl(var(--foreground)/0.12)]",
           )}
           onClick={() => onTabChange("general")}
         >
@@ -31,8 +33,10 @@ export function SettingsSidebar({
           variant="ghost"
           size="sm"
           className={cn(
-            "justify-start w-full",
-            activeTab === "appearance" && "bg-accent/50",
+            "justify-start w-full rounded-[10px] transition-colors",
+            activeTab === "appearance"
+              ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:bg-[hsl(var(--foreground)/0.14)]"
+              : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground dark:hover:bg-[hsl(var(--foreground)/0.12)]",
           )}
           onClick={() => onTabChange("appearance")}
         >
@@ -43,8 +47,10 @@ export function SettingsSidebar({
           variant="ghost"
           size="sm"
           className={cn(
-            "justify-start w-full",
-            activeTab === "data" && "bg-accent/50",
+            "justify-start w-full rounded-[10px] transition-colors",
+            activeTab === "data"
+              ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:bg-[hsl(var(--foreground)/0.14)]"
+              : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground dark:hover:bg-[hsl(var(--foreground)/0.12)]",
           )}
           onClick={() => onTabChange("data")}
         >
