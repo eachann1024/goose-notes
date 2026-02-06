@@ -11,6 +11,27 @@
   line-height: 1.7;
 }
 
+/* Match Notion-like text selection in editor area only */
+.ProseMirror ::selection {
+  background-color: rgba(35, 131, 226, 0.28);
+  color: inherit;
+}
+
+.ProseMirror ::-moz-selection {
+  background-color: rgba(35, 131, 226, 0.28);
+  color: inherit;
+}
+
+.dark .ProseMirror ::selection {
+  background-color: rgba(35, 131, 226, 0.4);
+  color: inherit;
+}
+
+.dark .ProseMirror ::-moz-selection {
+  background-color: rgba(35, 131, 226, 0.4);
+  color: inherit;
+}
+
 /* Headings */
 .ProseMirror h1 {
   font-size: 2.25em; /* 36px */

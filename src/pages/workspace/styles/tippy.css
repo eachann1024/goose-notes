@@ -21,7 +21,7 @@
 }
 
 /* BubbleMenu 淡入动画 - 解决首次渲染闪烁 */
-.tippy-box {
+.tippy-box[data-theme~="bubble-menu"] {
   opacity: 0;
   animation: bubbleMenuFadeIn 0.15s ease-out forwards;
 }

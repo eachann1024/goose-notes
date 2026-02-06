@@ -1,5 +1,4 @@
 import { Editor } from "@tiptap/react";
-import { Button } from "@/components/ui/button";
 import * as LucideIcons from "lucide-react";
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -20,6 +19,9 @@ interface PositionState {
   left: number;
   showAbove: boolean;
 }
+
+const TOOLTIP_STYLE =
+  "rounded-lg border-0 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)]";
 
 const TEXT_COLORS = [
   { name: "默认", color: "inherit" },
@@ -180,15 +182,22 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Button
-        ref={buttonRef}
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0 text-foreground"
-        aria-label="颜色选择"
-      >
-        <LucideIcons.Palette className="h-4 w-4" />
-      </Button>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <button
+            ref={buttonRef}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted"
+            aria-label="颜色选择"
+          >
+            <LucideIcons.Palette className="h-[15px] w-[15px]" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8} className={TOOLTIP_STYLE}>
+          <div className="text-[12px] font-medium leading-none text-white">
+            颜色
+          </div>
+        </TooltipContent>
+      </Tooltip>
       {createPortal(panelContent, document.body)}
     </div>
   );
