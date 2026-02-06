@@ -1,16 +1,41 @@
-import { Tree } from "react-arborist";
-import type {
-  CursorProps,
-  NodeApi,
-  NodeRendererProps,
-  TreeApi,
-} from "react-arborist";
-import type { Page } from "@/types";
-import { SidebarContextMenu } from "./SidebarContextMenu";
+import {
+  closestCenter,
+  pointerWithin,
+  DndContext,
+  PointerSensor,
+  type Collision,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "@/components/ui/button";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
+import { SidebarContextMenu } from "./SidebarContextMenu";
+import {
+  buildVisibleTree,
+  getProjection,
+  isDescendant,
+  type FlatTreeItem,
+} from "./tree-dnd";
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
@@ -23,193 +48,119 @@ interface SidebarTreeProps {
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
+const TREE_INDENT = 24;
 
-interface TreeNode {
-  id: string;
-  name: string;
-  icon?: string;
-  children?: TreeNode[];
-  page?: Page;
-  isPlaceholder?: boolean;
+class LeftButtonPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) =>
+        nativeEvent.isPrimary && nativeEvent.button === 0 && !nativeEvent.ctrlKey,
+    },
+  ];
 }
 
-const buildTree = (
-  pages: Record<string, Page>,
-  openPageIds: Set<string>,
-  parentId: string | undefined, // Changed to allow specific parent query or undefined for root
-  workspaceId: string | undefined,
-  isLocalNotebook: boolean = false,
-): TreeNode[] => {
-  // 1. Group pages by parentId (Pre-computation step - O(N))
-  // We compute this ONCE for the entire tree is not possible inside a recursive function efficiently 
-  // without passing the map around.
-  // So we will perform the grouping inside the component's useMemo and this function will be deprecated 
-  // or we rewrite this to simple helper that expects grouped data.
-  
-  // However, to keep the diff small and clean, let's implement the `useMemo` logic in the component
-  // and remove this standalone `buildTree` if possible, or make this `buildTree` the "optimized builder".
-  
-  // Strategy: We will replace this implementation with a wrapper that computes the map, 
-  // then calls separate recursive function.
-  
-  const groupMap = new Map<string, Page[]>();
-  const rootPages: Page[] = [];
-
-  Object.values(pages).forEach((p) => {
-    if (p.trashedAt) return;
-    if (workspaceId && p.workspaceId !== workspaceId) return;
-
-    if (!p.parentId) {
-      rootPages.push(p);
-    } else {
-      if (!groupMap.has(p.parentId)) {
-        groupMap.set(p.parentId, []);
-      }
-      groupMap.get(p.parentId)!.push(p);
-    }
-  });
-
-  const sortPages = (items: Page[]) => {
-    return items.sort((a, b) => {
-      if (isLocalNotebook) {
-        if (a.isFolder !== b.isFolder) {
-          return a.isFolder ? -1 : 1;
-        }
-        const nameA = getPageTitle(a);
-        const nameB = getPageTitle(b);
-        return nameA.localeCompare(nameB, "zh-CN", { numeric: true });
-      }
-
-      const orderA = a.order ?? a.createdAt;
-      const orderB = b.order ?? b.createdAt;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.id.localeCompare(b.id);
-    });
-  };
-
-    const recursiveBuild = (currentPages: Page[]): TreeNode[] => {
-    const sorted = sortPages(currentPages);
-    return sorted.map((p) => {
-      const childrenPages = groupMap.get(p.id) || [];
-      const childrenNodes = recursiveBuild(childrenPages);
-
-      const node: TreeNode = {
-        id: p.id,
-        name: getPageTitle(p),
-        icon: p.icon,
-        page: p,
-      };
-
-      // Only attach children if it's NOT a local notebook OR if it IS a folder
-      // This ensures local files are treated as leaves by the tree component
-      if (!isLocalNotebook || p.isFolder) {
-          if (openPageIds.has(p.id) && childrenNodes.length === 0) {
-              node.children = [
-                  {
-                      id: `${p.id}-empty`,
-                      name: isLocalNotebook ? "内无文件" : "内无页面",
-                      isPlaceholder: true,
-                  },
-              ];
-          } else {
-              node.children = childrenNodes;
-          }
-      }
-
-      return node;
-    });
-  };
-
-  // If parentId is specified (not likely used in main tree build anymore but good for compatibility),
-  // we would start from there. But the main usage is building the whole tree.
-  // If parentId is provided, we just return the children of that parent.
-  if (parentId) {
-    const children = groupMap.get(parentId) || [];
-    return recursiveBuild(children);
-  }
-
-  return recursiveBuild(rootPages);
-};
-
-type PageNodeProps = NodeRendererProps<TreeNode> & {
+interface SortablePageRowProps {
+  item: FlatTreeItem;
+  rowStyle: CSSProperties;
+  depth: number;
   itemHeight: number;
-  activeNotebookId: string | null;
+  isLocalNotebook: boolean;
+  isActive: boolean;
+  isDropTarget: boolean;
+  isNestDropTarget: boolean;
+  isEmptyNestTarget: boolean;
+  showDropLine: boolean;
+  dropLineLeft: number;
+  nestPointerLeft: number;
+  onToggleOpen: (id: string) => void;
   onRequestRename: (page: Page) => void;
-};
+}
 
-
-function PageNode({
-  node,
+function PlaceholderRow({
   style,
-  dragHandle,
+  depth,
+  name,
+}: {
+  style: CSSProperties;
+  depth: number;
+  name: string;
+}) {
+  return (
+    <div style={style} className="relative px-1 select-none">
+      <div className="flex items-center h-full px-2 rounded-md">
+        <div
+          style={{ paddingLeft: depth * TREE_INDENT + 24 }}
+          className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
+        >
+          {name}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SortablePageRow({
+  item,
+  rowStyle,
+  depth,
   itemHeight,
-  activeNotebookId: _activeNotebookId,
+  isLocalNotebook,
+  isActive,
+  isDropTarget,
+  isNestDropTarget,
+  isEmptyNestTarget,
+  showDropLine,
+  dropLineLeft,
+  nestPointerLeft,
+  onToggleOpen,
   onRequestRename,
-}: PageNodeProps) {
-  const activePageId = usePages((state) => state.activePageId);
+}: SortablePageRowProps) {
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
+    useSortable({ id: item.id });
+  const guardedListeners = {
+    ...listeners,
+    onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || event.ctrlKey) return;
+      listeners?.onPointerDown?.(event);
+    },
+  };
+
   const setActivePage = usePages((state) => state.setActivePage);
   const createPage = usePages((state) => state.createPage);
   const createLocalPage = usePages((state) => state.createLocalPage);
   const updatePage = usePages((state) => state.updatePage);
-  
-  // Note: We access pages[id] via node.data.page usually, but for child creation we need the store
-  // To avoid subscribing to the WHOLE pages object, we should use a callback or selector if possible.
-  // However, handleAddChild needs to scan pages. We can use `usePages.getState()` in event handler
-  // to avoid rendering dependency!
-  
-  const notebookId = node.data.page?.workspaceId;
-  const notebook = notebookId
-    ? useNotebooks.getState().notebooks[notebookId]
-    : undefined;
-  const isLocalFolder = notebook?.source === "local-folder";
-  const isActive = activePageId === node.id;
-  const isPlaceholder = node.data.isPlaceholder;
-  const isDropTarget = node.willReceiveDrop && !isPlaceholder && !node.state.isDragging;
-  const iconName = node.data.icon;
-  const showFolderIcon = isLocalFolder && node.data.page?.isFolder;
-  
-  // Logic for showing arrow: ONLY if it has children
-  const hasChildren = node.data.children && node.data.children.length > 0;
-  // If we want to strictly follow "Show arrow if it has children", we use hasChildren.
-  // Note: Some trees show arrow for all folders. Feishu usually hides arrow if leaf.
-  const showArrow = hasChildren && !isPlaceholder;
+  const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
 
-  // We are removing the childCount indicator as requested.
+  const page = item.page;
+  const hasChildren = item.hasChildren;
+  const showArrow = hasChildren;
+  const isLocalFolder = isLocalNotebook;
+  const showFolderIcon = isLocalFolder && page.isFolder;
+  const iconName = page.icon;
+  const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
+  const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
 
-  const { paddingLeft: _ignored, height: _ignoredHeight, ...itemStyle } = style;
+  const dndTransform = CSS.Transform.toString(transform);
+  const virtualTransform = typeof rowStyle.transform === "string" ? rowStyle.transform : "";
+  const mergedTransform = isDragging && dndTransform
+    ? `${virtualTransform} ${dndTransform}`.trim()
+    : virtualTransform;
 
-  // Visual indentation (decoupled from logical drop zone)
-  const indent = node.level * 24;
-  const paddingLeft = indent;
-  const rowStyle = { ...itemStyle, height: itemHeight };
-
-  if (isPlaceholder) {
-    return (
-      <div style={rowStyle} className="relative px-1 select-none">
-        <div className="flex items-center h-full px-2 rounded-md">
-          <div
-            style={{ paddingLeft: paddingLeft + 24 }} // Adjust padding to align with text
-            className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
-          >
-            {node.data.name}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const handleAddChild = (e: React.MouseEvent) => {
+  const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
 
     if (isLocalFolder) {
-      createLocalPage(node.id, notebookId || undefined);
-      if (!node.isOpen) node.open();
+      void createLocalPage(page.id, activeNotebookId || undefined);
+      if (!item.isOpen) {
+        onToggleOpen(page.id);
+      }
       return;
     }
 
     const currentPages = usePages.getState().pages;
     const existingBlankChild = Object.values(currentPages).find((p) => {
-      const isChild = p.parentId === node.id && !p.trashedAt;
+      const isChild = p.parentId === page.id && !p.trashedAt;
       const title = getPageTitle(p);
       const isBlankTitle = !title || title.trim() === "" || title === "无标题";
       const isBlankContent =
@@ -225,30 +176,60 @@ function PageNode({
     });
 
     if (existingBlankChild) {
-      if (!node.isOpen) node.open();
+      if (!item.isOpen) {
+        onToggleOpen(page.id);
+      }
       setActivePage(existingBlankChild.id);
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
-    } else {
-      if (!node.isOpen) node.open();
-      createPage(node.id, notebookId || DEFAULT_NOTEBOOK);
+      return;
     }
+
+    if (!item.isOpen) {
+      onToggleOpen(page.id);
+    }
+    createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK);
   };
 
   return (
-    <SidebarContextMenu
-      page={node.data.page!}
-      onRequestRename={onRequestRename}
+    <div
+      ref={setNodeRef}
+      style={{
+        ...rowStyle,
+        height: itemHeight,
+        transform: mergedTransform,
+        transition,
+      }}
+      className={cn("group relative px-2", isDragging && "z-20")}
     >
-      <div
-        ref={dragHandle}
-        style={rowStyle}
-        className="group relative px-2"
-      >
+      {showDropLine && (
+        <div
+          className="absolute h-0.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
+          style={{ left: dropLineLeft, right: 12, top: 0 }}
+        />
+      )}
+      {isNestDropTarget && (
         <div
           className={cn(
-            "relative flex items-center h-full pl-2 pr-1 rounded-[8px] cursor-pointer transition-colors text-sm font-medium",
+            "sidebar-drop-parent-pointer",
+            isEmptyNestTarget && "sidebar-drop-parent-pointer-empty"
+          )}
+          style={{ left: nestPointerLeft }}
+        >
+          <LucideIcons.CornerDownRight className="h-3.5 w-3.5" />
+          <span>作为子页面</span>
+        </div>
+      )}
+
+      <SidebarContextMenu page={page} onRequestRename={onRequestRename}>
+        <div
+          {...attributes}
+          {...guardedListeners}
+          className={cn(
+            "relative flex items-center h-full pl-2 pr-1 rounded-[8px] cursor-grab active:cursor-grabbing transition-colors text-sm font-medium",
             isDropTarget && "sidebar-drop-target",
-            node.state.isDragging && "opacity-50",
+            isNestDropTarget && "sidebar-drop-parent-target",
+            isNestDropTarget && isEmptyNestTarget && "sidebar-drop-parent-target-empty",
+            isDragging && "opacity-60",
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/55 dark:hover:bg-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
             isActive &&
@@ -256,22 +237,17 @@ function PageNode({
           )}
           onClick={(e) => {
             e.stopPropagation();
-            if (isLocalFolder && node.data.page?.isFolder) {
-              node.toggle();
+            if (isLocalFolder && page.isFolder) {
+              onToggleOpen(page.id);
               return;
             }
-            // Single click selects the page
-            if (activePageId !== node.id) {
-              setActivePage(node.id);
-            }
+            setActivePage(page.id);
           }}
         >
-           {/* Indentation Wrapper */}
-          <div 
-             className="flex items-center h-full flex-1 min-w-0"
-             style={{ paddingLeft }}
+          <div
+            className="flex items-center h-full flex-1 min-w-0"
+            style={{ paddingLeft: depth * TREE_INDENT }}
           >
-            {/* Arrow Area - Fixed width */}
             <div
               className={cn(
                 "flex items-center justify-center w-5 h-5 shrink-0 -ml-1 mr-0.5 rounded transition-all duration-300 ease-out",
@@ -280,23 +256,26 @@ function PageNode({
                   : "opacity-0 pointer-events-none"
               )}
               onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                if (showArrow) node.toggle();
+                if (showArrow) {
+                  onToggleOpen(page.id);
+                }
               }}
             >
-              <LucideIcons.ChevronRight 
+              <LucideIcons.ChevronRight
                 className={cn(
-                  "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-200", 
-                  node.isOpen && "rotate-90"
-                )} 
+                  "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-200",
+                  item.isOpen && "rotate-90"
+                )}
               />
             </div>
 
-            {/* Icon Area - Fixed width */}
-            <div 
+            <div
               className="flex items-center justify-center w-5 h-5 shrink-0 mr-1.5 select-none"
               onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
               {isLocalFolder ? (
@@ -310,22 +289,13 @@ function PageNode({
               ) : (
                 <IconSelector
                   value={iconName}
-                  onChange={(newIcon) =>
-                    updatePage(node.id, { icon: newIcon as string })
-                  }
+                  onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
                 >
-                  <div
-                    className={cn(
-                      "flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer",
-                    )}
-                  >
+                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer">
                     {iconName ? (
                       <div className="h-4 w-4 flex items-center justify-center">
-                        {(LucideIcons as any)[iconName] ? (
-                          (() => {
-                            const Icon = (LucideIcons as any)[iconName];
-                            return <Icon className="h-4 w-4" />;
-                          })()
+                        {SelectedIcon ? (
+                          <SelectedIcon className="h-4 w-4" />
                         ) : (
                           <span className="text-sm">{iconName}</span>
                         )}
@@ -340,27 +310,27 @@ function PageNode({
               )}
             </div>
 
-            {/* Title */}
             <span className="truncate text-sm flex-1 min-w-0 select-none">
-              {node.data.name}
+              {getPageTitle(page)}
             </span>
           </div>
 
-          {/* Actions (Plus Button) */}
-          <div className="ml-auto hidden group-hover:flex items-center pl-1 shrink-0">
-             <button
-                className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground/70 hover:text-foreground transition-colors"
-                onClick={handleAddChild}
-              >
-                <LucideIcons.Plus className="h-3.5 w-3.5" />
-              </button>
+          <div className="ml-1 hidden group-hover:flex items-center shrink-0">
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground/70 hover:text-foreground transition-colors"
+              onClick={handleAddChild}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <LucideIcons.Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
-      </div>
-    </SidebarContextMenu>
+      </SidebarContextMenu>
+    </div>
   );
 }
-
 
 export function SidebarTree({
   activeNotebookId,
@@ -374,185 +344,98 @@ export function SidebarTree({
   const {
     pages,
     activePageId,
-    setActivePage,
-    updatePage,
     reorderPages,
     getChildren,
     expandPageId,
     setExpandPageId,
   } = usePages();
+
+  const notebook = activeNotebookId
+    ? useNotebooks.getState().notebooks[activeNotebookId]
+    : undefined;
+  const isLocalNotebook = notebook?.source === "local-folder";
+
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
-  const treeRef = useRef<TreeApi<TreeNode> | null>(null);
-  const expandAttemptsRef = useRef(0);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
 
-  useEffect(() => {
-    if (!expandPageId) return;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const autoExpandTimerRef = useRef<number | null>(null);
 
-    expandAttemptsRef.current = 0;
+  const visibleItems = useMemo(
+    () =>
+      buildVisibleTree({
+        pages,
+        openIds: openPageIds,
+        workspaceId: activeNotebookId || undefined,
+        isLocalNotebook,
+      }),
+    [pages, openPageIds, activeNotebookId, isLocalNotebook]
+  );
 
-    const pageIdToExpand = expandPageId;
-    const maxAttempts = 20; // 增加重试次数，等待页面加载
+  const flatItems = useMemo(
+    () => visibleItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
+    [visibleItems]
+  );
 
-    const tryOpen = () => {
-      expandAttemptsRef.current += 1;
+  const activeDescendantIds = useMemo(() => {
+    if (!activeId) return new Set<string>();
+    const descendants = new Set<string>();
+    const stack = [activeId];
 
-      // 检查页面是否已加载到 store
-      const page = pages[pageIdToExpand];
-      if (!page) {
-        // 页面还没加载，继续等待
-        if (expandAttemptsRef.current < maxAttempts) {
-          setTimeout(tryOpen, 100);
-        } else {
-          // 超时放弃
-          setExpandPageId(null);
-        }
-        return;
-      }
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      Object.values(pages).forEach((page) => {
+        if (page.trashedAt || page.parentId !== currentId) return;
+        descendants.add(page.id);
+        stack.push(page.id);
+      });
+    }
 
-      if (page.trashedAt) {
-        setExpandPageId(null);
-        return;
-      }
+    return descendants;
+  }, [activeId, pages]);
 
-      if (activeNotebookId && page.workspaceId !== activeNotebookId) {
-        // 笔记本不匹配，等待切换
-        if (expandAttemptsRef.current < maxAttempts) {
-          setTimeout(tryOpen, 100);
-        }
-        return;
-      }
-
-      // 检查 tree 是否已渲染
-      if (!treeRef.current) {
-        if (expandAttemptsRef.current < maxAttempts) {
-          setTimeout(tryOpen, 100);
-        }
-        return;
-      }
-
-      // 收集祖先链（从当前页面向上）
-      const ancestorIds: string[] = [];
-      let current = page;
-      while (current.parentId && pages[current.parentId]) {
-        ancestorIds.push(current.parentId);
-        current = pages[current.parentId];
-      }
-
-      // 展开所有祖先节点（从根到叶）
-      ancestorIds.reverse().forEach((id) => treeRef.current!.open(id));
-
-      // 滚动到目标节点（延迟等待展开动画）
-      setTimeout(() => {
-        treeRef.current?.scrollTo(pageIdToExpand);
-      }, 100);
-
-      setExpandPageId(null);
-    };
-
-    // 延迟启动，等待 React 状态更新完成
-    setTimeout(tryOpen, 50);
-  }, [
-    expandPageId,
-    pages,
-    activeNotebookId,
-    setExpandPageId,
-  ]);
-
-  const treeData = useMemo(() => {
-    const notebook = activeNotebookId
-      ? useNotebooks.getState().notebooks[activeNotebookId]
-      : undefined;
-    const isLocalNotebook = notebook?.source === "local-folder";
-    // We pass undefined for parentId to build from root
-    return buildTree(
+  const projected = useMemo(() => {
+    if (!activeId || !overId) return null;
+    return getProjection({
+      items: flatItems,
+      activeId,
+      overId,
+      dragOffsetX,
+      indentationWidth: TREE_INDENT,
       pages,
-      openPageIds,
-      undefined,
-      activeNotebookId || undefined,
       isLocalNotebook,
-    );
-  }, [pages, openPageIds, activeNotebookId]);
-
-  const handleMove = useCallback(
-    ({
-      dragIds,
-      parentId,
-      index,
-    }: {
-      dragIds: string[];
-      parentId: string | null;
-      index: number;
-    }) => {
-      const targetParentId = parentId || undefined;
-      const siblings = getChildren(
-        targetParentId,
-        activeNotebookId || undefined,
-      );
-      const filteredSiblings = siblings.filter((p) => !dragIds.includes(p.id));
-      const movedPages = dragIds
-        .map((id) => pages[id])
-        .filter(Boolean) as Page[];
-      const newSiblings = [...filteredSiblings];
-      // Bound index to ensure it's valid
-      const safeIndex = Math.max(0, Math.min(index, newSiblings.length));
-      newSiblings.splice(safeIndex, 0, ...movedPages);
-      const newOrderIds = newSiblings.map((p) => p.id);
-      reorderPages(newOrderIds, targetParentId);
-
-      // 检查之前的父节点，如果变空了，则自动收起
-      const oldParentIds = new Set<string>();
-      dragIds.forEach((id) => {
-        const p = pages[id];
-        if (p?.parentId) oldParentIds.add(p.parentId);
-      });
-
-      oldParentIds.forEach((pid) => {
-        // 如果只是在同一个父节点下移动，忽略
-        if (pid === targetParentId) return;
-
-        // 获取原来的子节点（getChildren 返回的是移动前的状态）
-        const children = getChildren(pid, activeNotebookId || undefined);
-        // 排除掉正在拖走的
-        const remaining = children.filter((p) => !dragIds.includes(p.id));
-        
-        if (remaining.length === 0) {
-          setOpenPageIds((prev) => {
-            const next = new Set(prev);
-            next.delete(pid);
-            return next;
-          });
-        }
-      });
-    },
-    [getChildren, activeNotebookId, pages, reorderPages],
+    });
+  }, [activeId, overId, flatItems, dragOffsetX, pages, isLocalNotebook]);
+  const activeDragItem = useMemo(
+    () => (activeId ? flatItems.find((item) => item.id === activeId) ?? null : null),
+    [flatItems, activeId]
   );
 
-  const handleRename = useCallback(
-    ({ id, name }: { id: string; name: string }) => {
-      const page = pages[id];
-      if (!page) return;
-
-      // 更新 content 第一行的标题
-      const newContent = JSON.parse(JSON.stringify(page.content));
-      if (
-        newContent.content?.[0]?.type === "heading" &&
-        newContent.content[0].attrs?.level === 1
-      ) {
-        newContent.content[0].content = name
-          ? [{ type: "text", text: name }]
-          : undefined;
-        updatePage(id, { content: newContent });
-      }
-    },
-    [pages, updatePage],
+  const sensors = useSensors(
+    useSensor(LeftButtonPointerSensor, {
+      activationConstraint: {
+        distance: 4,
+      },
+    })
   );
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const filterSelf = (collisions: Collision[]) =>
+      collisions.filter((collision) => String(collision.id) !== String(args.active.id));
+    const pointerHits = filterSelf(pointerWithin(args));
+    if (pointerHits.length > 0) {
+      return pointerHits;
+    }
+    return filterSelf(closestCenter(args));
+  }, []);
 
-  const handleActivate = useCallback(
-    (node: NodeApi<TreeNode>) => {
-      setActivePage(node.id);
-    },
-    [setActivePage],
-  );
+  const virtualizer = useVirtualizer({
+    count: visibleItems.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 10,
+  });
 
   const handleToggle = useCallback((id: string) => {
     setOpenPageIds((prev) => {
@@ -566,39 +449,216 @@ export function SidebarTree({
     });
   }, []);
 
-  const getVisibleCount = (nodes: TreeNode[]): number => {
-    let count = nodes.length;
-    nodes.forEach((node) => {
-      if (node.id && openPageIds.has(node.id) && node.children) {
-        count += getVisibleCount(node.children);
-      }
+  useEffect(() => {
+    if (!expandPageId) return;
+
+    const page = pages[expandPageId];
+    if (!page) return;
+    if (page.trashedAt) {
+      setExpandPageId(null);
+      return;
+    }
+    if (activeNotebookId && page.workspaceId !== activeNotebookId) {
+      return;
+    }
+
+    const ancestorIds: string[] = [];
+    let current = page;
+    while (current.parentId && pages[current.parentId]) {
+      ancestorIds.push(current.parentId);
+      current = pages[current.parentId];
+    }
+
+    setOpenPageIds((prev) => {
+      const next = new Set(prev);
+      ancestorIds.forEach((id) => next.add(id));
+      return next;
     });
-    return count;
+
+    const timer = window.setTimeout(() => {
+      const index = visibleItems.findIndex((item) => item.id === expandPageId);
+      if (index >= 0) {
+        virtualizer.scrollToIndex(index, { align: "center" });
+      }
+    }, 80);
+
+    setExpandPageId(null);
+    return () => window.clearTimeout(timer);
+  }, [expandPageId, pages, activeNotebookId, setExpandPageId, visibleItems, virtualizer]);
+
+  const clearAutoExpandTimer = () => {
+    if (autoExpandTimerRef.current !== null) {
+      window.clearTimeout(autoExpandTimerRef.current);
+      autoExpandTimerRef.current = null;
+    }
   };
 
-  const visibleCount = useMemo(
-    () => getVisibleCount(treeData),
-    [treeData, openPageIds],
-  );
-  // Add buffer to ensure bottom drop zone is captureable even if mouse is slightly below the last item
-  const contentHeight = visibleCount * rowHeight + 100;
-  const treeHeight = Math.max(contentHeight, viewportHeight || 0);
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveId(String(active.id));
+    setOverId(null);
+    setDragOffsetX(0);
+  };
 
-  const notebook = activeNotebookId
-    ? useNotebooks.getState().notebooks[activeNotebookId]
-    : undefined;
-  const isLocalNotebook = notebook?.source === "local-folder";
+  const handleDragMove = ({ delta }: DragMoveEvent) => {
+    setDragOffsetX(delta.x);
+  };
 
-  if (treeData.length === 0) {
+  const handleDragOver = ({ over }: DragOverEvent) => {
+    if (!over) {
+      setOverId(null);
+      return;
+    }
+    const overItemId = String(over.id);
+    if (activeDescendantIds.has(overItemId)) {
+      setOverId(null);
+      return;
+    }
+    setOverId(overItemId);
+
+    const overItem = flatItems.find((item) => item.id === overItemId);
+    if (!overItem || !overItem.hasChildren || overItem.isOpen) {
+      clearAutoExpandTimer();
+      return;
+    }
+
+    clearAutoExpandTimer();
+    autoExpandTimerRef.current = window.setTimeout(() => {
+      setOpenPageIds((prev) => {
+        if (prev.has(overItem.id)) return prev;
+        const next = new Set(prev);
+        next.add(overItem.id);
+        return next;
+      });
+    }, 320);
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    clearAutoExpandTimer();
+
+    const activeNodeId = String(active.id);
+    const overNodeId = over ? String(over.id) : null;
+
+    setActiveId(null);
+    setOverId(null);
+    setDragOffsetX(0);
+
+    if (!overNodeId) return;
+    if (activeDescendantIds.has(overNodeId)) return;
+
+    const activeItem = flatItems.find((item) => item.id === activeNodeId);
+    if (!activeItem) return;
+
+    const activeIndex = flatItems.findIndex((item) => item.id === activeNodeId);
+    const overIndex = flatItems.findIndex((item) => item.id === overNodeId);
+    if (activeIndex < 0 || overIndex < 0) return;
+
+    const projection = getProjection({
+      items: flatItems,
+      activeId: activeNodeId,
+      overId: overNodeId,
+      dragOffsetX,
+      indentationWidth: TREE_INDENT,
+      pages,
+      isLocalNotebook,
+    });
+
+    const overItem = flatItems.find((item) => item.id === overNodeId);
+    const wantsPromoteToRoot =
+      activeItem.depth > 0 && dragOffsetX < -TREE_INDENT / 3;
+    const canNestIntoOver =
+      !!overItem &&
+      overNodeId !== activeNodeId &&
+      !isDescendant(activeNodeId, overNodeId, pages) &&
+      (!isLocalNotebook || !!overItem.page.isFolder);
+    const wantsNestIntoOver = canNestIntoOver && dragOffsetX >= -TREE_INDENT / 8;
+
+    const nextParentId = wantsPromoteToRoot
+      ? undefined
+      : wantsNestIntoOver
+        ? overNodeId
+        : projection?.parentId ?? activeItem.parentId;
+    if (isDescendant(activeNodeId, nextParentId, pages)) {
+      return;
+    }
+    if (isLocalNotebook && nextParentId && !pages[nextParentId]?.isFolder) {
+      return;
+    }
+
+    const depthChanged = projection && projection.depth !== activeItem.depth;
+    if (activeIndex === overIndex && !depthChanged && nextParentId === activeItem.parentId) {
+      return;
+    }
+
+    const reordered = arrayMove(flatItems, activeIndex, overIndex).map((item) => {
+      if (item.id !== activeNodeId) return item;
+      return {
+        ...item,
+        parentId: nextParentId,
+        depth: projection?.depth ?? item.depth,
+      };
+    });
+
+    const rankMap = new Map(reordered.map((item, index) => [item.id, index]));
+    const activePage = pages[activeNodeId];
+    if (!activePage) return;
+
+    const targetSiblings = getChildren(nextParentId, activeNotebookId || undefined);
+    const mergedSiblings = [...targetSiblings.filter((page) => page.id !== activeNodeId), activePage];
+    mergedSiblings.sort((a, b) => {
+      const rankA = rankMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = rankMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+
+      const orderA = a.order ?? a.createdAt;
+      const orderB = b.order ?? b.createdAt;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.id.localeCompare(b.id);
+    });
+
+    reorderPages(
+      mergedSiblings.map((page) => page.id),
+      nextParentId
+    );
+
+    if (nextParentId) {
+      setOpenPageIds((prev) => {
+        if (prev.has(nextParentId)) return prev;
+        const next = new Set(prev);
+        next.add(nextParentId);
+        return next;
+      });
+    }
+
+    if (activeItem.parentId && activeItem.parentId !== nextParentId) {
+      const remaining = getChildren(
+        activeItem.parentId,
+        activeNotebookId || undefined
+      ).filter((page) => page.id !== activeNodeId);
+
+      if (remaining.length === 0) {
+        setOpenPageIds((prev) => {
+          if (!prev.has(activeItem.parentId!)) return prev;
+          const next = new Set(prev);
+          next.delete(activeItem.parentId!);
+          return next;
+        });
+      }
+    }
+  };
+
+  const handleDragCancel = () => {
+    clearAutoExpandTimer();
+    setActiveId(null);
+    setOverId(null);
+    setDragOffsetX(0);
+  };
+
+  if (flatItems.length === 0) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
         <p>{isLocalNotebook ? "暂无文件" : "暂无页面"}</p>
-        <Button
-          variant="link"
-          onClick={onCreatePage}
-          className="h-auto p-0 mt-1"
-        >
+        <Button variant="link" onClick={onCreatePage} className="h-auto p-0 mt-1">
           {isLocalNotebook ? "创建第一个文件" : "创建第一个页面"}
         </Button>
       </div>
@@ -606,59 +666,98 @@ export function SidebarTree({
   }
 
   return (
-    <div className="sidebar-tree-container">
-      <Tree
-        ref={treeRef}
-        data={treeData}
-        onMove={handleMove}
-        onRename={handleRename}
-        onActivate={handleActivate}
-        selection={activePageId || undefined}
-        openByDefault={false}
-        width={width}
-        height={treeHeight}
-        indent={18}
-        rowHeight={rowHeight}
-        overscanCount={5}
-        disableEdit={false}
-        disableDrag={false}
-        disableDrop={({ parentNode }) => {
-          if (parentNode.isRoot) return false;
-          // In local folder mode, strictly prevent dropping into files
-          if (isLocalNotebook) {
-            return !parentNode.data.page?.isFolder;
-          }
-          // In virtual/cloud mode, any page can be a parent (Notion-style), so allow it
-          return false;
-        }}
-        renderCursor={SidebarCursor}
-        onToggle={handleToggle}
+    <div className="h-full w-full relative overflow-hidden">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        autoScroll
       >
-        {(props) => (
-          <PageNode
-            {...props}
-            itemHeight={itemHeight}
-            activeNotebookId={activeNotebookId}
-            onRequestRename={onRequestRename}
-          />
-        )}
-      </Tree>
-    </div>
-  );
-}
+        <SortableContext
+          items={flatItems.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div
+            ref={scrollRef}
+            className="h-full overflow-y-auto"
+            style={{ width, minHeight: viewportHeight || 0 }}
+          >
+            <div
+              style={{
+                height: virtualizer.getTotalSize(),
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const item = visibleItems[virtualRow.index];
+                const style: CSSProperties = {
+                  position: "absolute",
+                  top: virtualRow.start,
+                  left: 0,
+                  width: "100%",
+                  height: virtualRow.size,
+                };
 
-function SidebarCursor({ top, left, indent }: CursorProps) {
-  // We align logical indent (18px) with visual indent (24px).
-  // The cursor position corresponds directly to the visual level.
-  const level = left / indent;
-  const visualLeft = level * 24;
+                if ("isPlaceholder" in item) {
+                  return (
+                    <PlaceholderRow
+                      key={item.id}
+                      style={style}
+                      depth={item.depth}
+                      name={item.name}
+                    />
+                  );
+                }
 
-  return (
-    <div
-      className="sidebar-drop-cursor"
-      style={{ top: top - 1, left: visualLeft, right: 12 }}
-    >
-      <div className="sidebar-drop-line" />
+                const rowDepth =
+                  activeId === item.id && projected ? projected.depth : item.depth;
+                const isDropTarget = overId === item.id && activeId !== item.id;
+                const wantsPromoteToRoot =
+                  !!activeDragItem &&
+                  activeDragItem.depth > 0 &&
+                  dragOffsetX < -TREE_INDENT / 3;
+                const canNestIntoItem =
+                  !!activeDragItem &&
+                  activeId !== item.id &&
+                  !activeDescendantIds.has(item.id) &&
+                  (!isLocalNotebook || !!item.page.isFolder);
+                const isNestDropTarget =
+                  isDropTarget &&
+                  !wantsPromoteToRoot &&
+                  canNestIntoItem &&
+                  dragOffsetX >= -TREE_INDENT / 8;
+                const dropLineLeft = rowDepth * TREE_INDENT + 16;
+                const nestPointerLeft = (item.depth + 1) * TREE_INDENT + 16;
+
+                return (
+                  <SortablePageRow
+                    key={item.id}
+                    item={item}
+                    rowStyle={style}
+                    depth={rowDepth}
+                    itemHeight={itemHeight}
+                    isLocalNotebook={isLocalNotebook}
+                    isActive={activePageId === item.id}
+                    isDropTarget={isDropTarget}
+                    isNestDropTarget={isNestDropTarget}
+                    isEmptyNestTarget={!item.hasChildren}
+                    showDropLine={isDropTarget && !isNestDropTarget}
+                    dropLineLeft={dropLineLeft}
+                    nestPointerLeft={nestPointerLeft}
+                    onToggleOpen={handleToggle}
+                    onRequestRename={onRequestRename}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
