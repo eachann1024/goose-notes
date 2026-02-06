@@ -2,7 +2,6 @@ import { FavoritesSection } from "./FavoritesSection";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
-import { SidebarDragGuide, type TreeDragGuideDirection } from "./SidebarDragGuide";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import type { Page } from "@/types";
@@ -77,13 +76,6 @@ export function Sidebar({ className }: SidebarProps) {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
-  const [treeDragGuide, setTreeDragGuide] = useState<{
-    isDragging: boolean;
-    direction: TreeDragGuideDirection;
-  }>({
-    isDragging: false,
-    direction: "neutral",
-  });
   const sidebarRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
@@ -217,18 +209,20 @@ export function Sidebar({ className }: SidebarProps) {
         if (!isResizing) setHandleY(null);
       }}
     >
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         aria-label="调整侧边栏宽度"
         className={cn(
-          "absolute h-20 w-full rounded-full border transition-all duration-200 ease-out backdrop-blur-md bg-background/55",
+          "absolute h-20 w-full rounded-full border transition-all duration-200 ease-out backdrop-blur-md bg-[hsl(var(--goose-editor-bg)/0.64)]",
           "cursor-col-resize select-none touch-none",
-          "shadow-[0_8px_24px_rgba(15,23,42,0.14)] dark:bg-background/35 dark:shadow-[0_10px_28px_rgba(2,6,23,0.45)]",
+          "shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:bg-[hsl(var(--goose-editor-bg)/0.4)] dark:shadow-[0_10px_28px_rgba(2,6,23,0.45)]",
           isResizeHandleHovered || isResizing
             ? "pointer-events-auto opacity-100 scale-100 border-border/70"
             : "pointer-events-none opacity-0 scale-90 border-transparent",
           isResizing &&
-            "border-primary/70 bg-primary/10 dark:bg-primary/20 shadow-[0_0_0_1px_hsl(var(--primary)/0.45),0_12px_30px_rgba(15,23,42,0.2)]",
+            "border-ring/70 bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--goose-selected-bg)/0.9)] shadow-[0_0_0_1px_hsl(var(--ring)/0.45),0_12px_30px_rgba(15,23,42,0.2)]",
         )}
         style={{
           top: handleY != null
@@ -246,7 +240,7 @@ export function Sidebar({ className }: SidebarProps) {
             isResizing && "bg-primary",
           )}
         />
-      </button>
+      </Button>
     </div>
   );
 
@@ -333,27 +327,12 @@ export function Sidebar({ className }: SidebarProps) {
     setRenamePageId(null);
   }, [pages, renamePageId, renameValue, updatePage]);
 
-  const handleTreeDragGuideChange = useCallback(
-    (next: { isDragging: boolean; direction: TreeDragGuideDirection }) => {
-      setTreeDragGuide((prev) => {
-        if (
-          prev.isDragging === next.isDragging &&
-          prev.direction === next.direction
-        ) {
-          return prev;
-        }
-        return next;
-      });
-    },
-    [],
-  );
-
   if (currentView === "trash") {
     return (
       <div
         ref={sidebarRef}
         className={cn(
-          "pb-0 bg-background dark:bg-background backdrop-blur-[1px] h-full flex flex-col relative",
+          "pb-0 bg-[hsl(var(--goose-shell-bg))] backdrop-blur-[1px] h-full flex flex-col relative",
           className,
         )}
         style={{ width, overflow: "visible" }}
@@ -376,7 +355,7 @@ export function Sidebar({ className }: SidebarProps) {
     onToggle: () => void;
   }) => (
     <div
-      className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 dark:text-muted-foreground/50 hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
+      className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
       onClick={onToggle}
     >
       <span>{title}</span>
@@ -394,7 +373,7 @@ export function Sidebar({ className }: SidebarProps) {
     <div
       ref={sidebarRef}
       className={cn(
-        "pb-0 bg-background dark:bg-background backdrop-blur-[1px] h-full flex flex-col relative group/sidebar",
+        "pb-0 bg-[hsl(var(--goose-shell-bg))] backdrop-blur-[1px] h-full flex flex-col relative group/sidebar",
         className,
       )}
       style={{ width, overflow: "visible" }}
@@ -430,19 +409,9 @@ export function Sidebar({ className }: SidebarProps) {
                 viewportHeight={scrollAreaHeight}
                 onCreatePage={handleCreatePage}
                 onRequestRename={openRenameDialog}
-                onDragGuideChange={handleTreeDragGuideChange}
               />
             </div>
           )}
-          <div className="sticky bottom-0 z-20 pointer-events-none">
-            <div className="bg-gradient-to-t from-background via-background/90 to-transparent pt-5 pb-2">
-              <SidebarDragGuide
-                visible={!pagesCollapsed && treeDragGuide.isDragging}
-                direction={treeDragGuide.direction}
-                isLocalFolder={!!isLocalFolder}
-              />
-            </div>
-          </div>
         </div>
 
         <SidebarFooter

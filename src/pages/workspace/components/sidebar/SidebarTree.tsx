@@ -14,7 +14,6 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -32,7 +31,6 @@ import { IconSelector } from "../shared/IconSelector";
 import { SidebarContextMenu } from "./SidebarContextMenu";
 import {
   buildVisibleTree,
-  getProjection,
   isDescendant,
   type FlatTreeItem,
 } from "./tree-dnd";
@@ -45,40 +43,43 @@ interface SidebarTreeProps {
   viewportHeight: number;
   onCreatePage: () => void;
   onRequestRename: (page: Page) => void;
-  onDragGuideChange?: (next: {
-    isDragging: boolean;
-    direction: "left" | "right" | "neutral";
-  }) => void;
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
 const TREE_INDENT = 24;
-const PROMOTE_TRIGGER_THRESHOLD = Math.round(TREE_INDENT * 0.85);
-const NEST_TRIGGER_THRESHOLD = Math.round(TREE_INDENT * 0.65);
-const GUIDE_ENTER_THRESHOLD = Math.round(TREE_INDENT * 0.8);
-const GUIDE_EXIT_THRESHOLD = Math.round(TREE_INDENT * 0.45);
+const DROP_ZONE_TOP_RATIO = 0.32;
+const DROP_ZONE_BOTTOM_RATIO = 0.68;
 
-type DragGuideDirection = "left" | "right" | "neutral";
+type DropIntentKind = "before" | "after" | "nest";
 
-function resolveGuideDirection(
-  offsetX: number,
-  previous: DragGuideDirection
-): DragGuideDirection {
-  if (previous === "neutral") {
-    if (offsetX <= -GUIDE_ENTER_THRESHOLD) return "left";
-    if (offsetX >= GUIDE_ENTER_THRESHOLD) return "right";
-    return "neutral";
+interface DropIntent {
+  overId: string;
+  kind: DropIntentKind;
+}
+
+function getClientYFromActivator(event: Event | null | undefined): number | null {
+  if (!event) return null;
+
+  if (event instanceof MouseEvent || event instanceof PointerEvent) {
+    return event.clientY;
   }
 
-  if (previous === "left") {
-    if (offsetX >= GUIDE_ENTER_THRESHOLD) return "right";
-    if (offsetX >= -GUIDE_EXIT_THRESHOLD) return "neutral";
-    return "left";
+  if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
+    const touch = event.touches[0] || event.changedTouches[0];
+    return touch?.clientY ?? null;
   }
 
-  if (offsetX <= -GUIDE_ENTER_THRESHOLD) return "left";
-  if (offsetX <= GUIDE_EXIT_THRESHOLD) return "neutral";
-  return "right";
+  return null;
+}
+
+function getDragCenterY(
+  translatedRect: { top: number; height: number } | null | undefined,
+  activatorEvent: Event | null | undefined
+): number | null {
+  if (translatedRect) {
+    return translatedRect.top + translatedRect.height / 2;
+  }
+  return getClientYFromActivator(activatorEvent);
 }
 
 class LeftButtonPointerSensor extends PointerSensor {
@@ -98,14 +99,10 @@ interface SortablePageRowProps {
   itemHeight: number;
   isLocalNotebook: boolean;
   isActive: boolean;
-  isDropTarget: boolean;
   isNestDropTarget: boolean;
-  isEmptyNestTarget: boolean;
   showDropLine: boolean;
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
-  nestPointerLeft: number;
-  nestPointerPlacement: "above" | "below";
   onToggleOpen: (id: string) => void;
   onRequestRename: (page: Page) => void;
 }
@@ -140,14 +137,10 @@ function SortablePageRow({
   itemHeight,
   isLocalNotebook,
   isActive,
-  isDropTarget,
   isNestDropTarget,
-  isEmptyNestTarget,
   showDropLine,
   dropLinePosition,
   dropLineLeft,
-  nestPointerLeft,
-  nestPointerPlacement,
   onToggleOpen,
   onRequestRename,
 }: SortablePageRowProps) {
@@ -238,7 +231,7 @@ function SortablePageRow({
     >
       {showDropLine && (
         <div
-          className="absolute h-0.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
+          className="pointer-events-none absolute h-0.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
           style={{
             left: dropLineLeft,
             right: 12,
@@ -247,34 +240,20 @@ function SortablePageRow({
           }}
         />
       )}
-      {isNestDropTarget && (
-        <div
-          className={cn(
-            "sidebar-drop-parent-pointer",
-            nestPointerPlacement === "below" && "sidebar-drop-parent-pointer-below",
-            isEmptyNestTarget && "sidebar-drop-parent-pointer-empty"
-          )}
-          style={{ left: nestPointerLeft }}
-        >
-          <LucideIcons.CornerDownRight className="h-3.5 w-3.5" />
-          <span>作为子页面</span>
-        </div>
-      )}
 
       <SidebarContextMenu page={page} onRequestRename={onRequestRename}>
         <div
+          data-goose-context-trigger="true"
           {...attributes}
           {...guardedListeners}
           className={cn(
             "relative flex items-center h-full pl-2 pr-1 rounded-[8px] cursor-grab active:cursor-grabbing transition-colors text-sm font-medium",
-            isDropTarget && "sidebar-drop-target",
             isNestDropTarget && "sidebar-drop-parent-target",
-            isNestDropTarget && isEmptyNestTarget && "sidebar-drop-parent-target-empty",
             isDragging && "opacity-60",
             !isActive &&
-              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/55 dark:hover:bg-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
+              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
             isActive &&
-              "border workspace-divider-strong bg-background text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.08)] dark:bg-background dark:text-foreground/90"
+              "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:text-foreground/90"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -357,15 +336,17 @@ function SortablePageRow({
           </div>
 
           <div className="ml-1 hidden group-hover:flex items-center shrink-0">
-            <button
+            <IconButton
               type="button"
+              tone="muted"
+              size="sm"
               className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground/70 hover:text-foreground transition-colors"
               onClick={handleAddChild}
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             >
               <LucideIcons.Plus className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           </div>
         </div>
       </SidebarContextMenu>
@@ -381,7 +362,6 @@ export function SidebarTree({
   viewportHeight,
   onCreatePage,
   onRequestRename,
-  onDragGuideChange,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -399,13 +379,10 @@ export function SidebarTree({
 
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const [dragOffsetX, setDragOffsetX] = useState(0);
-  const [dropPlacement, setDropPlacement] = useState<"before" | "after">("before");
+  const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
-  const dragGuideDirectionRef = useRef<DragGuideDirection>("neutral");
 
   const visibleItems = useMemo(
     () =>
@@ -439,23 +416,6 @@ export function SidebarTree({
 
     return descendants;
   }, [activeId, pages]);
-
-  const projected = useMemo(() => {
-    if (!activeId || !overId) return null;
-    return getProjection({
-      items: flatItems,
-      activeId,
-      overId,
-      dragOffsetX,
-      indentationWidth: TREE_INDENT,
-      pages,
-      isLocalNotebook,
-    });
-  }, [activeId, overId, flatItems, dragOffsetX, pages, isLocalNotebook]);
-  const activeDragItem = useMemo(
-    () => (activeId ? flatItems.find((item) => item.id === activeId) ?? null : null),
-    [flatItems, activeId]
-  );
 
   const sensors = useSensors(
     useSensor(LeftButtonPointerSensor, {
@@ -530,29 +490,6 @@ export function SidebarTree({
     return () => window.clearTimeout(timer);
   }, [expandPageId, pages, activeNotebookId, setExpandPageId, visibleItems, virtualizer]);
 
-  useEffect(() => {
-    if (!onDragGuideChange) return;
-    if (!activeId) {
-      dragGuideDirectionRef.current = "neutral";
-      onDragGuideChange({ isDragging: false, direction: "neutral" });
-      return;
-    }
-
-    const direction = resolveGuideDirection(
-      dragOffsetX,
-      dragGuideDirectionRef.current
-    );
-    dragGuideDirectionRef.current = direction;
-
-    onDragGuideChange({ isDragging: true, direction });
-  }, [activeId, dragOffsetX, onDragGuideChange]);
-
-  useEffect(() => {
-    return () => {
-      onDragGuideChange?.({ isDragging: false, direction: "neutral" });
-    };
-  }, [onDragGuideChange]);
-
   const clearAutoExpandTimer = () => {
     if (autoExpandTimerRef.current !== null) {
       window.clearTimeout(autoExpandTimerRef.current);
@@ -580,40 +517,89 @@ export function SidebarTree({
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveId(String(active.id));
-    setOverId(null);
-    setDragOffsetX(0);
-    setDropPlacement("before");
-    dragGuideDirectionRef.current = "neutral";
+    setDropIntent(null);
   };
 
-  const handleDragMove = ({ delta, active }: DragMoveEvent) => {
-    setDragOffsetX(delta.x);
-
+  const handleDragMove = ({ active }: DragMoveEvent) => {
     const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
     autoScrollVertical(translatedRect);
   };
 
-  const handleDragOver = ({ over, active }: DragOverEvent) => {
+  const resolveDropKind = (
+    activeIndex: number,
+    overIndex: number,
+    overItem: FlatTreeItem,
+    overRect: { top: number; height: number },
+    pointerY: number | null
+  ): DropIntentKind => {
+    const overBottom = overRect.top + overRect.height;
+
+    if (pointerY !== null) {
+      if (overIndex === 0 && activeIndex > overIndex && pointerY <= overRect.top) {
+        return "before";
+      }
+
+      if (
+        overIndex === flatItems.length - 1 &&
+        activeIndex < overIndex &&
+        pointerY >= overBottom
+      ) {
+        return "after";
+      }
+    }
+
+    let ratio = 0.5;
+    if (pointerY !== null) {
+      const overHeight = Math.max(overRect.height, 1);
+      ratio = (pointerY - overRect.top) / overHeight;
+    }
+
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+    if (clampedRatio < DROP_ZONE_TOP_RATIO) {
+      return "before";
+    }
+    if (clampedRatio > DROP_ZONE_BOTTOM_RATIO) {
+      return "after";
+    }
+
+    const canNest =
+      !activeDescendantIds.has(overItem.id) &&
+      (!isLocalNotebook || !!overItem.page.isFolder);
+    if (canNest) {
+      return "nest";
+    }
+
+    return clampedRatio <= 0.5 ? "before" : "after";
+  };
+
+  const handleDragOver = ({ over, active, activatorEvent }: DragOverEvent) => {
     if (!over) {
-      setOverId(null);
+      setDropIntent(null);
       return;
     }
+
     const overItemId = String(over.id);
     if (activeDescendantIds.has(overItemId)) {
-      setOverId(null);
+      setDropIntent(null);
       return;
     }
-    setOverId(overItemId);
 
-    const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
-    if (translatedRect) {
-      const activeCenterY = translatedRect.top + translatedRect.height / 2;
-      const overMiddleY = over.rect.top + over.rect.height / 2;
-      setDropPlacement(activeCenterY > overMiddleY ? "after" : "before");
+    const activeIndex = flatItems.findIndex((item) => item.id === String(active.id));
+    const overIndex = flatItems.findIndex((item) => item.id === overItemId);
+    const overItem = flatItems.find((item) => item.id === overItemId);
+    if (!overItem || activeIndex < 0 || overIndex < 0) {
+      setDropIntent(null);
+      clearAutoExpandTimer();
+      return;
     }
 
-    const overItem = flatItems.find((item) => item.id === overItemId);
-    if (!overItem || !overItem.hasChildren || overItem.isOpen) {
+    const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
+    const pointerY = getDragCenterY(translatedRect, activatorEvent);
+    const kind = resolveDropKind(activeIndex, overIndex, overItem, over.rect, pointerY);
+    setDropIntent({ overId: overItemId, kind });
+
+    if (kind !== "nest" || !overItem.hasChildren || overItem.isOpen) {
       clearAutoExpandTimer();
       return;
     }
@@ -633,100 +619,67 @@ export function SidebarTree({
     clearAutoExpandTimer();
 
     const activeNodeId = String(active.id);
-    const overNodeId = over ? String(over.id) : null;
+    const finalIntent = dropIntent;
 
     setActiveId(null);
-    setOverId(null);
-    setDragOffsetX(0);
-    const currentPlacement = dropPlacement;
-    setDropPlacement("before");
-    dragGuideDirectionRef.current = "neutral";
+    setDropIntent(null);
 
-    if (!overNodeId) return;
+    if (!over || !finalIntent) return;
+    const overNodeId = finalIntent.overId;
     if (activeDescendantIds.has(overNodeId)) return;
 
     const activeItem = flatItems.find((item) => item.id === activeNodeId);
-    if (!activeItem) return;
-
-    const activeIndex = flatItems.findIndex((item) => item.id === activeNodeId);
-    const overIndex = flatItems.findIndex((item) => item.id === overNodeId);
-    if (activeIndex < 0 || overIndex < 0) return;
-
-    const projection = getProjection({
-      items: flatItems,
-      activeId: activeNodeId,
-      overId: overNodeId,
-      dragOffsetX,
-      indentationWidth: TREE_INDENT,
-      pages,
-      isLocalNotebook,
-    });
-
     const overItem = flatItems.find((item) => item.id === overNodeId);
-    const wantsPromoteToRoot =
-      activeItem.depth > 0 && dragOffsetX <= -PROMOTE_TRIGGER_THRESHOLD;
-    const canNestIntoOver =
-      !!overItem &&
-      overNodeId !== activeNodeId &&
-      !isDescendant(activeNodeId, overNodeId, pages) &&
-      (!isLocalNotebook || !!overItem.page.isFolder);
-    const wantsNestIntoOver = canNestIntoOver && dragOffsetX >= NEST_TRIGGER_THRESHOLD;
+    const activePage = pages[activeNodeId];
+    if (!activeItem || !overItem || !activePage) return;
 
-    const nextParentId = wantsPromoteToRoot
-      ? undefined
-      : wantsNestIntoOver
-        ? overNodeId
-        : projection?.parentId ?? activeItem.parentId;
+    let nextParentId: string | undefined;
+    let nextOrderIds: string[] | null = null;
+
+    if (finalIntent.kind === "nest") {
+      const canNestIntoOver =
+        overNodeId !== activeNodeId &&
+        !isDescendant(activeNodeId, overNodeId, pages) &&
+        (!isLocalNotebook || !!overItem.page.isFolder);
+      if (!canNestIntoOver) return;
+
+      nextParentId = overNodeId;
+      const targetChildren = getChildren(nextParentId, activeNotebookId || undefined)
+        .filter((page) => page.id !== activeNodeId);
+      nextOrderIds = [...targetChildren, activePage].map((page) => page.id);
+    } else {
+      nextParentId = overItem.parentId;
+      const siblings = getChildren(nextParentId, activeNotebookId || undefined)
+        .filter((page) => page.id !== activeNodeId);
+      const overSiblingIndex = siblings.findIndex((page) => page.id === overNodeId);
+      if (overSiblingIndex < 0) return;
+
+      const insertIndex =
+        finalIntent.kind === "after" ? overSiblingIndex + 1 : overSiblingIndex;
+      const reordered = [...siblings];
+      reordered.splice(insertIndex, 0, activePage);
+      nextOrderIds = reordered.map((page) => page.id);
+    }
+
     if (isDescendant(activeNodeId, nextParentId, pages)) {
       return;
     }
     if (isLocalNotebook && nextParentId && !pages[nextParentId]?.isFolder) {
       return;
     }
+    if (!nextOrderIds) return;
+    const nextIds = nextOrderIds;
 
-    const depthChanged = projection && projection.depth !== activeItem.depth;
-    if (activeIndex === overIndex && !depthChanged && nextParentId === activeItem.parentId) {
+    const currentOrder = getChildren(nextParentId, activeNotebookId || undefined).map((page) => page.id);
+    if (
+      nextParentId === activeItem.parentId &&
+      currentOrder.length === nextIds.length &&
+      currentOrder.every((id, index) => id === nextIds[index])
+    ) {
       return;
     }
 
-    const nextIndex = (() => {
-      if (currentPlacement === "after") {
-        return activeIndex < overIndex ? overIndex : overIndex + 1;
-      }
-      return activeIndex < overIndex ? overIndex - 1 : overIndex;
-    })();
-    const boundedIndex = Math.max(0, Math.min(nextIndex, flatItems.length - 1));
-
-    const reordered = arrayMove(flatItems, activeIndex, boundedIndex).map((item) => {
-      if (item.id !== activeNodeId) return item;
-      return {
-        ...item,
-        parentId: nextParentId,
-        depth: projection?.depth ?? item.depth,
-      };
-    });
-
-    const rankMap = new Map(reordered.map((item, index) => [item.id, index]));
-    const activePage = pages[activeNodeId];
-    if (!activePage) return;
-
-    const targetSiblings = getChildren(nextParentId, activeNotebookId || undefined);
-    const mergedSiblings = [...targetSiblings.filter((page) => page.id !== activeNodeId), activePage];
-    mergedSiblings.sort((a, b) => {
-      const rankA = rankMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-      const rankB = rankMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-      if (rankA !== rankB) return rankA - rankB;
-
-      const orderA = a.order ?? a.createdAt;
-      const orderB = b.order ?? b.createdAt;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.id.localeCompare(b.id);
-    });
-
-    reorderPages(
-      mergedSiblings.map((page) => page.id),
-      nextParentId
-    );
+    reorderPages(nextIds, nextParentId);
 
     if (nextParentId) {
       setOpenPageIds((prev) => {
@@ -757,10 +710,7 @@ export function SidebarTree({
   const handleDragCancel = () => {
     clearAutoExpandTimer();
     setActiveId(null);
-    setOverId(null);
-    setDragOffsetX(0);
-    setDropPlacement("before");
-    dragGuideDirectionRef.current = "neutral";
+    setDropIntent(null);
   };
 
   if (flatItems.length === 0) {
@@ -824,46 +774,25 @@ export function SidebarTree({
                   );
                 }
 
-                const rowDepth =
-                  activeId === item.id && projected ? projected.depth : item.depth;
-                const isDropTarget = overId === item.id && activeId !== item.id;
-                const wantsPromoteToRoot =
-                  !!activeDragItem &&
-                  activeDragItem.depth > 0 &&
-                  dragOffsetX <= -PROMOTE_TRIGGER_THRESHOLD;
-                const canNestIntoItem =
-                  !!activeDragItem &&
-                  activeId !== item.id &&
-                  !activeDescendantIds.has(item.id) &&
-                  (!isLocalNotebook || !!item.page.isFolder);
-                const isNestDropTarget =
-                  isDropTarget &&
-                  !wantsPromoteToRoot &&
-                  canNestIntoItem &&
-                  dragOffsetX >= NEST_TRIGGER_THRESHOLD;
-                const dropLineLeft = rowDepth * TREE_INDENT + 16;
-                const nestPointerLeft = (item.depth + 1) * TREE_INDENT + 16;
-                const dropLinePosition = dropPlacement === "after" ? "bottom" : "top";
-                const nestPointerPlacement =
-                  virtualRow.start < rowHeight * 1.2 ? "below" : "above";
+                const isDropTarget = dropIntent?.overId === item.id && activeId !== item.id;
+                const isNestDropTarget = isDropTarget && dropIntent?.kind === "nest";
+                const showDropLine = isDropTarget && dropIntent?.kind !== "nest";
+                const dropLinePosition = dropIntent?.kind === "after" ? "bottom" : "top";
+                const dropLineLeft = item.depth * TREE_INDENT + 16;
 
                 return (
                   <SortablePageRow
                     key={item.id}
                     item={item}
                     rowStyle={style}
-                    depth={rowDepth}
+                    depth={item.depth}
                     itemHeight={itemHeight}
                     isLocalNotebook={isLocalNotebook}
                     isActive={activePageId === item.id}
-                    isDropTarget={isDropTarget}
                     isNestDropTarget={isNestDropTarget}
-                    isEmptyNestTarget={!item.hasChildren}
-                    showDropLine={isDropTarget && !isNestDropTarget}
+                    showDropLine={showDropLine}
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
-                    nestPointerLeft={nestPointerLeft}
-                    nestPointerPlacement={nestPointerPlacement}
                     onToggleOpen={handleToggle}
                     onRequestRename={onRequestRename}
                   />

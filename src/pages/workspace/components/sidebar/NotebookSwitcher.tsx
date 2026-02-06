@@ -15,6 +15,25 @@ export function NotebookSwitcher() {
   } = useNotebooks();
   const { setActivePage } = usePages();
   const [isOpen, setIsOpen] = useState(false);
+  const hovering = useRef({ trigger: false, content: false });
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+
+  const scheduleClose = () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      if (!hovering.current.trigger && !hovering.current.content) {
+        setIsOpen(false);
+      }
+    }, 80);
+  };
+
   const [editDialog, setEditDialog] = useState({
     open: false,
     id: "",
@@ -142,12 +161,19 @@ export function NotebookSwitcher() {
         <DropdownMenuTrigger asChild>
           <div
             className="w-full"
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
+            onMouseEnter={() => {
+              hovering.current.trigger = true;
+              if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+              setIsOpen(true);
+            }}
+            onMouseLeave={() => {
+              hovering.current.trigger = false;
+              scheduleClose();
+            }}
           >
             <Button
               variant="ghost"
-              className="w-full justify-between px-1 h-auto py-1 font-medium hover:bg-muted/60 transition-colors"
+              className="w-full justify-between px-1 h-auto py-1 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[hsl(var(--goose-selected-bg)/0.72)] hover:text-foreground transition-colors"
             >
               <div className="flex items-center gap-2 truncate">
                 {activeNotebook &&
@@ -161,11 +187,17 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[248px]"
+          className="w-[248px] before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3"
           align="start"
           sideOffset={-4}
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
+          onMouseEnter={() => {
+            hovering.current.content = true;
+            if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+          }}
+          onMouseLeave={() => {
+            hovering.current.content = false;
+            scheduleClose();
+          }}
         >
           {notebookList.map((notebook) => (
             <DropdownMenuItem
@@ -198,7 +230,7 @@ export function NotebookSwitcher() {
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {renderNotebookIcon(notebook.icon || "📓")}
-                <span className="truncate">{notebook.name}</span>
+                <span className="truncate text-sm font-medium">{notebook.name}</span>
                 {notebook.localPathMissing && (
                   <span className="text-xs text-destructive">路径失效</span>
                 )}
@@ -241,14 +273,14 @@ export function NotebookSwitcher() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-2 pt-1.5 pb-2">
             <DropdownMenuItem
-              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2"
+              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2 text-xs font-medium"
               onClick={handleCreate}
             >
               <LucideIcons.BookPlus className="h-4 w-4" />
               新建记事本
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2"
+              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2 text-xs font-medium"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-4 w-4" />

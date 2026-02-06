@@ -46,35 +46,42 @@ export function WorkspacePage() {
         notebook?.source === "local-folder" &&
         notebook.localPath === dirPath
       ) {
+        const gooseFs = (window as any).gooseFs as GooseFs | undefined;
+        if (!gooseFs) return;
         const filePath = `${dirPath}/${filename}`;
 
         // 处理文件/文件夹删除或移动
         if (eventType === "rename") {
-          // 如果路径不再存在，说明是删除或移出
-          if (!(window as any).gooseFs.exists(filePath)) {
-            // 如果删除的是当前活跃页面，或者是当前页面的父级目录
-            if (activePageId && page?.localFilePath) {
-              const isCurrentFile = page.localFilePath === filePath;
-              const isParentDir =
-                page.localFilePath.startsWith(
-                  filePath +
-                    (filePath.endsWith("/") || filePath.endsWith("\\")
-                      ? ""
-                      : "/"),
-                ) || page.localFilePath.startsWith(filePath + "\\");
+          void (async () => {
+            const exists = gooseFs.existsAsync
+              ? await gooseFs.existsAsync(filePath)
+              : gooseFs.exists(filePath);
 
-              if (isCurrentFile || isParentDir) {
-                usePages.getState().setActivePage(null);
+            // 如果路径不再存在，说明是删除或移出
+            if (!exists) {
+              // 如果删除的是当前活跃页面，或者是当前页面的父级目录
+              if (activePageId && page?.localFilePath) {
+                const isCurrentFile = page.localFilePath === filePath;
+                const isParentDir =
+                  page.localFilePath.startsWith(
+                    filePath +
+                      (filePath.endsWith("/") || filePath.endsWith("\\")
+                        ? ""
+                        : "/"),
+                  ) || page.localFilePath.startsWith(filePath + "\\");
+
+                if (isCurrentFile || isParentDir) {
+                  usePages.getState().setActivePage(null);
+                }
+              }
+              // 重新加载侧边栏以同步状态
+              if (notebook.id && notebook.localPath) {
+                usePages
+                  .getState()
+                  .loadLocalFolderPages(notebook.id, notebook.localPath);
               }
             }
-            // 重新加载侧边栏以同步状态
-            if (notebook.id && notebook.localPath) {
-              usePages
-                .getState()
-                .loadLocalFolderPages(notebook.id, notebook.localPath);
-            }
-            return;
-          }
+          })();
         }
       }
     };
@@ -183,7 +190,7 @@ export function WorkspacePage() {
         onDrop={handleDrop}
       >
       {isDragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-background/96 via-background/98 to-background/97 backdrop-blur-[1px] animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-[1px] animate-in fade-in duration-300">
           <div className="text-center">
             <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
             <p className="text-lg text-muted-foreground font-medium">
@@ -268,9 +275,12 @@ export function WorkspacePage() {
                           }
                         }}
                       >
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
                           className={cn(
-                            "flex items-center justify-center transition-all duration-300 ml-6",
+                            "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
                             page.icon
                               ? "opacity-100 scale-100"
                               : page.trashedAt || page.isLocked
@@ -297,7 +307,7 @@ export function WorkspacePage() {
                               <span>添加图标</span>
                             </div>
                           )}
-                        </button>
+                        </Button>
                       </IconSelector>
                     </div>
                   )}

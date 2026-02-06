@@ -99,8 +99,8 @@ function FavoriteNode({
           className={cn(
             "group relative flex items-center px-2 mx-1 rounded-md cursor-pointer transition-colors text-sm font-medium",
             isActive
-              ? "bg-muted text-foreground dark:text-foreground/85"
-              : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-muted/60 hover:text-foreground dark:hover:text-foreground/85",
+              ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:text-foreground/85"
+              : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85",
           )}
           onClick={() => {
             if (isLocalFolder && page.isFolder) {
@@ -178,12 +178,15 @@ function FavoriteNode({
               isActive ? "to-muted" : "to-[hsl(var(--muted)/0.6)]",
             )}
           >
-            <button
+            <IconButton
+              type="button"
+              tone="muted"
+              size="sm"
               className="p-1 rounded hover:bg-muted-foreground/20 active:bg-muted-foreground/30 text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 transition-colors"
               onClick={handleAddChild}
             >
               <LucideIcons.Plus className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           </div>
         </div>
       </SidebarContextMenu>
@@ -242,7 +245,7 @@ export function FavoritesSection({
   return (
     <div className="py-1">
       <div
-        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-muted-foreground/60 dark:text-muted-foreground/50 hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
+        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
         onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
       >
         <span>收藏</span>
