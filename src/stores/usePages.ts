@@ -236,71 +236,92 @@ export const usePages = create<PagesState>()(
       onboardingCompleted: false,
 
       createOnboardingPages: () => {
-        const mainId = uuidv4();
-        const childId1 = uuidv4();
-        const childId2 = uuidv4();
-        const now = Date.now();
+        let createdMainId: string | null = null;
         const workspaceId = DEFAULT_NOTEBOOK;
 
-        const mainPage: Page = {
-          id: mainId,
-          workspaceId,
-          parentId: undefined,
-          content: ONBOARDING_PAGE_CONTENT,
-          isFolder: false,
-          isLocked: false,
-          isFullWidth: false,
-          fontSize: "default",
-          fontFamily: "default",
-          createdAt: now,
-          updatedAt: now,
-          order: now,
-        };
+        set((state) => {
+          const hasExistingOnboardingPage = Object.values(state.pages).some(
+            (page) =>
+              page.workspaceId === workspaceId &&
+              !page.trashedAt &&
+              extractTitleFromContent(page.content) === "鹅的笔记 · 新手指南",
+          );
 
-        const childPage1: Page = {
-          id: childId1,
-          workspaceId,
-          parentId: mainId,
-          content: ONBOARDING_CHILD_PAGE_CONTENT,
-          isFolder: false,
-          isLocked: false,
-          isFullWidth: false,
-          fontSize: "default",
-          fontFamily: "default",
-          createdAt: now + 1,
-          updatedAt: now + 1,
-          order: now + 1,
-        };
+          if (state.onboardingCompleted || hasExistingOnboardingPage) {
+            if (state.onboardingCompleted) return state;
+            return { ...state, onboardingCompleted: true };
+          }
 
-        const childPage2: Page = {
-          id: childId2,
-          workspaceId,
-          parentId: mainId,
-          content: ONBOARDING_SECOND_CHILD_CONTENT,
-          isFolder: false,
-          isLocked: false,
-          isFullWidth: false,
-          fontSize: "default",
-          fontFamily: "default",
-          createdAt: now + 2,
-          updatedAt: now + 2,
-          order: now + 2,
-        };
+          const mainId = uuidv4();
+          const childId1 = uuidv4();
+          const childId2 = uuidv4();
+          const now = Date.now();
 
-        set((state) => ({
-          pages: {
-            ...state.pages,
-            [mainId]: mainPage,
-            [childId1]: childPage1,
-            [childId2]: childPage2,
-          },
-          activePageId: mainId,
-          onboardingCompleted: true,
-          expandPageId: mainId,
-        }));
+          createdMainId = mainId;
 
-        useNotebooks.getState().setActiveNotebook(workspaceId);
-        useNotebooks.getState().setLastActivePage(workspaceId, mainId);
+          const mainPage: Page = {
+            id: mainId,
+            workspaceId,
+            parentId: undefined,
+            content: ONBOARDING_PAGE_CONTENT,
+            isFolder: false,
+            isLocked: false,
+            isFullWidth: false,
+            fontSize: "default",
+            fontFamily: "default",
+            createdAt: now,
+            updatedAt: now,
+            order: now,
+          };
+
+          const childPage1: Page = {
+            id: childId1,
+            workspaceId,
+            parentId: mainId,
+            content: ONBOARDING_CHILD_PAGE_CONTENT,
+            isFolder: false,
+            isLocked: false,
+            isFullWidth: false,
+            fontSize: "default",
+            fontFamily: "default",
+            createdAt: now + 1,
+            updatedAt: now + 1,
+            order: now + 1,
+          };
+
+          const childPage2: Page = {
+            id: childId2,
+            workspaceId,
+            parentId: mainId,
+            content: ONBOARDING_SECOND_CHILD_CONTENT,
+            isFolder: false,
+            isLocked: false,
+            isFullWidth: false,
+            fontSize: "default",
+            fontFamily: "default",
+            createdAt: now + 2,
+            updatedAt: now + 2,
+            order: now + 2,
+          };
+
+          return {
+            ...state,
+            pages: {
+              ...state.pages,
+              [mainId]: mainPage,
+              [childId1]: childPage1,
+              [childId2]: childPage2,
+            },
+            activePageId: mainId,
+            onboardingCompleted: true,
+            expandPageId: mainId,
+          };
+        });
+
+        if (createdMainId) {
+          useNotebooks.getState().setActiveNotebook(workspaceId);
+          useNotebooks.getState().setLastActivePage(workspaceId, createdMainId);
+        }
       },
 
       createPage: (parentId, workspaceId = DEFAULT_NOTEBOOK) => {
