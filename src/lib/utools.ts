@@ -1,34 +1,28 @@
-/**
- * uTools Adapter
- *
- * This class wraps all interactions with the uTools API.
- * It provides a consistent interface that works locally (via localStorage/Web APIs)
- * when running in a browser environment, and uses native uTools APIs when available.
- */
+import { hostRuntime } from "./host";
+import type { SublistItem, UserInfo } from "./host";
 
-export interface UserInfo {
-  avatar?: string;
-  nickname: string;
-  type: string;
-}
-
-/**
- * Sublist 结果项（用于 uTools 全局搜索）
- */
-export interface SublistItem {
-  title: string;
-  description: string;
-  icon: string;
-  url: string;
-}
+export type { SublistItem, UserInfo };
 
 export class UToolsAdapter {
   /**
    * Check if running in uTools environment
    */
   static get isUTools(): boolean {
-    // @ts-ignore
-    return typeof window !== "undefined" && !!window.utools;
+    return hostRuntime.isUTools;
+  }
+
+  static get isTauri(): boolean {
+    return hostRuntime.isTauri;
+  }
+
+  static get supportsWakeHotkey(): boolean {
+    return hostRuntime.supportsWakeHotkey;
+  }
+
+  static async ensureGooseFs(): Promise<void> {
+    if (hostRuntime.ensureGooseFs) {
+      await hostRuntime.ensureGooseFs();
+    }
   }
 
   /**
@@ -45,29 +39,7 @@ export class UToolsAdapter {
       data: T,
       rev?: string,
     ): { id: string; ok: boolean; rev?: string; error?: any } => {
-      if (UToolsAdapter.isUTools) {
-        // @ts-ignore
-        const result = window.utools.db.put({
-          _id: id,
-          _rev: rev,
-          data: data,
-        });
-        return result;
-      } else {
-        // Web Fallback: localStorage
-        try {
-          const item = {
-            _id: id,
-            _rev: rev || Date.now().toString(), // Simple mock rev
-            data: data,
-          };
-          localStorage.setItem(id, JSON.stringify(item));
-          return { id, ok: true, rev: item._rev };
-        } catch (e) {
-          console.error("Web DB Put Error", e);
-          return { id, ok: false, error: e };
-        }
-      }
+      return hostRuntime.db.put(id, data, rev);
     },
 
     /**
@@ -75,19 +47,7 @@ export class UToolsAdapter {
      * @param id Document ID
      */
     get: <T>(id: string): { _id: string; _rev?: string; data: T } | null => {
-      if (UToolsAdapter.isUTools) {
-        // @ts-ignore
-        return window.utools.db.get(id);
-      } else {
-        // Web Fallback
-        const itemStr = localStorage.getItem(id);
-        if (!itemStr) return null;
-        try {
-          return JSON.parse(itemStr);
-        } catch {
-          return null;
-        }
-      }
+      return hostRuntime.db.get(id);
     },
 
     /**
@@ -95,14 +55,7 @@ export class UToolsAdapter {
      * @param id Document ID
      */
     remove: (id: string): { id: string; ok: boolean; error?: any } => {
-      if (UToolsAdapter.isUTools) {
-        // @ts-ignore
-        return window.utools.db.remove(id);
-      } else {
-        // Web Fallback
-        localStorage.removeItem(id);
-        return { id, ok: true };
-      }
+      return hostRuntime.db.remove(id);
     },
 
     /**
@@ -112,27 +65,7 @@ export class UToolsAdapter {
     allDocs: <T>(
       prefix: string = "",
     ): Array<{ _id: string; _rev?: string; data: T }> => {
-      if (UToolsAdapter.isUTools) {
-        // @ts-ignore
-        return window.utools.db.allDocs(prefix);
-      } else {
-        // Web Fallback: Iterate localStorage
-        const results = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith(prefix)) {
-            const val = localStorage.getItem(key);
-            if (val) {
-              try {
-                results.push(JSON.parse(val));
-              } catch (e) {
-                // Ignore malformed
-              }
-            }
-          }
-        }
-        return results;
-      }
+      return hostRuntime.db.allDocs(prefix);
     },
   };
 
@@ -140,60 +73,22 @@ export class UToolsAdapter {
    * User Operations
    */
   static getUser(): UserInfo | null {
-    if (UToolsAdapter.isUTools) {
-      // @ts-ignore
-      return window.utools.getUser();
-    }
-    // Web Fallback: Mock user or null
-    return {
-      nickname: "Local User",
-      avatar: undefined,
-      type: "web",
-    };
+    return hostRuntime.getUser();
   }
 
   /**
    * System Integration
    */
   static copyToClipboard(text: string) {
-    if (UToolsAdapter.isUTools) {
-      // @ts-ignore
-      window.utools.copyText(text);
-    } else {
-      navigator.clipboard.writeText(text);
-    }
+    void hostRuntime.copyToClipboard(text);
   }
 
   static showNotification(body: string) {
-    if (UToolsAdapter.isUTools) {
-      // @ts-ignore
-      window.utools.showNotification(body);
-    } else {
-      // You might use a toast library here, but for strict "system" notification:
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("鹅的笔记", { body });
-      } else {
-        console.log("Notification:", body);
-      }
-    }
+    hostRuntime.showNotification(body);
   }
 
   static openUrl(url: string, useInternalBrowser = true) {
-    if (UToolsAdapter.isUTools) {
-      const u = window as any;
-      if (useInternalBrowser) {
-        // 使用 uTools 内置浏览器 ubrowser
-        if (typeof u.utools?.ubrowser?.goto === "function") {
-          u.utools.ubrowser.goto(url).run();
-        } else {
-          u.utools?.shellOpenExternal?.(url);
-        }
-      } else {
-        u.utools?.shellOpenExternal?.(url);
-      }
-    } else {
-      window.open(url, "_blank");
-    }
+    void hostRuntime.openUrl(url, useInternalBrowser);
   }
 
   /** @deprecated Use openUrl instead */
@@ -206,13 +101,7 @@ export class UToolsAdapter {
    * @param callback 搜索回调函数，接收关键词返回结果列表
    */
   static setSublistFn(callback: ((keyword: string) => SublistItem[]) | null) {
-    if (UToolsAdapter.isUTools) {
-      const utools = (window as any).utools;
-      // 检查 API 是否存在（sublist 可能不是所有 uTools 版本都支持）
-      if (utools && typeof utools.setSublistFn === "function") {
-        utools.setSublistFn(callback);
-      }
-    }
+    hostRuntime.setSublistFn(callback);
   }
 
   /**
@@ -227,9 +116,7 @@ export class UToolsAdapter {
    * 检查是否支持 sublist 功能
    */
   static get supportsSublist(): boolean {
-    if (!UToolsAdapter.isUTools) return false;
-    const utools = (window as any).utools;
-    return utools && typeof utools.setSublistFn === "function";
+    return hostRuntime.supportsSublist;
   }
 
   /**
@@ -237,13 +124,7 @@ export class UToolsAdapter {
    * @param height 窗口高度（像素）
    */
   static setExpendHeight(height: number): boolean {
-    if (UToolsAdapter.isUTools) {
-      const utools = (window as any).utools;
-      if (utools && typeof utools.setExpendHeight === "function") {
-        return utools.setExpendHeight(height);
-      }
-    }
-    return false;
+    return hostRuntime.setExpendHeight(height);
   }
 
   /**
@@ -252,13 +133,22 @@ export class UToolsAdapter {
    * @param payload 传递给目标插件的数据
    */
   static redirect(label: string | [string, string], payload?: any): boolean {
-    if (UToolsAdapter.isUTools) {
-      const utools = (window as any).utools;
-      if (utools && typeof utools.redirect === "function") {
-        return utools.redirect(label, payload);
-      }
-    }
-    console.warn('[Web] redirect not supported');
-    return false;
+    return hostRuntime.redirect(label, payload);
+  }
+
+  static async registerWakeHotkey(shortcut: string): Promise<{ ok: boolean; error?: string }> {
+    return hostRuntime.registerWakeHotkey(shortcut);
+  }
+
+  static async unregisterWakeHotkey(shortcut: string): Promise<void> {
+    await hostRuntime.unregisterWakeHotkey(shortcut);
+  }
+
+  static async registerSearchHotkey(shortcut: string): Promise<{ ok: boolean; error?: string }> {
+    return hostRuntime.registerSearchHotkey(shortcut);
+  }
+
+  static async unregisterSearchHotkey(shortcut: string): Promise<void> {
+    await hostRuntime.unregisterSearchHotkey(shortcut);
   }
 }

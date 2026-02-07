@@ -187,18 +187,29 @@ export const useNotebooks = create<NotebooksState>()(
           typeof window !== "undefined" &&
           (window as any).gooseFs
         ) {
-          const exists = (window as any).gooseFs.exists(notebook.localPath);
-          if (exists) {
-            if (notebook.localPathMissing) {
-              get().updateNotebook(id, { localPathMissing: false });
+          const gooseFs = (window as any).gooseFs as GooseFs;
+
+          void (async () => {
+            const exists = gooseFs.existsAsync
+              ? await gooseFs.existsAsync(notebook.localPath!)
+              : gooseFs.exists(notebook.localPath!);
+
+            if (get().activeNotebookId !== id) return;
+
+            if (exists) {
+              if (notebook.localPathMissing) {
+                get().updateNotebook(id, { localPathMissing: false });
+              }
+              await usePages
+                .getState()
+                .loadLocalFolderPages(id, notebook.localPath!);
+            } else {
+              if (!notebook.localPathMissing) {
+                get().updateNotebook(id, { localPathMissing: true });
+              }
+              usePages.getState().removePagesByWorkspaceId(id);
             }
-            usePages.getState().loadLocalFolderPages(id, notebook.localPath);
-          } else {
-            if (!notebook.localPathMissing) {
-              get().updateNotebook(id, { localPathMissing: true });
-            }
-            usePages.getState().removePagesByWorkspaceId(id);
-          }
+          })();
         }
 
         const pagesStore = usePages.getState();

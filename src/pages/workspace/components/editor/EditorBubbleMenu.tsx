@@ -9,7 +9,7 @@ type EditorBubbleMenuProps = Omit<
 import { useScrollHide } from "@/hooks/useScrollHide";
 
 const TOOLTIP_STYLE =
-  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)]";
+  "rounded-2xl border border-border/80 bg-popover px-2 py-1.5 text-popover-foreground shadow-[0_10px_24px_rgba(15,23,42,0.14)] dark:border-white/20";
 
 function BubbleMenuTooltip({
   label,
@@ -20,12 +20,14 @@ function BubbleMenuTooltip({
 }) {
   return (
     <TooltipContent side="top" sideOffset={8} className={TOOLTIP_STYLE}>
-      <div className="flex flex-col gap-0.5 leading-none">
-        <span className="text-[12px] font-medium text-white">{label}</span>
+      <div className="inline-flex items-center gap-2 leading-none whitespace-nowrap">
+        <span className="text-[12px] font-medium text-foreground">
+          {label}
+        </span>
         {shortcut ? (
-          <span className="text-[11px] text-white/75">
+          <kbd className="inline-flex h-6 select-none items-center rounded-[10px] border border-border/85 bg-muted px-2 font-mono text-[11px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
             {formatShortcut(shortcut)}
-          </span>
+          </kbd>
         ) : null}
       </div>
     </TooltipContent>
@@ -37,20 +39,41 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
   const shouldHideMenu = isHidden || isContextMenuOpen;
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const bindTooltip = useCallback(
+    (id: string) => ({
+      delayDuration: 0,
+      open: activeTooltip === id,
+      onOpenChange: (open: boolean) =>
+        setActiveTooltip((prev) => (open ? id : prev === id ? null : prev)),
+    }),
+    [activeTooltip],
+  );
 
   useEffect(() => {
     if (!menuRef.current) return;
     menuRef.current.style.zIndex = "20000";
   }, []);
 
+  useEffect(() => {
+    if (!shouldHideMenu) return;
+    setActiveTooltip(null);
+  }, [shouldHideMenu]);
+
   if (!editor) return null;
 
   return (
-    <TooltipProvider>
+    <TooltipProvider
+      delayDuration={0}
+      skipDelayDuration={0}
+      disableHoverableContent
+    >
       <BubbleMenu
         ref={menuRef}
         editor={editor}
+        pluginKey="textBubbleMenu"
         appendTo={() => document.body}
         className={cn(
           "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]",
@@ -58,6 +81,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         )}
         shouldShow={({ editor, state }) => {
           if (!editor.isEditable) return false;
+          if (shouldHideMenu) return false;
           if (isContextMenuOpen) return false;
           const { selection } = state;
 
@@ -81,7 +105,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         }}
         {...props}
       >
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("bold")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -96,7 +120,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <BubbleMenuTooltip label="粗体" shortcut="Mod+B" />
         </Tooltip>
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("italic")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -113,7 +137,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <BubbleMenuTooltip label="斜体" shortcut="Mod+I" />
         </Tooltip>
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("strike")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -132,7 +156,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
 
         <ColorPicker editor={editor} />
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("underline")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -151,7 +175,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("code")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -168,7 +192,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("align-left")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -185,7 +209,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <BubbleMenuTooltip label="左对齐" shortcut="Mod+Shift+L" />
         </Tooltip>
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("align-center")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -202,7 +226,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <BubbleMenuTooltip label="居中对齐" shortcut="Mod+Shift+E" />
         </Tooltip>
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("align-right")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
@@ -221,7 +245,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
-        <Tooltip delayDuration={0}>
+        <Tooltip {...bindTooltip("clear")}>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"

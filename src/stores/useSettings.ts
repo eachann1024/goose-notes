@@ -11,13 +11,20 @@ export interface SearchProvider {
 
 export type Theme = 'light' | 'dark' | 'system'
 
-export type CodeStyle = 'default' | 'github' | 'modern' | 'vivid' | 'night'
+export type CodeStyle = 'default' | 'github' | 'modern' | 'night' | 'nord' | 'nord-light'
 
 export interface UToolsSettings {
     globalSearchEnabled: boolean
     openSearchInUtools: boolean
 
     windowHeight: number
+}
+
+export interface DesktopSettings {
+    wakeHotkey: string
+    wakeHotkeyEnabled: boolean
+    searchHotkey: string
+    searchHotkeyEnabled: boolean
 }
 
 export interface PrivacySettings {
@@ -50,12 +57,15 @@ export type UIFontSize = 'small' | 'normal' | 'large'
 export const EDITOR_FONT_SIZE_MIN = 12
 export const EDITOR_FONT_SIZE_MAX = 24
 export const EDITOR_FONT_SIZE_DEFAULT = 16
+export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N"
+export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K"
 
 interface SettingsState {
     theme: Theme
     codeStyle: CodeStyle
     searchProviders: SearchProvider[]
     utools: UToolsSettings
+    desktop: DesktopSettings
     privacy: PrivacySettings
     searchAllNotebooks: boolean
     customFonts: CustomFonts
@@ -65,10 +75,15 @@ interface SettingsState {
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
     toggleSearchProvider: (id: string) => void
+    reorderSearchProviders: (nextIds: string[]) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
+    setWakeHotkey: (hotkey: string) => void
+    setWakeHotkeyEnabled: (enabled: boolean) => void
+    setSearchHotkey: (hotkey: string) => void
+    setSearchHotkeyEnabled: (enabled: boolean) => void
     setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -143,6 +158,44 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
     },
 ]
 
+const CODE_STYLE_MIGRATION_MAP: Record<string, CodeStyle> = {
+    vivid: 'nord',
+}
+
+function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
+    if (!codeStyle) return 'default'
+    if (codeStyle in CODE_STYLE_MIGRATION_MAP) {
+        return CODE_STYLE_MIGRATION_MAP[codeStyle]
+    }
+    if (codeStyle === 'default' || codeStyle === 'github' || codeStyle === 'modern' || codeStyle === 'night' || codeStyle === 'nord' || codeStyle === 'nord-light') {
+        return codeStyle
+    }
+    return 'default'
+}
+
+function mergeSearchProvidersWithDefaults(searchProviders: SearchProvider[] | undefined): SearchProvider[] {
+    if (!searchProviders || searchProviders.length === 0) {
+        return DEFAULT_SEARCH_PROVIDERS
+    }
+
+    const defaultMap = new Map(DEFAULT_SEARCH_PROVIDERS.map((provider) => [provider.id, provider]))
+    const merged = searchProviders
+        .filter((provider) => defaultMap.has(provider.id))
+        .map((provider) => ({
+            ...defaultMap.get(provider.id)!,
+            isEnabled: provider.isEnabled,
+        }))
+
+    const existingIds = new Set(merged.map((provider) => provider.id))
+    DEFAULT_SEARCH_PROVIDERS.forEach((provider) => {
+        if (!existingIds.has(provider.id)) {
+            merged.push(provider)
+        }
+    })
+
+    return merged
+}
+
 export const useSettings = create<SettingsState>()(
     persist(
         (set) => ({
@@ -155,8 +208,14 @@ export const useSettings = create<SettingsState>()(
 
                 windowHeight: 600,
             },
+            desktop: {
+                wakeHotkey: DEFAULT_WAKE_HOTKEY,
+                wakeHotkeyEnabled: true,
+                searchHotkey: DEFAULT_SEARCH_HOTKEY,
+                searchHotkeyEnabled: true,
+            },
             privacy: {
-                autoOpenLastNote: false,
+                autoOpenLastNote: true,
             },
             searchAllNotebooks: false,
             customFonts: {
@@ -186,6 +245,26 @@ export const useSettings = create<SettingsState>()(
                 set((state) => ({
                     searchProviders: state.searchProviders.map((provider) => (provider.id === id ? { ...provider, isEnabled: !provider.isEnabled } : provider)),
                 })),
+            reorderSearchProviders: (nextIds) =>
+                set((state) => {
+                    const providerMap = new Map(state.searchProviders.map((provider) => [provider.id, provider]))
+                    const nextProviders: SearchProvider[] = []
+                    const seen = new Set<string>()
+
+                    nextIds.forEach((id) => {
+                        const provider = providerMap.get(id)
+                        if (!provider || seen.has(id)) return
+                        nextProviders.push(provider)
+                        seen.add(id)
+                    })
+
+                    state.searchProviders.forEach((provider) => {
+                        if (seen.has(provider.id)) return
+                        nextProviders.push(provider)
+                    })
+
+                    return { searchProviders: nextProviders }
+                }),
             setUToolsGlobalSearchEnabled: (enabled) =>
                 set((state) => ({
                     utools: { ...state.utools, globalSearchEnabled: enabled },
@@ -198,6 +277,34 @@ export const useSettings = create<SettingsState>()(
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
                     utools: { ...state.utools, windowHeight: height },
+                })),
+            setWakeHotkey: (hotkey) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        wakeHotkey: hotkey,
+                    },
+                })),
+            setWakeHotkeyEnabled: (enabled) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        wakeHotkeyEnabled: enabled,
+                    },
+                })),
+            setSearchHotkey: (hotkey) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        searchHotkey: hotkey,
+                    },
+                })),
+            setSearchHotkeyEnabled: (enabled) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        searchHotkeyEnabled: enabled,
+                    },
                 })),
             setAutoOpenLastNote: (enabled) =>
                 set((state) => ({
@@ -266,9 +373,12 @@ export const useSettings = create<SettingsState>()(
             storage: createJSONStorage(() => uToolsStorage),
             onRehydrateStorage: () => (state) => {
                 const theme = state?.theme || 'system'
-                const codeStyle = (state?.codeStyle || 'default') as CodeStyle
+                const codeStyle = normalizeCodeStyle(state?.codeStyle as string | undefined)
                 applyTheme(theme)
                 applyCodeStyle(codeStyle)
+                if (state && state.codeStyle !== codeStyle) {
+                    useSettings.setState({ codeStyle })
+                }
                 
                 // Apply window height immediately upon rehydration
                 if (state?.utools?.windowHeight) {
@@ -280,42 +390,38 @@ export const useSettings = create<SettingsState>()(
                     // So we can use it.
                     // Delaying slightly can safeguard against race conditions in uTools init
                     try {
-                         // @ts-ignore
-                         if (window.utools) {
-                             // @ts-ignore
-                             window.utools.setExpendHeight(state.utools.windowHeight);
+                         const hostWindow = window as Window & {
+                            utools?: {
+                                setExpendHeight?: (height: number) => void
+                            }
                          }
+                         hostWindow.utools?.setExpendHeight?.(state.utools.windowHeight)
                     } catch (e) {
                         console.error("Failed to apply window height on rehydrate", e)
                     }
                 }
 
                 if (state) {
-                    // Always apply DEFAULT_SEARCH_PROVIDERS order, preserving user's enabled state
-                    const enabledMap = new Map(state.searchProviders.map((p) => [p.id, p.isEnabled]))
-                    const reorderedProviders = DEFAULT_SEARCH_PROVIDERS.map((provider) => ({
-                        ...provider,
-                        isEnabled: enabledMap.get(provider.id) ?? provider.isEnabled,
-                    }))
-                    useSettings.setState({ searchProviders: reorderedProviders })
+                    const mergedProviders = mergeSearchProvidersWithDefaults(state.searchProviders)
+                    if (JSON.stringify(state.searchProviders) !== JSON.stringify(mergedProviders)) {
+                        useSettings.setState({ searchProviders: mergedProviders })
+                    }
+
+                    const storedDesktop = state.desktop as Partial<DesktopSettings> | undefined
+                    const mergedDesktop: DesktopSettings = {
+                        wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
+                        wakeHotkeyEnabled: storedDesktop?.wakeHotkeyEnabled ?? true,
+                        searchHotkey: storedDesktop?.searchHotkey ?? DEFAULT_SEARCH_HOTKEY,
+                        searchHotkeyEnabled: storedDesktop?.searchHotkeyEnabled ?? true,
+                    }
+                    if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
+                        useSettings.setState({ desktop: mergedDesktop })
+                    }
                 }
             },
         }
     )
 )
-
-// Force reorder searchProviders to match DEFAULT_SEARCH_PROVIDERS on initialization
-setTimeout(() => {
-    const state = useSettings.getState()
-    if (state?.searchProviders) {
-        const enabledMap = new Map(state.searchProviders.map((p) => [p.id, p.isEnabled]))
-        const reorderedProviders = DEFAULT_SEARCH_PROVIDERS.map((provider) => ({
-            ...provider,
-            isEnabled: enabledMap.get(provider.id) ?? provider.isEnabled,
-        }))
-        useSettings.setState({ searchProviders: reorderedProviders })
-    }
-}, 0)
 
 // 应用主题到 DOM
 function applyTheme(theme: Theme) {
@@ -388,14 +494,15 @@ function applyCodeStyle(codeStyle: CodeStyle) {
             // One Dark / One Light
             finalClass = isDark ? 'one-dark' : 'one-light'
             break
-        case 'vivid':
-            // Dracula / Atom Light? Or maybe Dracula Light if we had it.
-            // Using Dracula (Dark) and Atom Light (Light) as contrast pair
-            finalClass = isDark ? 'dracula' : 'atom-light'
-            break
         case 'night':
             // Tokyo Night
             finalClass = isDark ? 'tokyo-night' : 'github-light-mod' // 'github-light-mod' was mapped to tokyo-day-ish in old map
+            break
+        case 'nord':
+            finalClass = 'nord'
+            break
+        case 'nord-light':
+            finalClass = 'nord-light'
             break
         default:
             finalClass = isDark ? 'github-dark' : 'github-light'

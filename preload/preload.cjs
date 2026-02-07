@@ -259,6 +259,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       if (typeof utools.removeSubInput === "function") {
         utools.removeSubInput();
       }
+      window.dispatchEvent(new CustomEvent("goose-note:plugin-out"));
     });
   }
 

@@ -140,13 +140,14 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
       <BubbleMenu
         ref={menuRef}
         editor={editor}
+        pluginKey="imageBubbleMenu"
         appendTo={() => document.body}
         className={cn(
-          "z-[20000] flex items-center space-x-1 rounded-md border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity",
+          "z-[20000] flex items-center space-x-1 rounded-md border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity dark:border-white/20",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor }: { editor: Editor }) => {
-          return editor.isEditable && editor.isActive("imageResize");
+          return !isHidden && editor.isEditable && editor.isActive("imageResize");
         }}
         {...props}
       >

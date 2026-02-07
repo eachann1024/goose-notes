@@ -8,7 +8,7 @@ export function SidebarFooter({
   onOpenSettings,
 }: SidebarFooterProps) {
   return (
-    <div className="workspace-divider p-2 mt-auto border-t bg-background dark:bg-background backdrop-blur-[1px] space-y-1">
+    <div className="p-2 mt-auto bg-[hsl(var(--goose-shell-bg))] space-y-1">
       <Button
         variant="ghost"
         className="w-full justify-start text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85 h-8 px-2"

@@ -4,14 +4,14 @@
   table-layout: fixed;
   width: 100%;
   margin: 1em 0;
-  border: 1px solid hsl(var(--border) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.72);
   position: relative;
 }
 
 .ProseMirror td,
 .ProseMirror th {
   min-width: 100px;
-  border: 1px solid hsl(var(--border) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.68);
   padding: 8px 12px;
   vertical-align: top;
   box-sizing: border-box;
@@ -29,7 +29,20 @@
   font-weight: 600;
   text-align: left;
   background-color: hsl(var(--muted) / 0.5);
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  border-bottom: 1px solid hsl(var(--border) / 0.8);
+}
+
+.dark .ProseMirror table {
+  border-color: hsl(var(--border) / 0.9);
+}
+
+.dark .ProseMirror td,
+.dark .ProseMirror th {
+  border-color: hsl(var(--border) / 0.85);
+}
+
+.dark .ProseMirror th {
+  border-bottom-color: hsl(var(--border) / 0.95);
 }
 
 /* Table background colors */
@@ -79,6 +92,11 @@
   border: 2px solid rgba(35, 131, 226, 0.3);
 }
 
+.dark .ProseMirror .selectedCell:after {
+  background: rgba(96, 165, 250, 0.2);
+  border: 2px solid rgba(96, 165, 250, 0.55);
+}
+
 /* Column dragging handle */
 .ProseMirror .column-resize-handle {
   position: absolute;
@@ -94,6 +112,14 @@
 
 .ProseMirror .column-resize-handle:hover {
   background-color: hsl(var(--primary) / 0.8);
+}
+
+.dark .ProseMirror .column-resize-handle {
+  background-color: hsl(var(--primary) / 0.72);
+}
+
+.dark .ProseMirror .column-resize-handle:hover {
+  background-color: hsl(var(--primary) / 0.95);
 }
 
 .ProseMirror.resize-cursor {

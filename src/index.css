@@ -7,10 +7,10 @@
 
 @layer base {
   :root {
-    --goose-shell-bg: 0 0% 97.3%;
-    --goose-selected-bg: 60 6.7% 94.1%;
+    --goose-shell-bg: 0 0% 97.25%;
+    --goose-selected-bg: 60 6.67% 94.12%;
     --goose-editor-bg: 0 0% 100%;
-    --goose-nav-title: 0 0% 68.2%;
+    --goose-nav-title: 0 0% 68.24%;
     --background: var(--goose-shell-bg);
     --foreground: 0 0% 12%;
     --card: var(--goose-editor-bg);

@@ -4,9 +4,19 @@ import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
 
+const hostTarget =
+  process.env.HOST_TARGET === "tauri"
+    ? "tauri"
+    : process.env.HOST_TARGET === "utools"
+      ? "utools"
+      : "web";
+
 // https://vite.dev/config/
 export default defineConfig({
   base: "./", // utools 需要相对路径
+  define: {
+    __HOST_TARGET__: JSON.stringify(hostTarget),
+  },
   plugins: [
     codeInspectorPlugin({
       bundler: "vite",
@@ -23,7 +33,13 @@ export default defineConfig({
         },
       ],
       dts: "src/auto-imports.d.ts",
-      dirs: ["src/hooks", "src/stores", "src/lib", "src/components/ui"],
+      dirs: [
+        "src/hooks",
+        "src/stores",
+        "src/lib",
+        "src/components/ui",
+        "src/pages/workspace/components/editor/utils",
+      ],
     }),
     {
       name: "api-icon-middleware",
@@ -66,6 +82,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@host-runtime": path.resolve(
+        __dirname,
+        `./src/lib/host/runtime.${hostTarget}.ts`,
+      ),
     },
   },
 

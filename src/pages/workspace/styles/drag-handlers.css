@@ -96,8 +96,8 @@ body.drag-handle-suppressed .drag-handle {
 .ProseMirror .code-block-node.ProseMirror-selectednode pre,
 .ProseMirror .code-block-node.tiptap-selected-node pre,
 .ProseMirror .code-block-node.is-active pre {
-  box-shadow: 0 0 0 var(--selection-border-width) var(--selection-border-color);
-  border-radius: inherit;
+  box-shadow: none !important;
+  border-radius: 0.5rem;
 }
 .ProseMirror .tableWrapper.ProseMirror-selectednode,
 .ProseMirror .tableWrapper.tiptap-selected-node {

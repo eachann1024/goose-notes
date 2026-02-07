@@ -1,24 +1,55 @@
 import { Editor } from "@tiptap/react";
+
 interface TableHoverControlsProps {
   editor: Editor;
 }
 
+type HoverType = "row" | "col" | "both" | "none";
+
+type HoverState = {
+  type: HoverType;
+  tableRect: DOMRect;
+  pos: number;
+};
+
+const RECT_EPSILON = 0.5;
+
+const isSameRect = (a: DOMRect, b: DOMRect) => {
+  return (
+    Math.abs(a.left - b.left) <= RECT_EPSILON &&
+    Math.abs(a.top - b.top) <= RECT_EPSILON &&
+    Math.abs(a.width - b.width) <= RECT_EPSILON &&
+    Math.abs(a.height - b.height) <= RECT_EPSILON
+  );
+};
+
+const isSameHoverState = (a: HoverState | null, b: HoverState | null) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.type === b.type && a.pos === b.pos && isSameRect(a.tableRect, b.tableRect);
+};
+
 export function TableHoverControls({ editor }: TableHoverControlsProps) {
-  const [hoverState, setHoverState] = useState<{
-    type: "row" | "col" | "both" | "none";
-    tableRect: DOMRect;
-    pos: number;
-  } | null>(null);
+  const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [visible, setVisible] = useState(false);
 
   const controlsRef = useRef<HTMLDivElement>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverStateRef = useRef<HoverState | null>(null);
+
+  useEffect(() => {
+    hoverStateRef.current = hoverState;
+  }, [hoverState]);
 
   const clearHideTimeout = useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
+  }, []);
+
+  const setHoverStateIfChanged = useCallback((nextState: HoverState | null) => {
+    setHoverState((prev) => (isSameHoverState(prev, nextState) ? prev : nextState));
   }, []);
 
   useEffect(() => {
@@ -33,15 +64,17 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
         return;
       }
 
-      const cell = target.closest("td, th") as HTMLTableCellElement;
+      const currentHoverState = hoverStateRef.current;
+      const cell = target.closest("td, th") as HTMLTableCellElement | null;
       const table = cell?.closest("table");
       const currentTableRect =
-        table?.getBoundingClientRect() || hoverState?.tableRect;
+        table?.getBoundingClientRect() ?? currentHoverState?.tableRect;
 
       if (!cell || !table || !editor.view.dom.contains(table)) {
         const isNearRowBar =
-          hoverState?.type !== "none" &&
-          currentTableRect &&
+          !!currentHoverState &&
+          currentHoverState.type !== "none" &&
+          !!currentTableRect &&
           Math.abs(
             e.clientX - (currentTableRect.left + currentTableRect.width / 2),
           ) <
@@ -49,21 +82,21 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
           Math.abs(e.clientY - (currentTableRect.bottom + 16)) < 30;
 
         const isNearColBar =
-          hoverState?.type !== "none" &&
-          currentTableRect &&
+          !!currentHoverState &&
+          currentHoverState.type !== "none" &&
+          !!currentTableRect &&
           Math.abs(e.clientX - (currentTableRect.right + 16)) < 30 &&
           Math.abs(
             e.clientY - (currentTableRect.top + currentTableRect.height / 2),
           ) <
             currentTableRect.height / 2 + 20;
 
-        if (!isNearRowBar && !isNearColBar) {
-          if (!hideTimeoutRef.current && hoverState) {
-            setVisible(false);
-            hideTimeoutRef.current = setTimeout(() => {
-              setHoverState(null);
-            }, 50);
-          }
+        if (!isNearRowBar && !isNearColBar && !hideTimeoutRef.current && currentHoverState) {
+          setVisible((prev) => (prev ? false : prev));
+          hideTimeoutRef.current = setTimeout(() => {
+            hideTimeoutRef.current = null;
+            setHoverStateIfChanged(null);
+          }, 50);
         }
         return;
       }
@@ -77,8 +110,8 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
       const isLastCol = cellIndex === row.cells.length - 1;
 
       if (!isLastRow && !isLastCol) {
-        setVisible(false);
-        setHoverState(null);
+        setVisible((prev) => (prev ? false : prev));
+        setHoverStateIfChanged(null);
         return;
       }
 
@@ -86,38 +119,41 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
 
       try {
         const pos = editor.view.posAtDOM(cell, 0);
-
-        let type: "row" | "col" | "both" | "none" = "none";
+        let type: HoverType = "none";
 
         if (isLastRow && isLastCol) type = "both";
         else if (isLastRow) type = "row";
         else if (isLastCol) type = "col";
 
-        setHoverState({
+        const nextHoverState: HoverState = {
           type,
           tableRect,
           pos: pos - 1,
-        });
-        setVisible(true);
+        };
+
+        setHoverStateIfChanged(nextHoverState);
+        setVisible((prev) => (prev ? prev : true));
       } catch (err) {
         console.warn("Failed to get pos for table cell", err);
       }
     };
 
-    const handleScroll = () => {
-      setVisible(false);
-      setHoverState(null);
-    };
-
     document.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("scroll", handleScroll, { capture: true });
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("scroll", handleScroll, { capture: true });
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      clearHideTimeout();
     };
-  }, [editor, hoverState, clearHideTimeout]);
+  }, [editor, clearHideTimeout, setHoverStateIfChanged]);
+
+  useEffect(() => {
+    return subscribeGlobalScrollActivity((nextSnapshot) => {
+      if (!nextSnapshot.isScrolling) return;
+      clearHideTimeout();
+      setVisible((prev) => (prev ? false : prev));
+      setHoverStateIfChanged(null);
+    });
+  }, [clearHideTimeout, setHoverStateIfChanged]);
 
   useEffect(() => {
     return () => {
@@ -173,8 +209,8 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
       .setTextSelection(pos + 1)
       .addRowAfter()
       .run();
-    setVisible(false);
-    setTimeout(() => setHoverState(null), 200);
+    setVisible((prev) => (prev ? false : prev));
+    setTimeout(() => setHoverStateIfChanged(null), 200);
   };
 
   const handleAddCol = () => {
@@ -184,8 +220,8 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
       .setTextSelection(pos + 1)
       .addColumnAfter()
       .run();
-    setVisible(false);
-    setTimeout(() => setHoverState(null), 200);
+    setVisible((prev) => (prev ? false : prev));
+    setTimeout(() => setHoverStateIfChanged(null), 200);
   };
 
   const suppressDragHandle = () => {
@@ -198,47 +234,31 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
 
   return (
     <div ref={controlsRef}>
-      <TooltipProvider delayDuration={0}>
-        {(type === "row" || type === "both") && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                role="button"
-                style={rowBarStyle}
-                className={barClasses}
-                onClick={handleAddRow}
-                onMouseEnter={suppressDragHandle}
-                onMouseLeave={restoreDragHandle}
-              >
-                <LucideIcons.Plus className="h-4 w-4" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>点击以添加新行</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+      {(type === "row" || type === "both") && (
+        <div
+          role="button"
+          style={rowBarStyle}
+          className={barClasses}
+          onClick={handleAddRow}
+          onMouseEnter={suppressDragHandle}
+          onMouseLeave={restoreDragHandle}
+        >
+          <LucideIcons.Plus className="h-4 w-4" />
+        </div>
+      )}
 
-        {(type === "col" || type === "both") && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                role="button"
-                style={colBarStyle}
-                className={barClasses}
-                onClick={handleAddCol}
-                onMouseEnter={suppressDragHandle}
-                onMouseLeave={restoreDragHandle}
-              >
-                <LucideIcons.Plus className="h-4 w-4" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>点击以添加新列</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </TooltipProvider>
+      {(type === "col" || type === "both") && (
+        <div
+          role="button"
+          style={colBarStyle}
+          className={barClasses}
+          onClick={handleAddCol}
+          onMouseEnter={suppressDragHandle}
+          onMouseLeave={restoreDragHandle}
+        >
+          <LucideIcons.Plus className="h-4 w-4" />
+        </div>
+      )}
     </div>
   );
 }

@@ -24,13 +24,13 @@ export function FontSelector({ value, onChange }: FontSelectorProps) {
         return (
           <button
             key={font.value}
+            type="button"
             onClick={() => onChange(font.value)}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center py-2 px-3 rounded-md transition-all",
+              "flex-1 rounded-md px-3 py-2 transition-all duration-200",
+              "flex flex-col items-center justify-center border border-transparent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               "hover:bg-accent/50",
-              value === font.value
-                ? "bg-background ring-2 ring-primary text-primary shadow-sm"
-                : "",
+              value === font.value && "bg-background ring-2 ring-primary text-primary shadow-sm",
             )}
           >
             <span

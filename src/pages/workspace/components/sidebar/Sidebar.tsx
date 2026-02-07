@@ -11,6 +11,12 @@ import { toast } from "sonner";
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
 
 type SidebarView = "pages" | "trash";
+type SidebarDragGuideMode = "sort" | "nest-pending" | "nest-ready";
+
+interface SidebarDragGuideState {
+  direction: "left" | "right";
+  mode: SidebarDragGuideMode;
+}
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -76,6 +82,7 @@ export function Sidebar({ className }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
+  const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(null);
 
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
@@ -346,6 +353,7 @@ export function Sidebar({ className }: SidebarProps) {
         <SidebarHeader
           currentView={currentView}
           isSettingsOpen={showSettings}
+          dragGuide={dragGuide}
           onSwitchToPages={() => {
             setCurrentView("pages");
             setShowSettings(false);
@@ -362,7 +370,10 @@ export function Sidebar({ className }: SidebarProps) {
         {currentView === "pages" ? (
           <>
             <FavoritesSection
+              width={width - 16}
+              rowHeight={rowHeight}
               itemHeight={itemHeight}
+              onCreatePage={handleCreatePage}
               onRequestRename={openRenameDialog}
             />
 
@@ -384,6 +395,7 @@ export function Sidebar({ className }: SidebarProps) {
                   viewportHeight={scrollAreaHeight}
                   onCreatePage={handleCreatePage}
                   onRequestRename={openRenameDialog}
+                  onDragGuideChange={setDragGuide}
                 />
               </div>
             </div>

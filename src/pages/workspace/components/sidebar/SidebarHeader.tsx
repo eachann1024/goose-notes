@@ -1,104 +1,85 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { usePages } from "@/stores/usePages";
-import { toast } from "sonner";
 
 interface SidebarHeaderProps {
-  onCreatePage: () => void;
-  onSearch: () => void;
+  currentView: "pages" | "trash";
+  isSettingsOpen: boolean;
+  onSwitchToPages: () => void;
+  onSwitchToTrash: () => void;
+  onOpenSettings: () => void;
+  dragGuide: {
+    direction: "left" | "right";
+    mode: "sort" | "nest-pending" | "nest-ready";
+  } | null;
 }
 
-export function SidebarHeader({ onCreatePage, onSearch }: SidebarHeaderProps) {
-  const { activeNotebookId, notebooks } = useNotebooks();
-  const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
-  const isLocalFolder = activeNotebook?.source === "local-folder";
+export function SidebarHeader({
+  currentView,
+  isSettingsOpen,
+  onSwitchToPages,
+  onSwitchToTrash,
+  onOpenSettings,
+  dragGuide,
+}: SidebarHeaderProps) {
+  const topTabButtonClass =
+    "h-8 flex-1 rounded-full p-0 transition-all duration-200 inline-flex items-center justify-center";
 
   return (
     <>
-      <div className="px-3 h-12 flex items-center shrink-0">
-        <div className="flex items-center gap-1 w-full">
-          <div className="flex-1 min-w-0">
-            <NotebookSwitcher />
-          </div>
-          <Button
-            onClick={async () => {
-              if (
-                typeof (window as any).utools?.showOpenDialog === "function"
-              ) {
-                const result = await (window as any).utools.showOpenDialog({
-                  title: "选择 Markdown 文件夹",
-                  properties: ["openDirectory"],
-                });
-                if (result && result.length > 0) {
-                  const folderName =
-                    result[0].split(/[\\/]/).pop() || "Unknown";
-                  const notebookId = useNotebooks
-                    .getState()
-                    .createLocalFolderNotebook(
-                      folderName,
-                      result[0],
-                    );
-                  usePages
-                    .getState()
-                    .loadLocalFolderPages(notebookId, result[0], {
-                      showWelcome: true,
-                    });
-                }
-              } else {
-                try {
-                  const path = await window.gooseFs?.selectDirectory?.();
-                  if (path) {
-                    const folderName = path.split(/[\\/]/).pop() || "Unknown";
-                    const notebookId = useNotebooks
-                      .getState()
-                      .createLocalFolderNotebook(
-                        folderName,
-                        path,
-                      );
-                    await usePages
-                      .getState()
-                      .loadLocalFolderPages(notebookId, path, {
-                        showWelcome: true,
-                      });
-                  }
-                } catch (e) {
-                  console.error(e);
-                  toast.error("打开文件夹失败: " + String(e));
-                }
-              }
-            }}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
-            title="打开文件夹"
-          >
-            <LucideIcons.FolderOpen className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={onCreatePage}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground dark:text-muted-foreground/70 hover:text-foreground dark:hover:text-foreground/85"
-            title={isLocalFolder ? "新建文件" : "新建页面"}
-          >
-            <LucideIcons.SquarePen className="h-4 w-4" />
-          </Button>
+      <div className="px-2 h-12 flex items-center shrink-0">
+        <div className="flex items-center w-full">
+          <NotebookSwitcher />
         </div>
       </div>
 
-      <div className="px-3 pb-2 pt-0">
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start text-muted-foreground dark:text-muted-foreground/70 h-8 px-2 bg-gradient-to-r from-muted/40 to-muted/30 border-transparent shadow-none",
-            "hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground dark:hover:text-foreground/85 transition-all duration-200",
+      <div className="px-2 pb-2 pt-0">
+        <div className="mx-0.5 relative overflow-hidden rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)] px-1 py-1 flex items-center gap-1">
+          {dragGuide && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
+              {dragGuide.mode === "sort" && "左移继续排序，右移可放入子页面"}
+              {dragGuide.mode === "nest-pending" && "保持右移 0.5 秒后松手，放入子页面"}
+              {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
+            </div>
           )}
-          onClick={onSearch}
-        >
-          <LucideIcons.Search className="mr-2 h-4 w-4 opacity-50" />
-          <span className="text-sm">搜索</span>
-          <span className="ml-auto text-xs text-muted-foreground/50 dark:text-muted-foreground/40">⌘K</span>
-        </Button>
+          <button
+            type="button"
+            className={cn(
+              topTabButtonClass,
+              !isSettingsOpen && currentView === "pages"
+                ? "bg-white text-foreground shadow-[0_1px_4px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-editor-bg))]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            title="页面"
+            onClick={onSwitchToPages}
+          >
+            <LucideIcons.FileText className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              topTabButtonClass,
+              !isSettingsOpen && currentView === "trash"
+                ? "bg-white text-foreground shadow-[0_1px_4px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-editor-bg))]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            title="垃圾箱"
+            onClick={onSwitchToTrash}
+          >
+            <LucideIcons.Trash2 className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              topTabButtonClass,
+              isSettingsOpen
+                ? "bg-white text-foreground shadow-[0_1px_4px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-editor-bg))]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            title="设置"
+            onClick={onOpenSettings}
+          >
+            <LucideIcons.Settings className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </>
   );

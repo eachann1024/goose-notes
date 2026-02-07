@@ -22,6 +22,11 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   const [menuOpen, setMenuOpen] = useState<"row" | "col" | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRef = useRef<HTMLDivElement>(null);
+  const handlesRef = useRef<HandleState>(emptyState);
+
+  useEffect(() => {
+    handlesRef.current = handles;
+  }, [handles]);
 
   const suppressDragHandle = useCallback(() => {
     document.body.classList.add("drag-handle-suppressed");
@@ -83,19 +88,22 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         cellRect.top - tableRect.top < 40 && e.clientY < cellRect.top + 20;
 
       if (!leftEdge && !topEdge) {
+        const currentHandles = handlesRef.current;
         const isNearRowHandle =
-          handles.row &&
-          Math.abs(e.clientX - (handles.row.rect.left - 15)) < 30 &&
+          currentHandles.row &&
+          Math.abs(e.clientX - (currentHandles.row.rect.left - 15)) < 30 &&
           Math.abs(
-            e.clientY - (handles.row.rect.top + handles.row.rect.height / 2),
+            e.clientY -
+              (currentHandles.row.rect.top + currentHandles.row.rect.height / 2),
           ) < 20;
 
         const isNearColHandle =
-          handles.col &&
+          currentHandles.col &&
           Math.abs(
-            e.clientX - (handles.col.rect.left + handles.col.rect.width / 2),
+            e.clientX -
+              (currentHandles.col.rect.left + currentHandles.col.rect.width / 2),
           ) < 20 &&
-          Math.abs(e.clientY - (handles.col.rect.top - 15)) < 30;
+          Math.abs(e.clientY - (currentHandles.col.rect.top - 15)) < 30;
 
         if (!isNearRowHandle && !isNearColHandle) {
           scheduleHide();
@@ -136,15 +144,13 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   }, [editor, menuOpen, clearHideTimeout, scheduleHide]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setVisible(false);
-      setHandles(emptyState);
-    };
-    window.addEventListener("scroll", handleScroll, { capture: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll, { capture: true });
-    };
-  }, []);
+    return subscribeGlobalScrollActivity((nextSnapshot) => {
+      if (!nextSnapshot.isScrolling) return;
+      clearHideTimeout();
+      setVisible((prev) => (prev ? false : prev));
+      setHandles((prev) => (prev.row || prev.col ? emptyState : prev));
+    });
+  }, [clearHideTimeout]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -268,6 +274,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         >
           <DropdownMenuTrigger asChild>
             <button
+              type="button"
               style={{
                 position: "fixed",
                 zIndex: 60,
@@ -312,6 +319,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         >
           <DropdownMenuTrigger asChild>
             <button
+              type="button"
               style={{
                 position: "fixed",
                 zIndex: 60,

@@ -137,17 +137,19 @@ function CodeBlockWithLanguageView({
       {(language === "math" || language === "mermaid") && (
         <div
           contentEditable={false}
-          className="preview-container select-none cursor-pointer"
+          className="preview-container select-none cursor-pointer rounded-lg bg-transparent dark:bg-[#202020]"
           onClick={() => {
              if (typeof getPos === "function") {
                editor.commands.focus(getPos() + 1);
              }
           }}
         >
-          {language === "math" && (
-            <MathView value={textContent} displayMode={true} />
-          )}
-          {language === "mermaid" && <MermaidView value={textContent} />}
+          <div className="rounded-md bg-transparent dark:bg-[#2E2E2D]">
+            {language === "math" && (
+              <MathView value={textContent} displayMode={true} />
+            )}
+            {language === "mermaid" && <MermaidView value={textContent} />}
+          </div>
         </div>
       )}
 
@@ -181,8 +183,9 @@ function CodeBlockWithLanguageView({
                   <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
                     <span className="text-sm font-semibold tracking-tight">LaTeX 语法参考</span>
                     <button
+                      type="button"
                       onClick={() => setShowLatexHint(false)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
                     >
                       <LucideIcons.X className="h-4 w-4" />
                     </button>
@@ -192,6 +195,7 @@ function CodeBlockWithLanguageView({
                       {LATEX_SNIPPETS.map((snippet, idx) => (
                         <button
                           key={idx}
+                          type="button"
                           onClick={() => {
                             const pos = getPos();
                             if (typeof pos === "number") {
@@ -204,7 +208,7 @@ function CodeBlockWithLanguageView({
                             }
                             setShowLatexHint(false);
                           }}
-                          className="group flex min-h-[72px] flex-col items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/60"
+                          className="group flex min-h-[72px] w-full flex-col items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
                             {snippet.label}

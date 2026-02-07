@@ -187,8 +187,14 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"emoji" | "icon">("emoji");
+  const theme = useSettings((state) => state.theme);
   const portalContainer = portalContainerRef?.current ?? undefined;
   const hasOpenedRef = useRef(false);
+  const isDarkMode =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   useEffect(() => {
     if (emojiOnly) setTab("emoji");
@@ -237,18 +243,21 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
           <div className="flex gap-4">
             {!emojiOnly &&
               NOTION_TABS.map((t) => (
-                <button
+                <Button
                   key={t.id}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   className={cn(
-                    "pb-1 border-b-2 transition-all duration-200 px-1 text-sm rounded-t-sm",
+                    "h-auto rounded-none border-b-2 px-1 pb-1 text-sm transition-colors duration-150",
                     tab === t.id
-                      ? "border-primary font-medium text-foreground bg-accent/50"
-                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      ? "border-primary font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                   onClick={() => setTab(t.id as any)}
                 >
                   {t.label}
-                </button>
+                </Button>
               ))}
               {emojiOnly && (
                  <div className="pb-1 border-b-2 border-primary font-medium text-foreground px-1 text-sm">
@@ -257,22 +266,26 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
               )}
           </div>
           <div className="flex items-center gap-1">
-             <button 
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+             <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
                 title="随机图标"
                 onClick={handleRandomIcon}
              >
                 <LucideIcons.Shuffle className="h-3.5 w-3.5" />
              </button>
-             <button
-               className="p-1.5 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+             <Button
+               type="button"
+               variant="ghost"
+               size="sm"
+               className="h-auto rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
                onClick={() => {
                  onChange(undefined);
                  setOpen(false);
                }}
              >
                移除
-             </button>
+             </Button>
           </div>
         </div>
 
@@ -290,11 +303,11 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   width: 100% !important;
                   height: 100% !important;
                   border: none !important;
-                  background: transparent !important;
+                  background: hsl(var(--background)) !important;
                   display: flex !important;
                   flex-direction: column !important;
-                  --epr-bg-color: transparent !important;
-                  --epr-category-label-bg-color: transparent !important;
+                  --epr-bg-color: hsl(var(--background)) !important;
+                  --epr-category-label-bg-color: hsl(var(--background)) !important;
                   --epr-picker-border-color: transparent !important;
                   --epr-text-color: hsl(var(--foreground)) !important;
                   --epr-hover-bg-color: hsl(var(--accent)) !important;
@@ -366,7 +379,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                     searchDisabled
                     skinTonesDisabled
                     previewConfig={{ showPreview: false }}
-                    theme={Theme.AUTO}
+                    theme={isDarkMode ? Theme.DARK : Theme.LIGHT}
                     emojiStyle={EmojiStyle.APPLE}
                     categories={EMOJI_CATEGORIES}
                   />
@@ -380,10 +393,13 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                    {filteredIcons.map((iconName) => {
                      const Icon = (LucideIcons as any)[iconName];
                      return (
-                       <button
+                       <Button
                          key={iconName}
+                         type="button"
+                         variant="ghost"
+                         size="icon"
                          className={cn(
-                           "flex aspect-square w-full items-center justify-center rounded-md hover:bg-muted transition-all duration-150",
+                           "aspect-square h-auto w-full rounded-md p-0 transition-all duration-150 hover:bg-muted",
                            value === iconName &&
                              "bg-accent text-accent-foreground shadow-sm",
                          )}
@@ -394,7 +410,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                          title={iconName}
                        >
                          <Icon className="h-6 w-6 stroke-[1.5]" />
-                       </button>
+                       </Button>
                      );
                    })}
                    {filteredIcons.length === 0 && (

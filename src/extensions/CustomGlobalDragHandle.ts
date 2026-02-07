@@ -433,7 +433,11 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         view?.dom?.parentElement?.appendChild(dragHandleElement);
       }
 
-      const handleMouseMove = (event: MouseEvent) => {
+      let mouseMoveRafId: number | null = null;
+      let pendingMouseEvent: MouseEvent | null = null;
+      let lastMouseCoords: { x: number; y: number } | null = null;
+
+      const processMouseMove = (event: MouseEvent) => {
         justDropped = false;
 
         if (isDragging) return;
@@ -495,7 +499,39 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           return;
         }
 
+        // 节点未变化时复用上一次计算结果，避免重复布局计算
+        if (node === currentHoveredNode) {
+          return;
+        }
+
         updateHandlePosition(node);
+      };
+
+      const handleMouseMove = (event: MouseEvent) => {
+        pendingMouseEvent = event;
+        if (mouseMoveRafId !== null) return;
+
+        mouseMoveRafId = window.requestAnimationFrame(() => {
+          mouseMoveRafId = null;
+          const latestEvent = pendingMouseEvent;
+          pendingMouseEvent = null;
+          if (!latestEvent) return;
+
+          if (lastMouseCoords) {
+            const deltaX = Math.abs(latestEvent.clientX - lastMouseCoords.x);
+            const deltaY = Math.abs(latestEvent.clientY - lastMouseCoords.y);
+            if (deltaX < 2 && deltaY < 2) {
+              return;
+            }
+          }
+
+          lastMouseCoords = {
+            x: latestEvent.clientX,
+            y: latestEvent.clientY,
+          };
+
+          processMouseMove(latestEvent);
+        });
       };
 
       view?.dom?.parentElement?.addEventListener(
@@ -513,6 +549,12 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         },
         destroy: () => {
           if (hideTimeout) clearTimeout(hideTimeout);
+          if (mouseMoveRafId !== null) {
+            window.cancelAnimationFrame(mouseMoveRafId);
+            mouseMoveRafId = null;
+          }
+          pendingMouseEvent = null;
+          lastMouseCoords = null;
           if (!handleBySelector) {
             dragHandleElement?.remove();
           }

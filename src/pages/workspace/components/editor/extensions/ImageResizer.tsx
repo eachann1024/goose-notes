@@ -1,18 +1,26 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { RotateCw, Download, Copy, X, Maximize2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ImageResizer(props: NodeViewProps) {
   const { node, updateAttributes, selected, editor } = props;
   const resizeRef = useRef<HTMLDivElement>(null);
   const [resizing, setResizing] = useState(false);
-  const previewDescriptionId = useId();
 
   const isEditable = editor.isEditable;
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [rotation, setRotation] = useState(0);
+
+  // ESC 关闭预览
+  useEffect(() => {
+    if (!previewOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [previewOpen]);
+
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
@@ -138,7 +146,9 @@ export function ImageResizer(props: NodeViewProps) {
     <NodeViewWrapper
       className={cn(
         "image-node relative block w-full group transition-all",
-        selected ? "ring-2 ring-primary ring-offset-2 rounded-md" : "",
+        selected
+          ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-md dark:ring-blue-400"
+          : "",
       )}
     >
       <div
@@ -174,22 +184,26 @@ export function ImageResizer(props: NodeViewProps) {
             >
               <div
                 className={cn(
-                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0",
-                  resizing && "bg-[#2463EB] ring-0",
+                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0 dark:bg-slate-300 dark:ring-slate-900/65 dark:group-hover/handle:bg-blue-400",
+                  resizing && "bg-[#2463EB] ring-0 dark:bg-blue-400",
                 )}
               />
             </div>
 
             {/* 预览按钮 - 编辑模式下悬浮显示 */}
             <button
-              onClick={() => setPreviewOpen(true)}
+              type="button"
+              onClick={() => {
+                setPreviewOpen(true);
+                editor.commands.blur();
+              }}
               className={cn(
-                "absolute top-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md bg-white backdrop-blur-[1px] ring-1 ring-black/10 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110",
+                "absolute top-2 left-1/2 -translate-x-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] opacity-0 transition-all hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground group-hover:opacity-100 dark:border-white/20",
                 resizing && "opacity-100",
               )}
               title="预览图片"
             >
-              <Maximize2 className="h-4 w-4 text-gray-700" />
+              <Maximize2 className="h-3.5 w-3.5" />
             </button>
 
             <div
@@ -201,8 +215,8 @@ export function ImageResizer(props: NodeViewProps) {
             >
               <div
                 className={cn(
-                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0",
-                  resizing && "bg-[#2463EB] ring-0",
+                  "w-1 h-8 rounded-full bg-white ring-1 ring-black/30 shadow-sm transition-all group-hover/handle:bg-[#2463EB] group-hover/handle:ring-0 dark:bg-slate-300 dark:ring-slate-900/65 dark:group-hover/handle:bg-blue-400",
+                  resizing && "bg-[#2463EB] ring-0 dark:bg-blue-400",
                 )}
               />
             </div>
@@ -210,86 +224,41 @@ export function ImageResizer(props: NodeViewProps) {
         )}
       </div>
 
-      {/* Image Preview Dialog - 编辑/只读模式都显示 */}
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent
-            aria-describedby={previewDescriptionId}
-            className="max-w-5xl w-[90vw] p-0 bg-transparent border-none shadow-none"
+      {/* Image Preview - 编辑/只读模式都显示 */}
+      {previewOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[20001] flex items-center justify-center bg-black/30 backdrop-blur-[1px] animate-in fade-in-0 duration-200"
+            onClick={() => setPreviewOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="图片预览"
           >
-            <DialogTitle className="sr-only">图片预览</DialogTitle>
-            <DialogDescription id={previewDescriptionId} className="sr-only">
-              预览图片并进行旋转、下载或复制
-            </DialogDescription>
-            <div className="relative flex flex-col items-center justify-center">
+            <div
+              className="relative max-w-5xl w-[90vw]"
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* 关闭按钮 */}
               <button
+                type="button"
                 onClick={() => setPreviewOpen(false)}
-                className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                className="absolute -top-10 right-0 text-white transition-colors hover:text-gray-300"
               >
                 <X className="h-6 w-6" />
               </button>
 
               {/* 图片容器 */}
-              <div className="relative max-h-[80vh] overflow-hidden rounded-lg bg-black/70 backdrop-blur-[1px]">
+              <div className="max-h-[80vh] overflow-hidden rounded-lg bg-black/70 backdrop-blur-[1px]">
                 <img
                   src={resolvedSrc || node.attrs.src}
                   alt={node.attrs.alt}
-                  style={{
-                    transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease',
-                  }}
                   className="max-w-full max-h-[75vh] object-contain"
                 />
               </div>
-
-              {/* 工具栏 */}
-              <div className="mt-4 flex gap-2 bg-black/80 backdrop-blur-[1px] rounded-lg p-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setRotation((prev) => (prev + 90) % 360)}
-                  className="text-white hover:bg-white/20"
-                  title="旋转"
-                >
-                  <RotateCw className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = resolvedSrc || node.attrs.src;
-                    a.download = node.attrs.alt || 'image';
-                    a.click();
-                  }}
-                  className="text-white hover:bg-white/20"
-                  title="下载"
-                >
-                  <Download className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(node.attrs.src);
-                      const blob = await response.blob();
-                      await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': blob })
-                      ]);
-                    } catch (err) {
-                      console.error('Copy failed:', err);
-                    }
-                  }}
-                  className="text-white hover:bg-white/20"
-                  title="复制"
-                >
-                  <Copy className="h-5 w-5" />
-                </Button>
-              </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>,
+          document.body,
+        )}
     </NodeViewWrapper>
   );
 }

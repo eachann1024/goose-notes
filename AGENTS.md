@@ -19,6 +19,7 @@
 9. 如果你不确定组件路径 → 直接写组件名，依靠 LSP 和 auto-import
 10. 所有交互控件严禁直接手动编写，而是使用 “shadcn vue” 组件，没有应该到官网查找，例如：`npx shadcn-vue@latest add slider`，严禁 AI 冒充编写 shadcn vue 组件
 11. dev 脚本运行的: port 6001
+12. 项目不需要 build
 
 ---
 

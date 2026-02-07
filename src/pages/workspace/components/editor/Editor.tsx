@@ -38,7 +38,7 @@ export function Editor({ editable = true }: EditorProps) {
   const debouncedUpdate = useMemo(() => {
     const fn = debounce((id: string, content: any) => {
       updatePage(id, { content });
-    }, 1000);
+    }, 800, { maxWait: 3000 });
     debouncedUpdateRef.current = fn;
     return fn;
   }, [updatePage]);
@@ -164,14 +164,17 @@ export function Editor({ editable = true }: EditorProps) {
     const flush = () => {
       debouncedUpdateRef.current?.flush();
     };
+    const handleFlushEditor = (event: Event) => {
+      const customEvent = event as CustomEvent<{ immediate?: boolean }>;
+      if (customEvent.detail?.immediate) {
+        debouncedUpdateRef.current?.flush();
+        return;
+      }
+      debouncedUpdateRef.current?.flush();
+    };
 
     window.addEventListener("beforeunload", flush);
-
-    if ((window as any).utools) {
-      (window as any).utools.onPluginOut(flush);
-    }
-
-    window.addEventListener("goose-note:flush-editor", flush);
+    window.addEventListener("goose-note:flush-editor", handleFlushEditor);
 
     const handleFocusStart = () => {
       setTimeout(() => {
@@ -184,17 +187,11 @@ export function Editor({ editable = true }: EditorProps) {
     return () => {
       flush();
       window.removeEventListener("beforeunload", flush);
-      window.removeEventListener("goose-note:flush-editor", flush);
+      window.removeEventListener("goose-note:flush-editor", handleFlushEditor);
       window.removeEventListener(
         "goose-note:focus-editor-start",
         handleFocusStart,
       );
-      if ((window as any).utools) {
-        // 传递 null 或空函数来清除/覆盖之前的监听器
-        // 注意：utools 文档未明确 remove 方法，但在 React effect 中通常重新绑定会覆盖
-        // 如果 onPluginOut 支持覆盖，直接设为 null 或空操作
-        (window as any).utools.onPluginOut(null);
-      }
     };
   }, [editor]);
 
@@ -473,7 +470,14 @@ export function Editor({ editable = true }: EditorProps) {
             const rect = container.getBoundingClientRect();
             const targetTop =
               coords.top - rect.top + container.scrollTop - rect.height / 3;
-            container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+            const safeTop = Math.max(0, targetTop);
+            container.scrollTo({
+              top: safeTop,
+              behavior: resolveEditorScrollBehavior({
+                distance: safeTop - container.scrollTop,
+                smoothThreshold: 200,
+              }),
+            });
           } else {
             editor.commands.scrollIntoView();
           }

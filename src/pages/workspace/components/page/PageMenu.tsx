@@ -5,10 +5,10 @@ export function PageMenu() {
     activePageId,
     getPage,
     updatePage,
-    deletePage,
     createPage,
     setActivePage,
   } = usePages();
+  const { deletePageWithUndo } = useDeletePageWithUndo();
   const { activeNotebookId, notebooks } = useNotebooks();
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
@@ -99,7 +99,7 @@ export function PageMenu() {
 
           <DropdownMenuItem
             className="text-xs text-destructive focus:text-destructive"
-            onClick={() => void deletePage(activePageId)}
+            onClick={() => void deletePageWithUndo(activePageId)}
           >
             <LucideIcons.Trash2 className="mr-2 h-3.5 w-3.5" />
             <span>移至垃圾箱</span>

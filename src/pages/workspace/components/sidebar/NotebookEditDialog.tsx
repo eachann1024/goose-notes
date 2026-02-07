@@ -1,7 +1,6 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
-import { BookOpen, X, AlertTriangle, Save } from "lucide-react";
-import { createPortal } from "react-dom";
+import { BookOpen, AlertTriangle, Save } from "lucide-react";
 
 interface NotebookEditDialogProps {
   open: boolean;
@@ -49,52 +48,30 @@ export function NotebookEditDialog({
 
   const isDeleteEnabled = deleteConfirmInput === confirmName;
 
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 bg-background flex items-center justify-center p-6 animate-in fade-in duration-200">
-      {/* 背景装饰 - 编辑模式 */}
-      {!showDeleteConfirm && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/3 to-transparent rounded-full" />
-        </div>
-      )}
-
-      {/* 背景装饰 - 删除确认模式（红色渐变） */}
-      {showDeleteConfirm && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-destructive/3 rounded-full blur-2xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-destructive/4 rounded-full blur-2xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-destructive/3 to-transparent rounded-full" />
-        </div>
-      )}
-
-      {/* 关闭按钮 */}
-      <button
-        onClick={() => onOpenChange(false)}
-        className="absolute top-6 right-6 p-2 rounded-full hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 transition-all duration-200 z-10"
-      >
-        <X className="w-5 h-5 text-muted-foreground" />
-      </button>
-
+  return (
+    <DialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      layout="fullscreen"
+      contentClassName="bg-[hsl(var(--goose-shell-bg))]"
+      bodyClassName="relative h-full overflow-y-auto p-6 animate-in fade-in duration-200"
+    >
       {/* 内容卡片 */}
-      <div className="relative w-full max-w-md">
+      <div ref={editDialogContentRef} className="relative mx-auto w-full max-w-md py-6">
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
           <div
             className={cn(
-              "inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-xl",
+              "inline-flex items-center justify-center w-16 h-16 rounded-[14px] mb-4 shadow-[0_10px_22px_rgba(15,23,42,0.1)]",
               showDeleteConfirm
-                ? "bg-gradient-to-br from-destructive to-destructive/60 shadow-destructive/20"
-                : "bg-gradient-to-br from-primary to-primary/60 shadow-primary/20",
+                ? "bg-destructive/15"
+                : "bg-[hsl(var(--goose-selected-bg))]",
             )}
           >
             {showDeleteConfirm ? (
-              <AlertTriangle className="w-8 h-8 text-white" />
+              <AlertTriangle className="w-8 h-8 text-destructive" />
             ) : (
-              <BookOpen className="w-8 h-8 text-white" />
+              <BookOpen className="w-8 h-8 text-foreground/80" />
             )}
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -109,14 +86,14 @@ export function NotebookEditDialog({
 
         {/* 表单卡片 */}
         {showDeleteConfirm ? (
-          <div className="bg-gradient-to-br from-destructive/14 to-destructive/10 backdrop-blur-[1px] border-2 border-destructive/25 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-destructive/10 backdrop-blur-[1px] border border-destructive/20 rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
             <div className="space-y-3">
-              <label
+              <Label
                 htmlFor="confirm-delete"
-                className="text-sm font-medium text-destructive"
+                className="select-text text-sm font-medium text-destructive"
               >
-                确认删除 <span className="font-bold">{confirmName}</span>
-              </label>
+                确认删除 <span className="select-text font-bold">{confirmName}</span>
+              </Label>
               <Input
                 id="confirm-delete"
                 value={deleteConfirmInput}
@@ -152,18 +129,18 @@ export function NotebookEditDialog({
                   onDelete();
                 }}
                 disabled={!isDeleteEnabled}
-                className="flex-1 shadow-lg shadow-destructive/20"
+                className="flex-1"
               >
                 确认删除
               </Button>
             </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] border-2 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-card backdrop-blur-[1px] border-0 rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
             <div className="space-y-3">
-              <label className="text-sm font-medium text-muted-foreground">
+              <Label className="text-sm font-medium text-muted-foreground">
                 选择图标
-              </label>
+              </Label>
               <div className="flex justify-center">
                 <Suspense
                   fallback={
@@ -179,7 +156,7 @@ export function NotebookEditDialog({
                   >
                     <Button
                       variant="outline"
-                      className="h-16 w-16 p-0 text-3xl hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/5 hover:border-primary/50 transition-all duration-200"
+                      className="h-16 w-16 p-0 text-3xl hover:bg-[hsl(var(--goose-selected-bg)/0.72)] transition-all duration-200"
                     >
                       {renderNotebookIcon(icon)}
                     </Button>
@@ -189,12 +166,12 @@ export function NotebookEditDialog({
             </div>
 
             <div className="space-y-3">
-              <label
+              <Label
                 htmlFor="notebook-name"
                 className="text-sm font-medium text-muted-foreground"
               >
                 记事本名称
-              </label>
+              </Label>
               <Input
                 id="notebook-name"
                 value={name}
@@ -230,12 +207,12 @@ export function NotebookEditDialog({
                 </Button>
               )}
 
-            <div className="flex justify-center gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
                 size="lg"
                 onClick={() => onOpenChange(false)}
-                className="min-w-[100px]"
+                className="h-11 w-full"
               >
                 取消
               </Button>
@@ -243,7 +220,7 @@ export function NotebookEditDialog({
                 size="lg"
                 onClick={onSave}
                 disabled={!notebookId}
-                className="min-w-[100px] shadow-lg shadow-primary/20"
+                className="h-11 w-full"
               >
                 <Save className="mr-2 h-4 w-4" />
                 保存
@@ -252,7 +229,6 @@ export function NotebookEditDialog({
           </div>
         )}
       </div>
-    </div>,
-    document.body,
+    </DialogShell>
   );
 }

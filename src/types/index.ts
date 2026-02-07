@@ -45,6 +45,7 @@ export interface Page {
   createdAt: number;
   updatedAt: number;
   order?: number; // Custom sort order
+  favoriteOrder?: number; // Favorites-only sort order
   trashedAt?: number; // Soft delete
 
   // Local file system (for local-folder mode)

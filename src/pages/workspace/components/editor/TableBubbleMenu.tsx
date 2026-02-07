@@ -18,6 +18,10 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
   if (!editor) return null;
 
   const cellAlign = editor.getAttributes("tableCell").align || "left";
+  const iconButtonClass =
+    "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground";
+  const iconDangerButtonClass =
+    "inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive";
 
   return (
     <TooltipProvider>
@@ -27,10 +31,10 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         pluginKey="tableBubbleMenu"
         appendTo={() => document.body}
         shouldShow={({ editor }: { editor: any }) => {
-          return editor.isEditable && editor.isActive("table");
+          return !isHidden && editor.isEditable && editor.isActive("table");
         }}
         className={cn(
-          "z-[20000] flex flex-row items-center gap-0.5 rounded-lg border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 max-w-none",
+          "z-[20000] flex flex-row items-center gap-0.5 rounded-lg border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 max-w-none dark:border-white/20",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         {...props}
@@ -39,8 +43,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().addRowBefore().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.ArrowUpToLine className="h-4 w-4" />
             </button>
@@ -53,8 +58,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().addRowAfter().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.ArrowDownToLine className="h-4 w-4" />
             </button>
@@ -67,8 +73,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().deleteRow().run()}
-              className="p-1.5 text-destructive/80 hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+              className={iconDangerButtonClass}
             >
               <LucideIcons.RemoveFormatting className="h-4 w-4" />
             </button>
@@ -84,8 +91,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().addColumnBefore().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.ArrowLeftToLine className="h-4 w-4" />
             </button>
@@ -98,8 +106,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().addColumnAfter().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.ArrowRightToLine className="h-4 w-4" />
             </button>
@@ -112,8 +121,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().deleteColumn().run()}
-              className="p-1.5 text-destructive/80 hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+              className={iconDangerButtonClass}
             >
               <LucideIcons.Columns2 className="h-4 w-4" />
             </button>
@@ -199,8 +209,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.Heading className="h-4 w-4" />
             </button>
@@ -213,8 +224,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.ArrowRight className="h-4 w-4" />
             </button>
@@ -227,8 +239,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().mergeCells().run()}
-              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
+              className={iconButtonClass}
             >
               <LucideIcons.Merge className="h-4 w-4" />
             </button>
@@ -243,8 +256,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => editor.chain().focus().deleteTable().run()}
-              className="p-1.5 text-destructive/80 hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
+              className={iconDangerButtonClass}
             >
               <LucideIcons.Trash2 className="h-4 w-4" />
             </button>

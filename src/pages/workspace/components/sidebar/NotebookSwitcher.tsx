@@ -187,9 +187,10 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[248px] before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3"
+          className="w-[248px] before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           align="start"
           sideOffset={-4}
+          forceMount
           onMouseEnter={() => {
             hovering.current.content = true;
             if (closeTimer.current !== null) clearTimeout(closeTimer.current);
@@ -241,7 +242,7 @@ export function NotebookSwitcher() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-0 opacity-0 overflow-hidden px-0 group-hover:w-6 group-hover:opacity-100 group-hover:px-0 transition-all pointer-events-none group-hover:pointer-events-auto"
+                      className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteNotebook(notebook.id);
@@ -255,7 +256,7 @@ export function NotebookSwitcher() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-0 opacity-0 overflow-hidden px-0 group-hover:w-6 group-hover:opacity-100 group-hover:px-0 transition-all pointer-events-none group-hover:pointer-events-auto"
+                    className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(notebook.id);
@@ -290,35 +291,39 @@ export function NotebookSwitcher() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <NotebookEditDialog
-        open={editDialog.open}
-        notebookId={editDialog.id}
-        name={editDialog.name}
-        confirmName={editDialog.confirmName}
-        icon={editDialog.icon}
-        openDeleteConfirm={editDialog.openDeleteConfirm}
-        onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
-        onNameChange={(name) => setEditDialog({ ...editDialog, name })}
-        onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}
-        onSave={handleSaveEdit}
-        onDelete={handleDelete}
-      />
+      {editDialog.open && (
+        <NotebookEditDialog
+          open={editDialog.open}
+          notebookId={editDialog.id}
+          name={editDialog.name}
+          confirmName={editDialog.confirmName}
+          icon={editDialog.icon}
+          openDeleteConfirm={editDialog.openDeleteConfirm}
+          onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
+          onNameChange={(name) => setEditDialog({ ...editDialog, name })}
+          onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}
+          onSave={handleSaveEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
-      <NotebookCreateDialog
-        open={createDialog.open}
-        name={createDialog.name}
-        icon={createDialog.icon}
-        error={createDialog.error}
-        onOpenChange={(open) =>
-          setCreateDialog({ ...createDialog, open, error: "" })
-        }
-        onNameChange={(name) => setCreateDialog({ ...createDialog, name })}
-        onIconChange={(icon) => setCreateDialog({ ...createDialog, icon })}
-        onCreate={handleConfirmCreate}
-        onClearError={() =>
-          createDialog.error && setCreateDialog({ ...createDialog, error: "" })
-        }
-      />
+      {createDialog.open && (
+        <NotebookCreateDialog
+          open={createDialog.open}
+          name={createDialog.name}
+          icon={createDialog.icon}
+          error={createDialog.error}
+          onOpenChange={(open) =>
+            setCreateDialog({ ...createDialog, open, error: "" })
+          }
+          onNameChange={(name) => setCreateDialog({ ...createDialog, name })}
+          onIconChange={(icon) => setCreateDialog({ ...createDialog, icon })}
+          onCreate={handleConfirmCreate}
+          onClearError={() =>
+            createDialog.error && setCreateDialog({ ...createDialog, error: "" })
+          }
+        />
+      )}
     </>
   );
 }

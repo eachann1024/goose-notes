@@ -317,6 +317,10 @@
   z-index: 100;
 }
 
+.dark .ProseMirror a[data-link-tooltip="true"]::after {
+  border-color: hsl(var(--border) / 0.92);
+}
+
 .ProseMirror a[data-link-tooltip="true"]::before {
   content: "";
   position: absolute;

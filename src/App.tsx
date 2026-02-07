@@ -33,7 +33,6 @@ function App() {
     setWakeHotkey,
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
-  const onboardingCreatedRef = useRef(false);
   const registeredWakeHotkeyRef = useRef<string | null>(null);
   const registeredSearchHotkeyRef = useRef<string | null>(null);
 
@@ -195,8 +194,7 @@ function App() {
 
   // 首次打开应用时创建新手引导页面
   useEffect(() => {
-    if (hydrated && !onboardingCompleted && !onboardingCreatedRef.current) {
-      onboardingCreatedRef.current = true;
+    if (hydrated && !onboardingCompleted) {
       usePages.getState().createOnboardingPages();
     }
   }, [hydrated, onboardingCompleted]);

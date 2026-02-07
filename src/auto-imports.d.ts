@@ -35,7 +35,9 @@ declare global {
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
+  const DEFAULT_SEARCH_HOTKEY: typeof import('./stores/useSettings').DEFAULT_SEARCH_HOTKEY
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
+  const DEFAULT_WAKE_HOTKEY: typeof import('./stores/useSettings').DEFAULT_WAKE_HOTKEY
   const Dialog: typeof import('./components/ui/dialog').Dialog
   const DialogClose: typeof import('./components/ui/dialog').DialogClose
   const DialogContent: typeof import('./components/ui/dialog').DialogContent
@@ -44,6 +46,7 @@ declare global {
   const DialogHeader: typeof import('./components/ui/dialog').DialogHeader
   const DialogOverlay: typeof import('./components/ui/dialog').DialogOverlay
   const DialogPortal: typeof import('./components/ui/dialog').DialogPortal
+  const DialogShell: typeof import('./components/ui/dialog-shell').DialogShell
   const DialogTitle: typeof import('./components/ui/dialog').DialogTitle
   const DialogTrigger: typeof import('./components/ui/dialog').DialogTrigger
   const DropdownMenu: typeof import('./components/ui/dropdown-menu').DropdownMenu
@@ -66,8 +69,10 @@ declare global {
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN
   const FileText: typeof import('lucide-react').FileText
+  const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
   const HighlightText: typeof import('./lib/highlight-text').HighlightText
+  const IconButton: typeof import('./components/ui/icon-button').IconButton
   const Image: typeof import('lucide-react').Image
   const Input: typeof import('./components/ui/input').Input
   const Label: typeof import('./components/ui/label').Label
@@ -86,9 +91,11 @@ declare global {
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
+  const Portal: typeof import('./components/ui/portal').Portal
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const Search: typeof import('lucide-react').Search
+  const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
   const Separator: typeof import('./components/ui/separator').Separator
   const Settings: typeof import('lucide-react').Settings
   const Sheet: typeof import('./components/ui/sheet').Sheet
@@ -142,17 +149,24 @@ declare global {
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
   const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
+  const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
+  const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getPageTitle: typeof import('./lib/page-title').getPageTitle
+  const getPlatformKind: typeof import('./lib/utils').getPlatformKind
+  const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
+  const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
   const getRandomTip: typeof import('./lib/tips').getRandomTip
+  const iconButtonVariants: typeof import('./components/ui/icon-button').iconButtonVariants
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
+  const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
@@ -162,7 +176,10 @@ declare global {
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
+  const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
+  const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const startTransition: typeof import('react').startTransition
+  const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use
@@ -176,6 +193,7 @@ declare global {
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./hooks/useFormatCode').useFormatCode
+  const useGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').useGlobalScrollActivity
   const useId: typeof import('react').useId
   const useImperativeHandle: typeof import('react').useImperativeHandle
   const useInsertionEffect: typeof import('react').useInsertionEffect
@@ -200,15 +218,24 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')
   // @ts-ignore
-  export type { UToolsAdapter, UserInfo, SublistItem } from './lib/utools'
+  export type { PlatformKind } from './lib/utils'
+  import('./lib/utils')
+  // @ts-ignore
+  export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')
   // @ts-ignore
   export type { ButtonProps } from './components/ui/button'
   import('./components/ui/button')
+  // @ts-ignore
+  export type { IconButtonProps } from './components/ui/icon-button'
+  import('./components/ui/icon-button')
+  // @ts-ignore
+  export type { SelectableCardProps } from './components/ui/selectable-card'
+  import('./components/ui/selectable-card')
 }

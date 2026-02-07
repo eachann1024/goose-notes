@@ -1,11 +1,9 @@
 import { Editor } from "@tiptap/react";
 import * as LucideIcons from "lucide-react";
-import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -21,7 +19,7 @@ interface PositionState {
 }
 
 const TOOLTIP_STYLE =
-  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)]";
+  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)] dark:border-white/25";
 
 const TEXT_COLORS = [
   { name: "默认", color: "inherit" },
@@ -51,12 +49,27 @@ const HIGHLIGHT_COLORS = [
 
 export function ColorPicker({ editor }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [position, setPosition] = useState<PositionState>({ top: 0, left: 0, showAbove: true });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeAnimTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      if (closeAnimTimeoutRef.current) {
+        clearTimeout(closeAnimTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleMouseEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
+
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const panelHeight = 280;
@@ -71,108 +84,122 @@ export function ColorPicker({ editor }: ColorPickerProps) {
         showAbove,
       });
     }
+
+    setIsMounted(true);
     setIsOpen(true);
   };
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
+    hoverTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
     }, 150);
   };
 
-  const panelContent = isOpen ? (
+  useEffect(() => {
+    if (isOpen) {
+      setIsMounted(true);
+      return;
+    }
+
+    if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
+    closeAnimTimeoutRef.current = setTimeout(() => {
+      setIsMounted(false);
+    }, 180);
+  }, [isOpen]);
+
+  const panelContent = isMounted ? (
     <div
-      className="fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px]"
+      className={cn(
+        "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+      )}
       style={{
         top: position.top,
         left: position.left,
-        transform: position.showAbove ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+        transform: position.showAbove
+          ? isOpen
+            ? "translate(-50%, -100%)"
+            : "translate(-50%, calc(-100% - 4px))"
+          : isOpen
+            ? "translate(-50%, 0)"
+            : "translate(-50%, -4px)",
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <TooltipProvider delayDuration={0}>
-        <div className="flex flex-col gap-1">
-          <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
-            文本颜色
-          </div>
-          <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1">
-            {TEXT_COLORS.map((item) => (
-              <Tooltip key={item.color}>
-                <TooltipTrigger asChild>
-                  <button
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-[6px] border border-transparent hover:bg-accent hover:text-accent-foreground",
-                      editor.isActive("textStyle", { color: item.color }) &&
-                        "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]",
-                    )}
-                    onClick={() => {
-                      if (item.color === "inherit") {
-                        editor.chain().focus().unsetColor().run();
-                      } else {
-                        editor.chain().focus().setColor(item.color).run();
-                      }
-                    }}
-                  >
-                    <div
-                      className="font-serif text-[34px] leading-none scale-[0.56]"
-                      style={{
-                        color:
-                          item.color === "inherit" ? undefined : item.color,
-                      }}
-                    >
-                      A
-                    </div>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {item.name}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-
-          <div className="my-1 border-t border-border/60" />
-
-          <div className="px-1 text-[12px] font-semibold text-muted-foreground">
-            背景颜色
-          </div>
-          <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1 pb-0.5">
-            {HIGHLIGHT_COLORS.map((item) => (
-              <Tooltip key={item.color}>
-                <TooltipTrigger asChild>
-                  <button
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-[6px] border border-transparent hover:border-border/80 hover:bg-accent/40",
-                      editor.isActive("highlight", { color: item.color }) &&
-                        "border-primary ring-1 ring-primary/25",
-                    )}
-                    onClick={() => {
-                      if (item.color === "transparent") {
-                        editor.chain().focus().unsetHighlight().run();
-                      } else {
-                        editor
-                          .chain()
-                          .focus()
-                          .setHighlight({ color: item.color })
-                          .run();
-                      }
-                    }}
-                  >
-                    <div
-                      className="h-5 w-5 rounded-[4px] border border-border/20"
-                      style={{ backgroundColor: item.color }}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {item.name}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
+      <div className="flex flex-col gap-1">
+        <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
+          文本颜色
         </div>
-      </TooltipProvider>
+        <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1">
+          {TEXT_COLORS.map((item) => (
+            <Button
+              key={item.color}
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
+                editor.isActive("textStyle", { color: item.color }) &&
+                  "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]",
+              )}
+              onClick={() => {
+                if (item.color === "inherit") {
+                  editor.chain().focus().unsetColor().run();
+                } else {
+                  editor.chain().focus().setColor(item.color).run();
+                }
+              }}
+            >
+              <div
+                className="font-serif text-[34px] leading-none scale-[0.56]"
+                style={{
+                  color: item.color === "inherit" ? undefined : item.color,
+                }}
+              >
+                A
+              </div>
+            </Button>
+          ))}
+        </div>
+
+        <div className="my-1 border-t border-border/60" />
+
+        <div className="px-1 text-[12px] font-semibold text-muted-foreground">
+          背景颜色
+        </div>
+        <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1 pb-0.5">
+          {HIGHLIGHT_COLORS.map((item) => (
+            <Button
+              key={item.color}
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
+                editor.isActive("highlight", { color: item.color }) &&
+                  "border-primary ring-1 ring-primary/25",
+              )}
+              onClick={() => {
+                if (item.color === "transparent") {
+                  editor.chain().focus().unsetHighlight().run();
+                } else {
+                  editor
+                    .chain()
+                    .focus()
+                    .setHighlight({ color: item.color })
+                    .run();
+                }
+              }}
+            >
+              <div
+                className="h-5 w-5 rounded-[4px] border border-border/20"
+                style={{ backgroundColor: item.color }}
+              />
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   ) : null;
 
@@ -185,6 +212,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
           <button
+            type="button"
             ref={buttonRef}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted"
             aria-label="颜色选择"
@@ -198,7 +226,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
           </div>
         </TooltipContent>
       </Tooltip>
-      {createPortal(panelContent, document.body)}
+      <Portal>{panelContent}</Portal>
     </div>
   );
 }

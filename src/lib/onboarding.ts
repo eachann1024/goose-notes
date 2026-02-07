@@ -36,6 +36,13 @@ export const ONBOARDING_PAGE_CONTENT: JSONContent = {
       ],
     },
     {
+      type: "paragraph",
+    },
+    {
+      type: "imageResize",
+      attrs: { src: WELCOME_IMAGE },
+    },
+    {
       type: "heading",
       attrs: { level: 2 },
       content: [{ type: "text", text: "排版" }],
@@ -188,15 +195,6 @@ export const ONBOARDING_PAGE_CONTENT: JSONContent = {
     },
     {
       type: "horizontalRule",
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "图片与表格" }],
-    },
-    {
-      type: "imageResize",
-      attrs: { src: WELCOME_IMAGE },
     },
     {
       type: "table",

@@ -80,7 +80,7 @@ export function SidebarContextMenu({
             {children}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-60">
+        <ContextMenuContent className="w-60 !border-0 !ring-0">
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
             {menuLabel}
           </div>
@@ -96,7 +96,7 @@ export function SidebarContextMenu({
             </ContextMenuItem>
           )}
 
-          <ContextMenuSeparator />
+          <ContextMenuSeparator className="bg-transparent" />
 
           <ContextMenuItem onSelect={handleDuplicate} disabled={isTrashed}>
             <LucideIcons.Copy className="h-4 w-4" />
@@ -126,34 +126,33 @@ export function SidebarContextMenu({
             </ContextMenuItem>
           )}
 
-          {!isTrashed && !isLocalFolder && (
+          {!isTrashed && !isLocalFolder && movableNotebooks.length > 0 && (
             <ContextMenuSub>
-              <ContextMenuSubTrigger>
+              <ContextMenuSubTrigger className="gap-2 rounded-[6px] px-1.5 py-1.5 text-[13px]">
                 <LucideIcons.FolderOutput className="h-4 w-4" />
                 <span>移动到笔记本</span>
               </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-52">
-                {movableNotebooks.length > 0 ? (
-                  movableNotebooks.map((item) => (
+              <ContextMenuPortal>
+                <ContextMenuSubContent
+                  sideOffset={8}
+                  alignOffset={-4}
+                  collisionPadding={12}
+                  className="w-56 max-h-72 overflow-y-auto !border-0 !ring-0"
+                >
+                  {movableNotebooks.map((item) => (
                     <ContextMenuItem
                       key={item.id}
-                      onSelect={() => {
-                        handleMoveToNotebook(item.id);
-                      }}
+                      onSelect={() => handleMoveToNotebook(item.id)}
                     >
                       <span className="truncate">{item.name}</span>
                     </ContextMenuItem>
-                  ))
-                ) : (
-                  <ContextMenuItem disabled>
-                    <span>无可移动目标</span>
-                  </ContextMenuItem>
-                )}
-              </ContextMenuSubContent>
+                  ))}
+                </ContextMenuSubContent>
+              </ContextMenuPortal>
             </ContextMenuSub>
           )}
 
-          <ContextMenuSeparator />
+          <ContextMenuSeparator className="bg-transparent" />
 
           {isTrashed ? (
             <>

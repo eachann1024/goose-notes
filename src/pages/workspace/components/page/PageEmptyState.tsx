@@ -182,39 +182,29 @@ export function PageEmptyState() {
         ? "在当前文件夹创建 Markdown 文件"
         : "创建一个空白页面开始记录",
       onClick: onCreatePage,
-      color: "from-primary to-primary/60",
     },
     {
       icon: Sparkles,
       title: "打开本地文件夹",
       description: "批量管理 Markdown 笔记",
       onClick: onOpenLocalFolder,
-      color: "from-emerald-500 to-emerald-500/60",
     },
     {
       icon: Search,
       title: "搜索内容",
       description: "快速查找已记录的内容",
       onClick: onSearch,
-      color: "from-blue-500 to-blue-500/60",
     },
   ];
 
   return (
-    <div className="h-full flex items-center justify-center p-8 relative overflow-hidden">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
-      </div>
-
+    <div className="h-full flex items-center justify-center p-8 relative overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
       {/* 内容区 */}
       <div className="relative w-full max-w-4xl">
         {/* Logo 和标题 */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 mb-6 shadow-xl shadow-primary/20">
-            <Sparkles className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-[14px] bg-[hsl(var(--goose-editor-bg))] mb-6 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
+            <Sparkles className="w-10 h-10 text-muted-foreground/75" />
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">
             准备好记录想法了吗？
@@ -231,18 +221,18 @@ export function PageEmptyState() {
           {actions.map((action, index) => {
             const Icon = action.icon;
             return (
-              <button
-                key={index}
-                onClick={() => {
-                  action.onClick();
-                }}
-                type="button"
-                className="group relative p-6 rounded-2xl border-2 bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] transition-all duration-300 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:from-card/96 hover:to-card/92 cursor-pointer"
-              >
-                <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                <button
+                  key={index}
+                  onClick={() => {
+                    action.onClick();
+                  }}
+                  type="button"
+                  className="group relative cursor-pointer rounded-[14px] border-0 bg-[hsl(var(--goose-editor-bg))] p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <Icon className="w-7 h-7 text-white" />
+                <div
+                  className="w-14 h-14 rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
+                >
+                  <Icon className="w-7 h-7 text-foreground/75" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2 text-left">
                   {action.title}
@@ -255,13 +245,6 @@ export function PageEmptyState() {
           })}
         </div>
 
-        {/* 提示信息 */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground/80 flex items-center justify-center gap-2">
-            <span className="text-lg">💡</span>
-            <span>{getRandomTip()}</span>
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -22,21 +22,21 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  const clearHideTimeout = () => {
+  const clearHideTimeout = useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
-  };
+  }, []);
 
-  const scheduleHide = () => {
+  const scheduleHide = useCallback(() => {
     clearHideTimeout();
     hideTimeoutRef.current = window.setTimeout(() => {
       setIsVisible(false);
       setIsEditing(false);
       setLinkElement(null);
     }, 150);
-  };
+  }, [clearHideTimeout]);
 
   const handleMouseEnterLink = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -54,13 +54,13 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     setLinkElement(link);
     setIsVisible(true);
     setIsEditing(false);
-  }, []);
+  }, [clearHideTimeout]);
 
   const handleMouseLeaveLink = useCallback((e: MouseEvent) => {
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     if (relatedTarget?.closest("[data-link-hover-menu]")) return;
     scheduleHide();
-  }, []);
+  }, [scheduleHide]);
 
   const handleMenuMouseEnter = () => {
     clearHideTimeout();
@@ -77,21 +77,21 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     editorDom.addEventListener("mouseover", handleMouseEnterLink);
     editorDom.addEventListener("mouseout", handleMouseLeaveLink);
 
-    const handleScroll = () => {
-      setIsVisible(false);
-      setIsEditing(false);
-      setLinkElement(null);
-    };
-
-    window.addEventListener("scroll", handleScroll, { capture: true });
-
     return () => {
       editorDom.removeEventListener("mouseover", handleMouseEnterLink);
       editorDom.removeEventListener("mouseout", handleMouseLeaveLink);
-      window.removeEventListener("scroll", handleScroll, { capture: true });
       clearHideTimeout();
     };
-  }, [editor, handleMouseEnterLink, handleMouseLeaveLink]);
+  }, [editor, handleMouseEnterLink, handleMouseLeaveLink, clearHideTimeout]);
+
+  useEffect(() => {
+    return subscribeGlobalScrollActivity((nextSnapshot) => {
+      if (!nextSnapshot.isScrolling) return;
+      setIsVisible((prev) => (prev ? false : prev));
+      setIsEditing((prev) => (prev ? false : prev));
+      setLinkElement((prev) => (prev ? null : prev));
+    });
+  }, []);
 
   useEffect(() => {
     if (!linkElement) return;
@@ -241,9 +241,9 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
         {isEditing ? (
           <div className="p-3 min-w-[320px] space-y-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
+              <Label className="mb-1 block text-xs text-muted-foreground">
                 文字
-              </label>
+              </Label>
               <Input
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
@@ -253,9 +253,9 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
+              <Label className="mb-1 block text-xs text-muted-foreground">
                 链接
-              </label>
+              </Label>
               <Input
                 ref={inputRef}
                 value={editUrl}
@@ -288,14 +288,17 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
           </div>
         ) : (
           <div className="flex items-center gap-1 p-1.5">
-            <button
+            <Button
               onClick={handleOpenLink}
-              className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors max-w-[200px]"
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto max-w-[200px] gap-1.5 rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title={href}
             >
               <LucideIcons.ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">{displayUrl}</span>
-            </button>
+            </Button>
 
             <Separator orientation="vertical" className="h-5 mx-0.5" />
 

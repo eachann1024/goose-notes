@@ -116,6 +116,11 @@ export function CodeBlockToolbar({
   );
   const isMathOrMermaid =
     language === "math" || language === "mermaid";
+  const toolbarChipClass = cn(
+    "border backdrop-blur-[1px] transition-all duration-200",
+    "border-[color:var(--code-border)] bg-[color:var(--code-bg)] text-[color:var(--code-fg)]",
+    "hover:bg-[color:var(--code-bg)] hover:text-[color:var(--code-fg)]",
+  );
 
   return (
     <TooltipProvider>
@@ -129,9 +134,7 @@ export function CodeBlockToolbar({
                   size="sm"
                   className={cn(
                     "h-6 px-2 text-xs font-mono rounded-md",
-                    "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
-                    "border border-border/50",
-                    "backdrop-blur-[1px] transition-all duration-200",
+                    toolbarChipClass,
                   )}
                 >
                   {displayLanguage}
@@ -181,9 +184,7 @@ export function CodeBlockToolbar({
             <div
               className={cn(
                 "h-6 px-2 flex items-center text-[10px] font-mono rounded-md",
-                "bg-gradient-to-r from-background/98 to-background/94 text-muted-foreground/70",
-                "border border-border/50",
-                "backdrop-blur-[1px]",
+                toolbarChipClass,
               )}
             >
               {displayLanguage}
@@ -199,9 +200,7 @@ export function CodeBlockToolbar({
                 onClick={() => onWrapChange(!wrap)}
                 className={cn(
                   "h-6 w-6 p-0 rounded-md",
-                  "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
-                  "border border-border/50",
-                  "backdrop-blur-[1px] transition-all duration-200",
+                  toolbarChipClass,
                   wrap && "bg-primary/10 border-primary/30 text-primary",
                 )}
               >
@@ -224,9 +223,7 @@ export function CodeBlockToolbar({
                 disabled={isLoading}
                 className={cn(
                   "h-6 w-6 p-0 rounded-md",
-                  "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
-                  "border border-border/50",
-                  "backdrop-blur-[1px] transition-all duration-200",
+                  toolbarChipClass,
                 )}
               >
                 {isLoading ? (
@@ -250,9 +247,7 @@ export function CodeBlockToolbar({
               onClick={handleCopy}
               className={cn(
                 "h-6 w-6 p-0 rounded-md",
-                "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
-                "border border-border/50",
-                "backdrop-blur-[1px] transition-all duration-200",
+                toolbarChipClass,
               )}
             >
               {copied ? (

@@ -34,6 +34,7 @@ import {
   buildVisibleTree,
   isDescendant,
   type FlatTreeItem,
+  type VisibleTreeItem,
 } from "./tree-dnd";
 
 interface SidebarTreeProps {
@@ -44,6 +45,17 @@ interface SidebarTreeProps {
   viewportHeight: number;
   onCreatePage: () => void;
   onRequestRename: (page: Page) => void;
+  onDragGuideChange?: (guide: SidebarDragGuide | null) => void;
+  rootPageIds?: string[];
+  fitContent?: boolean;
+  showEmptyState?: boolean;
+  nestHoverDelayMs?: number;
+  rightNestEnterOffset?: number;
+  rightNestExitOffset?: number;
+  allowNest?: boolean;
+  resolveSiblings?: (parentId: string | undefined) => Page[];
+  onReorder?: (ids: string[], parentId: string | undefined) => void;
+  showAddChildButton?: boolean;
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -51,18 +63,25 @@ const TREE_INDENT = 24;
 const SAME_ROW_BEFORE_RATIO = 0.48;
 const SAME_ROW_AFTER_RATIO = 0.52;
 const EDGE_DROP_PADDING = 10;
-const NEST_ZONE_TOP_RATIO = 0.42;
-const NEST_ZONE_BOTTOM_RATIO = 0.58;
 const NEST_HOVER_DELAY_MS = 500;
-const DROP_INTENT_STABLE_PADDING = 6;
+const DROP_INTENT_STABLE_PADDING = 8;
+const RIGHT_NEST_ENTER_OFFSET = 20;
+const RIGHT_NEST_EXIT_OFFSET = 10;
 const TOP_EDGE_DROP_ID = "__sidebar-drop-top";
 const BOTTOM_EDGE_DROP_ID = "__sidebar-drop-bottom";
 
 type DropIntentKind = "before" | "after" | "nest";
+type DragGuideDirection = "left" | "right";
+type DragGuideMode = "sort" | "nest-pending" | "nest-ready";
 
 interface DropIntent {
   overId: string;
   kind: DropIntentKind;
+}
+
+interface SidebarDragGuide {
+  direction: DragGuideDirection;
+  mode: DragGuideMode;
 }
 
 function getClientYFromActivator(event: Event | null | undefined): number | null {
@@ -80,6 +99,21 @@ function getClientYFromActivator(event: Event | null | undefined): number | null
   return null;
 }
 
+function getClientXFromActivator(event: Event | null | undefined): number | null {
+  if (!event) return null;
+
+  if (event instanceof MouseEvent || event instanceof PointerEvent) {
+    return event.clientX;
+  }
+
+  if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
+    const touch = event.touches[0] || event.changedTouches[0];
+    return touch?.clientX ?? null;
+  }
+
+  return null;
+}
+
 function getDragCenterY(
   translatedRect: { top: number; height: number } | null | undefined,
   activatorEvent: Event | null | undefined
@@ -88,6 +122,16 @@ function getDragCenterY(
     return translatedRect.top + translatedRect.height / 2;
   }
   return getClientYFromActivator(activatorEvent);
+}
+
+function getDragCenterX(
+  translatedRect: { left: number; width: number } | null | undefined,
+  activatorEvent: Event | null | undefined
+): number | null {
+  if (translatedRect) {
+    return translatedRect.left + translatedRect.width / 2;
+  }
+  return getClientXFromActivator(activatorEvent);
 }
 
 class LeftButtonPointerSensor extends PointerSensor {
@@ -108,11 +152,13 @@ interface SortablePageRowProps {
   isLocalNotebook: boolean;
   isActive: boolean;
   isNestDropTarget: boolean;
+  nestGuideState: "idle" | "pending" | "locked";
   showDropLine: boolean;
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
   onToggleOpen: (id: string) => void;
   onRequestRename: (page: Page) => void;
+  showAddChildButton: boolean;
 }
 
 function EdgeDropZone({
@@ -165,11 +211,13 @@ function SortablePageRow({
   isLocalNotebook,
   isActive,
   isNestDropTarget,
+  nestGuideState,
   showDropLine,
   dropLinePosition,
   dropLineLeft,
   onToggleOpen,
   onRequestRename,
+  showAddChildButton,
 }: SortablePageRowProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({ id: item.id });
@@ -256,9 +304,12 @@ function SortablePageRow({
       }}
       className={cn("group relative px-1", isDragging && "z-20 pointer-events-none")}
     >
+      {isNestDropTarget && (
+        <div className="pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px] bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] shadow-[0_0_0_1px_hsl(var(--background)/0.5)_inset] transition-all duration-100" />
+      )}
       {showDropLine && (
         <div
-          className="pointer-events-none absolute h-0.5 rounded-full bg-[#2563eb] shadow-[0_0_8px_rgba(37,99,235,0.42)]"
+          className="pointer-events-none absolute z-[5] h-0.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.88),0_0_0_1px_rgba(15,23,42,0.28)] transition-all duration-100"
           style={{
             left: dropLineLeft,
             right: 12,
@@ -274,9 +325,11 @@ function SortablePageRow({
           {...attributes}
           {...guardedListeners}
           className={cn(
-            "relative flex items-center h-full px-1 rounded-[8px] cursor-grab active:cursor-grabbing transition-colors text-sm font-medium",
+            "relative z-20 flex items-center h-full px-1 rounded-[8px] cursor-grab active:cursor-grabbing transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "opacity-60",
+            nestGuideState !== "idle" &&
+              "bg-[hsl(var(--primary)/0.14)] ring-1 ring-[hsl(var(--primary)/0.45)]",
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
             isActive &&
@@ -362,17 +415,29 @@ function SortablePageRow({
             </span>
           </div>
 
-          <div className="ml-1 hidden group-hover:flex items-center shrink-0">
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 hover:text-foreground"
-              onClick={handleAddChild}
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
+          {showAddChildButton && (
+            <div
+              className={cn(
+                "ml-1 items-center shrink-0",
+                nestGuideState !== "idle" ? "flex" : "hidden group-hover:flex"
+              )}
             >
-              <LucideIcons.Plus className="h-3.5 w-3.5" />
-            </button>
-          </div>
+              {nestGuideState !== "idle" && (
+                <span className="mr-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-primary bg-[hsl(var(--primary)/0.14)]">
+                  {nestGuideState === "locked" ? "松手移入子页面" : "右移停留后移入"}
+                </span>
+              )}
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 hover:text-foreground"
+                onClick={handleAddChild}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <LucideIcons.Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </SidebarContextMenu>
     </div>
@@ -387,6 +452,17 @@ export function SidebarTree({
   viewportHeight,
   onCreatePage,
   onRequestRename,
+  onDragGuideChange,
+  rootPageIds,
+  fitContent = false,
+  showEmptyState = true,
+  nestHoverDelayMs = NEST_HOVER_DELAY_MS,
+  rightNestEnterOffset = RIGHT_NEST_ENTER_OFFSET,
+  rightNestExitOffset = RIGHT_NEST_EXIT_OFFSET,
+  allowNest = true,
+  resolveSiblings,
+  onReorder,
+  showAddChildButton = true,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -405,14 +481,20 @@ export function SidebarTree({
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
+  const [nestGuide, setNestGuide] = useState<{ overId: string; locked: boolean } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
   const dragPointerYRef = useRef<number | null>(null);
+  const dragPointerXRef = useRef<number | null>(null);
+  const dragStartPointerXRef = useRef<number | null>(null);
+  const dragStartPointerYRef = useRef<number | null>(null);
   const isTrackingPointerRef = useRef(false);
   const nestDelayTimerRef = useRef<number | null>(null);
   const nestCandidateRef = useRef<string | null>(null);
   const lockedNestIdRef = useRef<string | null>(null);
+  const rightNestActiveRef = useRef(false);
+  const dragGuideKeyRef = useRef<string>("__init__");
 
   const visibleItems = useMemo(
     () =>
@@ -421,8 +503,9 @@ export function SidebarTree({
         openIds: openPageIds,
         workspaceId: activeNotebookId || undefined,
         isLocalNotebook,
+        rootPageIds,
       }),
-    [pages, openPageIds, activeNotebookId, isLocalNotebook]
+    [pages, openPageIds, activeNotebookId, isLocalNotebook, rootPageIds]
   );
 
   const flatItems = useMemo(
@@ -492,6 +575,16 @@ export function SidebarTree({
     });
   }, []);
 
+  const getSiblingPages = useCallback(
+    (parentId: string | undefined) => {
+      if (resolveSiblings) {
+        return resolveSiblings(parentId);
+      }
+      return getChildren(parentId, activeNotebookId || undefined);
+    },
+    [resolveSiblings, getChildren, activeNotebookId],
+  );
+
   useEffect(() => {
     if (!expandPageId) return;
 
@@ -543,14 +636,42 @@ export function SidebarTree({
     }
   };
 
+  const emitDragGuide = useCallback((guide: SidebarDragGuide | null) => {
+    if (!onDragGuideChange) return;
+    const key = guide ? `${guide.direction}:${guide.mode}` : "__none__";
+    if (dragGuideKeyRef.current === key) return;
+    dragGuideKeyRef.current = key;
+    onDragGuideChange(guide);
+  }, [onDragGuideChange]);
+
+  const updateNestGuide = useCallback((guide: { overId: string; locked: boolean } | null) => {
+    setNestGuide((current) => {
+      if (
+        current?.overId === guide?.overId &&
+        current?.locked === guide?.locked
+      ) {
+        return current;
+      }
+      return guide;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      onDragGuideChange?.(null);
+    };
+  }, [onDragGuideChange]);
+
   const handleGlobalPointerMove = useCallback((event: PointerEvent) => {
     dragPointerYRef.current = event.clientY;
+    dragPointerXRef.current = event.clientX;
   }, []);
 
   const handleGlobalTouchMove = useCallback((event: TouchEvent) => {
     const touch = event.touches[0] || event.changedTouches[0];
     if (!touch) return;
     dragPointerYRef.current = touch.clientY;
+    dragPointerXRef.current = touch.clientX;
   }, []);
 
   const startPointerTracking = useCallback(() => {
@@ -595,19 +716,36 @@ export function SidebarTree({
   const handleDragStart = ({ active, activatorEvent }: DragStartEvent) => {
     setActiveId(String(active.id));
     setDropIntent(null);
+    updateNestGuide(null);
     clearNestDelayTimer();
     nestCandidateRef.current = null;
     lockedNestIdRef.current = null;
+    rightNestActiveRef.current = false;
     startPointerTracking();
     const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
     dragPointerYRef.current =
       getClientYFromActivator(activatorEvent) ??
       getDragCenterY(translatedRect, activatorEvent);
+    dragPointerXRef.current =
+      getClientXFromActivator(activatorEvent) ??
+      getDragCenterX(translatedRect, activatorEvent);
+    dragStartPointerXRef.current = dragPointerXRef.current;
+    dragStartPointerYRef.current = dragPointerYRef.current;
+    emitDragGuide({ direction: "left", mode: "sort" });
   };
 
-  const handleDragMove = ({ active }: DragMoveEvent) => {
+  const handleDragMove = ({ active, delta }: DragMoveEvent) => {
     const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
-    dragPointerYRef.current = getDragCenterY(translatedRect, undefined);
+    if (dragStartPointerYRef.current !== null) {
+      dragPointerYRef.current = dragStartPointerYRef.current + delta.y;
+    } else {
+      dragPointerYRef.current = getDragCenterY(translatedRect, undefined);
+    }
+    if (dragStartPointerXRef.current !== null) {
+      dragPointerXRef.current = dragStartPointerXRef.current + delta.x;
+    } else {
+      dragPointerXRef.current = getDragCenterX(translatedRect, undefined);
+    }
     autoScrollVertical(translatedRect);
   };
 
@@ -617,11 +755,17 @@ export function SidebarTree({
     overRect: { top: number; height: number },
     pointerY: number | null,
     previousKind: DropIntentKind | null,
-    canNest: boolean,
     isNestLocked: boolean
   ): DropIntentKind => {
-    if ((previousKind === "nest" || isNestLocked) && canNest) {
+    if (isNestLocked) {
       return "nest";
+    }
+
+    if (activeIndex < overIndex) {
+      return "after";
+    }
+    if (activeIndex > overIndex) {
+      return "before";
     }
 
     let ratio = 0.5;
@@ -658,11 +802,15 @@ export function SidebarTree({
       dragPointerYRef.current ??
       getClientYFromActivator(activatorEvent) ??
       getDragCenterY(translatedRect, activatorEvent);
+    const pointerX = dragPointerXRef.current ?? getClientXFromActivator(activatorEvent);
 
     if (!over) {
       clearNestDelayTimer();
       nestCandidateRef.current = null;
       lockedNestIdRef.current = null;
+      rightNestActiveRef.current = false;
+      updateNestGuide(null);
+      emitDragGuide({ direction: "left", mode: "sort" });
       if (flatItems.length > 0 && pointerY !== null) {
         const containerRect = scrollRef.current?.getBoundingClientRect();
         const firstItem = flatItems[0];
@@ -683,25 +831,31 @@ export function SidebarTree({
     }
 
     let overItemId = String(over.id);
+    const stableAnchorId =
+      lockedNestIdRef.current ??
+      nestCandidateRef.current ??
+      dropIntent?.overId;
     if (
       pointerY !== null &&
-      dropIntent?.overId &&
-      dropIntent.overId !== overItemId &&
-      dropIntent.overId !== TOP_EDGE_DROP_ID &&
-      dropIntent.overId !== BOTTOM_EDGE_DROP_ID &&
+      stableAnchorId &&
+      overItemId !== TOP_EDGE_DROP_ID &&
+      overItemId !== BOTTOM_EDGE_DROP_ID &&
+      stableAnchorId !== overItemId &&
+      stableAnchorId !== TOP_EDGE_DROP_ID &&
+      stableAnchorId !== BOTTOM_EDGE_DROP_ID &&
       scrollRef.current
     ) {
-      const currentVisibleIndex = visibleIndexMap.get(dropIntent.overId);
+      const currentVisibleIndex = visibleIndexMap.get(stableAnchorId);
       if (currentVisibleIndex !== undefined) {
         const containerRect = scrollRef.current.getBoundingClientRect();
         const currentTop =
           containerRect.top - scrollRef.current.scrollTop + currentVisibleIndex * rowHeight;
-        const currentBottom = currentTop + rowHeight;
+        const currentBottom = currentTop + itemHeight;
         if (
           pointerY >= currentTop + DROP_INTENT_STABLE_PADDING &&
           pointerY <= currentBottom - DROP_INTENT_STABLE_PADDING
         ) {
-          overItemId = dropIntent.overId;
+          overItemId = stableAnchorId;
         }
       }
     }
@@ -710,6 +864,9 @@ export function SidebarTree({
       clearNestDelayTimer();
       nestCandidateRef.current = null;
       lockedNestIdRef.current = null;
+      rightNestActiveRef.current = false;
+      updateNestGuide(null);
+      emitDragGuide({ direction: "left", mode: "sort" });
       const firstItem = flatItems[0];
       if (!firstItem) {
         setDropIntent(null);
@@ -723,6 +880,9 @@ export function SidebarTree({
       clearNestDelayTimer();
       nestCandidateRef.current = null;
       lockedNestIdRef.current = null;
+      rightNestActiveRef.current = false;
+      updateNestGuide(null);
+      emitDragGuide({ direction: "left", mode: "sort" });
       const lastItem = flatItems[flatItems.length - 1];
       if (!lastItem) {
         setDropIntent(null);
@@ -736,6 +896,9 @@ export function SidebarTree({
       clearNestDelayTimer();
       nestCandidateRef.current = null;
       lockedNestIdRef.current = null;
+      rightNestActiveRef.current = false;
+      updateNestGuide(null);
+      emitDragGuide({ direction: "left", mode: "sort" });
       setDropIntent(null);
       return;
     }
@@ -747,6 +910,9 @@ export function SidebarTree({
       clearNestDelayTimer();
       nestCandidateRef.current = null;
       lockedNestIdRef.current = null;
+      rightNestActiveRef.current = false;
+      updateNestGuide(null);
+      emitDragGuide({ direction: "left", mode: "sort" });
       setDropIntent(null);
       return;
     }
@@ -756,8 +922,24 @@ export function SidebarTree({
     }
 
     const canNest =
+      allowNest &&
       !activeDescendantIds.has(overItem.id) &&
       (!isLocalNotebook || !!overItem.page.isFolder);
+    const pointerOffsetX =
+      pointerX !== null && dragStartPointerXRef.current !== null
+        ? pointerX - dragStartPointerXRef.current
+        : null;
+    const rectOffsetX =
+      active.rect.current.initial && translatedRect
+        ? translatedRect.left - active.rect.current.initial.left
+        : 0;
+    const dragOffsetX = pointerOffsetX ?? rectOffsetX;
+    const horizontalNestEnabled = canNest && (
+      rightNestActiveRef.current
+        ? dragOffsetX >= rightNestExitOffset
+        : dragOffsetX >= rightNestEnterOffset
+    );
+    rightNestActiveRef.current = horizontalNestEnabled;
 
     let overRectForIntent = over.rect;
     const overVisibleIndex = visibleIndexMap.get(overItemId);
@@ -766,32 +948,31 @@ export function SidebarTree({
       overRectForIntent = {
         top:
           containerRect.top - scrollRef.current.scrollTop + overVisibleIndex * rowHeight,
-        height: rowHeight,
+        height: itemHeight,
       };
     }
 
-    const overHeight = Math.max(overRectForIntent.height, 1);
-    const pointerRatio =
-      pointerY === null
-        ? 0.5
-        : Math.max(0, Math.min(1, (pointerY - overRectForIntent.top) / overHeight));
-    const inNestZone =
-      pointerRatio >= NEST_ZONE_TOP_RATIO && pointerRatio <= NEST_ZONE_BOTTOM_RATIO;
-
-    if (canNest && inNestZone) {
+    if (horizontalNestEnabled) {
       if (
         nestCandidateRef.current !== overItemId &&
         lockedNestIdRef.current !== overItemId
       ) {
         clearNestDelayTimer();
         nestCandidateRef.current = overItemId;
+        updateNestGuide({ overId: overItemId, locked: false });
         nestDelayTimerRef.current = window.setTimeout(() => {
           lockedNestIdRef.current = overItemId;
+          updateNestGuide({ overId: overItemId, locked: true });
           setDropIntent((current) => {
             if (!current || current.overId !== overItemId) return current;
             return { overId: overItemId, kind: "nest" };
           });
-        }, NEST_HOVER_DELAY_MS);
+        }, nestHoverDelayMs);
+      } else {
+        updateNestGuide({
+          overId: overItemId,
+          locked: lockedNestIdRef.current === overItemId,
+        });
       }
     } else {
       clearNestDelayTimer();
@@ -799,6 +980,16 @@ export function SidebarTree({
       if (lockedNestIdRef.current === overItemId) {
         lockedNestIdRef.current = null;
       }
+      updateNestGuide(null);
+    }
+
+    if (horizontalNestEnabled) {
+      emitDragGuide({
+        direction: "right",
+        mode: lockedNestIdRef.current === overItemId ? "nest-ready" : "nest-pending",
+      });
+    } else {
+      emitDragGuide({ direction: "left", mode: "sort" });
     }
 
     const previousKind =
@@ -809,7 +1000,6 @@ export function SidebarTree({
       overRectForIntent,
       pointerY,
       previousKind,
-      canNest,
       lockedNestIdRef.current === overItemId
     );
     if (dropIntent?.overId === overItemId && dropIntent.kind === kind) {
@@ -823,7 +1013,10 @@ export function SidebarTree({
     clearNestDelayTimer();
     nestCandidateRef.current = null;
     lockedNestIdRef.current = null;
+    rightNestActiveRef.current = false;
     stopPointerTracking();
+    updateNestGuide(null);
+    emitDragGuide(null);
 
     const activeNodeId = String(active.id);
     const fallbackIntent = (() => {
@@ -850,6 +1043,9 @@ export function SidebarTree({
     setActiveId(null);
     setDropIntent(null);
     dragPointerYRef.current = null;
+    dragPointerXRef.current = null;
+    dragStartPointerXRef.current = null;
+    dragStartPointerYRef.current = null;
 
     if (!finalIntent) return;
     const overNodeId = finalIntent.overId;
@@ -871,12 +1067,12 @@ export function SidebarTree({
       if (!canNestIntoOver) return;
 
       nextParentId = overNodeId;
-      const targetChildren = getChildren(nextParentId, activeNotebookId || undefined)
+      const targetChildren = getSiblingPages(nextParentId)
         .filter((page) => page.id !== activeNodeId);
       nextOrderIds = [...targetChildren, activePage].map((page) => page.id);
     } else {
       nextParentId = overItem.parentId;
-      const siblings = getChildren(nextParentId, activeNotebookId || undefined)
+      const siblings = getSiblingPages(nextParentId)
         .filter((page) => page.id !== activeNodeId);
       const overSiblingIndex = siblings.findIndex((page) => page.id === overNodeId);
       if (overSiblingIndex < 0) return;
@@ -897,7 +1093,7 @@ export function SidebarTree({
     if (!nextOrderIds) return;
     const nextIds = nextOrderIds;
 
-    const currentOrder = getChildren(nextParentId, activeNotebookId || undefined).map((page) => page.id);
+    const currentOrder = getSiblingPages(nextParentId).map((page) => page.id);
     if (
       nextParentId === activeItem.parentId &&
       currentOrder.length === nextIds.length &&
@@ -906,7 +1102,11 @@ export function SidebarTree({
       return;
     }
 
-    reorderPages(nextIds, nextParentId);
+    if (onReorder) {
+      onReorder(nextIds, nextParentId);
+    } else {
+      reorderPages(nextIds, nextParentId);
+    }
 
     if (nextParentId) {
       setOpenPageIds((prev) => {
@@ -918,10 +1118,9 @@ export function SidebarTree({
     }
 
     if (activeItem.parentId && activeItem.parentId !== nextParentId) {
-      const remaining = getChildren(
-        activeItem.parentId,
-        activeNotebookId || undefined
-      ).filter((page) => page.id !== activeNodeId);
+      const remaining = getSiblingPages(activeItem.parentId).filter(
+        (page) => page.id !== activeNodeId,
+      );
 
       if (remaining.length === 0) {
         setOpenPageIds((prev) => {
@@ -939,13 +1138,20 @@ export function SidebarTree({
     clearNestDelayTimer();
     nestCandidateRef.current = null;
     lockedNestIdRef.current = null;
+    rightNestActiveRef.current = false;
     stopPointerTracking();
     setActiveId(null);
     setDropIntent(null);
+    updateNestGuide(null);
+    emitDragGuide(null);
     dragPointerYRef.current = null;
+    dragPointerXRef.current = null;
+    dragStartPointerXRef.current = null;
+    dragStartPointerYRef.current = null;
   };
 
   if (flatItems.length === 0) {
+    if (!showEmptyState) return null;
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
@@ -957,8 +1163,36 @@ export function SidebarTree({
     );
   }
 
+  const contentHeight = fitContent
+    ? Math.max(visibleItems.length * rowHeight, rowHeight)
+    : Math.max(virtualizer.getTotalSize(), viewportHeight || 0);
+  const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> = fitContent
+    ? visibleItems.map((item, index) => ({
+        item,
+        size: rowHeight,
+        start: index * rowHeight,
+      }))
+    : virtualizer
+        .getVirtualItems()
+        .flatMap((virtualRow) => {
+          const item = visibleItems[virtualRow.index];
+          if (!item) return [];
+          return [
+            {
+              item,
+              size: virtualRow.size,
+              start: virtualRow.start,
+            },
+          ];
+        });
+
   return (
-    <div className="h-full w-full relative overflow-hidden">
+    <div
+      className={cn(
+        "w-full relative",
+        fitContent ? "overflow-visible" : "h-full overflow-hidden",
+      )}
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
@@ -975,12 +1209,19 @@ export function SidebarTree({
         >
           <div
             ref={scrollRef}
-            className="h-full overflow-y-auto overflow-x-hidden"
-            style={{ width, minHeight: viewportHeight || 0 }}
+            className={cn(
+              "overflow-x-hidden",
+              fitContent ? "overflow-y-visible" : "h-full overflow-y-auto"
+            )}
+            style={
+              fitContent
+                ? { width, minHeight: contentHeight }
+                : { width, minHeight: viewportHeight || 0 }
+            }
           >
             <div
               style={{
-                height: Math.max(virtualizer.getTotalSize(), viewportHeight || 0),
+                height: contentHeight,
                 width: "100%",
                 position: "relative",
               }}
@@ -988,17 +1229,17 @@ export function SidebarTree({
               <EdgeDropZone id={TOP_EDGE_DROP_ID} top={0} height={14} />
               <EdgeDropZone
                 id={BOTTOM_EDGE_DROP_ID}
-                top={Math.max(virtualizer.getTotalSize(), viewportHeight || 0) - 14}
+                top={contentHeight - 14}
                 height={14}
               />
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const item = visibleItems[virtualRow.index];
+              {rows.map((row) => {
+                const item = row.item;
                 const style: CSSProperties = {
                   position: "absolute",
-                  top: virtualRow.start,
+                  top: row.start,
                   left: 0,
                   width: "100%",
-                  height: virtualRow.size,
+                  height: row.size,
                 };
 
                 if ("isPlaceholder" in item) {
@@ -1013,8 +1254,16 @@ export function SidebarTree({
                 }
 
                 const isDropTarget = dropIntent?.overId === item.id && activeId !== item.id;
-                const isNestDropTarget = isDropTarget && dropIntent?.kind === "nest";
-                const showDropLine = isDropTarget && dropIntent?.kind !== "nest";
+                const nestGuideState =
+                  nestGuide?.overId === item.id
+                    ? (nestGuide.locked ? "locked" : "pending")
+                    : "idle";
+                const isNestDropTarget =
+                  isDropTarget && (dropIntent?.kind === "nest" || nestGuideState !== "idle");
+                const showDropLine =
+                  isDropTarget &&
+                  dropIntent?.kind !== "nest" &&
+                  nestGuideState === "idle";
                 const dropLinePosition = dropIntent?.kind === "after" ? "bottom" : "top";
                 const dropLineLeft = item.depth * TREE_INDENT + 16;
 
@@ -1028,11 +1277,13 @@ export function SidebarTree({
                     isLocalNotebook={isLocalNotebook}
                     isActive={activePageId === item.id}
                     isNestDropTarget={isNestDropTarget}
+                    nestGuideState={nestGuideState}
                     showDropLine={showDropLine}
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     onToggleOpen={handleToggle}
                     onRequestRename={onRequestRename}
+                    showAddChildButton={showAddChildButton}
                   />
                 );
               })}

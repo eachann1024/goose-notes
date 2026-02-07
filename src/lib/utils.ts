@@ -5,10 +5,39 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export type PlatformKind = "mac" | "windows" | "linux" | "other";
+
+export function getPlatformKind(): PlatformKind {
+  if (typeof window === "undefined") return "other";
+  const platform = navigator.platform || "";
+  if (/Mac|iPod|iPhone|iPad/.test(platform)) return "mac";
+  if (/Win/.test(platform)) return "windows";
+  if (/Linux|X11/.test(platform)) return "linux";
+  return "other";
+}
+
+export function isMacPlatform() {
+  return getPlatformKind() === "mac";
+}
+
+export function getPrimaryModifierKeyLabel() {
+  return isMacPlatform() ? "Command" : "Ctrl";
+}
+
+export function getPrimaryModifierKeyDisplay(options?: { style?: "symbol" | "text" }) {
+  const style = options?.style ?? "symbol";
+  const platform = getPlatformKind();
+
+  if (platform === "mac") {
+    return style === "symbol" ? "⌘" : "Command";
+  }
+
+  // Win/Linux/other: 当前快捷键主键都是 Ctrl
+  return style === "symbol" ? "⌃" : "Ctrl";
+}
+
 export function formatShortcut(shortcut: string) {
-  const isMac =
-    typeof window !== "undefined" &&
-    /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const isMac = isMacPlatform();
 
   return shortcut
     .split("+")

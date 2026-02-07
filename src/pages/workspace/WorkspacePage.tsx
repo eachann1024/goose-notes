@@ -4,7 +4,6 @@ import { Editor } from "./components/editor/Editor";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
-import { PageTrashBanner } from "./components/page/PageTrashBanner";
 import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
@@ -251,122 +250,121 @@ export function WorkspacePage() {
       )}
       <CommandPalette />
       <div className="workspace-stage">
-      <Sidebar className="workspace-panel workspace-panel-sidebar" />
+      <Sidebar className="workspace-sidebar-pane" />
 
-      <main className="workspace-panel workspace-panel-main flex-1 flex flex-col h-full overflow-hidden">
-        {activePageId && page?.trashedAt && (
-          <PageTrashBanner
-            onRestore={() => usePages.getState().restorePage(activePageId)}
-            onDelete={() =>
-              void usePages.getState().permanentlyDeletePage(activePageId)
-            }
-          />
-        )}
+      <main className="workspace-main-sheet flex-1 flex flex-col h-full overflow-hidden">
+        {activePageId && page ? (
+          <>
+            <PageHeader
+              page={page}
+              onClose={() => usePages.getState().setActivePage(null)}
+              onToggleFavorite={() =>
+                updatePage(activePageId, { isFavorite: !page.isFavorite })
+              }
+              onRestore={() => usePages.getState().restorePage(activePageId)}
+              onDelete={() =>
+                void usePages.getState().permanentlyDeletePage(activePageId)
+              }
+            />
 
-        {activePageId && page && (
-          <PageHeader
-            page={page}
-            onClose={() => usePages.getState().setActivePage(null)}
-            onToggleFavorite={() =>
-              updatePage(activePageId, { isFavorite: !page.isFavorite })
-            }
-          />
-        )}
-
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto page-scroll-container"
-        >
-          {activePageId && page ? (() => {
-            // 判断是否是新页面（创建时间等于更新时间且内容为空）
-            const isNewPage =
-              page.createdAt === page.updatedAt &&
-              (!page.content?.content?.[1]?.content ||
-                page.content.content[1].content.length === 0);
-
-            // 判断是否有实际内容（除了标题行之外还有内容）
-            const hasRealContent =
-              page.content?.content &&
-              page.content.content.length > 2;
-
-            return (
+            <div className="workspace-editor-surface ml-0 mr-2 mt-1 mb-2 flex-1 overflow-hidden">
               <div
-                className={cn(
-                  "px-8 min-h-screen",
-                  page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
-                )}
+                ref={scrollContainerRef}
+                className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
               >
-                <div
-                  className={cn(
-                    page.icon ? "mb-4 mt-4" : "mt-4",
-                    page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
-                  )}
-                >
-                  {!isLocalFolderPage && (
-                    <div className={cn(
-                      "group relative mb-4",
-                      !page.icon && "min-h-[40px]"
-                    )}>
-                      <IconSelector
-                        value={page.icon}
-                        onChange={(icon) =>
-                          !page.trashedAt &&
-                          !page.isLocked &&
-                          updatePage(activePageId, { icon })
-                        }
-                        onFirstOpen={() => {
-                          if (!page.icon) {
-                            const defaultEmojis = ["📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "🔖", "📚", "✨"];
-                            const randomEmoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
-                            updatePage(activePageId, { icon: randomEmoji });
-                          }
-                        }}
-                      >
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
-                            page.icon
-                              ? "opacity-100 scale-100"
-                              : page.trashedAt || page.isLocked
-                                ? "opacity-0"
-                                : isNewPage
-                                  ? "opacity-100 animate-slow-pulse hover:scale-105"
-                                  : "opacity-0 group-hover:opacity-100 hover:scale-105",
-                          )}
-                        >
-                          {page.icon ? (
-                            <div className="flex items-center justify-center h-16 w-16 text-6xl">
-                              {(LucideIcons as any)[page.icon] ? (
-                                (() => {
-                                  const Icon = (LucideIcons as any)[page.icon];
-                                  return <Icon className="h-14 w-14" />;
-                                })()
-                              ) : (
-                                <span>{page.icon}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
-                              <LucideIcons.Smile className="h-4 w-4" />
-                              <span>添加图标</span>
-                            </div>
-                          )}
-                        </Button>
-                      </IconSelector>
-                    </div>
-                  )}
-                </div>
+                {(() => {
+                  // 判断是否是新页面（创建时间等于更新时间且内容为空）
+                  const isNewPage =
+                    page.createdAt === page.updatedAt &&
+                    (!page.content?.content?.[1]?.content ||
+                      page.content.content[1].content.length === 0);
 
-                <Editor editable={!page.isLocked && !page.trashedAt} />
+                  // 判断是否有实际内容（除了标题行之外还有内容）
+                  const hasRealContent =
+                    page.content?.content &&
+                    page.content.content.length > 2;
+
+                  return (
+                    <div
+                      className={cn(
+                        "px-8 min-h-screen",
+                        page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          page.icon ? "mb-4 mt-4" : "mt-4",
+                          page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
+                        )}
+                      >
+                        {!isLocalFolderPage && (
+                          <div className={cn(
+                            "group relative mb-4",
+                            !page.icon && "min-h-[40px]"
+                          )}>
+                            <IconSelector
+                              value={page.icon}
+                              onChange={(icon) =>
+                                !page.trashedAt &&
+                                !page.isLocked &&
+                                updatePage(activePageId, { icon })
+                              }
+                              onFirstOpen={() => {
+                                if (!page.icon) {
+                                  const defaultEmojis = ["📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "🔖", "📚", "✨"];
+                                  const randomEmoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
+                                  updatePage(activePageId, { icon: randomEmoji });
+                                }
+                              }}
+                            >
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
+                                  page.icon
+                                    ? "opacity-100 scale-100"
+                                    : page.trashedAt || page.isLocked
+                                      ? "opacity-0"
+                                      : isNewPage
+                                        ? "opacity-100 animate-slow-pulse hover:scale-105"
+                                        : "opacity-0 group-hover:opacity-100 hover:scale-105",
+                                )}
+                              >
+                                {page.icon ? (
+                                  <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                                    {(LucideIcons as any)[page.icon] ? (
+                                      (() => {
+                                        const Icon = (LucideIcons as any)[page.icon];
+                                        return <Icon className="h-14 w-14" />;
+                                      })()
+                                    ) : (
+                                      <span>{page.icon}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                                    <LucideIcons.Smile className="h-4 w-4" />
+                                    <span>添加图标</span>
+                                  </div>
+                                )}
+                              </Button>
+                            </IconSelector>
+                          </div>
+                        )}
+                      </div>
+
+                      <Editor editable={!page.isLocked && !page.trashedAt} />
+                    </div>
+                  );
+                })()}
               </div>
-            );
-          })() : (
-            <PageEmptyState />
-          )}
-        </div>
+            </div>
+          </>
+        ) : (
+          <PageEmptyState />
+        )}
       </main>
       </div>
     </div>

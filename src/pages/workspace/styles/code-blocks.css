@@ -11,13 +11,8 @@
   line-height: 1.7;
   color: var(--code-fg);
   position: relative;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
   /* Ensure tabs render with standard width */
   tab-size: 2;
-}
-
-.dark .ProseMirror pre {
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ProseMirror pre code {
@@ -405,7 +400,60 @@
   color: #7dcfff;
 }
 
-/* 5. Placeholder for 'github-light-mod' reused as Tokyo Day */
+/* 5. Nord / Nord Light */
+.nord {
+  --code-bg: #2e3440;
+  --code-fg: #d8dee9;
+  --code-border: #3b4252;
+  --code-line-number: #616e88;
+}
+.nord .ProseMirror pre .hljs-keyword {
+  color: #81a1c1;
+}
+.nord .ProseMirror pre .hljs-title {
+  color: #88c0d0;
+}
+.nord .ProseMirror pre .hljs-string {
+  color: #a3be8c;
+}
+.nord .ProseMirror pre .hljs-comment {
+  color: #616e88;
+  font-style: italic;
+}
+.nord .ProseMirror pre .hljs-number {
+  color: #b48ead;
+}
+.nord .ProseMirror pre .hljs-built_in {
+  color: #8fbcbb;
+}
+
+.nord-light {
+  --code-bg: #eceff4;
+  --code-fg: #2e3440;
+  --code-border: #d8dee9;
+  --code-line-number: #8f98aa;
+}
+.nord-light .ProseMirror pre .hljs-keyword {
+  color: #5e81ac;
+}
+.nord-light .ProseMirror pre .hljs-title {
+  color: #5e81ac;
+}
+.nord-light .ProseMirror pre .hljs-string {
+  color: #6b8f4e;
+}
+.nord-light .ProseMirror pre .hljs-comment {
+  color: #7f8ca3;
+  font-style: italic;
+}
+.nord-light .ProseMirror pre .hljs-number {
+  color: #a16ca1;
+}
+.nord-light .ProseMirror pre .hljs-built_in {
+  color: #4c7a7d;
+}
+
+/* 6. Placeholder for 'github-light-mod' reused as Tokyo Day */
 .github-light-mod {
   --code-bg: #d5d6db;
   --code-fg: #343b58;

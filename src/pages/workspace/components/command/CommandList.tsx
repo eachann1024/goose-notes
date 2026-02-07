@@ -159,11 +159,14 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
 
             const Icon = item.icon;
             return (
-              <button
+              <Button
                 key={index}
+                type="button"
+                variant="ghost"
+                size="sm"
                 data-index={index}
                 className={cn(
-                  "relative flex cursor-pointer items-center rounded-[3px] px-2 py-1 min-h-[28px] text-sm outline-none w-full text-left transition-colors",
+                  "relative flex h-auto min-h-[28px] w-full cursor-pointer items-center justify-start rounded-[3px] px-2 py-1 text-left text-sm outline-none transition-colors whitespace-normal",
                   index === selectedIndex
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-accent/50 text-foreground/80",
@@ -213,7 +216,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                     {item.shortcut}
                   </div>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>

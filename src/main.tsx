@@ -4,6 +4,7 @@ import "./index.css";
 import "./fonts.css";
 import App from "./App.tsx";
 import { applyFontVariables, preloadFonts } from "./lib/fontLoader";
+import { UToolsAdapter } from "./lib/utools";
 import { useSettings } from "./stores/useSettings";
 
 const rootElement = document.getElementById("root");
@@ -13,16 +14,12 @@ if (!rootElement) {
 
 const settings = useSettings.getState();
 
-const initBrowserFs = async () => {
-  if (typeof window !== "undefined" && !window.utools) {
-    const { browserGooseFs } = await import("./lib/browser-fs");
-    await browserGooseFs.restoreLastDirectory?.();
-    window.gooseFs = browserGooseFs;
-  }
+const initHostFs = async () => {
+  await UToolsAdapter.ensureGooseFs();
 };
 
 const bootstrap = async () => {
-  await initBrowserFs();
+  await initHostFs();
   applyFontVariables(settings.customFonts);
   preloadFonts();
 

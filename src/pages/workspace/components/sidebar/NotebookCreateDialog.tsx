@@ -1,7 +1,6 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
-import { BookOpen, X } from "lucide-react";
-import { createPortal } from "react-dom";
+import { BookOpen } from "lucide-react";
 
 interface NotebookCreateDialogProps {
   open: boolean;
@@ -28,46 +27,35 @@ export function NotebookCreateDialog({
 }: NotebookCreateDialogProps) {
   const createDialogContentRef = useRef<HTMLDivElement>(null);
 
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 bg-background flex items-center justify-center p-6 animate-in fade-in duration-200">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/3 rounded-full blur-2xl" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/4 rounded-full blur-2xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/3 to-transparent rounded-full" />
-      </div>
-
-      {/* 关闭按钮 */}
-      <button
-        onClick={() => onOpenChange(false)}
-        className="absolute top-6 right-6 p-2 rounded-full hover:bg-gradient-to-br hover:from-muted/60 hover:to-muted/40 transition-all duration-200 z-10"
-      >
-        <X className="w-5 h-5 text-muted-foreground" />
-      </button>
-
+  return (
+    <DialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      layout="fullscreen"
+      contentClassName="bg-[hsl(var(--goose-shell-bg))]"
+      bodyClassName="relative h-full overflow-y-auto p-6 animate-in fade-in duration-200"
+    >
       {/* 内容卡片 */}
-      <div className="relative w-full max-w-md">
+      <div ref={createDialogContentRef} className="relative mx-auto w-full max-w-md py-6">
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 mb-4 shadow-xl shadow-primary/20">
-            <BookOpen className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[14px] bg-[hsl(var(--goose-selected-bg))] mb-4 shadow-[0_10px_22px_rgba(15,23,42,0.1)]">
+            <BookOpen className="w-8 h-8 text-foreground/80" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">新建记事本</h1>
           <p className="text-muted-foreground">创建一个新的记事本</p>
         </div>
 
         {/* 表单卡片 */}
-        <div className="bg-gradient-to-br from-card/95 to-card/90 backdrop-blur-[1px] border-2 rounded-2xl p-6 shadow-lg space-y-4">
+        <div className="bg-card backdrop-blur-[1px] border-0 rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
           {error && (
-            <div className="text-sm text-destructive bg-gradient-to-r from-destructive/15 to-destructive/5 px-3 py-2 rounded-lg">
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-[10px]">
               {error}
             </div>
           )}
 
           <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground">选择图标</label>
+            <Label className="text-sm font-medium text-muted-foreground">选择图标</Label>
             <div className="flex justify-center">
               <Suspense fallback={<Button variant="outline" className="h-20 w-20 text-3xl">...</Button>}>
                 <IconSelector
@@ -77,7 +65,7 @@ export function NotebookCreateDialog({
                 >
                   <Button
                     variant="outline"
-                    className="h-20 w-20 p-0 hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/5 hover:border-primary/50 transition-all duration-200"
+                    className="h-20 w-20 p-0 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] transition-all duration-200"
                   >
                     {renderNotebookIcon(icon, "h-10 w-10 text-4xl")}
                   </Button>
@@ -87,9 +75,9 @@ export function NotebookCreateDialog({
           </div>
 
           <div className="space-y-3">
-            <label htmlFor="new-notebook-name" className="text-sm font-medium text-muted-foreground">
+            <Label htmlFor="new-notebook-name" className="text-sm font-medium text-muted-foreground">
               记事本名称
-            </label>
+            </Label>
             <Input
               id="new-notebook-name"
               value={name}
@@ -116,7 +104,7 @@ export function NotebookCreateDialog({
             variant="outline"
             size="lg"
             onClick={() => onOpenChange(false)}
-            className="min-w-[100px]"
+            className="min-w-[100px] flex-1"
           >
             取消
           </Button>
@@ -124,7 +112,7 @@ export function NotebookCreateDialog({
             size="lg"
             onClick={onCreate}
             disabled={!name.trim()}
-            className="min-w-[100px] shadow-lg shadow-primary/20"
+            className="min-w-[100px] flex-1"
           >
             创建
           </Button>
@@ -132,10 +120,9 @@ export function NotebookCreateDialog({
 
         {/* 快捷键提示 */}
         <p className="text-center text-xs text-muted-foreground mt-4">
-          按 <kbd className="px-1.5 py-0.5 rounded bg-gradient-to-r from-muted/80 to-muted/60 text-muted-foreground text-xs">Enter</kbd> 快速创建
+          按 <kbd className="px-1.5 py-0.5 rounded-[10px] bg-muted text-muted-foreground text-xs">Enter</kbd> 快速创建
         </p>
       </div>
-    </div>,
-    document.body
+    </DialogShell>
   );
 }
