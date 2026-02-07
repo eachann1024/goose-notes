@@ -395,9 +395,9 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
           )}
 
           {tab === "icon" && (
-             <ScrollArea className="h-full">
+             <ScrollArea className="h-full bg-background">
                <TooltipProvider delayDuration={0}>
-                 <div className="p-3 grid grid-cols-6 gap-1">
+                 <div className="p-3 grid grid-cols-6 gap-1 bg-background">
                     {filteredIcons.map((iconName) => {
                       const Icon = (LucideIcons as any)[iconName];
                       return (
