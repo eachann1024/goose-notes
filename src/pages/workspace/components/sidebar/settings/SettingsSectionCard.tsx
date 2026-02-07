@@ -9,7 +9,7 @@ interface SettingsSectionCardProps {
   tone?: SettingsSectionTone;
   className?: string;
   contentClassName?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function SettingsSectionCard({
@@ -45,7 +45,9 @@ export function SettingsSectionCard({
         </header>
       ) : null}
 
-      <div className={cn("space-y-4", contentClassName)}>{children}</div>
+      {children ? (
+        <div className={cn("space-y-4", contentClassName)}>{children}</div>
+      ) : null}
     </section>
   );
 }

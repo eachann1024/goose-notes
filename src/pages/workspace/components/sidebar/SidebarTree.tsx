@@ -941,7 +941,10 @@ export function SidebarTree({
     );
     rightNestActiveRef.current = horizontalNestEnabled;
 
-    let overRectForIntent = over.rect;
+    let overRectForIntent: { top: number; height: number } = {
+      top: over.rect.top,
+      height: over.rect.height,
+    };
     const overVisibleIndex = visibleIndexMap.get(overItemId);
     if (overVisibleIndex !== undefined && scrollRef.current) {
       const containerRect = scrollRef.current.getBoundingClientRect();
