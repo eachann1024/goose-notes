@@ -57,9 +57,9 @@ const fontPlaceholders = {
   mono: "例：JetBrains Mono",
 };
 const fontPreviewText = {
-  default: "Goose Note 字体预览 Aa123",
-  serif: "春风又绿江南岸 Aa123",
-  mono: "const font = 'Aa123_鹅';",
+  default: "字体预览 Font Preview：Project Notes v2.1, Weekly Plan, Design Review, Alpha Beta Gamma 0123456789",
+  serif: "衬线预览 Serif Sample：山高水长，风物有信；Reading Journal, Chapter 08, Classic Typography 0123456789",
+  mono: "Monospace Preview: const releaseTag = 'build_2026_Q1_rc07'; function renderPreview(){ return 'AaBbCc 0123456789'; }",
 };
 
 const APPEARANCE_OPTION_ROW_CLASS =
@@ -239,7 +239,7 @@ export function SettingsAppearance({
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 codeStyle === t.value
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
             >
@@ -287,7 +287,9 @@ export function SettingsAppearance({
                   fontFamily: customFonts[type].font || getFontPreview(type),
                 }}
               >
-                <span className="block min-w-0 truncate">{fontPreviewText[type]}</span>
+                <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {fontPreviewText[type]}
+                </span>
               </div>
             </div>
           ))}

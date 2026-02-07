@@ -411,8 +411,8 @@ export function Sidebar({ className }: SidebarProps) {
               onRequestRename={openRenameDialog}
             />
 
-            <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
-              <div className="mt-1">
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="mt-1 shrink-0">
                 <SectionHeader
                   title={isLocalFolder ? "本地文件夹" : "页面"}
                   onSearch={handleSearch}
@@ -420,7 +420,7 @@ export function Sidebar({ className }: SidebarProps) {
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                 />
               </div>
-              <div className="pl-1 pr-2 pb-10">
+              <div ref={scrollAreaRef} className="pl-1 pr-2 flex-1 min-h-0">
                 <SidebarTree
                   activeNotebookId={activeNotebookId}
                   width={width - 12}

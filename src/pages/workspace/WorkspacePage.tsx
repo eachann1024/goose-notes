@@ -267,7 +267,7 @@ export function WorkspacePage() {
                   }
                 />
 
-                <div className="workspace-editor-surface relative ml-0 mr-2 mt-1 mb-2 flex-1 overflow-hidden">
+                <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
                   <div
                     ref={scrollContainerRef}
                     className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
@@ -294,7 +294,7 @@ export function WorkspacePage() {
                         >
                           <div
                             className={cn(
-                              page.icon ? "mb-4 mt-4" : "mt-4",
+                              page.icon ? "mb-3 mt-2" : "mt-1",
                               isEditorFullWidth
                                 ? "max-w-full"
                                 : "max-w-3xl mx-auto",
@@ -303,8 +303,8 @@ export function WorkspacePage() {
                             {!isLocalFolderPage && (
                               <div
                                 className={cn(
-                                  "group relative mb-4",
-                                  !page.icon && "min-h-[40px]",
+                                  "group relative mb-2",
+                                  !page.icon && "min-h-[20px]",
                                 )}
                               >
                                 <IconSelector

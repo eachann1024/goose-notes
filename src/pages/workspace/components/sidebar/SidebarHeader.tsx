@@ -77,7 +77,7 @@ export function SidebarHeader({
 
   return (
     <>
-      <div className="pl-1 pr-2 h-12 flex items-center shrink-0">
+      <div className="pl-1 pr-2 h-12 pt-0 flex items-start shrink-0">
         <div className="flex items-center w-full">
           <NotebookSwitcher />
         </div>
@@ -100,7 +100,7 @@ export function SidebarHeader({
                   className={cn(
                     topTabButtonClass,
                     !isSettingsOpen && currentView === "pages"
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                   aria-label="页面"
@@ -118,7 +118,7 @@ export function SidebarHeader({
                   className={cn(
                     topTabButtonClass,
                     !isSettingsOpen && currentView === "trash"
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                   aria-label="垃圾箱"
@@ -136,7 +136,7 @@ export function SidebarHeader({
                   className={cn(
                     topTabButtonClass,
                     isSettingsOpen
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                   aria-label="设置"

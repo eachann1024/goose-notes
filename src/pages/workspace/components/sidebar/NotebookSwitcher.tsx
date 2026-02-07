@@ -173,7 +173,7 @@ export function NotebookSwitcher() {
           >
             <Button
               variant="ghost"
-              className="w-full justify-between px-1 h-auto py-1 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[var(--goose-interactive-hover)] hover:text-foreground transition-colors"
+              className="w-full justify-between px-1.5 h-10 py-0 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[var(--goose-interactive-hover)] hover:text-foreground transition-colors"
             >
               <div className="flex items-center gap-2 truncate">
                 {activeNotebook &&
@@ -187,7 +187,7 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[248px] before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="min-w-[248px] w-[calc(var(--radix-dropdown-menu-trigger-width)+0.75rem)] px-1 pb-1 pt-2 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           align="start"
           sideOffset={-4}
           forceMount
@@ -205,9 +205,10 @@ export function NotebookSwitcher() {
               key={notebook.id}
               className={cn(
                 "flex items-center justify-between gap-2 group",
+                "min-h-11 py-2",
                 notebook.localPathMissing && "opacity-50",
                 activeNotebookId === notebook.id &&
-                  "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]",
+                  "bg-[var(--goose-interactive-selected)] text-foreground",
               )}
               onClick={() => {
                 if (notebook.localPathMissing) return;
@@ -288,17 +289,16 @@ export function NotebookSwitcher() {
               </div>
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-2 pt-1.5 pb-2">
+          <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-0 pt-1.5 pb-1.5">
             <DropdownMenuItem
-              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2 text-xs font-medium"
+              className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
               onClick={handleCreate}
             >
               <LucideIcons.BookPlus className="h-4 w-4" />
               新建记事本
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="justify-start gap-2 whitespace-nowrap rounded-[8px] px-2.5 py-2 text-xs font-medium"
+              className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-4 w-4" />
