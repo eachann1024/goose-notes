@@ -92,14 +92,14 @@ export function SettingsDataPanel({
                     "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected
-                      ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                      ? "border-transparent bg-white text-slate-900 shadow-none"
                       : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] dark:bg-[hsl(var(--foreground)/0.08)] hover:bg-[hsl(var(--goose-selected-bg))] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
                   )}
                 >
                   <span className="shrink-0 text-lg">{notebook.icon || "📓"}</span>
                   <span className="truncate text-sm">{notebook.name}</span>
                   {isSelected ? (
-                    <Check className="ml-auto h-4 w-4 shrink-0 text-foreground/75" />
+                    <Check className="ml-auto h-4 w-4 shrink-0 text-slate-700" />
                   ) : null}
                 </button>
               );
@@ -116,7 +116,7 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "md"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  ? "border-transparent bg-white text-slate-900 shadow-none"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
               )}
             >
@@ -132,7 +132,7 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "html"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  ? "border-transparent bg-white text-slate-900 shadow-none"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
               )}
             >

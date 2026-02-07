@@ -96,7 +96,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "light" && "bg-background shadow-sm",
+                theme === "light" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setTheme("light")}
             >
@@ -107,7 +107,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "dark" && "bg-background shadow-sm",
+                theme === "dark" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setTheme("dark")}
             >
@@ -118,7 +118,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "system" && "bg-background shadow-sm",
+                theme === "system" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setTheme("system")}
             >
@@ -142,7 +142,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "small" && "bg-background shadow-sm",
+                uiFontSize === "small" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setUIFontSize("small")}
             >
@@ -153,7 +153,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "normal" && "bg-background shadow-sm",
+                uiFontSize === "normal" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setUIFontSize("normal")}
             >
@@ -164,7 +164,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "large" && "bg-background shadow-sm",
+                uiFontSize === "large" && "bg-white text-slate-900 shadow-none",
               )}
               onClick={() => setUIFontSize("large")}
             >
@@ -187,7 +187,7 @@ export function SettingsAppearance({
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 codeStyle === t.value
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  ? "border-transparent bg-white text-slate-900 shadow-none"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[hsl(var(--goose-selected-bg)/0.76)] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
               )}
             >
