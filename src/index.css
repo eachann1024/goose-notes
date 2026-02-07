@@ -11,7 +11,7 @@
     --goose-selected-bg: 60 6.67% 94.12%;
     --goose-interactive-hover: hsl(var(--goose-selected-bg) / 0.76);
     --goose-interactive-selected: hsl(var(--goose-selected-bg));
-    --goose-interactive-selected-border: hsl(var(--foreground) / 0.12);
+    --goose-interactive-selected-border: transparent;
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 68.24%;
     --background: var(--goose-shell-bg);
@@ -50,7 +50,7 @@
     --goose-selected-bg: 60 2.4% 16.1%;
     --goose-interactive-hover: hsl(var(--foreground) / 0.18);
     --goose-interactive-selected: hsl(var(--foreground) / 0.2);
-    --goose-interactive-selected-border: hsl(var(--foreground) / 0.18);
+    --goose-interactive-selected-border: transparent;
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 60 2.2% 44.5%;
     --background: var(--goose-shell-bg);
@@ -86,6 +86,28 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: 0.01em;
+  }
+
+  .tauri-mac-title-drag-region {
+    position: fixed;
+    top: 0;
+    /* 避开 macOS 左上角红绿灯按钮区域，避免显示抓手光标 */
+    left: 92px;
+    right: 0;
+    height: 38px;
+    z-index: 90;
+    background: hsl(var(--goose-shell-bg));
+    pointer-events: auto;
+    cursor: grab;
+  }
+
+  .tauri-mac-title-drag-region:active {
+    cursor: grabbing;
+  }
+
+  .tauri-mac-overlay-active .workspace-shell {
+    box-sizing: border-box;
+    padding-top: 38px;
   }
 
   ::selection {

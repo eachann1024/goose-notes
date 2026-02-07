@@ -579,8 +579,48 @@ function App() {
     setEditorFontSize,
   ]);
 
+  const isTauriMacOverlay =
+    UToolsAdapter.isTauri &&
+    typeof window !== "undefined" &&
+    /Mac|iPod|iPhone|iPad/.test(window.navigator.platform || "");
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.toggle(
+      "tauri-mac-overlay-active",
+      isTauriMacOverlay,
+    );
+    return () => {
+      document.documentElement.classList.remove("tauri-mac-overlay-active");
+    };
+  }, [isTauriMacOverlay]);
+
+  const handleMacOverlayDragMouseDown = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (!isTauriMacOverlay) return;
+    if (event.button !== 0) return;
+
+    void (async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        await getCurrentWindow().startDragging();
+      } catch {
+        // keep native drag-region behavior as fallback
+      }
+    })();
+  };
+
   return (
     <>
+      {isTauriMacOverlay && (
+        <div
+          data-tauri-drag-region
+          className="tauri-mac-title-drag-region"
+          aria-hidden="true"
+          onMouseDown={handleMacOverlayDragMouseDown}
+        />
+      )}
       <WorkspacePage />
       <Toaster />
     </>

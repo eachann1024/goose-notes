@@ -18,6 +18,7 @@
     "core:window:allow-set-theme",
     "core:window:allow-theme",
     "core:window:allow-set-background-color",
+    "core:window:allow-start-dragging",
     "core:app:allow-set-app-theme",
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
