@@ -58,11 +58,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
-    desktop,
-    setSearchHotkey,
-    setSearchHotkeyEnabled,
-    setWakeHotkey,
-    setWakeHotkeyEnabled,
     customFonts,
     setCustomLabel,
     setCustomFont,
@@ -117,6 +112,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         notebooks,
         Object.values(pages),
       );
+      toast.success("导出成功");
+    } catch (err) {
+      console.error("Export failed", err);
+      toast.error("导出失败", {
+        description: "当前仅支持在 uTools 插件内导出，请稍后重试。",
+      });
     } finally {
       setExporting(false);
     }
@@ -274,16 +275,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
-                wakeHotkey={desktop.wakeHotkey ?? ""}
-                wakeHotkeyEnabled={desktop.wakeHotkeyEnabled ?? true}
-                wakeHotkeyStatus={desktop.wakeHotkeyStatus}
-                searchHotkey={desktop.searchHotkey ?? ""}
-                searchHotkeyEnabled={desktop.searchHotkeyEnabled ?? true}
-                searchHotkeyStatus={desktop.searchHotkeyStatus}
-                setWakeHotkey={setWakeHotkey}
-                setWakeHotkeyEnabled={setWakeHotkeyEnabled}
-                setSearchHotkey={setSearchHotkey}
-                setSearchHotkeyEnabled={setSearchHotkeyEnabled}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}

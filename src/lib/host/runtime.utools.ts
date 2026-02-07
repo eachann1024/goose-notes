@@ -3,59 +3,24 @@ import type { HostDoc, HostRuntime, HostPutResult, HostRemoveResult } from "./ty
 const isUToolsEnv = () =>
   typeof window !== "undefined" && typeof window.utools !== "undefined";
 
-const readFallbackDoc = <T>(id: string): HostDoc<T> | null => {
-  const item = localStorage.getItem(id);
-  if (!item) return null;
-  try {
-    return JSON.parse(item) as HostDoc<T>;
-  } catch {
-    return null;
-  }
-};
-
-const putFallbackDoc = <T>(id: string, data: T, rev?: string): HostPutResult => {
-  try {
-    const doc = { _id: id, _rev: rev || Date.now().toString(), data };
-    localStorage.setItem(id, JSON.stringify(doc));
-    return { id, ok: true, rev: doc._rev };
-  } catch (error) {
-    return { id, ok: false, error };
-  }
-};
-
-const removeFallbackDoc = (id: string): HostRemoveResult => {
-  localStorage.removeItem(id);
-  return { id, ok: true };
-};
-
-const allFallbackDocs = <T>(prefix = ""): Array<HostDoc<T>> => {
-  const docs: Array<HostDoc<T>> = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith(prefix)) continue;
-    const doc = readFallbackDoc<T>(key);
-    if (doc) docs.push(doc);
-  }
-  return docs;
-};
+const getUTools = () => (isUToolsEnv() ? (window as any).utools : null);
 
 export const hostRuntime: HostRuntime = {
   kind: "utools",
   get isUTools() {
     return isUToolsEnv();
   },
-  isTauri: false,
-  get supportsSublist() {
-    if (!isUToolsEnv()) return false;
-    const utools = (window as any).utools;
-    return typeof utools?.setSublistFn === "function";
-  },
+  supportsSublist: false,
   supportsWakeHotkey: false,
+  ensureGooseFs: async () => {},
   db: {
-    put: <T>(id: string, data: T, rev?: string) => {
-      if (!isUToolsEnv()) return putFallbackDoc(id, data, rev);
+    put: <T>(id: string, data: T, rev?: string): HostPutResult => {
+      const utools = getUTools();
+      if (!utools) {
+        return { id, ok: false, error: "uTools 环境不可用" };
+      }
       try {
-        return (window as any).utools.db.put({
+        return utools.db.put({
           _id: id,
           _rev: rev,
           data,
@@ -64,128 +29,107 @@ export const hostRuntime: HostRuntime = {
         return { id, ok: false, error };
       }
     },
-    get: <T>(id: string) => {
-      if (!isUToolsEnv()) return readFallbackDoc<T>(id);
+    get: <T>(id: string): HostDoc<T> | null => {
+      const utools = getUTools();
+      if (!utools) return null;
       try {
-        return (window as any).utools.db.get(id);
+        return utools.db.get(id);
       } catch {
         return null;
       }
     },
-    remove: (id: string) => {
-      if (!isUToolsEnv()) return removeFallbackDoc(id);
+    remove: (id: string): HostRemoveResult => {
+      const utools = getUTools();
+      if (!utools) {
+        return { id, ok: false, error: "uTools 环境不可用" };
+      }
       try {
-        return (window as any).utools.db.remove(id);
+        return utools.db.remove(id);
       } catch (error) {
         return { id, ok: false, error };
       }
     },
-    allDocs: <T>(prefix = "") => {
-      if (!isUToolsEnv()) return allFallbackDocs<T>(prefix);
+    allDocs: <T>(prefix = ""): Array<HostDoc<T>> => {
+      const utools = getUTools();
+      if (!utools) return [];
       try {
-        return (window as any).utools.db.allDocs(prefix);
+        return utools.db.allDocs(prefix);
       } catch {
         return [];
       }
     },
     postAttachment: (id: string, data: Uint8Array, type: string) => {
-      if (!isUToolsEnv()) {
-        // Web fallback: 存到 localStorage（base64 编码）
-        try {
-          const base64 = btoa(String.fromCharCode(...data));
-          localStorage.setItem(`att:${id}`, base64);
-          localStorage.setItem(`att-type:${id}`, type);
-          return { id, ok: true };
-        } catch (error) {
-          return { id, ok: false, error };
-        }
+      const utools = getUTools();
+      if (!utools) {
+        return { id, ok: false, error: "uTools 环境不可用" };
       }
       try {
-        return (window as any).utools.db.postAttachment(id, data, type);
+        return utools.db.postAttachment(id, data, type);
       } catch (error) {
         return { id, ok: false, error };
       }
     },
     getAttachment: (id: string) => {
-      if (!isUToolsEnv()) {
-        const base64 = localStorage.getItem(`att:${id}`);
-        if (!base64) return null;
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        return bytes;
-      }
+      const utools = getUTools();
+      if (!utools) return null;
       try {
-        return (window as any).utools.db.getAttachment(id);
+        return utools.db.getAttachment(id);
       } catch {
         return null;
       }
     },
     getAttachmentType: (id: string) => {
-      if (!isUToolsEnv()) {
-        return localStorage.getItem(`att-type:${id}`);
-      }
+      const utools = getUTools();
+      if (!utools) return null;
       try {
-        return (window as any).utools.db.getAttachmentType(id);
+        return utools.db.getAttachmentType(id);
       } catch {
         return null;
       }
     },
   },
   getUser: () => {
-    if (!isUToolsEnv()) {
-      return {
-        nickname: "Local User",
-        avatar: undefined,
-        type: "web",
-      };
-    }
-    return (window as any).utools.getUser();
+    const utools = getUTools();
+    if (!utools) return null;
+    return utools.getUser();
   },
   copyToClipboard: (text: string) => {
-    if (isUToolsEnv()) {
-      (window as any).utools.copyText(text);
-      return;
-    }
-    void navigator.clipboard.writeText(text);
+    const utools = getUTools();
+    if (!utools) return;
+    utools.copyText(text);
   },
   showNotification: (body: string) => {
-    if (isUToolsEnv()) {
-      (window as any).utools.showNotification(body);
-      return;
-    }
-    console.log("Notification:", body);
+    const utools = getUTools();
+    if (!utools) return;
+    utools.showNotification(body);
   },
   openUrl: (url: string, useInternalBrowser = true) => {
-    if (isUToolsEnv()) {
-      const utools = (window as any).utools;
-      if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
-        utools.ubrowser.goto(url).run();
-        return;
-      }
-      utools?.shellOpenExternal?.(url);
+    const utools = getUTools();
+    if (!utools) return;
+    if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
+      utools.ubrowser.goto(url).run();
       return;
     }
-    window.open(url, "_blank");
+    utools?.shellOpenExternal?.(url);
   },
   setSublistFn: (callback) => {
-    if (!isUToolsEnv()) return;
-    const utools = (window as any).utools;
+    const utools = getUTools();
+    if (!utools) return;
     if (typeof utools?.setSublistFn === "function") {
       utools.setSublistFn(callback);
     }
   },
   setExpendHeight: (height: number) => {
-    if (!isUToolsEnv()) return false;
-    const utools = (window as any).utools;
+    const utools = getUTools();
+    if (!utools) return false;
     if (typeof utools?.setExpendHeight === "function") {
       return utools.setExpendHeight(height);
     }
     return false;
   },
   redirect: (label, payload) => {
-    if (!isUToolsEnv()) return false;
-    const utools = (window as any).utools;
+    const utools = getUTools();
+    if (!utools) return false;
     if (typeof utools?.redirect === "function") {
       return utools.redirect(label, payload);
     }
@@ -193,12 +137,12 @@ export const hostRuntime: HostRuntime = {
   },
   registerWakeHotkey: async () => ({
     ok: false,
-    error: "uTools 环境不支持 Tauri 全局唤醒快捷键。",
+    error: "uTools 版本不支持全局唤醒快捷键。",
   }),
   unregisterWakeHotkey: async () => {},
   registerSearchHotkey: async () => ({
     ok: false,
-    error: "uTools 环境不支持 Tauri 全局搜索快捷键。",
+    error: "uTools 版本不支持全局搜索快捷键。",
   }),
   unregisterSearchHotkey: async () => {},
 };

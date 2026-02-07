@@ -31,9 +31,8 @@ export interface HostRemoveResult {
 }
 
 export interface HostRuntime {
-  kind: "utools" | "tauri" | "web";
+  kind: "utools";
   isUTools: boolean;
-  isTauri: boolean;
   supportsSublist: boolean;
   supportsWakeHotkey: boolean;
   ensureGooseFs?: () => Promise<void>;

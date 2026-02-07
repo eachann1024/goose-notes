@@ -2,7 +2,6 @@ import { Download, FileText, Globe, Upload } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
-import { SettingsStorage } from "./SettingsStorage";
 
 interface NotebookOption {
   id: string;
@@ -56,9 +55,6 @@ export function SettingsDataPanel({
           管理记事本的导入和导出。
         </p>
       </div>
-
-      {/* Tauri 专属存储设置 */}
-      <SettingsStorage />
 
       <SettingsSectionCard
         title="导入与导出"

@@ -2,7 +2,6 @@ import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { UToolsAdapter } from "@/lib/utools";
 
 export function useDeletePageWithUndo() {
   const { deletePage, restorePage, setActivePage, pages } = usePages();
@@ -14,14 +13,6 @@ export function useDeletePageWithUndo() {
     const isLocalFolder = notebook?.source === "local-folder";
 
     const pageTitle = getPageTitle(page) || "无标题";
-
-    if (isLocalFolder && UToolsAdapter.isTauri) {
-      toast("Tauri 首版暂不支持本地删除，请手动在系统文件夹中处理", {
-        duration: 3000,
-        position: "top-right",
-      });
-      return;
-    }
 
     const deleted = await deletePage(pageId);
 

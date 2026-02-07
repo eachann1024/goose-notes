@@ -96,7 +96,7 @@ body.drag-handle-suppressed .drag-handle {
   outline: none !important;
 }
 
-/* Avoid block-node selection highlight on text blocks (notably in Tauri WebView) */
+/* Avoid block-node selection highlight on text blocks */
 .ProseMirror p.ProseMirror-selectednode,
 .ProseMirror p.tiptap-selected-node,
 .ProseMirror h1.ProseMirror-selectednode,

@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { uToolsStorage } from '@/lib/storage'
-import type { StorageMode, StorageSettings } from '@/lib/tauri-storage/types'
 
 export interface SearchProvider {
     id: string
@@ -36,8 +35,6 @@ export interface DesktopSettings {
     searchHotkeyEnabled: boolean
     wakeHotkeyStatus: DesktopHotkeyStatus
     searchHotkeyStatus: DesktopHotkeyStatus
-    // Tauri 专属存储设置
-    storage?: StorageSettings
 }
 
 export interface PrivacySettings {
@@ -72,7 +69,7 @@ export const EDITOR_FONT_SIZE_MAX = 24
 export const EDITOR_FONT_SIZE_DEFAULT = 16
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N"
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K"
-const DEFAULT_UI_FONT_SIZE: UIFontSize = __HOST_TARGET__ === "utools" ? "small" : "normal"
+const DEFAULT_UI_FONT_SIZE: UIFontSize = "small"
 
 interface SettingsState {
     theme: Theme
@@ -115,10 +112,6 @@ interface SettingsState {
     addCustomAction: (action: Omit<CustomAction, 'id'>) => void
     updateCustomAction: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void
     removeCustomAction: (id: string) => void
-    // Tauri 专属存储设置方法
-    setStorageMode?: (mode: StorageMode) => void
-    setStorageWorkspacePath?: (path: string) => void
-    updateStorageSettings?: (settings: Partial<StorageSettings>) => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -264,16 +257,6 @@ export const useSettings = create<SettingsState>()(
                 searchHotkeyEnabled: true,
                 wakeHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                 searchHotkeyStatus: DEFAULT_HOTKEY_STATUS,
-                storage: __HOST_TARGET__ === 'tauri' ? {
-                    mode: 'hybrid',
-                    workspacePath: '',
-                    autoSync: true,
-                    backupEnabled: true,
-                    backupInterval: 24,
-                    frontmatterEnabled: true,
-                    indexEnabled: true,
-                    searchIndexEnabled: true,
-                } : undefined,
             },
             privacy: {
                 autoOpenLastNote: true,
@@ -453,28 +436,6 @@ export const useSettings = create<SettingsState>()(
                 set((state) => ({
                     customActions: state.customActions.filter((a) => a.id !== id),
                 })),
-            // Tauri 专属存储设置方法
-            setStorageMode: (mode) =>
-                set((state) => ({
-                    desktop: {
-                        ...state.desktop,
-                        storage: { ...state.desktop.storage!, mode },
-                    },
-                })),
-            setStorageWorkspacePath: (path) =>
-                set((state) => ({
-                    desktop: {
-                        ...state.desktop,
-                        storage: { ...state.desktop.storage!, workspacePath: path },
-                    },
-                })),
-            updateStorageSettings: (settings) =>
-                set((state) => ({
-                    desktop: {
-                        ...state.desktop,
-                        storage: { ...state.desktop.storage!, ...settings },
-                    },
-                })),
         }),
         {
             name: 'goose-note-settings',
@@ -529,9 +490,6 @@ export const useSettings = create<SettingsState>()(
                         searchHotkeyEnabled: storedDesktop?.searchHotkeyEnabled ?? true,
                         wakeHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.wakeHotkeyStatus),
                         searchHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.searchHotkeyStatus),
-                        storage: __HOST_TARGET__ === 'tauri'
-                            ? storedDesktop?.storage
-                            : undefined,
                     }
                     if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
                         useSettings.setState({ desktop: mergedDesktop })
@@ -563,43 +521,8 @@ function applyTheme(theme: Theme) {
 }
 
 async function applyNativeWindowTheme(theme: Theme, isDark: boolean) {
-    if (__HOST_TARGET__ !== 'tauri') return
-
-    const targetTheme = theme === 'system' ? null : (isDark ? 'dark' : 'light')
-    const targetBackgroundColor: [number, number, number, number] = isDark
-        ? [32, 32, 32, 255]
-        : [248, 248, 248, 255]
-    let themeError: unknown = null
-    let backgroundError: unknown = null
-
-    try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window")
-        const currentWindow = getCurrentWindow()
-        await currentWindow.setTheme(targetTheme)
-    } catch (error) {
-        themeError = error
-    }
-
-    try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window")
-        const currentWindow = getCurrentWindow()
-        await currentWindow.setBackgroundColor(targetBackgroundColor)
-    } catch (error) {
-        backgroundError = error
-    }
-
-    if (themeError) {
-        try {
-            const { setTheme } = await import("@tauri-apps/api/app")
-            await setTheme(targetTheme)
-        } catch (fallbackError) {
-            console.warn("[settings] Failed to sync native window theme:", themeError, fallbackError)
-        }
-    }
-
-    if (backgroundError) {
-        console.warn("[settings] Failed to sync native window background:", backgroundError)
-    }
+    void theme
+    void isDark
 }
 
 // 监听系统主题变化

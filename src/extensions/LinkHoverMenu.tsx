@@ -105,26 +105,15 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
 
       const href = linkElement.getAttribute("href");
       if (!href) return;
-
-      const isUTools =
-        typeof window !== "undefined" && !!(window as any).utools;
-
-      if (isUTools) {
-        const settings = (window as any).__gooseNoteSettings;
-        const useInternalBrowser = settings?.utools?.openSearchInUtools ?? true;
-        const utools = (window as any).utools;
-
-        if (
-          useInternalBrowser &&
-          typeof utools?.ubrowser?.goto === "function"
-        ) {
-          utools.ubrowser.goto(href).run();
-        } else {
-          utools?.shellOpenExternal?.(href);
-        }
-      } else {
-        window.open(href, "_blank");
+      const settings = (window as any).__gooseNoteSettings;
+      const useInternalBrowser = settings?.utools?.openSearchInUtools ?? true;
+      const utools = (window as any).utools;
+      if (!utools) return;
+      if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
+        utools.ubrowser.goto(href).run();
+        return;
       }
+      utools?.shellOpenExternal?.(href);
     };
 
     linkElement.addEventListener("click", handleClick);
@@ -193,22 +182,15 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   const handleOpenLink = () => {
     const href = linkElement?.getAttribute("href");
     if (!href) return;
-
-    const isUTools = typeof window !== "undefined" && !!(window as any).utools;
-
-    if (isUTools) {
-      const settings = (window as any).__gooseNoteSettings;
-      const useInternalBrowser = settings?.utools?.openSearchInUtools ?? true;
-      const utools = (window as any).utools;
-
-      if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
-        utools.ubrowser.goto(href).run();
-      } else {
-        utools?.shellOpenExternal?.(href);
-      }
-    } else {
-      window.open(href, "_blank");
+    const settings = (window as any).__gooseNoteSettings;
+    const useInternalBrowser = settings?.utools?.openSearchInUtools ?? true;
+    const utools = (window as any).utools;
+    if (!utools) return;
+    if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
+      utools.ubrowser.goto(href).run();
+      return;
     }
+    utools?.shellOpenExternal?.(href);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -4,12 +4,7 @@ import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
 
-const hostTarget =
-  process.env.HOST_TARGET === "tauri"
-    ? "tauri"
-    : process.env.HOST_TARGET === "utools"
-      ? "utools"
-      : "web";
+const hostTarget = "utools";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -82,10 +77,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@host-runtime": path.resolve(
-        __dirname,
-        `./src/lib/host/runtime.${hostTarget}.ts`,
-      ),
+      "@host-runtime": path.resolve(__dirname, "./src/lib/host/runtime.utools.ts"),
     },
   },
 

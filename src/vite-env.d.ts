@@ -2,7 +2,7 @@
 export {}
 
 declare global {
-  const __HOST_TARGET__: "utools" | "tauri" | "web";
+  const __HOST_TARGET__: "utools";
 
   interface GooseFs {
     readDir: (dir: string) => any[];

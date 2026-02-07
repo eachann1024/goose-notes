@@ -354,59 +354,19 @@ async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean>
   return true;
 }
 
-async function saveBlobViaTauri(blob: Blob, filename: string): Promise<boolean> {
-  if (__HOST_TARGET__ !== "tauri") return false;
-
-  try {
-    const { save } = await import("@tauri-apps/plugin-dialog");
-    const targetPath = await save({
-      title: "导出文件",
-      defaultPath: filename,
-    });
-
-    if (typeof targetPath !== "string" || targetPath.trim().length === 0) {
-      return true;
-    }
-
-    const { writeFile } = await import("@tauri-apps/plugin-fs");
-    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    await writeFile(targetPath, bytes, { create: true });
-    await revealItemInDir(targetPath);
-    return true;
-  } catch (error) {
-    console.error("[export] tauri 导出失败:", error);
-    return false;
-  }
-}
-
 async function saveBlobAndReveal(blob: Blob, filename: string): Promise<boolean> {
-  if (await saveBlobViaUTools(blob, filename)) {
-    return true;
-  }
-
-  return saveBlobViaTauri(blob, filename);
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  return saveBlobViaUTools(blob, filename);
 }
 
 async function downloadBlob(blob: Blob, filename: string) {
   try {
-    if (await saveBlobAndReveal(blob, filename)) {
-      return;
-    }
+    const saved = await saveBlobAndReveal(blob, filename);
+    if (saved) return;
+    throw new Error("当前版本仅支持 uTools 导出");
   } catch (error) {
     console.error("[export] 导出后自动打开文件夹失败:", error);
+    throw error;
   }
-
-  triggerBrowserDownload(blob, filename);
 }
 
 export async function importNotebooksFromZip(

@@ -11,10 +11,6 @@ export class UToolsAdapter {
     return hostRuntime.isUTools;
   }
 
-  static get isTauri(): boolean {
-    return hostRuntime.isTauri;
-  }
-
   static get supportsWakeHotkey(): boolean {
     return hostRuntime.supportsWakeHotkey;
   }

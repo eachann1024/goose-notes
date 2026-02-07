@@ -1,18 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
-import { TabBar } from "./pages/workspace/components/tabs/TabBar";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
 import {
   useSettings,
   EDITOR_FONT_SIZE_DEFAULT,
-  DEFAULT_SEARCH_HOTKEY,
-  DEFAULT_WAKE_HOTKEY,
-  type DesktopHotkeyStatus,
 } from "@/stores/useSettings";
 
 const UI_FONT_SIZE_MAP = {
@@ -20,117 +16,6 @@ const UI_FONT_SIZE_MAP = {
   normal: 16,
   large: 18,
 } as const;
-
-const HOTKEY_FAILURE_NOTICE_STORAGE_KEY =
-  "goose-note:hotkey-failure-notice:v1";
-const HOTKEY_FAILURE_NOTICE_TTL = 1000 * 60 * 60 * 24;
-const LEGACY_DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+K";
-
-type HotkeyFailureKind = "wake" | "search";
-
-const normalizeHotkeyForCompare = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/commandorcontrol|cmdorcontrol/gi, "cmdorctrl");
-
-const isSameHotkey = (a: string, b: string) =>
-  normalizeHotkeyForCompare(a) === normalizeHotkeyForCompare(b);
-
-const classifyHotkeyFailureStatus = (
-  error: string | undefined,
-): DesktopHotkeyStatus => {
-  const message = (error ?? "").trim();
-  const lowerMessage = message.toLowerCase();
-
-  if (
-    /already|in use|occupied|conflict|currently registered|taken|exists/i.test(
-      lowerMessage,
-    )
-  ) {
-    return {
-      state: "occupied",
-      message: "快捷键被系统或其他应用占用",
-      rawError: message || undefined,
-    };
-  }
-
-  if (/invalid|parse|accelerator|unsupported|unknown/i.test(lowerMessage)) {
-    return {
-      state: "invalid",
-      message: "快捷键格式或按键组合无效",
-      rawError: message || undefined,
-    };
-  }
-
-  if (/permission|denied|forbidden|not allowed/i.test(lowerMessage)) {
-    return {
-      state: "error",
-      message: "系统权限不足，无法注册全局快捷键",
-      rawError: message || undefined,
-    };
-  }
-
-  return {
-    state: "error",
-    message: "注册失败，请更换组合键后重试",
-    rawError: message || undefined,
-  };
-};
-
-const shouldNotifyHotkeyFailure = (
-  kind: HotkeyFailureKind,
-  shortcut: string,
-): boolean => {
-  if (typeof window === "undefined") return true;
-
-  const normalize = (value: string) =>
-    value.trim().toLowerCase().replace(/\s+/g, " ");
-  const now = Date.now();
-  const signature = [kind, normalize(shortcut)].join("|");
-
-  let notices: Record<string, number> = {};
-  try {
-    const raw = window.localStorage.getItem(HOTKEY_FAILURE_NOTICE_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Record<string, number>;
-      if (parsed && typeof parsed === "object") {
-        notices = parsed;
-      }
-    }
-  } catch {
-    notices = {};
-  }
-
-  const pruned: Record<string, number> = {};
-  for (const [key, timestamp] of Object.entries(notices)) {
-    if (typeof timestamp !== "number") continue;
-    if (now - timestamp <= HOTKEY_FAILURE_NOTICE_TTL) {
-      pruned[key] = timestamp;
-    }
-  }
-
-  const lastShownAt = pruned[signature];
-  const shouldNotify =
-    typeof lastShownAt !== "number" ||
-    now - lastShownAt > HOTKEY_FAILURE_NOTICE_TTL;
-
-  if (shouldNotify) {
-    pruned[signature] = now;
-  }
-
-  try {
-    window.localStorage.setItem(
-      HOTKEY_FAILURE_NOTICE_STORAGE_KEY,
-      JSON.stringify(pruned),
-    );
-  } catch {
-    // ignore storage write failures
-  }
-
-  return shouldNotify;
-};
 
 function App() {
   const {
@@ -142,177 +27,14 @@ function App() {
     customFonts,
     privacy,
     utools,
-    desktop,
-    setSearchHotkey,
-    setWakeHotkeyStatus,
-    setSearchHotkeyStatus,
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
-  const registeredWakeHotkeyRef = useRef<string | null>(null);
-  const registeredSearchHotkeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!UToolsAdapter.isTauri) return;
-
-    let disposed = false;
-
-    const cleanupRegisteredHotkeys = async () => {
-      const previousWakeHotkey = registeredWakeHotkeyRef.current;
-      if (previousWakeHotkey) {
-        await UToolsAdapter.unregisterWakeHotkey(previousWakeHotkey);
-        registeredWakeHotkeyRef.current = null;
-      }
-
-      const previousSearchHotkey = registeredSearchHotkeyRef.current;
-      if (previousSearchHotkey) {
-        await UToolsAdapter.unregisterSearchHotkey(previousSearchHotkey);
-        registeredSearchHotkeyRef.current = null;
-      }
-    };
-
-    const applyDesktopHotkeys = async () => {
-      await cleanupRegisteredHotkeys();
-
-      const nextWakeHotkey =
-        (desktop.wakeHotkey ?? "").trim() || DEFAULT_WAKE_HOTKEY;
-      if (!desktop.wakeHotkeyEnabled) {
-        setWakeHotkeyStatus({
-          state: "disabled",
-          message: "已关闭全局唤醒快捷键",
-        });
-      } else {
-        const wakeResult =
-          await UToolsAdapter.registerWakeHotkey(nextWakeHotkey);
-        if (disposed) {
-          if (wakeResult.ok) {
-            await UToolsAdapter.unregisterWakeHotkey(nextWakeHotkey);
-          }
-        } else if (wakeResult.ok) {
-          registeredWakeHotkeyRef.current = nextWakeHotkey;
-          setWakeHotkeyStatus({
-            state: "active",
-            message: "快捷键已生效",
-          });
-        } else {
-          setWakeHotkeyStatus(classifyHotkeyFailureStatus(wakeResult.error));
-          const shouldNotify = shouldNotifyHotkeyFailure("wake", nextWakeHotkey);
-          if (shouldNotify) {
-            toast.error("当前唤醒快捷键不可用，请在设置中更换可用组合键", {
-              id: "wake-hotkey-change-required",
-              duration: 3200,
-            });
-          }
-        }
-      }
-
-      const storedSearchHotkey = (desktop.searchHotkey ?? "").trim();
-      const shouldMigrateLegacySearchHotkey = isSameHotkey(
-        storedSearchHotkey,
-        LEGACY_DEFAULT_SEARCH_HOTKEY,
-      );
-      const nextSearchHotkey =
-        shouldMigrateLegacySearchHotkey || !storedSearchHotkey
-          ? DEFAULT_SEARCH_HOTKEY
-          : storedSearchHotkey;
-      if (!desktop.searchHotkeyEnabled) {
-        setSearchHotkeyStatus({
-          state: "disabled",
-          message: "已关闭全局搜索快捷键",
-        });
-      } else {
-        if (
-          shouldMigrateLegacySearchHotkey &&
-          !isSameHotkey(storedSearchHotkey, DEFAULT_SEARCH_HOTKEY)
-        ) {
-          setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
-        }
-
-        const searchResult =
-          await UToolsAdapter.registerSearchHotkey(nextSearchHotkey);
-        if (disposed) {
-          if (searchResult.ok) {
-            await UToolsAdapter.unregisterSearchHotkey(nextSearchHotkey);
-          }
-        } else if (searchResult.ok) {
-          registeredSearchHotkeyRef.current = nextSearchHotkey;
-          setSearchHotkeyStatus({
-            state: "active",
-            message: "快捷键已生效",
-          });
-        } else {
-          setSearchHotkeyStatus(classifyHotkeyFailureStatus(searchResult.error));
-          const shouldNotify = shouldNotifyHotkeyFailure(
-            "search",
-            nextSearchHotkey,
-          );
-          if (shouldNotify) {
-            toast.error("当前搜索快捷键不可用，请在设置中更换可用组合键", {
-              id: "search-hotkey-change-required",
-              duration: 3200,
-            });
-          }
-        }
-      }
-    };
-
-    void applyDesktopHotkeys();
-
-    return () => {
-      disposed = true;
-      const previousWakeHotkey = registeredWakeHotkeyRef.current;
-      if (previousWakeHotkey) {
-        registeredWakeHotkeyRef.current = null;
-        void UToolsAdapter.unregisterWakeHotkey(previousWakeHotkey);
-      }
-      const previousSearchHotkey = registeredSearchHotkeyRef.current;
-      if (previousSearchHotkey) {
-        registeredSearchHotkeyRef.current = null;
-        void UToolsAdapter.unregisterSearchHotkey(previousSearchHotkey);
-      }
-    };
-  }, [
-    desktop.searchHotkey,
-    desktop.searchHotkeyEnabled,
-    desktop.wakeHotkey,
-    desktop.wakeHotkeyEnabled,
-    setSearchHotkey,
-    setSearchHotkeyStatus,
-    setWakeHotkeyStatus,
-  ]);
 
   useEffect(() => {
     if (utools.windowHeight) {
       UToolsAdapter.setExpendHeight(utools.windowHeight);
     }
   }, [utools.windowHeight]);
-
-  useEffect(() => {
-    if (typeof document === "undefined" || UToolsAdapter.isUTools) return;
-
-    const preventBrowserContextMenu = (event: MouseEvent) => {
-      const target = event.target;
-      const element =
-        target instanceof Element
-          ? target
-          : target instanceof Node
-            ? target.parentElement
-            : null;
-
-      if (element?.closest("[data-goose-context-trigger='true']")) {
-        return;
-      }
-      event.preventDefault();
-    };
-
-    document.addEventListener("contextmenu", preventBrowserContextMenu, {
-      capture: true,
-    });
-    return () => {
-      document.removeEventListener("contextmenu", preventBrowserContextMenu, {
-        capture: true,
-      });
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -535,36 +257,6 @@ function App() {
   }, [customFonts]);
 
   useEffect(() => {
-    if (typeof document === "undefined" || !UToolsAdapter.isTauri) return;
-
-    const handleCloseTabHotkey = (event: KeyboardEvent) => {
-      if (!event.metaKey && !event.ctrlKey) return;
-      if (event.altKey || event.shiftKey || event.repeat) return;
-      if (event.key.toLowerCase() !== "w") return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const tabsStore = useTabs.getState();
-      const activeTabId =
-        tabsStore.activeTabId ||
-        tabsStore.openTabs[tabsStore.openTabs.length - 1] ||
-        null;
-
-      if (activeTabId) {
-        tabsStore.closeTab(activeTabId);
-      } else {
-        usePages.getState().setActivePage(null);
-      }
-    };
-
-    document.addEventListener("keydown", handleCloseTabHotkey, true);
-    return () => {
-      document.removeEventListener("keydown", handleCloseTabHotkey, true);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleZoomKeys = (event: KeyboardEvent) => {
       if (event.key === "F3") {
         event.preventDefault();
@@ -675,25 +367,8 @@ function App() {
     setEditorFontSize,
   ]);
 
-  const isTauriMacOverlay =
-    UToolsAdapter.isTauri &&
-    typeof window !== "undefined" &&
-    /Mac|iPod|iPhone|iPad/.test(window.navigator.platform || "");
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.classList.toggle(
-      "tauri-mac-overlay-active",
-      isTauriMacOverlay,
-    );
-    return () => {
-      document.documentElement.classList.remove("tauri-mac-overlay-active");
-    };
-  }, [isTauriMacOverlay]);
-
   return (
     <>
-      {isTauriMacOverlay && <TabBar />}
       <WorkspacePage />
       <Toaster />
     </>

@@ -35,9 +35,7 @@ export function WorkspacePage() {
     Array.from(e.dataTransfer.types || []).includes("Files");
 
   useEffect(() => {
-    if (UToolsAdapter.isUTools) {
-      document.documentElement.classList.add("is-utools");
-    }
+    document.documentElement.classList.add("is-utools");
   }, []);
 
   // 监听本地文件变更
@@ -251,7 +249,7 @@ export function WorkspacePage() {
         <div className="workspace-stage">
           <Sidebar
             className="workspace-sidebar-pane"
-            disableResize={isEditorFullWidth && !UToolsAdapter.isUTools}
+            disableResize={false}
           />
 
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
@@ -261,11 +259,7 @@ export function WorkspacePage() {
                   page={page}
                   onClose={() => {
                     if (!activePageId) return;
-                    if (UToolsAdapter.isUTools) {
-                      usePages.getState().setActivePage(null);
-                      return;
-                    }
-                    useTabs.getState().closeTab(activePageId);
+                    usePages.getState().setActivePage(null);
                   }}
                   onToggleFavorite={() =>
                     updatePage(activePageId, { isFavorite: !page.isFavorite })

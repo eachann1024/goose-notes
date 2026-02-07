@@ -9,7 +9,7 @@ import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
-const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
+const SIDEBAR_MIN_WIDTH = 180;
 
 type SidebarView = "pages" | "trash";
 type SidebarDragGuideMode = "sort" | "nest-pending" | "nest-ready";
@@ -68,7 +68,7 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
   const rowHeight = itemHeight + 1;
   const trashItemHeight = Math.max(itemHeight + 20, 48);
 
-  const DEFAULT_SIDEBAR_WIDTH = UToolsAdapter.isUTools ? 180 : 220;
+  const DEFAULT_SIDEBAR_WIDTH = 180;
   const [width, setWidth] = useState(() => {
     const saved = localStorage.getItem("sidebar-width");
     return saved

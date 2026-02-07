@@ -2,7 +2,6 @@ import {
   closestCenter,
   pointerWithin,
   DndContext,
-  MouseSensor,
   PointerSensor,
   useDroppable,
   type Collision,
@@ -26,7 +25,6 @@ import type { LucideIcon } from "lucide-react";
 import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { getPageTitle } from "@/lib/page-title";
-import { UToolsAdapter } from "@/lib/utools";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
@@ -177,16 +175,6 @@ class LeftButtonPointerSensor extends PointerSensor {
       eventName: "onPointerDown" as const,
       handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) =>
         nativeEvent.isPrimary && nativeEvent.button === 0 && !nativeEvent.ctrlKey,
-    },
-  ];
-}
-
-class LeftButtonMouseSensor extends MouseSensor {
-  static activators = [
-    {
-      eventName: "onMouseDown" as const,
-      handler: ({ nativeEvent }: { nativeEvent: globalThis.MouseEvent }) =>
-        nativeEvent.button === 0 && !nativeEvent.ctrlKey,
     },
   ];
 }
@@ -598,7 +586,7 @@ export function SidebarTree({
     return map;
   }, [renderItems]);
 
-  const DragSensor = UToolsAdapter.isTauri ? LeftButtonMouseSensor : LeftButtonPointerSensor;
+  const DragSensor = LeftButtonPointerSensor;
   const sensors = useSensors(
     useSensor(DragSensor, {
       activationConstraint: {
