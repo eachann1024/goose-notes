@@ -58,8 +58,11 @@ function ProviderCard({ provider, onToggle }: ProviderCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between gap-2 rounded-lg bg-[hsl(var(--goose-selected-bg)/0.58)] px-3 py-2.5",
-        isDragging && "bg-[hsl(var(--goose-selected-bg))] shadow-md"
+        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-all duration-200",
+        provider.isEnabled
+          ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] shadow-[0_0_0_1px_hsl(var(--foreground)/0.16)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+          : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]",
+        isDragging && "shadow-md"
       )}
     >
       <div className="flex items-center gap-2 min-w-0">

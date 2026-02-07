@@ -89,11 +89,11 @@ export function SettingsDataPanel({
                   type="button"
                   onClick={() => onToggleNotebook(notebook.id)}
                   className={cn(
-                    "flex items-center gap-2 rounded-[12px] px-3 py-2.5 text-left transition-all duration-200",
+                    "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected
-                      ? "bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.14)]"
-                      : "bg-[hsl(var(--goose-selected-bg)/0.9)] dark:bg-[hsl(var(--foreground)/0.08)] hover:bg-[hsl(var(--goose-selected-bg))] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                      ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                      : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] dark:bg-[hsl(var(--foreground)/0.08)] hover:bg-[hsl(var(--goose-selected-bg))] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
                   )}
                 >
                   <span className="shrink-0 text-lg">{notebook.icon || "📓"}</span>
@@ -113,7 +113,12 @@ export function SettingsDataPanel({
             <SelectableCard
               selected={format === "md"}
               onClick={() => onFormatChange("md")}
-              className="flex h-16 items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.9)] px-3 py-2 hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]"
+              className={cn(
+                "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
+                format === "md"
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+              )}
             >
               <FileText className="h-5 w-5 shrink-0" />
               <div className="text-left">
@@ -124,7 +129,12 @@ export function SettingsDataPanel({
             <SelectableCard
               selected={format === "html"}
               onClick={() => onFormatChange("html")}
-              className="flex h-16 items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.9)] px-3 py-2 hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]"
+              className={cn(
+                "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
+                format === "html"
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+              )}
             >
               <Globe className="h-5 w-5 shrink-0" />
               <div className="text-left">
