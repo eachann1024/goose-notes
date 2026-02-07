@@ -2,6 +2,7 @@ import type { Page } from "@/types";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useContextMenu } from "@/stores/useContextMenu";
+import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
 interface SidebarContextMenuProps {
@@ -167,7 +168,10 @@ export function SidebarContextMenu({
                 </span>
               </ContextMenuItem>
               <ContextMenuItem
-                onSelect={() => void permanentlyDeletePage(page.id)}
+                onSelect={() => {
+                  useTabs.getState().removeDeletedPage(page.id);
+                  void permanentlyDeletePage(page.id);
+                }}
                 className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
               >
                 <LucideIcons.Trash2 className="h-4 w-4" />

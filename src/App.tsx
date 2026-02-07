@@ -3,13 +3,16 @@ import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
+import { TabBar } from "./pages/workspace/components/tabs/TabBar";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
+import { useTabs } from "./stores/useTabs";
 import {
   useSettings,
   EDITOR_FONT_SIZE_DEFAULT,
   DEFAULT_SEARCH_HOTKEY,
   DEFAULT_WAKE_HOTKEY,
+  type DesktopHotkeyStatus,
 } from "@/stores/useSettings";
 
 const UI_FONT_SIZE_MAP = {
@@ -34,6 +37,47 @@ const normalizeHotkeyForCompare = (value: string) =>
 
 const isSameHotkey = (a: string, b: string) =>
   normalizeHotkeyForCompare(a) === normalizeHotkeyForCompare(b);
+
+const classifyHotkeyFailureStatus = (
+  error: string | undefined,
+): DesktopHotkeyStatus => {
+  const message = (error ?? "").trim();
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    /already|in use|occupied|conflict|currently registered|taken|exists/i.test(
+      lowerMessage,
+    )
+  ) {
+    return {
+      state: "occupied",
+      message: "快捷键被系统或其他应用占用",
+      rawError: message || undefined,
+    };
+  }
+
+  if (/invalid|parse|accelerator|unsupported|unknown/i.test(lowerMessage)) {
+    return {
+      state: "invalid",
+      message: "快捷键格式或按键组合无效",
+      rawError: message || undefined,
+    };
+  }
+
+  if (/permission|denied|forbidden|not allowed/i.test(lowerMessage)) {
+    return {
+      state: "error",
+      message: "系统权限不足，无法注册全局快捷键",
+      rawError: message || undefined,
+    };
+  }
+
+  return {
+    state: "error",
+    message: "注册失败，请更换组合键后重试",
+    rawError: message || undefined,
+  };
+};
 
 const shouldNotifyHotkeyFailure = (
   kind: HotkeyFailureKind,
@@ -100,7 +144,8 @@ function App() {
     utools,
     desktop,
     setSearchHotkey,
-    setWakeHotkey,
+    setWakeHotkeyStatus,
+    setSearchHotkeyStatus,
   } = useSettings();
   const { hydrated, onboardingCompleted } = usePages();
   const registeredWakeHotkeyRef = useRef<string | null>(null);
@@ -130,7 +175,12 @@ function App() {
 
       const nextWakeHotkey =
         (desktop.wakeHotkey ?? "").trim() || DEFAULT_WAKE_HOTKEY;
-      if (desktop.wakeHotkeyEnabled) {
+      if (!desktop.wakeHotkeyEnabled) {
+        setWakeHotkeyStatus({
+          state: "disabled",
+          message: "已关闭全局唤醒快捷键",
+        });
+      } else {
         const wakeResult =
           await UToolsAdapter.registerWakeHotkey(nextWakeHotkey);
         if (disposed) {
@@ -139,21 +189,14 @@ function App() {
           }
         } else if (wakeResult.ok) {
           registeredWakeHotkeyRef.current = nextWakeHotkey;
+          setWakeHotkeyStatus({
+            state: "active",
+            message: "快捷键已生效",
+          });
         } else {
+          setWakeHotkeyStatus(classifyHotkeyFailureStatus(wakeResult.error));
           const shouldNotify = shouldNotifyHotkeyFailure("wake", nextWakeHotkey);
-
-          if (nextWakeHotkey !== DEFAULT_WAKE_HOTKEY) {
-            setWakeHotkey(DEFAULT_WAKE_HOTKEY);
-            if (shouldNotify) {
-              toast.error(
-                `唤醒快捷键「${nextWakeHotkey}」不可用，已回退到默认：${DEFAULT_WAKE_HOTKEY}`,
-                {
-                  id: "wake-hotkey-fallback-default",
-                  duration: 3200,
-                },
-              );
-            }
-          } else if (shouldNotify) {
+          if (shouldNotify) {
             toast.error("当前唤醒快捷键不可用，请在设置中更换可用组合键", {
               id: "wake-hotkey-change-required",
               duration: 3200,
@@ -171,7 +214,12 @@ function App() {
         shouldMigrateLegacySearchHotkey || !storedSearchHotkey
           ? DEFAULT_SEARCH_HOTKEY
           : storedSearchHotkey;
-      if (desktop.searchHotkeyEnabled) {
+      if (!desktop.searchHotkeyEnabled) {
+        setSearchHotkeyStatus({
+          state: "disabled",
+          message: "已关闭全局搜索快捷键",
+        });
+      } else {
         if (
           shouldMigrateLegacySearchHotkey &&
           !isSameHotkey(storedSearchHotkey, DEFAULT_SEARCH_HOTKEY)
@@ -187,24 +235,17 @@ function App() {
           }
         } else if (searchResult.ok) {
           registeredSearchHotkeyRef.current = nextSearchHotkey;
+          setSearchHotkeyStatus({
+            state: "active",
+            message: "快捷键已生效",
+          });
         } else {
+          setSearchHotkeyStatus(classifyHotkeyFailureStatus(searchResult.error));
           const shouldNotify = shouldNotifyHotkeyFailure(
             "search",
             nextSearchHotkey,
           );
-
-          if (nextSearchHotkey !== DEFAULT_SEARCH_HOTKEY) {
-            setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
-            if (shouldNotify) {
-              toast.error(
-                `搜索快捷键「${nextSearchHotkey}」不可用，已回退到默认：${DEFAULT_SEARCH_HOTKEY}`,
-                {
-                  id: "search-hotkey-fallback-default",
-                  duration: 3200,
-                },
-              );
-            }
-          } else if (shouldNotify) {
+          if (shouldNotify) {
             toast.error("当前搜索快捷键不可用，请在设置中更换可用组合键", {
               id: "search-hotkey-change-required",
               duration: 3200,
@@ -235,7 +276,8 @@ function App() {
     desktop.wakeHotkey,
     desktop.wakeHotkeyEnabled,
     setSearchHotkey,
-    setWakeHotkey,
+    setSearchHotkeyStatus,
+    setWakeHotkeyStatus,
   ]);
 
   useEffect(() => {
@@ -283,6 +325,27 @@ function App() {
       usePages.getState().createOnboardingPages();
     }
   }, [hydrated, onboardingCompleted]);
+
+  // 同步 tab 状态：旧数据迁移 & 清理已删除页面的 tab
+  useEffect(() => {
+    if (!hydrated) return;
+    const { activePageId, pages } = usePages.getState();
+    const { openTabs, openTab } = useTabs.getState();
+
+    // 清理 openTabs 中已不存在的页面
+    const validTabs = openTabs.filter((id) => pages[id] && !pages[id].trashedAt);
+    if (validTabs.length !== openTabs.length) {
+      useTabs.setState({ openTabs: validTabs });
+      if (useTabs.getState().activeTabId && !validTabs.includes(useTabs.getState().activeTabId!)) {
+        useTabs.setState({ activeTabId: validTabs[0] ?? null });
+      }
+    }
+
+    // 如果 activePageId 存在但不在 tabs 中（旧数据迁移），自动加入
+    if (activePageId && !useTabs.getState().openTabs.includes(activePageId) && pages[activePageId]) {
+      openTab(activePageId);
+    }
+  }, [hydrated]);
 
   useEffect(() => {
     // 注册 uTools 进入插件事件监听，用于处理自动打开搜索等逻辑
@@ -472,6 +535,36 @@ function App() {
   }, [customFonts]);
 
   useEffect(() => {
+    if (typeof document === "undefined" || !UToolsAdapter.isTauri) return;
+
+    const handleCloseTabHotkey = (event: KeyboardEvent) => {
+      if (!event.metaKey && !event.ctrlKey) return;
+      if (event.altKey || event.shiftKey || event.repeat) return;
+      if (event.key.toLowerCase() !== "w") return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const tabsStore = useTabs.getState();
+      const activeTabId =
+        tabsStore.activeTabId ||
+        tabsStore.openTabs[tabsStore.openTabs.length - 1] ||
+        null;
+
+      if (activeTabId) {
+        tabsStore.closeTab(activeTabId);
+      } else {
+        usePages.getState().setActivePage(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleCloseTabHotkey, true);
+    return () => {
+      document.removeEventListener("keydown", handleCloseTabHotkey, true);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleZoomKeys = (event: KeyboardEvent) => {
       if (event.key === "F3") {
         event.preventDefault();
@@ -495,21 +588,23 @@ function App() {
         target instanceof HTMLElement &&
         (target.isContentEditable || !!target.closest(".ProseMirror"));
 
-      if (
-        (event.key === "," ||
-          (event.key.toLowerCase() === "k" && event.shiftKey)) &&
-        (isEditableInput || isRichTextEditing)
-      ) {
+      const isOpenSettingsHotkey =
+        (event.key === "," || event.key === "，" || event.code === "Comma") &&
+        !event.shiftKey;
+      const isOpenSearchHotkey =
+        event.key.toLowerCase() === "k" && event.shiftKey;
+
+      if (isOpenSearchHotkey && (isEditableInput || isRichTextEditing)) {
         return;
       }
 
-      if (event.key === ",") {
+      if (isOpenSettingsHotkey) {
         event.preventDefault();
         window.dispatchEvent(new CustomEvent("goose-note:open-settings"));
         return;
       }
 
-      if (event.key.toLowerCase() === "k" && event.shiftKey) {
+      if (isOpenSearchHotkey) {
         event.preventDefault();
         window.dispatchEvent(new CustomEvent("goose-note:open-search"));
         return;
@@ -562,7 +657,8 @@ function App() {
         const { createPage } = usePages.getState();
         const { activeNotebookId } = useNotebooks.getState();
         if (activeNotebookId) {
-          createPage(undefined, activeNotebookId);
+          const newPageId = createPage(undefined, activeNotebookId);
+          useTabs.getState().openTab(newPageId);
           toast("已创建新笔记", { duration: 1500 });
         }
       }
@@ -595,32 +691,9 @@ function App() {
     };
   }, [isTauriMacOverlay]);
 
-  const handleMacOverlayDragMouseDown = (
-    event: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    if (!isTauriMacOverlay) return;
-    if (event.button !== 0) return;
-
-    void (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        await getCurrentWindow().startDragging();
-      } catch {
-        // keep native drag-region behavior as fallback
-      }
-    })();
-  };
-
   return (
     <>
-      {isTauriMacOverlay && (
-        <div
-          data-tauri-drag-region
-          className="tauri-mac-title-drag-region"
-          aria-hidden="true"
-          onMouseDown={handleMacOverlayDragMouseDown}
-        />
-      )}
+      {isTauriMacOverlay && <TabBar />}
       <WorkspacePage />
       <Toaster />
     </>

@@ -11,6 +11,7 @@ import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
+import { useTabs } from "@/stores/useTabs";
 
 export function WorkspacePage() {
   const { activePageId, updatePage, getPage } = usePages();
@@ -73,7 +74,7 @@ export function WorkspacePage() {
                   ) || page.localFilePath.startsWith(filePath + "\\");
 
                 if (isCurrentFile || isParentDir) {
-                  usePages.getState().setActivePage(null);
+                  useTabs.getState().closeTab(activePageId);
                 }
               }
               // 重新加载侧边栏以同步状态
@@ -227,7 +228,7 @@ export function WorkspacePage() {
         }
       `}</style>
       <div
-        className="workspace-shell flex h-screen overflow-hidden bg-background text-foreground"
+        className="workspace-shell window-shell-safe-top flex overflow-hidden bg-background text-foreground"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -248,23 +249,34 @@ export function WorkspacePage() {
         )}
         <CommandPalette />
         <div className="workspace-stage">
-          <Sidebar className="workspace-sidebar-pane" />
+          <Sidebar
+            className="workspace-sidebar-pane"
+            disableResize={isEditorFullWidth && !UToolsAdapter.isUTools}
+          />
 
-          <main className="workspace-main-sheet flex-1 flex flex-col h-full overflow-hidden">
+          <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
             {activePageId && page ? (
               <>
                 <PageHeader
                   page={page}
-                  onClose={() => usePages.getState().setActivePage(null)}
+                  onClose={() => {
+                    if (!activePageId) return;
+                    if (UToolsAdapter.isUTools) {
+                      usePages.getState().setActivePage(null);
+                      return;
+                    }
+                    useTabs.getState().closeTab(activePageId);
+                  }}
                   onToggleFavorite={() =>
                     updatePage(activePageId, { isFavorite: !page.isFavorite })
                   }
                   onRestore={() =>
                     usePages.getState().restorePage(activePageId)
                   }
-                  onDelete={() =>
-                    void usePages.getState().permanentlyDeletePage(activePageId)
-                  }
+                  onDelete={() => {
+                    useTabs.getState().removeDeletedPage(activePageId);
+                    void usePages.getState().permanentlyDeletePage(activePageId);
+                  }}
                 />
 
                 <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
@@ -288,7 +300,9 @@ export function WorkspacePage() {
                         <div
                           className={cn(
                             "min-h-screen",
-                            isEditorFullWidth ? "px-3 md:px-4" : "px-8",
+                            isEditorFullWidth
+                              ? "px-6 md:px-8 lg:px-10"
+                              : "px-8",
                             page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
                           )}
                         >

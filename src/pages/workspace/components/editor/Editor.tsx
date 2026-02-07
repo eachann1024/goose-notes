@@ -156,8 +156,16 @@ export function Editor({ editable = true }: EditorProps) {
           "prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[calc(100vh-200px)] leading-relaxed",
         ),
       },
-      handleKeyDown: (_, event) => {
-        if (!editor) return false;
+      handleScrollToSelection: (view) => {
+        if (view.dom.dataset.imeScrollLock === "1") {
+          return true;
+        }
+        return false;
+      },
+      handleKeyDown: (view, event) => {
+        if (!editor || event.isComposing || event.keyCode === 229) return false;
+        // Skip keydown fired right after compositionend (Safari/WebKit IME)
+        if (view.composing) return false;
 
         if (event.key === "Enter") {
           const { state } = editor;
@@ -487,6 +495,9 @@ export function Editor({ editable = true }: EditorProps) {
     const handleFocusStart = () => {
       setTimeout(() => {
         editor?.commands.focus("start");
+        document
+          .querySelector(".page-scroll-container")
+          ?.scrollTo({ top: 0 });
       }, 50);
     };
 

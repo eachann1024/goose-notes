@@ -181,6 +181,14 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     const { offset } = getNodeOffsetInfo(node);
     fixedLeft += offset;
 
+    // 把手始终限制在编辑区内，避免全宽模式下贴到侧边栏边缘
+    const editorRoot = node.closest(".ProseMirror");
+    if (editorRoot) {
+      const editorRect = absoluteRect(editorRoot);
+      const minLeft = editorRect.left - options.dragHandleWidth - 12;
+      fixedLeft = Math.max(fixedLeft, minLeft);
+    }
+
     dragHandleElement.style.left = `${fixedLeft}px`;
     dragHandleElement.style.top = `${rect.top}px`;
 
@@ -281,9 +289,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     }, 100);
   }
 
-  function handleDragStart(event: DragEvent, view: any) {
+  function handleDragStart(event: DragEvent, view: any): boolean {
     view.focus();
-    if (!event.dataTransfer) return;
+    if (!event.dataTransfer) return false;
 
     let node = currentHoveredNode;
     if (node && !view.dom.contains(node)) {
@@ -313,13 +321,25 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       }
     }
 
-    if (!(node instanceof Element)) return;
+    if (!(node instanceof Element)) return false;
 
     const pos = nodePosAtDOM(node, view, options.dragHandleWidth);
-    if (pos == null) return;
+    let targetPos: number | null =
+      pos == null ? null : calcNodePos(pos, view);
 
-    const targetPos = calcNodePos(pos, view);
-    const selection = NodeSelection.create(view.state.doc, targetPos);
+    // 坐标命中失败时，回退到当前选区所在块，避免拖拽被中断
+    if (targetPos == null) {
+      targetPos = findBlockNodePos(view.state.selection.$from);
+    }
+
+    if (targetPos == null) return false;
+
+    let selection: NodeSelection;
+    try {
+      selection = NodeSelection.create(view.state.doc, targetPos);
+    } catch {
+      return false;
+    }
     view.dispatch(view.state.tr.setSelection(selection));
 
     const slice = selection.content();
@@ -328,7 +348,9 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     event.dataTransfer.clearData();
     event.dataTransfer.setData("text/html", dom.innerHTML);
     event.dataTransfer.setData("text/plain", text);
-    event.dataTransfer.effectAllowed = "copyMove";
+    event.dataTransfer.setData("application/x-goose-note-drag", "move");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.dropEffect = "move";
 
     view.dragging = {
       slice,
@@ -336,20 +358,52 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       from: selection.from,
       to: selection.to,
     };
+
+    return true;
   }
 
   function handleDrop(view: any, event: DragEvent) {
-    const dragging = view.dragging;
-    if (!dragging || !dragging.slice) return false;
-
+    const titleNode = view.state.doc.firstChild;
     const dropPos = view.posAtCoords({
       left: event.clientX,
       top: event.clientY,
     });
+
+    const firstDomNode = view.dom?.firstElementChild as HTMLElement | null;
+    const isInTitleDomZone = (() => {
+      if (!firstDomNode) return false;
+      const rect = firstDomNode.getBoundingClientRect();
+      const xHit = event.clientX >= rect.left - 12 && event.clientX <= rect.right + 12;
+      const yHit = event.clientY <= rect.bottom;
+      return xHit && yHit;
+    })();
+
+    if (
+      (titleNode && dropPos && dropPos.pos < titleNode.nodeSize) ||
+      isInTitleDomZone
+    ) {
+      event.preventDefault();
+      view.dragging = null;
+      isDragging = false;
+      return true;
+    }
+
+    const dragging = view.dragging;
+    if (!dragging || !dragging.slice) return false;
+
     if (!dropPos) return false;
 
     const insertPos = dropPoint(view.state.doc, dropPos.pos, dragging.slice);
     if (insertPos == null) return false;
+
+    // Prevent dropping above or into the title heading (first node).
+    // Return true (= "handled") so ProseMirror's default drop doesn't run.
+    if (titleNode && insertPos < titleNode.nodeSize) {
+      event.preventDefault();
+      view.dragging = null;
+      isDragging = false;
+      return true;
+    }
 
     if (dragging.move) {
       const from = dragging.from ?? view.state.selection.from;
@@ -394,9 +448,13 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
         // Enforce state reset to prevent stale state from blocking new drag
         view.dragging = null;
         view.dom.classList.remove("dragging");
-        
-        isDragging = true;
-        handleDragStart(e, view);
+
+        isDragging = handleDragStart(e, view);
+        if (!isDragging) {
+          view.dragging = null;
+          hideDragHandle();
+          e.preventDefault();
+        }
       }
       dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
 
@@ -605,7 +663,36 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
           view.dom.classList.add("dragging");
           return false;
         },
-        dragover: (_view, event) => {
+        dragover: (view, event) => {
+          const titleNode = view.state.doc.firstChild;
+          const dropPos = view.posAtCoords({
+            left: event.clientX,
+            top: event.clientY,
+          });
+          const firstDomNode = view.dom?.firstElementChild as HTMLElement | null;
+          const isInTitleDomZone = (() => {
+            if (!firstDomNode) return false;
+            const rect = firstDomNode.getBoundingClientRect();
+            const xHit =
+              event.clientX >= rect.left - 12 && event.clientX <= rect.right + 12;
+            const yHit = event.clientY <= rect.bottom;
+            return xHit && yHit;
+          })();
+
+          if (
+            (titleNode && dropPos && dropPos.pos < titleNode.nodeSize) ||
+            isInTitleDomZone
+          ) {
+            if (event.dataTransfer) {
+              event.dataTransfer.dropEffect = "none";
+            }
+            event.preventDefault();
+            return true;
+          }
+
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+          }
           event.preventDefault();
           return false;
         },

@@ -43,14 +43,27 @@ export function formatShortcut(shortcut: string) {
     .split("+")
     .map((part) => {
       const p = part.trim().toLowerCase();
-      if (p === "mod") return isMac ? "⌘" : "Ctrl";
-      if (p === "alt") return isMac ? "⌥" : "Alt";
+      if (
+        p === "mod" ||
+        p === "cmdorctrl" ||
+        p === "cmdorcontrol" ||
+        p === "commandorcontrol" ||
+        p === "command" ||
+        p === "meta"
+      ) {
+        return isMac ? "⌘" : "Ctrl";
+      }
+      if (p === "ctrl" || p === "control") return isMac ? "⌃" : "Ctrl";
+      if (p === "alt" || p === "option") return isMac ? "⌥" : "Alt";
       if (p === "shift") return isMac ? "⇧" : "Shift";
       if (p === "enter") return "↵";
       if (p === "backspace") return "⌫";
       if (p === "tab") return "⇥";
+      if (p === "esc" || p === "escape") return isMac ? "⎋" : "Esc";
       if (p === "up") return "↑";
       if (p === "down") return "↓";
+      if (p === "left") return "←";
+      if (p === "right") return "→";
       return part.trim();
     })
     .join(isMac ? "" : " + ");

@@ -10,7 +10,7 @@ export const HANDLE_OFFSETS: Record<string, number> = {
 // 通用常量
 export const DRAG_HANDLE_CONSTANTS = {
   coordsOffset: 50,           // 查找节点时的 X 偏移
-  editorMarginRight: 10,      // 手柄离编辑器边界距离
+  editorMarginRight: 16,      // 手柄离编辑器内容距离
   safeMargin: 30,             // 鼠标移出容错区域
 } as const;
 

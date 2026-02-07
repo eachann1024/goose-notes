@@ -75,8 +75,9 @@ export const editorExtensions = [
     heading: false,
     horizontalRule: false,
     dropcursor: {
-      color: "hsl(221.2, 83.2%, 53.3%)",
-      width: 3,
+      color: false,
+      class: "ProseMirror-dropcursor",
+      width: 2,
     },
   }),
   UndoRedoKeymap,

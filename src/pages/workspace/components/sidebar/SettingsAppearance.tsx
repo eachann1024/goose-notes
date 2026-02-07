@@ -26,7 +26,7 @@ const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
   {
     value: "modern",
     label: "Modern",
-    description: "柔和的原子风格 (One Dark/Light)",
+    description: "柔和的原子风格",
   },
   {
     value: "night",

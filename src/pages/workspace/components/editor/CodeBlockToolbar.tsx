@@ -27,6 +27,7 @@ export function CodeBlockToolbar({
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { format, isLoading } = useFormatCode();
 
@@ -117,14 +118,21 @@ export function CodeBlockToolbar({
   const isMathOrMermaid =
     language === "math" || language === "mermaid";
   const toolbarChipClass = cn(
-    "border backdrop-blur-[1px] transition-all duration-200",
-    "border-[color:var(--code-border)] bg-[color:var(--code-bg)] text-[color:var(--code-fg)]",
-    "hover:bg-[color:var(--code-bg)] hover:text-[color:var(--code-fg)]",
+    "backdrop-blur-[1px] transition-all duration-200",
+    "bg-transparent text-[color:var(--code-fg)]",
+    "hover:bg-[color:var(--code-bg)]",
+    "rounded-lg",
   );
 
   return (
     <TooltipProvider>
-      <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* 右上角悬停触发区域 */}
+      <div
+        className="absolute top-0 right-0 w-24 h-12 z-20"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      />
+      <div className={cn("absolute top-2 right-2 flex items-center gap-1 z-10 transition-opacity", isOpen || isHovered ? "opacity-100" : "opacity-0")}>
         {!isMathOrMermaid &&
           (editable ? (
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -133,8 +141,9 @@ export function CodeBlockToolbar({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-6 px-2 text-xs font-mono rounded-md",
+                    "h-7 min-w-7 px-2 text-xs font-mono",
                     toolbarChipClass,
+                    isOpen && "bg-accent",
                   )}
                 >
                   {displayLanguage}
@@ -183,7 +192,7 @@ export function CodeBlockToolbar({
           ) : (
             <div
               className={cn(
-                "h-6 px-2 flex items-center text-[10px] font-mono rounded-md",
+                "h-7 min-w-7 px-2 flex items-center text-[10px] font-mono",
                 toolbarChipClass,
               )}
             >
@@ -199,12 +208,16 @@ export function CodeBlockToolbar({
                 size="sm"
                 onClick={() => onWrapChange(!wrap)}
                 className={cn(
-                  "h-6 w-6 p-0 rounded-md",
+                  "h-7 min-w-7 p-0",
                   toolbarChipClass,
-                  wrap && "bg-primary/10 border-primary/30 text-primary",
+                  wrap && "bg-accent text-foreground",
                 )}
               >
-                <LucideIcons.WrapText className="h-3.5 w-3.5" />
+                {wrap ? (
+                  <LucideIcons.AlignJustify className="h-3.5 w-3.5" />
+                ) : (
+                  <LucideIcons.WrapText className="h-3.5 w-3.5" />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -222,7 +235,7 @@ export function CodeBlockToolbar({
                 onClick={handleFormatClick}
                 disabled={isLoading}
                 className={cn(
-                  "h-6 w-6 p-0 rounded-md",
+                  "h-7 min-w-7 p-0",
                   toolbarChipClass,
                 )}
               >
@@ -246,7 +259,7 @@ export function CodeBlockToolbar({
               size="sm"
               onClick={handleCopy}
               className={cn(
-                "h-6 w-6 p-0 rounded-md",
+                "h-7 min-w-7 p-0",
                 toolbarChipClass,
               )}
             >

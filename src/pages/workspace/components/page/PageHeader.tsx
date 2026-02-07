@@ -46,7 +46,7 @@ export function PageHeader({
         )}
         {page.trashedAt && (
           <span className="text-xs bg-yellow-300 text-yellow-950 px-1.5 py-0.5 rounded">
-            只读
+            页面已被删除
           </span>
         )}
       </div>

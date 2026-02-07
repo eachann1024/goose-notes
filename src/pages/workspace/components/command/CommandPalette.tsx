@@ -166,7 +166,7 @@ export function CommandPalette() {
       onOpenChange={setOpen}
       label="Global Search"
       filter={() => 1}
-      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[51] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-[1px] bg-[hsl(var(--goose-shell-bg))] shadow-none"
+      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 backdrop-blur-[1px] bg-[hsl(var(--goose-shell-bg))] shadow-none"
       aria-describedby={descriptionId}
     >
       <DialogTitle className="sr-only">搜索</DialogTitle>

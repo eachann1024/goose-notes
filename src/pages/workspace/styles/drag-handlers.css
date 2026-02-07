@@ -62,9 +62,30 @@ body.drag-handle-suppressed .drag-handle {
 
 /* Drop Cursor - 放置位置的蓝线 */
 .ProseMirror-dropcursor {
-  background-color: hsl(var(--primary)) !important;
-  height: 3px !important;
+  background: var(--workspace-drag-line-color, hsl(var(--primary))) !important;
+  height: 2px !important;
   width: 100% !important;
+  min-height: 2px !important;
+  border-radius: 9999px !important;
+  box-shadow: var(--workspace-drag-line-glow, 0 0 8px hsl(var(--primary) / 0.4)) !important;
+  opacity: 1 !important;
+  z-index: 40 !important;
+  transform: translateZ(0);
+}
+
+.ProseMirror .ProseMirror-dropcursor {
+  background: var(--workspace-drag-line-color, hsl(var(--primary))) !important;
+  box-shadow: var(--workspace-drag-line-glow, 0 0 8px hsl(var(--primary) / 0.4)) !important;
+  opacity: 1 !important;
+  z-index: 40 !important;
+}
+
+.ProseMirror-dropcursor.prosemirror-dropcursor-block {
+  min-height: 2px !important;
+}
+
+.ProseMirror-dropcursor.prosemirror-dropcursor-inline {
+  min-width: 2px !important;
 }
 
 /* Notion-like Block Selection */

@@ -24,9 +24,9 @@
 .sidebar-drop-line {
   flex: 1;
   height: 2px;
-  background: hsl(var(--primary));
+  background: var(--workspace-drag-line-color, hsl(var(--primary)));
   border-radius: 9999px;
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
+  box-shadow: var(--workspace-drag-line-glow, 0 0 8px hsl(var(--primary) / 0.4));
   position: relative;
 }
 
@@ -39,8 +39,8 @@
   transform: translate(-50%, -50%);
   width: 8px;
   height: 8px;
-  background: hsl(var(--primary));
+  background: var(--workspace-drag-line-color, hsl(var(--primary)));
   border: 2px solid hsl(var(--background));
   border-radius: 50%;
-  box-shadow: 0 0 0 1px hsl(var(--primary));
+  box-shadow: 0 0 0 1px var(--workspace-drag-line-color, hsl(var(--primary)));
 }

@@ -9,32 +9,37 @@ interface TrashListProps {
   itemHeight?: number
 }
 
-function nodeHasVisibleContent(node: any): boolean {
-  if (!node) return false
+function nodeHasVisibleContent(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false
+  const value = node as {
+    text?: unknown
+    content?: unknown
+    type?: unknown
+  }
 
-  if (typeof node.text === "string" && node.text.trim().length > 0) {
+  if (typeof value.text === "string" && value.text.trim().length > 0) {
     return true
   }
 
-  const children = Array.isArray(node.content) ? node.content : []
-  if (children.some((child) => nodeHasVisibleContent(child))) {
+  const children = Array.isArray(value.content) ? value.content : []
+  if (children.some((child: unknown) => nodeHasVisibleContent(child))) {
     return true
   }
 
   if (
-    node.type === "doc" ||
-    node.type === "paragraph" ||
-    node.type === "heading" ||
-    node.type === "text" ||
-    node.type === "hardBreak"
+    value.type === "doc" ||
+    value.type === "paragraph" ||
+    value.type === "heading" ||
+    value.type === "text" ||
+    value.type === "hardBreak"
   ) {
     return false
   }
 
-  return typeof node.type === "string" && node.type.length > 0
+  return typeof value.type === "string" && value.type.length > 0
 }
 
-function pageHasVisibleContent(page: any): boolean {
+function pageHasVisibleContent(page: { content?: unknown } | null | undefined): boolean {
   return nodeHasVisibleContent(page?.content)
 }
 

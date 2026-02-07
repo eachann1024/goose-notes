@@ -2,6 +2,7 @@ import {
   closestCenter,
   pointerWithin,
   DndContext,
+  MouseSensor,
   PointerSensor,
   useDroppable,
   type Collision,
@@ -25,8 +26,10 @@ import type { LucideIcon } from "lucide-react";
 import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { getPageTitle } from "@/lib/page-title";
+import { UToolsAdapter } from "@/lib/utools";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { useTabs } from "@/stores/useTabs";
 import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
 import { SidebarContextMenu } from "./SidebarContextMenu";
@@ -84,29 +87,34 @@ interface SidebarDragGuide {
   mode: DragGuideMode;
 }
 
-function nodeHasVisibleContent(node: any): boolean {
-  if (!node) return false;
+function nodeHasVisibleContent(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const value = node as {
+    text?: unknown;
+    content?: unknown;
+    type?: unknown;
+  };
 
-  if (typeof node.text === "string" && node.text.trim().length > 0) {
+  if (typeof value.text === "string" && value.text.trim().length > 0) {
     return true;
   }
 
-  const children = Array.isArray(node.content) ? node.content : [];
-  if (children.some((child) => nodeHasVisibleContent(child))) {
+  const children = Array.isArray(value.content) ? value.content : [];
+  if (children.some((child: unknown) => nodeHasVisibleContent(child))) {
     return true;
   }
 
   if (
-    node.type === "doc" ||
-    node.type === "paragraph" ||
-    node.type === "heading" ||
-    node.type === "text" ||
-    node.type === "hardBreak"
+    value.type === "doc" ||
+    value.type === "paragraph" ||
+    value.type === "heading" ||
+    value.type === "text" ||
+    value.type === "hardBreak"
   ) {
     return false;
   }
 
-  return typeof node.type === "string" && node.type.length > 0;
+  return typeof value.type === "string" && value.type.length > 0;
 }
 
 function pageHasVisibleContent(page: Page): boolean {
@@ -169,6 +177,16 @@ class LeftButtonPointerSensor extends PointerSensor {
       eventName: "onPointerDown" as const,
       handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) =>
         nativeEvent.isPrimary && nativeEvent.button === 0 && !nativeEvent.ctrlKey,
+    },
+  ];
+}
+
+class LeftButtonMouseSensor extends MouseSensor {
+  static activators = [
+    {
+      eventName: "onMouseDown" as const,
+      handler: ({ nativeEvent }: { nativeEvent: globalThis.MouseEvent }) =>
+        nativeEvent.button === 0 && !nativeEvent.ctrlKey,
     },
   ];
 }
@@ -258,11 +276,11 @@ function SortablePageRow({
     },
   };
 
-  const setActivePage = usePages((state) => state.setActivePage);
   const createPage = usePages((state) => state.createPage);
   const createLocalPage = usePages((state) => state.createLocalPage);
   const updatePage = usePages((state) => state.updatePage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
+  const openTab = useTabs((state) => state.openTab);
 
   const page = item.page;
   const hasChildren = item.hasChildren;
@@ -314,7 +332,7 @@ function SortablePageRow({
       if (!item.isOpen) {
         onToggleOpen(page.id);
       }
-      setActivePage(existingBlankChild.id);
+      openTab(existingBlankChild.id);
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
       return;
     }
@@ -322,7 +340,8 @@ function SortablePageRow({
     if (!item.isOpen) {
       onToggleOpen(page.id);
     }
-    createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK);
+    const newId = createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK);
+    openTab(newId);
   };
 
   return (
@@ -373,7 +392,7 @@ function SortablePageRow({
               onToggleOpen(page.id);
               return;
             }
-            setActivePage(page.id);
+            openTab(page.id);
           }}
         >
           <div
@@ -579,8 +598,9 @@ export function SidebarTree({
     return map;
   }, [renderItems]);
 
+  const DragSensor = UToolsAdapter.isTauri ? LeftButtonMouseSensor : LeftButtonPointerSensor;
   const sensors = useSensors(
-    useSensor(LeftButtonPointerSensor, {
+    useSensor(DragSensor, {
       activationConstraint: {
         distance: 4,
       },

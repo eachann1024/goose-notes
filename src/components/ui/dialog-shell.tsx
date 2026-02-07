@@ -36,6 +36,9 @@ export function DialogShell({
   children,
 }: DialogShellProps) {
   const isFullscreen = layout === "fullscreen"
+  const resolvedOverlayClassName =
+    overlayClassName ??
+    (isFullscreen ? "bg-transparent backdrop-blur-0" : undefined)
   const hasTitle = Boolean(title)
   const hasDescription = Boolean(description)
   const accessibleTitle = hasTitle ? title : "对话框"
@@ -45,11 +48,11 @@ export function DialogShell({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
-        overlayClassName={overlayClassName}
+        overlayClassName={resolvedOverlayClassName}
         className={cn(
           "origin-center data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-right-0 data-[state=closed]:slide-out-to-top-0 data-[state=closed]:slide-out-to-bottom-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-right-0 data-[state=open]:slide-in-from-top-0 data-[state=open]:slide-in-from-bottom-0",
           isFullscreen
-            ? "left-0 top-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 p-0"
+            ? "left-0 top-[var(--goose-top-safe-area,0px)] h-[calc(100dvh-var(--goose-top-safe-area,0px))] w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 p-0 shadow-none"
             : "sm:max-w-lg",
           contentClassName
         )}

@@ -6,6 +6,7 @@ import { TrashList } from "./TrashList";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/lib/page-title";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
 const SIDEBAR_MIN_WIDTH = UToolsAdapter.isUTools ? 180 : 120;
@@ -20,6 +21,7 @@ interface SidebarDragGuideState {
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
+  disableResize?: boolean;
 }
 
 const useItemHeight = () => {
@@ -48,7 +50,7 @@ const isEmptyContent = (content: any) => {
   return false;
 };
 
-export function Sidebar({ className }: SidebarProps) {
+export function Sidebar({ className, disableResize = false }: SidebarProps) {
   const {
     createPage,
     pages,
@@ -162,62 +164,91 @@ export function Sidebar({ className }: SidebarProps) {
     });
 
     if (existingBlankPage) {
-      setActivePage(existingBlankPage.id);
+      useTabs.getState().openTab(existingBlankPage.id);
       // 即使是复用空白页，也要聚焦标题
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
     } else {
-      createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
+      const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
+      useTabs.getState().openTab(newId);
     }
   };
 
-  const startResizing = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const startResizing = (startX: number) => {
+    if (disableResize) return;
     setIsResizing(true);
 
-    const startX = e.clientX;
     const startWidth = width;
 
-    const onMouseMove = (e: MouseEvent) => {
-      const newWidth = startWidth + e.clientX - startX;
+    const updateWidth = (nextClientX: number) => {
+      const newWidth = startWidth + nextClientX - startX;
       setWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, newWidth)));
     };
 
-    const onMouseUp = () => {
+    const onMouseMove = (event: MouseEvent) => {
+      updateWidth(event.clientX);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      updateWidth(event.clientX);
+    };
+
+    const stopResizing = () => {
       setIsResizing(false);
       document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("mouseup", stopResizing);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", stopResizing);
+      document.removeEventListener("pointercancel", stopResizing);
       document.body.style.cursor = "";
     };
 
     document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mouseup", stopResizing);
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", stopResizing);
+    document.addEventListener("pointercancel", stopResizing);
     document.body.style.cursor = "col-resize";
   };
 
-  const renderResizeEdge = () => (
-    <div
-      className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
-      style={{ right: "-8px", width: "16px" }}
-      onMouseDown={startResizing}
-      role="separator"
-    >
+  const handleResizeMouseDown = (event: React.MouseEvent) => {
+    if (disableResize) return;
+    event.preventDefault();
+    startResizing(event.clientX);
+  };
+
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (disableResize || event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    startResizing(event.clientX);
+  };
+
+  const renderResizeEdge = () =>
+    disableResize ? null : (
       <div
-        className={cn(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150",
-          isResizing ? "opacity-100" : "opacity-0 group-hover/resize:opacity-100",
-        )}
-        style={{
-          width: "2px",
-          height: "100%",
-          marginLeft: "-1px",
-          borderRadius: 0,
-          background: isResizing
-            ? "var(--workspace-resize-line-active)"
-            : "var(--workspace-resize-line)",
-        }}
-      />
-    </div>
-  );
+        className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
+        style={{ right: "-8px", width: "16px" }}
+        onMouseDown={handleResizeMouseDown}
+        onPointerDown={handleResizePointerDown}
+        role="separator"
+      >
+        <div
+          className={cn(
+            "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150",
+            isResizing ? "opacity-100" : "opacity-0 group-hover/resize:opacity-100",
+          )}
+          style={{
+            width: "2px",
+            height: "100%",
+            marginLeft: "-1px",
+            borderRadius: 0,
+            background: isResizing
+              ? "var(--workspace-resize-line-active)"
+              : "var(--workspace-resize-line)",
+          }}
+        />
+      </div>
+    );
 
   const handleSearch = () => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
