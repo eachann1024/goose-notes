@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { uToolsStorage } from '@/lib/storage'
+import type { StorageMode, StorageSettings } from '@/lib/tauri-storage/types'
 
 export interface SearchProvider {
     id: string
@@ -20,11 +21,23 @@ export interface UToolsSettings {
     windowHeight: number
 }
 
+export type DesktopHotkeyStatusState = 'idle' | 'active' | 'occupied' | 'invalid' | 'disabled' | 'error'
+
+export interface DesktopHotkeyStatus {
+    state: DesktopHotkeyStatusState
+    message?: string
+    rawError?: string
+}
+
 export interface DesktopSettings {
     wakeHotkey: string
     wakeHotkeyEnabled: boolean
     searchHotkey: string
     searchHotkeyEnabled: boolean
+    wakeHotkeyStatus: DesktopHotkeyStatus
+    searchHotkeyStatus: DesktopHotkeyStatus
+    // Tauri 专属存储设置
+    storage?: StorageSettings
 }
 
 export interface PrivacySettings {
@@ -87,6 +100,8 @@ interface SettingsState {
     setWakeHotkeyEnabled: (enabled: boolean) => void
     setSearchHotkey: (hotkey: string) => void
     setSearchHotkeyEnabled: (enabled: boolean) => void
+    setWakeHotkeyStatus: (status: DesktopHotkeyStatus) => void
+    setSearchHotkeyStatus: (status: DesktopHotkeyStatus) => void
     setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
@@ -100,6 +115,10 @@ interface SettingsState {
     addCustomAction: (action: Omit<CustomAction, 'id'>) => void
     updateCustomAction: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void
     removeCustomAction: (id: string) => void
+    // Tauri 专属存储设置方法
+    setStorageMode?: (mode: StorageMode) => void
+    setStorageWorkspacePath?: (path: string) => void
+    updateStorageSettings?: (settings: Partial<StorageSettings>) => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -165,6 +184,32 @@ const CODE_STYLE_MIGRATION_MAP: Record<string, CodeStyle> = {
     vivid: 'nord',
 }
 
+const DEFAULT_HOTKEY_STATUS: DesktopHotkeyStatus = {
+    state: 'idle',
+}
+
+function normalizeDesktopHotkeyStatus(
+    status: Partial<DesktopHotkeyStatus> | undefined,
+): DesktopHotkeyStatus {
+    const state = status?.state
+    if (
+        state !== 'idle' &&
+        state !== 'active' &&
+        state !== 'occupied' &&
+        state !== 'invalid' &&
+        state !== 'disabled' &&
+        state !== 'error'
+    ) {
+        return DEFAULT_HOTKEY_STATUS
+    }
+
+    return {
+        state,
+        message: status?.message,
+        rawError: status?.rawError,
+    }
+}
+
 function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
     if (!codeStyle) return 'default'
     if (codeStyle in CODE_STYLE_MIGRATION_MAP) {
@@ -217,6 +262,18 @@ export const useSettings = create<SettingsState>()(
                 wakeHotkeyEnabled: true,
                 searchHotkey: DEFAULT_SEARCH_HOTKEY,
                 searchHotkeyEnabled: true,
+                wakeHotkeyStatus: DEFAULT_HOTKEY_STATUS,
+                searchHotkeyStatus: DEFAULT_HOTKEY_STATUS,
+                storage: __HOST_TARGET__ === 'tauri' ? {
+                    mode: 'hybrid',
+                    workspacePath: '',
+                    autoSync: true,
+                    backupEnabled: true,
+                    backupInterval: 24,
+                    frontmatterEnabled: true,
+                    indexEnabled: true,
+                    searchIndexEnabled: true,
+                } : undefined,
             },
             privacy: {
                 autoOpenLastNote: true,
@@ -288,6 +345,7 @@ export const useSettings = create<SettingsState>()(
                     desktop: {
                         ...state.desktop,
                         wakeHotkey: hotkey,
+                        wakeHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                     },
                 })),
             setWakeHotkeyEnabled: (enabled) =>
@@ -295,6 +353,10 @@ export const useSettings = create<SettingsState>()(
                     desktop: {
                         ...state.desktop,
                         wakeHotkeyEnabled: enabled,
+                        wakeHotkeyStatus: enabled ? DEFAULT_HOTKEY_STATUS : {
+                            state: 'disabled',
+                            message: '已关闭全局唤醒快捷键',
+                        },
                     },
                 })),
             setSearchHotkey: (hotkey) =>
@@ -302,6 +364,7 @@ export const useSettings = create<SettingsState>()(
                     desktop: {
                         ...state.desktop,
                         searchHotkey: hotkey,
+                        searchHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                     },
                 })),
             setSearchHotkeyEnabled: (enabled) =>
@@ -309,6 +372,24 @@ export const useSettings = create<SettingsState>()(
                     desktop: {
                         ...state.desktop,
                         searchHotkeyEnabled: enabled,
+                        searchHotkeyStatus: enabled ? DEFAULT_HOTKEY_STATUS : {
+                            state: 'disabled',
+                            message: '已关闭全局搜索快捷键',
+                        },
+                    },
+                })),
+            setWakeHotkeyStatus: (status) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        wakeHotkeyStatus: normalizeDesktopHotkeyStatus(status),
+                    },
+                })),
+            setSearchHotkeyStatus: (status) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        searchHotkeyStatus: normalizeDesktopHotkeyStatus(status),
                     },
                 })),
             setAutoOpenLastNote: (enabled) =>
@@ -372,6 +453,28 @@ export const useSettings = create<SettingsState>()(
                 set((state) => ({
                     customActions: state.customActions.filter((a) => a.id !== id),
                 })),
+            // Tauri 专属存储设置方法
+            setStorageMode: (mode) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        storage: { ...state.desktop.storage!, mode },
+                    },
+                })),
+            setStorageWorkspacePath: (path) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        storage: { ...state.desktop.storage!, workspacePath: path },
+                    },
+                })),
+            updateStorageSettings: (settings) =>
+                set((state) => ({
+                    desktop: {
+                        ...state.desktop,
+                        storage: { ...state.desktop.storage!, ...settings },
+                    },
+                })),
         }),
         {
             name: 'goose-note-settings',
@@ -424,6 +527,11 @@ export const useSettings = create<SettingsState>()(
                         wakeHotkeyEnabled: storedDesktop?.wakeHotkeyEnabled ?? true,
                         searchHotkey: storedDesktop?.searchHotkey ?? DEFAULT_SEARCH_HOTKEY,
                         searchHotkeyEnabled: storedDesktop?.searchHotkeyEnabled ?? true,
+                        wakeHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.wakeHotkeyStatus),
+                        searchHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.searchHotkeyStatus),
+                        storage: __HOST_TARGET__ === 'tauri'
+                            ? storedDesktop?.storage
+                            : undefined,
                     }
                     if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
                         useSettings.setState({ desktop: mergedDesktop })
@@ -458,7 +566,9 @@ async function applyNativeWindowTheme(theme: Theme, isDark: boolean) {
     if (__HOST_TARGET__ !== 'tauri') return
 
     const targetTheme = theme === 'system' ? null : (isDark ? 'dark' : 'light')
-    const targetBackgroundColor = isDark ? [32, 32, 32, 255] : [248, 248, 248, 255]
+    const targetBackgroundColor: [number, number, number, number] = isDark
+        ? [32, 32, 32, 255]
+        : [248, 248, 248, 255]
     let themeError: unknown = null
     let backgroundError: unknown = null
 

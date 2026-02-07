@@ -37,6 +37,24 @@ const allDocs = <T>(prefix = ""): Array<HostDoc<T>> => {
   return docs;
 };
 
+const bytesToBase64 = (data: Uint8Array): string => {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    binary += String.fromCharCode(...data.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
+
+const base64ToBytes = (base64: string): Uint8Array => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
 const ensureNotificationPermission = async () => {
   if (!("Notification" in window)) return;
   if (Notification.permission === "default") {
@@ -48,15 +66,91 @@ const ensureNotificationPermission = async () => {
   }
 };
 
+const SHORTCUT_TOKEN_ALIASES: Record<string, string> = {
+  cmdorctrl: "CommandOrControl",
+  cmdorcontrol: "CommandOrControl",
+  commandorcontrol: "CommandOrControl",
+  cmd: "Command",
+  command: "Command",
+  meta: "Command",
+  ctrl: "Control",
+  control: "Control",
+  option: "Alt",
+  alt: "Alt",
+  shift: "Shift",
+};
+
+const SPECIAL_KEY_ALIASES: Record<string, string> = {
+  esc: "Escape",
+  escape: "Escape",
+  enter: "Enter",
+  tab: "Tab",
+  backspace: "Backspace",
+  delete: "Delete",
+  space: "Space",
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+};
+
+const normalizeShortcutToken = (token: string) => {
+  const normalized = token.trim();
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  const modifierAlias = SHORTCUT_TOKEN_ALIASES[lower];
+  if (modifierAlias) return modifierAlias;
+
+  const specialAlias = SPECIAL_KEY_ALIASES[lower];
+  if (specialAlias) return specialAlias;
+
+  if (/^f\d{1,2}$/i.test(normalized)) {
+    return normalized.toUpperCase();
+  }
+  if (normalized.length === 1) {
+    return normalized.toUpperCase();
+  }
+  return normalized.slice(0, 1).toUpperCase() + normalized.slice(1);
+};
+
 const normalizeShortcut = (shortcut: string) =>
-  shortcut.replace(/CmdOrCtrl|CmdOrControl/gi, "CommandOrControl");
+  shortcut
+    .split("+")
+    .map((token) => normalizeShortcutToken(token))
+    .filter((token): token is string => Boolean(token))
+    .join("+");
+
+const runSilently = async (task: () => Promise<void>) => {
+  try {
+    await task();
+  } catch {
+    // ignore single-step activation failures, keep follow-up actions running
+  }
+};
 
 const focusMainWindow = async () => {
+  // macOS 下应用可能被隐藏，先尝试唤起 App 再聚焦窗口
+  await runSilently(async () => {
+    const { show } = await import("@tauri-apps/api/app");
+    await show();
+  });
+
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   const currentWindow = getCurrentWindow();
-  await currentWindow.unminimize();
-  await currentWindow.show();
-  await currentWindow.setFocus();
+
+  await runSilently(async () => {
+    const minimized = await currentWindow.isMinimized();
+    if (minimized) {
+      await currentWindow.unminimize();
+    }
+  });
+  await runSilently(async () => {
+    await currentWindow.show();
+  });
+  await runSilently(async () => {
+    await currentWindow.setFocus();
+  });
 };
 
 const registerGlobalShortcut = async (
@@ -69,12 +163,14 @@ const registerGlobalShortcut = async (
     await unregister(normalizedShortcut).catch(() => {});
 
     await register(normalizedShortcut, (event) => {
-      if (event.state !== "Pressed") return;
+      const state = String((event as { state?: unknown })?.state ?? "Pressed").toLowerCase();
+      if (state !== "pressed") return;
       void (async () => {
-        await focusMainWindow();
-        if (onPressed) {
+        await runSilently(focusMainWindow);
+        if (!onPressed) return;
+        await runSilently(async () => {
           await onPressed();
-        }
+        });
       })();
     });
 
@@ -110,6 +206,27 @@ export const hostRuntime: HostRuntime = {
     get: readDoc,
     remove: removeDoc,
     allDocs,
+    postAttachment: (id: string, data: Uint8Array, type: string) => {
+      try {
+        localStorage.setItem(`att:${id}`, bytesToBase64(data));
+        localStorage.setItem(`att-type:${id}`, type);
+        return { id, ok: true };
+      } catch (error) {
+        return { id, ok: false, error };
+      }
+    },
+    getAttachment: (id: string) => {
+      const base64 = localStorage.getItem(`att:${id}`);
+      if (!base64) return null;
+      try {
+        return base64ToBytes(base64);
+      } catch {
+        return null;
+      }
+    },
+    getAttachmentType: (id: string) => {
+      return localStorage.getItem(`att-type:${id}`);
+    },
   },
   getUser: () => ({
     nickname: "Tauri User",

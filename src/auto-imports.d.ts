@@ -209,6 +209,7 @@ declare global {
   const useSettings: typeof import('./stores/useSettings').useSettings
   const useState: typeof import('react').useState
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
+  const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
 }
@@ -218,7 +219,7 @@ declare global {
   export type { Notebook } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'

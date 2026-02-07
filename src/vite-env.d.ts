@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 export {}
 
-declare const __HOST_TARGET__: "utools" | "tauri" | "web";
-
 declare global {
+  const __HOST_TARGET__: "utools" | "tauri" | "web";
+
   interface GooseFs {
     readDir: (dir: string) => any[];
     readDirAsync?: (dir: string) => Promise<any[]>;

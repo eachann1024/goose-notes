@@ -9,6 +9,7 @@ import {
   DEFAULT_SEARCH_HOTKEY,
   DEFAULT_WAKE_HOTKEY,
   type CustomAction,
+  type DesktopHotkeyStatus,
   type SearchProvider,
 } from "@/stores/useSettings";
 import { SearchProviderSortableGrid } from "./SearchProviderSortableGrid";
@@ -27,8 +28,10 @@ interface SettingsGeneralProps {
   setAutoOpenLastNote: (enabled: boolean) => void;
   wakeHotkey: string;
   wakeHotkeyEnabled: boolean;
+  wakeHotkeyStatus?: DesktopHotkeyStatus;
   searchHotkey: string;
   searchHotkeyEnabled: boolean;
+  searchHotkeyStatus?: DesktopHotkeyStatus;
   setWakeHotkey: (hotkey: string) => void;
   setWakeHotkeyEnabled: (enabled: boolean) => void;
   setSearchHotkey: (hotkey: string) => void;
@@ -72,8 +75,11 @@ const SETTINGS_DISABLED_BUTTON_CLASS =
 const toHotkeyString = (event: KeyboardEvent): string | null => {
   const modifiers: string[] = [];
 
-  if (event.metaKey || event.ctrlKey) {
-    modifiers.push("CmdOrCtrl");
+  if (event.metaKey) {
+    modifiers.push("Command");
+  }
+  if (event.ctrlKey) {
+    modifiers.push("Control");
   }
   if (event.altKey) {
     modifiers.push("Alt");
@@ -107,6 +113,44 @@ const toHotkeyString = (event: KeyboardEvent): string | null => {
   return [...modifiers, key.slice(0, 1).toUpperCase() + key.slice(1)].join("+");
 };
 
+const displayHotkey = (hotkey: string) => formatShortcut(hotkey);
+
+const getHotkeyStatusMeta = (
+  status: DesktopHotkeyStatus | undefined,
+): { text: string; className: string } | null => {
+  if (!status) return null;
+
+  if (status.state === "active") {
+    return null;
+  }
+  if (status.state === "disabled") {
+    return {
+      text: status.message || "快捷键已关闭",
+      className: "text-xs text-muted-foreground",
+    };
+  }
+  if (status.state === "occupied") {
+    return {
+      text: status.message || "快捷键被占用，请更换组合键",
+      className: "text-xs text-destructive",
+    };
+  }
+  if (status.state === "invalid") {
+    return {
+      text: status.message || "快捷键无效，请重新录制",
+      className: "text-xs text-destructive",
+    };
+  }
+  if (status.state === "error") {
+    return {
+      text: status.message || "快捷键注册失败，请重试",
+      className: "text-xs text-destructive",
+    };
+  }
+
+  return null;
+};
+
 export function SettingsGeneral({
   searchProviders,
   toggleSearchProvider,
@@ -120,8 +164,10 @@ export function SettingsGeneral({
   setAutoOpenLastNote,
   wakeHotkey,
   wakeHotkeyEnabled,
+  wakeHotkeyStatus,
   searchHotkey,
   searchHotkeyEnabled,
+  searchHotkeyStatus,
   setWakeHotkey,
   setWakeHotkeyEnabled,
   setSearchHotkey,
@@ -140,6 +186,8 @@ export function SettingsGeneral({
     null,
   );
   const isWakeHotkeyActionDisabled = !wakeHotkeyEnabled;
+  const wakeHotkeyStatusMeta = getHotkeyStatusMeta(wakeHotkeyStatus);
+  const searchHotkeyStatusMeta = getHotkeyStatusMeta(searchHotkeyStatus);
 
   useEffect(() => {
     if (!isCapturingWakeHotkey || !wakeHotkeyEnabled) return;
@@ -418,7 +466,7 @@ export function SettingsGeneral({
               <div
                 className={`${SETTINGS_HOTKEY_DISPLAY_CLASS} ${isWakeHotkeyActionDisabled ? SETTINGS_DISABLED_HOTKEY_DISPLAY_CLASS : ""}`}
               >
-                {wakeHotkey || DEFAULT_WAKE_HOTKEY}
+                {displayHotkey(wakeHotkey || DEFAULT_WAKE_HOTKEY)}
               </div>
               <Button
                 type="button"
@@ -458,6 +506,11 @@ export function SettingsGeneral({
             {hotkeyCaptureError && (
               <p className="text-xs text-destructive">{hotkeyCaptureError}</p>
             )}
+            {!hotkeyCaptureError && wakeHotkeyStatusMeta && (
+              <p className={wakeHotkeyStatusMeta.className}>
+                {wakeHotkeyStatusMeta.text}
+              </p>
+            )}
           </SettingsSectionCard>
 
           <SettingsSectionCard title="全局搜索快捷键">
@@ -480,7 +533,7 @@ export function SettingsGeneral({
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <div className={SETTINGS_HOTKEY_DISPLAY_CLASS}>
-                {searchHotkey || DEFAULT_SEARCH_HOTKEY}
+                {displayHotkey(searchHotkey || DEFAULT_SEARCH_HOTKEY)}
               </div>
               <Button
                 type="button"
@@ -513,10 +566,15 @@ export function SettingsGeneral({
             <p className="text-xs text-muted-foreground">
               {isCapturingSearchHotkey
                 ? "正在录制：请按下组合键，按 Esc 取消。"
-                : "默认：CmdOrCtrl+Shift+K。按下后会唤醒窗口并打开搜索。"}
+                : `默认：${displayHotkey(DEFAULT_SEARCH_HOTKEY)}。按下后会唤醒窗口并打开搜索。`}
             </p>
             {searchHotkeyCaptureError && (
               <p className="text-xs text-destructive">{searchHotkeyCaptureError}</p>
+            )}
+            {!searchHotkeyCaptureError && searchHotkeyStatusMeta && (
+              <p className={searchHotkeyStatusMeta.className}>
+                {searchHotkeyStatusMeta.text}
+              </p>
             )}
           </SettingsSectionCard>
         </>

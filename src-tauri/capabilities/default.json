@@ -19,7 +19,11 @@
     "core:window:allow-theme",
     "core:window:allow-set-background-color",
     "core:window:allow-start-dragging",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-unminimize",
     "core:app:allow-set-app-theme",
+    "core:app:allow-app-show",
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister"

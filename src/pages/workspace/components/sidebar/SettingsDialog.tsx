@@ -276,8 +276,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setAutoOpenLastNote={setAutoOpenLastNote}
                 wakeHotkey={desktop.wakeHotkey ?? ""}
                 wakeHotkeyEnabled={desktop.wakeHotkeyEnabled ?? true}
+                wakeHotkeyStatus={desktop.wakeHotkeyStatus}
                 searchHotkey={desktop.searchHotkey ?? ""}
                 searchHotkeyEnabled={desktop.searchHotkeyEnabled ?? true}
+                searchHotkeyStatus={desktop.searchHotkeyStatus}
                 setWakeHotkey={setWakeHotkey}
                 setWakeHotkeyEnabled={setWakeHotkeyEnabled}
                 setSearchHotkey={setSearchHotkey}
