@@ -16,6 +16,7 @@
         "title": "鹅的笔记",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "dragDropEnabled": false,
         "backgroundColor": "#202020",
         "width": 1280,
         "height": 820,
