@@ -184,7 +184,12 @@ export function SettingsAppearance({
               key={t.value}
               selected={codeStyle === t.value}
               onClick={() => setCodeStyle(t.value)}
-              className="flex items-center gap-3 rounded-[12px] border-0 bg-[hsl(var(--goose-selected-bg)/0.48)] px-3 py-3 hover:bg-[hsl(var(--goose-selected-bg)/0.76)]"
+              className={cn(
+                "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
+                codeStyle === t.value
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[hsl(var(--goose-selected-bg)/0.76)] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+              )}
             >
               <LucideIcons.Code2 className="h-5 w-5 shrink-0" />
               <div className="flex-1">
@@ -193,9 +198,6 @@ export function SettingsAppearance({
                   {t.description}
                 </div>
               </div>
-              {codeStyle === t.value ? (
-                <div className="h-2 w-2 rounded-full bg-primary" />
-              ) : null}
             </SelectableCard>
           ))}
         </div>
