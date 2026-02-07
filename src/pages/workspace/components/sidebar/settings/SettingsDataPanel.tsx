@@ -98,7 +98,7 @@ export function SettingsDataPanel({
                     "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected
-                      ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
                       : DATA_UNSELECTED_CARD_CLASS,
                   )}
                 >
@@ -119,7 +119,7 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "md"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
                   : DATA_UNSELECTED_CARD_CLASS,
               )}
             >
@@ -135,7 +135,7 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "html"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
                   : DATA_UNSELECTED_CARD_CLASS,
               )}
             >

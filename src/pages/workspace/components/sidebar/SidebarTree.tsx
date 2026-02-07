@@ -365,7 +365,7 @@ function SortablePageRow({
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
             isActive &&
-              "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+              "bg-[var(--goose-interactive-selected)] text-foreground"
           )}
           onClick={(e) => {
             e.stopPropagation();

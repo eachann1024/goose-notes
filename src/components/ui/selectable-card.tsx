@@ -7,12 +7,12 @@ const selectableCardVariants = cva(
   {
     variants: {
       selected: {
-        true: "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]",
-        false: "border-border hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--foreground)/0.2)]",
+        true: "border-transparent bg-[var(--goose-interactive-selected)]",
+        false: "border-transparent hover:bg-[var(--goose-interactive-hover)]",
       },
       tone: {
         default: "",
-        danger: "hover:bg-destructive/10 hover:border-destructive/35",
+        danger: "hover:bg-destructive/10",
       },
     },
     defaultVariants: {

@@ -240,7 +240,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
                     <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
@@ -317,7 +317,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">

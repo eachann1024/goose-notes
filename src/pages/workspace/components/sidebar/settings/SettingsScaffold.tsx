@@ -46,7 +46,7 @@ export function SettingsScaffold({
                   className={cn(
                     "h-auto w-full justify-start gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                 >

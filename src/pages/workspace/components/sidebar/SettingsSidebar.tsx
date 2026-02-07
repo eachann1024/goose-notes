@@ -21,7 +21,7 @@ export function SettingsSidebar({
           className={cn(
             "justify-start w-full rounded-[10px] transition-colors",
             activeTab === "general"
-              ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+              ? "bg-[var(--goose-interactive-selected)] text-foreground"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
           onClick={() => onTabChange("general")}
@@ -35,7 +35,7 @@ export function SettingsSidebar({
           className={cn(
             "justify-start w-full rounded-[10px] transition-colors",
             activeTab === "appearance"
-              ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+              ? "bg-[var(--goose-interactive-selected)] text-foreground"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
           onClick={() => onTabChange("appearance")}
@@ -49,7 +49,7 @@ export function SettingsSidebar({
           className={cn(
             "justify-start w-full rounded-[10px] transition-colors",
             activeTab === "data"
-              ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+              ? "bg-[var(--goose-interactive-selected)] text-foreground"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
           onClick={() => onTabChange("data")}

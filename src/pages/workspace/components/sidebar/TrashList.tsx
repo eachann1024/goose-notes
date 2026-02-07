@@ -96,7 +96,7 @@ export function TrashList({ onBack, showHeader = true, itemHeight = 52 }: TrashL
                   className={cn(
                     "group relative flex items-center gap-2 rounded-[8px] px-4 cursor-pointer transition-colors duration-200 overflow-hidden text-sm font-medium",
                     activePageId === page.id
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
                   )}
                   onClick={() => setActivePage(page.id)}
