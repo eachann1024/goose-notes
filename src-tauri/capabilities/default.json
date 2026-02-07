@@ -15,6 +15,10 @@
     "fs:allow-write-file",
     "fs:allow-mkdir",
     "fs:allow-rename",
+    "core:window:allow-set-theme",
+    "core:window:allow-theme",
+    "core:window:allow-set-background-color",
+    "core:app:allow-set-app-theme",
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister"

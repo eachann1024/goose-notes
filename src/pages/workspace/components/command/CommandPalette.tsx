@@ -240,7 +240,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.72)] aria-selected:bg-[hsl(var(--goose-selected-bg))] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
                     <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
@@ -255,7 +255,7 @@ export function CommandPalette() {
                         e.stopPropagation();
                         handleRemoveRecent(e, page.id);
                       }}
-                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 hover:bg-[hsl(var(--goose-selected-bg))]"
+                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 hover:bg-[var(--goose-interactive-selected)]"
                     >
                       <LucideIcons.X className="h-3 w-3 text-muted-foreground" />
                     </div>
@@ -276,12 +276,6 @@ export function CommandPalette() {
             })}
           </Command.Group>
         )}
-
-        {!searchQuery.trim() &&
-          searchResults.recent.length > 0 &&
-          searchResults.all.length > 0 && (
-            <Command.Separator className="my-1 h-px bg-border" />
-          )}
 
         {searchResults.all.length > 0 && (
           <Command.Group
@@ -323,7 +317,7 @@ export function CommandPalette() {
                       });
                     }
                   }}
-                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.72)] aria-selected:bg-[hsl(var(--goose-selected-bg))] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <LucideIcons.FileText className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">

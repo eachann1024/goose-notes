@@ -46,8 +46,8 @@ export function SettingsScaffold({
                   className={cn(
                     "h-auto w-full justify-start gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
-                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:bg-[hsl(var(--foreground)/0.14)]"
-                      : "text-muted-foreground hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" />

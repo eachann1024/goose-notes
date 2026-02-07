@@ -250,9 +250,9 @@ function PageNode({
             isDropTarget && "sidebar-drop-target",
             node.state.isDragging && "opacity-50",
             !isActive &&
-              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
+              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
             isActive &&
-              "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:text-foreground/90"
+              "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
           )}
           onClick={(e) => {
             e.stopPropagation();

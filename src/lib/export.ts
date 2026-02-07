@@ -81,14 +81,14 @@ async function extractImagesFromContent(
       const src = node.attrs.src;
       let finalSrc = src;
 
-      // 处理 uuid: 引用（IndexedDB）
-      if (src.startsWith("uuid:")) {
+      // 处理 uuid: 引用（IndexedDB）或 att: 引用（uTools attachment）
+      if (src.startsWith("uuid:") || src.startsWith("att:")) {
         const { imageStorage } = await getImageStorage();
         const blob = await imageStorage.load(src);
         if (blob) {
           finalSrc = await blobToBase64(blob);
         } else {
-          // 防止导出残留 uuid 引用
+          // 防止导出残留引用
           finalSrc = fallbackBase64;
         }
       }
@@ -266,20 +266,147 @@ export async function exportNotebooks(
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  downloadBlob(content, `goose-note-export-${timestamp}.zip`);
+  await downloadBlob(content, `goose-note-export-${timestamp}.zip`);
 }
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
 }
 
-function downloadBlob(blob: Blob, filename: string) {
+async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+
+  const hostWindow = window as Window & {
+    utools?: {
+      showSaveDialog?: (options?: Record<string, unknown>) => unknown;
+      shellShowItemInFolder?: (targetPath: string) => boolean;
+      shellOpenPath?: (targetPath: string) => boolean;
+    };
+    gooseFs?: GooseFs & {
+      revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
+    };
+  };
+
+  const utools = hostWindow.utools;
+  const gooseFs = hostWindow.gooseFs;
+  if (!utools || typeof utools.showSaveDialog !== "function" || !gooseFs) {
+    return false;
+  }
+
+  const saveResult = await Promise.resolve(
+    utools.showSaveDialog({
+      title: "导出文件",
+      defaultPath: filename,
+      buttonLabel: "导出",
+    })
+  );
+
+  const normalizeSavePath = (value: unknown): string | null => {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      const first = value.find((item) => typeof item === "string");
+      return typeof first === "string" && first.trim().length > 0 ? first : null;
+    }
+    if (value && typeof value === "object") {
+      const filePath =
+        "filePath" in value && typeof (value as { filePath?: unknown }).filePath === "string"
+          ? (value as { filePath: string }).filePath
+          : null;
+      const canceled =
+        "canceled" in value && Boolean((value as { canceled?: unknown }).canceled);
+      if (canceled) return null;
+      if (filePath && filePath.trim().length > 0) return filePath;
+    }
+    return null;
+  };
+
+  const targetPath = normalizeSavePath(saveResult);
+
+  if (!targetPath) {
+    return true;
+  }
+
+  const base64 = await blobToBase64(blob);
+  const payload = base64.replace(/^data:.*;base64,/, "");
+  const saved = gooseFs.writeFileAsync
+    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
+    : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
+
+  if (!saved) {
+    throw new Error("uTools 写入文件失败");
+  }
+
+  let revealed = false;
+  if (typeof gooseFs.revealItemInFolder === "function") {
+    revealed = Boolean(await gooseFs.revealItemInFolder(targetPath));
+  }
+
+  if (!revealed && typeof utools.shellShowItemInFolder === "function") {
+    revealed = Boolean(utools.shellShowItemInFolder(targetPath));
+  }
+
+  if (!revealed && typeof utools.shellOpenPath === "function") {
+    revealed = Boolean(utools.shellOpenPath(targetPath));
+  }
+
+  return true;
+}
+
+async function saveBlobViaTauri(blob: Blob, filename: string): Promise<boolean> {
+  if (__HOST_TARGET__ !== "tauri") return false;
+
+  try {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const targetPath = await save({
+      title: "导出文件",
+      defaultPath: filename,
+    });
+
+    if (typeof targetPath !== "string" || targetPath.trim().length === 0) {
+      return true;
+    }
+
+    const { writeFile } = await import("@tauri-apps/plugin-fs");
+    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    await writeFile(targetPath, bytes, { create: true });
+    await revealItemInDir(targetPath);
+    return true;
+  } catch (error) {
+    console.error("[export] tauri 导出失败:", error);
+    return false;
+  }
+}
+
+async function saveBlobAndReveal(blob: Blob, filename: string): Promise<boolean> {
+  if (await saveBlobViaUTools(blob, filename)) {
+    return true;
+  }
+
+  return saveBlobViaTauri(blob, filename);
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadBlob(blob: Blob, filename: string) {
+  try {
+    if (await saveBlobAndReveal(blob, filename)) {
+      return;
+    }
+  } catch (error) {
+    console.error("[export] 导出后自动打开文件夹失败:", error);
+  }
+
+  triggerBrowserDownload(blob, filename);
 }
 
 export async function importNotebooksFromZip(
@@ -530,15 +657,7 @@ export function importFile(): Promise<ImportResult> {
 function downloadFile(content: string, filename: string, contentType: string) {
   try {
     const blob = new Blob([content], { type: contentType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    void downloadBlob(blob, filename);
   } catch (error) {
     console.error("下载失败:", error);
     throw error;

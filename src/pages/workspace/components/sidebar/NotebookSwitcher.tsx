@@ -173,7 +173,7 @@ export function NotebookSwitcher() {
           >
             <Button
               variant="ghost"
-              className="w-full justify-between px-1 h-auto py-1 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[hsl(var(--goose-selected-bg)/0.72)] hover:text-foreground transition-colors"
+              className="w-full justify-between px-1 h-auto py-1 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[var(--goose-interactive-hover)] hover:text-foreground transition-colors"
             >
               <div className="flex items-center gap-2 truncate">
                 {activeNotebook &&
@@ -206,6 +206,8 @@ export function NotebookSwitcher() {
               className={cn(
                 "flex items-center justify-between gap-2 group",
                 notebook.localPathMissing && "opacity-50",
+                activeNotebookId === notebook.id &&
+                  "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]",
               )}
               onClick={() => {
                 if (notebook.localPathMissing) return;
@@ -239,31 +241,46 @@ export function NotebookSwitcher() {
               <div className="flex items-center gap-1 shrink-0 justify-end">
                 {notebook.source === "local-folder" ? (
                   canDeleteNotebook && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotebook(notebook.id);
-                      }}
-                      title="删除本地记事本"
-                    >
-                      <LucideIcons.Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <TooltipProvider delayDuration={0}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotebook(notebook.id);
+                            }}
+                            aria-label="删除本地记事本"
+                          >
+                            <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">删除本地记事本</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(notebook.id);
-                    }}
-                  >
-                    <LucideIcons.Settings className="h-3.5 w-3.5" />
-                  </Button>
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                          aria-label="编辑记事本"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(notebook.id);
+                          }}
+                        >
+                          <LucideIcons.Settings className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">编辑记事本</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 {activeNotebookId === notebook.id && (
                   <LucideIcons.Check className="h-4 w-4" />

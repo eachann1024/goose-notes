@@ -1,6 +1,14 @@
 // preload 运行在 CJS，避免与主项目 ESM 冲突
 const fs = require("fs");
 const path = require("path");
+let electronShell = null;
+
+try {
+  const electron = require("electron");
+  electronShell = electron?.shell ?? null;
+} catch (err) {
+  console.warn("[gooseFs] electron shell unavailable:", err);
+}
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
@@ -35,6 +43,47 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     return false;
   };
 
+  const resolveWriteEncoding = (encoding) =>
+    encoding === "base64" || encoding === "binary" ? "base64" : "utf-8";
+
+  const revealItemInFolder = (targetPath) => {
+    try {
+      if (typeof utools?.shellShowItemInFolder === "function") {
+        return !!utools.shellShowItemInFolder(targetPath);
+      }
+    } catch (err) {
+      console.error("[gooseFs] utools shellShowItemInFolder failed:", err);
+    }
+
+    try {
+      if (typeof electronShell?.showItemInFolder === "function") {
+        electronShell.showItemInFolder(targetPath);
+        return true;
+      }
+    } catch (err) {
+      console.error("[gooseFs] electron shell.showItemInFolder failed:", err);
+    }
+
+    try {
+      if (typeof utools?.shellOpenPath === "function") {
+        return !!utools.shellOpenPath(path.dirname(targetPath));
+      }
+    } catch (err) {
+      console.error("[gooseFs] utools shellOpenPath failed:", err);
+    }
+
+    try {
+      if (typeof electronShell?.openPath === "function") {
+        electronShell.openPath(path.dirname(targetPath));
+        return true;
+      }
+    } catch (err) {
+      console.error("[gooseFs] electron shell.openPath failed:", err);
+    }
+
+    return false;
+  };
+
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）
   window.gooseFs = {
     readDir: (dir) => {
@@ -60,14 +109,29 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
-    writeFile: (filePath, content) => {
+    writeFile: (filePath, content, encoding = "utf-8") => {
       try {
-        fs.writeFileSync(filePath, content, "utf-8");
+        fs.writeFileSync(filePath, content, resolveWriteEncoding(encoding));
         // 标记最近写入，防止 watch 误触发重载提示
         recentWrites.set(filePath, Date.now());
         return true;
       } catch (err) {
         console.error("[gooseFs] writeFile failed:", err);
+        return false;
+      }
+    },
+
+    writeFileAsync: async (filePath, content, encoding = "utf-8") => {
+      try {
+        await fs.promises.writeFile(
+          filePath,
+          content,
+          resolveWriteEncoding(encoding),
+        );
+        recentWrites.set(filePath, Date.now());
+        return true;
+      } catch (err) {
+        console.error("[gooseFs] writeFileAsync failed:", err);
         return false;
       }
     },
@@ -182,6 +246,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         return false;
       }
     },
+
+    revealItemInFolder,
   };
 
   // 处理 uTools 全局搜索（sublist）点击

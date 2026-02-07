@@ -42,6 +42,9 @@ export interface HostRuntime {
     get: <T>(id: string) => HostDoc<T> | null;
     remove: (id: string) => HostRemoveResult;
     allDocs: <T>(prefix?: string) => Array<HostDoc<T>>;
+    postAttachment: (id: string, data: Uint8Array, type: string) => HostPutResult;
+    getAttachment: (id: string) => Uint8Array | null;
+    getAttachmentType: (id: string) => string | null;
   };
   getUser: () => UserInfo | null;
   copyToClipboard: (text: string) => void | Promise<void>;

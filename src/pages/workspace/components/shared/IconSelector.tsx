@@ -266,14 +266,21 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
               )}
           </div>
           <div className="flex items-center gap-1">
-             <button
-                type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
-                title="随机图标"
-                onClick={handleRandomIcon}
-             >
-                <LucideIcons.Shuffle className="h-3.5 w-3.5" />
-             </button>
+             <TooltipProvider delayDuration={0}>
+               <Tooltip>
+                 <TooltipTrigger asChild>
+                   <button
+                     type="button"
+                     className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
+                     aria-label="随机图标"
+                     onClick={handleRandomIcon}
+                   >
+                     <LucideIcons.Shuffle className="h-3.5 w-3.5" />
+                   </button>
+                 </TooltipTrigger>
+                 <TooltipContent side="bottom">随机图标</TooltipContent>
+               </Tooltip>
+             </TooltipProvider>
              <Button
                type="button"
                variant="ghost"
@@ -389,36 +396,42 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 
           {tab === "icon" && (
              <ScrollArea className="h-full">
-                <div className="p-3 grid grid-cols-6 gap-1">
-                   {filteredIcons.map((iconName) => {
-                     const Icon = (LucideIcons as any)[iconName];
-                     return (
-                       <Button
-                         key={iconName}
-                         type="button"
-                         variant="ghost"
-                         size="icon"
-                         className={cn(
-                           "aspect-square h-auto w-full rounded-md p-0 transition-all duration-150 hover:bg-muted",
-                           value === iconName &&
-                             "bg-accent text-accent-foreground shadow-sm",
-                         )}
-                         onClick={() => {
-                           onChange(iconName);
-                           setOpen(false);
-                         }}
-                         title={iconName}
-                       >
-                         <Icon className="h-6 w-6 stroke-[1.5]" />
-                       </Button>
-                     );
-                   })}
-                   {filteredIcons.length === 0 && (
-                     <div className="col-span-6 text-center py-12 text-sm text-muted-foreground">
-                       未找到匹配的图标
-                     </div>
-                   )}
-                </div>
+               <TooltipProvider delayDuration={0}>
+                 <div className="p-3 grid grid-cols-6 gap-1">
+                    {filteredIcons.map((iconName) => {
+                      const Icon = (LucideIcons as any)[iconName];
+                      return (
+                        <Tooltip key={iconName}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "aspect-square h-auto w-full rounded-md p-0 transition-all duration-150 hover:bg-muted",
+                                value === iconName &&
+                                  "bg-accent text-accent-foreground shadow-sm",
+                              )}
+                              onClick={() => {
+                                onChange(iconName);
+                                setOpen(false);
+                              }}
+                              aria-label={iconName}
+                            >
+                              <Icon className="h-6 w-6 stroke-[1.5]" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">{iconName}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                    {filteredIcons.length === 0 && (
+                      <div className="col-span-6 text-center py-12 text-sm text-muted-foreground">
+                        未找到匹配的图标
+                      </div>
+                    )}
+                 </div>
+               </TooltipProvider>
              </ScrollArea>
           )}
         </div>

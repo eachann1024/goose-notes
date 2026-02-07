@@ -312,31 +312,65 @@ export function Sidebar({ className }: SidebarProps) {
     onSearch: () => void;
     onCreate: () => void;
     createTitle: string;
-  }) => (
-    <div className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
-      <span>{title}</span>
-      <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          title="搜索"
-          onClick={onSearch}
-        >
-          <LucideIcons.Search className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          title={createTitle}
-          onClick={onCreate}
-        >
-          <LucideIcons.Plus className="h-4 w-4" />
-        </Button>
+  }) => {
+    const searchShortcut = formatShortcut("Mod+K");
+    const createShortcut =
+      createTitle === "新建页面" ? formatShortcut("Mod+N") : null;
+
+    return (
+      <div className="group flex items-center justify-between pl-2 pr-2 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
+        <span>{title}</span>
+        <TooltipProvider delayDuration={0}>
+          <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  aria-label="搜索"
+                  onClick={onSearch}
+                >
+                  <LucideIcons.Search className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>搜索</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {searchShortcut}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  aria-label={createTitle}
+                  onClick={onCreate}
+                >
+                  <LucideIcons.Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>{createTitle}</span>
+                  {createShortcut && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {createShortcut}
+                    </span>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div
@@ -370,7 +404,7 @@ export function Sidebar({ className }: SidebarProps) {
         {currentView === "pages" ? (
           <>
             <FavoritesSection
-              width={width - 16}
+              width={width - 12}
               rowHeight={rowHeight}
               itemHeight={itemHeight}
               onCreatePage={handleCreatePage}
@@ -386,10 +420,10 @@ export function Sidebar({ className }: SidebarProps) {
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                 />
               </div>
-              <div className="px-2 pb-10">
+              <div className="pl-1 pr-2 pb-10">
                 <SidebarTree
                   activeNotebookId={activeNotebookId}
-                  width={width - 16}
+                  width={width - 12}
                   rowHeight={rowHeight}
                   itemHeight={itemHeight}
                   viewportHeight={scrollAreaHeight}

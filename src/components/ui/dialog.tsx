@@ -28,6 +28,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   hideClose?: boolean;
+  overlayClassName?: string;
 }
 
 const DialogContent = React.forwardRef<
@@ -38,11 +39,15 @@ const DialogContent = React.forwardRef<
   const isUTools = UToolsAdapter.isUTools;
   const topPosition = isUTools ? "top-[50%]" : "top-[10%]";
   const translateY = isUTools ? "translate-y-[-50%]" : "";
-  const { "aria-describedby": ariaDescribedby, ...rest } = props;
+  const {
+    "aria-describedby": ariaDescribedby,
+    overlayClassName,
+    ...rest
+  } = props;
 
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(

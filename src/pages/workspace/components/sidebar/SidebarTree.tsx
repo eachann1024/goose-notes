@@ -84,6 +84,35 @@ interface SidebarDragGuide {
   mode: DragGuideMode;
 }
 
+function nodeHasVisibleContent(node: any): boolean {
+  if (!node) return false;
+
+  if (typeof node.text === "string" && node.text.trim().length > 0) {
+    return true;
+  }
+
+  const children = Array.isArray(node.content) ? node.content : [];
+  if (children.some((child) => nodeHasVisibleContent(child))) {
+    return true;
+  }
+
+  if (
+    node.type === "doc" ||
+    node.type === "paragraph" ||
+    node.type === "heading" ||
+    node.type === "text" ||
+    node.type === "hardBreak"
+  ) {
+    return false;
+  }
+
+  return typeof node.type === "string" && node.type.length > 0;
+}
+
+function pageHasVisibleContent(page: Page): boolean {
+  return nodeHasVisibleContent(page.content);
+}
+
 function getClientYFromActivator(event: Event | null | undefined): number | null {
   if (!event) return null;
 
@@ -190,8 +219,8 @@ function PlaceholderRow({
   name: string;
 }) {
   return (
-    <div style={style} className="relative px-1 select-none">
-      <div className="flex items-center h-full px-2 rounded-md">
+    <div style={style} className="relative pl-0 pr-1 select-none">
+      <div className="flex items-center h-full pl-1 pr-2 rounded-md">
         <div
           style={{ paddingLeft: depth * TREE_INDENT + 24 }}
           className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
@@ -243,6 +272,9 @@ function SortablePageRow({
   const iconName = page.icon;
   const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
   const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
+  const DefaultPageIcon = pageHasVisibleContent(page)
+    ? LucideIcons.FileText
+    : LucideIcons.File;
 
   const dndTransform = CSS.Transform.toString(transform);
   const virtualTransform = typeof rowStyle.transform === "string" ? rowStyle.transform : "";
@@ -302,14 +334,14 @@ function SortablePageRow({
         transform: mergedTransform,
         transition,
       }}
-      className={cn("group relative px-1", isDragging && "z-20 pointer-events-none")}
+      className={cn("group relative pl-0 pr-1", isDragging && "z-20 pointer-events-none")}
     >
       {isNestDropTarget && (
         <div className="pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px] bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] shadow-[0_0_0_1px_hsl(var(--background)/0.5)_inset] transition-all duration-100" />
       )}
       {showDropLine && (
         <div
-          className="pointer-events-none absolute z-[5] h-0.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.88),0_0_0_1px_rgba(15,23,42,0.28)] transition-all duration-100"
+          className="pointer-events-none absolute z-[35] h-[2px] rounded-full bg-[hsl(var(--primary))] shadow-[0_0_8px_hsl(var(--primary)/0.35)] transition-all duration-100"
           style={{
             left: dropLineLeft,
             right: 12,
@@ -325,15 +357,15 @@ function SortablePageRow({
           {...attributes}
           {...guardedListeners}
           className={cn(
-            "relative z-20 flex items-center h-full px-1 rounded-[8px] cursor-grab active:cursor-grabbing transition-colors text-sm font-medium",
+            "relative z-20 flex items-center h-full pl-0 pr-1 rounded-[8px] overflow-hidden cursor-pointer active:cursor-grabbing transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
-            isDragging && "opacity-60",
+            isDragging && "opacity-60 cursor-grabbing",
             nestGuideState !== "idle" &&
               "bg-[hsl(var(--primary)/0.14)] ring-1 ring-[hsl(var(--primary)/0.45)]",
             !isActive &&
-              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85 transition-colors duration-200",
+              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
             isActive &&
-              "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:text-foreground/90"
+              "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -350,7 +382,7 @@ function SortablePageRow({
           >
             <div
               className={cn(
-                "flex items-center justify-center w-5 h-5 shrink-0 -ml-1 mr-0.5 rounded transition-all duration-300 ease-out",
+                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 mr-1 rounded transition-all duration-300 ease-out",
                 showArrow
                   ? "hover:bg-muted-foreground/10 cursor-pointer"
                   : "opacity-0 pointer-events-none"
@@ -383,7 +415,7 @@ function SortablePageRow({
                   {showFolderIcon ? (
                     <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   ) : (
-                    <LucideIcons.FileText className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
+                    <DefaultPageIcon className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                   )}
                 </div>
               ) : (
@@ -403,7 +435,7 @@ function SortablePageRow({
                     ) : showFolderIcon ? (
                       <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                     ) : (
-                      <LucideIcons.FileText className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
+                      <DefaultPageIcon className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
                     )}
                   </div>
                 </IconSelector>
@@ -508,20 +540,6 @@ export function SidebarTree({
     [pages, openPageIds, activeNotebookId, isLocalNotebook, rootPageIds]
   );
 
-  const flatItems = useMemo(
-    () => visibleItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
-    [visibleItems]
-  );
-
-  const visibleIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    visibleItems.forEach((item, index) => {
-      if ("isPlaceholder" in item) return;
-      map.set(item.id, index);
-    });
-    return map;
-  }, [visibleItems]);
-
   const activeDescendantIds = useMemo(() => {
     if (!activeId) return new Set<string>();
     const descendants = new Set<string>();
@@ -538,6 +556,28 @@ export function SidebarTree({
 
     return descendants;
   }, [activeId, pages]);
+
+  const renderItems = useMemo(
+    () =>
+      activeId
+        ? visibleItems.filter((item) => ("isPlaceholder" in item ? true : !activeDescendantIds.has(item.id)))
+        : visibleItems,
+    [visibleItems, activeId, activeDescendantIds]
+  );
+
+  const flatItems = useMemo(
+    () => renderItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
+    [renderItems]
+  );
+
+  const visibleIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    renderItems.forEach((item, index) => {
+      if ("isPlaceholder" in item) return;
+      map.set(item.id, index);
+    });
+    return map;
+  }, [renderItems]);
 
   const sensors = useSensors(
     useSensor(LeftButtonPointerSensor, {
@@ -557,7 +597,7 @@ export function SidebarTree({
   }, []);
 
   const virtualizer = useVirtualizer({
-    count: visibleItems.length,
+    count: renderItems.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan: 10,
@@ -612,7 +652,7 @@ export function SidebarTree({
     });
 
     const timer = window.setTimeout(() => {
-      const index = visibleItems.findIndex((item) => item.id === expandPageId);
+      const index = renderItems.findIndex((item) => item.id === expandPageId);
       if (index >= 0) {
         virtualizer.scrollToIndex(index, { align: "center" });
       }
@@ -620,7 +660,7 @@ export function SidebarTree({
 
     setExpandPageId(null);
     return () => window.clearTimeout(timer);
-  }, [expandPageId, pages, activeNotebookId, setExpandPageId, visibleItems, virtualizer]);
+  }, [expandPageId, pages, activeNotebookId, setExpandPageId, renderItems, virtualizer]);
 
   const clearAutoExpandTimer = () => {
     if (autoExpandTimerRef.current !== null) {
@@ -1167,10 +1207,10 @@ export function SidebarTree({
   }
 
   const contentHeight = fitContent
-    ? Math.max(visibleItems.length * rowHeight, rowHeight)
+    ? Math.max(renderItems.length * rowHeight, rowHeight)
     : Math.max(virtualizer.getTotalSize(), viewportHeight || 0);
   const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> = fitContent
-    ? visibleItems.map((item, index) => ({
+    ? renderItems.map((item, index) => ({
         item,
         size: rowHeight,
         start: index * rowHeight,
@@ -1178,7 +1218,7 @@ export function SidebarTree({
     : virtualizer
         .getVirtualItems()
         .flatMap((virtualRow) => {
-          const item = visibleItems[virtualRow.index];
+          const item = renderItems[virtualRow.index];
           if (!item) return [];
           return [
             {

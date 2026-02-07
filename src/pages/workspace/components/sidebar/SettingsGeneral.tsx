@@ -54,6 +54,21 @@ const SPECIAL_KEY_LABEL_MAP: Record<string, string> = {
   Delete: "Delete",
 };
 
+const SETTINGS_OPTION_ROW_CLASS =
+  "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
+
+const SETTINGS_HOTKEY_DISPLAY_CLASS =
+  "inline-flex h-9 min-w-[200px] items-center rounded-lg bg-[hsl(var(--goose-selected-bg)/0.72)] px-3 font-mono text-sm text-foreground dark:bg-[hsl(var(--foreground)/0.1)]";
+
+const SETTINGS_SWITCH_CLASS =
+  "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
+
+const SETTINGS_DISABLED_HOTKEY_DISPLAY_CLASS =
+  "opacity-50 text-muted-foreground";
+
+const SETTINGS_DISABLED_BUTTON_CLASS =
+  "disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none";
+
 const toHotkeyString = (event: KeyboardEvent): string | null => {
   const modifiers: string[] = [];
 
@@ -124,6 +139,7 @@ export function SettingsGeneral({
   const [searchHotkeyCaptureError, setSearchHotkeyCaptureError] = useState<string | null>(
     null,
   );
+  const isWakeHotkeyActionDisabled = !wakeHotkeyEnabled;
 
   useEffect(() => {
     if (!isCapturingWakeHotkey || !wakeHotkeyEnabled) return;
@@ -207,7 +223,7 @@ export function SettingsGeneral({
       </div>
 
       <SettingsSectionCard title="隐私设置">
-        <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
+        <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
           <div>
             <Label htmlFor="auto-open-last-note" className="cursor-pointer">
               自动打开上次笔记
@@ -220,6 +236,7 @@ export function SettingsGeneral({
             id="auto-open-last-note"
             checked={autoOpenLastNote}
             onCheckedChange={setAutoOpenLastNote}
+            className={SETTINGS_SWITCH_CLASS}
           />
         </div>
       </SettingsSectionCard>
@@ -238,7 +255,7 @@ export function SettingsGeneral({
       {UToolsAdapter.isUTools && (
         <>
           <SettingsSectionCard title="插件设置">
-            <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
+            <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
               <div>
                 <Label htmlFor="open-in-utools" className="cursor-pointer">
                   使用 uTools 打开搜索结果
@@ -251,6 +268,7 @@ export function SettingsGeneral({
                 id="open-in-utools"
                 checked={openSearchInUtools ?? false}
                 onCheckedChange={setOpenSearchInUtools}
+                className={SETTINGS_SWITCH_CLASS}
               />
             </div>
           </SettingsSectionCard>
@@ -301,7 +319,7 @@ export function SettingsGeneral({
                 {customActions.map((action) => (
                   <div
                     key={action.id}
-                    className="flex items-center gap-2 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] px-2 py-2"
+                    className={`flex items-center gap-2 px-2 py-2 ${SETTINGS_OPTION_ROW_CLASS}`}
                   >
                     <Input
                       placeholder="名称"
@@ -351,6 +369,7 @@ export function SettingsGeneral({
                       onCheckedChange={(checked) =>
                         updateCustomAction(action.id, { isEnabled: checked })
                       }
+                      className={SETTINGS_SWITCH_CLASS}
                     />
                     <Button
                       variant="ghost"
@@ -373,7 +392,7 @@ export function SettingsGeneral({
       {UToolsAdapter.isTauri && (
         <>
           <SettingsSectionCard title="桌面唤醒">
-            <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
+            <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
               <div>
                 <Label htmlFor="wake-hotkey-enabled" className="cursor-pointer">
                   启用全局唤醒快捷键
@@ -386,6 +405,7 @@ export function SettingsGeneral({
                 id="wake-hotkey-enabled"
                 checked={wakeHotkeyEnabled}
                 onCheckedChange={handleWakeHotkeyEnabledChange}
+                className={SETTINGS_SWITCH_CLASS}
               />
             </div>
           </SettingsSectionCard>
@@ -395,14 +415,17 @@ export function SettingsGeneral({
             description="点击“录制快捷键”后直接按键触发，不需要手动输入。"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg bg-[hsl(var(--goose-selected-bg)/0.72)] px-3 font-mono text-sm text-foreground">
+              <div
+                className={`${SETTINGS_HOTKEY_DISPLAY_CLASS} ${isWakeHotkeyActionDisabled ? SETTINGS_DISABLED_HOTKEY_DISPLAY_CLASS : ""}`}
+              >
                 {wakeHotkey || DEFAULT_WAKE_HOTKEY}
               </div>
               <Button
                 type="button"
                 variant={isCapturingWakeHotkey ? "default" : "secondary"}
                 size="sm"
-                disabled={!wakeHotkeyEnabled}
+                className={SETTINGS_DISABLED_BUTTON_CLASS}
+                disabled={isWakeHotkeyActionDisabled}
                 onClick={() => {
                   setSearchHotkeyCaptureError(null);
                   setIsCapturingSearchHotkey(false);
@@ -416,7 +439,8 @@ export function SettingsGeneral({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={!wakeHotkeyEnabled}
+                className={SETTINGS_DISABLED_BUTTON_CLASS}
+                disabled={isWakeHotkeyActionDisabled}
                 onClick={() => {
                   setWakeHotkey(DEFAULT_WAKE_HOTKEY);
                   setHotkeyCaptureError(null);
@@ -450,11 +474,12 @@ export function SettingsGeneral({
                 id="search-hotkey-enabled"
                 checked={searchHotkeyEnabled}
                 onCheckedChange={handleSearchHotkeyEnabledChange}
+                className={SETTINGS_SWITCH_CLASS}
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <div className="inline-flex h-9 min-w-[200px] items-center rounded-lg bg-[hsl(var(--goose-selected-bg)/0.72)] px-3 font-mono text-sm text-foreground">
+              <div className={SETTINGS_HOTKEY_DISPLAY_CLASS}>
                 {searchHotkey || DEFAULT_SEARCH_HOTKEY}
               </div>
               <Button

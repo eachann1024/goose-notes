@@ -48,6 +48,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setTheme,
     codeStyle,
     setCodeStyle,
+    globalEditorFullWidth,
+    setGlobalEditorFullWidth,
     searchProviders,
     toggleSearchProvider,
     reorderSearchProviders,
@@ -219,6 +221,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         open={open}
         onOpenChange={onOpenChange}
         layout="fullscreen"
+        overlayClassName="bg-transparent backdrop-blur-0"
         contentClassName="border-0 bg-[hsl(var(--goose-shell-bg))]"
         bodyClassName="h-full animate-in fade-in duration-200"
       >
@@ -248,7 +251,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleOpenAppUrl(app.url)}
-                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground"
+                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                     >
                       <span className="flex-1 truncate">{app.name}</span>
                       <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
@@ -294,6 +297,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setTheme={setTheme}
                 codeStyle={codeStyle}
                 setCodeStyle={setCodeStyle}
+                globalEditorFullWidth={globalEditorFullWidth}
+                setGlobalEditorFullWidth={setGlobalEditorFullWidth}
                 customFonts={customFonts}
                 setCustomLabel={setCustomLabel}
                 setCustomFont={setCustomFont}

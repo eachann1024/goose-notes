@@ -82,7 +82,7 @@ export function FavoritesSection({
   return (
     <div className="py-1">
       <div
-        className="group flex items-center justify-between px-4 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
+        className="group flex items-center justify-between pl-2 pr-2 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
         onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
       >
         <span>收藏</span>
@@ -96,7 +96,7 @@ export function FavoritesSection({
       </div>
 
       {!favoritesCollapsed && (
-        <div className="px-2 pt-0.5 overflow-hidden">
+        <div className="pl-1 pr-2 pt-0.5 overflow-hidden">
           <SidebarTree
             activeNotebookId={activeNotebookId}
             width={width}

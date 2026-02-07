@@ -57,13 +57,13 @@ export function ImageResizer(props: NodeViewProps) {
     );
   }, [node.attrs.width, node.attrs.containerStyle, parseWidthFromStyle]);
 
-  // Load image from IndexedDB if src is uuid:...
+  // Load image from storage if src is uuid: or att:...
   useEffect(() => {
     const loadUuidImage = async () => {
       const src = node.attrs.src;
 
-      // 如果是 uuid: 引用，从 IndexedDB 加载
-      if (src.startsWith("uuid:")) {
+      // 如果是 uuid: 或 att: 引用，从存储加载
+      if (src.startsWith("uuid:") || src.startsWith("att:")) {
         try {
           const { imageStorage } = await import("@/lib/imageStorage");
           const blob = await imageStorage.load(src);
@@ -160,17 +160,36 @@ export function ImageResizer(props: NodeViewProps) {
           margin,
         }}
       >
-        <img
-          src={resolvedSrc || node.attrs.src}
-          alt={node.attrs.alt}
-          title={node.attrs.title}
-          className={cn(
-            "rounded-md block max-w-full h-auto !m-0",
-            !isEditable && "cursor-pointer hover:opacity-90 transition-opacity"
-          )}
-          style={{ width: width === "auto" ? "auto" : "100%" }}
-          onClick={() => !isEditable && setPreviewOpen(true)}
-        />
+        {node.attrs.title ? (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <img
+                  src={resolvedSrc || node.attrs.src}
+                  alt={node.attrs.alt}
+                  className={cn(
+                    "rounded-md block max-w-full h-auto !m-0",
+                    !isEditable && "cursor-pointer hover:opacity-90 transition-opacity"
+                  )}
+                  style={{ width: width === "auto" ? "auto" : "100%" }}
+                  onClick={() => !isEditable && setPreviewOpen(true)}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top">{node.attrs.title}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <img
+            src={resolvedSrc || node.attrs.src}
+            alt={node.attrs.alt}
+            className={cn(
+              "rounded-md block max-w-full h-auto !m-0",
+              !isEditable && "cursor-pointer hover:opacity-90 transition-opacity"
+            )}
+            style={{ width: width === "auto" ? "auto" : "100%" }}
+            onClick={() => !isEditable && setPreviewOpen(true)}
+          />
+        )}
 
         {/* Resize Handle & Preview Button - visible only on hover or selection */}
         {isEditable && (
@@ -191,20 +210,27 @@ export function ImageResizer(props: NodeViewProps) {
             </div>
 
             {/* 预览按钮 - 编辑模式下悬浮显示 */}
-            <button
-              type="button"
-              onClick={() => {
-                setPreviewOpen(true);
-                editor.commands.blur();
-              }}
-              className={cn(
-                "absolute top-2 left-1/2 -translate-x-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] opacity-0 transition-all hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground group-hover:opacity-100 dark:border-white/20",
-                resizing && "opacity-100",
-              )}
-              title="预览图片"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewOpen(true);
+                      editor.commands.blur();
+                    }}
+                    className={cn(
+                      "absolute top-2 left-1/2 -translate-x-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] opacity-0 transition-all hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground group-hover:opacity-100 dark:border-white/20",
+                      resizing && "opacity-100",
+                    )}
+                    aria-label="预览图片"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">预览图片</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <div
               className={cn(

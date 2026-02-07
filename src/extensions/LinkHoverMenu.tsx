@@ -288,17 +288,24 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
           </div>
         ) : (
           <div className="flex items-center gap-1 p-1.5">
-            <Button
-              onClick={handleOpenLink}
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-auto max-w-[200px] gap-1.5 rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title={href}
-            >
-              <LucideIcons.ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">{displayUrl}</span>
-            </Button>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleOpenLink}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto max-w-[200px] gap-1.5 rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label={href}
+                >
+                  <LucideIcons.ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{displayUrl}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[360px] whitespace-normal break-all">
+                {href}
+              </TooltipContent>
+            </Tooltip>
 
             <Separator orientation="vertical" className="h-5 mx-0.5" />
 

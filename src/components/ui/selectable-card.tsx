@@ -7,8 +7,8 @@ const selectableCardVariants = cva(
   {
     variants: {
       selected: {
-        true: "border-primary bg-accent/50 shadow-sm",
-        false: "border-border hover:bg-accent hover:border-accent",
+        true: "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]",
+        false: "border-border hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--foreground)/0.2)]",
       },
       tone: {
         default: "",

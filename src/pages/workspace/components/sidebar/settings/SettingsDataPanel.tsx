@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, FileText, Globe, Upload } from "lucide-react";
+import { Download, FileText, Globe, Upload } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
@@ -22,6 +22,12 @@ interface SettingsDataPanelProps {
   onExport: () => void;
   onOpenResetDialog: () => void;
 }
+
+const DATA_BADGE_CLASS =
+  "rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75 dark:bg-[hsl(var(--foreground)/0.1)]";
+
+const DATA_UNSELECTED_CARD_CLASS =
+  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
 export function SettingsDataPanel({
   importing,
@@ -66,14 +72,14 @@ export function SettingsDataPanel({
               选择记事本 ({selectedCount})
             </Label>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75">
+              <span className={DATA_BADGE_CLASS}>
                 已选 {selectedCount}/{totalCount}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onSelectAll}
-                className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[hsl(var(--goose-selected-bg)/0.76)] hover:text-foreground"
+                className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
               >
                 {selectedCount === totalCount ? "取消全选" : "全选"}
               </Button>
@@ -92,8 +98,8 @@ export function SettingsDataPanel({
                     "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected
-                      ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
-                      : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] dark:bg-[hsl(var(--foreground)/0.08)] hover:bg-[hsl(var(--goose-selected-bg))] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                      ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      : DATA_UNSELECTED_CARD_CLASS,
                   )}
                 >
                   <span className="shrink-0 text-lg">{notebook.icon || "📓"}</span>
@@ -113,8 +119,8 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "md"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  : DATA_UNSELECTED_CARD_CLASS,
               )}
             >
               <FileText className="h-5 w-5 shrink-0" />
@@ -129,8 +135,8 @@ export function SettingsDataPanel({
               className={cn(
                 "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                 format === "html"
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.9)] hover:bg-[hsl(var(--goose-selected-bg))] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  : DATA_UNSELECTED_CARD_CLASS,
               )}
             >
               <Globe className="h-5 w-5 shrink-0" />

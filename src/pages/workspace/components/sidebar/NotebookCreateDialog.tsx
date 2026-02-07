@@ -65,7 +65,7 @@ export function NotebookCreateDialog({
                 >
                   <Button
                     variant="outline"
-                    className="h-20 w-20 p-0 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] transition-all duration-200"
+                    className="h-20 w-20 p-0 hover:bg-[var(--goose-interactive-hover)] transition-all duration-200"
                   >
                     {renderNotebookIcon(icon, "h-10 w-10 text-4xl")}
                   </Button>

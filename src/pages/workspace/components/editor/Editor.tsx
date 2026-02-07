@@ -1,5 +1,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { Selection } from "@tiptap/pm/state";
+import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash.debounce";
 import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -9,10 +11,91 @@ import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
 import { editorExtensions } from "./editorExtensions";
-import { getImageFromClipboard, processImageForStorageV2 } from "@/lib/imageProcessor";
+import {
+  getImageFromClipboard,
+  processImageForStorageV2,
+} from "@/lib/imageProcessor";
 
 interface EditorProps {
   editable?: boolean;
+}
+
+interface FindMatchRange {
+  from: number;
+  to: number;
+}
+
+interface FindWidgetMeta {
+  clear?: boolean;
+  decorations?: DecorationSet;
+}
+
+const editorFindPluginKey = new PluginKey<DecorationSet>(
+  "goose-note-editor-find",
+);
+
+function collectFindMatches(
+  doc: ProseMirrorNode,
+  rawQuery: string,
+  matchCase: boolean,
+): FindMatchRange[] {
+  const query = rawQuery.trim();
+  if (!query) return [];
+
+  const normalizedQuery = matchCase ? query : query.toLowerCase();
+  const matches: FindMatchRange[] = [];
+
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return true;
+
+    const text = matchCase ? node.text : node.text.toLowerCase();
+    let startIndex = 0;
+    while (startIndex <= text.length - normalizedQuery.length) {
+      const foundIndex = text.indexOf(normalizedQuery, startIndex);
+      if (foundIndex === -1) break;
+      matches.push({
+        from: pos + foundIndex,
+        to: pos + foundIndex + query.length,
+      });
+      startIndex = foundIndex + Math.max(query.length, 1);
+    }
+    return true;
+  });
+
+  return matches;
+}
+
+function createFindDecorations(
+  doc: ProseMirrorNode,
+  matches: FindMatchRange[],
+  activeIndex: number,
+): DecorationSet {
+  if (!matches.length) return DecorationSet.empty;
+  const decorations = matches.map((match, index) =>
+    Decoration.inline(match.from, match.to, {
+      class:
+        index === activeIndex
+          ? "editor-find-match editor-find-match-active"
+          : "editor-find-match",
+    }),
+  );
+  return DecorationSet.create(doc, decorations);
+}
+
+function areFindMatchesEqual(
+  previous: FindMatchRange[],
+  next: FindMatchRange[],
+): boolean {
+  if (previous.length !== next.length) return false;
+  for (let index = 0; index < previous.length; index += 1) {
+    if (
+      previous[index].from !== next[index].from ||
+      previous[index].to !== next[index].to
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function Editor({ editable = true }: EditorProps) {
@@ -29,16 +112,37 @@ export function Editor({ editable = true }: EditorProps) {
     setHandledSearchHighlightNonce,
   } = usePages();
   const page = activePageId ? getPage(activePageId) : undefined;
-  const { searchProviders, utools, customActions } = useSettings();
+  const { notebooks } = useNotebooks();
+  const { searchProviders, utools, customActions, globalEditorFullWidth } =
+    useSettings();
+  const notebook = page ? notebooks[page.workspaceId] : undefined;
+  const isEditorFullWidth = Boolean(
+    notebook?.editorFullWidth ?? globalEditorFullWidth,
+  );
 
   const prevPageIdRef = useRef<string | null>(null);
   const debouncedUpdateRef = useRef<any>(null);
   const pageIdForUpdateRef = useRef<string | null>(null);
+  const hasFindDecorationsRef = useRef(false);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+  const [findOverlayContainer, setFindOverlayContainer] =
+    useState<Element | null>(null);
+  const findMatchesRef = useRef<FindMatchRange[]>([]);
+  const activeFindIndexRef = useRef(-1);
+  const [isFindOpen, setIsFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findMatchCase, setFindMatchCase] = useState(false);
+  const [findMatches, setFindMatches] = useState<FindMatchRange[]>([]);
+  const [activeFindIndex, setActiveFindIndex] = useState(-1);
 
   const debouncedUpdate = useMemo(() => {
-    const fn = debounce((id: string, content: any) => {
-      updatePage(id, { content });
-    }, 800, { maxWait: 3000 });
+    const fn = debounce(
+      (id: string, content: any) => {
+        updatePage(id, { content });
+      },
+      800,
+      { maxWait: 3000 },
+    );
     debouncedUpdateRef.current = fn;
     return fn;
   }, [updatePage]);
@@ -160,6 +264,210 @@ export function Editor({ editable = true }: EditorProps) {
     return base || "无标题";
   };
 
+  const clearFindDecorations = useCallback(() => {
+    if (!editor || editor.isDestroyed) return;
+    if (!hasFindDecorationsRef.current) return;
+    const tr = editor.state.tr.setMeta(editorFindPluginKey, {
+      clear: true,
+    } as FindWidgetMeta);
+    editor.view.dispatch(tr);
+    hasFindDecorationsRef.current = false;
+  }, [editor]);
+
+  const syncFindDecorations = useCallback(
+    (matches: FindMatchRange[], activeIndex: number) => {
+      if (!editor || editor.isDestroyed) return;
+      const decorations = createFindDecorations(
+        editor.state.doc,
+        matches,
+        activeIndex,
+      );
+      const tr = editor.state.tr.setMeta(editorFindPluginKey, {
+        decorations,
+      } as FindWidgetMeta);
+      editor.view.dispatch(tr);
+      hasFindDecorationsRef.current = matches.length > 0;
+    },
+    [editor],
+  );
+
+  const scrollToFindMatch = useCallback(
+    (match: FindMatchRange) => {
+      if (!editor || editor.isDestroyed) return;
+      const container = document.querySelector(
+        ".page-scroll-container",
+      ) as HTMLElement | null;
+      try {
+        const coords = editor.view.coordsAtPos(match.from);
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const targetTop =
+            coords.top - rect.top + container.scrollTop - rect.height / 3;
+          const safeTop = Math.max(0, targetTop);
+          container.scrollTo({
+            top: safeTop,
+            behavior: resolveEditorScrollBehavior({
+              distance: safeTop - container.scrollTop,
+              smoothThreshold: 200,
+            }),
+          });
+        } else {
+          editor.commands.scrollIntoView();
+        }
+      } catch {
+        editor.commands.scrollIntoView();
+      }
+    },
+    [editor],
+  );
+
+  const recomputeFindMatches = useCallback(
+    (query: string, options?: { keepActive?: boolean }) => {
+      if (!editor || editor.isDestroyed) return;
+
+      const normalizedQuery = query.trim();
+      if (!normalizedQuery) {
+        if (findMatchesRef.current.length) {
+          findMatchesRef.current = [];
+          setFindMatches([]);
+        }
+        if (activeFindIndexRef.current !== -1) {
+          activeFindIndexRef.current = -1;
+          setActiveFindIndex(-1);
+        }
+        return;
+      }
+
+      const nextMatches = collectFindMatches(
+        editor.state.doc,
+        normalizedQuery,
+        findMatchCase,
+      );
+      if (!areFindMatchesEqual(findMatchesRef.current, nextMatches)) {
+        findMatchesRef.current = nextMatches;
+        setFindMatches(nextMatches);
+      }
+
+      if (!nextMatches.length) {
+        if (activeFindIndexRef.current !== -1) {
+          activeFindIndexRef.current = -1;
+          setActiveFindIndex(-1);
+        }
+        return;
+      }
+
+      let nextIndex = 0;
+      if (options?.keepActive && activeFindIndexRef.current >= 0) {
+        const currentMatch = findMatchesRef.current[activeFindIndexRef.current];
+        if (currentMatch) {
+          const sameIndex = nextMatches.findIndex(
+            (item) =>
+              item.from === currentMatch.from && item.to === currentMatch.to,
+          );
+          if (sameIndex !== -1) {
+            if (activeFindIndexRef.current !== sameIndex) {
+              activeFindIndexRef.current = sameIndex;
+              setActiveFindIndex(sameIndex);
+            }
+            return;
+          }
+        }
+      }
+
+      const cursorPos = editor.state.selection.from;
+      const nearestIndex = nextMatches.findIndex(
+        (item) => item.from >= cursorPos,
+      );
+      nextIndex = nearestIndex === -1 ? 0 : nearestIndex;
+      if (activeFindIndexRef.current !== nextIndex) {
+        activeFindIndexRef.current = nextIndex;
+        setActiveFindIndex(nextIndex);
+      }
+    },
+    [editor, findMatchCase],
+  );
+
+  const jumpFindMatch = useCallback(
+    (direction: 1 | -1) => {
+      if (!editor || editor.isDestroyed) return;
+      const normalizedQuery = findQuery.trim();
+      if (!normalizedQuery) return;
+
+      let nextMatches = findMatchesRef.current;
+      if (!nextMatches.length) {
+        nextMatches = collectFindMatches(
+          editor.state.doc,
+          normalizedQuery,
+          findMatchCase,
+        );
+        findMatchesRef.current = nextMatches;
+        setFindMatches(nextMatches);
+      }
+
+      if (!nextMatches.length) {
+        if (activeFindIndexRef.current !== -1) {
+          activeFindIndexRef.current = -1;
+          setActiveFindIndex(-1);
+        }
+        return;
+      }
+
+      const total = nextMatches.length;
+      const nextIndex =
+        activeFindIndexRef.current < 0
+          ? direction > 0
+            ? 0
+            : total - 1
+          : (activeFindIndexRef.current + direction + total) % total;
+      activeFindIndexRef.current = nextIndex;
+      setActiveFindIndex(nextIndex);
+    },
+    [editor, findQuery, findMatchCase],
+  );
+
+  const openFindWidget = useCallback(() => {
+    if (!editor || editor.isDestroyed) return;
+    const { from, to, empty } = editor.state.selection;
+    const selectedText = empty
+      ? ""
+      : editor.state.doc.textBetween(from, to, "\n").trim();
+
+    setIsFindOpen(true);
+    if (selectedText) {
+      setFindQuery(selectedText);
+    }
+  }, [editor]);
+
+  const closeFindWidget = useCallback(
+    (focusEditor: boolean) => {
+      setIsFindOpen(false);
+      setFindQuery("");
+      findMatchesRef.current = [];
+      activeFindIndexRef.current = -1;
+      setFindMatches([]);
+      setActiveFindIndex(-1);
+      if (focusEditor) {
+        editor?.commands.focus();
+      }
+    },
+    [editor],
+  );
+
+  const handleFindInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        jumpFindMatch(event.shiftKey ? -1 : 1);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeFindWidget(true);
+      }
+    },
+    [jumpFindMatch, closeFindWidget],
+  );
+
   useEffect(() => {
     const flush = () => {
       debouncedUpdateRef.current?.flush();
@@ -194,6 +502,173 @@ export function Editor({ editable = true }: EditorProps) {
       );
     };
   }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const findPlugin = new Plugin<DecorationSet>({
+      key: editorFindPluginKey,
+      state: {
+        init: () => DecorationSet.empty,
+        apply: (tr, decorationSet) => {
+          const meta = tr.getMeta(editorFindPluginKey) as
+            | FindWidgetMeta
+            | undefined;
+          if (meta?.clear) return DecorationSet.empty;
+          if (meta?.decorations) return meta.decorations;
+          return tr.docChanged
+            ? decorationSet.map(tr.mapping, tr.doc)
+            : decorationSet;
+        },
+      },
+      props: {
+        decorations: (state) =>
+          editorFindPluginKey.getState(state) ?? DecorationSet.empty,
+      },
+    });
+
+    editor.registerPlugin(findPlugin);
+
+    return () => {
+      try {
+        editor.unregisterPlugin(editorFindPluginKey);
+      } catch {
+        // ignore unregister errors
+      }
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (!isFindOpen) return;
+    const timer = window.setTimeout(() => {
+      const input = findInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isFindOpen]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const container =
+      editor.view.dom.closest(".workspace-main-sheet") ??
+      editor.view.dom.closest(".workspace-editor-surface") ??
+      editor.view.dom.parentElement;
+    setFindOverlayContainer(container);
+  }, [editor, activePageId]);
+
+  useEffect(() => {
+    if (!editor) return;
+    if (!isFindOpen) return;
+    recomputeFindMatches(findQuery);
+  }, [
+    editor,
+    isFindOpen,
+    findQuery,
+    findMatchCase,
+    activePageId,
+    recomputeFindMatches,
+  ]);
+
+  useEffect(() => {
+    if (!editor || !isFindOpen || !findQuery.trim()) return;
+    const handleEditorUpdate = () => {
+      recomputeFindMatches(findQuery, { keepActive: true });
+    };
+    editor.on("update", handleEditorUpdate);
+    return () => {
+      editor.off("update", handleEditorUpdate);
+    };
+  }, [editor, isFindOpen, findQuery, recomputeFindMatches]);
+
+  useEffect(() => {
+    findMatchesRef.current = findMatches;
+  }, [findMatches]);
+
+  useEffect(() => {
+    activeFindIndexRef.current = activeFindIndex;
+  }, [activeFindIndex]);
+
+  useEffect(() => {
+    if (!editor) return;
+    if (!isFindOpen || !findQuery.trim() || !findMatches.length) {
+      clearFindDecorations();
+      return;
+    }
+    syncFindDecorations(findMatches, activeFindIndex);
+  }, [
+    editor,
+    isFindOpen,
+    findQuery,
+    findMatches,
+    activeFindIndex,
+    syncFindDecorations,
+    clearFindDecorations,
+  ]);
+
+  useEffect(() => {
+    if (!isFindOpen || activeFindIndex < 0) return;
+    const activeMatch = findMatches[activeFindIndex];
+    if (!activeMatch) return;
+    scrollToFindMatch(activeMatch);
+  }, [isFindOpen, activeFindIndex, findMatches, scrollToFindMatch]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const isTargetInEditorScope = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return !!(
+        target.closest(".ProseMirror") || target.closest(".editor-inline-find")
+      );
+    };
+
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!isTargetInEditorScope(event.target)) return;
+
+      if (event.key === "Escape" && isFindOpen) {
+        event.preventDefault();
+        closeFindWidget(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleShortcut, true);
+    return () => {
+      window.removeEventListener("keydown", handleShortcut, true);
+    };
+  }, [editor, isFindOpen, closeFindWidget]);
+
+  useEffect(() => {
+    const handleOpenFind = () => {
+      openFindWidget();
+    };
+    const handleFindNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ direction?: 1 | -1 }>;
+      const direction = customEvent.detail?.direction === -1 ? -1 : 1;
+      jumpFindMatch(direction);
+    };
+
+    window.addEventListener("goose-note:editor-find-open", handleOpenFind);
+    window.addEventListener("goose-note:editor-find-nav", handleFindNavigate);
+    return () => {
+      window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
+      window.removeEventListener(
+        "goose-note:editor-find-nav",
+        handleFindNavigate,
+      );
+    };
+  }, [openFindWidget, jumpFindMatch]);
+
+  useEffect(() => {
+    findMatchesRef.current = [];
+    activeFindIndexRef.current = -1;
+    setIsFindOpen(false);
+    setFindQuery("");
+    setFindMatches([]);
+    setActiveFindIndex(-1);
+  }, [activePageId]);
 
   useEffect(() => {
     if (!editor || !page || !activePageId) return;
@@ -422,7 +897,9 @@ export function Editor({ editable = true }: EditorProps) {
       );
       if (remainingMarks.length !== state.storedMarks.length) {
         view.dispatch(
-          state.tr.setStoredMarks(remainingMarks.length ? remainingMarks : null),
+          state.tr.setStoredMarks(
+            remainingMarks.length ? remainingMarks : null,
+          ),
         );
       }
     };
@@ -520,7 +997,7 @@ export function Editor({ editable = true }: EditorProps) {
     return () => {
       cancelled = true;
       clearTimers();
-      
+
       // 1. 先清除编辑器中的高亮 Mark (view.dispatch 是同步更新 state 的)
       clearHighlightMarks();
 
@@ -529,8 +1006,8 @@ export function Editor({ editable = true }: EditorProps) {
 
       // 3. 获取清除高亮后的最新内容，并手动立即保存，确保落盘的是干净数据
       if (activePageId && editor && !editor.isDestroyed) {
-          const cleanContent = editor.getJSON();
-          updatePage(activePageId, { content: cleanContent });
+        const cleanContent = editor.getJSON();
+        updatePage(activePageId, { content: cleanContent });
       }
 
       // 4. 清除搜索状态
@@ -567,28 +1044,158 @@ export function Editor({ editable = true }: EditorProps) {
 
   const widthClass = useMemo(() => {
     if (!page) return "max-w-3xl mx-auto";
-    return page.isFullWidth ? "max-w-full px-4" : "max-w-3xl mx-auto";
-  }, [page?.isFullWidth]);
+    return isEditorFullWidth
+      ? "max-w-full editor-full-width"
+      : "max-w-3xl mx-auto";
+  }, [isEditorFullWidth, page]);
+
+  const findCountLabel = useMemo(() => {
+    if (!findQuery.trim() || !findMatches.length || activeFindIndex < 0) {
+      return "0/0";
+    }
+    return `${activeFindIndex + 1}/${findMatches.length}`;
+  }, [findQuery, findMatches.length, activeFindIndex]);
+
+  const findButtonClass =
+    "inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+  const findPrevShortcut = formatShortcut("Shift+F3");
+  const findNextShortcut = formatShortcut("F3");
+  const findCloseShortcut = formatShortcut("Esc");
 
   if (!editor || !page) {
     return null;
   }
 
+  const findWidget = (
+    <div className="editor-inline-find absolute right-2 top-2 z-50">
+      <div className="flex items-center gap-1.5 rounded-md border border-border/80 bg-background/95 px-2.5 py-1 shadow-md backdrop-blur-sm">
+        <LucideIcons.Search className="ml-0.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          ref={findInputRef}
+          value={findQuery}
+          onChange={(event) => setFindQuery(event.target.value)}
+          onKeyDown={handleFindInputKeyDown}
+          className="h-6 w-[180px] border-0 bg-transparent px-2 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+          placeholder="查找"
+        />
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex h-6 min-w-7 items-center justify-center rounded px-1 text-[11px] font-medium transition-colors",
+                  findMatchCase
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                aria-label="区分大小写"
+                onClick={() => setFindMatchCase((value) => !value)}
+              >
+                Aa
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">区分大小写</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span
+          className={cn(
+            "min-w-[40px] text-right text-[11px] tabular-nums",
+            findQuery.trim() && !findMatches.length
+              ? "text-red-500"
+              : "text-muted-foreground",
+          )}
+        >
+          {findCountLabel}
+        </span>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={findButtonClass}
+                aria-label="上一个匹配"
+                disabled={!findMatches.length}
+                onClick={() => jumpFindMatch(-1)}
+              >
+                <LucideIcons.ChevronUp className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <div className="flex items-center gap-2">
+                <span>上一个匹配</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {findPrevShortcut}
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={findButtonClass}
+                aria-label="下一个匹配"
+                disabled={!findMatches.length}
+                onClick={() => jumpFindMatch(1)}
+              >
+                <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <div className="flex items-center gap-2">
+                <span>下一个匹配</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {findNextShortcut}
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={findButtonClass}
+                aria-label="关闭查找"
+                onClick={() => closeFindWidget(true)}
+              >
+                <LucideIcons.X className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <div className="flex items-center gap-2">
+                <span>关闭</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {findCloseShortcut}
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+
   return (
-    <div className={cn(fontFamilyClass, fontSizeClass, widthClass)}>
-      <EditorBubbleMenu editor={editor} />
-      <LinkHoverMenu editor={editor} />
-      <TableHoverControls editor={editor} />
-      <TableRowColHandles editor={editor} />
-      <ImageBubbleMenu editor={editor} />
-      <EditorContextMenu
-        editor={editor}
-        searchProviders={searchProviders}
-        openSearchInUtools={utools.openSearchInUtools}
-        customActions={customActions}
-      >
-        <EditorContent editor={editor} />
-      </EditorContextMenu>
+    <div className={cn("relative w-full", fontFamilyClass, fontSizeClass)}>
+      {isFindOpen && findOverlayContainer && (
+        <Portal container={findOverlayContainer}>{findWidget}</Portal>
+      )}
+      <div className={widthClass}>
+        <EditorBubbleMenu editor={editor} />
+        <LinkHoverMenu editor={editor} />
+        <TableHoverControls editor={editor} />
+        <TableRowColHandles editor={editor} />
+        <ImageBubbleMenu editor={editor} />
+        <EditorContextMenu
+          editor={editor}
+          searchProviders={searchProviders}
+          openSearchInUtools={utools.openSearchInUtools}
+          customActions={customActions}
+        >
+          <EditorContent editor={editor} />
+        </EditorContextMenu>
+      </div>
     </div>
   );
 }

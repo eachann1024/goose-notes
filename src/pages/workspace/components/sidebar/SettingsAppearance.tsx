@@ -7,6 +7,8 @@ interface SettingsAppearanceProps {
   setTheme: (theme: "light" | "dark" | "system") => void;
   codeStyle: CodeStyle;
   setCodeStyle: (style: CodeStyle) => void;
+  globalEditorFullWidth: boolean;
+  setGlobalEditorFullWidth: (enabled: boolean) => void;
   customFonts: Record<"default" | "serif" | "mono", { label: string | null; font: string | null }>;
   setCustomLabel: (type: "default" | "serif" | "mono", label: string | null) => void;
   setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
@@ -60,11 +62,19 @@ const fontPreviewText = {
   mono: "const font = 'Aa123_鹅';",
 };
 
+const APPEARANCE_OPTION_ROW_CLASS =
+  "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
+
+const APPEARANCE_SWITCH_CLASS =
+  "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
+
 export function SettingsAppearance({
   theme,
   setTheme,
   codeStyle,
   setCodeStyle,
+  globalEditorFullWidth,
+  setGlobalEditorFullWidth,
   customFonts,
   setCustomLabel,
   setCustomFont,
@@ -91,43 +101,63 @@ export function SettingsAppearance({
         <div className="flex items-center justify-between gap-4">
           <Label htmlFor="dark-mode">深色模式</Label>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "light" && "bg-background shadow-sm",
-              )}
-              onClick={() => setTheme("light")}
-            >
-              <LucideIcons.Sun className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "dark" && "bg-background shadow-sm",
-              )}
-              onClick={() => setTheme("dark")}
-            >
-              <LucideIcons.Moon className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                "h-7 w-7 rounded-full transition-all duration-200",
-                theme === "system" && "bg-background shadow-sm",
-              )}
-              onClick={() => setTheme("system")}
-            >
-              <LucideIcons.Laptop className="h-4 w-4" />
-            </Button>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="浅色模式"
+                    className={cn(
+                      "h-7 w-7 rounded-full transition-all duration-200",
+                      theme === "light" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => setTheme("light")}
+                  >
+                    <LucideIcons.Sun className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">浅色模式</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="深色模式"
+                    className={cn(
+                      "h-7 w-7 rounded-full transition-all duration-200",
+                      theme === "dark" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => setTheme("dark")}
+                  >
+                    <LucideIcons.Moon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">深色模式</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="跟随系统"
+                    className={cn(
+                      "h-7 w-7 rounded-full transition-all duration-200",
+                      theme === "system" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => setTheme("system")}
+                  >
+                    <LucideIcons.Laptop className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">跟随系统</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4">
+        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
           <div>
             <Label>界面字体大小</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -175,6 +205,28 @@ export function SettingsAppearance({
       </SettingsSectionCard>
 
       <SettingsSectionCard
+        title="编辑器布局"
+        description="你可以一键让所有记事本都使用更开阔的编辑宽度。"
+      >
+        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+          <div>
+            <Label htmlFor="global-editor-full-width" className="cursor-pointer">
+              全局默认全宽
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              作为默认宽度生效；你仍可在每个记事本中单独切换并记忆自己的宽度偏好。
+            </p>
+          </div>
+          <Switch
+            id="global-editor-full-width"
+            checked={globalEditorFullWidth}
+            onCheckedChange={setGlobalEditorFullWidth}
+            className={APPEARANCE_SWITCH_CLASS}
+          />
+        </div>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
         title="主题与代码风格"
         description="选择代码块视觉风格（自动适配深浅模式）。"
       >
@@ -187,8 +239,8 @@ export function SettingsAppearance({
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 codeStyle === t.value
-                  ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] text-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.18)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[hsl(var(--goose-selected-bg)/0.76)] dark:bg-[hsl(var(--foreground)/0.08)] dark:hover:bg-[hsl(var(--foreground)/0.12)]",
+                  ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
             >
               <LucideIcons.Code2 className="h-5 w-5 shrink-0" />

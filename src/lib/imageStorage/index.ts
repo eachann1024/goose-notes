@@ -5,7 +5,7 @@
 
 import type { IImageStorageStrategy } from './types'
 import { IndexedDBStrategy } from './strategies/indexed-db'
-import { Base64Strategy } from './strategies/base64'
+import { AttachmentStrategy } from './strategies/attachment'
 import { FileSystemStrategy } from './strategies/file-system'
 import { InlinedStrategy } from './strategies/inlined'
 import { UToolsAdapter } from '../utools'
@@ -40,7 +40,7 @@ export class ImageStorage {
         if (hasLocalFolder) {
           return new FileSystemStrategy()
         }
-        return new Base64Strategy()
+        return new AttachmentStrategy()
       }
 
       // Web 浏览器环境
@@ -107,6 +107,12 @@ export class ImageStorage {
       return fsStrategy.load(ref)
     }
 
+    // 尝试 attachment 策略（兼容默认模式切换场景）
+    const attStrategy = new AttachmentStrategy()
+    if (attStrategy.canHandle(ref)) {
+      return attStrategy.load(ref)
+    }
+
     return null
   }
 
@@ -127,6 +133,12 @@ export class ImageStorage {
     const fsStrategy = new FileSystemStrategy()
     if (fsStrategy.canHandle(ref)) {
       return fsStrategy.delete(ref)
+    }
+
+    // 尝试 attachment 策略
+    const attStrategy = new AttachmentStrategy()
+    if (attStrategy.canHandle(ref)) {
+      return attStrategy.delete(ref)
     }
   }
 }

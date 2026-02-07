@@ -177,7 +177,7 @@ function CodeBlockWithLanguageView({
               <TooltipContent
                 side="top"
                 align="end"
-                className="w-[44rem] max-w-[calc(100vw-2rem)] p-0 rounded-xl border border-border/70 bg-background shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+                className="w-[44rem] max-w-[calc(100vw-2rem)] whitespace-normal p-0 text-sm font-normal leading-normal"
               >
                 <div>
                   <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">

@@ -18,6 +18,76 @@ const UI_FONT_SIZE_MAP = {
   large: 18,
 } as const;
 
+const HOTKEY_FAILURE_NOTICE_STORAGE_KEY =
+  "goose-note:hotkey-failure-notice:v1";
+const HOTKEY_FAILURE_NOTICE_TTL = 1000 * 60 * 60 * 24;
+const LEGACY_DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+K";
+
+type HotkeyFailureKind = "wake" | "search";
+
+const normalizeHotkeyForCompare = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/commandorcontrol|cmdorcontrol/gi, "cmdorctrl");
+
+const isSameHotkey = (a: string, b: string) =>
+  normalizeHotkeyForCompare(a) === normalizeHotkeyForCompare(b);
+
+const shouldNotifyHotkeyFailure = (
+  kind: HotkeyFailureKind,
+  shortcut: string,
+): boolean => {
+  if (typeof window === "undefined") return true;
+
+  const normalize = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, " ");
+  const now = Date.now();
+  const signature = [kind, normalize(shortcut)].join("|");
+
+  let notices: Record<string, number> = {};
+  try {
+    const raw = window.localStorage.getItem(HOTKEY_FAILURE_NOTICE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, number>;
+      if (parsed && typeof parsed === "object") {
+        notices = parsed;
+      }
+    }
+  } catch {
+    notices = {};
+  }
+
+  const pruned: Record<string, number> = {};
+  for (const [key, timestamp] of Object.entries(notices)) {
+    if (typeof timestamp !== "number") continue;
+    if (now - timestamp <= HOTKEY_FAILURE_NOTICE_TTL) {
+      pruned[key] = timestamp;
+    }
+  }
+
+  const lastShownAt = pruned[signature];
+  const shouldNotify =
+    typeof lastShownAt !== "number" ||
+    now - lastShownAt > HOTKEY_FAILURE_NOTICE_TTL;
+
+  if (shouldNotify) {
+    pruned[signature] = now;
+  }
+
+  try {
+    window.localStorage.setItem(
+      HOTKEY_FAILURE_NOTICE_STORAGE_KEY,
+      JSON.stringify(pruned),
+    );
+  } catch {
+    // ignore storage write failures
+  }
+
+  return shouldNotify;
+};
+
 function App() {
   const {
     uiFontSize,
@@ -61,7 +131,8 @@ function App() {
       const nextWakeHotkey =
         (desktop.wakeHotkey ?? "").trim() || DEFAULT_WAKE_HOTKEY;
       if (desktop.wakeHotkeyEnabled) {
-        const wakeResult = await UToolsAdapter.registerWakeHotkey(nextWakeHotkey);
+        const wakeResult =
+          await UToolsAdapter.registerWakeHotkey(nextWakeHotkey);
         if (disposed) {
           if (wakeResult.ok) {
             await UToolsAdapter.unregisterWakeHotkey(nextWakeHotkey);
@@ -69,33 +140,47 @@ function App() {
         } else if (wakeResult.ok) {
           registeredWakeHotkeyRef.current = nextWakeHotkey;
         } else {
-          toast.error(
-            `全局唤醒快捷键注册失败：${wakeResult.error || "快捷键冲突或受系统限制"}`,
-            {
-              id: "wake-hotkey-register-error",
-              duration: 3200,
-            },
-          );
+          const shouldNotify = shouldNotifyHotkeyFailure("wake", nextWakeHotkey);
 
           if (nextWakeHotkey !== DEFAULT_WAKE_HOTKEY) {
             setWakeHotkey(DEFAULT_WAKE_HOTKEY);
-            toast.message(`已回退到默认唤醒快捷键：${DEFAULT_WAKE_HOTKEY}`, {
-              id: "wake-hotkey-fallback-default",
-              duration: 2600,
-            });
-          } else {
-            toast.message("请在设置中更换可用的唤醒快捷键", {
+            if (shouldNotify) {
+              toast.error(
+                `唤醒快捷键「${nextWakeHotkey}」不可用，已回退到默认：${DEFAULT_WAKE_HOTKEY}`,
+                {
+                  id: "wake-hotkey-fallback-default",
+                  duration: 3200,
+                },
+              );
+            }
+          } else if (shouldNotify) {
+            toast.error("当前唤醒快捷键不可用，请在设置中更换可用组合键", {
               id: "wake-hotkey-change-required",
-              duration: 2600,
+              duration: 3200,
             });
           }
         }
       }
 
+      const storedSearchHotkey = (desktop.searchHotkey ?? "").trim();
+      const shouldMigrateLegacySearchHotkey = isSameHotkey(
+        storedSearchHotkey,
+        LEGACY_DEFAULT_SEARCH_HOTKEY,
+      );
       const nextSearchHotkey =
-        (desktop.searchHotkey ?? "").trim() || DEFAULT_SEARCH_HOTKEY;
+        shouldMigrateLegacySearchHotkey || !storedSearchHotkey
+          ? DEFAULT_SEARCH_HOTKEY
+          : storedSearchHotkey;
       if (desktop.searchHotkeyEnabled) {
-        const searchResult = await UToolsAdapter.registerSearchHotkey(nextSearchHotkey);
+        if (
+          shouldMigrateLegacySearchHotkey &&
+          !isSameHotkey(storedSearchHotkey, DEFAULT_SEARCH_HOTKEY)
+        ) {
+          setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
+        }
+
+        const searchResult =
+          await UToolsAdapter.registerSearchHotkey(nextSearchHotkey);
         if (disposed) {
           if (searchResult.ok) {
             await UToolsAdapter.unregisterSearchHotkey(nextSearchHotkey);
@@ -103,24 +188,26 @@ function App() {
         } else if (searchResult.ok) {
           registeredSearchHotkeyRef.current = nextSearchHotkey;
         } else {
-          toast.error(
-            `全局搜索快捷键注册失败：${searchResult.error || "快捷键冲突或受系统限制"}`,
-            {
-              id: "search-hotkey-register-error",
-              duration: 3200,
-            },
+          const shouldNotify = shouldNotifyHotkeyFailure(
+            "search",
+            nextSearchHotkey,
           );
 
           if (nextSearchHotkey !== DEFAULT_SEARCH_HOTKEY) {
             setSearchHotkey(DEFAULT_SEARCH_HOTKEY);
-            toast.message(`已回退到默认搜索快捷键：${DEFAULT_SEARCH_HOTKEY}`, {
-              id: "search-hotkey-fallback-default",
-              duration: 2600,
-            });
-          } else {
-            toast.message("请在设置中更换可用的搜索快捷键", {
+            if (shouldNotify) {
+              toast.error(
+                `搜索快捷键「${nextSearchHotkey}」不可用，已回退到默认：${DEFAULT_SEARCH_HOTKEY}`,
+                {
+                  id: "search-hotkey-fallback-default",
+                  duration: 3200,
+                },
+              );
+            }
+          } else if (shouldNotify) {
+            toast.error("当前搜索快捷键不可用，请在设置中更换可用组合键", {
               id: "search-hotkey-change-required",
-              duration: 2600,
+              duration: 3200,
             });
           }
         }
@@ -169,9 +256,7 @@ function App() {
             ? target.parentElement
             : null;
 
-      if (
-        element?.closest("[data-goose-context-trigger='true']")
-      ) {
+      if (element?.closest("[data-goose-context-trigger='true']")) {
         return;
       }
       event.preventDefault();
@@ -221,7 +306,6 @@ function App() {
     }
   }, []);
 
-
   // 根据隐私设置决定是否自动打开上次笔记
   useEffect(() => {
     if (!hydrated) return;
@@ -238,10 +322,7 @@ function App() {
       const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
       const notebookId = useNotebooks
         .getState()
-        .createLocalFolderNotebook(
-          folderName,
-          folderPath,
-        );
+        .createLocalFolderNotebook(folderName, folderPath);
       await usePages
         .getState()
         .loadLocalFolderPages(notebookId, folderPath, { showWelcome: true });
@@ -374,7 +455,7 @@ function App() {
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
-    const targetSize = UI_FONT_SIZE_MAP[uiFontSize] ?? UI_FONT_SIZE_MAP.normal;
+    const targetSize = UI_FONT_SIZE_MAP[uiFontSize] ?? UI_FONT_SIZE_MAP.small;
     root.style.setProperty("font-size", `${targetSize}px`);
   }, [uiFontSize]);
 
@@ -392,6 +473,17 @@ function App() {
 
   useEffect(() => {
     const handleZoomKeys = (event: KeyboardEvent) => {
+      if (event.key === "F3") {
+        event.preventDefault();
+        event.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent("goose-note:editor-find-nav", {
+            detail: { direction: event.shiftKey ? -1 : 1 },
+          }),
+        );
+        return;
+      }
+
       if (!event.metaKey && !event.ctrlKey) return;
       if (event.altKey || event.repeat) return;
 
@@ -403,8 +495,11 @@ function App() {
         target instanceof HTMLElement &&
         (target.isContentEditable || !!target.closest(".ProseMirror"));
 
-      if ((event.key === "," || (event.key.toLowerCase() === "k" && event.shiftKey)) &&
-          (isEditableInput || isRichTextEditing)) {
+      if (
+        (event.key === "," ||
+          (event.key.toLowerCase() === "k" && event.shiftKey)) &&
+        (isEditableInput || isRichTextEditing)
+      ) {
         return;
       }
 
@@ -417,6 +512,24 @@ function App() {
       if (event.key.toLowerCase() === "k" && event.shiftKey) {
         event.preventDefault();
         window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+        return;
+      }
+
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        event.stopPropagation();
+        window.dispatchEvent(new CustomEvent("goose-note:editor-find-open"));
+        return;
+      }
+
+      if (event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        event.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent("goose-note:editor-find-nav", {
+            detail: { direction: event.shiftKey ? -1 : 1 },
+          }),
+        );
         return;
       }
 
@@ -465,8 +578,6 @@ function App() {
     decreaseEditorFontSize,
     setEditorFontSize,
   ]);
-
-
 
   return (
     <>

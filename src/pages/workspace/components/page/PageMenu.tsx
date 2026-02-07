@@ -9,10 +9,10 @@ export function PageMenu() {
     setActivePage,
   } = usePages();
   const { deletePageWithUndo } = useDeletePageWithUndo();
-  const { activeNotebookId, notebooks } = useNotebooks();
+  const { activeNotebookId, notebooks, updateNotebook } = useNotebooks();
+  const { globalEditorFullWidth } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;
-  const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
-  const isLocalFolderPage = notebook?.source === "local-folder";
+  const notebook = page ? notebooks[page.workspaceId] : undefined;
 
   const handleImport = async () => {
     const result = await importFile();
@@ -48,10 +48,11 @@ export function PageMenu() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="更多操作"
           className="h-7 w-7 rounded-[7px] text-muted-foreground/70 transition-colors duration-150 hover:bg-muted/65 hover:text-foreground"
         >
           <LucideIcons.MoreHorizontal className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">更多操作</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[280px] p-2" align="end" forceMount>
@@ -62,8 +63,6 @@ export function PageMenu() {
             onChange={(fontFamily) => updatePage(activePageId, { fontFamily })}
           />
         </div>
-
-        <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
           <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
@@ -82,31 +81,28 @@ export function PageMenu() {
 
         {/* Switches Section */}
         <DropdownMenuGroup>
-          {!isLocalFolderPage && (
-            <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
-              <div className="flex items-center gap-2">
-                <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="ml-2.5">全宽</span>
-              </div>
-              <Switch
-                checked={page.isFullWidth}
-                onCheckedChange={(checked) =>
-                  updatePage(activePageId, { isFullWidth: checked })
-                }
-              />
+          <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
+            <div className="flex items-center gap-2">
+              <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="ml-2.5">全宽显示（当前记事本）</span>
             </div>
-          )}
+            <Switch
+              checked={Boolean(notebook?.editorFullWidth ?? globalEditorFullWidth)}
+              onCheckedChange={(checked) => {
+                if (!notebook) return;
+                updateNotebook(notebook.id, { editorFullWidth: checked });
+              }}
+            />
+          </div>
 
           <DropdownMenuItem
-            className="text-xs text-destructive focus:text-destructive"
+            className="text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-red-600 dark:data-[highlighted]:text-red-400 focus:text-red-600 dark:focus:text-red-400"
             onClick={() => void deletePageWithUndo(activePageId)}
           >
             <LucideIcons.Trash2 className="mr-2 h-3.5 w-3.5" />
             <span>移至垃圾箱</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
 
         {/* Import/Export */}
         <DropdownMenuGroup>
@@ -142,8 +138,6 @@ export function PageMenu() {
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
 
         <div className="px-2 py-1.5 text-xs text-muted-foreground">
           <div className="flex flex-col gap-1">

@@ -9,6 +9,9 @@
   :root {
     --goose-shell-bg: 0 0% 97.25%;
     --goose-selected-bg: 60 6.67% 94.12%;
+    --goose-interactive-hover: hsl(var(--goose-selected-bg) / 0.76);
+    --goose-interactive-selected: hsl(var(--goose-selected-bg));
+    --goose-interactive-selected-border: hsl(var(--foreground) / 0.12);
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 68.24%;
     --background: var(--goose-shell-bg);
@@ -43,8 +46,11 @@
   }
 
   .dark {
-    --goose-shell-bg: 0 0% 12.2%;
+    --goose-shell-bg: 0 0% 12.55%;
     --goose-selected-bg: 60 2.4% 16.1%;
+    --goose-interactive-hover: hsl(var(--foreground) / 0.18);
+    --goose-interactive-selected: hsl(var(--foreground) / 0.2);
+    --goose-interactive-selected-border: hsl(var(--foreground) / 0.18);
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 60 2.2% 44.5%;
     --background: var(--goose-shell-bg);

@@ -54,13 +54,22 @@ const InlineMathView = (props: NodeViewProps) => {
           <span className="text-muted-foreground ml-1">$</span>
         </div>
       ) : (
-        <span
-          onClick={handleToggle}
-          className={`cursor-pointer rounded px-0.5 hover:bg-muted transition-colors ${!value ? "bg-destructive/10 text-destructive" : ""}`}
-          title={props.editor.isEditable ? "点击编辑公式" : ""}
-        >
-          <MathView value={value || "公式"} />
-        </span>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                onClick={handleToggle}
+                className={`cursor-pointer rounded px-0.5 hover:bg-muted transition-colors ${!value ? "bg-destructive/10 text-destructive" : ""}`}
+                aria-label={props.editor.isEditable ? "点击编辑公式" : undefined}
+              >
+                <MathView value={value || "公式"} />
+              </span>
+            </TooltipTrigger>
+            {props.editor.isEditable ? (
+              <TooltipContent side="top">点击编辑公式</TooltipContent>
+            ) : null}
+          </Tooltip>
+        </TooltipProvider>
       )}
     </NodeViewWrapper>
   );

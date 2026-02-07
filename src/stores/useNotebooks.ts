@@ -6,6 +6,7 @@ export interface Notebook {
   id: string;
   name: string;
   icon?: string; // emoji 或 Lucide 图标名
+  editorFullWidth?: boolean; // 编辑器全宽（记事本级）
   createdAt: number;
   updatedAt: number;
   source?: "default" | "local-folder";
@@ -260,6 +261,34 @@ export const useNotebooks = create<NotebooksState>()(
         activeNotebookId: state.activeNotebookId,
         lastActivePageByNotebook: state.lastActivePageByNotebook,
       }),
+      migrate: (persistedState: unknown) => {
+        const safeState = persistedState as
+          | { notebooks?: Record<string, Notebook> }
+          | undefined;
+        if (!safeState?.notebooks) return persistedState;
+
+        const notebookList = Object.values(safeState.notebooks);
+        const hasAnyTrue = notebookList.some((notebook) => notebook.editorFullWidth === true);
+        const shouldPromoteFalseToUnset = !hasAnyTrue;
+
+        const migratedNotebooks = Object.fromEntries(
+          Object.entries(safeState.notebooks).map(([id, notebook]) => [
+            id,
+            {
+              ...notebook,
+              editorFullWidth:
+                shouldPromoteFalseToUnset && notebook.editorFullWidth === false
+                  ? undefined
+                  : notebook.editorFullWidth,
+            },
+          ]),
+        );
+
+        return {
+          ...safeState,
+          notebooks: migratedNotebooks,
+        };
+      },
     },
   ),
 );

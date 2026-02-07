@@ -30,14 +30,14 @@ export function useDeletePageWithUndo() {
     if (isLocalFolder) {
       toast(`已删除「${pageTitle}」，已移入系统回收站`, {
         duration: 3000,
-        position: "top-right",
+        position: "bottom-right",
       });
       return;
     }
 
     toast(`已删除「${pageTitle}」`, {
       duration: 5000,
-      position: "top-right",
+      position: "bottom-right",
       action: {
         label: "撤回",
         onClick: () => {

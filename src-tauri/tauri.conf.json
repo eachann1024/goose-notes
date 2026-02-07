@@ -14,6 +14,9 @@
       {
         "label": "main",
         "title": "鹅的笔记",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "backgroundColor": "#202020",
         "width": 1280,
         "height": 820,
         "minWidth": 1080,
@@ -26,6 +29,7 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "targets": ["app"]
   }
 }

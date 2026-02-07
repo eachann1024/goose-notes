@@ -31,6 +31,12 @@ interface ProviderCardProps {
   onToggle: (id: string) => void;
 }
 
+const PROVIDER_ITEM_CLASS =
+  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
+
+const PROVIDER_SWITCH_CLASS =
+  "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
+
 function ProviderCard({ provider, onToggle }: ProviderCardProps) {
   const {
     attributes,
@@ -60,33 +66,40 @@ function ProviderCard({ provider, onToggle }: ProviderCardProps) {
       className={cn(
         "flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-all duration-200",
         provider.isEnabled
-          ? "border-[hsl(var(--foreground)/0.28)] bg-[hsl(var(--goose-selected-bg))] shadow-[0_0_0_1px_hsl(var(--foreground)/0.16)] dark:border-[hsl(var(--foreground)/0.32)] dark:bg-[hsl(var(--foreground)/0.14)]"
-          : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]",
+          ? "border-[hsl(var(--foreground)/0.28)] bg-[var(--goose-interactive-selected)] shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+          : PROVIDER_ITEM_CLASS,
         isDragging && "shadow-md"
       )}
     >
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
-          className="h-7 w-7 shrink-0 cursor-grab rounded-md bg-[hsl(var(--goose-selected-bg)/0.78)] text-muted-foreground transition-colors hover:bg-[hsl(var(--goose-selected-bg))] active:cursor-grabbing"
+          className="h-7 w-7 shrink-0 cursor-grab rounded-md bg-[hsl(var(--goose-selected-bg)/0.78)] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] active:cursor-grabbing dark:bg-[hsl(var(--foreground)/0.1)]"
           {...attributes}
           {...listeners}
           aria-label={`拖拽调整 ${provider.name} 排序`}
         >
           <GripVertical className="h-4 w-4 mx-auto" />
         </button>
-        <Label
-          htmlFor={`provider-${provider.id}`}
-          className="truncate cursor-pointer"
-          title={provider.name}
-        >
-          {provider.name}
-        </Label>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Label
+                htmlFor={`provider-${provider.id}`}
+                className="truncate cursor-pointer"
+              >
+                {provider.name}
+              </Label>
+            </TooltipTrigger>
+            <TooltipContent side="top">{provider.name}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <Switch
         id={`provider-${provider.id}`}
         checked={provider.isEnabled ?? false}
         onCheckedChange={() => onToggle(provider.id)}
+        className={PROVIDER_SWITCH_CLASS}
       />
     </div>
   );

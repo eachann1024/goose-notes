@@ -39,9 +39,12 @@
 .dark .ProseMirror td,
 .dark .ProseMirror th {
   border-color: hsl(var(--border) / 0.85);
+  background-color: hsl(var(--card) / 0.42);
 }
 
 .dark .ProseMirror th {
+  background-color: hsl(var(--muted) / 0.78);
+  color: hsl(var(--foreground) / 0.98);
   border-bottom-color: hsl(var(--border) / 0.95);
 }
 
@@ -93,8 +96,9 @@
 }
 
 .dark .ProseMirror .selectedCell:after {
-  background: rgba(96, 165, 250, 0.2);
-  border: 2px solid rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.34);
+  border: 2px solid rgba(96, 165, 250, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.22);
 }
 
 /* Column dragging handle */

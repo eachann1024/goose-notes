@@ -9,6 +9,35 @@ interface TrashListProps {
   itemHeight?: number
 }
 
+function nodeHasVisibleContent(node: any): boolean {
+  if (!node) return false
+
+  if (typeof node.text === "string" && node.text.trim().length > 0) {
+    return true
+  }
+
+  const children = Array.isArray(node.content) ? node.content : []
+  if (children.some((child) => nodeHasVisibleContent(child))) {
+    return true
+  }
+
+  if (
+    node.type === "doc" ||
+    node.type === "paragraph" ||
+    node.type === "heading" ||
+    node.type === "text" ||
+    node.type === "hardBreak"
+  ) {
+    return false
+  }
+
+  return typeof node.type === "string" && node.type.length > 0
+}
+
+function pageHasVisibleContent(page: any): boolean {
+  return nodeHasVisibleContent(page?.content)
+}
+
 export function TrashList({ onBack, showHeader = true, itemHeight = 52 }: TrashListProps) {
   const { getTrashedPages, setActivePage, activePageId } = usePages()
   const { activeNotebookId } = useNotebooks()
@@ -53,6 +82,9 @@ export function TrashList({ onBack, showHeader = true, itemHeight = 52 }: TrashL
           <div className="px-2 pb-10 pt-0.5 space-y-px">
             {trashedPages.map((page) => {
               const iconName = page.icon
+              const DefaultPageIcon = pageHasVisibleContent(page)
+                ? LucideIcons.FileText
+                : LucideIcons.File
               const timeAgo = page.trashedAt
                 ? formatDistanceToNow(page.trashedAt, { addSuffix: true, locale: zhCN })
                 : ''
@@ -62,10 +94,10 @@ export function TrashList({ onBack, showHeader = true, itemHeight = 52 }: TrashL
                   key={page.id}
                   style={{ height: itemHeight }}
                   className={cn(
-                    "group relative mx-2 flex items-center gap-2 rounded-[8px] px-4 cursor-pointer transition-colors duration-200 overflow-hidden text-sm font-medium",
+                    "group relative flex items-center gap-2 rounded-[8px] px-4 cursor-pointer transition-colors duration-200 overflow-hidden text-sm font-medium",
                     activePageId === page.id
-                      ? "bg-[hsl(var(--goose-selected-bg))] text-foreground dark:text-foreground/90"
-                      : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[hsl(var(--goose-selected-bg)/0.72)] dark:hover:bg-[hsl(var(--goose-selected-bg)/0.82)] hover:text-foreground dark:hover:text-foreground/85",
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-border)]"
+                      : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
                   )}
                   onClick={() => setActivePage(page.id)}
                 >
@@ -82,7 +114,7 @@ export function TrashList({ onBack, showHeader = true, itemHeight = 52 }: TrashL
                       )}
                     </div>
                   ) : (
-                    <LucideIcons.File className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <DefaultPageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
 
                   {/* 标题和时间 */}

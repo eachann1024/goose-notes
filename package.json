@@ -9,7 +9,7 @@
     "dev:tauri": "HOST_TARGET=tauri tauri dev",
     "build": "pnpm run build:utools",
     "build:utools": "tsc -b && HOST_TARGET=utools vite build && node scripts/utools-build.js && node scripts/check-utools-size.js",
-    "build:tauri": "HOST_TARGET=tauri tauri build",
+    "build:tauri": "HOST_TARGET=tauri tauri build && node scripts/tauri-copy-bundle-to-desktop.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

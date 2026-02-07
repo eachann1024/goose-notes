@@ -59,4 +59,4 @@ export interface StorageConfig {
 /**
  * 存储策略类型
  */
-export type StorageStrategyType = 'indexed-db' | 'base64' | 'file-system' | 'inlined'
+export type StorageStrategyType = 'indexed-db' | 'base64' | 'attachment' | 'file-system' | 'inlined'

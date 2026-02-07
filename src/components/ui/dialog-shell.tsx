@@ -16,6 +16,7 @@ interface DialogShellProps {
   description?: React.ReactNode
   hideClose?: boolean
   contentClassName?: string
+  overlayClassName?: string
   bodyClassName?: string
   footer?: React.ReactNode
   children: React.ReactNode
@@ -29,16 +30,22 @@ export function DialogShell({
   description,
   hideClose = false,
   contentClassName,
+  overlayClassName,
   bodyClassName,
   footer,
   children,
 }: DialogShellProps) {
   const isFullscreen = layout === "fullscreen"
+  const hasTitle = Boolean(title)
+  const hasDescription = Boolean(description)
+  const accessibleTitle = hasTitle ? title : "对话框"
+  const accessibleDescription = hasDescription ? description : "对话框内容"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
+        overlayClassName={overlayClassName}
         className={cn(
           "origin-center data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-right-0 data-[state=closed]:slide-out-to-top-0 data-[state=closed]:slide-out-to-bottom-0 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-right-0 data-[state=open]:slide-in-from-top-0 data-[state=open]:slide-in-from-bottom-0",
           isFullscreen
@@ -62,12 +69,14 @@ export function DialogShell({
           </DialogClose>
         )}
 
-        {title || description ? (
-          <DialogHeader className="p-6 pb-0">
-            {title ? <DialogTitle>{title}</DialogTitle> : null}
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-          </DialogHeader>
-        ) : null}
+        <DialogHeader className={cn(hasTitle || hasDescription ? "p-6 pb-0" : "sr-only")}>
+          <DialogTitle className={hasTitle ? undefined : "sr-only"}>
+            {accessibleTitle}
+          </DialogTitle>
+          <DialogDescription className={hasDescription ? undefined : "sr-only"}>
+            {accessibleDescription}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className={cn("min-h-0", bodyClassName)}>{children}</div>
 

@@ -59,10 +59,12 @@ export const EDITOR_FONT_SIZE_MAX = 24
 export const EDITOR_FONT_SIZE_DEFAULT = 16
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N"
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K"
+const DEFAULT_UI_FONT_SIZE: UIFontSize = __HOST_TARGET__ === "utools" ? "small" : "normal"
 
 interface SettingsState {
     theme: Theme
     codeStyle: CodeStyle
+    globalEditorFullWidth: boolean
     searchProviders: SearchProvider[]
     utools: UToolsSettings
     desktop: DesktopSettings
@@ -74,6 +76,7 @@ interface SettingsState {
     customActions: CustomAction[]
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
+    setGlobalEditorFullWidth: (enabled: boolean) => void
     toggleSearchProvider: (id: string) => void
     reorderSearchProviders: (nextIds: string[]) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
@@ -201,6 +204,7 @@ export const useSettings = create<SettingsState>()(
         (set) => ({
             theme: 'system',
             codeStyle: 'default',
+            globalEditorFullWidth: false,
             searchProviders: DEFAULT_SEARCH_PROVIDERS,
             utools: {
                 globalSearchEnabled: false,
@@ -223,7 +227,7 @@ export const useSettings = create<SettingsState>()(
                 serif: { label: null, font: null },
                 mono: { label: null, font: null },
             },
-            uiFontSize: 'normal',
+            uiFontSize: DEFAULT_UI_FONT_SIZE,
             editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
             customActions: [
                 {
@@ -241,6 +245,7 @@ export const useSettings = create<SettingsState>()(
                 set({ codeStyle })
                 applyCodeStyle(codeStyle)
             },
+            setGlobalEditorFullWidth: (globalEditorFullWidth) => set({ globalEditorFullWidth }),
             toggleSearchProvider: (id) =>
                 set((state) => ({
                     searchProviders: state.searchProviders.map((provider) => (provider.id === id ? { ...provider, isEnabled: !provider.isEnabled } : provider)),
@@ -379,6 +384,12 @@ export const useSettings = create<SettingsState>()(
                 if (state && state.codeStyle !== codeStyle) {
                     useSettings.setState({ codeStyle })
                 }
+                const normalizedUIFontSize = state?.uiFontSize === 'small' || state?.uiFontSize === 'normal' || state?.uiFontSize === 'large'
+                    ? state.uiFontSize
+                    : DEFAULT_UI_FONT_SIZE
+                if (state && state.uiFontSize !== normalizedUIFontSize) {
+                    useSettings.setState({ uiFontSize: normalizedUIFontSize })
+                }
                 
                 // Apply window height immediately upon rehydration
                 if (state?.utools?.windowHeight) {
@@ -434,10 +445,50 @@ function applyTheme(theme: Theme) {
         root.classList.remove('dark')
     }
 
+    void applyNativeWindowTheme(theme, isDark)
+
     // Re-apply code style when theme changes (because light/dark mode changed)
     const state = useSettings.getState()
     if (state) {
         applyCodeStyle(state.codeStyle)
+    }
+}
+
+async function applyNativeWindowTheme(theme: Theme, isDark: boolean) {
+    if (__HOST_TARGET__ !== 'tauri') return
+
+    const targetTheme = theme === 'system' ? null : (isDark ? 'dark' : 'light')
+    const targetBackgroundColor = isDark ? [32, 32, 32, 255] : [248, 248, 248, 255]
+    let themeError: unknown = null
+    let backgroundError: unknown = null
+
+    try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window")
+        const currentWindow = getCurrentWindow()
+        await currentWindow.setTheme(targetTheme)
+    } catch (error) {
+        themeError = error
+    }
+
+    try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window")
+        const currentWindow = getCurrentWindow()
+        await currentWindow.setBackgroundColor(targetBackgroundColor)
+    } catch (error) {
+        backgroundError = error
+    }
+
+    if (themeError) {
+        try {
+            const { setTheme } = await import("@tauri-apps/api/app")
+            await setTheme(targetTheme)
+        } catch (fallbackError) {
+            console.warn("[settings] Failed to sync native window theme:", themeError, fallbackError)
+        }
+    }
+
+    if (backgroundError) {
+        console.warn("[settings] Failed to sync native window background:", backgroundError)
     }
 }
 

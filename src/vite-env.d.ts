@@ -21,6 +21,7 @@ declare global {
     rename: (oldPath: string, newPath: string) => boolean | Promise<boolean>;
     selectDirectory?: () => Promise<string | null>;
     restoreLastDirectory?: () => Promise<string | null>;
+    revealItemInFolder?: (path: string) => boolean | Promise<boolean>;
   }
 
   interface Window {

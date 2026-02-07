@@ -18,9 +18,6 @@ interface PositionState {
   showAbove: boolean;
 }
 
-const TOOLTIP_STYLE =
-  "rounded-lg border border-black/20 bg-[#1f1f1f] px-2 py-1.5 text-white shadow-[0_6px_14px_rgba(0,0,0,0.28)] dark:border-white/25";
-
 const TEXT_COLORS = [
   { name: "默认", color: "inherit" },
   { name: "灰色", color: "#787774" },
@@ -220,8 +217,8 @@ export function ColorPicker({ editor }: ColorPickerProps) {
             <LucideIcons.Palette className="h-[15px] w-[15px]" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8} className={TOOLTIP_STYLE}>
-          <div className="text-[12px] font-medium leading-none text-white">
+        <TooltipContent side="top" sideOffset={8}>
+          <div className="text-[12px] font-medium leading-none">
             颜色
           </div>
         </TooltipContent>

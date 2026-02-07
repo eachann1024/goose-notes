@@ -168,7 +168,7 @@ export function SidebarContextMenu({
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() => void permanentlyDeletePage(page.id)}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
               >
                 <LucideIcons.Trash2 className="h-4 w-4" />
                 <span>永久删除</span>
@@ -177,7 +177,7 @@ export function SidebarContextMenu({
           ) : (
             <ContextMenuItem
               onSelect={() => void deletePageWithUndo(page.id)}
-              className="text-muted-foreground focus:text-destructive focus:bg-destructive/10"
+              className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
             >
               <LucideIcons.Trash2 className="h-4 w-4" />
               <span>移至垃圾箱</span>

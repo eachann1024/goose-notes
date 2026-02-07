@@ -74,6 +74,23 @@ body.drag-handle-suppressed .drag-handle {
   border-radius: 4px;
   outline: none !important;
 }
+
+/* Avoid block-node selection highlight on text blocks (notably in Tauri WebView) */
+.ProseMirror p.ProseMirror-selectednode,
+.ProseMirror p.tiptap-selected-node,
+.ProseMirror h1.ProseMirror-selectednode,
+.ProseMirror h1.tiptap-selected-node,
+.ProseMirror h2.ProseMirror-selectednode,
+.ProseMirror h2.tiptap-selected-node,
+.ProseMirror h3.ProseMirror-selectednode,
+.ProseMirror h3.tiptap-selected-node,
+.ProseMirror li.ProseMirror-selectednode,
+.ProseMirror li.tiptap-selected-node,
+.ProseMirror blockquote.ProseMirror-selectednode,
+.ProseMirror blockquote.tiptap-selected-node {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
 .ProseMirror .image-node.ProseMirror-selectednode,
 .ProseMirror .image-node.tiptap-selected-node {
   background-color: transparent !important;

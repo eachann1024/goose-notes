@@ -14,13 +14,16 @@ import { useNotebooks } from "@/stores/useNotebooks";
 
 export function WorkspacePage() {
   const { activePageId, updatePage, getPage } = usePages();
-  const { activeNotebookId } = useNotebooks();
+  const { activeNotebookId, notebooks } = useNotebooks();
+  const { globalEditorFullWidth } = useSettings();
 
   const page = activePageId ? getPage(activePageId) : undefined;
-  const notebook = activeNotebookId
-    ? useNotebooks.getState().notebooks[activeNotebookId]
-    : undefined;
-  const isLocalFolderPage = notebook?.source === "local-folder";
+  const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
+  const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
+  const isLocalFolderPage = pageNotebook?.source === "local-folder";
+  const isEditorFullWidth = Boolean(
+    pageNotebook?.editorFullWidth ?? globalEditorFullWidth,
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageScrollPositionsRef = useRef<Record<string, number>>({});
   const lastActivePageRef = useRef<string | null>(null);
@@ -29,8 +32,6 @@ export function WorkspacePage() {
 
   const isExternalFileDrag = (e: React.DragEvent) =>
     Array.from(e.dataTransfer.types || []).includes("Files");
-
-
 
   useEffect(() => {
     if (UToolsAdapter.isUTools) {
@@ -205,10 +206,7 @@ export function WorkspacePage() {
       const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
       const notebookId = useNotebooks
         .getState()
-        .createLocalFolderNotebook(
-          folderName,
-          folderPath,
-        );
+        .createLocalFolderNotebook(folderName, folderPath);
       await usePages
         .getState()
         .loadLocalFolderPages(notebookId, folderPath, { showWelcome: true });
@@ -235,139 +233,171 @@ export function WorkspacePage() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-      {isDragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-[1px] animate-in fade-in duration-300">
-          <div className="text-center">
-            <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
-            <p className="text-lg text-muted-foreground font-medium">
-              拖放文件夹以打开
-            </p>
-            <p className="text-sm text-muted-foreground/60 mt-2">
-              支持 .md / .markdown 文件
-            </p>
+        {isDragging && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-[1px] animate-in fade-in duration-300">
+            <div className="text-center">
+              <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
+              <p className="text-lg text-muted-foreground font-medium">
+                拖放文件夹以打开
+              </p>
+              <p className="text-sm text-muted-foreground/60 mt-2">
+                支持 .md / .markdown 文件
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-      <CommandPalette />
-      <div className="workspace-stage">
-      <Sidebar className="workspace-sidebar-pane" />
+        )}
+        <CommandPalette />
+        <div className="workspace-stage">
+          <Sidebar className="workspace-sidebar-pane" />
 
-      <main className="workspace-main-sheet flex-1 flex flex-col h-full overflow-hidden">
-        {activePageId && page ? (
-          <>
-            <PageHeader
-              page={page}
-              onClose={() => usePages.getState().setActivePage(null)}
-              onToggleFavorite={() =>
-                updatePage(activePageId, { isFavorite: !page.isFavorite })
-              }
-              onRestore={() => usePages.getState().restorePage(activePageId)}
-              onDelete={() =>
-                void usePages.getState().permanentlyDeletePage(activePageId)
-              }
-            />
+          <main className="workspace-main-sheet flex-1 flex flex-col h-full overflow-hidden">
+            {activePageId && page ? (
+              <>
+                <PageHeader
+                  page={page}
+                  onClose={() => usePages.getState().setActivePage(null)}
+                  onToggleFavorite={() =>
+                    updatePage(activePageId, { isFavorite: !page.isFavorite })
+                  }
+                  onRestore={() =>
+                    usePages.getState().restorePage(activePageId)
+                  }
+                  onDelete={() =>
+                    void usePages.getState().permanentlyDeletePage(activePageId)
+                  }
+                />
 
-            <div className="workspace-editor-surface ml-0 mr-2 mt-1 mb-2 flex-1 overflow-hidden">
-              <div
-                ref={scrollContainerRef}
-                className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
-              >
-                {(() => {
-                  // 判断是否是新页面（创建时间等于更新时间且内容为空）
-                  const isNewPage =
-                    page.createdAt === page.updatedAt &&
-                    (!page.content?.content?.[1]?.content ||
-                      page.content.content[1].content.length === 0);
+                <div className="workspace-editor-surface relative ml-0 mr-2 mt-1 mb-2 flex-1 overflow-hidden">
+                  <div
+                    ref={scrollContainerRef}
+                    className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
+                  >
+                    {(() => {
+                      // 判断是否是新页面（创建时间等于更新时间且内容为空）
+                      const isNewPage =
+                        page.createdAt === page.updatedAt &&
+                        (!page.content?.content?.[1]?.content ||
+                          page.content.content[1].content.length === 0);
 
-                  // 判断是否有实际内容（除了标题行之外还有内容）
-                  const hasRealContent =
-                    page.content?.content &&
-                    page.content.content.length > 2;
+                      // 判断是否有实际内容（除了标题行之外还有内容）
+                      const hasRealContent =
+                        page.content?.content &&
+                        page.content.content.length > 2;
 
-                  return (
-                    <div
-                      className={cn(
-                        "px-8 min-h-screen",
-                        page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          page.icon ? "mb-4 mt-4" : "mt-4",
-                          page.isFullWidth ? "max-w-full" : "max-w-3xl mx-auto",
-                        )}
-                      >
-                        {!isLocalFolderPage && (
-                          <div className={cn(
-                            "group relative mb-4",
-                            !page.icon && "min-h-[40px]"
-                          )}>
-                            <IconSelector
-                              value={page.icon}
-                              onChange={(icon) =>
-                                !page.trashedAt &&
-                                !page.isLocked &&
-                                updatePage(activePageId, { icon })
-                              }
-                              onFirstOpen={() => {
-                                if (!page.icon) {
-                                  const defaultEmojis = ["📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "🔖", "📚", "✨"];
-                                  const randomEmoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
-                                  updatePage(activePageId, { icon: randomEmoji });
-                                }
-                              }}
-                            >
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
+                      return (
+                        <div
+                          className={cn(
+                            "min-h-screen",
+                            isEditorFullWidth ? "px-3 md:px-4" : "px-8",
+                            page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              page.icon ? "mb-4 mt-4" : "mt-4",
+                              isEditorFullWidth
+                                ? "max-w-full"
+                                : "max-w-3xl mx-auto",
+                            )}
+                          >
+                            {!isLocalFolderPage && (
+                              <div
                                 className={cn(
-                                  "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
-                                  page.icon
-                                    ? "opacity-100 scale-100"
-                                    : page.trashedAt || page.isLocked
-                                      ? "opacity-0"
-                                      : isNewPage
-                                        ? "opacity-100 animate-slow-pulse hover:scale-105"
-                                        : "opacity-0 group-hover:opacity-100 hover:scale-105",
+                                  "group relative mb-4",
+                                  !page.icon && "min-h-[40px]",
                                 )}
                               >
-                                {page.icon ? (
-                                  <div className="flex items-center justify-center h-16 w-16 text-6xl">
-                                    {(LucideIcons as any)[page.icon] ? (
-                                      (() => {
-                                        const Icon = (LucideIcons as any)[page.icon];
-                                        return <Icon className="h-14 w-14" />;
-                                      })()
-                                    ) : (
-                                      <span>{page.icon}</span>
+                                <IconSelector
+                                  value={page.icon}
+                                  onChange={(icon) =>
+                                    !page.trashedAt &&
+                                    !page.isLocked &&
+                                    updatePage(activePageId, { icon })
+                                  }
+                                  onFirstOpen={() => {
+                                    if (!page.icon) {
+                                      const defaultEmojis = [
+                                        "📝",
+                                        "📄",
+                                        "📋",
+                                        "📌",
+                                        "🎯",
+                                        "💡",
+                                        "⭐",
+                                        "🔖",
+                                        "📚",
+                                        "✨",
+                                      ];
+                                      const randomEmoji =
+                                        defaultEmojis[
+                                          Math.floor(
+                                            Math.random() *
+                                              defaultEmojis.length,
+                                          )
+                                        ];
+                                      updatePage(activePageId, {
+                                        icon: randomEmoji,
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                      "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
+                                      page.icon
+                                        ? "opacity-100 scale-100"
+                                        : page.trashedAt || page.isLocked
+                                          ? "opacity-0"
+                                          : isNewPage
+                                            ? "opacity-100 animate-slow-pulse hover:scale-105"
+                                            : "opacity-0 group-hover:opacity-100 hover:scale-105",
                                     )}
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
-                                    <LucideIcons.Smile className="h-4 w-4" />
-                                    <span>添加图标</span>
-                                  </div>
-                                )}
-                              </Button>
-                            </IconSelector>
+                                  >
+                                    {page.icon ? (
+                                      <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                                        {(LucideIcons as any)[page.icon] ? (
+                                          (() => {
+                                            const Icon = (LucideIcons as any)[
+                                              page.icon
+                                            ];
+                                            return (
+                                              <Icon className="h-14 w-14" />
+                                            );
+                                          })()
+                                        ) : (
+                                          <span>{page.icon}</span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                                        <LucideIcons.Smile className="h-4 w-4" />
+                                        <span>添加图标</span>
+                                      </div>
+                                    )}
+                                  </Button>
+                                </IconSelector>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      <Editor editable={!page.isLocked && !page.trashedAt} />
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </>
-        ) : (
-          <PageEmptyState />
-        )}
-      </main>
+                          <Editor
+                            editable={!page.isLocked && !page.trashedAt}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <PageEmptyState />
+            )}
+          </main>
+        </div>
       </div>
-    </div>
     </>
   );
 }

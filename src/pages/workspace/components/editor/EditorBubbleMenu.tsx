@@ -8,9 +8,6 @@ type EditorBubbleMenuProps = Omit<
 
 import { useScrollHide } from "@/hooks/useScrollHide";
 
-const TOOLTIP_STYLE =
-  "rounded-2xl border border-border/80 bg-popover px-2 py-1.5 text-popover-foreground shadow-[0_10px_24px_rgba(15,23,42,0.14)] dark:border-white/20";
-
 function BubbleMenuTooltip({
   label,
   shortcut,
@@ -19,13 +16,13 @@ function BubbleMenuTooltip({
   shortcut?: string;
 }) {
   return (
-    <TooltipContent side="top" sideOffset={8} className={TOOLTIP_STYLE}>
+    <TooltipContent side="top" sideOffset={8}>
       <div className="inline-flex items-center gap-2 leading-none whitespace-nowrap">
         <span className="text-[12px] font-medium text-foreground">
           {label}
         </span>
         {shortcut ? (
-          <kbd className="inline-flex h-6 select-none items-center rounded-[10px] border border-border/85 bg-muted px-2 font-mono text-[11px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
+          <kbd className="inline-flex h-5 select-none items-center rounded-md border border-border/85 bg-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
             {formatShortcut(shortcut)}
           </kbd>
         ) : null}

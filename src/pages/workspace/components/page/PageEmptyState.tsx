@@ -198,18 +198,19 @@ export function PageEmptyState() {
   ];
 
   return (
-    <div className="h-full flex items-center justify-center p-8 relative overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+    <div className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]">
+      <div className="min-h-full flex items-start justify-center pt-2 sm:pt-4 md:pt-6">
       {/* 内容区 */}
       <div className="relative w-full max-w-4xl">
         {/* Logo 和标题 */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-[14px] bg-[hsl(var(--goose-editor-bg))] mb-6 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
-            <Sparkles className="w-10 h-10 text-muted-foreground/75" />
+        <div className="text-center mb-6 sm:mb-8 md:mb-12">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-[12px] md:rounded-[14px] bg-[hsl(var(--goose-editor-bg))] mb-3 sm:mb-4 md:mb-6 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
+            <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-muted-foreground/75" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 md:mb-4">
             准备好记录想法了吗？
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             {isLocalFolder
               ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
               : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
@@ -217,7 +218,7 @@ export function PageEmptyState() {
         </div>
 
         {/* 操作卡片网格 */}
-        <div className="grid md:grid-cols-3 gap-5 mb-12 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 max-w-4xl mx-auto">
           {actions.map((action, index) => {
             const Icon = action.icon;
             return (
@@ -227,17 +228,17 @@ export function PageEmptyState() {
                     action.onClick();
                   }}
                   type="button"
-                  className="group relative cursor-pointer rounded-[14px] border-0 bg-[hsl(var(--goose-editor-bg))] p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:border-[hsl(var(--foreground)/0.12)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--foreground)/0.03)] dark:hover:bg-[hsl(var(--foreground)/0.1)] dark:hover:border-[hsl(var(--foreground)/0.24)] dark:hover:shadow-[0_12px_28px_rgba(2,6,23,0.45)]"
                 >
                 <div
-                  className="w-14 h-14 rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
+                  className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-all dark:bg-[hsl(var(--foreground)/0.06)] dark:group-hover:bg-[hsl(var(--foreground)/0.16)]"
                 >
-                  <Icon className="w-7 h-7 text-foreground/75" />
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2 text-left">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 text-left transition-colors dark:text-foreground/90 dark:group-hover:text-foreground">
                   {action.title}
                 </h3>
-                <p className="text-sm text-muted-foreground text-left">
+                <p className="hidden min-[420px]:block text-xs sm:text-sm text-muted-foreground text-left leading-relaxed transition-colors dark:text-muted-foreground/80 dark:group-hover:text-muted-foreground/95">
                   {action.description}
                 </p>
               </button>
@@ -245,6 +246,7 @@ export function PageEmptyState() {
           })}
         </div>
 
+      </div>
       </div>
     </div>
   );

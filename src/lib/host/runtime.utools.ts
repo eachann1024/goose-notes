@@ -88,6 +88,49 @@ export const hostRuntime: HostRuntime = {
         return [];
       }
     },
+    postAttachment: (id: string, data: Uint8Array, type: string) => {
+      if (!isUToolsEnv()) {
+        // Web fallback: 存到 localStorage（base64 编码）
+        try {
+          const base64 = btoa(String.fromCharCode(...data));
+          localStorage.setItem(`att:${id}`, base64);
+          localStorage.setItem(`att-type:${id}`, type);
+          return { id, ok: true };
+        } catch (error) {
+          return { id, ok: false, error };
+        }
+      }
+      try {
+        return (window as any).utools.db.postAttachment(id, data, type);
+      } catch (error) {
+        return { id, ok: false, error };
+      }
+    },
+    getAttachment: (id: string) => {
+      if (!isUToolsEnv()) {
+        const base64 = localStorage.getItem(`att:${id}`);
+        if (!base64) return null;
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      }
+      try {
+        return (window as any).utools.db.getAttachment(id);
+      } catch {
+        return null;
+      }
+    },
+    getAttachmentType: (id: string) => {
+      if (!isUToolsEnv()) {
+        return localStorage.getItem(`att-type:${id}`);
+      }
+      try {
+        return (window as any).utools.db.getAttachmentType(id);
+      } catch {
+        return null;
+      }
+    },
   },
   getUser: () => {
     if (!isUToolsEnv()) {

@@ -67,6 +67,36 @@ export class UToolsAdapter {
     ): Array<{ _id: string; _rev?: string; data: T }> => {
       return hostRuntime.db.allDocs(prefix);
     },
+
+    /**
+     * 存储附件（二进制数据，最大 10MB）
+     * @param id 附件 ID
+     * @param data 二进制数据
+     * @param type MIME 类型
+     */
+    postAttachment: (
+      id: string,
+      data: Uint8Array,
+      type: string,
+    ): { id: string; ok: boolean; error?: any } => {
+      return hostRuntime.db.postAttachment(id, data, type);
+    },
+
+    /**
+     * 读取附件
+     * @param id 附件 ID
+     */
+    getAttachment: (id: string): Uint8Array | null => {
+      return hostRuntime.db.getAttachment(id);
+    },
+
+    /**
+     * 获取附件 MIME 类型
+     * @param id 附件 ID
+     */
+    getAttachmentType: (id: string): string | null => {
+      return hostRuntime.db.getAttachmentType(id);
+    },
   };
 
   /**
