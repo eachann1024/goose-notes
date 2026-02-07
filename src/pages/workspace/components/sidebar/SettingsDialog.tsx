@@ -213,6 +213,38 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     UToolsAdapter.openUrl(url, false);
   };
 
+  const handleCopyResetPhrase = async () => {
+    const fallbackCopy = () => {
+      const textarea = document.createElement("textarea");
+      textarea.value = resetPhrase;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return copied;
+    };
+
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(resetPhrase);
+      } else if (!fallbackCopy()) {
+        throw new Error("Fallback copy failed");
+      }
+      toast.success("已复制确认短语");
+    } catch (error) {
+      console.error("Copy reset phrase failed", error);
+      if (fallbackCopy()) {
+        toast.success("已复制确认短语");
+        return;
+      }
+      toast.error("复制失败，请手动复制");
+    }
+  };
+
   return (
     <>
       <DialogShell
@@ -332,13 +364,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       >
         <div className="mb-5 mt-1 space-y-3">
           <Label htmlFor="reset-all" className="text-xs text-muted-foreground">
-            请输入
-            <span className="select-all font-bold text-foreground">
-              {" "}
-              {resetPhrase}
-            </span>{" "}
-            以确认重置
+            请输入以下短语以确认重置
           </Label>
+          <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/35 px-3 py-2">
+            <code className="select-text font-semibold text-foreground">{resetPhrase}</code>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyResetPhrase}
+              className="h-7 px-2 text-xs"
+            >
+              复制
+            </Button>
+          </div>
           <Input
             id="reset-all"
             value={resetInput}
