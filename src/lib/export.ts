@@ -273,14 +273,26 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
 }
 
+function getParentDirectoryPath(targetPath: string): string {
+  const normalizedPath = targetPath.replace(/[\\/]+$/, "");
+  const lastSlashIndex = Math.max(
+    normalizedPath.lastIndexOf("/"),
+    normalizedPath.lastIndexOf("\\"),
+  );
+
+  if (lastSlashIndex < 0) return normalizedPath;
+  if (lastSlashIndex === 0) return normalizedPath.slice(0, 1);
+  return normalizedPath.slice(0, lastSlashIndex);
+}
+
 async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   const hostWindow = window as Window & {
     utools?: {
       showSaveDialog?: (options?: Record<string, unknown>) => unknown;
-      shellShowItemInFolder?: (targetPath: string) => boolean;
-      shellOpenPath?: (targetPath: string) => boolean;
+      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
+      shellOpenPath?: (targetPath: string) => boolean | Promise<boolean>;
     };
     gooseFs?: GooseFs & {
       revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
@@ -338,17 +350,26 @@ async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean>
     throw new Error("uTools 写入文件失败");
   }
 
+  const folderPath = getParentDirectoryPath(targetPath);
   let revealed = false;
   if (typeof gooseFs.revealItemInFolder === "function") {
     revealed = Boolean(await gooseFs.revealItemInFolder(targetPath));
   }
 
   if (!revealed && typeof utools.shellShowItemInFolder === "function") {
-    revealed = Boolean(utools.shellShowItemInFolder(targetPath));
+    revealed = Boolean(await Promise.resolve(utools.shellShowItemInFolder(targetPath)));
   }
 
   if (!revealed && typeof utools.shellOpenPath === "function") {
-    revealed = Boolean(utools.shellOpenPath(targetPath));
+    revealed = Boolean(await Promise.resolve(utools.shellOpenPath(folderPath)));
+  }
+
+  if (
+    !revealed &&
+    folderPath !== targetPath &&
+    typeof utools.shellOpenPath === "function"
+  ) {
+    revealed = Boolean(await Promise.resolve(utools.shellOpenPath(targetPath)));
   }
 
   return true;

@@ -8,9 +8,58 @@ const storageWriteChains = new Map<string, Promise<void>>()
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+const isWebStorageAvailable = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    return typeof window.localStorage !== 'undefined'
+  } catch {
+    return false
+  }
+}
+
+interface SyncStorageFallback {
+  getItem: (name: string) => string | null
+  setItem: (name: string, value: string) => void
+  removeItem: (name: string) => void
+}
+
+const localStorageFallback: SyncStorageFallback = {
+  getItem: (name: string): string | null => {
+    if (!isWebStorageAvailable()) return null
+    try {
+      return window.localStorage.getItem(name)
+    } catch (err) {
+      console.error('[localStorageFallback] getItem failed', name, err)
+      return null
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    if (!isWebStorageAvailable()) return
+    try {
+      window.localStorage.setItem(name, value)
+    } catch (err) {
+      console.error('[localStorageFallback] setItem failed', name, err)
+    }
+  },
+  removeItem: (name: string): void => {
+    if (!isWebStorageAvailable()) return
+    try {
+      window.localStorage.removeItem(name)
+    } catch (err) {
+      console.error('[localStorageFallback] removeItem failed', name, err)
+    }
+  },
+}
+
 const notifyPersistFailure = (name: string) => {
-  if ((window as any).utools) {
-    (window as any).utools.showNotification(
+  const hostWindow = window as Window & {
+    utools?: {
+      showNotification?: (message: string) => void
+    }
+  }
+
+  if (hostWindow.utools?.showNotification) {
+    hostWindow.utools.showNotification(
       `数据保存失败: ${name}，请检查存储空间`
     )
   }
@@ -85,6 +134,9 @@ export const flushUToolsStorageWrites = async (): Promise<void> => {
 
 export const uToolsStorage: StateStorage = {
   getItem: (name: string): string | null => {
+    if (!UToolsAdapter.isUTools) {
+      return localStorageFallback.getItem(name)
+    }
     try {
       const result = UToolsAdapter.db.get<string>(name)
       return result?.data ?? null
@@ -95,11 +147,19 @@ export const uToolsStorage: StateStorage = {
   },
 
   setItem: async (name: string, value: string): Promise<void> => {
+    if (!UToolsAdapter.isUTools) {
+      localStorageFallback.setItem(name, value)
+      return
+    }
     queuedStorageValues.set(name, value)
     await flushStorageKeyQueue(name)
   },
   
   removeItem: (name: string): void => {
+    if (!UToolsAdapter.isUTools) {
+      localStorageFallback.removeItem(name)
+      return
+    }
     try {
       queuedStorageValues.delete(name)
       UToolsAdapter.db.remove(name)
