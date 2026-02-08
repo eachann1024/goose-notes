@@ -153,6 +153,7 @@ export function NotebookEditDialog({
                     value={icon}
                     onChange={(val) => onIconChange(val || "📓")}
                     portalContainerRef={editDialogContentRef}
+                    scope="general"
                   >
                     <Button
                       variant="outline"

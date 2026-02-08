@@ -8,11 +8,51 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   portalContainerRef?: React.RefObject<T | null>;
   onFirstOpen?: () => void;
   emojiOnly?: boolean;
+  scope?: "file" | "general";
 }
 
-// 常用图标白名单（精简去除了非代表性的 UI 控件图标）
-const COMMON_ICONS = [
-  // 核心/通用
+// 文件图标白名单：仅保留适合页面/文档语义的图标
+const FILE_ICONS = [
+  "File",
+  "FileText",
+  "Folder",
+  "FolderOpen",
+  "Archive",
+  "Clipboard",
+  "Calendar",
+  "Clock",
+  "Target",
+  "Flag",
+  "Bookmark",
+  "Tag",
+  "Check",
+  "HelpCircle",
+  "Link",
+  "Paperclip",
+  "Book",
+  "BookOpen",
+  "GraduationCap",
+  "Lightbulb",
+  "Pen",
+  "Pencil",
+  "Calculator",
+  "Ruler",
+  "Briefcase",
+  "Database",
+  "HardDrive",
+  "Server",
+  "Lock",
+  "Unlock",
+  "Key",
+  "MapPin",
+  "Globe",
+  "Package",
+  "Box",
+];
+
+// 通用图标白名单：在文件图标基础上补充更多生活化选项
+const GENERAL_ICONS = [
+  ...FILE_ICONS,
   "Home",
   "Search",
   "Menu",
@@ -21,34 +61,10 @@ const COMMON_ICONS = [
   "Users",
   "Star",
   "Heart",
-  "Flag",
-  "Bookmark",
-  "Tag",
-  "Check",
   "X",
-  "AlertCircle",
-  "Info",
-  "HelpCircle",
   "MoreHorizontal",
-  
-  // 文档/工作
-  "File",
-  "FileText",
-  "Folder",
-  "FolderOpen",
-  "Archive",
-  "Briefcase",
-  "Clipboard",
-  "Calendar",
-  "Clock",
-  "Target",
   "Award",
   "Trophy",
-  "MapPin",
-  "Link",
-  "Paperclip",
-  
-  // 沟通/媒体
   "Mail",
   "MessageSquare",
   "MessageCircle",
@@ -62,22 +78,15 @@ const COMMON_ICONS = [
   "Headphones",
   "Speaker",
   "Radio",
-  
-  // 科技/设备
   "Smartphone",
   "Laptop",
   "Monitor",
   "Cpu",
-  "Database",
-  "HardDrive",
-  "Server",
   "Wifi",
   "Bluetooth",
   "Battery",
   "Tv",
   "Watch",
-  
-  // 生活/物品
   "Coffee",
   "CupSoda",
   "Pizza",
@@ -87,21 +96,13 @@ const COMMON_ICONS = [
   "ShoppingCart",
   "CreditCard",
   "Wallet",
-  "Key",
-  "Lock",
-  "Unlock",
   "Map",
-  "Globe",
   "Anchor",
   "Compass",
-  "Package",
-  "Box",
   "Truck",
   "Car",
   "Plane",
   "Rocket",
-  
-  // 自然/天气
   "Sun",
   "Moon",
   "Cloud",
@@ -118,16 +119,6 @@ const COMMON_ICONS = [
   "TreeDeciduous",
   "TreePine",
   "Flower2",
-  
-  // 学术/工具
-  "Book",
-  "BookOpen",
-  "GraduationCap",
-  "Lightbulb",
-  "Pen",
-  "Pencil",
-  "Calculator",
-  "Ruler",
   "Hammer",
   "Wrench",
   "Puzzle",
@@ -136,7 +127,15 @@ const COMMON_ICONS = [
   "Scissors",
 ];
 
-const POPULAR_EMOJIS = [
+const FILE_EMOJIS = [
+  "📝", "📄", "📑", "📋", "📌", "📍", "🔖", "🏷️", "✅", "☑️",
+  "📂", "📁", "🗂️", "📚", "📖", "📘", "📗", "📙", "📒", "📓",
+  "💡", "🧠", "🎯", "⭐", "✨", "🔥", "🚩", "⚠️", "❗", "❓",
+  "🔔", "⏰", "📅", "🗓️", "📆", "🧾", "📊", "📈", "📉", "🔍",
+  "🔎", "🧪", "⚙️", "🔧", "🔒", "🔓", "🔗", "🌐",
+];
+
+const GENERAL_EMOJIS = [
   "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
   "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
   "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩",
@@ -157,8 +156,6 @@ const POPULAR_EMOJIS = [
   "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑", "🚒", "🚐",
   "🏠", "🏡", "🏢", "🏣", "🏤", "🏥", "🏦", "🏨", "🏩", "🏪",
 ];
-
-const AVAILABLE_ICONS = Array.from(new Set(COMMON_ICONS));
 
 const NOTION_TABS = [
   { id: "emoji", label: "表情" },
@@ -184,6 +181,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   portalContainerRef,
   onFirstOpen,
   emojiOnly = false,
+  scope = "general",
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"emoji" | "icon">("emoji");
@@ -201,12 +199,15 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   }, [emojiOnly]);
 
   const filteredIcons = useMemo(() => {
-    const icons = AVAILABLE_ICONS.filter((key) => {
+    const iconPool = scope === "file" ? FILE_ICONS : GENERAL_ICONS;
+    const icons = Array.from(new Set(iconPool)).filter((key) => {
       if (!LucideIcons || !(key in (LucideIcons as any))) return false;
       return true;
     });
     return icons.slice(0, 200);
-  }, []);
+  }, [scope]);
+
+  const randomEmojiPool = scope === "file" ? FILE_EMOJIS : GENERAL_EMOJIS;
 
   // 第一次打开时触发 onFirstOpen 回调
   useEffect(() => {
@@ -218,12 +219,15 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 
   const handleRandomIcon = () => {
     if (tab === "icon") {
+      if (filteredIcons.length === 0) return;
       const randomIcon =
-        AVAILABLE_ICONS[Math.floor(Math.random() * AVAILABLE_ICONS.length)];
+        filteredIcons[Math.floor(Math.random() * filteredIcons.length)];
       onChange(randomIcon);
     } else {
-       const randomEmoji = POPULAR_EMOJIS[Math.floor(Math.random() * POPULAR_EMOJIS.length)];
-       onChange(randomEmoji);
+      if (randomEmojiPool.length === 0) return;
+      const randomEmoji =
+        randomEmojiPool[Math.floor(Math.random() * randomEmojiPool.length)];
+      onChange(randomEmoji);
     }
   };
 
@@ -331,9 +335,9 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                    flex: 1 !important;
                    min-height: 0 !important;
                 }
-                /* Hide category nav if user wants no grouping? 
-                   We keep it but make it minimal at bottom as Feishu 
-                   Feishu actually has top tabs for types, and bottom for categories for Emoji 
+                /* Hide category nav if user wants no grouping?
+                   We keep it but make it minimal at bottom as Feishu
+                   Feishu actually has top tabs for types, and bottom for categories for Emoji
                 */
                 .emoji-picker-react .epr-category-nav {
                    order: 2 !important;
@@ -351,7 +355,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   height: 32px !important;
                   border-radius: 6px !important;
                   border: 1px solid var(--input) !important;
-                  background-color: transparent !important; 
+                  background-color: transparent !important;
                   font-size: 14px !important;
                   padding-left: 32px !important; /* Space for icon if we could inject one, default has one */
                 }
@@ -362,10 +366,10 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                    width: 28px !important;
                    height: 28px !important;
                  }
-                 /* Hide specific category labels if needed for "flat" look, 
-                    but headers are useful. User said "no grouping" but 
-                    maybe meant "collapsible" or "complex" grouping. 
-                    Let's keep headers but simpler styles 
+                 /* Hide specific category labels if needed for "flat" look,
+                    but headers are useful. User said "no grouping" but
+                    maybe meant "collapsible" or "complex" grouping.
+                    Let's keep headers but simpler styles
                  */
                  .emoji-picker-react .epr-category-label {
                    font-size: 12px !important;
@@ -395,9 +399,9 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
           )}
 
           {tab === "icon" && (
-             <ScrollArea className="h-full bg-background">
+             <ScrollArea className="h-full bg-white">
                <TooltipProvider delayDuration={0}>
-                 <div className="p-3 grid grid-cols-6 gap-1 bg-background">
+                 <div className="p-3 grid grid-cols-5 gap-1 bg-white">
                     {filteredIcons.map((iconName) => {
                       const Icon = (LucideIcons as any)[iconName];
                       return (
@@ -408,7 +412,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                "aspect-square h-auto w-full rounded-md p-0 transition-all duration-150 hover:bg-muted",
+                                "aspect-square h-auto w-full rounded-md p-0 transition-all duration-150 hover:bg-muted [&_svg]:size-8",
                                 value === iconName &&
                                   "bg-accent text-accent-foreground shadow-sm",
                               )}
@@ -418,15 +422,15 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                               }}
                               aria-label={iconName}
                             >
-                              <Icon className="h-6 w-6 stroke-[1.5]" />
+                              <Icon className="stroke-[1.5]" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">{iconName}</TooltipContent>
+                          {/*<TooltipContent side="bottom">{iconName}</TooltipContent>*/}
                         </Tooltip>
                       );
                     })}
                     {filteredIcons.length === 0 && (
-                      <div className="col-span-6 text-center py-12 text-sm text-muted-foreground">
+                      <div className="col-span-5 text-center py-12 text-sm text-muted-foreground">
                         未找到匹配的图标
                       </div>
                     )}
