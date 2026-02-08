@@ -205,7 +205,7 @@ export function NotebookSwitcher() {
               key={notebook.id}
               className={cn(
                 "flex items-center justify-between gap-2 group",
-                "min-h-11 py-2",
+                "min-h-11 py-2 mb-1 last:mb-0",
                 notebook.localPathMissing && "opacity-50",
                 activeNotebookId === notebook.id &&
                   "bg-[var(--goose-interactive-selected)] text-foreground",

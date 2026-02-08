@@ -45,7 +45,6 @@ interface SidebarTreeProps {
   itemHeight: number;
   viewportHeight: number;
   onCreatePage: () => void;
-  onRequestRename: (page: Page) => void;
   onDragGuideChange?: (guide: SidebarDragGuide | null) => void;
   rootPageIds?: string[];
   fitContent?: boolean;
@@ -57,6 +56,7 @@ interface SidebarTreeProps {
   resolveSiblings?: (parentId: string | undefined) => Page[];
   onReorder?: (ids: string[], parentId: string | undefined) => void;
   showAddChildButton?: boolean;
+  draggablePageIds?: string[];
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -192,8 +192,8 @@ interface SortablePageRowProps {
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
   onToggleOpen: (id: string) => void;
-  onRequestRename: (page: Page) => void;
   showAddChildButton: boolean;
+  dragEnabled: boolean;
 }
 
 function EdgeDropZone({
@@ -225,7 +225,7 @@ function PlaceholderRow({
   name: string;
 }) {
   return (
-    <div style={style} className="relative pl-0 pr-1 select-none">
+    <div style={style} className="relative px-0 select-none">
       <div className="flex items-center h-full pl-1 pr-2 rounded-md">
         <div
           style={{ paddingLeft: depth * TREE_INDENT + 24 }}
@@ -251,24 +251,32 @@ function SortablePageRow({
   dropLinePosition,
   dropLineLeft,
   onToggleOpen,
-  onRequestRename,
   showAddChildButton,
+  dragEnabled,
 }: SortablePageRowProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
-    useSortable({ id: item.id });
-  const guardedListeners = {
-    ...listeners,
-    onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || event.ctrlKey) return;
-      listeners?.onPointerDown?.(event);
-    },
-  };
+    useSortable({ id: item.id, disabled: !dragEnabled });
+  const guardedListeners = dragEnabled
+    ? {
+        ...listeners,
+        onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+          if (event.button !== 0 || event.ctrlKey) return;
+          listeners?.onPointerDown?.(event);
+        },
+      }
+    : undefined;
+  const sortableHandlers = dragEnabled
+    ? {
+        ...attributes,
+        ...(guardedListeners ?? {}),
+      }
+    : {};
 
   const createPage = usePages((state) => state.createPage);
   const createLocalPage = usePages((state) => state.createLocalPage);
   const updatePage = usePages((state) => state.updatePage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
-  const openTab = useTabs((state) => state.openTab);
+  const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
 
   const page = item.page;
   const hasChildren = item.hasChildren;
@@ -320,7 +328,7 @@ function SortablePageRow({
       if (!item.isOpen) {
         onToggleOpen(page.id);
       }
-      openTab(existingBlankChild.id);
+      openInCurrentTab(existingBlankChild.id);
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
       return;
     }
@@ -329,7 +337,7 @@ function SortablePageRow({
       onToggleOpen(page.id);
     }
     const newId = createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK);
-    openTab(newId);
+    openInCurrentTab(newId);
   };
 
   return (
@@ -341,7 +349,7 @@ function SortablePageRow({
         transform: mergedTransform,
         transition,
       }}
-      className={cn("group relative pl-0 pr-1", isDragging && "z-20 pointer-events-none")}
+      className={cn("group relative px-0", isDragging && "z-20 pointer-events-none")}
     >
       {isNestDropTarget && (
         <div className="pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px] bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] shadow-[0_0_0_1px_hsl(var(--background)/0.5)_inset] transition-all duration-100" />
@@ -358,13 +366,12 @@ function SortablePageRow({
         />
       )}
 
-      <SidebarContextMenu page={page} onRequestRename={onRequestRename}>
+      <SidebarContextMenu page={page}>
         <div
           data-goose-context-trigger="true"
-          {...attributes}
-          {...guardedListeners}
+          {...sortableHandlers}
           className={cn(
-            "relative z-20 flex items-center h-full pl-0 pr-1 rounded-[8px] overflow-hidden cursor-pointer active:cursor-grabbing transition-colors text-sm font-medium",
+            "relative z-20 flex items-center h-full pl-0 pr-1 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "opacity-60 cursor-grabbing",
             nestGuideState !== "idle" &&
@@ -380,7 +387,7 @@ function SortablePageRow({
               onToggleOpen(page.id);
               return;
             }
-            openTab(page.id);
+            openInCurrentTab(page.id);
           }}
         >
           <div
@@ -429,6 +436,7 @@ function SortablePageRow({
                 <IconSelector
                   value={iconName}
                   onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
+                  scope="file"
                 >
                   <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer">
                     {iconName ? (
@@ -490,7 +498,6 @@ export function SidebarTree({
   itemHeight,
   viewportHeight,
   onCreatePage,
-  onRequestRename,
   onDragGuideChange,
   rootPageIds,
   fitContent = false,
@@ -502,6 +509,7 @@ export function SidebarTree({
   resolveSiblings,
   onReorder,
   showAddChildButton = true,
+  draggablePageIds,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -575,6 +583,10 @@ export function SidebarTree({
   const flatItems = useMemo(
     () => renderItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
     [renderItems]
+  );
+  const draggablePageIdSet = useMemo(
+    () => (draggablePageIds ? new Set(draggablePageIds) : null),
+    [draggablePageIds],
   );
 
   const visibleIndexMap = useMemo(() => {
@@ -1206,9 +1218,9 @@ export function SidebarTree({
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
         <div className="mb-2">👻</div>
-        <p>{isLocalNotebook ? "暂无文件" : "暂无页面"}</p>
+        <p>{isLocalNotebook ? "暂无文件可选" : "暂无页面可选"}</p>
         <Button variant="link" onClick={onCreatePage} className="h-auto p-0 mt-1">
-          {isLocalNotebook ? "创建第一个文件" : "创建第一个页面"}
+          {isLocalNotebook ? "新建文件" : "新建页面"}
         </Button>
       </div>
     );
@@ -1317,6 +1329,9 @@ export function SidebarTree({
                   nestGuideState === "idle";
                 const dropLinePosition = dropIntent?.kind === "after" ? "bottom" : "top";
                 const dropLineLeft = item.depth * TREE_INDENT + 16;
+                const dragEnabled = draggablePageIdSet
+                  ? draggablePageIdSet.has(item.id)
+                  : true;
 
                 return (
                   <SortablePageRow
@@ -1333,8 +1348,8 @@ export function SidebarTree({
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     onToggleOpen={handleToggle}
-                    onRequestRename={onRequestRename}
                     showAddChildButton={showAddChildButton}
+                    dragEnabled={dragEnabled}
                   />
                 );
               })}

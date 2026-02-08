@@ -1,24 +1,20 @@
 import type { Page } from "@/types";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { useContextMenu } from "@/stores/useContextMenu";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
 interface SidebarContextMenuProps {
   page: Page;
   children: React.ReactNode;
-  onRequestRename?: (page: Page) => void;
 }
 
 export function SidebarContextMenu({
   page,
   children,
-  onRequestRename,
 }: SidebarContextMenuProps) {
   const {
     updatePage,
-    duplicatePage,
     restorePage,
     permanentlyDeletePage,
     movePageTreeToNotebook,
@@ -37,13 +33,12 @@ export function SidebarContextMenu({
     (item) => item.id !== page.workspaceId && item.source !== "local-folder",
   );
 
-  const handleDuplicate = () => {
-    if (isTrashed) return;
-    duplicatePage(page.id);
-  };
-
   const toggleFavorite = () => {
     updatePage(page.id, { isFavorite: !page.isFavorite });
+  };
+
+  const togglePinned = () => {
+    updatePage(page.id, { isPinned: !page.isPinned });
   };
 
   const handleMoveToTopLevel = () => {
@@ -85,6 +80,16 @@ export function SidebarContextMenu({
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
             {menuLabel}
           </div>
+          <ContextMenuItem
+            onSelect={() => {
+              if (isTrashed) return;
+              useTabs.getState().openTab(page.id);
+            }}
+            disabled={isTrashed}
+          >
+            <LucideIcons.PanelTopOpen className="h-4 w-4" />
+            <span>在新标签页打开</span>
+          </ContextMenuItem>
           {!isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={toggleFavorite}>
               <LucideIcons.Star
@@ -96,28 +101,19 @@ export function SidebarContextMenu({
               <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
             </ContextMenuItem>
           )}
+          {!isTrashed && (
+            <ContextMenuItem onSelect={togglePinned}>
+              <LucideIcons.Pin
+                className={cn(
+                  "h-4 w-4",
+                  page.isPinned && "text-primary",
+                )}
+              />
+              <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
+            </ContextMenuItem>
+          )}
 
           <ContextMenuSeparator className="bg-transparent" />
-
-          <ContextMenuItem onSelect={handleDuplicate} disabled={isTrashed}>
-            <LucideIcons.Copy className="h-4 w-4" />
-            <span>创建副本</span>
-            <span className="ml-auto text-xs text-muted-foreground">⌘D</span>
-          </ContextMenuItem>
-
-          <ContextMenuItem
-            onSelect={(event) => {
-              if (isTrashed) return;
-              event.preventDefault();
-              useContextMenu.getState().close();
-              requestAnimationFrame(() => onRequestRename?.(page));
-            }}
-            disabled={isTrashed}
-          >
-            <LucideIcons.PenLine className="h-4 w-4" />
-            <span>重命名</span>
-            <span className="ml-auto text-xs text-muted-foreground">⌘⇧R</span>
-          </ContextMenuItem>
 
           {/* 只有当页面有父级时才显示"移至顶层"选项 */}
           {hasParent && !isTrashed && (
@@ -190,7 +186,6 @@ export function SidebarContextMenu({
           )}
         </ContextMenuContent>
       </ContextMenu>
-
     </>
   );
 }

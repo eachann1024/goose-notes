@@ -6,9 +6,68 @@ import { getPageTitle } from "@/lib/page-title";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { useTabs } from "@/stores/useTabs";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
+
+function normalizeShortcutToken(raw: string) {
+  const token = raw.trim().toLowerCase();
+  if (!token) return "";
+  if (
+    token === "mod" ||
+    token === "cmdorctrl" ||
+    token === "cmdorcontrol" ||
+    token === "commandorcontrol"
+  ) {
+    return isMacPlatform() ? "meta" : "ctrl";
+  }
+  if (token === "control" || token === "ctrl") return "ctrl";
+  if (token === "meta" || token === "command" || token === "cmd") return "meta";
+  if (token === "alt" || token === "option") return "alt";
+  if (token === "shift") return "shift";
+  if (token === "escape" || token === "esc") return "escape";
+  if (token.length === 1) return token;
+  return token;
+}
+
+function isModifierToken(token: string) {
+  return token === "ctrl" || token === "meta" || token === "alt" || token === "shift";
+}
+
+function matchShortcut(event: KeyboardEvent, shortcut: string) {
+  const trimmed = shortcut.trim();
+  if (!trimmed) return false;
+
+  const parts = trimmed
+    .split("+")
+    .map(normalizeShortcutToken)
+    .filter(Boolean);
+  if (parts.length === 0) return false;
+
+  const expectedModifiers = {
+    ctrl: parts.includes("ctrl"),
+    meta: parts.includes("meta"),
+    alt: parts.includes("alt"),
+    shift: parts.includes("shift"),
+  };
+
+  if (
+    event.ctrlKey !== expectedModifiers.ctrl ||
+    event.metaKey !== expectedModifiers.meta ||
+    event.altKey !== expectedModifiers.alt ||
+    event.shiftKey !== expectedModifiers.shift
+  ) {
+    return false;
+  }
+
+  const keyToken = parts.find((part) => !isModifierToken(part));
+  const eventKey = normalizeShortcutToken(event.key);
+  if (!keyToken) {
+    return isModifierToken(eventKey) && expectedModifiers[eventKey as keyof typeof expectedModifiers];
+  }
+  return !isModifierToken(eventKey) && eventKey === keyToken;
+}
 
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -38,19 +97,24 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 export function CommandPalette() {
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const openInNewTabRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { openTab, openInCurrentTab } = useTabs();
   const {
     pages,
-    setActivePage,
-    setPendingNavigatePageId,
     setExpandPageId,
     setSearchHighlightQuery,
     setSearchHighlightPageId,
     setSearchHighlightNonce,
   } = usePages();
   const { activeNotebookId, setActiveNotebook } = useNotebooks();
-  const { searchAllNotebooks, setSearchAllNotebooks } = useSettings();
+  const {
+    searchAllNotebooks,
+    setSearchAllNotebooks,
+    showRecentInSearch,
+    searchPanelCloseShortcut,
+  } = useSettings();
   const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("goose-recent-excludes");
@@ -79,6 +143,7 @@ export function CommandPalette() {
     const handleUToolsInput = (event: Event) => {
       const detail = (event as CustomEvent<{ text: string }>).detail;
       const text = detail?.text ?? "";
+      openInNewTabRef.current = false;
       setSearchQuery(text);
       setOpen(true);
     };
@@ -101,13 +166,18 @@ export function CommandPalette() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      if (open && matchShortcut(e, searchPanelCloseShortcut)) {
         e.preventDefault();
-        if (e.shiftKey) {
-          setOpen(true);
-        } else {
-          setOpen((open) => !open);
-        }
+        e.stopPropagation();
+        setOpen(false);
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      if ((key === "k" || key === "p") && (e.metaKey || e.ctrlKey) && !e.repeat) {
+        e.preventDefault();
+        openInNewTabRef.current = false;
+        setOpen(true);
       }
       if (open && e.key === "Tab") {
         e.preventDefault();
@@ -115,20 +185,29 @@ export function CommandPalette() {
       }
     };
 
-    document.addEventListener("keydown", down);
-    const handleOpenSearch = () => setOpen(true);
+    document.addEventListener("keydown", down, true);
+    const handleOpenSearch = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ resetQuery?: boolean; openInNewTab?: boolean }>
+      ).detail;
+      if (detail?.resetQuery) {
+        setSearchQuery("");
+      }
+      openInNewTabRef.current = detail?.openInNewTab === true;
+      setOpen(true);
+    };
     window.addEventListener("goose-note:open-search", handleOpenSearch);
     return () => {
-      document.removeEventListener("keydown", down);
+      document.removeEventListener("keydown", down, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
-  }, [open, searchAllNotebooks, setSearchAllNotebooks]);
+  }, [open, searchAllNotebooks, searchPanelCloseShortcut, setSearchAllNotebooks]);
 
-  const runCommand = async (command: () => void) => {
+  const runCommand = useCallback(async (command: () => void) => {
     command();
     await new Promise((resolve) => setTimeout(resolve, 0));
     setOpen(false);
-  };
+  }, []);
 
   const currentNotebookName = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]?.name || "当前记事本"
@@ -159,6 +238,44 @@ export function CommandPalette() {
     });
     return () => cancelAnimationFrame(raf);
   }, [open, searchQuery]);
+
+  const openPageInTab = useCallback(
+    (page: SearchResultPage | Page, query: string | null) => {
+      const targetNotebookId = page.workspaceId;
+
+      runCommand(() => {
+        if (targetNotebookId && targetNotebookId !== activeNotebookId) {
+          setActiveNotebook(targetNotebookId);
+        }
+
+        if (openInNewTabRef.current) {
+          openTab(page.id);
+        } else {
+          openInCurrentTab(page.id);
+        }
+        setExpandPageId(page.id);
+        setSearchHighlightQuery(query);
+
+        if (query) {
+          setSearchHighlightPageId(page.id);
+          setSearchHighlightNonce(Date.now());
+        } else {
+          setSearchHighlightPageId(null);
+        }
+      });
+    },
+    [
+      activeNotebookId,
+      openInCurrentTab,
+      openTab,
+      setActiveNotebook,
+      setExpandPageId,
+      setSearchHighlightNonce,
+      setSearchHighlightPageId,
+      setSearchHighlightQuery,
+      runCommand,
+    ],
+  );
 
   return (
     <Command.Dialog
@@ -214,7 +331,9 @@ export function CommandPalette() {
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
         </Command.Empty>
 
-        {!searchQuery.trim() && searchResults.recent.length > 0 && (
+        {!searchQuery.trim() &&
+          showRecentInSearch &&
+          searchResults.recent.length > 0 && (
           <Command.Group heading="最近访问">
             {searchResults.recent.map((page: Page) => {
               const breadcrumb = getPageBreadcrumb(page);
@@ -223,22 +342,7 @@ export function CommandPalette() {
                   key={`recent-${page.id}`}
                   value={`recent-${page.id}-${getPageTitle(page)}`}
                   onSelect={() => {
-                    const targetNotebookId = page.workspaceId;
-                    if (
-                      targetNotebookId &&
-                      targetNotebookId !== activeNotebookId
-                    ) {
-                      // 跨笔记本：先暂存目标页面，再切换笔记本
-                      setPendingNavigatePageId(page.id);
-                      setActiveNotebook(targetNotebookId);
-                      setOpen(false);
-                    } else {
-                      // 同笔记本：直接激活并触发展开
-                      runCommand(() => {
-                        setActivePage(page.id);
-                        setExpandPageId(page.id);
-                      });
-                    }
+                    openPageInTab(page, null);
                   }}
                   className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
@@ -288,34 +392,8 @@ export function CommandPalette() {
                   key={`all-${page.id}`}
                   value={`all-${page.id}-${getPageTitle(page)}`}
                   onSelect={() => {
-                    const targetNotebookId = page.workspaceId;
-                    // 有搜索词时设置高亮
                     const highlightQuery = searchQuery.trim() || null;
-                    if (
-                      targetNotebookId &&
-                      targetNotebookId !== activeNotebookId
-                    ) {
-                      // 跨笔记本：先暂存目标页面，再切换笔记本
-                      setPendingNavigatePageId(page.id);
-                      setSearchHighlightQuery(highlightQuery);
-                      if (highlightQuery) {
-                        setSearchHighlightPageId(page.id);
-                        setSearchHighlightNonce(Date.now());
-                      }
-                      setActiveNotebook(targetNotebookId);
-                      setOpen(false);
-                    } else {
-                      // 同笔记本：直接激活并触发展开
-                      runCommand(() => {
-                        setActivePage(page.id);
-                        setExpandPageId(page.id);
-                        setSearchHighlightQuery(highlightQuery);
-                        if (highlightQuery) {
-                          setSearchHighlightPageId(page.id);
-                          setSearchHighlightNonce(Date.now());
-                        }
-                      });
-                    }
+                    openPageInTab(page, highlightQuery);
                   }}
                   className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >

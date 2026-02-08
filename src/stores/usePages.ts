@@ -23,7 +23,13 @@ const localSaveWriteChains = new Map<string, Promise<void>>();
 // 本地页面元数据缓存 (用于在重新加载本地文件夹时防止元数据丢失)
 const localPageMetadataCache = new Map<
   string,
-  { isFavorite?: boolean; favoriteOrder?: number; icon?: string }
+  {
+    isFavorite?: boolean;
+    favoriteOrder?: number;
+    icon?: string;
+    isPinned?: boolean;
+    pinnedAt?: number;
+  }
 >();
 
 // 辅助函数：生成本地页面ID（基于相对路径的hash）
@@ -86,6 +92,7 @@ interface PagesState {
   getChildren: (parentId?: string, workspaceId?: string) => Page[];
   getTrashedPages: (workspaceId?: string) => Page[];
   getFavorites: (workspaceId?: string) => Page[];
+  getPinnedPages: () => Page[];
   removePagesByWorkspaceId: (workspaceId: string) => void;
 
   // 本地文件夹相关函数
@@ -466,6 +473,7 @@ export const usePages = create<PagesState>()(
         set((state) => {
           const page = state.pages[id];
           if (!page) return state;
+          const now = Date.now();
 
           let favoriteOrder = updates.favoriteOrder ?? page.favoriteOrder;
           if (
@@ -482,11 +490,20 @@ export const usePages = create<PagesState>()(
             favoriteOrder = maxFavoriteOrder + 1;
           }
 
+          let pinnedAt = updates.pinnedAt ?? page.pinnedAt;
+          if (updates.isPinned === true) {
+            pinnedAt = now;
+          }
+          if (updates.isPinned === false) {
+            pinnedAt = undefined;
+          }
+
           const updatedPage = {
             ...page,
             ...updates,
             ...(favoriteOrder !== undefined ? { favoriteOrder } : {}),
-            updatedAt: Date.now(),
+            pinnedAt,
+            updatedAt: now,
           };
 
           // 如果是本地文件夹页面且内容有更新，触发防抖保存
@@ -610,6 +627,8 @@ export const usePages = create<PagesState>()(
                 trashedAt: now,
                 updatedAt: now,
                 isFavorite: false,
+                isPinned: false,
+                pinnedAt: undefined,
               };
             }
           });
@@ -718,6 +737,8 @@ export const usePages = create<PagesState>()(
             createdAt: now,
             trashedAt: undefined,
             isFavorite: false,
+            isPinned: false,
+            pinnedAt: undefined,
             order: now,
           };
 
@@ -1182,6 +1203,18 @@ export const usePages = create<PagesState>()(
           });
       },
 
+      getPinnedPages: () => {
+        const pages = get().pages;
+        return Object.values(pages)
+          .filter((p) => !p.trashedAt && p.isPinned)
+          .sort((a, b) => {
+            const pinA = a.pinnedAt ?? 0;
+            const pinB = b.pinnedAt ?? 0;
+            if (pinA !== pinB) return pinB - pinA;
+            return b.updatedAt - a.updatedAt;
+          });
+      },
+
       removePagesByWorkspaceId: (workspaceId) => {
         set((state) => {
           const newPages = { ...state.pages };
@@ -1272,6 +1305,8 @@ export const usePages = create<PagesState>()(
                 isFavorite: p.isFavorite,
                 favoriteOrder: p.favoriteOrder,
                 icon: p.icon,
+                isPinned: p.isPinned,
+                pinnedAt: p.pinnedAt,
               });
             }
           });
@@ -1423,6 +1458,12 @@ export const usePages = create<PagesState>()(
                   }
                   if (existing.icon) {
                     page.icon = existing.icon;
+                  }
+                  if (existing.isPinned !== undefined) {
+                    page.isPinned = existing.isPinned;
+                  }
+                  if (existing.pinnedAt !== undefined) {
+                    page.pinnedAt = existing.pinnedAt;
                   }
                 }
 

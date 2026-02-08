@@ -7,7 +7,6 @@ interface FavoritesSectionProps {
   rowHeight: number;
   itemHeight: number;
   onCreatePage: () => void;
-  onRequestRename: (page: Page) => void;
 }
 
 function hasFavoriteAncestor(page: Page, pages: Record<string, Page>) {
@@ -28,7 +27,6 @@ export function FavoritesSection({
   rowHeight,
   itemHeight,
   onCreatePage,
-  onRequestRename,
 }: FavoritesSectionProps) {
   const { pages, reorderFavorites } = usePages();
   const { activeNotebookId } = useNotebooks();
@@ -82,7 +80,7 @@ export function FavoritesSection({
   return (
     <div className="py-1">
       <div
-        className="group flex items-center justify-between pl-2 pr-2 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
+        className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:text-foreground dark:hover:text-foreground/85 cursor-pointer transition-colors"
         onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
       >
         <span>收藏</span>
@@ -96,7 +94,7 @@ export function FavoritesSection({
       </div>
 
       {!favoritesCollapsed && (
-        <div className="pl-1 pr-2 pt-0.5 overflow-hidden">
+        <div className="pl-0 pr-[9px] pt-0.5 overflow-hidden">
           <SidebarTree
             activeNotebookId={activeNotebookId}
             width={width}
@@ -104,7 +102,6 @@ export function FavoritesSection({
             itemHeight={itemHeight}
             viewportHeight={0}
             onCreatePage={onCreatePage}
-            onRequestRename={onRequestRename}
             rootPageIds={favoriteRootIds}
             fitContent
             showEmptyState={false}
@@ -112,6 +109,7 @@ export function FavoritesSection({
             resolveSiblings={resolveFavoriteSiblings}
             onReorder={handleReorderFavorites}
             showAddChildButton={false}
+            draggablePageIds={favoriteRootIds}
           />
         </div>
       )}

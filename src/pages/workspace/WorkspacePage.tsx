@@ -7,16 +7,90 @@ import { PageHeader } from "./components/page/PageHeader";
 import { IconSelector } from "./components/shared/IconSelector";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 
+function normalizeShortcutToken(raw: string) {
+  const token = raw.trim().toLowerCase();
+  if (!token) return "";
+  if (
+    token === "mod" ||
+    token === "cmdorctrl" ||
+    token === "cmdorcontrol" ||
+    token === "commandorcontrol"
+  ) {
+    return isMacPlatform() ? "meta" : "ctrl";
+  }
+  if (token === "control" || token === "ctrl") return "ctrl";
+  if (token === "meta" || token === "command" || token === "cmd") return "meta";
+  if (token === "alt" || token === "option") return "alt";
+  if (token === "shift") return "shift";
+  if (token === "escape" || token === "esc") return "escape";
+  if (token.length === 1) return token;
+  return token;
+}
+
+function isModifierToken(token: string) {
+  return token === "ctrl" || token === "meta" || token === "alt" || token === "shift";
+}
+
+function matchShortcut(event: KeyboardEvent, shortcut: string) {
+  const trimmed = shortcut.trim();
+  if (!trimmed) return false;
+
+  const parts = trimmed
+    .split("+")
+    .map(normalizeShortcutToken)
+    .filter(Boolean);
+  if (parts.length === 0) return false;
+
+  const expectedModifiers = {
+    ctrl: parts.includes("ctrl"),
+    meta: parts.includes("meta"),
+    alt: parts.includes("alt"),
+    shift: parts.includes("shift"),
+  };
+
+  if (
+    event.ctrlKey !== expectedModifiers.ctrl ||
+    event.metaKey !== expectedModifiers.meta ||
+    event.altKey !== expectedModifiers.alt ||
+    event.shiftKey !== expectedModifiers.shift
+  ) {
+    return false;
+  }
+
+  const keyToken = parts.find((part) => !isModifierToken(part));
+  const eventKey = normalizeShortcutToken(event.key);
+
+  if (!keyToken) {
+    return isModifierToken(eventKey) && expectedModifiers[eventKey as keyof typeof expectedModifiers];
+  }
+
+  return !isModifierToken(eventKey) && eventKey === keyToken;
+}
+
+const DEFAULT_RANDOM_PAGE_EMOJIS = [
+  "📝",
+  "📄",
+  "📋",
+  "📌",
+  "🎯",
+  "💡",
+  "⭐",
+  "🔖",
+  "📚",
+  "✨",
+];
+
 export function WorkspacePage() {
-  const { activePageId, updatePage, getPage } = usePages();
+  const { activePageId, updatePage, getPage, setActivePage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
-  const { globalEditorFullWidth } = useSettings();
+  const { openTabs, activeTabId, closeTab, setActiveTab } = useTabs();
+  const { globalEditorFullWidth, closeTabShortcut } = useSettings();
 
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
@@ -72,7 +146,12 @@ export function WorkspacePage() {
                   ) || page.localFilePath.startsWith(filePath + "\\");
 
                 if (isCurrentFile || isParentDir) {
-                  useTabs.getState().closeTab(activePageId);
+                  const currentTabId = useTabs.getState().activeTabId;
+                  if (currentTabId) {
+                    useTabs.getState().closeTab(currentTabId);
+                  } else {
+                    usePages.getState().setActivePage(null);
+                  }
                 }
               }
               // 重新加载侧边栏以同步状态
@@ -214,6 +293,67 @@ export function WorkspacePage() {
     }
   };
 
+  const closeCurrentTab = useCallback(() => {
+    if (activeTabId) {
+      closeTab(activeTabId);
+      return;
+    }
+    setActivePage(null);
+  }, [activeTabId, closeTab, setActivePage]);
+
+  useEffect(() => {
+    const handleCloseTabShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (!matchShortcut(event, closeTabShortcut)) return;
+
+      const target = event.target as HTMLElement | null;
+      const isInInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isInInput) return;
+
+      event.preventDefault();
+      closeCurrentTab();
+    };
+
+    document.addEventListener("keydown", handleCloseTabShortcut);
+    return () => {
+      document.removeEventListener("keydown", handleCloseTabShortcut);
+    };
+  }, [closeCurrentTab, closeTabShortcut]);
+
+  useEffect(() => {
+    const handleSwitchTabByNumber = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+
+      const code = event.code;
+      let targetIndex = -1;
+      if (code === "Digit0") {
+        targetIndex = 9;
+      } else if (/^Digit[1-9]$/.test(code)) {
+        targetIndex = Number(code.slice(-1)) - 1;
+      } else {
+        return;
+      }
+
+      const targetTab = openTabs[targetIndex];
+      if (!targetTab) return;
+
+      event.preventDefault();
+      setActiveTab(targetTab.id);
+    };
+
+    document.addEventListener("keydown", handleSwitchTabByNumber);
+    return () => {
+      document.removeEventListener("keydown", handleSwitchTabByNumber);
+    };
+  }, [openTabs, setActiveTab]);
+
   return (
     <>
       <style>{`
@@ -257,12 +397,18 @@ export function WorkspacePage() {
               <>
                 <PageHeader
                   page={page}
-                  onClose={() => {
-                    if (!activePageId) return;
-                    usePages.getState().setActivePage(null);
+                  onOpenSearch={() => {
+                    window.dispatchEvent(
+                      new CustomEvent("goose-note:open-search", {
+                        detail: { resetQuery: true, openInNewTab: true },
+                      }),
+                    );
                   }}
                   onToggleFavorite={() =>
                     updatePage(activePageId, { isFavorite: !page.isFavorite })
+                  }
+                  onTogglePinned={() =>
+                    updatePage(activePageId, { isPinned: !page.isPinned })
                   }
                   onRestore={() =>
                     usePages.getState().restorePage(activePageId)
@@ -322,32 +468,7 @@ export function WorkspacePage() {
                                     !page.isLocked &&
                                     updatePage(activePageId, { icon })
                                   }
-                                  onFirstOpen={() => {
-                                    if (!page.icon) {
-                                      const defaultEmojis = [
-                                        "📝",
-                                        "📄",
-                                        "📋",
-                                        "📌",
-                                        "🎯",
-                                        "💡",
-                                        "⭐",
-                                        "🔖",
-                                        "📚",
-                                        "✨",
-                                      ];
-                                      const randomEmoji =
-                                        defaultEmojis[
-                                          Math.floor(
-                                            Math.random() *
-                                              defaultEmojis.length,
-                                          )
-                                        ];
-                                      updatePage(activePageId, {
-                                        icon: randomEmoji,
-                                      });
-                                    }
-                                  }}
+                                  scope="file"
                                 >
                                   <Button
                                     type="button"
@@ -355,6 +476,7 @@ export function WorkspacePage() {
                                     size="icon"
                                     className={cn(
                                       "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
+                                      page.icon && "[&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]",
                                       page.icon
                                         ? "opacity-100 scale-100"
                                         : page.trashedAt || page.isLocked
@@ -363,16 +485,37 @@ export function WorkspacePage() {
                                             ? "opacity-100 animate-slow-pulse hover:scale-105"
                                             : "opacity-0 group-hover:opacity-100 hover:scale-105",
                                     )}
+                                    onClick={() => {
+                                      if (
+                                        !isNewPage ||
+                                        page.icon ||
+                                        page.trashedAt ||
+                                        page.isLocked
+                                      ) {
+                                        return;
+                                      }
+
+                                      const randomEmoji =
+                                        DEFAULT_RANDOM_PAGE_EMOJIS[
+                                          Math.floor(
+                                            Math.random() *
+                                              DEFAULT_RANDOM_PAGE_EMOJIS.length,
+                                          )
+                                        ];
+                                      updatePage(activePageId, {
+                                        icon: randomEmoji,
+                                      });
+                                    }}
                                   >
                                     {page.icon ? (
-                                      <div className="flex items-center justify-center h-16 w-16 text-6xl">
+                                      <div className="flex items-center justify-center h-24 w-24 text-8xl">
                                         {(LucideIcons as any)[page.icon] ? (
                                           (() => {
                                             const Icon = (LucideIcons as any)[
                                               page.icon
                                             ];
                                             return (
-                                              <Icon className="h-14 w-14" />
+                                              <Icon className="h-full w-full" />
                                             );
                                           })()
                                         ) : (

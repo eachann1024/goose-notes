@@ -55,16 +55,25 @@ function App() {
     const { openTabs, openTab } = useTabs.getState();
 
     // 清理 openTabs 中已不存在的页面
-    const validTabs = openTabs.filter((id) => pages[id] && !pages[id].trashedAt);
+    const validTabs = openTabs.filter(
+      (tab) => pages[tab.pageId] && !pages[tab.pageId].trashedAt,
+    );
     if (validTabs.length !== openTabs.length) {
       useTabs.setState({ openTabs: validTabs });
-      if (useTabs.getState().activeTabId && !validTabs.includes(useTabs.getState().activeTabId!)) {
-        useTabs.setState({ activeTabId: validTabs[0] ?? null });
+      if (
+        useTabs.getState().activeTabId &&
+        !validTabs.some((tab) => tab.id === useTabs.getState().activeTabId)
+      ) {
+        useTabs.setState({ activeTabId: validTabs[0]?.id ?? null });
       }
     }
 
-    // 如果 activePageId 存在但不在 tabs 中（旧数据迁移），自动加入
-    if (activePageId && !useTabs.getState().openTabs.includes(activePageId) && pages[activePageId]) {
+    // 仅在没有标签时，用当前页面初始化第一个标签
+    if (
+      activePageId &&
+      useTabs.getState().openTabs.length === 0 &&
+      pages[activePageId]
+    ) {
       openTab(activePageId);
     }
   }, [hydrated]);
@@ -322,7 +331,7 @@ function App() {
 
       if (isEditableInput) return;
 
-      if (event.key.toLowerCase() === "s") {
+      if (event.key.toLowerCase() === "s" && !event.shiftKey) {
         event.preventDefault();
         void (async () => {
           window.dispatchEvent(

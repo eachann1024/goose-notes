@@ -1,15 +1,17 @@
 import { FavoritesSection } from "./FavoritesSection";
+import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
-import type { Page } from "@/types";
-import { getPageTitle } from "@/lib/page-title";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
 const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_SIDE_GAP_LEFT = 0;
+const SIDEBAR_SIDE_GAP_RIGHT = 9;
+const SIDEBAR_CONTENT_WIDTH_OFFSET = SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;
 
 type SidebarView = "pages" | "trash";
 type SidebarDragGuideMode = "sort" | "nest-pending" | "nest-ready";
@@ -35,31 +37,18 @@ const useItemHeight = () => {
   }, [uiFontSize]);
 };
 
-const isEmptyContent = (content: any) => {
-  if (!content || content.type !== "doc") return true;
-  if (!content.content || content.content.length === 0) return true;
-  if (content.content.length === 1) {
-    const first = content.content[0];
-    if (
-      first.type === "paragraph" &&
-      (!first.content || first.content.length === 0)
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
-
 export function Sidebar({ className, disableResize = false }: SidebarProps) {
   const {
-    createPage,
     pages,
     activePageId,
     setActivePage,
     updatePage,
+    createPage,
+    createLocalPage,
   } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { uiFontSize: _ignored } = useSettings();
+  const { openInCurrentTab } = useTabs();
   const { deletePageWithUndo } = useDeletePageWithUndo();
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
@@ -142,35 +131,14 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
   }, []);
 
   const handleCreatePage = () => {
-    const notebook = activeNotebookId
-      ? useNotebooks.getState().notebooks[activeNotebookId]
-      : undefined;
-    const isLocalFolder = notebook?.source === "local-folder";
-
+    if (!activeNotebookId) return;
     if (isLocalFolder) {
-      usePages
-        .getState()
-        .createLocalPage(undefined, activeNotebookId || undefined);
+      void createLocalPage(undefined, activeNotebookId);
       return;
     }
-
-    const existingBlankPage = Object.values(pages).find((p) => {
-      const matchWorkspace = p.workspaceId === (activeNotebookId || "default");
-      const notTrashed = !p.trashedAt;
-      const title = getPageTitle(p);
-      const isBlankTitle = !title || title === "无标题" || title.trim() === "";
-      const isBlankContent = isEmptyContent(p.content);
-      return matchWorkspace && notTrashed && isBlankTitle && isBlankContent;
-    });
-
-    if (existingBlankPage) {
-      useTabs.getState().openTab(existingBlankPage.id);
-      // 即使是复用空白页，也要聚焦标题
-      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
-    } else {
-      const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
-      useTabs.getState().openTab(newId);
-    }
+    const newPageId = createPage(undefined, activeNotebookId);
+    openInCurrentTab(newPageId);
+    window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
   };
 
   const startResizing = (startX: number) => {
@@ -253,13 +221,6 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
   const handleSearch = () => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
   };
-
-  const openRenameDialog = useCallback((page: Page) => {
-    if (!page || page.trashedAt) return;
-    setRenamePageId(page.id);
-    setRenameValue(getPageTitle(page));
-    setRenameDialogOpen(true);
-  }, []);
 
   const confirmRename = useCallback(async () => {
     if (!renamePageId) return;
@@ -345,11 +306,10 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
     createTitle: string;
   }) => {
     const searchShortcut = formatShortcut("Mod+K");
-    const createShortcut =
-      createTitle === "新建页面" ? formatShortcut("Mod+N") : null;
+    const createShortcut = formatShortcut("Mod+N");
 
     return (
-      <div className="group flex items-center justify-between pl-2 pr-2 py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
+      <div className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
         <span>{title}</span>
         <TooltipProvider delayDuration={0}>
           <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
@@ -416,30 +376,20 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
 
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
-          currentView={currentView}
-          isSettingsOpen={showSettings}
           dragGuide={dragGuide}
-          onSwitchToPages={() => {
+          onOpenPinnedPage={() => {
             setCurrentView("pages");
             setShowSettings(false);
-            setActivePage(null);
           }}
-          onSwitchToTrash={() => {
-            setCurrentView("trash");
-            setShowSettings(false);
-            setActivePage(null);
-          }}
-          onOpenSettings={() => setShowSettings(true)}
         />
 
         {currentView === "pages" ? (
           <>
             <FavoritesSection
-              width={width - 12}
+              width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
               rowHeight={rowHeight}
               itemHeight={itemHeight}
               onCreatePage={handleCreatePage}
-              onRequestRename={openRenameDialog}
             />
 
             <div className="flex-1 min-h-0 flex flex-col">
@@ -451,15 +401,14 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                 />
               </div>
-              <div ref={scrollAreaRef} className="pl-1 pr-2 flex-1 min-h-0">
+              <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0">
                 <SidebarTree
                   activeNotebookId={activeNotebookId}
-                  width={width - 12}
+                  width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
                   rowHeight={rowHeight}
                   itemHeight={itemHeight}
                   viewportHeight={scrollAreaHeight}
                   onCreatePage={handleCreatePage}
-                  onRequestRename={openRenameDialog}
                   onDragGuideChange={setDragGuide}
                 />
               </div>
@@ -471,6 +420,24 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
           </div>
         )}
       </div>
+
+      <SidebarFooter
+        currentView={currentView}
+        isSettingsOpen={showSettings}
+        onSwitchToPages={() => {
+          setCurrentView("pages");
+          setShowSettings(false);
+          setActivePage(null);
+        }}
+        onSwitchToTrash={() => {
+          setCurrentView("trash");
+          setShowSettings(false);
+          setActivePage(null);
+        }}
+        onOpenSettings={() => {
+          setShowSettings(true);
+        }}
+      />
 
       <Dialog
         open={renameDialogOpen}

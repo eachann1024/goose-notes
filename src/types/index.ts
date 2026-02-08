@@ -46,6 +46,8 @@ export interface Page {
   updatedAt: number;
   order?: number; // Custom sort order
   favoriteOrder?: number; // Favorites-only sort order
+  isPinned?: boolean;
+  pinnedAt?: number;
   trashedAt?: number; // Soft delete
 
   // Local file system (for local-folder mode)

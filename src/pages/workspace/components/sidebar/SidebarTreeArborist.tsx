@@ -19,7 +19,6 @@ interface SidebarTreeProps {
   itemHeight: number;
   viewportHeight: number;
   onCreatePage: () => void;
-  onRequestRename: (page: Page) => void;
 }
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -134,7 +133,6 @@ const buildTree = (
 type PageNodeProps = NodeRendererProps<TreeNode> & {
   itemHeight: number;
   activeNotebookId: string | null;
-  onRequestRename: (page: Page) => void;
 };
 
 
@@ -144,7 +142,6 @@ function PageNode({
   dragHandle,
   itemHeight,
   activeNotebookId: _activeNotebookId,
-  onRequestRename,
 }: PageNodeProps) {
   const activePageId = usePages((state) => state.activePageId);
   const setActivePage = usePages((state) => state.setActivePage);
@@ -235,10 +232,7 @@ function PageNode({
   };
 
   return (
-    <SidebarContextMenu
-      page={node.data.page!}
-      onRequestRename={onRequestRename}
-    >
+    <SidebarContextMenu page={node.data.page!}>
       <div
         ref={dragHandle}
         style={rowStyle}
@@ -313,6 +307,7 @@ function PageNode({
                   onChange={(newIcon) =>
                     updatePage(node.id, { icon: newIcon as string })
                   }
+                  scope="file"
                 >
                   <div
                     className={cn(
@@ -370,7 +365,6 @@ export function SidebarTree({
   itemHeight,
   viewportHeight,
   onCreatePage,
-  onRequestRename,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -640,7 +634,6 @@ export function SidebarTree({
             {...props}
             itemHeight={itemHeight}
             activeNotebookId={activeNotebookId}
-            onRequestRename={onRequestRename}
           />
         )}
       </Tree>
