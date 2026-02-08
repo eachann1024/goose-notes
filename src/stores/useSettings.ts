@@ -69,6 +69,8 @@ export const EDITOR_FONT_SIZE_MAX = 24
 export const EDITOR_FONT_SIZE_DEFAULT = 16
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N"
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K"
+export const DEFAULT_CLOSE_TAB_SHORTCUT = "Alt+W"
+export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = ""
 const DEFAULT_UI_FONT_SIZE: UIFontSize = "small"
 
 interface SettingsState {
@@ -80,6 +82,9 @@ interface SettingsState {
     desktop: DesktopSettings
     privacy: PrivacySettings
     searchAllNotebooks: boolean
+    showRecentInSearch: boolean
+    closeTabShortcut: string
+    searchPanelCloseShortcut: string
     customFonts: CustomFonts
     uiFontSize: UIFontSize
     editorFontSize: number
@@ -101,6 +106,9 @@ interface SettingsState {
     setSearchHotkeyStatus: (status: DesktopHotkeyStatus) => void
     setAutoOpenLastNote: (enabled: boolean) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
+    setShowRecentInSearch: (enabled: boolean) => void
+    setCloseTabShortcut: (shortcut: string) => void
+    setSearchPanelCloseShortcut: (shortcut: string) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
     setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
     resetCustomFont: (type: 'default' | 'serif' | 'mono') => void
@@ -262,6 +270,9 @@ export const useSettings = create<SettingsState>()(
                 autoOpenLastNote: true,
             },
             searchAllNotebooks: false,
+            showRecentInSearch: true,
+            closeTabShortcut: DEFAULT_CLOSE_TAB_SHORTCUT,
+            searchPanelCloseShortcut: DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
             customFonts: {
                 default: { label: null, font: null },
                 serif: { label: null, font: null },
@@ -380,6 +391,10 @@ export const useSettings = create<SettingsState>()(
                     privacy: { ...state.privacy, autoOpenLastNote: enabled },
                 })),
             setSearchAllNotebooks: (searchAll) => set({ searchAllNotebooks: searchAll }),
+            setShowRecentInSearch: (enabled) => set({ showRecentInSearch: enabled }),
+            setCloseTabShortcut: (shortcut) => set({ closeTabShortcut: shortcut }),
+            setSearchPanelCloseShortcut: (shortcut) =>
+                set({ searchPanelCloseShortcut: shortcut }),
             setCustomLabel: (type, label) =>
                 set((state) => ({
                     customFonts: {
@@ -477,6 +492,28 @@ export const useSettings = create<SettingsState>()(
                 }
 
                 if (state) {
+                    if (typeof state.showRecentInSearch !== 'boolean') {
+                        useSettings.setState({ showRecentInSearch: true })
+                    }
+
+                    const normalizedCloseTabShortcut =
+                        typeof state.closeTabShortcut === 'string'
+                            ? state.closeTabShortcut.trim()
+                            : DEFAULT_CLOSE_TAB_SHORTCUT
+                    const normalizedSearchPanelCloseShortcut =
+                        typeof state.searchPanelCloseShortcut === 'string'
+                            ? state.searchPanelCloseShortcut.trim()
+                            : DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
+                    if (
+                        state.closeTabShortcut !== normalizedCloseTabShortcut ||
+                        state.searchPanelCloseShortcut !== normalizedSearchPanelCloseShortcut
+                    ) {
+                        useSettings.setState({
+                            closeTabShortcut: normalizedCloseTabShortcut,
+                            searchPanelCloseShortcut: normalizedSearchPanelCloseShortcut,
+                        })
+                    }
+
                     const mergedProviders = mergeSearchProvidersWithDefaults(state.searchProviders)
                     if (JSON.stringify(state.searchProviders) !== JSON.stringify(mergedProviders)) {
                         useSettings.setState({ searchProviders: mergedProviders })

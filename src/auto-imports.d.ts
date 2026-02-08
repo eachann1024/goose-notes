@@ -34,8 +34,10 @@ declare global {
   const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
+  const DEFAULT_CLOSE_TAB_SHORTCUT: typeof import('./stores/useSettings').DEFAULT_CLOSE_TAB_SHORTCUT
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_SEARCH_HOTKEY: typeof import('./stores/useSettings').DEFAULT_SEARCH_HOTKEY
+  const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT: typeof import('./stores/useSettings').DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
   const DEFAULT_WAKE_HOTKEY: typeof import('./stores/useSettings').DEFAULT_WAKE_HOTKEY
   const Dialog: typeof import('./components/ui/dialog').Dialog
@@ -221,6 +223,9 @@ declare global {
   // @ts-ignore
   export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
+  // @ts-ignore
+  export type { TabItem } from './stores/useTabs'
+  import('./stores/useTabs')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')

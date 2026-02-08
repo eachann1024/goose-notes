@@ -58,6 +58,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
+    showRecentInSearch,
+    setShowRecentInSearch,
+    closeTabShortcut,
+    setCloseTabShortcut,
+    searchPanelCloseShortcut,
+    setSearchPanelCloseShortcut,
     customFonts,
     setCustomLabel,
     setCustomFont,
@@ -275,6 +281,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
+                showRecentInSearch={showRecentInSearch}
+                setShowRecentInSearch={setShowRecentInSearch}
+                closeTabShortcut={closeTabShortcut}
+                setCloseTabShortcut={setCloseTabShortcut}
+                searchPanelCloseShortcut={searchPanelCloseShortcut}
+                setSearchPanelCloseShortcut={setSearchPanelCloseShortcut}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}

@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite  --port 6001",
     "dev:utools": "vite --port 6001",
-    "build": "pnpm run build:utools",
-    "build:utools": "tsc -b && vite build && node scripts/utools-build.js && node scripts/check-utools-size.js",
+    "build": "tsc -b && vite build && node scripts/utools-build.js && node scripts/check-utools-size.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
