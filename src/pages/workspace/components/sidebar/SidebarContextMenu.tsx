@@ -45,6 +45,28 @@ export function SidebarContextMenu({
     updatePage(page.id, { parentId: undefined });
   };
 
+  const handleRestore = () => {
+    const result = restorePage(page.id);
+    if (!result.ok) return;
+
+    const parentPath =
+      result.parentTitles && result.parentTitles.length > 0
+        ? result.parentTitles.join(" / ")
+        : "顶层";
+    const restoredChildrenCount = Math.max((result.restoredCount || 1) - 1, 0);
+    const restoredChildrenText =
+      restoredChildrenCount > 0
+        ? `，并恢复 ${restoredChildrenCount} 个子项`
+        : "";
+
+    toast.success(
+      `已恢复${result.itemLabel || "页面"}「${result.pageTitle || "无标题"}」`,
+      {
+        description: `位置：${result.notebookName || "未命名记事本"} / ${parentPath}${restoredChildrenText}`,
+      },
+    );
+  };
+
   const handleMoveToNotebook = (targetNotebookId: string) => {
     const result = movePageTreeToNotebook(page.id, targetNotebookId);
     if (!result.ok) {
@@ -153,7 +175,7 @@ export function SidebarContextMenu({
 
           {isTrashed ? (
             <>
-              <ContextMenuItem onSelect={() => restorePage(page.id)}>
+              <ContextMenuItem onSelect={handleRestore}>
                 <LucideIcons.RotateCcw className="h-4 w-4" />
                 <span>
                   {isLocalFolder

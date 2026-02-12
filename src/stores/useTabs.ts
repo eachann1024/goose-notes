@@ -169,6 +169,8 @@ export const useTabs = create<TabsState>()(
 
       removeDeletedPage: (pageId: string) => {
         const { openTabs, activeTabId } = get();
+        const deletedPage = usePages.getState().getPage(pageId);
+        const isDeletingTrashedPage = !!deletedPage?.trashedAt;
         const nextTabs = openTabs.filter((tab) => tab.pageId !== pageId);
         if (nextTabs.length === openTabs.length) return;
 
@@ -179,6 +181,10 @@ export const useTabs = create<TabsState>()(
 
         set({ openTabs: nextTabs, activeTabId: nextActiveId });
         const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
+        if (isDeletingTrashedPage) {
+          // 回收站删除后由 pages store 决定下一个页面，避免被标签切换覆盖。
+          return;
+        }
         get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
         void usePages.getState().setActivePage(nextActiveTab?.pageId ?? null);
       },
