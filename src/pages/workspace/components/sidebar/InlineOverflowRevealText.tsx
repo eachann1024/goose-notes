@@ -30,12 +30,14 @@ export function InlineOverflowRevealText({
   const textRef = useRef<HTMLSpanElement | null>(null);
 
   const [isOverflow, setIsOverflow] = useState(false);
-  const [hoverSignal, setHoverSignal] = useState<number | null>(null);
-  const hoverEnabled = useMemo(() => canUseHoverReveal(), []);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hoverEnabled, setHoverEnabled] = useState(false);
 
   const revealText = expandedText?.trim() ? expandedText : text;
-  const isExpanded =
-    hoverSignal === resetSignal && hoverEnabled && isOverflow && !disabled;
+
+  useEffect(() => {
+    setHoverEnabled(canUseHoverReveal());
+  }, []);
 
   useLayoutEffect(() => {
     const node = textRef.current;
@@ -44,6 +46,9 @@ export function InlineOverflowRevealText({
     const measureOverflow = () => {
       const nextOverflow = node.scrollWidth > node.clientWidth;
       setIsOverflow(nextOverflow);
+      if (!nextOverflow) {
+        setIsExpanded(false);
+      }
     };
 
     measureOverflow();
@@ -63,6 +68,16 @@ export function InlineOverflowRevealText({
   }, [text, expandedText]);
 
   useEffect(() => {
+    if (disabled) {
+      setIsExpanded(false);
+    }
+  }, [disabled]);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [resetSignal]);
+
+  useEffect(() => {
     onExpandedChange?.(isExpanded);
   }, [isExpanded, onExpandedChange]);
 
@@ -70,7 +85,7 @@ export function InlineOverflowRevealText({
     if (!isExpanded) return;
 
     const closeReveal = () => {
-      setHoverSignal(null);
+      setIsExpanded(false);
     };
 
     const handleWindowBlur = () => closeReveal();
@@ -87,11 +102,11 @@ export function InlineOverflowRevealText({
 
   const handleMouseEnter = () => {
     if (!hoverEnabled || disabled || !isOverflow) return;
-    setHoverSignal(resetSignal);
+    setIsExpanded(true);
   };
 
   const handleMouseLeave = () => {
-    setHoverSignal(null);
+    setIsExpanded(false);
   };
 
   return (

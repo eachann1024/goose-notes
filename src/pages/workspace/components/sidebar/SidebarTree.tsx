@@ -30,9 +30,7 @@ import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
-import { InlineOverflowRevealText } from "./InlineOverflowRevealText";
 import { SidebarContextMenu } from "./SidebarContextMenu";
-import { buildSidebarTitleDisambiguationMap } from "./sidebar-title-disambiguation";
 import {
   buildVisibleTree,
   isDescendant,
@@ -196,10 +194,6 @@ interface SortablePageRowProps {
   onToggleOpen: (id: string) => void;
   showAddChildButton: boolean;
   dragEnabled: boolean;
-  titleText: string;
-  expandedTitleText?: string;
-  revealResetSignal: number;
-  titleRevealDisabled: boolean;
 }
 
 function EdgeDropZone({
@@ -259,10 +253,6 @@ function SortablePageRow({
   onToggleOpen,
   showAddChildButton,
   dragEnabled,
-  titleText,
-  expandedTitleText,
-  revealResetSignal,
-  titleRevealDisabled,
 }: SortablePageRowProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({ id: item.id, disabled: !dragEnabled });
@@ -305,7 +295,6 @@ function SortablePageRow({
   const mergedTransform = isDragging && dndTransform
     ? `${virtualTransform} ${dndTransform}`.trim()
     : virtualTransform;
-  const [titleExpanded, setTitleExpanded] = useState(false);
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
@@ -468,26 +457,16 @@ function SortablePageRow({
               )}
             </div>
 
-            <InlineOverflowRevealText
-              className="text-sm"
-              text={titleText}
-              expandedText={expandedTitleText}
-              active={isActive}
-              disabled={titleRevealDisabled}
-              resetSignal={revealResetSignal}
-              onExpandedChange={setTitleExpanded}
-            />
+            <span className="truncate text-sm flex-1 min-w-0 select-none">
+              {getPageTitle(page)}
+            </span>
           </div>
 
           {showAddChildButton && (
             <div
               className={cn(
                 "ml-1 items-center shrink-0",
-                titleExpanded
-                  ? "hidden"
-                  : nestGuideState !== "idle"
-                    ? "flex"
-                    : "hidden group-hover:flex"
+                nestGuideState !== "idle" ? "flex" : "hidden group-hover:flex"
               )}
             >
               {nestGuideState !== "idle" && (
@@ -550,7 +529,6 @@ export function SidebarTree({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
   const [nestGuide, setNestGuide] = useState<{ overId: string; locked: boolean } | null>(null);
-  const [titleRevealResetSignal, setTitleRevealResetSignal] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
@@ -601,16 +579,6 @@ export function SidebarTree({
         : visibleItems,
     [visibleItems, activeId, activeDescendantIds]
   );
-  const titleDisambiguationMap = useMemo(
-    () =>
-      buildSidebarTitleDisambiguationMap({
-        pages,
-        activeNotebookId,
-        notebook,
-        rootPageIds,
-      }),
-    [pages, activeNotebookId, notebook, rootPageIds],
-  );
 
   const flatItems = useMemo(
     () => renderItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
@@ -629,9 +597,6 @@ export function SidebarTree({
     });
     return map;
   }, [renderItems]);
-  const resetTitleReveal = useCallback(() => {
-    setTitleRevealResetSignal((current) => current + 1);
-  }, []);
 
   const DragSensor = LeftButtonPointerSensor;
   const sensors = useSensors(
@@ -790,20 +755,6 @@ export function SidebarTree({
     };
   }, [stopPointerTracking]);
 
-  useEffect(() => {
-    const scrollContainer = scrollRef.current;
-    if (!scrollContainer) return;
-
-    const handleScroll = () => {
-      resetTitleReveal();
-    };
-
-    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      scrollContainer.removeEventListener("scroll", handleScroll);
-    };
-  }, [resetTitleReveal]);
-
   const autoScrollVertical = (activeRect: { top: number; bottom: number } | null) => {
     const container = scrollRef.current;
     if (!container || !activeRect) return;
@@ -823,7 +774,6 @@ export function SidebarTree({
   };
 
   const handleDragStart = ({ active, activatorEvent }: DragStartEvent) => {
-    resetTitleReveal();
     setActiveId(String(active.id));
     setDropIntent(null);
     updateNestGuide(null);
@@ -1122,7 +1072,6 @@ export function SidebarTree({
   };
 
   const handleDragEnd = ({ active }: DragEndEvent) => {
-    resetTitleReveal();
     clearAutoExpandTimer();
     clearNestDelayTimer();
     nestCandidateRef.current = null;
@@ -1248,7 +1197,6 @@ export function SidebarTree({
   };
 
   const handleDragCancel = () => {
-    resetTitleReveal();
     clearAutoExpandTimer();
     clearNestDelayTimer();
     nestCandidateRef.current = null;
@@ -1384,11 +1332,6 @@ export function SidebarTree({
                 const dragEnabled = draggablePageIdSet
                   ? draggablePageIdSet.has(item.id)
                   : true;
-                const titleText = getPageTitle(item.page);
-                const disambiguation = titleDisambiguationMap.get(item.id);
-                const expandedTitleText = disambiguation
-                  ? `${titleText} · ${disambiguation}`
-                  : titleText;
 
                 return (
                   <SortablePageRow
@@ -1407,10 +1350,6 @@ export function SidebarTree({
                     onToggleOpen={handleToggle}
                     showAddChildButton={showAddChildButton}
                     dragEnabled={dragEnabled}
-                    titleText={titleText}
-                    expandedTitleText={expandedTitleText}
-                    revealResetSignal={titleRevealResetSignal}
-                    titleRevealDisabled={activeId !== null}
                   />
                 );
               })}
