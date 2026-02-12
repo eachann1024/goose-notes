@@ -99,7 +99,7 @@ export const editorExtensions = [
       if (!hasAnchor) return "";
 
       if (node.type.name === "paragraph") {
-        return "输入 '/' 来输入指令...";
+        return "输入 '/' 或 '、' 来输入指令...";
       }
 
       return "";

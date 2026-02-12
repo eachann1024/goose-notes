@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import Suggestion from "@tiptap/suggestion";
+import Suggestion, { findSuggestionMatch } from "@tiptap/suggestion";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 import { CommandList } from "@/pages/workspace/components/command/CommandList";
@@ -9,34 +9,44 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { cn } from "@/lib/utils";
 
 const TRIGGER_CHARS = ["/", "、"];
+const DEFAULT_ALLOWED_PREFIXES: string[] | null = null;
 
-const findTriggerMatch = ({ $position }: { $position: any }) => {
-  const text = $position.nodeBefore?.isText && $position.nodeBefore.text;
-  if (!text) return null;
+const isValidTriggerPrefix = (charBefore: string) =>
+  charBefore === "" || charBefore === " " || charBefore === "\n";
 
-  const lastIndex = TRIGGER_CHARS.reduce((best, ch) => {
-    const idx = text.lastIndexOf(ch);
-    return idx > best ? idx : best;
-  }, -1);
+const findTriggerMatch = ({
+  $position,
+  allowSpaces = false,
+  allowToIncludeChar = false,
+  allowedPrefixes = DEFAULT_ALLOWED_PREFIXES,
+  startOfLine = false,
+}: {
+  $position: any;
+  allowSpaces?: boolean;
+  allowToIncludeChar?: boolean;
+  allowedPrefixes?: string[] | null;
+  startOfLine?: boolean;
+}) => {
+  let bestMatch: any = null;
 
-  if (lastIndex === -1) return null;
+  for (const char of TRIGGER_CHARS) {
+    const match = findSuggestionMatch({
+      char,
+      allowSpaces,
+      allowToIncludeChar,
+      allowedPrefixes,
+      startOfLine,
+      $position,
+    });
 
-  const charBefore = lastIndex > 0 ? text[lastIndex - 1] : "";
-  const isValidStart =
-    charBefore === "" || charBefore === " " || charBefore === "\n";
-  if (!isValidStart) return null;
+    if (!match) continue;
 
-  const query = text.slice(lastIndex + 1);
-  if (query.includes(" ")) return null;
+    if (!bestMatch || match.range.from > bestMatch.range.from) {
+      bestMatch = match;
+    }
+  }
 
-  const from = $position.pos - text.length + lastIndex;
-  const to = $position.pos;
-
-  return {
-    range: { from, to },
-    query,
-    text: text.slice(lastIndex),
-  };
+  return bestMatch;
 };
 
 export const SlashCommand = Extension.create({
@@ -54,12 +64,20 @@ export const SlashCommand = Extension.create({
   },
 
   addProseMirrorPlugins() {
+    const suggestionMatcherOptions = {
+      allowSpaces: this.options.suggestion.allowSpaces ?? false,
+      allowToIncludeChar: this.options.suggestion.allowToIncludeChar ?? false,
+      allowedPrefixes:
+        this.options.suggestion.allowedPrefixes ?? DEFAULT_ALLOWED_PREFIXES,
+      startOfLine: this.options.suggestion.startOfLine ?? false,
+    };
+
     return [
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
         findSuggestionMatch: ({ $position }: { $position: any }) =>
-          findTriggerMatch({ $position }),
+          findTriggerMatch({ $position, ...suggestionMatcherOptions }),
         allow: ({ state, range }: { state: any; range: any }) => {
           if (!this.editor.isFocused) {
             return false;
@@ -75,18 +93,10 @@ export const SlashCommand = Extension.create({
             null,
             "\ufffc",
           );
+          const isValidStart = isValidTriggerPrefix(textBefore);
+          const isAtBlockEnd = $to.parentOffset === $to.parent.content.size;
 
-          const textAfterRange = $to.parent.textBetween(
-            $to.parentOffset,
-            $to.parent.content.size,
-            null,
-            "\ufffc",
-          );
-
-          const isValidStart =
-            textBefore === "" || textBefore === " " || textBefore === "\n";
-
-          return isValidStart && textAfterRange.trim().length === 0;
+          return isValidStart && isAtBlockEnd;
         },
       }),
       new Plugin({
@@ -100,54 +110,40 @@ export const SlashCommand = Extension.create({
             const { selection } = state;
             const { $from, to } = selection;
 
-            const textBefore = $from.parent.textBetween(
-              0,
-              $from.parentOffset,
+            const match = findTriggerMatch({
+              $position: $from,
+              ...suggestionMatcherOptions,
+            });
+
+            if (!match) return DecorationSet.empty;
+
+            const $triggerFrom = state.doc.resolve(match.range.from);
+            const textBeforeTrigger = $triggerFrom.parent.textBetween(
+              Math.max(0, $triggerFrom.parentOffset - 1),
+              $triggerFrom.parentOffset,
               null,
               "\ufffc",
             );
-            const lastTriggerIndex = TRIGGER_CHARS.reduce((best, ch) => {
-              const idx = textBefore.lastIndexOf(ch);
-              return idx > best ? idx : best;
-            }, -1);
+            const isValidTrigger = isValidTriggerPrefix(textBeforeTrigger);
+            const isAtBlockEnd = $from.parentOffset === $from.parent.content.size;
 
-            if (lastTriggerIndex === -1) return DecorationSet.empty;
-
-            const textAfterCursor = $from.parent.textBetween(
-              $from.parentOffset,
-              $from.parent.content.size,
-              null,
-              "\ufffc",
-            );
-
-            const charBeforeTrigger =
-              lastTriggerIndex > 0 ? textBefore[lastTriggerIndex - 1] : "";
-            const isValidTrigger =
-              charBeforeTrigger === "" ||
-              charBeforeTrigger === " " ||
-              charBeforeTrigger === "\n";
-
-            if (isValidTrigger && textAfterCursor.trim().length === 0) {
-              const textAfterTrigger = textBefore.slice(lastTriggerIndex + 1);
-              const items = getSuggestionItems({ query: textAfterTrigger });
-              const hasMatch = items.length > 0;
-
-              if (hasMatch && !textAfterTrigger.includes(" ")) {
-                const triggerPos = $from.start() + lastTriggerIndex;
-                const isOnlyTrigger = textAfterTrigger.length === 0;
-
-                return DecorationSet.create(state.doc, [
-                  Decoration.inline(triggerPos, to, {
-                    class: cn(
-                      "slash-command-capsule",
-                      isOnlyTrigger && "is-empty",
-                    ),
-                    "data-placeholder": "筛选...",
-                  }),
-                ]);
-              }
+            if (!isValidTrigger || !isAtBlockEnd) {
+              return DecorationSet.empty;
             }
-            return DecorationSet.empty;
+
+            const items = getSuggestionItems({ query: match.query });
+            const hasMatch = items.length > 0;
+
+            if (!hasMatch) return DecorationSet.empty;
+
+            const isOnlyTrigger = match.query.length === 0;
+
+            return DecorationSet.create(state.doc, [
+              Decoration.inline(match.range.from, to, {
+                class: cn("slash-command-capsule", isOnlyTrigger && "is-empty"),
+                "data-placeholder": "筛选...",
+              }),
+            ]);
           },
         },
       }),

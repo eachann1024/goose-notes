@@ -1,6 +1,9 @@
 import * as LucideIcons from "lucide-react";
 
 export const getSuggestionItems = ({ query }: { query: string }) => {
+  const normalizedQuery =
+    typeof query === "string" ? query.trim().toLowerCase() : "";
+
   return [
     {
       title: "文本",
@@ -210,17 +213,17 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
   ].filter((item: any) => {
     if (item.type === "divider") return true;
     if (
-      typeof query === "string" &&
-      query.length > 0 &&
+      normalizedQuery.length > 0 &&
       item.title &&
       item.description
     ) {
-      const search = query.toLowerCase();
       return (
-        item.title.toLowerCase().includes(search) ||
-        item.description.toLowerCase().includes(search) ||
+        item.title.toLowerCase().includes(normalizedQuery) ||
+        item.description.toLowerCase().includes(normalizedQuery) ||
         (item.searchTerms &&
-          item.searchTerms.some((term: string) => term.includes(search)))
+          item.searchTerms.some((term: string) =>
+            term.toLowerCase().includes(normalizedQuery),
+          ))
       );
     }
     return true;

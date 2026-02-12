@@ -7,7 +7,7 @@ import { getPageTitle } from "@/lib/page-title";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 
 const tips = [
-  "使用 / 命令快速插入内容块",
+  "使用 / 或 、 命令快速插入内容块",
   "拖拽调整页面顺序",
   "打开本地文件夹可批量管理 Markdown 笔记",
 ];
