@@ -3,8 +3,6 @@
 ## 本地命令
 
 - `bun run test:e2e:smoke`：跑编辑器冒烟（要求 `http://localhost:6001` 已启动）
-- `bun run test:e2e:smoke:auto`：自动拉起本地服务再跑（需要时使用）
-- `bun run test:e2e:headed`：有界面观察执行过程
 - `bun run test:e2e`：跑全部 E2E
 
 ## 推荐测试时机（主流）
