@@ -1,5 +1,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { Editor as TiptapEditor } from "@tiptap/core";
 import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
+import { SuggestionPluginKey } from "@tiptap/suggestion";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash.debounce";
@@ -125,6 +127,7 @@ export function Editor({ editable = true }: EditorProps) {
   const pageIdForUpdateRef = useRef<string | null>(null);
   const hasFindDecorationsRef = useRef(false);
   const findInputRef = useRef<HTMLInputElement | null>(null);
+  const bypassEnterMarkResetRef = useRef(false);
   const [findOverlayContainer, setFindOverlayContainer] =
     useState<Element | null>(null);
   const findMatchesRef = useRef<FindMatchRange[]>([]);
@@ -147,7 +150,7 @@ export function Editor({ editable = true }: EditorProps) {
     return fn;
   }, [updatePage]);
 
-  const editor = useEditor({
+  const editor: TiptapEditor | null = useEditor({
     editable,
     extensions: editorExtensions,
     editorProps: {
@@ -162,15 +165,30 @@ export function Editor({ editable = true }: EditorProps) {
         }
         return false;
       },
-      handleKeyDown: (view, event) => {
+      handleKeyDown: (view, event): boolean => {
         if (!editor || event.isComposing || event.keyCode === 229) return false;
         // Skip keydown fired right after compositionend (Safari/WebKit IME)
         if (view.composing) return false;
+
+        const suggestionState = SuggestionPluginKey.getState(view.state) as
+          | { active?: boolean }
+          | undefined;
+        if (suggestionState?.active && event.key === "Enter") {
+          return false;
+        }
+
+        if (event.key === "Enter" && bypassEnterMarkResetRef.current) {
+          return false;
+        }
 
         if (event.key === "Enter") {
           const { state } = editor;
           const { selection } = state;
           const { $from, empty } = selection;
+          const shouldResetMarksAfterEnter =
+            !event.shiftKey &&
+            empty &&
+            $from.parentOffset === $from.parent.content.size;
 
           if (empty && editor.isActive("blockquote")) {
             const isAtBlockStart = $from.parentOffset === 0;
@@ -202,6 +220,23 @@ export function Editor({ editable = true }: EditorProps) {
                 }
               }
             }
+          }
+
+          if (shouldResetMarksAfterEnter) {
+            event.preventDefault();
+            let entered = false;
+            try {
+              bypassEnterMarkResetRef.current = true;
+              entered = editor.commands.enter();
+            } finally {
+              bypassEnterMarkResetRef.current = false;
+            }
+
+            if (entered && !editor.isDestroyed) {
+              editor.view.dispatch(editor.state.tr.setStoredMarks([]));
+            }
+
+            return entered;
           }
         }
 
