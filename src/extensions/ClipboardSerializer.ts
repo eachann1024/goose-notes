@@ -126,6 +126,26 @@ function getSelectedCodeBlockText(view: EditorView): string | null {
   );
 }
 
+function getSingleLineSelectionText(view: EditorView): string | null {
+  const { state } = view;
+  const { selection } = state;
+
+  if (selection.empty || selection instanceof NodeSelection) {
+    return null;
+  }
+
+  if (!selection.$from.sameParent(selection.$to)) {
+    return null;
+  }
+
+  const parent = selection.$from.parent;
+  if (!parent.isTextblock) {
+    return null;
+  }
+
+  return state.doc.textBetween(selection.from, selection.to, "\n", "\n");
+}
+
 function normalizePlainText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
@@ -218,6 +238,22 @@ export const ClipboardSerializer = Extension.create({
                 return true;
               }
 
+              // 单行选中统一走纯文本复制，避免列表/待办前缀被误带出。
+              // 多行选中继续走 tiptap-markdown，保留结构格式。
+              const singleLineSelectionText = getSingleLineSelectionText(view);
+              if (singleLineSelectionText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, singleLineSelectionText);
+                if (!copied) {
+                  Promise.resolve()
+                    .then(() => UToolsAdapter.copyToClipboard(singleLineSelectionText))
+                    .catch((err) => {
+                      console.error("Failed to copy selected text:", err);
+                    });
+                }
+                return true;
+              }
+
               // 3. 其他情况返回 false，交给 tiptap-markdown 处理
               return false;
             },
@@ -267,6 +303,26 @@ export const ClipboardSerializer = Extension.create({
                   const tr = state.tr.deleteSelection();
                   applyCutTransaction(view, tr);
                 });
+                return true;
+              }
+
+              const singleLineSelectionText = getSingleLineSelectionText(view);
+              if (singleLineSelectionText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, singleLineSelectionText);
+                if (copied) {
+                  const { state } = view;
+                  const tr = state.tr.deleteSelection();
+                  applyCutTransaction(view, tr);
+                } else {
+                  navigator.clipboard.writeText(singleLineSelectionText).then(() => {
+                    const { state } = view;
+                    const tr = state.tr.deleteSelection();
+                    applyCutTransaction(view, tr);
+                  }).catch((err) => {
+                    console.error("Failed to cut selected text:", err);
+                  });
+                }
                 return true;
               }
 
