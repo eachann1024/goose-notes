@@ -143,7 +143,85 @@ function getSingleLineSelectionText(view: EditorView): string | null {
     return null;
   }
 
-  return state.doc.textBetween(selection.from, selection.to, "\n", "\n");
+  const selectedText = parent.textBetween(
+    selection.$from.parentOffset,
+    selection.$to.parentOffset,
+    "\n",
+    "\n",
+  );
+
+  // 仅在真正单行时改走纯文本复制，避免误伤同块多行选中。
+  if (selectedText.includes("\n")) {
+    return null;
+  }
+
+  return selectedText;
+}
+
+function resolveListPrefix(view: EditorView): string | null {
+  const { selection } = view.state;
+  const $from = selection.$from;
+
+  for (let depth = $from.depth; depth >= 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "taskItem") {
+      const checked = node.attrs?.checked === true;
+      return checked ? "- [x] " : "- [ ] ";
+    }
+
+    if (node.type.name === "orderedList") {
+      const start = Number(node.attrs?.start ?? 1);
+      return `${Number.isFinite(start) ? start : 1}. `;
+    }
+
+    if (node.type.name === "bulletList") {
+      return "- ";
+    }
+  }
+
+  return null;
+}
+
+function getMultilineSelectionText(view: EditorView): string | null {
+  const { state } = view;
+  const { selection } = state;
+
+  if (selection.empty || selection instanceof NodeSelection) {
+    return null;
+  }
+
+  if (!selection.$from.sameParent(selection.$to)) {
+    return null;
+  }
+
+  const parent = selection.$from.parent;
+  if (!parent.isTextblock) {
+    return null;
+  }
+
+  const selectedText = parent.textBetween(
+    selection.$from.parentOffset,
+    selection.$to.parentOffset,
+    "\n",
+    "\n",
+  );
+  if (!selectedText.includes("\n")) {
+    return null;
+  }
+
+  const listPrefix = resolveListPrefix(view);
+  if (!listPrefix) {
+    return selectedText;
+  }
+
+  const lines = selectedText.split("\n");
+  const [firstLine = "", ...restLines] = lines;
+  const continuationIndent = listPrefix.includes(". ") ? "   " : "  ";
+
+  return [
+    `${listPrefix}${firstLine}`,
+    ...restLines.map((line) => (line.length > 0 ? `${continuationIndent}${line}` : "")),
+  ].join("\n");
 }
 
 function normalizePlainText(text: string): string {
@@ -254,6 +332,20 @@ export const ClipboardSerializer = Extension.create({
                 return true;
               }
 
+              const multilineSelectionText = getMultilineSelectionText(view);
+              if (multilineSelectionText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, multilineSelectionText);
+                if (!copied) {
+                  Promise.resolve()
+                    .then(() => UToolsAdapter.copyToClipboard(multilineSelectionText))
+                    .catch((err) => {
+                      console.error("Failed to copy multiline selection:", err);
+                    });
+                }
+                return true;
+              }
+
               // 3. 其他情况返回 false，交给 tiptap-markdown 处理
               return false;
             },
@@ -322,6 +414,29 @@ export const ClipboardSerializer = Extension.create({
                   }).catch((err) => {
                     console.error("Failed to cut selected text:", err);
                   });
+                }
+                return true;
+              }
+
+              const multilineSelectionText = getMultilineSelectionText(view);
+              if (multilineSelectionText !== null) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, multilineSelectionText);
+                if (copied) {
+                  const { state } = view;
+                  const tr = state.tr.deleteSelection();
+                  applyCutTransaction(view, tr);
+                } else {
+                  navigator.clipboard
+                    .writeText(multilineSelectionText)
+                    .then(() => {
+                      const { state } = view;
+                      const tr = state.tr.deleteSelection();
+                      applyCutTransaction(view, tr);
+                    })
+                    .catch((err) => {
+                      console.error("Failed to cut multiline selection:", err);
+                    });
                 }
                 return true;
               }

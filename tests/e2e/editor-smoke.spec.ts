@@ -120,6 +120,61 @@ async function setListContentAndGetTextRanges(page: Page) {
   });
 }
 
+async function setMultilineListItemContentAndGetTextRanges(page: Page) {
+  return await page.evaluate(() => {
+    const editor = (window as any).__gooseNoteEditor;
+    if (!editor) {
+      throw new Error("Editor instance not found");
+    }
+
+    editor.commands.setContent({
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    { type: "text", text: "123" },
+                    { type: "hardBreak" },
+                    { type: "hardBreak" },
+                    { type: "text", text: "2323" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const ranges: { from: number; to: number; text: string }[] = [];
+    editor.state.doc.descendants((node: any, pos: number) => {
+      if (node.isText && (node.text === "123" || node.text === "2323")) {
+        ranges.push({
+          from: pos,
+          to: pos + node.text.length,
+          text: node.text,
+        });
+      }
+      return true;
+    });
+
+    if (ranges.length !== 2) {
+      throw new Error(`Unexpected multiline list range length: ${ranges.length}`);
+    }
+
+    return {
+      firstFrom: ranges[0].from,
+      secondTo: ranges[1].to,
+    };
+  });
+}
+
 async function copySelectionPlainText(
   page: Page,
   from: number,
@@ -244,5 +299,18 @@ test.describe("编辑器 P0 冒烟", () => {
     const multiLineText = await copySelectionPlainText(page, firstFrom, secondTo);
     expect(multiLineText).toContain("- 苹果");
     expect(multiLineText).toContain("- 香蕉");
+  });
+
+  test("同列表项跨多行复制保留列表格式", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    const { firstFrom, secondTo } = await setMultilineListItemContentAndGetTextRanges(
+      page,
+    );
+
+    const multiLineText = await copySelectionPlainText(page, firstFrom, secondTo);
+    expect(multiLineText).toContain("- 123");
+    expect(multiLineText).toContain("2323");
+    expect(multiLineText).not.toContain("\\");
   });
 });
