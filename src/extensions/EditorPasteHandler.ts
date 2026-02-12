@@ -292,6 +292,28 @@ function hasHtmlLikeTag(text: string): boolean {
   return /<\s*\/?\s*[a-zA-Z][^>\n]*>/.test(text);
 }
 
+function hasTableHtmlFragment(text: string): boolean {
+  return (
+    /<\s*\/?\s*(table|thead|tbody|tfoot|tr|td|th|colgroup|col)\b/i.test(text) ||
+    /class\s*=\s*["'][^"']*tableWrapper[^"']*["']/i.test(text)
+  );
+}
+
+function replaceSelectionWithHtml(view: any, html: string): boolean {
+  try {
+    const parser = DOMParser.fromSchema(view.state.schema);
+    const doc = new window.DOMParser().parseFromString(html, "text/html");
+    const slice = parser.parseSlice(doc.body);
+    if (slice.content.size === 0) return false;
+    const tr = view.state.tr.replaceSelection(slice);
+    applyPasteTransaction(view, tr);
+    return true;
+  } catch (e) {
+    console.warn("[EditorPasteHandler] HTML parse failed:", e);
+    return false;
+  }
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -332,6 +354,7 @@ export const EditorPasteHandler = Extension.create({
 
             // 预处理粘贴的文本：还原被转义的格式，移除多余空行
             const processedTextPlain = preprocessPastedText(textPlain);
+            const htmlData = event.clipboardData?.getData("text/html");
 
             // 判断是否在"块内"粘贴
             // 方法1：检查父节点是否是 textblock（标准文本块如 paragraph、heading）
@@ -365,21 +388,24 @@ export const EditorPasteHandler = Extension.create({
 
             const tableHtml = parseMarkdownTableToHtml(processedTextPlain);
             if (tableHtml) {
-              const { state } = view;
-              const parser = DOMParser.fromSchema(state.schema);
-              const doc = new window.DOMParser().parseFromString(
-                tableHtml,
-                "text/html",
-              );
-              const slice = parser.parseSlice(doc.body);
-              const tr = state.tr.replaceSelection(slice);
-              applyPasteTransaction(view, tr);
+              if (replaceSelectionWithHtml(view, tableHtml)) {
+                return true;
+              }
+            }
+
+            // 修复：部分来源会把表格以 HTML 字符串放到 text/plain，优先按表格 HTML 解析，避免当作字面量文本插入
+            if (
+              (htmlData && hasTableHtmlFragment(htmlData) && replaceSelectionWithHtml(view, htmlData)) ||
+              (hasTableHtmlFragment(processedTextPlain) &&
+                replaceSelectionWithHtml(view, processedTextPlain))
+            ) {
               return true;
             }
 
             const shouldLiteralPasteHtmlTagText =
               !hasMarkdownStructure(processedTextPlain) &&
-              hasHtmlLikeTag(processedTextPlain);
+              hasHtmlLikeTag(processedTextPlain) &&
+              !hasTableHtmlFragment(processedTextPlain);
 
             if (shouldLiteralPasteHtmlTagText) {
               if (shouldForceInlinePaste($from)) {
@@ -401,7 +427,6 @@ export const EditorPasteHandler = Extension.create({
             }
 
             // 尝试处理外部 HTML 格式粘贴（如 Word、浏览器复制）
-            const htmlData = event.clipboardData?.getData("text/html");
             if (htmlData && !hasMarkdownStructure(processedTextPlain)) {
               try {
                 const parser = DOMParser.fromSchema(state.schema);
@@ -419,7 +444,7 @@ export const EditorPasteHandler = Extension.create({
                   return true;
                 }
               } catch (e) {
-                console.warn('[EditorPasteHandler] HTML parse failed, fallback to markdown', e);
+                console.warn("[EditorPasteHandler] HTML parse failed, fallback to markdown", e);
                 // 降级到 Markdown 处理
               }
             }
