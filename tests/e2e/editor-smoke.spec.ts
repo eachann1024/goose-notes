@@ -256,7 +256,7 @@ test.describe("编辑器 P0 冒烟", () => {
     await createFreshPage(page);
     const bodyText = `回归测试文本-A-${Date.now()}`;
     await focusEditorParagraph(page);
-    await page.keyboard.type(bodyText);
+    await page.keyboard.insertText(bodyText);
     await page.waitForTimeout(800);
     await flushEditor(page);
     await expect(page.locator(".ProseMirror").first()).toContainText(bodyText);
