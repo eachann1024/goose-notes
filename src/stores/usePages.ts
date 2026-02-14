@@ -62,7 +62,14 @@ interface PagesState {
   createPage: (parentId?: string, workspaceId?: string) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
   deletePage: (id: string) => Promise<boolean>;
-  restorePage: (id: string) => void;
+  restorePage: (id: string) => {
+    ok: boolean;
+    pageTitle?: string;
+    notebookName?: string;
+    parentTitles?: string[];
+    restoredCount?: number;
+    itemLabel?: string;
+  };
   duplicatePage: (id: string) => string;
   permanentlyDeletePage: (id: string) => Promise<void>;
   reorderPages: (ids: string[], parentId: string | undefined) => void;
@@ -664,11 +671,39 @@ export const usePages = create<PagesState>()(
       },
 
       restorePage: (id) => {
-        set((state) => {
-          const page = state.pages[id];
-          if (!page || !page.trashedAt) return state;
+        const snapshotPages = get().pages;
+        const page = snapshotPages[id];
+        if (!page || !page.trashedAt) {
+          return { ok: false };
+        }
 
-          const trashStamp = page.trashedAt;
+        const notebookName =
+          useNotebooks.getState().notebooks[page.workspaceId]?.name ||
+          "未命名记事本";
+        const pageTitle = getPageTitle(page) || "无标题";
+        const itemLabel = page.isFolder
+          ? "文件夹"
+          : page.localFilePath
+            ? "文件"
+            : "页面";
+
+        const parentTitles: string[] = [];
+        const parentVisited = new Set<string>();
+        let currentParentId = page.parentId;
+        while (currentParentId && !parentVisited.has(currentParentId)) {
+          parentVisited.add(currentParentId);
+          const parentPage = snapshotPages[currentParentId];
+          if (!parentPage) break;
+          parentTitles.unshift(getPageTitle(parentPage) || "无标题");
+          currentParentId = parentPage.parentId;
+        }
+
+        let restoredCount = 0;
+        set((state) => {
+          const currentPage = state.pages[id];
+          if (!currentPage || !currentPage.trashedAt) return state;
+
+          const trashStamp = currentPage.trashedAt;
           const now = Date.now();
           const restoredPages = { ...state.pages };
 
@@ -685,6 +720,7 @@ export const usePages = create<PagesState>()(
                 ...rest,
                 updatedAt: now,
               } as Page;
+              restoredCount += 1;
             }
             Object.values(restoredPages).forEach((p) => {
               if (p.parentId === currentId && !visited.has(p.id)) {
@@ -697,6 +733,15 @@ export const usePages = create<PagesState>()(
             pages: restoredPages,
           };
         });
+
+        return {
+          ok: true,
+          pageTitle,
+          notebookName,
+          parentTitles,
+          restoredCount,
+          itemLabel,
+        };
       },
 
       duplicatePage: (id) => {
@@ -822,36 +867,63 @@ export const usePages = create<PagesState>()(
 
         set((state) => {
           const page = state.pages[id];
-          const workspaceId = page?.workspaceId;
+          if (!page) return state;
+          const workspaceId = page.workspaceId;
+          const deletingTrashedPage = !!page.trashedAt;
           const newPages = { ...state.pages };
           delete newPages[id];
 
           let newActivePageId = state.activePageId;
           if (state.activePageId === id) {
-            const siblings = Object.values(newPages)
-              .filter(
-                (p) =>
-                  p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
-              )
-              .sort(
-                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-              );
+            if (deletingTrashedPage) {
+              const trashedPagesAfterDelete = Object.values(newPages)
+                .filter((p) => p.workspaceId === workspaceId && !!p.trashedAt)
+                .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
 
-            if (siblings.length > 0) {
-              const deletedPageIndex = Object.values(state.pages)
-                .filter((p) => p.workspaceId === workspaceId && !p.trashedAt)
+              if (trashedPagesAfterDelete.length > 0) {
+                const trashedPagesBeforeDelete = Object.values(state.pages)
+                  .filter((p) => p.workspaceId === workspaceId && !!p.trashedAt)
+                  .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
+
+                const deletedPageIndex = trashedPagesBeforeDelete.findIndex(
+                  (p) => p.id === id,
+                );
+                const safeCurrentIndex = Math.max(deletedPageIndex, 0);
+                const nextIndex =
+                  safeCurrentIndex >= trashedPagesAfterDelete.length
+                    ? trashedPagesAfterDelete.length - 1
+                    : safeCurrentIndex;
+
+                newActivePageId = trashedPagesAfterDelete[nextIndex].id;
+              } else {
+                newActivePageId = null;
+              }
+            } else {
+              const siblings = Object.values(newPages)
+                .filter(
+                  (p) =>
+                    p.workspaceId === workspaceId && !p.trashedAt && p.id !== id,
+                )
                 .sort(
                   (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
-                )
-                .findIndex((p) => p.id === id);
+                );
 
-              const nextIndex =
-                deletedPageIndex >= siblings.length
-                  ? siblings.length - 1
-                  : deletedPageIndex;
-              newActivePageId = siblings[nextIndex].id;
-            } else {
-              newActivePageId = null;
+              if (siblings.length > 0) {
+                const deletedPageIndex = Object.values(state.pages)
+                  .filter((p) => p.workspaceId === workspaceId && !p.trashedAt)
+                  .sort(
+                    (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+                  )
+                  .findIndex((p) => p.id === id);
+
+                const nextIndex =
+                  deletedPageIndex >= siblings.length
+                    ? siblings.length - 1
+                    : deletedPageIndex;
+                newActivePageId = siblings[nextIndex].id;
+              } else {
+                newActivePageId = null;
+              }
             }
           }
 

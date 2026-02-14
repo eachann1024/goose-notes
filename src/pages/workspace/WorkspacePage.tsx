@@ -410,9 +410,30 @@ export function WorkspacePage() {
                   onTogglePinned={() =>
                     updatePage(activePageId, { isPinned: !page.isPinned })
                   }
-                  onRestore={() =>
-                    usePages.getState().restorePage(activePageId)
-                  }
+                  onRestore={() => {
+                    const result = usePages.getState().restorePage(activePageId);
+                    if (!result.ok) return;
+
+                    const parentPath =
+                      result.parentTitles && result.parentTitles.length > 0
+                        ? result.parentTitles.join(" / ")
+                        : "顶层";
+                    const restoredChildrenCount = Math.max(
+                      (result.restoredCount || 1) - 1,
+                      0,
+                    );
+                    const restoredChildrenText =
+                      restoredChildrenCount > 0
+                        ? `，并恢复 ${restoredChildrenCount} 个子项`
+                        : "";
+
+                    toast.success(
+                      `已恢复${result.itemLabel || "页面"}「${result.pageTitle || "无标题"}」`,
+                      {
+                        description: `位置：${result.notebookName || "未命名记事本"} / ${parentPath}${restoredChildrenText}`,
+                      },
+                    );
+                  }}
                   onDelete={() => {
                     useTabs.getState().removeDeletedPage(activePageId);
                     void usePages.getState().permanentlyDeletePage(activePageId);

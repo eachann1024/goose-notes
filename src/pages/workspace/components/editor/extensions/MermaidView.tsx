@@ -64,7 +64,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
 
   return (
     <div
-      className="mermaid-preview flex justify-center bg-transparent p-4 rounded-lg border border-border my-4 overflow-x-auto"
+      className="mermaid-preview flex justify-center bg-transparent p-4 overflow-x-auto"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

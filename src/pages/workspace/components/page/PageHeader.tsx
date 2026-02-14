@@ -87,14 +87,14 @@ export function PageHeader({
                       }
                     }}
                     className={cn(
-                      "group flex h-8 max-w-[260px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
+                      "group flex h-8 max-w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
                       isActive
                         ? "bg-[var(--goose-interactive-selected)] text-foreground"
                         : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                     )}
                     title={getPageTitle(tabPage)}
                   >
-                    <span className="truncate">{getPageTitle(tabPage)}</span>
+                    <span className="min-w-0 flex-1 truncate">{getPageTitle(tabPage)}</span>
                     <TooltipProvider delayDuration={0}>
                       <Tooltip>
                         <TooltipTrigger asChild>

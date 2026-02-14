@@ -27,7 +27,6 @@ export function CodeBlockToolbar({
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { format, isLoading } = useFormatCode();
 
@@ -115,35 +114,36 @@ export function CodeBlockToolbar({
   const canFormat = FORMAT_SUPPORTED_LANGUAGES.includes(
     (language || "").toLowerCase(),
   );
-  const isMathOrMermaid =
-    language === "math" || language === "mermaid";
+  const isMathOrMermaid = language === "math" || language === "mermaid";
   const toolbarChipClass = cn(
-    "backdrop-blur-[1px] transition-all duration-200",
-    "bg-transparent text-[color:var(--code-fg)]",
-    "hover:bg-[color:var(--code-bg)]",
-    "rounded-lg",
+    "transition-colors duration-150",
+    "border-0 bg-[var(--code-toolbar-chip-bg)] text-[var(--code-toolbar-chip-fg)] shadow-none",
+    "hover:bg-[var(--code-toolbar-chip-hover-bg)] hover:text-[var(--code-toolbar-chip-fg)]",
+    "focus-visible:ring-0 focus-visible:ring-offset-0",
+    "cursor-pointer",
+    "rounded-md",
   );
+  const toolbarChipActiveClass =
+    "code-toolbar-chip-active bg-[var(--code-toolbar-chip-active-bg)] text-[var(--code-toolbar-chip-active-fg)] hover:bg-[var(--code-toolbar-chip-active-bg)]";
 
   return (
     <TooltipProvider>
-      {/* 右上角悬停触发区域 */}
       <div
-        className="absolute top-0 right-0 w-24 h-12 z-20"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      />
-      <div className={cn("absolute top-2 right-2 flex items-center gap-1 z-10 transition-opacity", isOpen || isHovered ? "opacity-100" : "opacity-0")}>
-        {!isMathOrMermaid &&
-          (editable ? (
+        contentEditable={false}
+        suppressContentEditableWarning
+        className="code-block-toolbar-actions inline-flex items-center gap-1 rounded-md bg-[var(--code-toolbar-surface)] p-1 backdrop-blur-[2px]"
+      >
+        <div className="code-block-toolbar-controls flex shrink-0 items-center gap-1">
+          {editable && !isMathOrMermaid ? (
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-7 min-w-7 px-2 text-xs font-mono",
+                    "code-toolbar-language-trigger h-7 min-w-7 px-2 text-xs font-mono",
                     toolbarChipClass,
-                    isOpen && "bg-accent",
+                    isOpen && toolbarChipActiveClass,
                   )}
                 >
                   {displayLanguage}
@@ -192,88 +192,90 @@ export function CodeBlockToolbar({
           ) : (
             <div
               className={cn(
-                "h-7 min-w-7 px-2 flex items-center text-[10px] font-mono",
-                toolbarChipClass,
+                "inline-flex h-7 min-w-7 cursor-default items-center rounded-md border-0 bg-[hsl(var(--muted)/0.65)] px-2 text-[10px] font-mono text-[color:var(--code-fg)]",
               )}
             >
               {displayLanguage}
             </div>
-          ))}
+          )}
 
-        {editable && onWrapChange && !isMathOrMermaid && (
-          <Tooltip delayDuration={0}>
+          {editable && onWrapChange && !isMathOrMermaid && (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={wrap ? "取消代码换行" : "开启代码换行"}
+                  aria-pressed={wrap}
+                  onClick={() => onWrapChange(!wrap)}
+                  className={cn(
+                    "code-toolbar-wrap-toggle h-7 min-w-7 p-0",
+                    toolbarChipClass,
+                    wrap && toolbarChipActiveClass,
+                  )}
+                >
+                  {wrap ? (
+                    <LucideIcons.AlignJustify className="h-3.5 w-3.5" />
+                  ) : (
+                    <LucideIcons.WrapText className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{wrap ? "取消换行" : "自动换行"}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {editable && onFormat && canFormat && (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleFormatClick}
+                  disabled={isLoading}
+                  className={cn(
+                    "h-7 min-w-7 p-0",
+                    toolbarChipClass,
+                  )}
+                >
+                  {isLoading ? (
+                    <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <LucideIcons.Sparkles className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>格式化代码</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onWrapChange(!wrap)}
-                className={cn(
-                  "h-7 min-w-7 p-0",
-                  toolbarChipClass,
-                  wrap && "bg-accent text-foreground",
-                )}
-              >
-                {wrap ? (
-                  <LucideIcons.AlignJustify className="h-3.5 w-3.5" />
-                ) : (
-                  <LucideIcons.WrapText className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{wrap ? "取消换行" : "自动换行"}</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {editable && onFormat && canFormat && (
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleFormatClick}
-                disabled={isLoading}
+                onClick={handleCopy}
                 className={cn(
                   "h-7 min-w-7 p-0",
                   toolbarChipClass,
                 )}
               >
-                {isLoading ? (
-                  <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {copied ? (
+                  <LucideIcons.Check className="h-3.5 w-3.5 text-green-500" />
                 ) : (
-                  <LucideIcons.Sparkles className="h-3.5 w-3.5" />
+                  <LucideIcons.Copy className="h-3.5 w-3.5" />
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>格式化代码</p>
+              <p>{copied ? "已复制" : "复制代码"}</p>
             </TooltipContent>
           </Tooltip>
-        )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className={cn(
-                "h-7 min-w-7 p-0",
-                toolbarChipClass,
-              )}
-            >
-              {copied ? (
-                <LucideIcons.Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <LucideIcons.Copy className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{copied ? "已复制" : "复制代码"}</p>
-          </TooltipContent>
-        </Tooltip>
+        </div>
       </div>
     </TooltipProvider>
   );
