@@ -106,56 +106,65 @@ function CodeBlockWithLanguageView({
 
   return (
     <NodeViewWrapper
-      className={`code-block-node relative group my-4 ${showLineNumbers ? "code-block-with-lines" : ""} ${isActive ? "is-active" : ""}`}
+      className={cn(
+        "code-block-node relative my-4",
+        showLineNumbers && "code-block-with-lines",
+        isActive && "is-active",
+      )}
     >
-      <CodeBlockToolbar
-        language={language}
-        onLanguageChange={handleLanguageChange}
-        getCodeContent={getCodeContent}
-        onFormat={handleFormat}
-        wrap={wrap}
-        onWrapChange={handleWrapChange}
-        editable={editor.isEditable}
-      />
-      {showLineNumbers && (
-        <div className="line-numbers" contentEditable={false}>
-          {Array.from({ length: lineCount }).map((_, i) => (
-            <div key={i}>{i + 1}</div>
-          ))}
-        </div>
-      )}
-      <pre
-        className={cn(
-          (language === "math" || language === "mermaid") &&
-            !isActive &&
-            "hidden",
-        )}
-      >
-        <NodeViewContent className="hljs" style={wrapStyle} />
-      </pre>
+      <div className="code-block-toolbar-row" contentEditable={false}>
+        <CodeBlockToolbar
+          language={language}
+          onLanguageChange={handleLanguageChange}
+          getCodeContent={getCodeContent}
+          onFormat={handleFormat}
+          wrap={wrap}
+          onWrapChange={handleWrapChange}
+          editable={editor.isEditable}
+        />
+      </div>
 
-      {(language === "math" || language === "mermaid") && (
-        <div
-          contentEditable={false}
-          className="preview-container select-none cursor-pointer rounded-lg bg-transparent dark:bg-[#202020]"
-          onClick={() => {
-             if (typeof getPos === "function") {
-               editor.commands.focus(getPos() + 1);
-             }
-          }}
-        >
-          <div className="rounded-md bg-transparent dark:bg-[#2E2E2D]">
-            {language === "math" && (
-              <MathView value={textContent} displayMode={true} />
-            )}
-            {language === "mermaid" && <MermaidView value={textContent} />}
+      <div className="code-block-content">
+        {showLineNumbers && (
+          <div className="line-numbers" contentEditable={false}>
+            {Array.from({ length: lineCount }).map((_, i) => (
+              <div key={i}>{i + 1}</div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+        <pre
+          className={cn(
+            (language === "math" || language === "mermaid") &&
+              !isActive &&
+              "hidden",
+          )}
+        >
+          <NodeViewContent className="hljs" style={wrapStyle} />
+        </pre>
+
+        {(language === "math" || language === "mermaid") && (
+          <div
+            contentEditable={false}
+            className="preview-container select-none cursor-pointer bg-transparent dark:bg-[#202020]"
+            onClick={() => {
+              if (typeof getPos === "function") {
+                editor.commands.focus(getPos() + 1);
+              }
+            }}
+          >
+            <div className="bg-transparent dark:bg-[#2E2E2D]">
+              {language === "math" && (
+                <MathView value={textContent} displayMode={true} />
+              )}
+              {language === "mermaid" && <MermaidView value={textContent} />}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* LaTeX 语法提示面板 */}
       {language === "math" && editor.isEditable && isActive && (
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute bottom-2 right-2 z-20">
           <TooltipProvider>
             <Tooltip open={showLatexHint} onOpenChange={setShowLatexHint}>
               <TooltipTrigger asChild>

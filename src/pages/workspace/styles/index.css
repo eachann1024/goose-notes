@@ -80,10 +80,6 @@
   border-color: var(--workspace-divider) !important;
 }
 
-.workspace-shell .line-numbers {
-  border-right-color: var(--workspace-divider) !important;
-}
-
 .workspace-shell .workspace-stage {
   display: flex;
   height: 100%;
