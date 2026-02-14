@@ -198,6 +198,58 @@ async function copySelectionPlainText(
   }, { fromPos: from, toPos: to });
 }
 
+async function setCodeBlockContent(
+  page: Page,
+  language: string,
+  code: string,
+) {
+  await page.evaluate(
+    ({ lang, content }) => {
+      const editor = (window as any).__gooseNoteEditor;
+      if (!editor) {
+        throw new Error("Editor instance not found");
+      }
+
+      editor.commands.setContent({
+        type: "doc",
+        content: [
+          {
+            type: "codeBlock",
+            attrs: { language: lang },
+            content: [{ type: "text", text: content }],
+          },
+        ],
+      });
+    },
+    { lang: language, content: code },
+  );
+}
+
+async function getFirstCodeBlockAttrs(page: Page): Promise<{ language: string }> {
+  return await page.evaluate(() => {
+    const editor = (window as any).__gooseNoteEditor;
+    if (!editor) {
+      throw new Error("Editor instance not found");
+    }
+
+    let language = "";
+    editor.state.doc.descendants((node: any) => {
+      if (node.type.name === "codeBlock") {
+        language = node.attrs.language || "";
+        return false;
+      }
+      return true;
+    });
+
+    return { language };
+  });
+}
+
+async function getFirstCodeBlockLanguage(page: Page): Promise<string> {
+  const attrs = await getFirstCodeBlockAttrs(page);
+  return attrs.language;
+}
+
 test.describe("编辑器 P0 冒烟", () => {
   test("输入与保存流程可执行", async ({ page }) => {
     await openWorkspace(page);
@@ -312,5 +364,162 @@ test.describe("编辑器 P0 冒烟", () => {
     expect(multiLineText).toContain("- 123");
     expect(multiLineText).toContain("2323");
     expect(multiLineText).not.toContain("\\");
+  });
+
+  test("代码块工具栏在代码块 hover 时显示", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await setCodeBlockContent(
+      page,
+      "javascript",
+      `const veryLongLine = "${"x".repeat(240)}";`,
+    );
+
+    const editor = page.locator(".ProseMirror").first();
+    const codeBlock = editor.locator(".code-block-node").first();
+    const content = codeBlock.locator(".code-block-content").first();
+    const toolbarRow = codeBlock.locator(".code-block-toolbar-row").first();
+    const toolbarActions = codeBlock.locator(".code-block-toolbar-actions").first();
+
+    await expect(content).toBeVisible();
+    await expect(toolbarRow).toBeVisible();
+    await page.mouse.move(5, 5);
+    await expect(toolbarActions).toHaveCSS("opacity", "0");
+    await codeBlock.hover();
+    await expect(toolbarActions).toHaveCSS("opacity", "1");
+    await expect(toolbarActions).toBeVisible();
+    await expect(toolbarActions.locator("button").first()).toBeVisible();
+
+    const contentBox = await content.boundingBox();
+    const toolbarRowBox = await toolbarRow.boundingBox();
+    const toolbarActionsBox = await toolbarActions.boundingBox();
+    if (!contentBox || !toolbarRowBox || !toolbarActionsBox) {
+      throw new Error("Code block layout not ready");
+    }
+    expect(toolbarRowBox.y + toolbarRowBox.height).toBeLessThanOrEqual(contentBox.y);
+    expect(toolbarActionsBox.x + toolbarActionsBox.width).toBeGreaterThan(
+      toolbarRowBox.x + toolbarRowBox.width - 24,
+    );
+  });
+
+  test("代码块语言切换在顶部工具栏仍可用", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await setCodeBlockContent(page, "javascript", "console.log('hello')");
+
+    const codeBlock = page.locator(".ProseMirror .code-block-node").first();
+    await codeBlock.hover();
+
+    const languageTrigger = page
+      .locator(".ProseMirror .code-block-toolbar-row button")
+      .filter({ hasText: "JavaScript" })
+      .first();
+    await expect(languageTrigger).toBeVisible();
+    await languageTrigger.click();
+
+    const searchInput = page.getByPlaceholder("搜索语言...");
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill("python");
+    await page.locator('[role="menuitem"]').filter({ hasText: "Python" }).first().click();
+
+    const currentLanguage = await getFirstCodeBlockLanguage(page);
+    expect(currentLanguage).toBe("python");
+  });
+
+  test("代码块顶部空白行默认不显示标题交互", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await setCodeBlockContent(page, "javascript", "console.log('hello')");
+
+    const editor = page.locator(".ProseMirror").first();
+    const codeBlock = editor.locator(".code-block-node").first();
+    const toolbarRow = codeBlock.locator(".code-block-toolbar-row").first();
+    await expect(toolbarRow).toBeVisible();
+    await expect(codeBlock.locator(".code-block-toolbar-note-display")).toHaveCount(0);
+    await expect(codeBlock.locator(".code-block-toolbar-note-input")).toHaveCount(0);
+    const attrs = await getFirstCodeBlockAttrs(page);
+    expect(Object.prototype.hasOwnProperty.call(attrs, "note")).toBe(false);
+  });
+
+  test("代码块工具栏按钮无边框且通过背景色反馈状态", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await setCodeBlockContent(page, "javascript", "const a = 1");
+
+    const editor = page.locator(".ProseMirror").first();
+    const codeBlock = editor.locator(".code-block-node").first();
+    await codeBlock.hover();
+    const languageTrigger = page
+      .locator(".code-block-node .code-block-toolbar-row button")
+      .filter({ hasText: "JavaScript" })
+      .first();
+    await expect(languageTrigger).toBeVisible();
+
+    const defaultStyles = await languageTrigger.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return {
+        borderWidth: style.borderWidth,
+        backgroundColor: style.backgroundColor,
+      };
+    });
+    expect(defaultStyles.borderWidth).toBe("0px");
+
+    await languageTrigger.click();
+    await expect(languageTrigger).toHaveClass(/code-toolbar-chip-active/);
+    await expect(page.getByPlaceholder("搜索语言...")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    const wrapToggle = codeBlock.locator(".code-toolbar-wrap-toggle").first();
+    await expect(wrapToggle).toBeVisible();
+    await wrapToggle.click();
+    await expect(wrapToggle).toHaveClass(/code-toolbar-chip-active/);
+    await expect(codeBlock.locator("pre .hljs").first()).toHaveCSS(
+      "white-space",
+      "pre-wrap",
+    );
+  });
+
+  test("Markdown 导出与导入不再包含代码块备注元数据", async ({ page }) => {
+    await openWorkspace(page);
+
+    const roundtrip = await page.evaluate(async () => {
+      const mod = await import("/src/lib/export.ts");
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "codeBlock",
+            attrs: { language: "javascript" },
+            content: [{ type: "text", text: "const answer = 42;" }],
+          },
+        ],
+      };
+
+      const markdown = mod.jsonContentToMarkdown(doc as any);
+      const imported = mod.importFromMarkdown(markdown);
+      const importedNodes = imported.content.content || [];
+      const firstCodeBlock = importedNodes.find(
+        (node: any) => node.type === "codeBlock",
+      );
+      const legacyImported = mod.importFromMarkdown(
+        '<!-- goose-note:codeblock {"note":"旧备注"} -->\n```javascript\nconst answer = 42;\n```',
+      );
+      const legacyNodes = legacyImported.content.content || [];
+      const hasLegacyCommentParagraph = legacyNodes.some(
+        (node: any) =>
+          node.type === "paragraph" &&
+          JSON.stringify(node.content || []).includes("goose-note:codeblock"),
+      );
+
+      return {
+        markdown,
+        restoredLanguage: firstCodeBlock?.attrs?.language || "",
+        hasLegacyCommentParagraph,
+      };
+    });
+
+    expect(roundtrip.markdown).not.toContain("goose-note:codeblock");
+    expect(roundtrip.restoredLanguage).toBe("javascript");
+    expect(roundtrip.hasLegacyCommentParagraph).toBe(false);
   });
 });
