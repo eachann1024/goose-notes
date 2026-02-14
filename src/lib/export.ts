@@ -662,6 +662,10 @@ export function jsonContentToMarkdown(
   return nodes.map((node) => nodeToMarkdown(node)).join("\n");
 }
 
+function isLegacyCodeBlockMetaComment(line: string): boolean {
+  return /^<!--\s*goose-note:codeblock\s+.+?\s*-->$/.test(line);
+}
+
 function nodeToMarkdown(node: JSONContent): string {
   switch (node.type) {
     case "paragraph":
@@ -713,7 +717,9 @@ function nodeToMarkdown(node: JSONContent): string {
       if (lang === "yaml-frontmatter") {
         return "---\n" + (node.content?.[0]?.text || "") + "\n---\n";
       }
-      return "```" + lang + "\n" + (node.content?.[0]?.text || "") + "\n```\n";
+      return (
+        "```" + lang + "\n" + (node.content?.[0]?.text || "") + "\n```\n"
+      );
     }
 
     case "horizontalRule":
@@ -892,6 +898,11 @@ function markdownToJsonContent(markdown: string): JSONContent {
   while (i < lines.length) {
     const line = lines[i];
     const trimmedLine = line.trim();
+
+    if (isLegacyCodeBlockMetaComment(trimmedLine)) {
+      i++;
+      continue;
+    }
 
     if (trimmedLine.startsWith("<details>")) {
       const detailsLines: string[] = [];
