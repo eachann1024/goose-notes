@@ -71,6 +71,8 @@ export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N"
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K"
 export const DEFAULT_CLOSE_TAB_SHORTCUT = "Alt+W"
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = ""
+export const UTOOLS_WINDOW_HEIGHT_MIN = 600
+export const UTOOLS_WINDOW_HEIGHT_MAX = 1200
 const DEFAULT_UI_FONT_SIZE: UIFontSize = "small"
 
 interface SettingsState {
@@ -256,7 +258,7 @@ export const useSettings = create<SettingsState>()(
                 globalSearchEnabled: false,
                 openSearchInUtools: true,
 
-                windowHeight: 600,
+                windowHeight: UTOOLS_WINDOW_HEIGHT_MIN,
             },
             desktop: {
                 wakeHotkey: DEFAULT_WAKE_HOTKEY,
@@ -332,7 +334,13 @@ export const useSettings = create<SettingsState>()(
 
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
-                    utools: { ...state.utools, windowHeight: height },
+                    utools: {
+                        ...state.utools,
+                        windowHeight: Math.min(
+                            UTOOLS_WINDOW_HEIGHT_MAX,
+                            Math.max(UTOOLS_WINDOW_HEIGHT_MIN, height),
+                        ),
+                    },
                 })),
             setWakeHotkey: (hotkey) =>
                 set((state) => ({
@@ -470,8 +478,27 @@ export const useSettings = create<SettingsState>()(
                     useSettings.setState({ uiFontSize: normalizedUIFontSize })
                 }
                 
+                const normalizedWindowHeight = Math.min(
+                    UTOOLS_WINDOW_HEIGHT_MAX,
+                    Math.max(
+                        UTOOLS_WINDOW_HEIGHT_MIN,
+                        state?.utools?.windowHeight ?? UTOOLS_WINDOW_HEIGHT_MIN,
+                    ),
+                )
+                if (
+                    state?.utools &&
+                    state.utools.windowHeight !== normalizedWindowHeight
+                ) {
+                    useSettings.setState({
+                        utools: {
+                            ...state.utools,
+                            windowHeight: normalizedWindowHeight,
+                        },
+                    })
+                }
+
                 // Apply window height immediately upon rehydration
-                if (state?.utools?.windowHeight) {
+                if (state?.utools) {
                     // Try to apply directly if possible, or via adapter
                     // We need to import UToolsAdapter dynamically or assume it's available globally or rely on side effects
                     // Since UToolsAdapter is in lib, we can access it if we import it.
@@ -485,7 +512,7 @@ export const useSettings = create<SettingsState>()(
                                 setExpendHeight?: (height: number) => void
                             }
                          }
-                         hostWindow.utools?.setExpendHeight?.(state.utools.windowHeight)
+                         hostWindow.utools?.setExpendHeight?.(normalizedWindowHeight)
                     } catch (e) {
                         console.error("Failed to apply window height on rehydrate", e)
                     }

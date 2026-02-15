@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import * as LucideIcons from "lucide-react";
 import {
   DEFAULT_CLOSE_TAB_SHORTCUT,
+  UTOOLS_WINDOW_HEIGHT_MAX,
+  UTOOLS_WINDOW_HEIGHT_MIN,
   type CustomAction,
   type SearchProvider,
 } from "@/stores/useSettings";
@@ -321,8 +323,8 @@ export function SettingsGeneral({
         </div>
         <Slider
           value={[windowHeight]}
-          min={300}
-          max={900}
+          min={UTOOLS_WINDOW_HEIGHT_MIN}
+          max={UTOOLS_WINDOW_HEIGHT_MAX}
           step={10}
           onValueChange={([val]) => {
             setWindowHeight(val);
