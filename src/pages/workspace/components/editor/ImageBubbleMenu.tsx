@@ -106,6 +106,12 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
   });
 
   const isRemote = isRemoteUrl(imageSrc);
+  const alignToggleClass =
+    "h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground";
+  const iconButtonClass =
+    "h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted";
+  const dangerButtonClass =
+    "h-7 w-7 rounded-md p-0 text-destructive/80 hover:bg-destructive/10 hover:text-destructive";
 
   const handleCopy = async () => {
     if (!imageSrc) return;
@@ -143,7 +149,7 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
         pluginKey="imageBubbleMenu"
         appendTo={() => document.body}
         className={cn(
-          "z-[20000] flex items-center space-x-1 rounded-md border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity dark:border-white/20",
+          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity dark:border-white/15 dark:bg-[#2f3437]",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor }: { editor: Editor }) => {
@@ -158,12 +164,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "left"}
               onPressedChange={() => handleAlign("left")}
               aria-label="左对齐"
-              className={cn(
-                "text-foreground",
-                currentAlign === "left" && "bg-primary/20 text-primary",
-              )}
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignLeft className="h-4 w-4" />
+              <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -178,12 +181,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "center"}
               onPressedChange={() => handleAlign("center")}
               aria-label="居中"
-              className={cn(
-                "text-foreground",
-                currentAlign === "center" && "bg-primary/20 text-primary",
-              )}
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignCenter className="h-4 w-4" />
+              <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -198,12 +198,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               pressed={currentAlign === "right"}
               onPressedChange={() => handleAlign("right")}
               aria-label="右对齐"
-              className={cn(
-                "text-foreground",
-                currentAlign === "right" && "bg-primary/20 text-primary",
-              )}
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignRight className="h-4 w-4" />
+              <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -211,7 +208,7 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-5 opacity-70" />
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -219,12 +216,12 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               variant="ghost"
               size="sm"
               onClick={handleCopy}
-              className="h-8 px-2 text-foreground"
+              className={iconButtonClass}
             >
               {isRemote ? (
-                <LucideIcons.Link className="h-4 w-4" />
+                <LucideIcons.Link className="h-[15px] w-[15px]" />
               ) : (
-                <LucideIcons.Copy className="h-4 w-4" />
+                <LucideIcons.Copy className="h-[15px] w-[15px]" />
               )}
             </Button>
           </TooltipTrigger>
@@ -248,9 +245,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               variant="ghost"
               size="sm"
               onClick={handleDownload}
-              className="h-8 px-2 text-foreground"
+              className={iconButtonClass}
             >
-              <LucideIcons.Download className="h-4 w-4" />
+              <LucideIcons.Download className="h-[15px] w-[15px]" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -264,9 +261,9 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
               variant="ghost"
               size="sm"
               onClick={() => editor.chain().focus().deleteSelection().run()}
-              className="h-8 px-2 text-destructive hover:text-destructive"
+              className={dangerButtonClass}
             >
-              <LucideIcons.Trash2 className="h-4 w-4" />
+              <LucideIcons.Trash2 className="h-[15px] w-[15px]" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>

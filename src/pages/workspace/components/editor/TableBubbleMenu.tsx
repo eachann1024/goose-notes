@@ -19,9 +19,11 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
 
   const cellAlign = editor.getAttributes("tableCell").align || "left";
   const iconButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground";
+    "inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted";
   const iconDangerButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive";
+    "inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive";
+  const alignToggleClass =
+    "h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground";
 
   return (
     <TooltipProvider>
@@ -34,7 +36,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           return !isHidden && editor.isEditable && editor.isActive("table");
         }}
         className={cn(
-          "z-[20000] flex flex-row items-center gap-0.5 rounded-lg border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 max-w-none dark:border-white/20",
+          "z-[20000] flex flex-row items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-opacity duration-200 max-w-none dark:border-white/15 dark:bg-[#2f3437]",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         {...props}
@@ -47,7 +49,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().addRowBefore().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.ArrowUpToLine className="h-4 w-4" />
+              <LucideIcons.ArrowUpToLine className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -62,7 +64,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().addRowAfter().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.ArrowDownToLine className="h-4 w-4" />
+              <LucideIcons.ArrowDownToLine className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -77,7 +79,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().deleteRow().run()}
               className={iconDangerButtonClass}
             >
-              <LucideIcons.RemoveFormatting className="h-4 w-4" />
+              <LucideIcons.RemoveFormatting className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -85,7 +87,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Separator orientation="vertical" className="h-5 opacity-70" />
 
         {/* 列操作 */}
         <Tooltip delayDuration={0}>
@@ -95,7 +97,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().addColumnBefore().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.ArrowLeftToLine className="h-4 w-4" />
+              <LucideIcons.ArrowLeftToLine className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -110,7 +112,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().addColumnAfter().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.ArrowRightToLine className="h-4 w-4" />
+              <LucideIcons.ArrowRightToLine className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -125,7 +127,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().deleteColumn().run()}
               className={iconDangerButtonClass}
             >
-              <LucideIcons.Columns2 className="h-4 w-4" />
+              <LucideIcons.Columns2 className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -133,7 +135,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Separator orientation="vertical" className="h-5 opacity-70" />
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -148,9 +150,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
                   .run()
               }
               aria-label="左对齐"
-              className="text-foreground"
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignLeft className="h-4 w-4" />
+              <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -171,9 +173,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
                   .run()
               }
               aria-label="居中"
-              className="text-foreground"
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignCenter className="h-4 w-4" />
+              <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -194,9 +196,9 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
                   .run()
               }
               aria-label="右对齐"
-              className="text-foreground"
+              className={alignToggleClass}
             >
-              <LucideIcons.AlignRight className="h-4 w-4" />
+              <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
           <TooltipContent>
@@ -204,7 +206,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Separator orientation="vertical" className="h-5 opacity-70" />
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -213,7 +215,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().toggleHeaderRow().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.Heading className="h-4 w-4" />
+              <LucideIcons.Heading className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -228,7 +230,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.ArrowRight className="h-4 w-4" />
+              <LucideIcons.ArrowRight className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -243,7 +245,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().mergeCells().run()}
               className={iconButtonClass}
             >
-              <LucideIcons.Merge className="h-4 w-4" />
+              <LucideIcons.Merge className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -251,7 +253,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Separator orientation="vertical" className="h-5 opacity-70" />
 
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -260,7 +262,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
               onClick={() => editor.chain().focus().deleteTable().run()}
               className={iconDangerButtonClass}
             >
-              <LucideIcons.Trash2 className="h-4 w-4" />
+              <LucideIcons.Trash2 className="h-[15px] w-[15px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
