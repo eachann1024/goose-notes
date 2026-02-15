@@ -318,6 +318,48 @@ test.describe("编辑器 P0 冒烟", () => {
     ).toHaveCount(1);
   });
 
+  test("链接工具栏支持编辑与复制", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await focusEditorParagraph(page);
+
+    await pasteText(page, "https://example.com");
+
+    const link = page.locator('.ProseMirror a[href="https://example.com"]').first();
+    await expect(link).toBeVisible();
+    await link.hover();
+
+    const linkToolbar = page.locator("[data-link-hover-menu]");
+    await expect(linkToolbar).toBeVisible();
+
+    await linkToolbar.getByRole("button", { name: "编辑链接" }).click();
+
+    const nextTitle = `示例链接-${Date.now()}`;
+    const nextUrl = `https://example.org/docs/${Date.now()}`;
+
+    await page.getByPlaceholder("链接文字").fill(nextTitle);
+    await page.getByPlaceholder("https://...").fill(nextUrl);
+    await page.getByRole("button", { name: "保存" }).click();
+
+    const editedLink = page
+      .locator(`.ProseMirror a[href="${nextUrl}"]`)
+      .filter({ hasText: nextTitle })
+      .first();
+    await expect(editedLink).toBeVisible();
+
+    await editedLink.hover();
+    await expect(linkToolbar).toBeVisible();
+    await linkToolbar.getByRole("button", { name: "复制链接" }).click();
+
+    await expect
+      .poll(
+        async () => page.evaluate(async () => navigator.clipboard.readText()),
+        { timeout: 5_000 },
+      )
+      .toBe(nextUrl);
+  });
+
   test("表格内 Tab 可切换到下一个单元格", async ({ page }) => {
     await openWorkspace(page);
     await createFreshPage(page);

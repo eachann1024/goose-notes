@@ -193,6 +193,22 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     utools?.shellOpenExternal?.(href);
   };
 
+  const handleCopyLink = async () => {
+    const href = linkElement?.getAttribute("href");
+    if (!href) return;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href);
+        return;
+      }
+    } catch {
+      // ignore clipboard permission errors and fallback below
+    }
+
+    UToolsAdapter.copyToClipboard(href);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -217,11 +233,11 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
         data-link-hover-menu
         onMouseEnter={handleMenuMouseEnter}
         onMouseLeave={handleMenuMouseLeave}
-        className="fixed z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100"
+        className="fixed z-[20000] overflow-hidden rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/15 dark:bg-[#2f3437]"
         style={{ left: position.x, top: position.y }}
       >
         {isEditing ? (
-          <div className="p-3 min-w-[320px] space-y-2">
+          <div className="min-w-[320px] space-y-2 rounded-md bg-popover px-2 py-1.5 dark:bg-[#2f3437]">
             <div>
               <Label className="mb-1 block text-xs text-muted-foreground">
                 文字
@@ -231,7 +247,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                 onChange={(e) => setEditText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="链接文字"
-                className="h-8 text-sm"
+                className="h-7 text-sm"
               />
             </div>
             <div>
@@ -244,7 +260,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                 onChange={(e) => setEditUrl(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="https://..."
-                className="h-8 text-sm"
+                className="h-7 text-sm"
               />
             </div>
             <div className="flex justify-end gap-2 pt-1">
@@ -269,7 +285,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-1 p-1.5">
+          <div className="flex items-center gap-0.5">
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Button
@@ -277,11 +293,11 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-auto max-w-[200px] gap-1.5 rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="h-7 max-w-[220px] gap-1.5 rounded-md px-2 text-foreground/90 transition-colors hover:bg-muted"
                   aria-label={href}
                 >
-                  <LucideIcons.ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{displayUrl}</span>
+                  <LucideIcons.ExternalLink className="h-[15px] w-[15px] flex-shrink-0" />
+                  <span className="truncate text-xs font-medium">{displayUrl}</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="max-w-[360px] whitespace-normal break-all">
@@ -289,7 +305,26 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
               </TooltipContent>
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-5 mx-0.5" />
+            <Separator orientation="vertical" className="h-5 opacity-70" />
+
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    void handleCopyLink();
+                  }}
+                  className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
+                  aria-label="复制链接"
+                >
+                  <LucideIcons.Copy className="h-[15px] w-[15px]" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>复制链接</p>
+              </TooltipContent>
+            </Tooltip>
 
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
@@ -297,9 +332,10 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleEdit}
-                  className="h-7 w-7 p-0"
+                  className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
+                  aria-label="编辑链接"
                 >
-                  <LucideIcons.Pencil className="h-3.5 w-3.5" />
+                  <LucideIcons.Pencil className="h-[15px] w-[15px]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -313,9 +349,10 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleRemove}
-                  className="h-7 w-7 p-0 hover:text-destructive"
+                  className="h-7 w-7 rounded-md p-0 text-destructive/80 hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="删除链接"
                 >
-                  <LucideIcons.Unlink className="h-3.5 w-3.5" />
+                  <LucideIcons.Unlink className="h-[15px] w-[15px]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -323,9 +360,9 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
               </TooltipContent>
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-5 mx-0.5" />
+            <Separator orientation="vertical" className="h-5 opacity-70" />
 
-            <span className="text-xs text-muted-foreground px-1.5">
+            <span className="px-1 text-[11px] text-muted-foreground/85">
               {isMac ? "⌘" : "Ctrl"}+点击打开
             </span>
           </div>
