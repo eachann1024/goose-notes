@@ -141,6 +141,19 @@ export function ImageResizer(props: NodeViewProps) {
     () => parseMarginFromStyle(node.attrs.containerStyle),
     [node.attrs.containerStyle, parseMarginFromStyle],
   );
+  const systemOpenPath = useMemo(
+    () => resolveImageSystemPath(node.attrs.src),
+    [node.attrs.src],
+  );
+  const canOpenInSystem = Boolean(systemOpenPath);
+
+  const handleSystemOpen = useCallback(async () => {
+    if (!systemOpenPath) return;
+    const opened = await UToolsAdapter.openPath(systemOpenPath);
+    if (!opened) {
+      UToolsAdapter.showNotification("打开失败：请确认图片文件仍存在");
+    }
+  }, [systemOpenPath]);
 
   return (
     <NodeViewWrapper
@@ -278,7 +291,18 @@ export function ImageResizer(props: NodeViewProps) {
                 <img
                   src={resolvedSrc || node.attrs.src}
                   alt={node.attrs.alt}
-                  className="max-w-full max-h-[75vh] object-contain"
+                  className={cn(
+                    "max-w-full max-h-[75vh] object-contain",
+                    canOpenInSystem && "cursor-pointer",
+                  )}
+                  onClick={
+                    canOpenInSystem
+                      ? () => {
+                          void handleSystemOpen();
+                        }
+                      : undefined
+                  }
+                  title={canOpenInSystem ? "点击使用系统默认应用打开" : undefined}
                 />
               </div>
             </div>
@@ -301,4 +325,71 @@ function upsertWidthStyle(
     return next.replace(/width:\s*[0-9.]+px;?/, widthRule);
   }
   return `${next} ${widthRule}`.trim();
+}
+
+function resolveImageSystemPath(src: string | null | undefined): string | null {
+  if (!src || typeof src !== "string") return null;
+  const normalizedSrc = stripQueryAndHash(src);
+
+  if (
+    normalizedSrc.startsWith("data:") ||
+    normalizedSrc.startsWith("blob:") ||
+    normalizedSrc.startsWith("http://") ||
+    normalizedSrc.startsWith("https://") ||
+    normalizedSrc.startsWith("uuid:") ||
+    normalizedSrc.startsWith("att:")
+  ) {
+    return null;
+  }
+
+  if (normalizedSrc.startsWith("file://")) {
+    return decodeFileUrlPath(normalizedSrc);
+  }
+
+  if (isAbsolutePath(normalizedSrc)) {
+    return normalizedSrc.replace(/\\/g, "/");
+  }
+
+  const notebookPath = getCurrentNotebookPath();
+  if (!notebookPath) return null;
+
+  if (normalizedSrc.startsWith("./")) {
+    return joinNotebookPath(notebookPath, normalizedSrc.slice(2));
+  }
+
+  return joinNotebookPath(notebookPath, normalizedSrc);
+}
+
+function getCurrentNotebookPath(): string | null {
+  const { activePageId, pages } = usePages.getState();
+  if (!activePageId) return null;
+
+  const page = pages[activePageId];
+  if (!page) return null;
+
+  return useNotebooks.getState().notebooks[page.workspaceId]?.localPath || null;
+}
+
+function stripQueryAndHash(src: string): string {
+  return src.split(/[?#]/)[0];
+}
+
+function decodeFileUrlPath(fileUrl: string): string {
+  const rawPath = fileUrl.replace(/^file:\/\//, "");
+  const normalizedWindows = rawPath.replace(/^\/([A-Za-z]:[\\/])/, "$1");
+  try {
+    return decodeURIComponent(normalizedWindows).replace(/\\/g, "/");
+  } catch {
+    return normalizedWindows.replace(/\\/g, "/");
+  }
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+}
+
+function joinNotebookPath(basePath: string, relativePath: string): string {
+  const normalizedBase = basePath.replace(/[\\/]+$/, "");
+  const normalizedRelative = relativePath.replace(/^[\\/]+/, "");
+  return `${normalizedBase}/${normalizedRelative}`.replace(/\\/g, "/");
 }

@@ -112,6 +112,17 @@ export const hostRuntime: HostRuntime = {
     }
     utools?.shellOpenExternal?.(url);
   },
+  openPath: async (targetPath: string) => {
+    const utools = getUTools();
+    if (!utools || typeof utools?.shellOpenPath !== "function") {
+      return false;
+    }
+    try {
+      return Boolean(await Promise.resolve(utools.shellOpenPath(targetPath)));
+    } catch {
+      return false;
+    }
+  },
   setSublistFn: (callback) => {
     const utools = getUTools();
     if (!utools) return;

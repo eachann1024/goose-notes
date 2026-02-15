@@ -49,6 +49,7 @@ export interface HostRuntime {
   copyToClipboard: (text: string) => void | Promise<void>;
   showNotification: (body: string) => void;
   openUrl: (url: string, useInternalBrowser?: boolean) => void | Promise<void>;
+  openPath: (targetPath: string) => boolean | Promise<boolean>;
   setSublistFn: (callback: ((keyword: string) => SublistItem[]) | null) => void;
   setExpendHeight: (height: number) => boolean;
   redirect: (label: string | [string, string], payload?: unknown) => boolean;

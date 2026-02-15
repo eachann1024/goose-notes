@@ -117,6 +117,10 @@ export class UToolsAdapter {
     void hostRuntime.openUrl(url, useInternalBrowser);
   }
 
+  static async openPath(targetPath: string): Promise<boolean> {
+    return Boolean(await Promise.resolve(hostRuntime.openPath(targetPath)));
+  }
+
   /** @deprecated Use openUrl instead */
   static shellOpenExternal(url: string) {
     UToolsAdapter.openUrl(url, false);
