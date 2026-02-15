@@ -347,7 +347,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                 }
                 /* Style the internal search bar to match our custom one */
                 .emoji-picker-react .epr-search-container {
-                  display: none !important;
+                  display: block !important;
                   padding: 8px 12px !important;
                   background: transparent !important;
                 }
@@ -387,12 +387,12 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                     }}
                     width="100%"
                     height="100%"
-                    searchDisabled
                     skinTonesDisabled
                     previewConfig={{ showPreview: false }}
                     theme={isDarkMode ? Theme.DARK : Theme.LIGHT}
                     emojiStyle={EmojiStyle.APPLE}
                     categories={EMOJI_CATEGORIES}
+                    searchPlaceholder="搜索表情"
                   />
                </div>
             </div>

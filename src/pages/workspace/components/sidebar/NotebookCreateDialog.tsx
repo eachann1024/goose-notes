@@ -57,7 +57,7 @@ export function NotebookCreateDialog({
           <div className="space-y-3">
             <Label className="text-sm font-medium text-muted-foreground">选择图标</Label>
             <div className="flex justify-center">
-              <Suspense fallback={<Button variant="outline" className="h-20 w-20 text-3xl">...</Button>}>
+              <Suspense fallback={<Button variant="outline" className="h-24 w-24 text-4xl">...</Button>}>
                 <IconSelector
                   value={icon}
                   onChange={(val) => onIconChange(val || "📓")}
@@ -66,9 +66,9 @@ export function NotebookCreateDialog({
                 >
                   <Button
                     variant="outline"
-                    className="h-20 w-20 p-0 hover:bg-[var(--goose-interactive-hover)] transition-all duration-200"
+                    className="h-24 w-24 p-0 hover:bg-[var(--goose-interactive-hover)] transition-all duration-200"
                   >
-                    {renderNotebookIcon(icon, "h-10 w-10 text-4xl")}
+                    {renderNotebookIcon(icon, "h-14 w-14 text-5xl")}
                   </Button>
                 </IconSelector>
               </Suspense>
