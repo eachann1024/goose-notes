@@ -189,6 +189,10 @@ export function Editor({ editable = true }: EditorProps) {
             !event.shiftKey &&
             empty &&
             $from.parentOffset === $from.parent.content.size;
+          const shouldInsertAfterCollapsedHeading =
+            shouldResetMarksAfterEnter &&
+            $from.parent.type.name === "heading" &&
+            $from.parent.attrs?.collapsed;
 
           if (empty && editor.isActive("blockquote")) {
             const isAtBlockStart = $from.parentOffset === 0;
@@ -220,6 +224,52 @@ export function Editor({ editable = true }: EditorProps) {
                 }
               }
             }
+          }
+
+          if (shouldInsertAfterCollapsedHeading) {
+            event.preventDefault();
+
+            const headingStartPos = $from.before($from.depth);
+            const headingLevel = Number($from.parent.attrs?.level ?? 1);
+            const { doc } = state;
+            let sectionEndPos = doc.content.size;
+            let scanPos = 0;
+            let foundCurrentHeading = false;
+
+            for (let index = 0; index < doc.childCount; index += 1) {
+              const node = doc.child(index);
+
+              if (!foundCurrentHeading) {
+                if (scanPos === headingStartPos) {
+                  foundCurrentHeading = true;
+                }
+                scanPos += node.nodeSize;
+                continue;
+              }
+
+              if (
+                node.type.name === "heading" &&
+                Number(node.attrs?.level ?? 1) <= headingLevel
+              ) {
+                sectionEndPos = scanPos;
+                break;
+              }
+
+              scanPos += node.nodeSize;
+            }
+
+            if (!foundCurrentHeading) {
+              return false;
+            }
+
+            const paragraph = state.schema.nodes.paragraph.create({
+              collapseTailBreak: true,
+            });
+            let tr = state.tr.insert(sectionEndPos, paragraph);
+            tr = tr.setSelection(Selection.near(tr.doc.resolve(sectionEndPos + 1)));
+            tr = tr.setStoredMarks([]);
+            editor.view.dispatch(tr.scrollIntoView());
+            return true;
           }
 
           if (shouldResetMarksAfterEnter) {

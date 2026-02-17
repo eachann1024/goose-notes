@@ -26,6 +26,24 @@ export const HeadingCollapse = Extension.create({
           },
         },
       },
+      {
+        types: ["paragraph"],
+        attributes: {
+          collapseTailBreak: {
+            default: false,
+            parseHTML: (element) =>
+              element.hasAttribute("data-collapse-tail-break")
+                ? element.getAttribute("data-collapse-tail-break") === "true"
+                : false,
+            renderHTML: (attributes) => {
+              if (attributes.collapseTailBreak) {
+                return { "data-collapse-tail-break": "true" };
+              }
+              return {};
+            },
+          },
+        },
+      },
     ];
   },
 
@@ -90,6 +108,13 @@ export const HeadingCollapse = Extension.create({
                     collapsedLevel = node.attrs.level;
                   }
                 }
+              }
+
+              const isCollapseTailBreakParagraph =
+                node.type.name === "paragraph" &&
+                node.attrs?.collapseTailBreak;
+              if (collapsedLevel !== null && isCollapseTailBreakParagraph) {
+                collapsedLevel = null;
               }
 
               if (collapsedLevel !== null) {
@@ -167,12 +192,65 @@ export const HeadingCollapse = Extension.create({
 
             const pos = Number(indicator.dataset.headingPos);
             if (Number.isNaN(pos)) return false;
-            const node = view.state.doc.nodeAt(pos);
+            const { doc } = view.state;
+            const node = doc.nodeAt(pos);
             if (!node || node.type.name !== "heading") return false;
 
-            const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+            const nextCollapsed = !node.attrs.collapsed;
+            let tr = view.state.tr;
+
+            if (nextCollapsed) {
+              const currentLevel = Number(node.attrs.level ?? 1);
+              let sectionEndPos = doc.content.size;
+              let scanPos = 0;
+              let foundCurrentHeading = false;
+
+              for (let index = 0; index < doc.childCount; index += 1) {
+                const child = doc.child(index);
+
+                if (!foundCurrentHeading) {
+                  if (scanPos === pos) {
+                    foundCurrentHeading = true;
+                  }
+                  scanPos += child.nodeSize;
+                  continue;
+                }
+
+                if (
+                  child.type.name === "heading" &&
+                  Number(child.attrs?.level ?? 1) <= currentLevel
+                ) {
+                  sectionEndPos = scanPos;
+                  break;
+                }
+
+                scanPos += child.nodeSize;
+              }
+
+              if (foundCurrentHeading) {
+                let cursorPos = pos + node.nodeSize;
+                while (cursorPos < sectionEndPos) {
+                  const currentNode = tr.doc.nodeAt(cursorPos);
+                  if (!currentNode) break;
+
+                  if (
+                    currentNode.type.name === "paragraph" &&
+                    currentNode.attrs?.collapseTailBreak
+                  ) {
+                    tr = tr.setNodeMarkup(cursorPos, undefined, {
+                      ...currentNode.attrs,
+                      collapseTailBreak: false,
+                    });
+                  }
+
+                  cursorPos += currentNode.nodeSize;
+                }
+              }
+            }
+
+            tr = tr.setNodeMarkup(pos, undefined, {
               ...node.attrs,
-              collapsed: !node.attrs.collapsed,
+              collapsed: nextCollapsed,
             });
             view.dispatch(tr);
             return true;
