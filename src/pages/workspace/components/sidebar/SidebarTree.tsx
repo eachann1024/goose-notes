@@ -351,6 +351,23 @@ function SortablePageRow({
     openInCurrentTab(newId);
   };
 
+  const handleArrowPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!showArrow) return;
+    if (event.button !== 0 || event.ctrlKey) return;
+    onToggleOpen(page.id);
+  };
+
+  const handleArrowClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    // Keyboard-triggered click has detail=0.
+    if (event.detail === 0 && showArrow) {
+      onToggleOpen(page.id);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -405,21 +422,18 @@ function SortablePageRow({
             className="flex items-center h-full flex-1 min-w-0"
             style={{ paddingLeft: depth * TREE_INDENT }}
           >
-            <div
+            <button
+              type="button"
+              aria-label={item.isOpen ? "折叠子页面" : "展开子页面"}
+              aria-expanded={item.isOpen}
               className={cn(
-                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 mr-1 rounded transition-all duration-300 ease-out",
+                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 mr-1 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                 showArrow
                   ? "hover:bg-muted-foreground/10 cursor-pointer"
                   : "opacity-0 pointer-events-none"
               )}
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (showArrow) {
-                  onToggleOpen(page.id);
-                }
-              }}
+              onPointerDown={handleArrowPointerDown}
+              onClick={handleArrowClick}
             >
               <LucideIcons.ChevronRight
                 className={cn(
@@ -427,7 +441,7 @@ function SortablePageRow({
                   item.isOpen && "rotate-90"
                 )}
               />
-            </div>
+            </button>
 
             <div
               className="flex items-center justify-center w-5 h-5 shrink-0 mr-1.5 select-none"
