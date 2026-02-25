@@ -48,6 +48,8 @@ export const HeadingCollapse = Extension.create({
   },
 
   addProseMirrorPlugins() {
+    let ignoreIndicatorClickUntil = 0;
+
     return [
       new Plugin({
         key: new PluginKey("headingCollapse"),
@@ -183,12 +185,93 @@ export const HeadingCollapse = Extension.create({
 
             return DecorationSet.create(doc, decorations);
           },
+          handleDOMEvents: {
+            mousedown: (view, event) => {
+              if (event.button !== 0) return false;
+              const target = event.target as HTMLElement | null;
+              const indicator = target?.closest?.(
+                ".heading-collapse-indicator",
+              ) as HTMLElement | null;
+              if (!indicator) return false;
+
+              const pos = Number(indicator.dataset.headingPos);
+              if (Number.isNaN(pos)) return false;
+
+              const { doc } = view.state;
+              const node = doc.nodeAt(pos);
+              if (!node || node.type.name !== "heading") return false;
+
+              event.preventDefault();
+              event.stopPropagation();
+              ignoreIndicatorClickUntil = Date.now() + 250;
+
+              const nextCollapsed = !node.attrs.collapsed;
+              let tr = view.state.tr;
+
+              if (nextCollapsed) {
+                const currentLevel = Number(node.attrs.level ?? 1);
+                let sectionEndPos = doc.content.size;
+                let scanPos = 0;
+                let foundCurrentHeading = false;
+
+                for (let index = 0; index < doc.childCount; index += 1) {
+                  const child = doc.child(index);
+
+                  if (!foundCurrentHeading) {
+                    if (scanPos === pos) {
+                      foundCurrentHeading = true;
+                    }
+                    scanPos += child.nodeSize;
+                    continue;
+                  }
+
+                  if (
+                    child.type.name === "heading" &&
+                    Number(child.attrs?.level ?? 1) <= currentLevel
+                  ) {
+                    sectionEndPos = scanPos;
+                    break;
+                  }
+
+                  scanPos += child.nodeSize;
+                }
+
+                if (foundCurrentHeading) {
+                  let cursorPos = pos + node.nodeSize;
+                  while (cursorPos < sectionEndPos) {
+                    const currentNode = tr.doc.nodeAt(cursorPos);
+                    if (!currentNode) break;
+
+                    if (
+                      currentNode.type.name === "paragraph" &&
+                      currentNode.attrs?.collapseTailBreak
+                    ) {
+                      tr = tr.setNodeMarkup(cursorPos, undefined, {
+                        ...currentNode.attrs,
+                        collapseTailBreak: false,
+                      });
+                    }
+
+                    cursorPos += currentNode.nodeSize;
+                  }
+                }
+              }
+
+              tr = tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                collapsed: nextCollapsed,
+              });
+              view.dispatch(tr);
+              return true;
+            },
+          },
           handleClick: (view, _pos, event) => {
             const target = event.target as HTMLElement | null;
             const indicator = target?.closest?.(
               ".heading-collapse-indicator",
             ) as HTMLElement | null;
             if (!indicator) return false;
+            if (Date.now() < ignoreIndicatorClickUntil) return true;
 
             const pos = Number(indicator.dataset.headingPos);
             if (Number.isNaN(pos)) return false;
