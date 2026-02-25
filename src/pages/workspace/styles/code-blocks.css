@@ -58,16 +58,94 @@
   position: relative;
   height: 2.25rem;
   padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.code-block-toolbar-left {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.code-block-collapse-toggle {
+  color: hsl(var(--muted-foreground));
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.code-block-collapse-toggle:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.7);
+}
+
+.code-block-collapse-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+.code-block-collapse-toggle.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.code-block-summary-input {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: hsl(var(--foreground) / 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  padding: 0 0.375rem;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.code-block-summary-input.is-readonly {
+  border-color: transparent;
+  background: transparent;
+  cursor: text;
+}
+
+.code-block-summary-input.is-readonly:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+
+.code-block-summary-input:not(.is-readonly) {
+  background: hsl(var(--muted) / 0.7);
+}
+
+.code-block-summary-input.is-placeholder {
+  color: hsl(var(--muted-foreground) / 0.75);
+}
+
+.code-block-summary-input:focus,
+.code-block-summary-input:focus-visible {
+  border-color: hsl(var(--border) / 0.95);
+  box-shadow: none;
 }
 
 .code-block-toolbar-actions {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
+  margin-left: auto;
+  flex-shrink: 0;
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.05);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(calc(-50% - 2px));
+  transform: translateY(-2px);
   transition:
     opacity 0.14s ease,
     transform 0.14s ease,
@@ -79,7 +157,11 @@
 .code-block-node.is-active .code-block-toolbar-actions {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(-50%);
+  transform: translateY(0);
+}
+
+.code-block-node.is-collapsed .code-block-content {
+  display: none;
 }
 
 /* Line numbers style */

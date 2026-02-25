@@ -61,12 +61,18 @@ function CodeBlockWithLanguageView({
   };
   const wrapAttr = normalizeWrap(node.attrs.wrap);
   const wrap = wrapAttr ?? false;
+  const collapsed = node.attrs.collapsed === true || node.attrs.collapsed === "true";
+  const summary =
+    typeof node.attrs.summary === "string" ? node.attrs.summary : "";
   const wrapStyle: React.CSSProperties = {
     whiteSpace: wrap ? "pre-wrap" : "pre",
     wordBreak: wrap ? "break-word" : "normal",
     overflowWrap: wrap ? "anywhere" : "normal",
   };
   const [showLatexHint, setShowLatexHint] = useState(false);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const summaryInputRef = useRef<HTMLInputElement>(null);
 
   const getCodeContent = () => {
     let text = "";
@@ -87,6 +93,27 @@ function CodeBlockWithLanguageView({
     updateAttributes({ wrap: newWrap });
   };
 
+  const normalizeSummary = (value: string) =>
+    value.replace(/[\r\n]+/g, " ").trim();
+
+  const handleSummaryCommit = () => {
+    const nextSummary = normalizeSummary(summaryDraft);
+    if (nextSummary !== summary) {
+      updateAttributes({ summary: nextSummary });
+    }
+    setSummaryDraft(nextSummary);
+    setIsEditingSummary(false);
+  };
+
+  const handleSummaryCancel = () => {
+    setSummaryDraft(summary);
+    setIsEditingSummary(false);
+  };
+
+  const handleCollapsedChange = () => {
+    updateAttributes({ collapsed: !collapsed });
+  };
+
   const handleFormat = (formatted: string) => {
     if (typeof getPos === "function") {
       const pos = getPos();
@@ -102,7 +129,19 @@ function CodeBlockWithLanguageView({
 
   const textContent = node.content?.firstChild?.text || node.textContent || "";
   const lineCount = textContent.split("\n").length;
-  const showLineNumbers = !(language === "math" || language === "mermaid");
+  const supportsLineNumbers = !(language === "math" || language === "mermaid");
+  const showLineNumbers = supportsLineNumbers && !wrap;
+  const isSummaryReadonly = !editor.isEditable || !isEditingSummary;
+  const summaryValue = isEditingSummary ? summaryDraft : summary;
+
+  useEffect(() => {
+    if (!isEditingSummary) return;
+    const timer = window.setTimeout(() => {
+      summaryInputRef.current?.focus();
+      summaryInputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isEditingSummary]);
 
   return (
     <NodeViewWrapper
@@ -110,9 +149,81 @@ function CodeBlockWithLanguageView({
         "code-block-node relative my-4",
         showLineNumbers && "code-block-with-lines",
         isActive && "is-active",
+        collapsed && "is-collapsed",
       )}
     >
       <div className="code-block-toolbar-row" contentEditable={false}>
+        <div
+          className="code-block-toolbar-left"
+          contentEditable={false}
+          suppressContentEditableWarning
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={collapsed ? "展开代码块" : "折叠代码块"}
+            aria-pressed={collapsed}
+            onClick={handleCollapsedChange}
+            className={cn(
+              "code-block-collapse-toggle h-7 min-w-7 p-0",
+              collapsed && "is-collapsed",
+            )}
+          >
+            <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+          <Input
+            ref={summaryInputRef}
+            value={summaryValue}
+            readOnly={isSummaryReadonly}
+            placeholder="添加代码说明"
+            onMouseDown={(e: React.MouseEvent<HTMLInputElement>) => {
+              e.stopPropagation();
+              if (!editor.isEditable) return;
+              if (!isEditingSummary) {
+                setSummaryDraft(summary);
+              }
+            }}
+            onFocus={() => {
+              if (!editor.isEditable) return;
+              if (!isEditingSummary) {
+                setSummaryDraft(summary);
+                setIsEditingSummary(true);
+              }
+            }}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              if (!isEditingSummary) return;
+              setSummaryDraft(e.target.value);
+            }}
+            onBlur={() => {
+              if (!isEditingSummary) return;
+              handleSummaryCommit();
+            }}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (isEditingSummary) {
+                  handleSummaryCommit();
+                }
+                summaryInputRef.current?.blur();
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                handleSummaryCancel();
+                summaryInputRef.current?.blur();
+                return;
+              }
+              e.stopPropagation();
+            }}
+            className={cn(
+              "code-block-summary-input h-7 !h-7 !rounded-md !px-1.5 !py-0 !text-xs !shadow-none focus-visible:!ring-0 focus-visible:!ring-offset-0",
+              isSummaryReadonly && "is-readonly",
+              isSummaryReadonly && !summary && "is-placeholder",
+            )}
+            title={summary || "添加代码说明"}
+          />
+        </div>
         <CodeBlockToolbar
           language={language}
           onLanguageChange={handleLanguageChange}
@@ -124,46 +235,48 @@ function CodeBlockWithLanguageView({
         />
       </div>
 
-      <div className="code-block-content">
-        {showLineNumbers && (
-          <div className="line-numbers" contentEditable={false}>
-            {Array.from({ length: lineCount }).map((_, i) => (
-              <div key={i}>{i + 1}</div>
-            ))}
-          </div>
-        )}
-        <pre
-          className={cn(
-            (language === "math" || language === "mermaid") &&
-              !isActive &&
-              "hidden",
-          )}
-        >
-          <NodeViewContent className="hljs" style={wrapStyle} />
-        </pre>
-
-        {(language === "math" || language === "mermaid") && (
-          <div
-            contentEditable={false}
-            className="preview-container select-none cursor-pointer bg-transparent dark:bg-[#202020]"
-            onClick={() => {
-              if (typeof getPos === "function") {
-                editor.commands.focus(getPos() + 1);
-              }
-            }}
-          >
-            <div className="bg-transparent dark:bg-[#2E2E2D]">
-              {language === "math" && (
-                <MathView value={textContent} displayMode={true} />
-              )}
-              {language === "mermaid" && <MermaidView value={textContent} />}
+      {!collapsed && (
+        <div className="code-block-content">
+          {showLineNumbers && (
+            <div className="line-numbers" contentEditable={false}>
+              {Array.from({ length: lineCount }).map((_, i) => (
+                <div key={i}>{i + 1}</div>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+          <pre
+            className={cn(
+              (language === "math" || language === "mermaid") &&
+                !isActive &&
+                "hidden",
+            )}
+          >
+            <NodeViewContent className="hljs" style={wrapStyle} />
+          </pre>
+
+          {(language === "math" || language === "mermaid") && (
+            <div
+              contentEditable={false}
+              className="preview-container select-none cursor-pointer bg-transparent dark:bg-[#202020]"
+              onClick={() => {
+                if (typeof getPos === "function") {
+                  editor.commands.focus(getPos() + 1);
+                }
+              }}
+            >
+              <div className="bg-transparent dark:bg-[#2E2E2D]">
+                {language === "math" && (
+                  <MathView value={textContent} displayMode={true} />
+                )}
+                {language === "mermaid" && <MermaidView value={textContent} />}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* LaTeX 语法提示面板 */}
-      {language === "math" && editor.isEditable && isActive && (
+      {!collapsed && language === "math" && editor.isEditable && isActive && (
         <div className="absolute bottom-2 right-2 z-20">
           <TooltipProvider>
             <Tooltip open={showLatexHint} onOpenChange={setShowLatexHint}>
@@ -254,6 +367,12 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
       },
       wrap: {
         default: null,
+      },
+      collapsed: {
+        default: false,
+      },
+      summary: {
+        default: "",
       },
     };
   },

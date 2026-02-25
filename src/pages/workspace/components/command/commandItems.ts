@@ -148,7 +148,12 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       icon: LucideIcons.Code,
       shortcut: "```",
       command: ({ editor, range }: any) => {
-        editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .toggleCodeBlock({ language: "markdown" })
+          .run();
       },
     },
     {

@@ -666,6 +666,87 @@ function isLegacyCodeBlockMetaComment(line: string): boolean {
   return /^<!--\s*goose-note:codeblock\s+.+?\s*-->$/.test(line);
 }
 
+const CODE_BLOCK_META_PREFIX = "goose-note=";
+
+function normalizeCodeBlockSummary(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function serializeCodeFenceInfo(
+  language: string,
+  attrs?: Record<string, unknown>,
+): string {
+  const tokens: string[] = [];
+  const normalizedLanguage = typeof language === "string" ? language.trim() : "";
+  if (normalizedLanguage) {
+    tokens.push(normalizedLanguage);
+  }
+
+  const summary = normalizeCodeBlockSummary(attrs?.summary);
+  const collapsed = attrs?.collapsed === true;
+  const metadata: Record<string, unknown> = {};
+
+  if (summary) {
+    metadata.summary = summary;
+  }
+  if (collapsed) {
+    metadata.collapsed = true;
+  }
+
+  if (Object.keys(metadata).length > 0) {
+    tokens.push(
+      `${CODE_BLOCK_META_PREFIX}${encodeURIComponent(JSON.stringify(metadata))}`,
+    );
+  }
+
+  return tokens.join(" ");
+}
+
+function parseCodeFenceInfo(infoLine: string): {
+  language: string;
+  summary: string;
+  collapsed: boolean;
+} {
+  const tokens = infoLine.trim().split(/\s+/).filter(Boolean);
+  let language = "";
+  let summary = "";
+  let collapsed = false;
+
+  for (const token of tokens) {
+    if (token.startsWith(CODE_BLOCK_META_PREFIX)) {
+      const encoded = token.slice(CODE_BLOCK_META_PREFIX.length);
+      if (!encoded) continue;
+
+      try {
+        const parsed = JSON.parse(decodeURIComponent(encoded));
+        if (parsed && typeof parsed === "object") {
+          const candidateSummary = normalizeCodeBlockSummary(
+            (parsed as Record<string, unknown>).summary,
+          );
+          if (candidateSummary) {
+            summary = candidateSummary;
+          }
+          if ((parsed as Record<string, unknown>).collapsed === true) {
+            collapsed = true;
+          }
+        }
+      } catch {}
+      continue;
+    }
+
+    if (!language) {
+      language = token;
+    }
+  }
+
+  return {
+    language,
+    summary,
+    collapsed,
+  };
+}
+
 function nodeToMarkdown(node: JSONContent): string {
   switch (node.type) {
     case "paragraph":
@@ -717,9 +798,12 @@ function nodeToMarkdown(node: JSONContent): string {
       if (lang === "yaml-frontmatter") {
         return "---\n" + (node.content?.[0]?.text || "") + "\n---\n";
       }
-      return (
-        "```" + lang + "\n" + (node.content?.[0]?.text || "") + "\n```\n"
+      const fenceInfo = serializeCodeFenceInfo(
+        lang,
+        (node.attrs as Record<string, unknown>) || undefined,
       );
+      const fenceHeader = fenceInfo ? "```" + fenceInfo : "```";
+      return fenceHeader + "\n" + (node.content?.[0]?.text || "") + "\n```\n";
     }
 
     case "horizontalRule":
@@ -953,16 +1037,25 @@ function markdownToJsonContent(markdown: string): JSONContent {
     }
 
     if (line.startsWith("```")) {
-      const lang = line.slice(3).trim();
+      const fenceInfo = parseCodeFenceInfo(line.slice(3).trim());
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith("```")) {
         codeLines.push(lines[i]);
         i++;
       }
+      const codeBlockAttrs: Record<string, unknown> = {
+        language: fenceInfo.language,
+      };
+      if (fenceInfo.summary) {
+        codeBlockAttrs.summary = fenceInfo.summary;
+      }
+      if (fenceInfo.collapsed) {
+        codeBlockAttrs.collapsed = true;
+      }
       content.push({
         type: "codeBlock",
-        attrs: { language: lang },
+        attrs: codeBlockAttrs,
         content: [{ type: "text", text: codeLines.join("\n") }],
       });
       i++;

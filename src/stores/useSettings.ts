@@ -140,7 +140,7 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
     {
         id: 'quark',
         name: '夸克',
-        urlTemplate: 'https://quark.sm.cn/s?q=%s',
+        urlTemplate: 'https://ai.quark.cn/s?q=%s',
         isEnabled: true,
     },
     {

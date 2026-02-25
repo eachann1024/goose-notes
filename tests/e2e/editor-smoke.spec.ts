@@ -225,7 +225,11 @@ async function setCodeBlockContent(
   );
 }
 
-async function getFirstCodeBlockAttrs(page: Page): Promise<{ language: string }> {
+async function getFirstCodeBlockAttrs(page: Page): Promise<{
+  language: string;
+  collapsed: boolean;
+  summary: string;
+}> {
   return await page.evaluate(() => {
     const editor = (window as any).__gooseNoteEditor;
     if (!editor) {
@@ -233,15 +237,20 @@ async function getFirstCodeBlockAttrs(page: Page): Promise<{ language: string }>
     }
 
     let language = "";
+    let collapsed = false;
+    let summary = "";
     editor.state.doc.descendants((node: any) => {
       if (node.type.name === "codeBlock") {
         language = node.attrs.language || "";
+        collapsed = node.attrs.collapsed === true || node.attrs.collapsed === "true";
+        summary =
+          typeof node.attrs.summary === "string" ? node.attrs.summary : "";
         return false;
       }
       return true;
     });
 
-    return { language };
+    return { language, collapsed, summary };
   });
 }
 
@@ -468,19 +477,50 @@ test.describe("编辑器 P0 冒烟", () => {
     expect(currentLanguage).toBe("python");
   });
 
-  test("代码块顶部空白行默认不显示标题交互", async ({ page }) => {
+  test("代码块左上角支持标题编辑并写入属性", async ({ page }) => {
     await openWorkspace(page);
     await createFreshPage(page);
     await setCodeBlockContent(page, "javascript", "console.log('hello')");
 
     const editor = page.locator(".ProseMirror").first();
     const codeBlock = editor.locator(".code-block-node").first();
-    const toolbarRow = codeBlock.locator(".code-block-toolbar-row").first();
-    await expect(toolbarRow).toBeVisible();
-    await expect(codeBlock.locator(".code-block-toolbar-note-display")).toHaveCount(0);
-    await expect(codeBlock.locator(".code-block-toolbar-note-input")).toHaveCount(0);
+    const summaryInput = codeBlock.getByPlaceholder("添加代码说明").first();
+    await expect(summaryInput).toBeVisible();
+    await expect(summaryInput).toHaveValue("");
+    await summaryInput.click();
+    await summaryInput.fill("初始化脚本");
+    await summaryInput.press("Enter");
+
+    await expect(summaryInput).toHaveValue("初始化脚本");
     const attrs = await getFirstCodeBlockAttrs(page);
-    expect(Object.prototype.hasOwnProperty.call(attrs, "note")).toBe(false);
+    expect(attrs.summary).toBe("初始化脚本");
+  });
+
+  test("代码块折叠后仅保留顶部标题行", async ({ page }) => {
+    await openWorkspace(page);
+    await createFreshPage(page);
+    await setCodeBlockContent(page, "javascript", "console.log('hello')");
+
+    const codeBlock = page.locator(".ProseMirror .code-block-node").first();
+    const collapseToggle = codeBlock.locator(".code-block-collapse-toggle").first();
+
+    await expect(codeBlock.locator(".code-block-content")).toBeVisible();
+    await collapseToggle.click();
+
+    await expect(codeBlock).toHaveClass(/is-collapsed/);
+    await expect(codeBlock.locator(".code-block-toolbar-row")).toBeVisible();
+    await expect(codeBlock.locator(".code-block-summary-input")).toBeVisible();
+    await expect(codeBlock.locator(".code-block-content")).toHaveCount(0);
+
+    const attrsAfterCollapse = await getFirstCodeBlockAttrs(page);
+    expect(attrsAfterCollapse.collapsed).toBe(true);
+
+    await collapseToggle.click();
+    await expect(codeBlock).not.toHaveClass(/is-collapsed/);
+    await expect(codeBlock.locator(".code-block-content")).toBeVisible();
+
+    const attrsAfterExpand = await getFirstCodeBlockAttrs(page);
+    expect(attrsAfterExpand.collapsed).toBe(false);
   });
 
   test("代码块工具栏按钮无边框且通过背景色反馈状态", async ({ page }) => {
@@ -513,15 +553,17 @@ test.describe("编辑器 P0 冒烟", () => {
     await page.keyboard.press("Escape");
     const wrapToggle = codeBlock.locator(".code-toolbar-wrap-toggle").first();
     await expect(wrapToggle).toBeVisible();
+    await expect(codeBlock.locator(".line-numbers")).toBeVisible();
     await wrapToggle.click();
     await expect(wrapToggle).toHaveClass(/code-toolbar-chip-active/);
     await expect(codeBlock.locator("pre .hljs").first()).toHaveCSS(
       "white-space",
       "pre-wrap",
     );
+    await expect(codeBlock.locator(".line-numbers")).toHaveCount(0);
   });
 
-  test("Markdown 导出与导入不再包含代码块备注元数据", async ({ page }) => {
+  test("Markdown 导出与导入支持代码块摘要与折叠状态", async ({ page }) => {
     await openWorkspace(page);
 
     const roundtrip = await page.evaluate(async () => {
@@ -531,7 +573,11 @@ test.describe("编辑器 P0 冒烟", () => {
         content: [
           {
             type: "codeBlock",
-            attrs: { language: "javascript" },
+            attrs: {
+              language: "javascript",
+              summary: "初始化脚本",
+              collapsed: true,
+            },
             content: [{ type: "text", text: "const answer = 42;" }],
           },
         ],
@@ -543,6 +589,17 @@ test.describe("编辑器 P0 冒烟", () => {
       const firstCodeBlock = importedNodes.find(
         (node: any) => node.type === "codeBlock",
       );
+      const plainDoc = {
+        type: "doc",
+        content: [
+          {
+            type: "codeBlock",
+            attrs: { language: "javascript" },
+            content: [{ type: "text", text: "const answer = 42;" }],
+          },
+        ],
+      };
+      const plainMarkdown = mod.jsonContentToMarkdown(plainDoc as any);
       const legacyImported = mod.importFromMarkdown(
         '<!-- goose-note:codeblock {"note":"旧备注"} -->\n```javascript\nconst answer = 42;\n```',
       );
@@ -555,13 +612,19 @@ test.describe("编辑器 P0 冒烟", () => {
 
       return {
         markdown,
+        plainMarkdown,
         restoredLanguage: firstCodeBlock?.attrs?.language || "",
+        restoredSummary: firstCodeBlock?.attrs?.summary || "",
+        restoredCollapsed: firstCodeBlock?.attrs?.collapsed === true,
         hasLegacyCommentParagraph,
       };
     });
 
-    expect(roundtrip.markdown).not.toContain("goose-note:codeblock");
+    expect(roundtrip.markdown).toContain("goose-note=");
+    expect(roundtrip.plainMarkdown).not.toContain("goose-note=");
     expect(roundtrip.restoredLanguage).toBe("javascript");
+    expect(roundtrip.restoredSummary).toBe("初始化脚本");
+    expect(roundtrip.restoredCollapsed).toBe(true);
     expect(roundtrip.hasLegacyCommentParagraph).toBe(false);
   });
 });
