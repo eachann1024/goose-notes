@@ -502,7 +502,8 @@
   cursor: pointer;
   opacity: 1;
   pointer-events: auto;
-  z-index: 11;
+  /* Keep heading toggle above drag handle so rapid re-click stays reliable. */
+  z-index: 60;
   transition: opacity 0.12s ease;
 }
 
