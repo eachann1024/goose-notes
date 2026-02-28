@@ -35,6 +35,7 @@ interface FindWidgetMeta {
 const editorFindPluginKey = new PluginKey<DecorationSet>(
   "goose-note-editor-find",
 );
+const IMAGE_PASTE_GUARD_KEY = "__gooseImagePasteHandled__";
 
 function collectFindMatches(
   doc: ProseMirrorNode,
@@ -900,23 +901,33 @@ export function Editor({ editable = true }: EditorProps) {
     (window as any).__gooseNoteEditor = editor;
 
     const handlePaste = async (event: ClipboardEvent) => {
-      const imageFile = getImageFromClipboard(event);
-      if (imageFile) {
-        event.preventDefault();
-        try {
-          const src = await processImageForStorageV2(imageFile);
-          const { state, view } = editor;
-          const nodeType =
-            state.schema.nodes.imageResize || state.schema.nodes.image;
-          if (!nodeType) return;
-          const imageNode = nodeType.create({ src });
-          const tr = state.tr.replaceSelectionWith(imageNode, false);
-          tr.setMeta("uiEvent", "paste");
-          tr.setMeta("addToHistory", true);
-          view.dispatch(tr.scrollIntoView());
-        } catch (err) {
-          console.error("Failed to paste image:", err);
-        }
+      const guardedEvent = event as ClipboardEvent & {
+        [IMAGE_PASTE_GUARD_KEY]?: boolean;
+      };
+      if (
+        guardedEvent.defaultPrevented ||
+        guardedEvent[IMAGE_PASTE_GUARD_KEY]
+      ) {
+        return;
+      }
+
+      const imageFile = getImageFromClipboard(guardedEvent);
+      if (!imageFile) return;
+
+      guardedEvent[IMAGE_PASTE_GUARD_KEY] = true;
+      guardedEvent.preventDefault();
+      try {
+        const src = await processImageForStorageV2(imageFile);
+        const { state, view } = editor;
+        const nodeType = state.schema.nodes.imageResize || state.schema.nodes.image;
+        if (!nodeType) return;
+        const imageNode = nodeType.create({ src });
+        const tr = state.tr.replaceSelectionWith(imageNode, false);
+        tr.setMeta("uiEvent", "paste");
+        tr.setMeta("addToHistory", true);
+        view.dispatch(tr.scrollIntoView());
+      } catch (err) {
+        console.error("Failed to paste image:", err);
       }
     };
 

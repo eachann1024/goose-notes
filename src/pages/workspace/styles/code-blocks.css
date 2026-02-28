@@ -147,17 +147,16 @@
   pointer-events: none;
   transform: translateY(-2px);
   transition:
-    opacity 0.14s ease,
-    transform 0.14s ease,
+    opacity 0.14s ease 0.5s,
+    transform 0.14s ease 0.5s,
     background-color 0.14s ease;
 }
 
-.code-block-node:hover .code-block-toolbar-actions,
-.code-block-node:focus-within .code-block-toolbar-actions,
-.code-block-node.is-active .code-block-toolbar-actions {
+.code-block-toolbar-actions:hover {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+  transition-delay: 0s;
 }
 
 .code-block-node.is-collapsed .code-block-content {

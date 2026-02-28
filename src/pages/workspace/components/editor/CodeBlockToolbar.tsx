@@ -131,7 +131,7 @@ export function CodeBlockToolbar({
       <div
         contentEditable={false}
         suppressContentEditableWarning
-        className="code-block-toolbar-actions inline-flex items-center gap-1 rounded-md bg-[var(--code-toolbar-surface)] p-1 backdrop-blur-[2px]"
+        className="code-block-toolbar-actions inline-flex items-center gap-1 rounded-md p-1"
       >
         <div className="code-block-toolbar-controls flex shrink-0 items-center gap-1">
           {editable && !isMathOrMermaid ? (
