@@ -234,31 +234,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
 
   return (
     <div ref={controlsRef}>
-      {(type === "row" || type === "both") && (
-        <div
-          role="button"
-          style={rowBarStyle}
-          className={barClasses}
-          onClick={handleAddRow}
-          onMouseEnter={suppressDragHandle}
-          onMouseLeave={restoreDragHandle}
-        >
-          <LucideIcons.Plus className="h-4 w-4" />
-        </div>
-      )}
 
-      {(type === "col" || type === "both") && (
-        <div
-          role="button"
-          style={colBarStyle}
-          className={barClasses}
-          onClick={handleAddCol}
-          onMouseEnter={suppressDragHandle}
-          onMouseLeave={restoreDragHandle}
-        >
-          <LucideIcons.Plus className="h-4 w-4" />
-        </div>
-      )}
     </div>
   );
 }
