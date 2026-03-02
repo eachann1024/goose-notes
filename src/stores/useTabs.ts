@@ -27,6 +27,15 @@ interface TabsState {
 const createTabId = (pageId: string) =>
   `tab-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${pageId.slice(0, 6)}`;
 
+let setActivePageChain: Promise<void> = Promise.resolve();
+
+const scheduleSetActivePage = (pageId: string | null) => {
+  setActivePageChain = setActivePageChain
+    .catch(() => {})
+    .then(() => usePages.getState().setActivePage(pageId));
+  return setActivePageChain;
+};
+
 export const useTabs = create<TabsState>()(
   persist(
     (set, get) => ({
@@ -50,7 +59,7 @@ export const useTabs = create<TabsState>()(
         if (existingTab) {
           set({ activeTabId: existingTab.id });
           get().syncNotebookForPage(pageId);
-          void usePages.getState().setActivePage(pageId);
+          void scheduleSetActivePage(pageId);
           return;
         }
 
@@ -65,7 +74,7 @@ export const useTabs = create<TabsState>()(
           activeTabId: newTab.id,
         });
         get().syncNotebookForPage(pageId);
-        void usePages.getState().setActivePage(pageId);
+        void scheduleSetActivePage(pageId);
       },
 
       openInCurrentTab: (pageId: string) => {
@@ -83,7 +92,7 @@ export const useTabs = create<TabsState>()(
         };
         set({ openTabs: nextTabs });
         get().syncNotebookForPage(pageId);
-        void usePages.getState().setActivePage(pageId);
+        void scheduleSetActivePage(pageId);
       },
 
       closeTab: (tabId: string) => {
@@ -104,7 +113,7 @@ export const useTabs = create<TabsState>()(
         set({ openTabs: nextTabs, activeTabId: nextActiveId });
         const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
         get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void usePages.getState().setActivePage(nextActiveTab?.pageId ?? null);
+        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
       },
 
       closeOtherTabs: (tabId: string) => {
@@ -113,7 +122,7 @@ export const useTabs = create<TabsState>()(
         if (!currentTab) return;
         set({ openTabs: [currentTab], activeTabId: currentTab.id });
         get().syncNotebookForPage(currentTab.pageId);
-        void usePages.getState().setActivePage(currentTab.pageId);
+        void scheduleSetActivePage(currentTab.pageId);
       },
 
       closeTabsToLeft: (tabId: string) => {
@@ -129,7 +138,7 @@ export const useTabs = create<TabsState>()(
         set({ openTabs: nextTabs, activeTabId: nextActiveId });
         const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
         get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void usePages.getState().setActivePage(nextActiveTab?.pageId ?? null);
+        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
       },
 
       closeTabsToRight: (tabId: string) => {
@@ -145,7 +154,7 @@ export const useTabs = create<TabsState>()(
         set({ openTabs: nextTabs, activeTabId: nextActiveId });
         const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
         get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void usePages.getState().setActivePage(nextActiveTab?.pageId ?? null);
+        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
       },
 
       setActiveTab: (tabId: string) => {
@@ -154,7 +163,7 @@ export const useTabs = create<TabsState>()(
         if (!tab) return;
         set({ activeTabId: tab.id });
         get().syncNotebookForPage(tab.pageId);
-        void usePages.getState().setActivePage(tab.pageId);
+        void scheduleSetActivePage(tab.pageId);
       },
 
       reorderTabs: (from: number, to: number) => {
@@ -186,7 +195,7 @@ export const useTabs = create<TabsState>()(
           return;
         }
         get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void usePages.getState().setActivePage(nextActiveTab?.pageId ?? null);
+        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
       },
     }),
     {
