@@ -1,0 +1,9 @@
+/* 修复代码块工具栏可见性：父级代码块 hover/focus/active 时显示右侧操作区 */
+.code-block-node:hover .code-block-toolbar-actions,
+.code-block-node:focus-within .code-block-toolbar-actions,
+.code-block-node.is-active .code-block-toolbar-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: 0s;
+}

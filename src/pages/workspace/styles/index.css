@@ -1,5 +1,6 @@
 @import "./editor-base.css";
 @import "./code-blocks.css";
+@import "./code-block-toolbar-fix.css";
 @import "./table.css";
 @import "./drag-handlers.css";
 @import "./sidebar-dnd.css";

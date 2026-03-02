@@ -117,14 +117,14 @@ export function CodeBlockToolbar({
   const isMathOrMermaid = language === "math" || language === "mermaid";
   const toolbarChipClass = cn(
     "transition-colors duration-150",
-    "border-0 bg-[var(--code-toolbar-chip-bg)] text-[var(--code-toolbar-chip-fg)] shadow-none",
+    "border border-[hsl(var(--border)/0.55)] bg-[var(--code-toolbar-chip-bg)] text-[var(--code-toolbar-chip-fg)] shadow-[0_1px_1px_hsl(var(--foreground)/0.04)]",
     "hover:bg-[var(--code-toolbar-chip-hover-bg)] hover:text-[var(--code-toolbar-chip-fg)]",
     "focus-visible:ring-0 focus-visible:ring-offset-0",
     "cursor-pointer",
     "rounded-md",
   );
   const toolbarChipActiveClass =
-    "code-toolbar-chip-active bg-[var(--code-toolbar-chip-active-bg)] text-[var(--code-toolbar-chip-active-fg)] hover:bg-[var(--code-toolbar-chip-active-bg)]";
+    "code-toolbar-chip-active border-[hsl(var(--border)/0.75)] bg-[var(--code-toolbar-chip-active-bg)] text-[var(--code-toolbar-chip-active-fg)] hover:bg-[var(--code-toolbar-chip-active-bg)]";
 
   return (
     <TooltipProvider>
