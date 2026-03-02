@@ -19,7 +19,7 @@
   width: 1.5rem;
   height: 1.8rem;
   z-index: 50;
-  cursor: grab;
+  cursor: pointer;
 }
 
 .drag-handle.hide {
@@ -42,8 +42,20 @@ body.drag-handle-suppressed .drag-handle {
   transition: background-color 0.2s;
 }
 
-.drag-handle:active {
+.drag-handle[data-drag-mode="drag"] {
+  cursor: grab;
+}
+
+.drag-handle[data-drag-mode="dragging"] {
   cursor: grabbing;
+}
+
+.drag-handle:active[data-drag-mode="drag"],
+.drag-handle:active[data-drag-mode="dragging"] {
+  cursor: grabbing;
+}
+
+.drag-handle:active {
   background-color: hsl(var(--muted));
 }
 

@@ -14,6 +14,8 @@ import { all, createLowlight } from "lowlight";
 import { configureSlashCommand } from "@/extensions/SlashCommand";
 import { ResizableImage } from "@/extensions/ResizableImage";
 import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
+import { DragHandleInteractionPatch } from "@/extensions/DragHandleInteractionPatch";
+import { BlockUpdatedAt } from "@/extensions/BlockUpdatedAt";
 import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
@@ -136,6 +138,8 @@ export const editorExtensions = [
     dragHandleWidth: 24,
     scrollTreshold: 100,
   }),
+  DragHandleInteractionPatch,
+  BlockUpdatedAt,
   Markdown.configure({
     html: true,
     tightLists: true,

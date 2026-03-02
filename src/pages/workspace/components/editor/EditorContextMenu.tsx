@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -14,6 +14,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import { UToolsAdapter } from "@/lib/utools";
 import type { CustomAction } from "@/stores/useSettings";
+import { DragHandleBlockMenu } from "./DragHandleBlockMenu";
 
 const isUTools = UToolsAdapter.isUTools;
 
@@ -28,6 +29,10 @@ interface EditorContextMenuProps {
   openSearchInUtools: boolean;
   customActions?: CustomAction[];
   children: React.ReactNode;
+}
+
+interface DragHandleClickDetail {
+  nodePos: number | null;
 }
 
 function getSelectionTextForClipboard(editor: Editor): string {
@@ -53,6 +58,20 @@ function getSelectionTextForClipboard(editor: Editor): string {
   return "";
 }
 
+function formatBlockEditTime(ts: unknown): string {
+  const value = typeof ts === "number" ? ts : Number(ts);
+  if (!Number.isFinite(value) || value <= 0) return "--";
+
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+}
+
 export function EditorContextMenu({
   editor,
   searchProviders,
@@ -62,6 +81,7 @@ export function EditorContextMenu({
 }: EditorContextMenuProps) {
   const isEditable = editor?.isEditable;
   const [selectedText, setSelectedText] = useState("");
+  const lastDragNodePosRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!editor) return;
@@ -96,10 +116,79 @@ export function EditorContextMenu({
   const previewText =
     selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText;
 
+  useEffect(() => {
+    const bridgeDragHandleClick = (event: Event) => {
+      const customEvent = event as CustomEvent<unknown>;
+      document.dispatchEvent(
+        new CustomEvent("drag-handle-click", {
+          detail: customEvent.detail,
+        }),
+      );
+    };
+
+    window.addEventListener("drag-handle-click", bridgeDragHandleClick);
+    return () => {
+      window.removeEventListener("drag-handle-click", bridgeDragHandleClick);
+    };
+  }, []);
+
+  const patchMenuBlockEditTime = useCallback(() => {
+    if (!editor) return;
+
+    const target = Array.from(document.querySelectorAll("div")).find((el) =>
+      (el.textContent || "").trim().startsWith("上次编辑于"),
+    );
+    if (!target) return;
+
+    const nodePos = lastDragNodePosRef.current;
+    const node = nodePos == null ? null : editor.state.doc.nodeAt(nodePos);
+    const formatted = formatBlockEditTime(node?.attrs?.blockUpdatedAt);
+    const nextText = `上次编辑于 ${formatted}`;
+
+    if (target.textContent !== nextText) {
+      target.textContent = nextText;
+    }
+  }, [editor]);
+
+  useEffect(() => {
+    const onDragHandleClickForTime = (event: Event) => {
+      const customEvent = event as CustomEvent<DragHandleClickDetail>;
+      lastDragNodePosRef.current = customEvent.detail?.nodePos ?? null;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          patchMenuBlockEditTime();
+        });
+      });
+    };
+
+    document.addEventListener("drag-handle-click", onDragHandleClickForTime);
+    return () => {
+      document.removeEventListener(
+        "drag-handle-click",
+        onDragHandleClickForTime,
+      );
+    };
+  }, [patchMenuBlockEditTime]);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      patchMenuBlockEditTime();
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    return () => {
+      observer.disconnect();
+    };
+  }, [patchMenuBlockEditTime]);
+
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="w-[160px]">
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger>{children}</ContextMenuTrigger>
+        <ContextMenuContent className="w-[160px]">
         {editor && hasSearchText && activeProviders.length > 0 && (
           <>
             <ContextMenuItem disabled className="text-xs text-muted-foreground">
@@ -193,7 +282,9 @@ export function EditorContextMenu({
             ⌘V
           </span>
         </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+        </ContextMenuContent>
+      </ContextMenu>
+      <DragHandleBlockMenu editor={editor} />
+    </>
   );
 }

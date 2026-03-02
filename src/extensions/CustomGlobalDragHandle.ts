@@ -96,6 +96,21 @@ function nodeDOMAtCoords(
 
 // --- Main Plugin ---
 
+// --- Auto-scroll helpers ---
+
+function findScrollContainer(el: Element): Element {
+  let parent = el.parentElement;
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    const overflow = style.overflowY;
+    if ((overflow === "auto" || overflow === "scroll") && parent.scrollHeight > parent.clientHeight) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return document.documentElement;
+}
+
 function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   let dragHandleElement: HTMLElement | null = null;
   let currentHoveredNode: Element | null = null;
@@ -104,6 +119,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
   let justDropped = false;
   let keepVisibleUntil = 0;
   let isHoveringHandle = false;
+  let autoScrollRafId: number | null = null;
+  let autoScrollDir: -1 | 0 | 1 = 0; // -1=up, 0=none, 1=down
 
   function hideDragHandle() {
     if (Date.now() < keepVisibleUntil) return;
@@ -444,6 +461,59 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       dragHandleElement.dataset.dragHandle = "";
       dragHandleElement.classList.add("drag-handle");
 
+      function onDragHandleClick(e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let node = currentHoveredNode;
+        if (node && !view.dom.contains(node)) {
+          node = null;
+        }
+        if (!node) {
+          const coords = getAdjustedCoords(e as any, options.dragHandleWidth);
+          node = nodeDOMAtCoords(coords, options, dragHandleElement) as Element | null;
+        }
+
+        let nodePos: number | null = null;
+        let nodeType: string | null = null;
+        if (node instanceof Element) {
+          const pos = nodePosAtDOM(node, view, options.dragHandleWidth);
+          const calcPos = pos == null ? null : calcNodePos(pos, view);
+          nodePos = calcPos;
+          if (nodePos != null) {
+            const pmNode = view.state.doc.nodeAt(nodePos);
+            nodeType = pmNode?.type.name ?? null;
+          }
+        }
+
+        const handleRect = dragHandleElement?.getBoundingClientRect() ?? {
+          top: e.clientY,
+          left: e.clientX,
+          right: e.clientX,
+          bottom: e.clientY,
+          width: 0,
+          height: 0,
+        };
+
+        window.dispatchEvent(
+          new CustomEvent("drag-handle-click", {
+            detail: {
+              nodePos,
+              nodeType,
+              anchorRect: {
+                top: handleRect.top,
+                left: handleRect.left,
+                right: handleRect.right,
+                bottom: handleRect.bottom,
+                width: handleRect.width,
+                height: handleRect.height,
+              },
+            },
+          }),
+        );
+      }
+      dragHandleElement.addEventListener("click", onDragHandleClick);
+
       function onDragHandleDragStart(e: DragEvent) {
         // Enforce state reset to prevent stale state from blocking new drag
         view.dragging = null;
@@ -458,17 +528,60 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       }
       dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
 
+      function stopAutoScroll() {
+        if (autoScrollRafId !== null) {
+          cancelAnimationFrame(autoScrollRafId);
+          autoScrollRafId = null;
+        }
+        autoScrollDir = 0;
+      }
+
+      function startAutoScrollLoop(scrollContainer: Element, dir: -1 | 1) {
+        const SPEED = 10;
+        const loop = () => {
+          scrollContainer.scrollTop += dir * SPEED;
+          autoScrollRafId = requestAnimationFrame(loop);
+        };
+        autoScrollRafId = requestAnimationFrame(loop);
+      }
+
       function onDragHandleDragEnd() {
         isDragging = false;
         view.dragging = null;
         hideDragHandle();
+        stopAutoScroll();
       }
       dragHandleElement.addEventListener("dragend", onDragHandleDragEnd);
 
-      function onDragHandleDrag() {
-        hideDragHandle();
+      // 使用 document dragover 事件监听鼠标位置来实现自动滚动
+      // 原因：HTML5 drag 事件的 clientY 在鼠标不在有效 drop 目标上时会为 0，不可靠
+      function onDocumentDragOver(e: DragEvent) {
+        if (!isDragging) return;
+        const SCROLL_THRESHOLD = options.scrollTreshold || 80;
+        const y = e.clientY;
+
+        const scrollContainer = findScrollContainer(view.dom);
+        const containerRect = scrollContainer.getBoundingClientRect();
+
+        if (y > containerRect.bottom - SCROLL_THRESHOLD) {
+          if (autoScrollDir !== 1) {
+            stopAutoScroll();
+            autoScrollDir = 1;
+            startAutoScrollLoop(scrollContainer, 1);
+          }
+        } else if (y < containerRect.top + SCROLL_THRESHOLD) {
+          if (autoScrollDir !== -1) {
+            stopAutoScroll();
+            autoScrollDir = -1;
+            startAutoScrollLoop(scrollContainer, -1);
+          }
+        } else {
+          if (autoScrollDir !== 0) {
+            stopAutoScroll();
+          }
+        }
       }
-      dragHandleElement.addEventListener("drag", onDragHandleDrag);
+      document.addEventListener("dragover", onDocumentDragOver);
 
       function onDragHandleMouseEnter() {
         isHoveringHandle = true;
@@ -611,12 +724,13 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             window.cancelAnimationFrame(mouseMoveRafId);
             mouseMoveRafId = null;
           }
+          stopAutoScroll();
           pendingMouseEvent = null;
           lastMouseCoords = null;
           if (!handleBySelector) {
             dragHandleElement?.remove();
           }
-          dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
+          document.removeEventListener("dragover", onDocumentDragOver);
           dragHandleElement?.removeEventListener(
             "dragstart",
             onDragHandleDragStart,
@@ -633,6 +747,7 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
             handleMouseMove as any,
           );
           dragHandleElement?.removeEventListener("dragend", onDragHandleDragEnd);
+          dragHandleElement?.removeEventListener("click", onDragHandleClick);
           dragHandleElement = null;
         },
       };
