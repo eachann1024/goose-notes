@@ -26,6 +26,7 @@ import { InlineCodeInputRule } from "@/extensions/InlineCodeInputRule";
 import { InlineMath } from "@/extensions/InlineMath";
 import { Callout } from "@/extensions/Callout";
 import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
+import { ProtectedImagePasteHandler } from "@/extensions/ProtectedImagePasteHandler";
 import { SelectableHorizontalRule } from "@/extensions/SelectableHorizontalRule";
 import { EditorPasteHandler } from "@/extensions/EditorPasteHandler";
 import { ClipboardSerializer } from "@/extensions/ClipboardSerializer";
@@ -186,6 +187,7 @@ export const editorExtensions = [
     nocookie: true,
   }),
   Typography,
+  ProtectedImagePasteHandler,
   LinkPasteHandler,
   EditorPasteHandler,
   SmartSelectAll,
