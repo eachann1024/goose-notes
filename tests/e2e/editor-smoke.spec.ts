@@ -343,6 +343,8 @@ test.describe("编辑器 P0 冒烟", () => {
     await expect(linkToolbar).toBeVisible();
 
     await linkToolbar.getByRole("button", { name: "编辑链接" }).click();
+    await page.waitForTimeout(250);
+    await expect(page.getByPlaceholder("链接文字")).toBeVisible();
 
     const nextTitle = `示例链接-${Date.now()}`;
     const nextUrl = `https://example.org/docs/${Date.now()}`;
