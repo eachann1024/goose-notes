@@ -6,21 +6,6 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
 
   return [
     {
-      title: "文本",
-      description: "开始输入纯文本",
-      searchTerms: ["text", "wenben", "p"],
-      icon: LucideIcons.Type,
-      shortcut: '""',
-      command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .toggleNode("paragraph", "paragraph")
-          .run();
-      },
-    },
-    {
       title: "一级标题",
       description: "大标题",
       searchTerms: ["h1", "heading1", "title", "biaoti"],
@@ -109,7 +94,57 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       },
     },
     {
+      title: "标注",
+      description: "插入带图标的重点标注块",
+      searchTerms: ["callout", "annotation", "info", "biaozhu", "tishi"],
+      icon: LucideIcons.Info,
+      shortcut: "co",
+      command: ({ editor, range }: any) => {
+        editor.chain().focus().deleteRange(range).setCallout().run();
+      },
+    },
+    {
+      title: "分隔线",
+      description: "插入一条水平分割线",
+      searchTerms: ["divider", "separator", "hr", "fengexian"],
+      icon: LucideIcons.Minus,
+      shortcut: "---",
+      command: ({ editor, range }: any) => {
+        editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+      },
+    },
+    {
       type: "divider",
+    },
+    {
+      title: "表格",
+      description: "插入一个简单的表格",
+      searchTerms: ["table", "biaoge"],
+      icon: LucideIcons.Table,
+      shortcut: "tb",
+      command: ({ editor, range }: any) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run();
+      },
+    },
+    {
+      title: "代码块",
+      description: "插入带语法高亮的代码块",
+      searchTerms: ["code", "block", "daima"],
+      icon: LucideIcons.Code,
+      shortcut: "```",
+      command: ({ editor, range }: any) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .toggleCodeBlock({ language: "markdown" })
+          .run();
+      },
     },
     {
       title: "数学公式",
@@ -142,36 +177,6 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       },
     },
     {
-      title: "代码块",
-      description: "插入带语法高亮的代码块",
-      searchTerms: ["code", "block", "daima"],
-      icon: LucideIcons.Code,
-      shortcut: "```",
-      command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .toggleCodeBlock({ language: "markdown" })
-          .run();
-      },
-    },
-    {
-      title: "表格",
-      description: "插入一个简单的表格",
-      searchTerms: ["table", "biaoge"],
-      icon: LucideIcons.Table,
-      shortcut: "tb",
-      command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-          .run();
-      },
-    },
-    {
       title: "图片",
       description: "插入图片选择器模块",
       searchTerms: ["image", "photo", "tupian", "img"],
@@ -179,39 +184,6 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       shortcut: "img",
       command: ({ editor, range }: any) => {
         editor.chain().focus().deleteRange(range).setImagePlaceholder().run();
-      },
-    },
-    {
-      type: "divider",
-    },
-    {
-      title: "折叠列表",
-      description: "插入可折叠的内容块 (Toggle)",
-      searchTerms: ["details", "toggle", "zhedie"],
-      icon: LucideIcons.ChevronDownSquare,
-      shortcut: "tg",
-      command: ({ editor, range }: any) => {
-        editor.chain().focus().deleteRange(range).setDetails().run();
-      },
-    },
-    {
-      title: "提示框",
-      description: "插入带图标的重点提示 (Callout)",
-      searchTerms: ["callout", "info", "tishi"],
-      icon: LucideIcons.Info,
-      shortcut: "co",
-      command: ({ editor, range }: any) => {
-        editor.chain().focus().deleteRange(range).setCallout().run();
-      },
-    },
-    {
-      title: "分隔线",
-      description: "插入一条水平分割线",
-      searchTerms: ["divider", "separator", "hr", "fengexian"],
-      icon: LucideIcons.Minus,
-      shortcut: "---",
-      command: ({ editor, range }: any) => {
-        editor.chain().focus().deleteRange(range).setHorizontalRule().run();
       },
     },
 

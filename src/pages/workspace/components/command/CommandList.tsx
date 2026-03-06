@@ -143,7 +143,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         className="z-50 w-[240px] flex flex-col gap-1.5 p-1 rounded-xl border border-border/75 bg-popover text-popover-foreground shadow-[0_10px_26px_rgba(15,23,42,0.12)] transition-all"
       >
         <div className="text-[10px] font-medium text-muted-foreground px-2 py-1 select-none">
-          基本区块
+          基础模块
         </div>
 
         <div className="flex flex-col gap-[1px] max-h-[260px] overflow-y-auto scrollbar-hide">
