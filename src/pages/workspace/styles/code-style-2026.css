@@ -1,0 +1,65 @@
+/*
+ * 2026 code-style pack overrides:
+ * - nord => Dracula (auto light/dark)
+ * - github-light-mod => Tokyo Day (night style light-side)
+ */
+
+/* Dracula Light (used when class 'nord' is selected in light mode) */
+.nord {
+  --code-bg: #f7f7fb;
+  --code-fg: #2b2d42;
+  --code-border: #d9dbe8;
+  --code-line-number: #8b8fab;
+}
+.nord .ProseMirror pre .hljs-keyword { color: #9f3dbf; }
+.nord .ProseMirror pre .hljs-title { color: #0f79c1; }
+.nord .ProseMirror pre .hljs-string { color: #2f8f4e; }
+.nord .ProseMirror pre .hljs-comment {
+  color: #8b8fab;
+  font-style: italic;
+}
+.nord .ProseMirror pre .hljs-number { color: #c65d18; }
+.nord .ProseMirror pre .hljs-built_in { color: #0d7a9e; }
+.nord .ProseMirror pre .hljs-variable,
+.nord .ProseMirror pre .hljs-name { color: #1f63b8; }
+.nord .ProseMirror pre .hljs-function { color: #7a49c6; }
+
+/* Dracula Dark */
+.dark.nord {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-border: #44475a;
+  --code-line-number: #6272a4;
+}
+.dark.nord .ProseMirror pre .hljs-keyword { color: #ff79c6; }
+.dark.nord .ProseMirror pre .hljs-title { color: #50fa7b; }
+.dark.nord .ProseMirror pre .hljs-string { color: #f1fa8c; }
+.dark.nord .ProseMirror pre .hljs-comment {
+  color: #6272a4;
+  font-style: italic;
+}
+.dark.nord .ProseMirror pre .hljs-number { color: #bd93f9; }
+.dark.nord .ProseMirror pre .hljs-built_in { color: #8be9fd; }
+.dark.nord .ProseMirror pre .hljs-variable,
+.dark.nord .ProseMirror pre .hljs-name { color: #ffb86c; }
+.dark.nord .ProseMirror pre .hljs-function { color: #50fa7b; }
+
+/* Tokyo Day (used by 'night' style on light mode via github-light-mod class) */
+.github-light-mod {
+  --code-bg: #e9e9f4;
+  --code-fg: #2f354f;
+  --code-border: #cfd3e6;
+  --code-line-number: #8d92b3;
+}
+.github-light-mod .ProseMirror pre .hljs-keyword { color: #9854f1; }
+.github-light-mod .ProseMirror pre .hljs-title { color: #2959aa; }
+.github-light-mod .ProseMirror pre .hljs-string { color: #587539; }
+.github-light-mod .ProseMirror pre .hljs-number { color: #b15c00; }
+.github-light-mod .ProseMirror pre .hljs-comment {
+  color: #848cb5;
+  font-style: italic;
+}
+.github-light-mod .ProseMirror pre .hljs-built_in { color: #0f4b6e; }
+.github-light-mod .ProseMirror pre .hljs-variable,
+.github-light-mod .ProseMirror pre .hljs-name { color: #006a83; }
+.github-light-mod .ProseMirror pre .hljs-function { color: #2959aa; }

@@ -5,6 +5,14 @@ import "./index.css";
 import "./fonts.css";
 import App from "./App.tsx";
 import { applyFontVariables, preloadFonts } from "./lib/fontLoader";
+import {
+  migrateCodeStyleTo2026,
+  runCodeStyleMigration2026,
+} from "./lib/code-style-migration";
+import {
+  decodeUnsupportedMarkdownForDisk,
+  encodeUnsupportedMarkdownForEditor,
+} from "./lib/markdown-raw-guard";
 import { flushUToolsStorageWrites } from "./lib/storage";
 import { UToolsAdapter } from "./lib/utools";
 import { usePages } from "./stores/usePages";
@@ -15,8 +23,16 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-const settings = useSettings.getState();
 let flushInFlight: Promise<void> | null = null;
+const MARKDOWN_OPEN_WRITE_BLOCK_MS = 5000;
+const markdownReadSnapshots = new Map<
+  string,
+  {
+    readAt: number;
+    content: string;
+  }
+>();
+const markdownMutationAtByPath = new Map<string, number>();
 
 const flushAllPendingWrites = async () => {
   window.dispatchEvent(
@@ -34,6 +50,169 @@ const runFlushOnce = () => {
     flushInFlight = null;
   });
   return flushInFlight;
+};
+
+const isMarkdownPath = (filePath: string) => /\.(md|markdown)$/i.test(filePath);
+const normalizeFilePath = (filePath: string) => filePath.replace(/\\/g, "/");
+
+const captureMarkdownRead = (filePath: string, content: string | null | undefined) => {
+  if (!isMarkdownPath(filePath)) return;
+  if (typeof content !== "string") return;
+  markdownReadSnapshots.set(normalizeFilePath(filePath), {
+    readAt: Date.now(),
+    content,
+  });
+};
+
+const setupEditorMutationTracker = () => {
+  if (typeof document === "undefined") return;
+  const hostWindow = window as Window & {
+    __gooseNoteEditorMutationTrackerInstalled?: boolean;
+  };
+  if (hostWindow.__gooseNoteEditorMutationTrackerInstalled) return;
+  hostWindow.__gooseNoteEditorMutationTrackerInstalled = true;
+
+  const markMutationIfFromEditor = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    const baseElement =
+      target instanceof Element ? target : target.parentElement;
+    if (!baseElement?.closest(".ProseMirror")) return;
+
+    const pagesState = usePages.getState();
+    const activePageId = pagesState.activePageId;
+    if (!activePageId) return;
+    const activePage = pagesState.pages[activePageId];
+    const localFilePath =
+      typeof activePage?.localFilePath === "string"
+        ? activePage.localFilePath
+        : null;
+    if (!localFilePath || !isMarkdownPath(localFilePath)) return;
+
+    markdownMutationAtByPath.set(
+      normalizeFilePath(localFilePath),
+      Date.now(),
+    );
+  };
+
+  document.addEventListener("beforeinput", markMutationIfFromEditor, true);
+  document.addEventListener("paste", markMutationIfFromEditor, true);
+  document.addEventListener("drop", markMutationIfFromEditor, true);
+  document.addEventListener("cut", markMutationIfFromEditor, true);
+};
+
+const setupMarkdownOpenWriteGuard = () => {
+  if (typeof window === "undefined") return;
+  const gooseFs = window.gooseFs;
+  if (!gooseFs) return;
+
+  const hostWindow = window as Window & {
+    __gooseNoteMarkdownOpenWriteGuardInstalled?: boolean;
+  };
+  if (hostWindow.__gooseNoteMarkdownOpenWriteGuardInstalled) return;
+  hostWindow.__gooseNoteMarkdownOpenWriteGuardInstalled = true;
+
+  const shouldBlockWrite = (filePath: string, content: string) => {
+    const normalizedPath = normalizeFilePath(filePath);
+    if (!isMarkdownPath(normalizedPath)) return false;
+    const snapshot = markdownReadSnapshots.get(normalizedPath);
+    if (!snapshot) return false;
+    const now = Date.now();
+    if (now - snapshot.readAt > MARKDOWN_OPEN_WRITE_BLOCK_MS) return false;
+    const lastMutationAt = markdownMutationAtByPath.get(normalizedPath) ?? 0;
+    if (lastMutationAt > snapshot.readAt) return false;
+    if (content === snapshot.content) return false;
+    return true;
+  };
+
+  const readFileAsync = gooseFs.readFileAsync?.bind(gooseFs);
+  if (readFileAsync) {
+    gooseFs.readFileAsync = async (filePath: string) => {
+      const rawContent = await readFileAsync(filePath);
+      captureMarkdownRead(filePath, rawContent);
+      if (typeof rawContent !== "string") return rawContent;
+      return encodeUnsupportedMarkdownForEditor(rawContent);
+    };
+  }
+
+  const readFile = gooseFs.readFile.bind(gooseFs);
+  gooseFs.readFile = (filePath: string) => {
+    const rawContent = readFile(filePath);
+    captureMarkdownRead(filePath, rawContent);
+    if (typeof rawContent !== "string") return rawContent;
+    return encodeUnsupportedMarkdownForEditor(rawContent);
+  };
+
+  const writeFileAsync = gooseFs.writeFileAsync?.bind(gooseFs);
+  if (writeFileAsync) {
+    gooseFs.writeFileAsync = async (
+      filePath: string,
+      content: string,
+      encoding?: string,
+    ) => {
+      const diskContent = decodeUnsupportedMarkdownForDisk(content);
+      if (shouldBlockWrite(filePath, diskContent)) {
+        console.warn("[Markdown Guard] Blocked auto write after open:", filePath);
+        return true;
+      }
+      return writeFileAsync(filePath, diskContent, encoding);
+    };
+  }
+
+  const writeFile = gooseFs.writeFile.bind(gooseFs);
+  gooseFs.writeFile = (filePath: string, content: string, encoding?: string) => {
+    const diskContent = decodeUnsupportedMarkdownForDisk(content);
+    if (shouldBlockWrite(filePath, diskContent)) {
+      console.warn("[Markdown Guard] Blocked auto write after open:", filePath);
+      return true;
+    }
+    return writeFile(filePath, diskContent, encoding);
+  };
+};
+
+const setupLocalContentUpdateGuard = () => {
+  if (typeof window === "undefined") return;
+  const hostWindow = window as Window & {
+    __gooseNoteLocalContentUpdateGuardInstalled?: boolean;
+  };
+  if (hostWindow.__gooseNoteLocalContentUpdateGuardInstalled) return;
+  hostWindow.__gooseNoteLocalContentUpdateGuardInstalled = true;
+
+  const store = usePages;
+  const originalUpdatePage = store.getState().updatePage;
+
+  store.setState({
+    updatePage: (id, updates) => {
+      const state = store.getState();
+      const page = state.pages[id];
+      const localFilePath =
+        typeof page?.localFilePath === "string"
+          ? normalizeFilePath(page.localFilePath)
+          : null;
+      const hasOnlyContentUpdate =
+        Object.keys(updates).length === 1 && Boolean(updates.content);
+
+      if (
+        localFilePath &&
+        hasOnlyContentUpdate &&
+        state.activePageId === id
+      ) {
+        const snapshot = markdownReadSnapshots.get(localFilePath);
+        const lastMutationAt = markdownMutationAtByPath.get(localFilePath) ?? 0;
+        const isInOpenWindow =
+          Boolean(snapshot) &&
+          Date.now() - (snapshot?.readAt ?? 0) <= MARKDOWN_OPEN_WRITE_BLOCK_MS;
+        const hasNoRealEdit = !snapshot || lastMutationAt <= snapshot.readAt;
+
+        // 拦截打开时由程序化 setContent 触发的 updatePage，避免列表排序闪烁。
+        if (isInOpenWindow && hasNoRealEdit) {
+          return;
+        }
+      }
+
+      originalUpdatePage(id, updates);
+    },
+  });
 };
 
 const setupSaveGuards = () => {
@@ -88,7 +267,19 @@ const initHostFs = async () => {
 
 const bootstrap = async () => {
   await initHostFs();
+  setupEditorMutationTracker();
+  setupMarkdownOpenWriteGuard();
+  setupLocalContentUpdateGuard();
   setupSaveGuards();
+  await runCodeStyleMigration2026();
+
+  const settingsStore = useSettings.getState();
+  const migratedCodeStyle = migrateCodeStyleTo2026(settingsStore.codeStyle);
+  if (migratedCodeStyle !== settingsStore.codeStyle) {
+    settingsStore.setCodeStyle(migratedCodeStyle);
+  }
+
+  const settings = useSettings.getState();
   applyFontVariables(settings.customFonts);
   preloadFonts();
 

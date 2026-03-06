@@ -1,5 +1,8 @@
 @import "./editor-base.css";
 @import "./code-blocks.css";
+@import "./code-style-2026.css";
+@import "./block-colors.css";
+@import "./code-preview-surface-fix.css";
 @import "./code-block-toolbar-fix.css";
 @import "./table.css";
 @import "./drag-handlers.css";
