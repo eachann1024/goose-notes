@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Trash2, ChevronRight, StretchHorizontal, PanelTop, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BLOCK_BG_COLORS } from "@/lib/blockColorPresets";
 import type { Editor } from "@tiptap/core";
 
 interface AnchorRect {
@@ -22,6 +23,16 @@ interface DragHandleBlockMenuProps {
   editor: Editor | null;
 }
 
+interface BlockColorAttrs {
+  blockTextColor: string | null;
+  blockBgColor: string | null;
+}
+
+interface OpenPanels {
+  text: boolean;
+  bg: boolean;
+}
+
 // ---- 颜色预设 ----
 const TEXT_COLORS = [
   { label: "默认", value: null, css: "rgba(55,53,47,0.85)", darkCss: "rgba(255,255,255,0.81)" },
@@ -34,19 +45,6 @@ const TEXT_COLORS = [
   { label: "紫色", value: "purple", css: "#9065B0" },
   { label: "粉红", value: "pink", css: "#C14C8A" },
   { label: "红色", value: "red", css: "#D44C47" },
-];
-
-const BG_COLORS = [
-  { label: "默认", value: null, css: "transparent", border: true },
-  { label: "灰色背景", value: "gray", css: "#F1F1EF" },
-  { label: "棕色背景", value: "brown", css: "#F4EEEE" },
-  { label: "橙色背景", value: "orange", css: "#FDEECE" },
-  { label: "黄色背景", value: "yellow", css: "#FBF3DB" },
-  { label: "绿色背景", value: "green", css: "#EDF3EC" },
-  { label: "蓝色背景", value: "blue", css: "#E7F3F8" },
-  { label: "紫色背景", value: "purple", css: "#F4F0F8" },
-  { label: "粉红背景", value: "pink", css: "#FAF0F5" },
-  { label: "红色背景", value: "red", css: "#FDEBEC" },
 ];
 
 function formatEditTime(ts: number | undefined): string {
@@ -103,8 +101,15 @@ const MENU_WIDTH = 180;
 
 export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
   const [open, setOpen] = useState(false);
-  const [openPanel, setOpenPanel] = useState<"text" | "bg" | null>(null);
+  const [openPanels, setOpenPanels] = useState<OpenPanels>({
+    text: false,
+    bg: false,
+  });
   const [detail, setDetail] = useState<DragHandleClickDetail | null>(null);
+  const [liveAttrs, setLiveAttrs] = useState<BlockColorAttrs>({
+    blockTextColor: null,
+    blockBgColor: null,
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 页面编辑时间
@@ -116,7 +121,7 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
     const ev = e as CustomEvent<DragHandleClickDetail>;
     setDetail(ev.detail);
     setOpen(true);
-    setOpenPanel(null);
+    setOpenPanels({ text: false, bg: false });
   }, []);
 
   useEffect(() => {
@@ -130,7 +135,7 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
     const onPD = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false);
-        setOpenPanel(null);
+        setOpenPanels({ text: false, bg: false });
       }
     };
     document.addEventListener("pointerdown", onPD, { capture: true });
@@ -148,15 +153,51 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
     return () => handleEl?.classList.remove("active");
   }, [open]);
 
-  const close = () => { setOpen(false); setOpenPanel(null); };
+  const close = () => {
+    setOpen(false);
+    setOpenPanels({ text: false, bg: false });
+  };
+
+  const togglePanel = (panel: keyof OpenPanels) => {
+    setOpenPanels((prev) => ({ ...prev, [panel]: !prev[panel] }));
+  };
 
   // ---- 当前块属性 ----
-  const currentAttrs = (() => {
-    if (!editor || detail?.nodePos == null) return null;
-    try { return editor.state.doc.nodeAt(detail.nodePos)?.attrs ?? null; } catch { return null; }
-  })();
+  const readCurrentAttrs = useCallback((): BlockColorAttrs => {
+    if (!editor || detail?.nodePos == null) {
+      return {
+        blockTextColor: null,
+        blockBgColor: null,
+      };
+    }
+    try {
+      const attrs = editor.state.doc.nodeAt(detail.nodePos)?.attrs ?? null;
+      return {
+        blockTextColor: attrs?.blockTextColor ?? null,
+        blockBgColor: attrs?.blockBgColor ?? null,
+      };
+    } catch {
+      return {
+        blockTextColor: null,
+        blockBgColor: null,
+      };
+    }
+  }, [detail?.nodePos, editor]);
 
-  const setBlockAttr = (key: string, value: string | null) => {
+  useEffect(() => {
+    setLiveAttrs(readCurrentAttrs());
+  }, [open, readCurrentAttrs]);
+
+  useEffect(() => {
+    if (!editor || !open) return;
+    const syncAttrs = () => setLiveAttrs(readCurrentAttrs());
+    editor.on("transaction", syncAttrs);
+    return () => {
+      editor.off("transaction", syncAttrs);
+    };
+  }, [editor, open, readCurrentAttrs]);
+
+  const setBlockAttr = (key: keyof BlockColorAttrs, value: string | null) => {
     if (!editor || detail?.nodePos == null) return;
     const pos = detail.nodePos;
     editor.chain().focus().command(({ tr, state, dispatch }) => {
@@ -168,23 +209,30 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
           state.doc.nodesBetween(pos, pos + node.nodeSize, (child, childPos) => {
             if (child.isText && child.marks.length > 0) {
               if (key === "blockTextColor") {
-                const textStyleMark = child.marks.find(m => m.type.name === 'textStyle');
+                const textStyleMark = child.marks.find((m) => m.type.name === "textStyle");
                 if (textStyleMark && textStyleMark.attrs.color) {
                   tr.removeMark(childPos, childPos + child.nodeSize, textStyleMark);
                 }
               }
               if (key === "blockBgColor") {
-                const highlightMark = child.marks.find(m => m.type.name === 'highlight');
+                const highlightMark = child.marks.find((m) => m.type.name === "highlight");
                 if (highlightMark) {
                   tr.removeMark(childPos, childPos + child.nodeSize, highlightMark);
                 }
               }
             }
           });
+          if (key === "blockTextColor" && state.schema.marks.textStyle) {
+            tr.removeStoredMark(state.schema.marks.textStyle);
+          }
+          if (key === "blockBgColor" && state.schema.marks.highlight) {
+            tr.removeStoredMark(state.schema.marks.highlight);
+          }
         }
       }
       return true;
     }).run();
+    setLiveAttrs((prev) => ({ ...prev, [key]: value }));
   };
 
   // ---- 删除 ----
@@ -216,18 +264,20 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
 
   // 防止超出屏幕底部
   const maxBottom = window.innerHeight - 12;
-  const estimatedHeight = openPanel ? 260 : 140;
+  const expandedPanelCount = Number(openPanels.text) + Number(openPanels.bg);
+  const estimatedHeight = 140 + expandedPanelCount * 120;
   let menuTop = anchorRect.top;
   if (menuTop + estimatedHeight > maxBottom) {
     menuTop = Math.max(8, maxBottom - estimatedHeight);
   }
 
-  const curTextColor = currentAttrs?.blockTextColor ?? null;
-  const curBgColor = currentAttrs?.blockBgColor ?? null;
+  const curTextColor = liveAttrs.blockTextColor;
+  const curBgColor = liveAttrs.blockBgColor;
 
   // ---- 颜色预览条 ----
   const textColorEntry = TEXT_COLORS.find((c) => c.value === curTextColor) ?? TEXT_COLORS[0];
-  const bgColorEntry = BG_COLORS.find((c) => c.value === curBgColor) ?? BG_COLORS[0];
+  const bgColorEntry =
+    BLOCK_BG_COLORS.find((c) => c.value === curBgColor) ?? BLOCK_BG_COLORS[0];
 
   const isTable = detail?.nodeType === "table";
 
@@ -307,7 +357,7 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
             {/* 颜色 - 字体颜色 */}
             <button
               type="button"
-              onClick={() => setOpenPanel(openPanel === "text" ? null : "text")}
+              onClick={() => togglePanel("text")}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--goose-interactive-selected)] transition-colors"
             >
               {/* 字体颜色预览 */}
@@ -324,13 +374,13 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
               <ChevronRight
                 className={cn(
                   "h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-150",
-                  openPanel === "text" && "rotate-90"
+                  openPanels.text && "rotate-90"
                 )}
               />
             </button>
 
             {/* 字体颜色面板 */}
-            {openPanel === "text" && (
+            {openPanels.text && (
               <div className="px-3 pb-2.5 pt-1">
                 <div className="flex flex-wrap gap-1.5">
                   {TEXT_COLORS.map((c) => (
@@ -352,7 +402,7 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
             {/* 颜色 - 背景颜色 */}
             <button
               type="button"
-              onClick={() => setOpenPanel(openPanel === "bg" ? null : "bg")}
+              onClick={() => togglePanel("bg")}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--goose-interactive-selected)] transition-colors"
             >
               {/* 背景颜色预览 */}
@@ -369,16 +419,16 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
               <ChevronRight
                 className={cn(
                   "h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-150",
-                  openPanel === "bg" && "rotate-90"
+                  openPanels.bg && "rotate-90"
                 )}
               />
             </button>
 
             {/* 背景颜色面板 */}
-            {openPanel === "bg" && (
+            {openPanels.bg && (
               <div className="px-3 pb-2.5 pt-1">
                 <div className="flex flex-wrap gap-1.5">
-                  {BG_COLORS.map((c) => (
+                  {BLOCK_BG_COLORS.map((c) => (
                     <ColorDot
                       key={c.value ?? "default"}
                       css={c.css}

@@ -122,6 +122,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
 
   const handleEdit = () => {
     if (!linkElement) return;
+    clearHideTimeout();
     setEditUrl(linkElement.getAttribute("href") || "");
     setEditText(linkElement.textContent || "");
     setIsEditing(true);
@@ -286,24 +287,17 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
           </div>
         ) : (
           <div className="flex items-center gap-0.5">
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleOpenLink}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 max-w-[220px] gap-1.5 rounded-md px-2 text-foreground/90 transition-colors hover:bg-muted"
-                  aria-label={href}
-                >
-                  <LucideIcons.ExternalLink className="h-[15px] w-[15px] flex-shrink-0" />
-                  <span className="truncate text-xs font-medium">{displayUrl}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[360px] whitespace-normal break-all">
-                {href}
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              onClick={handleOpenLink}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 max-w-[220px] gap-1.5 rounded-md px-2 text-foreground/90 transition-colors hover:bg-muted"
+              aria-label={href}
+            >
+              <LucideIcons.ExternalLink className="h-[15px] w-[15px] flex-shrink-0" />
+              <span className="truncate text-xs font-medium">{displayUrl}</span>
+            </Button>
 
             <Separator orientation="vertical" className="h-5 opacity-70" />
 

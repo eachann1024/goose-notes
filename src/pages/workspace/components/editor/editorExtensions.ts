@@ -25,6 +25,7 @@ import { InlineCodeFix } from "@/extensions/InlineCodeFix";
 import { InlineCodeInputRule } from "@/extensions/InlineCodeInputRule";
 import { InlineMath } from "@/extensions/InlineMath";
 import { Callout } from "@/extensions/Callout";
+import { BlockColors } from "@/extensions/BlockColors";
 import { LinkPasteHandler } from "@/extensions/LinkPasteHandler";
 import { ProtectedImagePasteHandler } from "@/extensions/ProtectedImagePasteHandler";
 import { SelectableHorizontalRule } from "@/extensions/SelectableHorizontalRule";
@@ -35,6 +36,7 @@ import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
 import Superscript from "@tiptap/extension-superscript";
 import Subscript from "@tiptap/extension-subscript";
+import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
@@ -156,6 +158,7 @@ export const editorExtensions = [
   // Underline, // Duplicate extension names found: ['underline']
   TextStyle,
   Color,
+  BlockColors,
   Superscript,
   Subscript,
   Highlight.configure({
@@ -164,24 +167,13 @@ export const editorExtensions = [
   TextAlign.configure({
     types: ["heading", "paragraph"],
   }),
-  // Details.configure({
-  //   HTMLAttributes: {
-  //     class: "details-wrapper",
-  //   },
-  // }).extend({
-  //   addInputRules() {
-  //     return [
-  //       new InputRule({
-  //         find: /^>>\s$/,
-  //         handler: ({ chain, range }) => {
-  //           chain().deleteRange(range).setDetails().run();
-  //         },
-  //       }),
-  //     ];
-  //   },
-  // }),
-  // DetailsSummary,
-  // DetailsContent,
+  Details.configure({
+    HTMLAttributes: {
+      class: "details-wrapper",
+    },
+  }),
+  DetailsSummary,
+  DetailsContent,
   Youtube.configure({
     controls: false,
     nocookie: true,

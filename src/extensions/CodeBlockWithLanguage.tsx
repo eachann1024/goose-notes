@@ -65,7 +65,8 @@ function CodeBlockWithLanguageView({
   const summary =
     typeof node.attrs.summary === "string" ? node.attrs.summary : "";
   const wrapStyle: React.CSSProperties = {
-    whiteSpace: wrap ? "pre-wrap" : "pre",
+    // `break-spaces` keeps whitespace-only lines editable when soft wrap is enabled.
+    whiteSpace: wrap ? "break-spaces" : "pre",
     wordBreak: wrap ? "break-word" : "normal",
     overflowWrap: wrap ? "anywhere" : "normal",
   };
