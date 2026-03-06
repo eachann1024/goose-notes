@@ -14,10 +14,23 @@ export interface Notebook {
   localPathMissing?: boolean;
 }
 
+export type LocalFolderLoadStatus = "idle" | "loading" | "ready";
+
+export interface LocalFolderLoadState {
+  status: LocalFolderLoadStatus;
+  startedAt?: number;
+  finishedAt?: number;
+}
+
+const IDLE_LOCAL_FOLDER_LOAD_STATE: LocalFolderLoadState = {
+  status: "idle",
+};
+
 interface NotebooksState {
   notebooks: Record<string, Notebook>;
   activeNotebookId: string | null;
   lastActivePageByNotebook: Record<string, string | null>;
+  localFolderLoadStates: Record<string, LocalFolderLoadState>;
 
   createNotebook: (name?: string, icon?: string) => string;
   createLocalFolderNotebook: (name: string, localPath: string) => string;
@@ -30,6 +43,11 @@ interface NotebooksState {
   getNotebook: (id: string) => Notebook | undefined;
   setLastActivePage: (notebookId: string, pageId: string | null) => void;
   getLastActivePage: (notebookId: string) => string | null;
+  setLocalFolderLoadState: (
+    notebookId: string,
+    state: LocalFolderLoadState,
+  ) => void;
+  getLocalFolderLoadState: (notebookId: string) => LocalFolderLoadState;
 }
 
 // 生成唯一ID
@@ -54,6 +72,7 @@ export const useNotebooks = create<NotebooksState>()(
       },
       activeNotebookId: DEFAULT_NOTEBOOK_ID,
       lastActivePageByNotebook: {},
+      localFolderLoadStates: {},
 
       createNotebook: (name = "Note", icon = "📓") => {
         // 检查是否存在同名笔记本，生成唯一名称
@@ -138,45 +157,91 @@ export const useNotebooks = create<NotebooksState>()(
       },
 
       deleteNotebook: (id) => {
-        const notebookCount = Object.keys(get().notebooks).length;
+        const state = get();
+        const notebookCount = Object.keys(state.notebooks).length;
         if (notebookCount <= 1) return;
 
-        const notebook = get().notebooks[id];
         const pagesStore = usePages.getState();
-        if (notebook?.source === "local-folder") {
-          pagesStore.removePagesByWorkspaceId(id);
-        } else {
-          const pagesInNotebook = Object.values(pagesStore.pages).filter(
-            (p) => p.workspaceId === id,
-          );
-          pagesInNotebook.forEach((p) =>
-            void pagesStore.permanentlyDeletePage(p.id),
-          );
+        const tabsStore = useTabs.getState();
+        const deletedPageIds = new Set(
+          Object.values(pagesStore.pages)
+            .filter((page) => page.workspaceId === id)
+            .map((page) => page.id),
+        );
+        const remainingPages = Object.values(pagesStore.pages).filter(
+          (page) => page.workspaceId !== id && !page.trashedAt,
+        );
+        const remainingPageById = new Map(
+          remainingPages.map((page) => [page.id, page]),
+        );
+
+        const { [id]: _deletedNotebook, ...remainingNotebooks } = state.notebooks;
+        const { [id]: _deletedLastActive, ...remainingLastActive } =
+          state.lastActivePageByNotebook;
+        const { [id]: _deletedLoadState, ...remainingLoadStates } =
+          state.localFolderLoadStates;
+
+        const remainingTabs = tabsStore.openTabs.filter(
+          (tab) => !deletedPageIds.has(tab.pageId),
+        );
+        const nextActiveTabId =
+          tabsStore.activeTabId &&
+          remainingTabs.some((tab) => tab.id === tabsStore.activeTabId)
+            ? tabsStore.activeTabId
+            : remainingTabs[0]?.id ?? null;
+        const nextActiveTab = remainingTabs.find(
+          (tab) => tab.id === nextActiveTabId,
+        );
+        const nextTabPage = nextActiveTab
+          ? remainingPageById.get(nextActiveTab.pageId)
+          : undefined;
+
+        const remainingNotebookIds = Object.keys(remainingNotebooks);
+        const nextActiveNotebookId =
+          nextTabPage?.workspaceId ??
+          (state.activeNotebookId === id
+            ? remainingNotebookIds[0] || null
+            : state.activeNotebookId);
+
+        let nextActivePageId =
+          nextTabPage?.id ??
+          (pagesStore.activePageId && !deletedPageIds.has(pagesStore.activePageId)
+            ? pagesStore.activePageId
+            : null);
+
+        if (!nextActivePageId && nextActiveNotebookId) {
+          const nextLastPageId = remainingLastActive[nextActiveNotebookId];
+          if (nextLastPageId && remainingPageById.has(nextLastPageId)) {
+            nextActivePageId = nextLastPageId;
+          } else {
+            const firstValidPage = remainingPages
+              .filter((page) => page.workspaceId === nextActiveNotebookId)
+              .sort(
+                (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+              )[0];
+            nextActivePageId = firstValidPage?.id ?? null;
+          }
         }
 
-        set((state) => {
-          const { [id]: _, ...rest } = state.notebooks;
-          const { [id]: __, ...restLastActive } =
-            state.lastActivePageByNotebook;
-
-          const remainingIds = Object.keys(rest);
-          const nextActiveNotebookId =
-            state.activeNotebookId === id
-              ? remainingIds[0] || null
-              : state.activeNotebookId;
-
-          if (state.activeNotebookId === id && nextActiveNotebookId) {
-            const nextLastPageId =
-              state.lastActivePageByNotebook[nextActiveNotebookId] || null;
-            pagesStore.setActivePage(nextLastPageId);
-          }
-
-          return {
-            notebooks: rest,
-            lastActivePageByNotebook: restLastActive,
-            activeNotebookId: nextActiveNotebookId,
-          };
+        pagesStore.removePagesByWorkspaceId(id);
+        useTabs.setState({
+          openTabs: remainingTabs,
+          activeTabId: nextActiveTabId,
         });
+        set({
+          notebooks: remainingNotebooks,
+          lastActivePageByNotebook: remainingLastActive,
+          localFolderLoadStates: remainingLoadStates,
+          activeNotebookId: nextActiveNotebookId,
+        });
+
+        if (
+          state.activeNotebookId === id ||
+          deletedPageIds.has(pagesStore.activePageId || "") ||
+          nextActiveTabId !== tabsStore.activeTabId
+        ) {
+          void pagesStore.setActivePage(nextActivePageId);
+        }
       },
 
       setActiveNotebook: (id) => {
@@ -251,6 +316,22 @@ export const useNotebooks = create<NotebooksState>()(
 
       getLastActivePage: (notebookId) => {
         return get().lastActivePageByNotebook[notebookId] || null;
+      },
+
+      setLocalFolderLoadState: (notebookId, loadState) => {
+        set((state) => ({
+          localFolderLoadStates: {
+            ...state.localFolderLoadStates,
+            [notebookId]: loadState,
+          },
+        }));
+      },
+
+      getLocalFolderLoadState: (notebookId) => {
+        return (
+          get().localFolderLoadStates[notebookId] ??
+          IDLE_LOCAL_FOLDER_LOAD_STATE
+        );
       },
     }),
     {
