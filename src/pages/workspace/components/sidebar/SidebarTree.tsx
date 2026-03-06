@@ -21,7 +21,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as LucideIcons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { getPageTitle } from "@/lib/page-title";
@@ -31,7 +30,9 @@ import { useTabs } from "@/stores/useTabs";
 import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
 import { InlineOverflowRevealText } from "./InlineOverflowRevealText";
+import { LocalFolderLoadingSkeleton } from "./LocalFolderLoadingSkeleton";
 import { SidebarContextMenu } from "./SidebarContextMenu";
+import { LocalFileIcon } from "./local-file-icon";
 import { buildSidebarTitleDisambiguationMap } from "./sidebar-title-disambiguation";
 import {
   buildVisibleTree,
@@ -85,40 +86,6 @@ interface DropIntent {
 interface SidebarDragGuide {
   direction: DragGuideDirection;
   mode: DragGuideMode;
-}
-
-function nodeHasVisibleContent(node: unknown): boolean {
-  if (!node || typeof node !== "object") return false;
-  const value = node as {
-    text?: unknown;
-    content?: unknown;
-    type?: unknown;
-  };
-
-  if (typeof value.text === "string" && value.text.trim().length > 0) {
-    return true;
-  }
-
-  const children = Array.isArray(value.content) ? value.content : [];
-  if (children.some((child: unknown) => nodeHasVisibleContent(child))) {
-    return true;
-  }
-
-  if (
-    value.type === "doc" ||
-    value.type === "paragraph" ||
-    value.type === "heading" ||
-    value.type === "text" ||
-    value.type === "hardBreak"
-  ) {
-    return false;
-  }
-
-  return typeof value.type === "string" && value.type.length > 0;
-}
-
-function pageHasVisibleContent(page: Page): boolean {
-  return nodeHasVisibleContent(page.content);
 }
 
 function getClientYFromActivator(event: Event | null | undefined): number | null {
@@ -292,13 +259,7 @@ function SortablePageRow({
   const hasChildren = item.hasChildren;
   const showArrow = hasChildren;
   const isLocalFolder = isLocalNotebook;
-  const showFolderIcon = isLocalFolder && page.isFolder;
   const iconName = page.icon;
-  const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
-  const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
-  const DefaultPageIcon = pageHasVisibleContent(page)
-    ? LucideIcons.FileText
-    : LucideIcons.File;
 
   const dndTransform = CSS.Transform.toString(transform);
   const virtualTransform = typeof rowStyle.transform === "string" ? rowStyle.transform : "";
@@ -451,11 +412,11 @@ function SortablePageRow({
             >
               {isLocalFolder ? (
                 <div className="flex items-center justify-center w-5 h-5">
-                  {showFolderIcon ? (
-                    <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                  ) : (
-                    <DefaultPageIcon className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                  )}
+                  <LocalFileIcon
+                    page={page}
+                    iconName={iconName}
+                    isLocalFolder={isLocalFolder}
+                  />
                 </div>
               ) : (
                 <IconSelector
@@ -464,19 +425,13 @@ function SortablePageRow({
                   scope="file"
                 >
                   <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer">
-                    {iconName ? (
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        {SelectedIcon ? (
-                          <SelectedIcon className="h-4 w-4" />
-                        ) : (
-                          <span className="text-sm">{iconName}</span>
-                        )}
-                      </div>
-                    ) : showFolderIcon ? (
-                      <LucideIcons.Folder className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                    ) : (
-                      <DefaultPageIcon className="h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55" />
-                    )}
+                    <div className="h-4 w-4 flex items-center justify-center">
+                      <LocalFileIcon
+                        page={page}
+                        iconName={iconName}
+                        isLocalFolder={false}
+                      />
+                    </div>
                   </div>
                 </IconSelector>
               )}
@@ -559,6 +514,13 @@ export function SidebarTree({
     ? useNotebooks.getState().notebooks[activeNotebookId]
     : undefined;
   const isLocalNotebook = notebook?.source === "local-folder";
+  const localLoadStatus = useNotebooks((state) =>
+    activeNotebookId
+      ? state.localFolderLoadStates[activeNotebookId]?.status ?? "idle"
+      : "idle",
+  );
+  const shouldShowLocalSkeleton =
+    !rootPageIds && isLocalNotebook && localLoadStatus === "loading";
 
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1278,6 +1240,10 @@ export function SidebarTree({
     dragStartPointerXRef.current = null;
     dragStartPointerYRef.current = null;
   };
+
+  if (shouldShowLocalSkeleton) {
+    return <LocalFolderLoadingSkeleton />;
+  }
 
   if (flatItems.length === 0) {
     if (!showEmptyState) return null;
