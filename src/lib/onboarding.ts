@@ -186,12 +186,12 @@ export const ONBOARDING_PAGE_CONTENT: JSONContent = {
     {
       type: "heading",
       attrs: { level: 2 },
-      content: [{ type: "text", text: "提示与分隔" }],
+      content: [{ type: "text", text: "标注与分隔" }],
     },
     {
       type: "callout",
       attrs: { emoji: "✨" },
-      content: [{ type: "text", text: "提示框可以强调重点信息。" }],
+      content: [{ type: "text", text: "标注可以强调重点信息。" }],
     },
     {
       type: "horizontalRule",
@@ -314,7 +314,7 @@ export const ONBOARDING_CHILD_PAGE_CONTENT: JSONContent = {
               content: [
                 {
                   type: "text",
-                  text: "新增控件：提示框、公式块、Mermaid 图表、分隔线",
+                  text: "新增控件：标注、公式块、Mermaid 图表、分隔线",
                 },
               ],
             },
