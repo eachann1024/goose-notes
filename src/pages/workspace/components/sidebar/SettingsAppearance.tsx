@@ -17,33 +17,24 @@ interface SettingsAppearanceProps {
 }
 
 const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
-  {
-    value: "default",
-    label: "Default",
-    description: "Goose 默认风格，现代极简",
-  },
   { value: "github", label: "GitHub", description: "经典的开发者风格" },
   {
     value: "modern",
-    label: "Modern",
-    description: "柔和的原子风格",
-  },
-  {
-    value: "night",
-    label: "Night",
-    description: "赛博朋克风格 (Tokyo Night)",
+    label: "One Dark Pro",
+    description: "流行的暗色开发者风格，浅色自动配对",
   },
   {
     value: "nord",
-    label: "Nord",
-    description: "北境深色风格，低对比更柔和",
+    label: "Dracula",
+    description: "高对比霓虹风格，深浅自动切换",
   },
-  {
-    value: "nord-light",
-    label: "Nord Light",
-    description: "北境浅色风格，清爽护眼",
-  },
+  { value: "night", label: "Tokyo Night", description: "东京夜系风格，自动适配日夜" },
 ];
+
+const LEGACY_CODE_STYLE_DISPLAY_MAP: Partial<Record<CodeStyle, CodeStyle>> = {
+  default: "github",
+  "nord-light": "night",
+};
 
 const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
 const defaultFonts = {
@@ -84,6 +75,8 @@ export function SettingsAppearance({
   const getFontPreview = (type: "default" | "serif" | "mono") =>
     customFonts[type].font || defaultFonts[type];
   const primaryModifier = getPrimaryModifierKeyDisplay({ style: "symbol" });
+  const displayedCodeStyle =
+    LEGACY_CODE_STYLE_DISPLAY_MAP[codeStyle] ?? codeStyle;
 
   return (
     <div className="space-y-6">
@@ -234,11 +227,11 @@ export function SettingsAppearance({
           {codeStyles.map((t) => (
             <SelectableCard
               key={t.value}
-              selected={codeStyle === t.value}
+              selected={displayedCodeStyle === t.value}
               onClick={() => setCodeStyle(t.value)}
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
-                codeStyle === t.value
+                displayedCodeStyle === t.value
                   ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
