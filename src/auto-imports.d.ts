@@ -7,6 +7,7 @@
 export {}
 declare global {
   const Activity: typeof import('react').Activity
+  const BLOCK_BG_COLORS: typeof import('./lib/blockColorPresets').BLOCK_BG_COLORS
   const Button: typeof import('./components/ui/button').Button
   const CREATOR_FLOW_CONTENT: typeof import('./lib/onboarding').CREATOR_FLOW_CONTENT
   const Card: typeof import('./components/ui/card').Card
@@ -136,6 +137,7 @@ declare global {
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const browserGooseFs: typeof import('./lib/browser-fs').browserGooseFs
+  const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
@@ -146,6 +148,8 @@ declare global {
   const countWords: typeof import('./lib/content-text-extractor').countWords
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
+  const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
+  const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
   const exportToHTML: typeof import('./lib/export').exportToHTML
   const exportToJSON: typeof import('./lib/export').exportToJSON
@@ -164,6 +168,9 @@ declare global {
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
+  const getRandomBlockAccentColor: typeof import('./lib/blockColorPresets').getRandomBlockAccentColor
+  const getRandomBlockBgColor: typeof import('./lib/blockColorPresets').getRandomBlockBgColor
+  const getRandomBlockColorPair: typeof import('./lib/blockColorPresets').getRandomBlockColorPair
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const iconButtonVariants: typeof import('./components/ui/icon-button').iconButtonVariants
   const importFile: typeof import('./lib/export').importFile
@@ -175,12 +182,15 @@ declare global {
   const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
+  const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
+  const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
+  const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const startTransition: typeof import('react').startTransition
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
@@ -220,7 +230,7 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { Notebook } from './stores/useNotebooks'
+  export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
   export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
@@ -228,6 +238,9 @@ declare global {
   // @ts-ignore
   export type { TabItem } from './stores/useTabs'
   import('./stores/useTabs')
+  // @ts-ignore
+  export type { BlockBgColorValue } from './lib/blockColorPresets'
+  import('./lib/blockColorPresets')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')

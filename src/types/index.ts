@@ -4,6 +4,7 @@ export type { JSONContent };
 export type SyncProvider = "local" | "jianguoyun" | "icloud";
 export type FontFamily = "default" | "serif" | "mono";
 export type FontSize = "default" | "small";
+export type LocalFileReadState = "ready" | "error";
 
 export interface User {
   id: string;
@@ -52,6 +53,8 @@ export interface Page {
 
   // Local file system (for local-folder mode)
   localFilePath?: string;
+  localReadState?: LocalFileReadState;
+  localReadError?: string;
 
   // Linking (for future bidirectional links)
   outgoingLinks?: string[];

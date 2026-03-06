@@ -9,6 +9,12 @@ declare global {
     readDirAsync?: (dir: string) => Promise<any[]>;
     readFile: (path: string) => string | null;
     readFileAsync?: (path: string) => Promise<string | null>;
+    readFileStat?: (
+      path: string,
+    ) => { ok: boolean; error?: string | null; content?: string | null };
+    readFileStatAsync?: (
+      path: string,
+    ) => Promise<{ ok: boolean; error?: string | null; content?: string | null }>;
     writeFile: (path: string, content: string, encoding?: string) => boolean;
     writeFileAsync?: (path: string, content: string, encoding?: string) => Promise<boolean>;
     exists: (path: string) => boolean;
