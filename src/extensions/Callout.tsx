@@ -23,7 +23,7 @@ const CalloutView = ({ node, updateAttributes }: any) => {
   return (
     <NodeViewWrapper
       className={cn(
-        "callout-node flex gap-3 p-4 my-4 rounded-lg border border-border/50 items-start group",
+        "callout-node flex gap-3 p-4 my-4 rounded-[var(--goose-block-bg-radius)] border border-border/50 items-start group",
         !blockBgColor && "bg-muted/20",
       )}
       data-type="callout"

@@ -1,4 +1,12 @@
 /* Block-level color tokens for DragHandleBlockMenu (text/bg). */
+.ProseMirror {
+  --goose-block-bg-radius: 0.5rem;
+}
+
+.ProseMirror [data-block-bg-color] {
+  border-radius: var(--goose-block-bg-radius);
+}
+
 .ProseMirror [data-block-text-color="gray"] { color: #787774; }
 .ProseMirror [data-block-text-color="brown"] { color: #9f6b53; }
 .ProseMirror [data-block-text-color="orange"] { color: #d9730d; }
