@@ -9,6 +9,7 @@ import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
 import { MathView } from "@/pages/workspace/components/editor/extensions/MathView";
 import { MermaidView } from "@/pages/workspace/components/editor/extensions/MermaidView";
+import { useSettings } from "@/stores/useSettings";
 import { InputRule } from "@tiptap/core";
 
 // LaTeX 常用语法提示
@@ -32,6 +33,13 @@ const LATEX_SNIPPETS = [
   { label: "向量", code: "\\vec{a}", example: "\\vec{v}" },
   { label: "矩阵", code: "\\begin{matrix} a & b \\\\ c & d \\end{matrix}", example: "matrix" },
 ];
+
+function getDefaultCodeBlockAttrs(attrs?: Record<string, unknown>) {
+  return {
+    wrap: useSettings.getState().defaultCodeBlockWrap,
+    ...attrs,
+  };
+}
 
 function CodeBlockWithLanguageView({
   node,
@@ -91,6 +99,7 @@ function CodeBlockWithLanguageView({
   };
 
   const handleWrapChange = (newWrap: boolean) => {
+    useSettings.getState().setDefaultCodeBlockWrap(newWrap);
     updateAttributes({ wrap: newWrap });
   };
 
@@ -389,7 +398,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
           const language = match?.[1] ? match[1].trim() : null;
           chain()
             .deleteRange(range)
-            .setNode("codeBlock", { language })
+            .setNode("codeBlock", getDefaultCodeBlockAttrs({ language }))
             .run();
           return null;
         },
@@ -413,7 +422,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
 
           commands.insertContentAt(range, {
             type: "codeBlock",
-            attrs: { language: "math" },
+            attrs: getDefaultCodeBlockAttrs({ language: "math" }),
           });
           return null;
         },
@@ -453,7 +462,7 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
           .chain()
           .focus()
           .deleteRange({ from: $from.start(), to: $from.end() })
-          .setNode("codeBlock", { language })
+          .setNode("codeBlock", getDefaultCodeBlockAttrs({ language }))
           .run();
         return true;
       },

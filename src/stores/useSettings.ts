@@ -78,6 +78,7 @@ const DEFAULT_UI_FONT_SIZE: UIFontSize = "small"
 interface SettingsState {
     theme: Theme
     codeStyle: CodeStyle
+    defaultCodeBlockWrap: boolean
     globalEditorFullWidth: boolean
     searchProviders: SearchProvider[]
     utools: UToolsSettings
@@ -93,6 +94,7 @@ interface SettingsState {
     customActions: CustomAction[]
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
+    setDefaultCodeBlockWrap: (enabled: boolean) => void
     setGlobalEditorFullWidth: (enabled: boolean) => void
     toggleSearchProvider: (id: string) => void
     reorderSearchProviders: (nextIds: string[]) => void
@@ -252,6 +254,7 @@ export const useSettings = create<SettingsState>()(
         (set) => ({
             theme: 'system',
             codeStyle: 'default',
+            defaultCodeBlockWrap: false,
             globalEditorFullWidth: false,
             searchProviders: DEFAULT_SEARCH_PROVIDERS,
             utools: {
@@ -298,6 +301,8 @@ export const useSettings = create<SettingsState>()(
                 set({ codeStyle })
                 applyCodeStyle(codeStyle)
             },
+            setDefaultCodeBlockWrap: (defaultCodeBlockWrap) =>
+                set({ defaultCodeBlockWrap }),
             setGlobalEditorFullWidth: (globalEditorFullWidth) => set({ globalEditorFullWidth }),
             toggleSearchProvider: (id) =>
                 set((state) => ({
@@ -470,6 +475,9 @@ export const useSettings = create<SettingsState>()(
                 applyCodeStyle(codeStyle)
                 if (state && state.codeStyle !== codeStyle) {
                     useSettings.setState({ codeStyle })
+                }
+                if (state && typeof state.defaultCodeBlockWrap !== 'boolean') {
+                    useSettings.setState({ defaultCodeBlockWrap: false })
                 }
                 const normalizedUIFontSize = state?.uiFontSize === 'small' || state?.uiFontSize === 'normal' || state?.uiFontSize === 'large'
                     ? state.uiFontSize

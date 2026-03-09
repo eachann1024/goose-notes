@@ -1,8 +1,10 @@
 import * as LucideIcons from "lucide-react";
+import { useSettings } from "@/stores/useSettings";
 
 export const getSuggestionItems = ({ query }: { query: string }) => {
   const normalizedQuery =
     typeof query === "string" ? query.trim().toLowerCase() : "";
+  const defaultCodeBlockWrap = useSettings.getState().defaultCodeBlockWrap;
 
   return [
     {
@@ -142,7 +144,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
           .chain()
           .focus()
           .deleteRange(range)
-          .toggleCodeBlock({ language: "markdown" })
+          .toggleCodeBlock({ language: "markdown", wrap: defaultCodeBlockWrap })
           .run();
       },
     },
@@ -157,7 +159,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
           .chain()
           .focus()
           .deleteRange(range)
-          .toggleCodeBlock({ language: "math" })
+          .toggleCodeBlock({ language: "math", wrap: defaultCodeBlockWrap })
           .run();
       },
     },
@@ -172,7 +174,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
           .chain()
           .focus()
           .deleteRange(range)
-          .toggleCodeBlock({ language: "mermaid" })
+          .toggleCodeBlock({ language: "mermaid", wrap: defaultCodeBlockWrap })
           .run();
       },
     },
