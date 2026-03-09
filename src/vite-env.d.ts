@@ -25,6 +25,8 @@ declare global {
     deleteFile: (path: string) => boolean | Promise<boolean>;
     deleteDir: (path: string) => boolean | Promise<boolean>;
     rename: (oldPath: string, newPath: string) => boolean | Promise<boolean>;
+    writeTempFile?: (relativePath: string, contentBase64: string) => Promise<string | null>;
+    cleanupTempFiles?: (prefix: string, maxAgeMs: number) => Promise<void>;
     selectDirectory?: () => Promise<string | null>;
     restoreLastDirectory?: () => Promise<string | null>;
     revealItemInFolder?: (path: string) => boolean | Promise<boolean>;

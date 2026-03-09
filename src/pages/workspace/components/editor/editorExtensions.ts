@@ -17,6 +17,8 @@ import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
 import { DragHandleInteractionPatch } from "@/extensions/DragHandleInteractionPatch";
 import { BlockUpdatedAt } from "@/extensions/BlockUpdatedAt";
 import { ImagePlaceholder } from "@/extensions/ImagePlaceholder";
+import { FileUploadPlaceholder } from "@/extensions/FileUploadPlaceholder";
+import { FileAttachment } from "@/extensions/FileAttachment";
 import { SmartSelectAll } from "@/extensions/SmartSelectAll";
 import { TitleHeading } from "@/extensions/TitleHeading";
 import { HeadingWithBackspace } from "@/extensions/HeadingWithBackspace";
@@ -122,6 +124,8 @@ export const editorExtensions = [
   }),
   ResizableImage,
   ImagePlaceholder,
+  FileUploadPlaceholder,
+  FileAttachment,
   TaskList,
   TaskItem.configure({
     nested: true,

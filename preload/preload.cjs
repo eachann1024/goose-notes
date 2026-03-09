@@ -1,5 +1,6 @@
 // preload 运行在 CJS，避免与主项目 ESM 冲突
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 let electronShell = null;
 
@@ -45,6 +46,69 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   const resolveWriteEncoding = (encoding) =>
     encoding === "base64" || encoding === "binary" ? "base64" : "utf-8";
+
+  const resolveTempTargetPath = (relativePath) => {
+    if (typeof relativePath !== "string" || !relativePath.trim()) {
+      throw new Error("relativePath is required");
+    }
+
+    const normalized = path
+      .normalize(relativePath)
+      .replace(/^(\.\.(\/|\\|$))+/, "")
+      .replace(/^[/\\]+/, "");
+    const targetPath = path.join(os.tmpdir(), normalized);
+
+    if (!targetPath.startsWith(os.tmpdir())) {
+      throw new Error("invalid temp path");
+    }
+
+    return targetPath;
+  };
+
+  const getBase64ByteLength = (contentBase64) => {
+    const sanitized = String(contentBase64 || "").replace(/\s+/g, "");
+    if (!sanitized) return 0;
+    const padding = sanitized.endsWith("==") ? 2 : sanitized.endsWith("=") ? 1 : 0;
+    return Math.floor((sanitized.length * 3) / 4) - padding;
+  };
+
+  const removeExpiredEntries = async (targetPath, cutoff) => {
+    let stat;
+    try {
+      stat = await fs.promises.stat(targetPath);
+    } catch {
+      return;
+    }
+
+    if (stat.isDirectory()) {
+      let children = [];
+      try {
+        children = await fs.promises.readdir(targetPath);
+      } catch {
+        return;
+      }
+
+      await Promise.all(
+        children.map((child) => removeExpiredEntries(path.join(targetPath, child), cutoff)),
+      );
+
+      try {
+        const remaining = await fs.promises.readdir(targetPath);
+        if (remaining.length === 0) {
+          await fs.promises.rmdir(targetPath);
+        }
+      } catch {}
+      return;
+    }
+
+    if (stat.mtimeMs >= cutoff) return;
+
+    try {
+      await fs.promises.unlink(targetPath);
+    } catch (err) {
+      console.error("[gooseFs] cleanup temp file failed:", err);
+    }
+  };
 
   const revealItemInFolder = (targetPath) => {
     try {
@@ -244,6 +308,41 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       } catch (err) {
         console.error("[gooseFs] rename failed:", err);
         return false;
+      }
+    },
+
+    writeTempFile: async (relativePath, contentBase64) => {
+      try {
+        const targetPath = resolveTempTargetPath(relativePath);
+        const targetDir = path.dirname(targetPath);
+        await fs.promises.mkdir(targetDir, { recursive: true });
+
+        const expectedSize = getBase64ByteLength(contentBase64);
+        try {
+          const existingStat = await fs.promises.stat(targetPath);
+          if (existingStat.isFile() && existingStat.size === expectedSize) {
+            const now = new Date();
+            await fs.promises.utimes(targetPath, now, now);
+            return targetPath;
+          }
+        } catch {}
+
+        await fs.promises.writeFile(targetPath, contentBase64, "base64");
+        return targetPath;
+      } catch (err) {
+        console.error("[gooseFs] writeTempFile failed:", err);
+        return null;
+      }
+    },
+
+    cleanupTempFiles: async (prefix, maxAgeMs) => {
+      try {
+        const basePath = resolveTempTargetPath(prefix);
+        const cutoff = Date.now() - Number(maxAgeMs || 0);
+        if (!Number.isFinite(cutoff)) return;
+        await removeExpiredEntries(basePath, cutoff);
+      } catch (err) {
+        console.error("[gooseFs] cleanupTempFiles failed:", err);
       }
     },
 

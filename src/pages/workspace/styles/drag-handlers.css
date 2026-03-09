@@ -129,6 +129,17 @@ body.drag-handle-suppressed .drag-handle {
   background-color: transparent !important;
   border-radius: 0;
 }
+.ProseMirror .file-attachment-node.ProseMirror-selectednode,
+.ProseMirror .file-attachment-node.tiptap-selected-node,
+.ProseMirror .file-upload-placeholder-node.ProseMirror-selectednode,
+.ProseMirror .file-upload-placeholder-node.tiptap-selected-node,
+.ProseMirror .ProseMirror-selectednode .file-attachment-node,
+.ProseMirror .tiptap-selected-node .file-attachment-node,
+.ProseMirror .ProseMirror-selectednode .file-upload-placeholder-node,
+.ProseMirror .tiptap-selected-node .file-upload-placeholder-node {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
 
 /* Specific handling for images to prevent double borders */
 .ProseMirror img.ProseMirror-selectednode {

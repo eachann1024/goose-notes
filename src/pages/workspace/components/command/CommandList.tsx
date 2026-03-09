@@ -7,14 +7,18 @@ import {
   useState,
 } from "react";
 import { cn, formatShortcut } from "@/lib/utils";
+import type { CommandSuggestionItem } from "./commandItems";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-interface CommandItem {
-  type?: "divider" | "item";
+interface CommandItem extends CommandSuggestionItem {
   title: string;
   description: string;
-  searchTerms?: string[];
   icon: any;
-  shortcut?: string;
   hint?: {
     title: string;
     items: Array<{ key: string; description: string }>;
@@ -38,7 +42,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   const selectItem = useCallback(
     (index: number) => {
       const item = props.items[index];
-      if (item && item.type !== "divider") {
+      if (item && item.type !== "divider" && !item.disabled) {
         props.command(item);
       }
     },
@@ -46,9 +50,9 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   );
 
   useEffect(() => {
-    // 默认选中第一个不是分割线的项
+    // 默认选中第一个不是分割线且可操作的项
     const firstSelectableIndex = props.items.findIndex(
-      (item) => item.type !== "divider",
+      (item) => item.type !== "divider" && !item.disabled,
     );
     setSelectedIndex(firstSelectableIndex >= 0 ? firstSelectableIndex : 0);
     setShowHint(false);
@@ -88,9 +92,10 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
           event.preventDefault();
           let nextIndex =
             (selectedIndex - 1 + props.items.length) % props.items.length;
-          // 跳过分割线
+          // 跳过分割线和禁用项
           while (
-            props.items[nextIndex]?.type === "divider" &&
+            (props.items[nextIndex]?.type === "divider" ||
+              props.items[nextIndex]?.disabled) &&
             nextIndex !== selectedIndex
           ) {
             nextIndex =
@@ -102,9 +107,10 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         if (event.key === "ArrowDown") {
           event.preventDefault();
           let nextIndex = (selectedIndex + 1) % props.items.length;
-          // 跳过分割线
+          // 跳过分割线和禁用项
           while (
-            props.items[nextIndex]?.type === "divider" &&
+            (props.items[nextIndex]?.type === "divider" ||
+              props.items[nextIndex]?.disabled) &&
             nextIndex !== selectedIndex
           ) {
             nextIndex = (nextIndex + 1) % props.items.length;
@@ -147,7 +153,8 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         </div>
 
         <div className="flex flex-col gap-[1px] max-h-[260px] overflow-y-auto scrollbar-hide">
-          {props.items.map((item, index) => {
+          <TooltipProvider delayDuration={0}>
+            {props.items.map((item, index) => {
             if (item.type === "divider") {
               return (
                 <div
@@ -158,18 +165,21 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
             }
 
             const Icon = item.icon;
-            return (
+            const button = (
               <Button
                 key={index}
                 type="button"
                 variant="ghost"
                 size="sm"
                 data-index={index}
+                disabled={item.disabled}
                 className={cn(
-                  "relative flex h-auto min-h-[28px] w-full cursor-pointer items-center justify-start rounded-[3px] px-2 py-1 text-left text-sm outline-none transition-colors whitespace-normal",
-                  index === selectedIndex
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50 text-foreground/80",
+                  "relative flex h-auto min-h-[28px] w-full items-center justify-start rounded-[3px] px-2 py-1 text-left text-sm outline-none transition-colors whitespace-normal",
+                  item.disabled
+                    ? "cursor-not-allowed text-muted-foreground/55 hover:bg-transparent"
+                    : index === selectedIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "cursor-pointer hover:bg-accent/50 text-foreground/80",
                 )}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectItem(index)}
@@ -179,7 +189,9 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                     <span
                       className={cn(
                         "text-[15px] font-serif opacity-90 leading-none",
-                        index === selectedIndex
+                        item.disabled
+                          ? "text-muted-foreground/45"
+                          : index === selectedIndex
                           ? "text-accent-foreground"
                           : "text-muted-foreground",
                       )}
@@ -190,9 +202,11 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                     <Icon
                       className={cn(
                         "h-[14px] w-[14px] stroke-[1.5]",
-                        index === selectedIndex
-                          ? "text-accent-foreground"
-                          : "text-muted-foreground",
+                        item.disabled
+                          ? "text-muted-foreground/45"
+                          : index === selectedIndex
+                            ? "text-accent-foreground"
+                            : "text-muted-foreground",
                       )}
                     />
                   )}
@@ -202,7 +216,9 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                   <span
                     className={cn(
                       "font-medium truncate text-[12px]",
-                      index === selectedIndex
+                      item.disabled
+                        ? "text-muted-foreground/55"
+                        : index === selectedIndex
                         ? "text-accent-foreground"
                         : "text-foreground",
                     )}
@@ -218,7 +234,21 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
                 )}
               </Button>
             );
+
+            if (!item.disabled || !item.disabledReason) {
+              return button;
+            }
+
+            return (
+              <Tooltip key={index}>
+                <TooltipTrigger asChild>
+                  <span className="block w-full cursor-not-allowed">{button}</span>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.disabledReason}</TooltipContent>
+              </Tooltip>
+            );
           })}
+          </TooltipProvider>
         </div>
       </div>
 

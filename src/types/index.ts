@@ -6,6 +6,14 @@ export type FontFamily = "default" | "serif" | "mono";
 export type FontSize = "default" | "small";
 export type LocalFileReadState = "ready" | "error";
 
+export interface FileAttachmentAttrs {
+  storageRef: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: number;
+}
+
 export interface User {
   id: string;
   name: string;

@@ -1,4 +1,10 @@
 import * as React from "react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface FileTriggerProps
   extends Omit<
@@ -7,18 +13,26 @@ interface FileTriggerProps
   > {
   children: React.ReactElement<{
     onClick?: (e: React.MouseEvent<HTMLElement>) => void
+    disabled?: boolean
   }>
   onFileChange?: (file: File | null, event: React.ChangeEvent<HTMLInputElement>) => void
   resetAfterSelect?: boolean
+  helperText?: string
+  errorText?: string | null
+  disabledReason?: string
 }
 
 export function FileTrigger({
   children,
   onFileChange,
   resetAfterSelect = true,
+  helperText,
+  errorText,
+  disabledReason,
   ...inputProps
 }: FileTriggerProps) {
   const inputId = useId()
+  const isDisabled = Boolean(inputProps.disabled)
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,7 +46,12 @@ export function FileTrigger({
   )
 
   const child = React.cloneElement(children, {
+    disabled: isDisabled || children.props.disabled,
     onClick: (event: React.MouseEvent<HTMLElement>) => {
+      if (isDisabled) {
+        event.preventDefault()
+        return
+      }
       const originalOnClick = children.props.onClick
       originalOnClick?.(event)
       if (!event.defaultPrevented) {
@@ -42,8 +61,22 @@ export function FileTrigger({
     },
   })
 
+  const triggerContent =
+    isDisabled && disabledReason ? (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block w-full cursor-not-allowed">{child}</span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{disabledReason}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    ) : (
+      child
+    )
+
   return (
-    <>
+    <div className="w-full">
       <input
         id={inputId}
         type="file"
@@ -51,7 +84,14 @@ export function FileTrigger({
         onChange={handleChange}
         {...inputProps}
       />
-      {child}
-    </>
+      {triggerContent}
+      {errorText ? (
+        <p className="mt-2 rounded-[12px] border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {errorText}
+        </p>
+      ) : helperText ? (
+        <p className="mt-2 px-1 text-xs text-muted-foreground">{helperText}</p>
+      ) : null}
+    </div>
   )
 }

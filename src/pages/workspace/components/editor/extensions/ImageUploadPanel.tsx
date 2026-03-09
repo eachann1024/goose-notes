@@ -42,7 +42,12 @@ export function ImageUploadPanel({ editor, deleteNode }: NodeViewProps) {
         className="my-4 rounded-md border border-border bg-popover p-3 shadow-md"
         contentEditable={false}
       >
-        <FileTrigger accept="image/*" onFileChange={(file) => file && handleFileSelect(file)}>
+        <FileTrigger
+          accept="image/*"
+          onFileChange={(file) => file && handleFileSelect(file)}
+          errorText={error}
+          disabledReason={isUploading ? "正在处理图片" : undefined}
+        >
           <Button
             type="button"
             variant="ghost"
@@ -58,11 +63,6 @@ export function ImageUploadPanel({ editor, deleteNode }: NodeViewProps) {
             {isUploading ? '处理中...' : '点击选择图片或直接粘贴'}
           </Button>
         </FileTrigger>
-
-        {/* 错误提示 */}
-        {error && (
-          <p className="mt-2 text-sm text-destructive">{error}</p>
-        )}
       </div>
     </NodeViewWrapper>
   )

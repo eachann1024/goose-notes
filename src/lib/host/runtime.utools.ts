@@ -118,7 +118,11 @@ export const hostRuntime: HostRuntime = {
       return false;
     }
     try {
-      return Boolean(await Promise.resolve(utools.shellOpenPath(targetPath)));
+      const result = await Promise.resolve(utools.shellOpenPath(targetPath));
+      if (typeof result === "string") {
+        return result.length === 0;
+      }
+      return result !== false;
     } catch {
       return false;
     }

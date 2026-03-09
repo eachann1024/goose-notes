@@ -83,6 +83,7 @@ declare global {
   const List: typeof import('lucide-react').List
   const ListOrdered: typeof import('lucide-react').ListOrdered
   const LucideIcons: typeof import('lucide-react')
+  const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
   const Menu: typeof import('lucide-react').Menu
   const MoreHorizontal: typeof import('lucide-react').MoreHorizontal
   const ONBOARD: typeof import('./lib/onboarding').ONBOARD
@@ -156,11 +157,15 @@ declare global {
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
+  const fileStorage: typeof import('./lib/fileStorage').fileStorage
   const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
+  const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
+  const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
+  const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
@@ -190,6 +195,7 @@ declare global {
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
+  const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const startTransition: typeof import('react').startTransition

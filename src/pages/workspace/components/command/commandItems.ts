@@ -1,12 +1,26 @@
 import * as LucideIcons from "lucide-react";
+import { getFileUploadAvailability } from "@/lib/fileStorage";
 import { useSettings } from "@/stores/useSettings";
+
+export interface CommandSuggestionItem {
+  type?: "divider" | "item";
+  title?: string;
+  description?: string;
+  searchTerms?: string[];
+  icon?: any;
+  shortcut?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  command?: (params: { editor: any; range: any }) => void;
+}
 
 export const getSuggestionItems = ({ query }: { query: string }) => {
   const normalizedQuery =
     typeof query === "string" ? query.trim().toLowerCase() : "";
+  const fileUploadAvailability = getFileUploadAvailability();
   const defaultCodeBlockWrap = useSettings.getState().defaultCodeBlockWrap;
 
-  return [
+  const items: CommandSuggestionItem[] = [
     {
       title: "一级标题",
       description: "大标题",
@@ -188,8 +202,23 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
         editor.chain().focus().deleteRange(range).setImagePlaceholder().run();
       },
     },
+    {
+      title: "文件",
+      description: "上传附件并直接调用系统默认应用打开",
+      searchTerms: ["file", "attachment", "pdf", "wenjian", "fujian"],
+      icon: LucideIcons.FileUp,
+      shortcut: "file",
+      disabled: !fileUploadAvailability.enabled,
+      disabledReason: fileUploadAvailability.reason,
+      command: ({ editor, range }: any) => {
+        if (!fileUploadAvailability.enabled) return;
+        editor.chain().focus().deleteRange(range).setFileUploadPlaceholder().run();
+      },
+    },
 
-  ].filter((item: any) => {
+  ];
+
+  return items.filter((item: CommandSuggestionItem) => {
     if (item.type === "divider") return true;
     if (
       normalizedQuery.length > 0 &&
@@ -206,7 +235,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       );
     }
     return true;
-  }).reduce((acc: any[], item: any) => {
+  }).reduce((acc: CommandSuggestionItem[], item: CommandSuggestionItem) => {
     // Pass 1: Collapse adjacent dividers
     if (item.type === "divider") {
       const lastItem = acc[acc.length - 1];
@@ -216,7 +245,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
     }
     acc.push(item);
     return acc;
-  }, []).filter((item: any, index: number, array: any[]) => {
+  }, []).filter((item: CommandSuggestionItem, index: number, array: CommandSuggestionItem[]) => {
     // Pass 2: Remove trailing divider (Leading was handled by reducing !lastItem check implicitly if we consider empty acc, but let's be explicit)
     if (item.type === "divider") {
          if (index === array.length - 1) return false;
