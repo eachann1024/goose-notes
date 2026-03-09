@@ -186,12 +186,18 @@ export function Editor({ editable = true }: EditorProps) {
           const { state } = editor;
           const { selection } = state;
           const { $from, empty } = selection;
-          const shouldResetMarksAfterEnter =
+          const isAtBlockEnd =
             !event.shiftKey &&
             empty &&
             $from.parentOffset === $from.parent.content.size;
+          const activeInlineMarks =
+            state.storedMarks && state.storedMarks.length > 0
+              ? state.storedMarks
+              : $from.marks();
+          const shouldResetMarksAfterEnter =
+            isAtBlockEnd && activeInlineMarks.length > 0;
           const shouldInsertAfterCollapsedHeading =
-            shouldResetMarksAfterEnter &&
+            isAtBlockEnd &&
             $from.parent.type.name === "heading" &&
             $from.parent.attrs?.collapsed;
 
