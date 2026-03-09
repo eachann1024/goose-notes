@@ -14,6 +14,39 @@ const DEFAULT_ALLOWED_PREFIXES: string[] | null = null;
 const isValidTriggerPrefix = (charBefore: string) =>
   charBefore === "" || charBefore === " " || charBefore === "\n";
 
+const getTriggerChar = (doc: any, from: number) =>
+  doc.textBetween(from, from + 1, null, "\ufffc");
+
+const isAllowedTriggerContext = ({
+  doc,
+  from,
+  $cursor,
+}: {
+  doc: any;
+  from: number;
+  $cursor: any;
+}) => {
+  if ($cursor.parent.type.spec.code) {
+    return false;
+  }
+
+  const $triggerFrom = doc.resolve(from);
+  const triggerChar = getTriggerChar(doc, from);
+
+  if (triggerChar === "、") {
+    return $triggerFrom.parentOffset === 0;
+  }
+
+  const textBeforeTrigger = $triggerFrom.parent.textBetween(
+    Math.max(0, $triggerFrom.parentOffset - 1),
+    $triggerFrom.parentOffset,
+    null,
+    "\ufffc",
+  );
+
+  return isValidTriggerPrefix(textBeforeTrigger);
+};
+
 const findTriggerMatch = ({
   $position,
   allowSpaces = false,
@@ -84,19 +117,16 @@ export const SlashCommand = Extension.create({
           }
 
           const { doc } = state;
-          const $from = doc.resolve(range.from);
           const $to = doc.resolve(range.to);
-
-          const textBefore = $from.parent.textBetween(
-            Math.max(0, $from.parentOffset - 1),
-            $from.parentOffset,
-            null,
-            "\ufffc",
-          );
-          const isValidStart = isValidTriggerPrefix(textBefore);
           const isAtBlockEnd = $to.parentOffset === $to.parent.content.size;
 
-          return isValidStart && isAtBlockEnd;
+          return (
+            isAllowedTriggerContext({
+              doc,
+              from: range.from,
+              $cursor: $to,
+            }) && isAtBlockEnd
+          );
         },
       }),
       new Plugin({
@@ -117,17 +147,16 @@ export const SlashCommand = Extension.create({
 
             if (!match) return DecorationSet.empty;
 
-            const $triggerFrom = state.doc.resolve(match.range.from);
-            const textBeforeTrigger = $triggerFrom.parent.textBetween(
-              Math.max(0, $triggerFrom.parentOffset - 1),
-              $triggerFrom.parentOffset,
-              null,
-              "\ufffc",
-            );
-            const isValidTrigger = isValidTriggerPrefix(textBeforeTrigger);
             const isAtBlockEnd = $from.parentOffset === $from.parent.content.size;
 
-            if (!isValidTrigger || !isAtBlockEnd) {
+            if (
+              !isAllowedTriggerContext({
+                doc: state.doc,
+                from: match.range.from,
+                $cursor: $from,
+              }) ||
+              !isAtBlockEnd
+            ) {
               return DecorationSet.empty;
             }
 
