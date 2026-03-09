@@ -30,7 +30,7 @@ function decodeFileUrlPath(fileUrl: string): string {
   }
 }
 
-function resolveImageFileName(src: string, mimeType: string): string {
+function getFallbackImageExtension(mimeType: string): string {
   const extMap: Record<string, string> = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -40,7 +40,35 @@ function resolveImageFileName(src: string, mimeType: string): string {
     "image/bmp": "bmp",
     "image/x-icon": "ico",
   };
-  const fallbackExt = extMap[mimeType] || "png";
+
+  return extMap[mimeType] || "png";
+}
+
+function hasFileExtension(filename: string): boolean {
+  const lastDotIndex = filename.lastIndexOf(".");
+  return lastDotIndex > 0 && lastDotIndex < filename.length - 1;
+}
+
+function ensureFilenameExtension(filename: string, extension: string): string {
+  return hasFileExtension(filename) ? filename : `${filename}.${extension}`;
+}
+
+function getParentDirectoryPath(targetPath: string): string {
+  const normalizedPath = targetPath.replace(/[\\/]+$/, "");
+  if (!normalizedPath) return targetPath;
+
+  const lastSlashIndex = Math.max(
+    normalizedPath.lastIndexOf("/"),
+    normalizedPath.lastIndexOf("\\"),
+  );
+
+  if (lastSlashIndex < 0) return normalizedPath;
+  if (lastSlashIndex === 0) return normalizedPath.slice(0, 1);
+  return normalizedPath.slice(0, lastSlashIndex);
+}
+
+function resolveImageFileName(src: string, mimeType: string): string {
+  const fallbackExt = getFallbackImageExtension(mimeType);
 
   if (src.startsWith("data:") || src.startsWith("blob:") || isStorageReference(src)) {
     return `image.${fallbackExt}`;
@@ -50,11 +78,11 @@ function resolveImageFileName(src: string, mimeType: string): string {
     const pathLike = isFileUrl(src) ? decodeFileUrlPath(src) : new URL(src).pathname;
     const rawName = pathLike.split("/").pop() || "";
     const cleaned = rawName.split("?")[0].split("#")[0].trim();
-    if (cleaned) return cleaned;
+    if (cleaned) return ensureFilenameExtension(cleaned, fallbackExt);
   } catch {
     const rawName = src.split("/").pop() || "";
     const cleaned = rawName.split("?")[0].split("#")[0].trim();
-    if (cleaned) return cleaned;
+    if (cleaned) return ensureFilenameExtension(cleaned, fallbackExt);
   }
 
   return `image.${fallbackExt}`;
@@ -80,6 +108,8 @@ function getUToolsApi():
       copyImage?: (source: string) => boolean | Promise<boolean>;
       copyText?: (text: string) => unknown;
       showSaveDialog?: (options?: Record<string, unknown>) => unknown;
+      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
+      shellOpenPath?: (targetPath: string) => boolean | Promise<boolean>;
     })
   | null {
   if (typeof window === "undefined" || !window.utools) return null;
@@ -227,13 +257,31 @@ async function saveBlobViaUTools(blob: Blob, defaultFilename: string): Promise<b
   const targetPath = normalizeSavePath(saveResult);
   if (!targetPath) return true;
 
+  const fallbackExt = getFallbackImageExtension(blob.type || "image/png");
+  const finalTargetPath = ensureFilenameExtension(targetPath, fallbackExt);
   const base64 = await blobToBase64(blob);
   const payload = base64.replace(/^data:.*;base64,/, "");
   const saved = gooseFs.writeFileAsync
-    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
-    : gooseFs.writeFile(targetPath, payload, "base64");
+    ? await gooseFs.writeFileAsync(finalTargetPath, payload, "base64")
+    : gooseFs.writeFile(finalTargetPath, payload, "base64");
 
-  return Boolean(saved);
+  if (!saved) return false;
+
+  const folderPath = getParentDirectoryPath(finalTargetPath);
+  let revealed = false;
+  if (typeof gooseFs.revealItemInFolder === "function") {
+    revealed = Boolean(await gooseFs.revealItemInFolder(finalTargetPath));
+  }
+
+  if (!revealed && typeof utools?.shellShowItemInFolder === "function") {
+    revealed = Boolean(await Promise.resolve(utools.shellShowItemInFolder(finalTargetPath)));
+  }
+
+  if (!revealed && typeof utools?.shellOpenPath === "function") {
+    revealed = Boolean(await Promise.resolve(utools.shellOpenPath(folderPath)));
+  }
+
+  return true;
 }
 
 function downloadBlobByAnchor(blob: Blob, filename: string) {
