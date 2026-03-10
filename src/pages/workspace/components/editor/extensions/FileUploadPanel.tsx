@@ -8,7 +8,7 @@ import {
 } from "@/lib/fileStorage";
 import { cn } from "@/lib/utils";
 
-export function FileUploadPanel({ editor, deleteNode }: NodeViewProps) {
+export function FileUploadPanel({ editor, deleteNode, selected }: NodeViewProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,10 +67,15 @@ export function FileUploadPanel({ editor, deleteNode }: NodeViewProps) {
   );
 
   return (
-    <NodeViewWrapper className="file-upload-placeholder-node my-4">
+    <NodeViewWrapper
+      className="file-upload-placeholder-node my-4"
+      contentEditable={false}
+    >
       <div
-        className="rounded-[16px] border border-border/80 bg-popover p-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-        contentEditable={false}
+        className={cn(
+          "rounded-[16px] border border-border/80 bg-popover p-3 shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
+          selected && "border-primary/35 ring-1 ring-primary/15",
+        )}
       >
         <FileTrigger
           onFileChange={(file) => file && handleFileSelect(file)}

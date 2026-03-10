@@ -51,7 +51,7 @@ export function getFileUploadAvailability(): {
   if (!UToolsAdapter.isUTools) {
     return {
       enabled: false,
-      reason: "当前环境不支持附件上传",
+      reason: "当前环境暂不支持选择本地文件上传附件",
     };
   }
 

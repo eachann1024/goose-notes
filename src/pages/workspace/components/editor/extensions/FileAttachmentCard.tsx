@@ -131,11 +131,14 @@ export function FileAttachmentCard(props: NodeViewProps) {
   );
 
   return (
-    <NodeViewWrapper className="file-attachment-node my-4" contentEditable={false}>
+    <NodeViewWrapper
+      className="file-attachment-node my-4"
+      contentEditable={false}
+    >
       <div
         className={cn(
           "flex w-full items-start gap-3 rounded-[16px] border border-border/80 bg-popover px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition-all",
-          selected && "border-border shadow-[0_12px_28px_rgba(15,23,42,0.1)]",
+          selected && "border-primary/35 ring-1 ring-primary/15",
         )}
       >
         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-border/75 bg-background/75 text-foreground/80">

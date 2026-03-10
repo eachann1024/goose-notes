@@ -136,9 +136,15 @@ body.drag-handle-suppressed .drag-handle {
 .ProseMirror .ProseMirror-selectednode .file-attachment-node,
 .ProseMirror .tiptap-selected-node .file-attachment-node,
 .ProseMirror .ProseMirror-selectednode .file-upload-placeholder-node,
-.ProseMirror .tiptap-selected-node .file-upload-placeholder-node {
-  background-color: transparent !important;
+.ProseMirror .tiptap-selected-node .file-upload-placeholder-node,
+.ProseMirror div[data-type="file-attachment"].ProseMirror-selectednode,
+.ProseMirror div[data-type="file-attachment"].tiptap-selected-node,
+.ProseMirror div[data-type="file-upload-placeholder"].ProseMirror-selectednode,
+.ProseMirror div[data-type="file-upload-placeholder"].tiptap-selected-node {
+  background-color: hsl(var(--popover)) !important;
   border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Specific handling for images to prevent double borders */

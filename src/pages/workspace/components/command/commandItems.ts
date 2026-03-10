@@ -1,5 +1,4 @@
 import * as LucideIcons from "lucide-react";
-import { getFileUploadAvailability } from "@/lib/fileStorage";
 import { useSettings } from "@/stores/useSettings";
 
 export interface CommandSuggestionItem {
@@ -17,7 +16,6 @@ export interface CommandSuggestionItem {
 export const getSuggestionItems = ({ query }: { query: string }) => {
   const normalizedQuery =
     typeof query === "string" ? query.trim().toLowerCase() : "";
-  const fileUploadAvailability = getFileUploadAvailability();
   const defaultCodeBlockWrap = useSettings.getState().defaultCodeBlockWrap;
 
   const items: CommandSuggestionItem[] = [
@@ -208,10 +206,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       searchTerms: ["file", "attachment", "pdf", "wenjian", "fujian"],
       icon: LucideIcons.FileUp,
       shortcut: "file",
-      disabled: !fileUploadAvailability.enabled,
-      disabledReason: fileUploadAvailability.reason,
       command: ({ editor, range }: any) => {
-        if (!fileUploadAvailability.enabled) return;
         editor.chain().focus().deleteRange(range).setFileUploadPlaceholder().run();
       },
     },
