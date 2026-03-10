@@ -17,6 +17,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hideTimeoutRef = useRef<number | null>(null);
+  const isEditingRef = useRef(false);
 
   const isMac =
     typeof navigator !== "undefined" &&
@@ -29,9 +30,22 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
     }
   }, []);
 
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
+
   const scheduleHide = useCallback(() => {
     clearHideTimeout();
     hideTimeoutRef.current = window.setTimeout(() => {
+      hideTimeoutRef.current = null;
+      const activeElement = document.activeElement;
+      if (
+        isEditingRef.current ||
+        (activeElement instanceof HTMLElement &&
+          menuRef.current?.contains(activeElement))
+      ) {
+        return;
+      }
       setIsVisible(false);
       setIsEditing(false);
       setLinkElement(null);
@@ -39,6 +53,8 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   }, [clearHideTimeout]);
 
   const handleMouseEnterLink = useCallback((e: MouseEvent) => {
+    if (isEditingRef.current) return;
+
     const target = e.target as HTMLElement;
     const link = target.closest("a[href]") as HTMLAnchorElement | null;
 
@@ -57,6 +73,8 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   }, [clearHideTimeout]);
 
   const handleMouseLeaveLink = useCallback((e: MouseEvent) => {
+    if (isEditingRef.current) return;
+
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     if (relatedTarget?.closest("[data-link-hover-menu]")) return;
     scheduleHide();
@@ -67,7 +85,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   };
 
   const handleMenuMouseLeave = () => {
-    if (!isEditing) {
+    if (!isEditingRef.current) {
       scheduleHide();
     }
   };
@@ -87,6 +105,14 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   useEffect(() => {
     return subscribeGlobalScrollActivity((nextSnapshot) => {
       if (!nextSnapshot.isScrolling) return;
+      const activeElement = document.activeElement;
+      if (
+        isEditingRef.current ||
+        (activeElement instanceof HTMLElement &&
+          menuRef.current?.contains(activeElement))
+      ) {
+        return;
+      }
       setIsVisible((prev) => (prev ? false : prev));
       setIsEditing((prev) => (prev ? false : prev));
       setLinkElement((prev) => (prev ? null : prev));
@@ -123,10 +149,14 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   const handleEdit = () => {
     if (!linkElement) return;
     clearHideTimeout();
+    isEditingRef.current = true;
     setEditUrl(linkElement.getAttribute("href") || "");
     setEditText(linkElement.textContent || "");
     setIsEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
   };
 
   const handleSave = () => {
@@ -159,6 +189,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
         .run();
     }
 
+    isEditingRef.current = false;
     setIsVisible(false);
     setIsEditing(false);
   };
@@ -176,6 +207,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
       .unsetLink()
       .run();
 
+    isEditingRef.current = false;
     setIsVisible(false);
     setIsEditing(false);
   };
@@ -211,12 +243,20 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    const nativeEvent = e.nativeEvent as KeyboardEvent & {
+      isComposing?: boolean;
+      keyCode?: number;
+    };
+    const isImeComposing =
+      nativeEvent.isComposing === true || nativeEvent.keyCode === 229;
+
+    if (e.key === "Enter" && !isImeComposing) {
       e.preventDefault();
       handleSave();
     }
     if (e.key === "Escape") {
       e.preventDefault();
+      isEditingRef.current = false;
       setIsEditing(false);
       setIsVisible(false);
     }
@@ -232,6 +272,13 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
       <div
         ref={menuRef}
         data-link-hover-menu
+        onMouseDownCapture={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest("input, textarea, [contenteditable='true']")) {
+            return;
+          }
+          event.preventDefault();
+        }}
         onMouseEnter={handleMenuMouseEnter}
         onMouseLeave={handleMenuMouseLeave}
         className="fixed z-[20000] overflow-hidden rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/15 dark:bg-[#2f3437]"
@@ -269,6 +316,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  isEditingRef.current = false;
                   setIsEditing(false);
                   setIsVisible(false);
                 }}
