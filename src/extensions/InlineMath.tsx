@@ -22,6 +22,7 @@ const InlineMathView = (props: NodeViewProps) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "Enter") {
       props.updateAttributes({ value });
       setIsEditing(false);

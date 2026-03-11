@@ -210,6 +210,7 @@ function CodeBlockWithLanguageView({
               handleSummaryCommit();
             }}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter") {
                 e.preventDefault();
                 if (isEditingSummary) {
