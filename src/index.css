@@ -112,9 +112,44 @@
     color: inherit;
   }
 
-  /* 编辑器字体大小 CSS 变量（通过 JS 动态设置）*/
+  /* 编辑器缩放变量（通过 JS 动态设置，供编辑器内容模块统一跟随缩放） */
   :root {
     --editor-font-size: 16px;
+    --editor-scale: 1;
+    --editor-module-sm-font-size: calc(14px * var(--editor-scale));
+    --editor-module-xs-font-size: calc(12px * var(--editor-scale));
+    --editor-module-2xs-font-size: calc(11px * var(--editor-scale));
+    --editor-control-height-sm: calc(24px * var(--editor-scale));
+    --editor-control-height-md: calc(28px * var(--editor-scale));
+    --editor-control-icon-size: calc(14px * var(--editor-scale));
+    --editor-control-icon-lg-size: calc(16px * var(--editor-scale));
+    --editor-inline-code-padding-y: calc(3px * var(--editor-scale));
+    --editor-inline-code-padding-x: calc(6px * var(--editor-scale));
+    --editor-inline-code-radius: calc(4px * var(--editor-scale));
+    --editor-link-tooltip-font-size: calc(12px * var(--editor-scale));
+    --editor-link-tooltip-padding-y: calc(6px * var(--editor-scale));
+    --editor-link-tooltip-padding-x: calc(10px * var(--editor-scale));
+    --editor-link-tooltip-radius: calc(14px * var(--editor-scale));
+    --editor-code-block-padding-y: calc(12px * var(--editor-scale));
+    --editor-code-block-padding-x: calc(16px * var(--editor-scale));
+    --editor-code-block-radius: calc(8px * var(--editor-scale));
+    --editor-code-block-node-radius: calc(12px * var(--editor-scale));
+    --editor-code-toolbar-row-height: calc(36px * var(--editor-scale));
+    --editor-code-toolbar-padding-inline: calc(8px * var(--editor-scale));
+    --editor-code-toolbar-gap: calc(8px * var(--editor-scale));
+    --editor-code-toolbar-gap-sm: calc(6px * var(--editor-scale));
+    --editor-code-toolbar-surface-padding: calc(4px * var(--editor-scale));
+    --editor-code-summary-padding-x: calc(6px * var(--editor-scale));
+    --editor-code-line-number-width: calc(40px * var(--editor-scale));
+    --editor-code-line-number-padding-top: calc(12px * var(--editor-scale));
+    --editor-code-line-number-padding-right: calc(8px * var(--editor-scale));
+    --editor-code-line-number-offset: calc(48px * var(--editor-scale));
+    --editor-code-preview-padding: calc(16px * var(--editor-scale));
+    --editor-table-cell-font-size: calc(14px * var(--editor-scale));
+    --editor-table-cell-padding-y: calc(8px * var(--editor-scale));
+    --editor-table-cell-padding-x: calc(12px * var(--editor-scale));
+    --editor-file-action-height: calc(32px * var(--editor-scale));
+    --editor-file-icon-box-size: calc(40px * var(--editor-scale));
   }
 
   /* 移除全局 focus 高亮边框 & ring */

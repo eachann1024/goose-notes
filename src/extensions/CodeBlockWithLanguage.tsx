@@ -176,11 +176,11 @@ function CodeBlockWithLanguageView({
             aria-pressed={collapsed}
             onClick={handleCollapsedChange}
             className={cn(
-              "code-block-collapse-toggle h-7 min-w-7 p-0",
+              "code-block-collapse-toggle !h-[var(--editor-control-height-md)] !min-w-[var(--editor-control-height-md)] p-0",
               collapsed && "is-collapsed",
             )}
           >
-            <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+            <LucideIcons.ChevronDown className="h-[var(--editor-control-icon-size)] w-[var(--editor-control-icon-size)]" />
           </Button>
           <Input
             ref={summaryInputRef}
@@ -228,7 +228,7 @@ function CodeBlockWithLanguageView({
               e.stopPropagation();
             }}
             className={cn(
-              "code-block-summary-input h-7 !h-7 !rounded-md !px-1.5 !py-0 !text-xs !shadow-none focus-visible:!ring-0 focus-visible:!ring-offset-0",
+              "code-block-summary-input !h-[var(--editor-control-height-md)] !rounded-md !px-1.5 !py-0 !text-[length:var(--editor-module-xs-font-size)] !shadow-none focus-visible:!ring-0 focus-visible:!ring-offset-0",
               isSummaryReadonly && "is-readonly",
               isSummaryReadonly && !summary && "is-placeholder",
             )}
@@ -297,30 +297,32 @@ function CodeBlockWithLanguageView({
                   size="sm"
                   onClick={() => setShowLatexHint(!showLatexHint)}
                   className={cn(
-                    "h-6 w-6 p-0 rounded-md",
+                    "!h-[var(--editor-control-height-sm)] !w-[var(--editor-control-height-sm)] p-0 rounded-md",
                     "bg-gradient-to-r from-background/98 to-background/94 hover:from-background/99 hover:to-background/95",
                     "border border-border/50",
                     "backdrop-blur-[1px] transition-all duration-200",
                     showLatexHint && "bg-primary/10 border-primary/30 text-primary",
                   )}
                 >
-                  <LucideIcons.HelpCircle className="h-3.5 w-3.5" />
+                  <LucideIcons.HelpCircle className="h-[var(--editor-control-icon-size)] w-[var(--editor-control-icon-size)]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent
                 side="top"
                 align="end"
-                className="w-[44rem] max-w-[calc(100vw-2rem)] whitespace-normal p-0 text-sm font-normal leading-normal"
+                className="w-[44rem] max-w-[calc(100vw-2rem)] whitespace-normal p-0 text-[length:var(--editor-module-sm-font-size)] font-normal leading-normal"
               >
                 <div>
                   <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-                    <span className="text-sm font-semibold tracking-tight">LaTeX 语法参考</span>
+                    <span className="text-[length:var(--editor-module-sm-font-size)] font-semibold tracking-tight">
+                      LaTeX 语法参考
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowLatexHint(false)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
+                      className="inline-flex h-[var(--editor-control-height-md)] w-[var(--editor-control-height-md)] items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
                     >
-                      <LucideIcons.X className="h-4 w-4" />
+                      <LucideIcons.X className="h-[var(--editor-control-icon-lg-size)] w-[var(--editor-control-icon-lg-size)]" />
                     </button>
                   </div>
                   <div className="max-h-[20rem] overflow-y-auto p-4">
@@ -343,10 +345,10 @@ function CodeBlockWithLanguageView({
                           }}
                           className="group flex min-h-[72px] w-full flex-col items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
-                          <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                          <span className="text-[length:var(--editor-module-xs-font-size)] font-medium text-muted-foreground group-hover:text-foreground">
                             {snippet.label}
                           </span>
-                          <code className="w-full rounded-md bg-background px-2 py-1 font-mono text-[11px] leading-5 text-foreground whitespace-pre-wrap break-all">
+                          <code className="w-full rounded-md bg-background px-2 py-1 font-mono text-[length:var(--editor-module-2xs-font-size)] leading-5 text-foreground whitespace-pre-wrap break-all">
                             {snippet.code}
                           </code>
                         </button>

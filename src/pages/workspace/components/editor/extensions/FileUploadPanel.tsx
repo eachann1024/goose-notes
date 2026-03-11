@@ -90,7 +90,7 @@ export function FileUploadPanel({ editor, deleteNode, selected }: NodeViewProps)
             type="button"
             variant="ghost"
             className={cn(
-              "flex h-auto w-full items-center justify-center gap-3 rounded-[14px] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] transition-all",
+              "flex h-auto w-full items-center justify-center gap-3 rounded-[14px] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-[length:var(--editor-module-sm-font-size)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] transition-all",
               isUploading || !availability.enabled
                 ? "cursor-not-allowed text-muted-foreground/80"
                 : "text-muted-foreground hover:border-primary/45 hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground",
@@ -99,9 +99,9 @@ export function FileUploadPanel({ editor, deleteNode, selected }: NodeViewProps)
             )}
           >
             {isUploading ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <LoaderCircle className="h-[var(--editor-control-icon-lg-size)] w-[var(--editor-control-icon-lg-size)] animate-spin" />
             ) : (
-              <FileUp className="h-4 w-4" />
+              <FileUp className="h-[var(--editor-control-icon-lg-size)] w-[var(--editor-control-icon-lg-size)]" />
             )}
             <span>{isUploading ? "附件上传中..." : "点击选择文件"}</span>
           </Button>

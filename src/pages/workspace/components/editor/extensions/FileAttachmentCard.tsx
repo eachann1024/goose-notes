@@ -141,8 +141,8 @@ export function FileAttachmentCard(props: NodeViewProps) {
           selected && "border-primary/35 ring-1 ring-primary/15",
         )}
       >
-        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-border/75 bg-background/75 text-foreground/80">
-          <File className="h-4 w-4" />
+        <div className="mt-0.5 flex h-[var(--editor-file-icon-box-size)] w-[var(--editor-file-icon-box-size)] shrink-0 items-center justify-center rounded-[12px] border border-border/75 bg-background/75 text-foreground/80">
+          <File className="h-[var(--editor-control-icon-lg-size)] w-[var(--editor-control-icon-lg-size)]" />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -157,7 +157,7 @@ export function FileAttachmentCard(props: NodeViewProps) {
               spellCheck={false}
               draggable={false}
               aria-label="修改附件名称"
-              className="h-8 rounded-[10px] border border-border/80 bg-background px-2.5 py-1 text-sm font-medium text-foreground shadow-none outline-none ring-0 ring-offset-0 focus-visible:ring-0"
+              className="!h-[var(--editor-file-action-height)] rounded-[10px] border border-border/80 bg-background px-2.5 py-1 !text-[length:var(--editor-module-sm-font-size)] font-medium text-foreground shadow-none outline-none ring-0 ring-offset-0 focus-visible:ring-0"
             />
           ) : (
             <button
@@ -170,7 +170,7 @@ export function FileAttachmentCard(props: NodeViewProps) {
               }}
               draggable={false}
               className={cn(
-                "block w-full truncate text-left text-sm font-medium text-foreground outline-none transition-colors",
+                "block w-full truncate text-left text-[length:var(--editor-module-sm-font-size)] font-medium text-foreground outline-none transition-colors",
                 isEditable
                   ? "cursor-text hover:text-foreground/80"
                   : "cursor-default",
@@ -181,7 +181,7 @@ export function FileAttachmentCard(props: NodeViewProps) {
             </button>
           )}
 
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[length:var(--editor-module-xs-font-size)] text-muted-foreground">
             <span>{formatAttachmentSize(node.attrs.size)}</span>
             <span className="text-border">•</span>
             <span className="truncate">{node.attrs.mimeType || "未知类型"}</span>
@@ -201,7 +201,7 @@ export function FileAttachmentCard(props: NodeViewProps) {
                 aria-disabled={isOpening}
                 draggable={false}
                 className={cn(
-                  "ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 self-center rounded-full border border-border/80 bg-background/80 px-3 text-xs font-medium text-muted-foreground transition-colors",
+                  "ml-auto inline-flex h-[var(--editor-file-action-height)] shrink-0 items-center gap-1.5 self-center rounded-full border border-border/80 bg-background/80 px-3 text-[length:var(--editor-module-xs-font-size)] font-medium text-muted-foreground transition-colors",
                   isOpening
                     ? "cursor-not-allowed opacity-90"
                     : "hover:border-foreground/15 hover:text-foreground",
@@ -209,12 +209,12 @@ export function FileAttachmentCard(props: NodeViewProps) {
               >
                 {isOpening ? (
                   <>
-                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                    <LoaderCircle className="h-[var(--editor-control-icon-size)] w-[var(--editor-control-icon-size)] animate-spin" />
                     <span>打开中</span>
                   </>
                 ) : (
                   <>
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <ExternalLink className="h-[var(--editor-control-icon-size)] w-[var(--editor-control-icon-size)]" />
                     <span>点击打开</span>
                   </>
                 )}
@@ -226,7 +226,7 @@ export function FileAttachmentCard(props: NodeViewProps) {
       </div>
 
       {error && (
-        <div className="mt-3 rounded-[12px] border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <div className="mt-3 rounded-[12px] border border-destructive/20 bg-destructive/10 px-3 py-2 text-[length:var(--editor-module-xs-font-size)] text-destructive">
           {error}
         </div>
       )}

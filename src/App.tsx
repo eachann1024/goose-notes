@@ -255,9 +255,11 @@ function App() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.style.setProperty(
-      "--editor-font-size",
-      `${editorFontSize}px`,
+    const root = document.documentElement;
+    root.style.setProperty("--editor-font-size", `${editorFontSize}px`);
+    root.style.setProperty(
+      "--editor-scale",
+      (editorFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),
     );
   }, [editorFontSize]);
 

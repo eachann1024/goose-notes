@@ -49,8 +49,11 @@ const InlineMathView = (props: NodeViewProps) => {
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             autoFocus
-            className="h-6 px-1 py-0 min-w-[50px] inline-block font-mono text-sm border-none shadow-none focus-visible:ring-0"
-            style={{ width: `${Math.max(value.length, 1)}ch` }}
+            className="!h-[var(--editor-control-height-sm)] px-1 py-0 inline-block font-mono !text-[length:var(--editor-module-sm-font-size)] border-none shadow-none focus-visible:ring-0"
+            style={{
+              minWidth: "calc(50px * var(--editor-scale))",
+              width: `${Math.max(value.length, 1)}ch`,
+            }}
           />
           <span className="text-muted-foreground ml-1">$</span>
         </div>

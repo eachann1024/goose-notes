@@ -280,8 +280,9 @@
 .ProseMirror code {
   background-color: hsl(var(--muted));
   color: hsl(var(--foreground));
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  padding: var(--editor-inline-code-padding-y)
+    var(--editor-inline-code-padding-x);
+  border-radius: var(--editor-inline-code-radius);
   font-size: 0.9em;
   font-family: var(--font-mono);
   border: 1px solid hsl(var(--border) / 0.5);
@@ -317,12 +318,13 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 8px;
-  padding: 6px 10px;
+  padding: var(--editor-link-tooltip-padding-y)
+    var(--editor-link-tooltip-padding-x);
   background-color: hsl(var(--popover) / 0.98);
   color: hsl(var(--popover-foreground));
   border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 14px;
-  font-size: 12px;
+  border-radius: var(--editor-link-tooltip-radius);
+  font-size: var(--editor-link-tooltip-font-size);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;

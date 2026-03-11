@@ -115,6 +115,14 @@ export function CodeBlockToolbar({
     (language || "").toLowerCase(),
   );
   const isMathOrMermaid = language === "math" || language === "mermaid";
+  const toolbarControlClass =
+    "!h-[var(--editor-control-height-md)] !min-w-[var(--editor-control-height-md)]";
+  const toolbarTextClass =
+    "!text-[length:var(--editor-module-xs-font-size)]";
+  const toolbarCompactTextClass =
+    "!text-[length:var(--editor-module-2xs-font-size)]";
+  const toolbarIconClass =
+    "h-[var(--editor-control-icon-size)] w-[var(--editor-control-icon-size)]";
   const toolbarChipClass = cn(
     "transition-colors duration-150",
     "border border-[hsl(var(--border)/0.55)] bg-[var(--code-toolbar-chip-bg)] text-[var(--code-toolbar-chip-fg)] shadow-[0_1px_1px_hsl(var(--foreground)/0.04)]",
@@ -131,9 +139,9 @@ export function CodeBlockToolbar({
       <div
         contentEditable={false}
         suppressContentEditableWarning
-        className="code-block-toolbar-actions inline-flex items-center gap-1 rounded-md p-1"
+        className="code-block-toolbar-actions inline-flex items-center rounded-md"
       >
-        <div className="code-block-toolbar-controls flex shrink-0 items-center gap-1">
+        <div className="code-block-toolbar-controls flex shrink-0 items-center gap-[var(--editor-code-toolbar-gap-sm)]">
           {editable && !isMathOrMermaid ? (
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild>
@@ -141,7 +149,9 @@ export function CodeBlockToolbar({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "code-toolbar-language-trigger h-7 min-w-7 px-2 text-xs font-mono",
+                    "code-toolbar-language-trigger px-2 font-mono",
+                    toolbarControlClass,
+                    toolbarTextClass,
                     toolbarChipClass,
                     isOpen && toolbarChipActiveClass,
                   )}
@@ -151,7 +161,7 @@ export function CodeBlockToolbar({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 max-h-64 overflow-y-auto"
+                className="w-48 max-h-64 overflow-y-auto text-[length:var(--editor-module-xs-font-size)]"
               >
                 <div className="p-2 border-b">
                   <Input
@@ -162,11 +172,15 @@ export function CodeBlockToolbar({
                       setSearch(e.target.value)
                     }
                     onKeyDown={(e) => e.stopPropagation()}
-                    className="h-7 text-xs"
+                    className={cn(toolbarControlClass, toolbarTextClass)}
                   />
                 </div>
 
-                {!search && <DropdownMenuLabel>常用语言</DropdownMenuLabel>}
+                {!search && (
+                  <DropdownMenuLabel className={toolbarTextClass}>
+                    常用语言
+                  </DropdownMenuLabel>
+                )}
 
                 {filteredLanguages.map((lang) => (
                   <DropdownMenuItem
@@ -176,7 +190,7 @@ export function CodeBlockToolbar({
                       setIsOpen(false);
                     }}
                     className={cn(
-                      "text-xs",
+                      toolbarTextClass,
                       lang.toLowerCase() === language.toLowerCase() &&
                         "bg-accent",
                     )}
@@ -192,7 +206,9 @@ export function CodeBlockToolbar({
           ) : (
             <div
               className={cn(
-                "inline-flex h-7 min-w-7 cursor-default items-center rounded-md border-0 bg-[hsl(var(--muted)/0.65)] px-2 text-[10px] font-mono text-[color:var(--code-fg)]",
+                "inline-flex cursor-default items-center rounded-md border-0 bg-[hsl(var(--muted)/0.65)] px-2 font-mono text-[color:var(--code-fg)]",
+                toolbarControlClass,
+                toolbarCompactTextClass,
               )}
             >
               {displayLanguage}
@@ -209,15 +225,16 @@ export function CodeBlockToolbar({
                   aria-pressed={wrap}
                   onClick={() => onWrapChange(!wrap)}
                   className={cn(
-                    "code-toolbar-wrap-toggle h-7 min-w-7 p-0",
+                    "code-toolbar-wrap-toggle p-0",
+                    toolbarControlClass,
                     toolbarChipClass,
                     wrap && toolbarChipActiveClass,
                   )}
                 >
                   {wrap ? (
-                    <LucideIcons.AlignJustify className="h-3.5 w-3.5" />
+                    <LucideIcons.AlignJustify className={toolbarIconClass} />
                   ) : (
-                    <LucideIcons.WrapText className="h-3.5 w-3.5" />
+                    <LucideIcons.WrapText className={toolbarIconClass} />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -236,14 +253,17 @@ export function CodeBlockToolbar({
                   onClick={handleFormatClick}
                   disabled={isLoading}
                   className={cn(
-                    "h-7 min-w-7 p-0",
+                    "p-0",
+                    toolbarControlClass,
                     toolbarChipClass,
                   )}
                 >
                   {isLoading ? (
-                    <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <LucideIcons.Loader2
+                      className={cn(toolbarIconClass, "animate-spin")}
+                    />
                   ) : (
-                    <LucideIcons.Sparkles className="h-3.5 w-3.5" />
+                    <LucideIcons.Sparkles className={toolbarIconClass} />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -260,14 +280,17 @@ export function CodeBlockToolbar({
                 size="sm"
                 onClick={handleCopy}
                 className={cn(
-                  "h-7 min-w-7 p-0",
+                  "p-0",
+                  toolbarControlClass,
                   toolbarChipClass,
                 )}
               >
                 {copied ? (
-                  <LucideIcons.Check className="h-3.5 w-3.5 text-green-500" />
+                  <LucideIcons.Check
+                    className={cn(toolbarIconClass, "text-green-500")}
+                  />
                 ) : (
-                  <LucideIcons.Copy className="h-3.5 w-3.5" />
+                  <LucideIcons.Copy className={toolbarIconClass} />
                 )}
               </Button>
             </TooltipTrigger>

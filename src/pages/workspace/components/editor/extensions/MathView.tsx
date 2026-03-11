@@ -47,7 +47,12 @@ export const MathView: React.FC<MathViewProps> = ({
   return (
     <span
       ref={containerRef}
-      className={displayMode ? "block my-4" : "inline-block px-1"}
+      className={displayMode ? "block" : "inline-block"}
+      style={
+        displayMode
+          ? { margin: "calc(16px * var(--editor-scale)) 0" }
+          : { padding: `0 calc(4px * var(--editor-scale))` }
+      }
     />
   );
 };

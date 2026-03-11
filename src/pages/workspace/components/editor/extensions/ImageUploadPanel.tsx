@@ -53,13 +53,13 @@ export function ImageUploadPanel({ editor, deleteNode }: NodeViewProps) {
             variant="ghost"
             disabled={isUploading}
             className={cn(
-              'flex h-auto w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-6 text-sm transition-all duration-200',
+              'flex h-auto w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-6 text-[length:var(--editor-module-sm-font-size)] transition-all duration-200',
               isUploading
                 ? 'cursor-not-allowed opacity-50'
                 : 'text-muted-foreground hover:border-primary hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground'
             )}
           >
-            <LucideIcons.Image className="h-5 w-5" />
+            <LucideIcons.Image className="h-[var(--editor-control-icon-lg-size)] w-[var(--editor-control-icon-lg-size)]" />
             {isUploading ? '处理中...' : '点击选择图片或直接粘贴'}
           </Button>
         </FileTrigger>

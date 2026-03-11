@@ -12,11 +12,11 @@
 .ProseMirror th {
   min-width: 100px;
   border: 1px solid hsl(var(--border) / 0.68);
-  padding: 8px 12px;
+  padding: var(--editor-table-cell-padding-y) var(--editor-table-cell-padding-x);
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
-  font-size: 14px;
+  font-size: var(--editor-table-cell-font-size);
   background-color: hsl(var(--card) / 0.3);
 }
 
