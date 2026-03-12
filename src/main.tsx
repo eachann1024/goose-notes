@@ -247,6 +247,10 @@ const setupSaveGuards = () => {
     }
   };
 
+  const handleWindowBlur = () => {
+    void runFlushOnce();
+  };
+
   const handlePageHide = () => {
     void runFlushOnce();
   };
@@ -255,10 +259,16 @@ const setupSaveGuards = () => {
     void runFlushOnce();
   };
 
+  const handlePluginOut = () => {
+    void runFlushOnce();
+  };
+
   document.addEventListener("keydown", handleManualSave, { capture: true });
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("blur", handleWindowBlur);
   window.addEventListener("pagehide", handlePageHide);
   window.addEventListener("beforeunload", handleBeforeUnload);
+  window.addEventListener("goose-note:plugin-out", handlePluginOut);
 };
 
 const initHostFs = async () => {

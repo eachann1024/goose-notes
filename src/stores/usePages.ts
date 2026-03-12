@@ -17,8 +17,9 @@ import {
   ONBOARDING_SECOND_CHILD_CONTENT,
 } from "@/lib/onboarding";
 
-const LOCAL_SAVE_DEBOUNCE_MS = 800;
-const LOCAL_SAVE_MAX_WAIT_MS = 3000;
+// 本地文件采用近实时后台保存，尽量缩短独立窗口关闭前的未落盘窗口。
+const LOCAL_SAVE_DEBOUNCE_MS = 180;
+const LOCAL_SAVE_MAX_WAIT_MS = 1000;
 const localSaveDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const localSaveMaxWaitTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const pendingLocalSaveContents = new Map<string, JSONContent>();
