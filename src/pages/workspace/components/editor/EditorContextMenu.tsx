@@ -113,6 +113,8 @@ export function EditorContextMenu({
     [customActions],
   );
   const hasSearchText = selectedText.length > 0;
+  const showQuickActionsMenu =
+    isUTools && hasSearchText && enabledActions.length > 0;
   const previewText =
     selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText;
 
@@ -213,7 +215,7 @@ export function EditorContextMenu({
             {enabledActions.length > 0 && <ContextMenuSeparator />}
           </>
         )}
-        {isUTools && hasSearchText && enabledActions.length > 0 && (
+        {showQuickActionsMenu && (
           <>
             <ContextMenuSub>
               <ContextMenuSubTrigger>
