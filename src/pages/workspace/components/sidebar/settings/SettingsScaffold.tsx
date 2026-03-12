@@ -7,6 +7,7 @@ interface SettingsScaffoldProps {
   onTabChange: (tab: SettingsTab) => void;
   tabs: SettingsTabConfig[];
   children: ReactNode;
+  feedbackBanner?: ReactNode;
   appsBanner?: ReactNode;
 }
 
@@ -15,6 +16,7 @@ export function SettingsScaffold({
   onTabChange,
   tabs,
   children,
+  feedbackBanner,
   appsBanner,
 }: SettingsScaffoldProps) {
   return (
@@ -57,7 +59,12 @@ export function SettingsScaffold({
             })}
           </nav>
 
-          {appsBanner ? <div className="p-3">{appsBanner}</div> : null}
+          {feedbackBanner || appsBanner ? (
+            <div className="space-y-3 p-3">
+              {feedbackBanner}
+              {appsBanner}
+            </div>
+          ) : null}
         </div>
 
         <div className="workspace-main-sheet flex-1 overflow-hidden rounded-[18px]">
