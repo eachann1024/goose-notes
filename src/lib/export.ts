@@ -172,6 +172,7 @@ ${html}
 export interface ExportOptions {
   format: "md" | "html";
   notebookIds: string[];
+  exportDirectory?: string;
 }
 
 export async function exportNotebooks(
@@ -180,7 +181,7 @@ export async function exportNotebooks(
   allPages: Page[],
 ) {
   const zip = new JSZip();
-  const { format, notebookIds } = options;
+  const { format, notebookIds, exportDirectory } = options;
   const assetsFolder = zip.folder("assets");
   const imageMap = new Map<string, string>();
 
@@ -266,7 +267,7 @@ export async function exportNotebooks(
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  await downloadBlob(content, `goose-note-export-${timestamp}.zip`);
+  await downloadBlob(content, `goose-note-export-${timestamp}.zip`, exportDirectory);
 }
 
 function sanitizeFileName(name: string): string {
@@ -285,7 +286,18 @@ function getParentDirectoryPath(targetPath: string): string {
   return normalizedPath.slice(0, lastSlashIndex);
 }
 
-async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean> {
+function joinDirectoryAndFileName(directoryPath: string, filename: string): string {
+  const trimmedDirectory = directoryPath.trim().replace(/[\\/]+$/, "");
+  if (!trimmedDirectory) return filename;
+  const separator = trimmedDirectory.includes("\\") ? "\\" : "/";
+  return `${trimmedDirectory}${separator}${filename}`;
+}
+
+async function saveBlobViaUTools(
+  blob: Blob,
+  filename: string,
+  preferredDirectory?: string,
+): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   const hostWindow = window as Window & {
@@ -308,7 +320,10 @@ async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean>
   const saveResult = await Promise.resolve(
     utools.showSaveDialog({
       title: "导出文件",
-      defaultPath: filename,
+      defaultPath:
+        typeof preferredDirectory === "string" && preferredDirectory.trim()
+          ? joinDirectoryAndFileName(preferredDirectory, filename)
+          : filename,
       buttonLabel: "导出",
     })
   );
@@ -375,13 +390,21 @@ async function saveBlobViaUTools(blob: Blob, filename: string): Promise<boolean>
   return true;
 }
 
-async function saveBlobAndReveal(blob: Blob, filename: string): Promise<boolean> {
-  return saveBlobViaUTools(blob, filename);
+async function saveBlobAndReveal(
+  blob: Blob,
+  filename: string,
+  preferredDirectory?: string,
+): Promise<boolean> {
+  return saveBlobViaUTools(blob, filename, preferredDirectory);
 }
 
-async function downloadBlob(blob: Blob, filename: string) {
+async function downloadBlob(
+  blob: Blob,
+  filename: string,
+  preferredDirectory?: string,
+) {
   try {
-    const saved = await saveBlobAndReveal(blob, filename);
+    const saved = await saveBlobAndReveal(blob, filename, preferredDirectory);
     if (saved) return;
     throw new Error("当前版本仅支持 uTools 导出");
   } catch (error) {

@@ -58,6 +58,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     utools,
     setOpenSearchInUtools,
     setUToolsWindowHeight,
+    setUToolsExportDirectory,
     privacy,
     setAutoOpenLastNote,
     showRecentInSearch,
@@ -116,7 +117,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setExporting(true);
     try {
       await exportNotebooks(
-        { format, notebookIds: selectedIds },
+        {
+          format,
+          notebookIds: selectedIds,
+          exportDirectory: utools.exportDirectory,
+        },
         notebooks,
         Object.values(pages),
       );
@@ -182,6 +187,40 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       }
     };
     input.click();
+  };
+
+  const handleSelectExportDirectory = async () => {
+    try {
+      const utoolsApi = (window as Window & {
+        utools?: {
+          showOpenDialog?: (options: {
+            title?: string;
+            properties: string[];
+          }) => Promise<string[] | null>;
+        };
+      }).utools;
+
+      if (typeof utoolsApi?.showOpenDialog === "function") {
+        const result = await utoolsApi.showOpenDialog({
+          title: "选择默认导出文件夹",
+          properties: ["openDirectory"],
+        });
+        if (result && result.length > 0) {
+          setUToolsExportDirectory(result[0]);
+        }
+        return;
+      }
+
+      const path = await window.gooseFs?.selectDirectory?.();
+      if (path) {
+        setUToolsExportDirectory(path);
+      }
+    } catch (error) {
+      console.error("Select export directory failed", error);
+      toast.error("选择导出位置失败", {
+        description: "请稍后重试，或检查当前 uTools 文件选择能力。",
+      });
+    }
   };
 
   useEffect(() => {
@@ -345,6 +384,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               onFormatChange={setFormat}
               exporting={exporting}
               onExport={handleExport}
+              exportDirectory={utools.exportDirectory}
+              onSelectExportDirectory={handleSelectExportDirectory}
+              onClearExportDirectory={() => setUToolsExportDirectory(null)}
               onOpenResetDialog={() => setResetDialogOpen(true)}
             />
           )}

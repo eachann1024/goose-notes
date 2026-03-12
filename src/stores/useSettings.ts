@@ -18,6 +18,7 @@ export interface UToolsSettings {
     openSearchInUtools: boolean
 
     windowHeight: number
+    exportDirectory?: string
 }
 
 export type DesktopHotkeyStatusState = 'idle' | 'active' | 'occupied' | 'invalid' | 'disabled' | 'error'
@@ -103,6 +104,7 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
+    setUToolsExportDirectory: (directory: string | null) => void
     setWakeHotkey: (hotkey: string) => void
     setWakeHotkeyEnabled: (enabled: boolean) => void
     setSearchHotkey: (hotkey: string) => void
@@ -297,6 +299,7 @@ export const useSettings = create<SettingsState>()(
                 openSearchInUtools: true,
 
                 windowHeight: UTOOLS_WINDOW_HEIGHT_MIN,
+                exportDirectory: undefined,
             },
             desktop: {
                 wakeHotkey: DEFAULT_WAKE_HOTKEY,
@@ -373,6 +376,16 @@ export const useSettings = create<SettingsState>()(
                             UTOOLS_WINDOW_HEIGHT_MAX,
                             Math.max(UTOOLS_WINDOW_HEIGHT_MIN, height),
                         ),
+                    },
+                })),
+            setUToolsExportDirectory: (directory) =>
+                set((state) => ({
+                    utools: {
+                        ...state.utools,
+                        exportDirectory:
+                            typeof directory === 'string' && directory.trim()
+                                ? directory.trim()
+                                : undefined,
                     },
                 })),
             setWakeHotkey: (hotkey) =>
@@ -529,6 +542,23 @@ export const useSettings = create<SettingsState>()(
                         utools: {
                             ...state.utools,
                             windowHeight: normalizedWindowHeight,
+                        },
+                    })
+                }
+
+                const normalizedExportDirectory =
+                    typeof state?.utools?.exportDirectory === 'string' &&
+                    state.utools.exportDirectory.trim()
+                        ? state.utools.exportDirectory.trim()
+                        : undefined
+                if (
+                    state?.utools &&
+                    state.utools.exportDirectory !== normalizedExportDirectory
+                ) {
+                    useSettings.setState({
+                        utools: {
+                            ...state.utools,
+                            exportDirectory: normalizedExportDirectory,
                         },
                     })
                 }

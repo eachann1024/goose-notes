@@ -20,6 +20,9 @@ interface SettingsDataPanelProps {
   onFormatChange: (format: ExportOptions["format"]) => void;
   exporting: boolean;
   onExport: () => void;
+  exportDirectory?: string;
+  onSelectExportDirectory: () => void;
+  onClearExportDirectory: () => void;
   onOpenResetDialog: () => void;
 }
 
@@ -40,6 +43,9 @@ export function SettingsDataPanel({
   onFormatChange,
   exporting,
   onExport,
+  exportDirectory,
+  onSelectExportDirectory,
+  onClearExportDirectory,
   onOpenResetDialog,
 }: SettingsDataPanelProps) {
   const selectedCount = selectedIds.length;
@@ -58,7 +64,7 @@ export function SettingsDataPanel({
 
       <SettingsSectionCard
         title="导入与导出"
-        description="选择记事本并导入或导出备份。"
+        description="导入时选择 ZIP 文件，导出时可指定默认保存位置。"
         actions={
           <Button variant="secondary" size="sm" onClick={onImport} disabled={importing}>
             {importing ? "导入中..." : "导入 ZIP"}
@@ -145,6 +151,43 @@ export function SettingsDataPanel({
                 <div className="text-xs text-foreground/70">网页文件</div>
               </div>
             </SelectableCard>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs font-medium text-foreground/80">
+              默认导出位置
+            </Label>
+            <div className="flex items-center gap-2">
+              {exportDirectory ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearExportDirectory}
+                  className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                >
+                  清空
+                </Button>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSelectExportDirectory}
+                className="h-8 rounded-[10px] px-3 text-xs"
+              >
+                {exportDirectory ? "重新选择" : "选择文件夹"}
+              </Button>
+            </div>
+          </div>
+          <div className={cn("rounded-[12px] border px-3 py-2 text-xs", DATA_UNSELECTED_CARD_CLASS)}>
+            {exportDirectory ? (
+              <span className="break-all text-foreground/80">{exportDirectory}</span>
+            ) : (
+              <span className="text-foreground/60">
+                未设置时，导出会由系统保存对话框决定位置。
+              </span>
+            )}
           </div>
         </div>
 
