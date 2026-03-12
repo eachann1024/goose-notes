@@ -37,6 +37,14 @@ const editorFindPluginKey = new PluginKey<DecorationSet>(
 );
 const IMAGE_PASTE_GUARD_KEY = "__gooseImagePasteHandled__";
 
+function getContentSignature(content: unknown): string {
+  try {
+    return JSON.stringify(content ?? null);
+  } catch {
+    return "__goose-note-unserializable-content__";
+  }
+}
+
 function collectFindMatches(
   doc: ProseMirrorNode,
   rawQuery: string,
@@ -124,8 +132,9 @@ export function Editor({ editable = true }: EditorProps) {
   );
 
   const prevPageIdRef = useRef<string | null>(null);
-  const debouncedUpdateRef = useRef<any>(null);
+  const debouncedUpdateRef = useRef<ReturnType<typeof debounce> | null>(null);
   const pageIdForUpdateRef = useRef<string | null>(null);
+  const syncedContentSignatureRef = useRef<string | null>(null);
   const hasFindDecorationsRef = useRef(false);
   const findInputRef = useRef<HTMLInputElement | null>(null);
   const bypassEnterMarkResetRef = useRef(false);
@@ -142,6 +151,7 @@ export function Editor({ editable = true }: EditorProps) {
   const debouncedUpdate = useMemo(() => {
     const fn = debounce(
       (id: string, content: any) => {
+        syncedContentSignatureRef.current = getContentSignature(content);
         updatePage(id, { content });
       },
       800,
@@ -353,10 +363,25 @@ export function Editor({ editable = true }: EditorProps) {
     onUpdate: ({ editor }) => {
       const safePageId = pageIdForUpdateRef.current;
       if (safePageId) {
-        debouncedUpdate(safePageId, editor.getJSON());
+        const nextContent = editor.getJSON();
+        syncedContentSignatureRef.current = getContentSignature(nextContent);
+        debouncedUpdate(safePageId, nextContent);
       }
     },
   });
+
+  const commitEditorContent = useCallback(
+    (targetPageId?: string) => {
+      if (!editor || editor.isDestroyed) return;
+      const safePageId = targetPageId ?? pageIdForUpdateRef.current;
+      if (!safePageId) return;
+      const nextContent = editor.getJSON();
+      debouncedUpdateRef.current?.cancel();
+      syncedContentSignatureRef.current = getContentSignature(nextContent);
+      updatePage(safePageId, { content: nextContent });
+    },
+    [editor, updatePage],
+  );
 
   const getLocalFileTitle = (filePath: string) => {
     const name = filePath.split(/[\\/]/).pop() || "";
@@ -570,15 +595,15 @@ export function Editor({ editable = true }: EditorProps) {
 
   useEffect(() => {
     const flush = () => {
-      debouncedUpdateRef.current?.flush();
+      commitEditorContent();
     };
     const handleFlushEditor = (event: Event) => {
       const customEvent = event as CustomEvent<{ immediate?: boolean }>;
       if (customEvent.detail?.immediate) {
-        debouncedUpdateRef.current?.flush();
+        commitEditorContent();
         return;
       }
-      debouncedUpdateRef.current?.flush();
+      commitEditorContent();
     };
 
     window.addEventListener("beforeunload", flush);
@@ -604,7 +629,7 @@ export function Editor({ editable = true }: EditorProps) {
         handleFocusStart,
       );
     };
-  }, [editor]);
+  }, [commitEditorContent, editor]);
 
   useEffect(() => {
     if (!editor) return;
@@ -778,9 +803,17 @@ export function Editor({ editable = true }: EditorProps) {
 
     const isSamePage = activePageId === prevPageIdRef.current;
     const isPageLoaded = pageIdForUpdateRef.current === activePageId;
-    if (isSamePage && isPageLoaded) return;
+    const pageContentSignature = getContentSignature(page.content);
+    const hasExternalContentRefresh =
+      isSamePage &&
+      isPageLoaded &&
+      syncedContentSignatureRef.current !== pageContentSignature;
 
-    debouncedUpdateRef.current?.flush();
+    if (isSamePage && isPageLoaded && !hasExternalContentRefresh) return;
+
+    if (!hasExternalContentRefresh) {
+      commitEditorContent(pageIdForUpdateRef.current ?? undefined);
+    }
     pageIdForUpdateRef.current = null;
 
     let cancelled = false;
@@ -789,6 +822,7 @@ export function Editor({ editable = true }: EditorProps) {
       editor.commands.blur();
 
       let contentToSet = page.content;
+      let appliedContentSignature = pageContentSignature;
 
       // 确保内容有标题行（第一行为 h1）
       if (!contentToSet.content || contentToSet.content.length === 0) {
@@ -835,6 +869,8 @@ export function Editor({ editable = true }: EditorProps) {
         }
       }
 
+      appliedContentSignature = getContentSignature(contentToSet);
+
       // 使用 transaction 设置内容，明确不记录到历史
       const { tr } = editor.state;
       const newDoc = editor.schema.nodeFromJSON(contentToSet);
@@ -844,6 +880,7 @@ export function Editor({ editable = true }: EditorProps) {
 
       pageIdForUpdateRef.current = activePageId;
       prevPageIdRef.current = activePageId;
+      syncedContentSignatureRef.current = appliedContentSignature;
 
       if (shouldPersistTitle) {
         updatePage(activePageId, { content: contentToSet });
@@ -889,7 +926,7 @@ export function Editor({ editable = true }: EditorProps) {
     return () => {
       cancelled = true;
     };
-  }, [activePageId, page, editor]);
+  }, [activePageId, commitEditorContent, page, editor]);
 
   useEffect(() => {
     if (editor) {
@@ -1114,12 +1151,13 @@ export function Editor({ editable = true }: EditorProps) {
       // 1. 先清除编辑器中的高亮 Mark (view.dispatch 是同步更新 state 的)
       clearHighlightMarks();
 
-      // 2. 关键修复：取消之前挂起的 debounce，因为那个挂起的调用可能包含带有高亮 Mark 的脏数据
+      // 2. 取消挂起的防抖保存，避免高亮状态被旧快照回写
       debouncedUpdateRef.current?.cancel();
 
       // 3. 获取清除高亮后的最新内容，并手动立即保存，确保落盘的是干净数据
       if (activePageId && editor && !editor.isDestroyed) {
         const cleanContent = editor.getJSON();
+        syncedContentSignatureRef.current = getContentSignature(cleanContent);
         updatePage(activePageId, { content: cleanContent });
       }
 
