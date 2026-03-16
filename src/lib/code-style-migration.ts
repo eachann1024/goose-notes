@@ -27,18 +27,16 @@ interface PersistedSettingsState {
 }
 
 function hasMigrationMark(): boolean {
-  if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(MIGRATION_MARK_KEY) === "1";
+    return uToolsStorage.getItem(MIGRATION_MARK_KEY) === "1";
   } catch {
     return false;
   }
 }
 
 function writeMigrationMark(): void {
-  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(MIGRATION_MARK_KEY, "1");
+    uToolsStorage.setItem(MIGRATION_MARK_KEY, "1");
   } catch {
     // Ignore write failures and keep migration logic idempotent.
   }

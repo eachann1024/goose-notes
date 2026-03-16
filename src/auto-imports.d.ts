@@ -137,11 +137,11 @@ declare global {
   const X: typeof import('lucide-react').X
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
-  const browserGooseFs: typeof import('./lib/browser-fs').browserGooseFs
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
+  const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const compressImage: typeof import('./lib/imageProcessor').compressImage
@@ -164,6 +164,7 @@ declare global {
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
+  const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
@@ -193,11 +194,14 @@ declare global {
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
+  const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
+  const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
+  const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const startTransition: typeof import('react').startTransition
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
@@ -232,6 +236,7 @@ declare global {
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
+  const writeDbStorageJSON: typeof import('./lib/storage').writeDbStorageJSON
 }
 // for type re-export
 declare global {

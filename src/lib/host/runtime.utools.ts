@@ -13,6 +13,42 @@ export const hostRuntime: HostRuntime = {
   supportsSublist: false,
   supportsWakeHotkey: false,
   ensureGooseFs: async () => {},
+  dbStorage: {
+    getItem: (key: string) => {
+      const utools = getUTools();
+      if (!utools?.dbStorage || typeof utools.dbStorage.getItem !== "function") {
+        return null;
+      }
+      try {
+        const value = utools.dbStorage.getItem(key);
+        return typeof value === "string" ? value : null;
+      } catch {
+        return null;
+      }
+    },
+    setItem: (key: string, value: string) => {
+      const utools = getUTools();
+      if (!utools?.dbStorage || typeof utools.dbStorage.setItem !== "function") {
+        return;
+      }
+      try {
+        utools.dbStorage.setItem(key, value);
+      } catch {
+        // ignore dbStorage write errors and let callers decide fallback
+      }
+    },
+    removeItem: (key: string) => {
+      const utools = getUTools();
+      if (!utools?.dbStorage || typeof utools.dbStorage.removeItem !== "function") {
+        return;
+      }
+      try {
+        utools.dbStorage.removeItem(key);
+      } catch {
+        // ignore dbStorage remove errors and let callers decide fallback
+      }
+    },
+  },
   db: {
     put: <T>(id: string, data: T, rev?: string): HostPutResult => {
       const utools = getUTools();

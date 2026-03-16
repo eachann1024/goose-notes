@@ -1,14 +1,12 @@
 /**
  * 图片存储统一入口
- * 根据运行环境自动选择最优存储策略
+ * 根据笔记来源自动选择最优存储策略
  */
 
 import type { IImageStorageStrategy } from './types'
-import { IndexedDBStrategy } from './strategies/indexed-db'
 import { AttachmentStrategy } from './strategies/attachment'
 import { FileSystemStrategy } from './strategies/file-system'
 import { InlinedStrategy } from './strategies/inlined'
-import { UToolsAdapter } from '../utools'
 
 /**
  * 图片存储管理器
@@ -26,25 +24,20 @@ export class ImageStorage {
   }
 
   /**
-   * 根据环境选择存储策略
+   * 根据笔记来源选择存储策略
    */
   private async resolveStrategy(): Promise<IImageStorageStrategy> {
     if (this.strategy) return this.strategy
     if (this.strategyPromise) return this.strategyPromise
 
     this.strategyPromise = (async () => {
-      if (UToolsAdapter.isUTools) {
-        // uTools 环境：检测是否有本地文件访问权限
-        const hasLocalFolder = await this.checkLocalFolderAccess()
+      const hasLocalFolder = await this.checkLocalFolderAccess()
 
-        if (hasLocalFolder) {
-          return new FileSystemStrategy()
-        }
-        return new AttachmentStrategy()
+      if (hasLocalFolder) {
+        return new FileSystemStrategy()
       }
 
-      // Web 浏览器环境
-      return new IndexedDBStrategy()
+      return new AttachmentStrategy()
     })()
 
     this.strategy = await this.strategyPromise

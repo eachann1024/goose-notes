@@ -48,13 +48,6 @@ export function getFileUploadAvailability(): {
   enabled: boolean;
   reason?: string;
 } {
-  if (!UToolsAdapter.isUTools) {
-    return {
-      enabled: false,
-      reason: "当前环境暂不支持选择本地文件上传附件",
-    };
-  }
-
   if (resolveCurrentNotebookSource() === "local-folder") {
     return {
       enabled: false,
@@ -147,7 +140,7 @@ export const fileStorage = {
     meta: { fileName: string; size: number },
   ): Promise<{ ok: boolean; error?: string }> {
     if (!window.gooseFs?.writeTempFile) {
-      return { ok: false, error: "当前环境不支持打开附件" };
+      return { ok: false, error: "uTools 文件桥接未就绪，无法打开附件" };
     }
 
     await ensureTempCleanup();

@@ -13,8 +13,9 @@ import {
   decodeUnsupportedMarkdownForDisk,
   encodeUnsupportedMarkdownForEditor,
 } from "./lib/markdown-raw-guard";
-import { flushUToolsStorageWrites } from "./lib/storage";
+import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import { UToolsAdapter } from "./lib/utools";
+import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
 
@@ -41,7 +42,6 @@ const flushAllPendingWrites = async () => {
     }),
   );
   await usePages.getState().flushPendingLocalSaves();
-  await flushUToolsStorageWrites();
 };
 
 const runFlushOnce = () => {
@@ -277,6 +277,18 @@ const initHostFs = async () => {
 
 const bootstrap = async () => {
   await initHostFs();
+  await migrateLegacyStorage();
+  await Promise.all([
+    useSettings.persist.rehydrate(),
+    useNotebooks.persist.rehydrate(),
+  ]);
+  await usePages.getState().hydrateFromStorage();
+  const notebooksStore = useNotebooks.getState();
+  if (!notebooksStore.notebooks[notebooksStore.activeNotebookId || ""]) {
+    const firstNotebookId =
+      Object.keys(notebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
+    useNotebooks.setState({ activeNotebookId: firstNotebookId });
+  }
   setupEditorMutationTracker();
   setupMarkdownOpenWriteGuard();
   setupLocalContentUpdateGuard();

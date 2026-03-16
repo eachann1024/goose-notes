@@ -24,6 +24,23 @@ export class UToolsAdapter {
   /**
    * Database Operations
    */
+  static dbStorage = {
+    getItem: (key: string): string | null => {
+      return hostRuntime.dbStorage.getItem(key);
+    },
+
+    setItem: (key: string, value: string): void => {
+      hostRuntime.dbStorage.setItem(key, value);
+    },
+
+    removeItem: (key: string): void => {
+      hostRuntime.dbStorage.removeItem(key);
+    },
+  };
+
+  /**
+   * Database Operations
+   */
   static db = {
     /**
      * Save a document

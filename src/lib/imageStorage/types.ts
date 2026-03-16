@@ -36,18 +36,6 @@ export interface IImageStorageStrategy {
 }
 
 /**
- * 图片元数据
- * 用于 IndexedDB 存储
- */
-export interface ImageMetadata {
-  id: string
-  blob: Blob
-  mimeType: string
-  size: number
-  createdAt: number
-}
-
-/**
  * 存储配置
  */
 export interface StorageConfig {
@@ -59,4 +47,4 @@ export interface StorageConfig {
 /**
  * 存储策略类型
  */
-export type StorageStrategyType = 'indexed-db' | 'base64' | 'attachment' | 'file-system' | 'inlined'
+export type StorageStrategyType = 'base64' | 'attachment' | 'file-system' | 'inlined'

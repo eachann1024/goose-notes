@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uToolsStorage } from "@/lib/storage";
+import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 
 export interface Notebook {
   id: string;
@@ -160,6 +161,7 @@ export const useNotebooks = create<NotebooksState>()(
         const state = get();
         const notebookCount = Object.keys(state.notebooks).length;
         if (notebookCount <= 1) return;
+        const deletedNotebook = state.notebooks[id];
 
         const pagesStore = usePages.getState();
         const tabsStore = useTabs.getState();
@@ -223,7 +225,10 @@ export const useNotebooks = create<NotebooksState>()(
           }
         }
 
-        pagesStore.removePagesByWorkspaceId(id);
+        pagesStore.removePagesByWorkspaceId(id, { purgePersistence: true });
+        if (deletedNotebook?.source === "local-folder") {
+          removeLocalPageMetaByWorkspaceId(id);
+        }
         useTabs.setState({
           openTabs: remainingTabs,
           activeTabId: nextActiveTabId,
@@ -339,9 +344,8 @@ export const useNotebooks = create<NotebooksState>()(
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
-        activeNotebookId: state.activeNotebookId,
-        lastActivePageByNotebook: state.lastActivePageByNotebook,
       }),
+      skipHydration: true,
       migrate: (persistedState: unknown) => {
         const safeState = persistedState as
           | { notebooks?: Record<string, Notebook> }

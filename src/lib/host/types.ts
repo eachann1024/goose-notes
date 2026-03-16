@@ -36,6 +36,11 @@ export interface HostRuntime {
   supportsSublist: boolean;
   supportsWakeHotkey: boolean;
   ensureGooseFs?: () => Promise<void>;
+  dbStorage: {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    removeItem: (key: string) => void;
+  };
   db: {
     put: <T>(id: string, data: T, rev?: string) => HostPutResult;
     get: <T>(id: string) => HostDoc<T> | null;

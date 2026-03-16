@@ -1,8 +1,6 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
-import { uToolsStorage } from "@/lib/storage";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
@@ -16,6 +14,15 @@ import {
   ONBOARDING_CHILD_PAGE_CONTENT,
   ONBOARDING_SECOND_CHILD_CONTENT,
 } from "@/lib/onboarding";
+import type { PersistedLocalPageMetaDoc } from "@/lib/storage/pageRepository";
+import {
+  loadPagesFromStorage,
+  removeInternalPage,
+  removeLocalPageMeta,
+  saveInternalPage,
+  saveLocalPageMeta,
+  savePagesMeta,
+} from "@/lib/storage/pageRepository";
 
 // 本地文件采用近实时后台保存，尽量缩短独立窗口关闭前的未落盘窗口。
 const LOCAL_SAVE_DEBOUNCE_MS = 180;
@@ -37,11 +44,198 @@ const localPageMetadataCache = new Map<
   }
 >();
 
+type LocalPageMetadata = {
+  isFavorite?: boolean;
+  favoriteOrder?: number;
+  icon?: string;
+  isPinned?: boolean;
+  pinnedAt?: number;
+};
+
 // 辅助函数：生成本地页面ID（基于相对路径的hash）
 function generateLocalPageId(notebookId: string, filePath: string): string {
   const notebook = useNotebooks.getState().notebooks[notebookId];
   if (!notebook?.localPath) return uuidv4();
   return buildLocalPageId(notebookId, notebook.localPath, filePath);
+}
+
+const LOCAL_PAGE_META_UPDATE_KEYS: Array<keyof Page> = [
+  "isFavorite",
+  "favoriteOrder",
+  "icon",
+  "isPinned",
+  "pinnedAt",
+];
+
+const buildLocalPageMetadata = (
+  source: Partial<Page> | PersistedLocalPageMetaDoc,
+): LocalPageMetadata | null => {
+  const metadata: LocalPageMetadata = {};
+
+  if (source.isFavorite) {
+    metadata.isFavorite = true;
+  }
+  if (typeof source.favoriteOrder === "number") {
+    metadata.favoriteOrder = source.favoriteOrder;
+  }
+  if (typeof source.icon === "string" && source.icon.trim()) {
+    metadata.icon = source.icon;
+  }
+  if (source.isPinned) {
+    metadata.isPinned = true;
+  }
+  if (typeof source.pinnedAt === "number") {
+    metadata.pinnedAt = source.pinnedAt;
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : null;
+};
+
+const syncLocalPageMetadataCache = (
+  pageId: string,
+  source: Partial<Page> | PersistedLocalPageMetaDoc | null,
+) => {
+  const metadata = source ? buildLocalPageMetadata(source) : null;
+  if (!metadata) {
+    localPageMetadataCache.delete(pageId);
+    return;
+  }
+  localPageMetadataCache.set(pageId, metadata);
+};
+
+const seedLocalPageMetadataCache = (
+  localPageMetas: Record<string, PersistedLocalPageMetaDoc>,
+) => {
+  localPageMetadataCache.clear();
+  Object.entries(localPageMetas).forEach(([pageId, metadata]) => {
+    syncLocalPageMetadataCache(pageId, metadata);
+  });
+};
+
+const isLocalFolderPage = (page: Page | undefined): boolean => {
+  if (!page) return false;
+  if (page.localFilePath) return true;
+  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+  return notebook?.source === "local-folder";
+};
+
+const persistPageSnapshot = (page: Page | undefined) => {
+  if (!page) return;
+
+  if (isLocalFolderPage(page)) {
+    syncLocalPageMetadataCache(page.id, page);
+    saveLocalPageMeta({
+      id: page.id,
+      workspaceId: page.workspaceId,
+      updatedAt: page.updatedAt,
+      isFavorite: page.isFavorite,
+      favoriteOrder: page.favoriteOrder,
+      icon: page.icon,
+      isPinned: page.isPinned,
+      pinnedAt: page.pinnedAt,
+    });
+    return;
+  }
+
+  saveInternalPage(page);
+};
+
+const persistPageSnapshots = (
+  pages: Record<string, Page>,
+  pageIds: Iterable<string>,
+) => {
+  for (const pageId of pageIds) {
+    persistPageSnapshot(pages[pageId]);
+  }
+};
+
+const removePersistedPageSnapshot = (page: Page | undefined, pageId?: string) => {
+  const targetPageId = page?.id ?? pageId;
+  if (!targetPageId) return;
+
+  if (isLocalFolderPage(page)) {
+    syncLocalPageMetadataCache(targetPageId, null);
+    removeLocalPageMeta(targetPageId);
+    return;
+  }
+
+  removeInternalPage(targetPageId);
+};
+
+const removePersistedPageSnapshots = (
+  pages: Record<string, Page>,
+  pageIds: Iterable<string>,
+) => {
+  for (const pageId of pageIds) {
+    removePersistedPageSnapshot(pages[pageId], pageId);
+  }
+};
+
+const shouldPersistLocalPageMetaUpdate = (updates: Partial<Page>) => {
+  return LOCAL_PAGE_META_UPDATE_KEYS.some((key) =>
+    Object.prototype.hasOwnProperty.call(updates, key),
+  );
+};
+
+function compareSiblingPages(
+  a: Page,
+  b: Page,
+  isLocalNotebook: boolean,
+): number {
+  if (isLocalNotebook) {
+    if (a.isFolder !== b.isFolder) {
+      return a.isFolder ? -1 : 1;
+    }
+    const titleCompare = getPageTitle(a).localeCompare(getPageTitle(b), "zh-CN", {
+      numeric: true,
+    });
+    if (titleCompare !== 0) return titleCompare;
+    return a.id.localeCompare(b.id);
+  }
+
+  const orderA = a.order ?? a.createdAt;
+  const orderB = b.order ?? b.createdAt;
+  if (orderA !== orderB) return orderA - orderB;
+  return a.id.localeCompare(b.id);
+}
+
+function resolveAdjacentPageAfterDeletion({
+  pages,
+  currentPage,
+  removedIds,
+  isLocalNotebook,
+}: {
+  pages: Record<string, Page>;
+  currentPage: Page;
+  removedIds: Set<string>;
+  isLocalNotebook: boolean;
+}): string | null {
+  const siblingsBeforeDelete = Object.values(pages)
+    .filter(
+      (candidate) =>
+        candidate.workspaceId === currentPage.workspaceId &&
+        !candidate.trashedAt &&
+        candidate.parentId === currentPage.parentId,
+    )
+    .sort((a, b) => compareSiblingPages(a, b, isLocalNotebook));
+
+  const deletedPageIndex = siblingsBeforeDelete.findIndex(
+    (candidate) => candidate.id === currentPage.id,
+  );
+  const siblingsAfterDelete = siblingsBeforeDelete.filter(
+    (candidate) => !removedIds.has(candidate.id),
+  );
+
+  if (siblingsAfterDelete.length === 0) {
+    return null;
+  }
+
+  const fallbackIndex =
+    deletedPageIndex === -1
+      ? siblingsAfterDelete.length - 1
+      : Math.min(deletedPageIndex, siblingsAfterDelete.length - 1);
+
+  return siblingsAfterDelete[fallbackIndex]?.id ?? null;
 }
 
 interface PagesState {
@@ -56,6 +250,7 @@ interface PagesState {
   hydrated: boolean;
   lastSavedAt: number | null;
   onboardingCompleted: boolean;
+  hydrateFromStorage: () => Promise<void>;
 
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
@@ -99,7 +294,10 @@ interface PagesState {
   getTrashedPages: (workspaceId?: string) => Page[];
   getFavorites: (workspaceId?: string) => Page[];
   getPinnedPages: () => Page[];
-  removePagesByWorkspaceId: (workspaceId: string) => void;
+  removePagesByWorkspaceId: (
+    workspaceId: string,
+    options?: { purgePersistence?: boolean },
+  ) => void;
 
   // 本地文件夹相关函数
   loadLocalFolderPages: (
@@ -226,16 +424,11 @@ export const flushEditorContent = (immediate = false) => {
   }
 };
 
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    flushEditorContent(true);
-    void usePages.getState().flushPendingLocalSaves();
-  });
-}
+export const clearLocalPageMetadataCache = () => {
+  localPageMetadataCache.clear();
+};
 
-export const usePages = create<PagesState>()(
-  persist(
-    (set, get) => ({
+export const usePages = create<PagesState>()((set, get) => ({
       pages: {},
       activePageId: null,
       pendingNavigatePageId: null,
@@ -247,6 +440,24 @@ export const usePages = create<PagesState>()(
       hydrated: false,
       lastSavedAt: null,
       onboardingCompleted: false,
+      hydrateFromStorage: async () => {
+        const { pages, localPageMetas, onboardingCompleted } =
+          loadPagesFromStorage();
+        seedLocalPageMetadataCache(localPageMetas);
+        set({
+          pages,
+          activePageId: null,
+          pendingNavigatePageId: null,
+          expandPageId: null,
+          searchHighlightQuery: null,
+          searchHighlightPageId: null,
+          searchHighlightNonce: 0,
+          handledSearchHighlightNonce: 0,
+          hydrated: true,
+          lastSavedAt: null,
+          onboardingCompleted,
+        });
+      },
 
       createOnboardingPages: () => {
         let createdMainId: string | null = null;
@@ -334,7 +545,13 @@ export const usePages = create<PagesState>()(
         if (createdMainId) {
           useNotebooks.getState().setActiveNotebook(workspaceId);
           useNotebooks.getState().setLastActivePage(workspaceId, createdMainId);
+          const currentPages = get().pages;
+          persistPageSnapshots(currentPages, [createdMainId]);
+          Object.values(currentPages)
+            .filter((page) => page.parentId === createdMainId)
+            .forEach((page) => persistPageSnapshot(page));
         }
+        savePagesMeta({ onboardingCompleted: true });
       },
 
       createPage: (parentId, workspaceId = DEFAULT_NOTEBOOK) => {
@@ -362,6 +579,7 @@ export const usePages = create<PagesState>()(
           activePageId: id,
         }));
 
+        persistPageSnapshot(get().pages[id]);
         useNotebooks.getState().setLastActivePage(workspaceId, id);
 
         // 新建页面时自动聚焦标题
@@ -462,6 +680,7 @@ export const usePages = create<PagesState>()(
           activePageId: id,
         }));
 
+        syncLocalPageMetadataCache(id, null);
         useNotebooks.getState().setLastActivePage(workspaceId, id);
 
         if (typeof window !== "undefined") {
@@ -476,6 +695,10 @@ export const usePages = create<PagesState>()(
       },
 
       updatePage: (id, updates) => {
+        const page = get().pages[id];
+        const shouldPersistLocalMeta =
+          isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
+
         set((state) => {
           const page = state.pages[id];
           if (!page) return state;
@@ -528,6 +751,18 @@ export const usePages = create<PagesState>()(
             },
           };
         });
+
+        const updatedPage = get().pages[id];
+        if (!updatedPage) return;
+
+        if (isLocalFolderPage(updatedPage)) {
+          if (shouldPersistLocalMeta) {
+            persistPageSnapshot(updatedPage);
+          }
+          return;
+        }
+
+        persistPageSnapshot(updatedPage);
       },
 
       deletePage: async (id) => {
@@ -576,24 +811,18 @@ export const usePages = create<PagesState>()(
             : await window.gooseFs.deleteFile(targetPath);
           if (!removeOk) return false;
 
-          set((state) => {
+	          set((state) => {
             const newPages = { ...state.pages };
             removedIds.forEach((pid) => delete newPages[pid]);
 
             let nextActivePageId = state.activePageId;
             if (removedIds.has(state.activePageId || "")) {
-              // 获取同层级剩余页面，选中最后一个
-              const remainingPages = Object.values(newPages).filter(
-                (p) =>
-                  p.workspaceId === page.workspaceId &&
-                  !p.trashedAt &&
-                  p.parentId === page.parentId,
-              );
-              if (remainingPages.length > 0) {
-                nextActivePageId = remainingPages[remainingPages.length - 1].id;
-              } else {
-                nextActivePageId = null;
-              }
+              nextActivePageId = resolveAdjacentPageAfterDeletion({
+                pages: state.pages,
+                currentPage: page,
+                removedIds,
+                isLocalNotebook: true,
+              });
               // 同步清理 Notebook 中记录的最后活跃页面
               useNotebooks.getState().setLastActivePage(
                 page.workspaceId,
@@ -607,10 +836,13 @@ export const usePages = create<PagesState>()(
             };
           });
 
+          removePersistedPageSnapshots(snapshotPages, removedIds);
+
           return true;
         }
 
         const workspaceId = page.workspaceId;
+        const changedIds: string[] = [];
 
         set((state) => {
           // 递归获取所有子页面 ID
@@ -636,23 +868,18 @@ export const usePages = create<PagesState>()(
                 isPinned: false,
                 pinnedAt: undefined,
               };
+              changedIds.push(pid);
             }
           });
 
           let newActivePageId = state.activePageId;
           if (removedIds.has(state.activePageId || "")) {
-            // 获取同层级剩余页面，选中最后一个
-            const remainingPages = Object.values(newPages).filter(
-              (p) =>
-                p.workspaceId === workspaceId &&
-                !p.trashedAt &&
-                p.parentId === page.parentId,
-            );
-            if (remainingPages.length > 0) {
-              newActivePageId = remainingPages[remainingPages.length - 1].id;
-            } else {
-              newActivePageId = null;
-            }
+            newActivePageId = resolveAdjacentPageAfterDeletion({
+              pages: state.pages,
+              currentPage: page,
+              removedIds,
+              isLocalNotebook: false,
+            });
             // 清理 Notebook 记录
             useNotebooks.getState().setLastActivePage(
               workspaceId,
@@ -665,6 +892,8 @@ export const usePages = create<PagesState>()(
             activePageId: newActivePageId,
           };
         });
+
+        persistPageSnapshots(get().pages, changedIds);
 
         return true;
       },
@@ -698,6 +927,7 @@ export const usePages = create<PagesState>()(
         }
 
         let restoredCount = 0;
+        const restoredIds: string[] = [];
         set((state) => {
           const currentPage = state.pages[id];
           if (!currentPage || !currentPage.trashedAt) return state;
@@ -720,6 +950,7 @@ export const usePages = create<PagesState>()(
                 updatedAt: now,
               } as Page;
               restoredCount += 1;
+              restoredIds.push(currentId);
             }
             Object.values(restoredPages).forEach((p) => {
               if (p.parentId === currentId && !visited.has(p.id)) {
@@ -732,6 +963,8 @@ export const usePages = create<PagesState>()(
             pages: restoredPages,
           };
         });
+
+        persistPageSnapshots(get().pages, restoredIds);
 
         return {
           ok: true,
@@ -793,6 +1026,7 @@ export const usePages = create<PagesState>()(
             },
           };
         });
+        persistPageSnapshot(get().pages[newId]);
         return newId;
       },
 
@@ -804,11 +1038,12 @@ export const usePages = create<PagesState>()(
         const isLocalFolder = notebook?.source === "local-folder";
 
         // 本地模式需要确认对话框
-        if (isLocalFolder && notebook?.localPath) {
-          if (typeof window === "undefined" || !window.gooseFs) return;
-          if (!page) return;
+	        if (isLocalFolder && notebook?.localPath) {
+	          if (typeof window === "undefined" || !window.gooseFs) return;
+	          if (!page) return;
+          const snapshotPages = get().pages;
 
-          const resolvePathFromId = (pageId: string) => {
+	          const resolvePathFromId = (pageId: string) => {
             const prefix = `local-${page.workspaceId}-`;
             if (!pageId.startsWith(prefix)) return null;
             const encoded = pageId.slice(prefix.length);
@@ -845,7 +1080,7 @@ export const usePages = create<PagesState>()(
             : await window.gooseFs.deleteFile(targetPath);
           if (!deleted) return;
 
-          set((state) => {
+	          set((state) => {
             const newPages = { ...state.pages };
             removedIds.forEach((pid) => delete newPages[pid]);
 
@@ -861,9 +1096,11 @@ export const usePages = create<PagesState>()(
               activePageId: nextActivePageId,
             };
           });
+          removePersistedPageSnapshots(snapshotPages, removedIds);
           return;
         }
 
+        const targetPage = get().pages[id];
         set((state) => {
           const page = state.pages[id];
           if (!page) return state;
@@ -931,6 +1168,7 @@ export const usePages = create<PagesState>()(
             activePageId: newActivePageId,
           };
         });
+        removePersistedPageSnapshot(targetPage, id);
       },
 
       reorderPages: (ids, parentId) => {
@@ -950,6 +1188,7 @@ export const usePages = create<PagesState>()(
 
           return { pages: newPages };
         });
+        persistPageSnapshots(get().pages, ids);
       },
 
       reorderFavorites: (ids) => {
@@ -968,6 +1207,7 @@ export const usePages = create<PagesState>()(
 
           return { pages: newPages };
         });
+        persistPageSnapshots(get().pages, ids);
       },
 
       movePageTreeToNotebook: (pageId, targetNotebookId) => {
@@ -1100,6 +1340,8 @@ export const usePages = create<PagesState>()(
             activePageId: shouldFallbackActive ? nextActivePageId : state.activePageId,
           };
         });
+
+        persistPageSnapshots(get().pages, movedIds);
 
         if (shouldFallbackActive) {
           notebooksStore.setLastActivePage(sourceNotebookId, nextActivePageId);
@@ -1286,7 +1528,12 @@ export const usePages = create<PagesState>()(
           });
       },
 
-      removePagesByWorkspaceId: (workspaceId) => {
+      removePagesByWorkspaceId: (workspaceId, options) => {
+        const snapshotPages = get().pages;
+        const removedIds = Object.values(snapshotPages)
+          .filter((page) => page.workspaceId === workspaceId)
+          .map((page) => page.id);
+
         set((state) => {
           const newPages = { ...state.pages };
           Object.values(state.pages).forEach((page) => {
@@ -1306,6 +1553,10 @@ export const usePages = create<PagesState>()(
             activePageId: nextActivePageId,
           };
         });
+
+        if (options?.purgePersistence) {
+          removePersistedPageSnapshots(snapshotPages, removedIds);
+        }
       },
 
       // 本地文件夹相关函数
@@ -1601,91 +1852,6 @@ export const usePages = create<PagesState>()(
         return page?.localFilePath || null;
       },
     }),
-    {
-      name: "goose-note-storage",
-      storage: createJSONStorage(() => uToolsStorage),
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated(true);
-        
-        // 自动清理超过 30 天的已删除页面
-        if (state?.pages) {
-          const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-          const now = Date.now();
-          const pagesToDelete: string[] = [];
-          
-          Object.values(state.pages).forEach((page) => {
-            if (page.trashedAt && now - page.trashedAt > THIRTY_DAYS) {
-              pagesToDelete.push(page.id);
-            }
-          });
-          
-          if (pagesToDelete.length > 0) {
-            pagesToDelete.forEach((id) => {
-              delete state.pages[id];
-            });
-            console.log(`[Auto Cleanup] Permanently deleted ${pagesToDelete.length} expired trashed pages`);
-          }
-        }
-      },
-      partialize: (state) => ({
-        pages: state.pages,
-        activePageId: state.activePageId,
-        onboardingCompleted: state.onboardingCompleted,
-      }),
-      migrate: (persistedState: any, _version: number) => {
-        // 迁移旧版 Page 数据：将 title 字段移入 content 的第一个 h1 节点
-        if (persistedState?.pages) {
-          const migratedPages: Record<string, Page> = {};
-
-          for (const [id, page] of Object.entries(persistedState.pages) as [
-            string,
-            any,
-          ][]) {
-            // 如果存在 title 字段，说明是旧数据
-            if ("title" in page) {
-              const oldTitle = page.title || "";
-              const content = page.content as JSONContent;
-
-              // 检查第一个节点
-              const firstNode = content.content?.[0];
-
-              // 如果第一个节点已经是 h1，更新其内容
-              if (
-                firstNode?.type === "heading" &&
-                firstNode.attrs?.level === 1
-              ) {
-                firstNode.content = oldTitle
-                  ? [{ type: "text", text: oldTitle }]
-                  : undefined;
-              } else {
-                // 否则在开头插入 h1
-                content.content = [
-                  {
-                    type: "heading",
-                    attrs: { level: 1 },
-                    content: oldTitle
-                      ? [{ type: "text", text: oldTitle }]
-                      : undefined,
-                  },
-                  ...(content.content || []),
-                ];
-              }
-
-              // 移除 title 字段
-              const { title, ...pageWithoutTitle } = page;
-              migratedPages[id] = pageWithoutTitle as Page;
-            } else {
-              migratedPages[id] = page as Page;
-            }
-          }
-
-          persistedState.pages = migratedPages;
-        }
-
-        return persistedState;
-      },
-    },
-  ),
 );
 
 const setupImageStorageResolver = async () => {
