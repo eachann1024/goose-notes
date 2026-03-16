@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 
@@ -12,7 +11,6 @@ interface TabsState {
   openTabs: TabItem[];
   activeTabId: string | null;
   syncNotebookForPage: (pageId: string | null) => void;
-
   openTab: (pageId: string) => void;
   openInCurrentTab: (pageId: string) => void;
   closeTab: (tabId: string) => void;
@@ -36,204 +34,161 @@ const scheduleSetActivePage = (pageId: string | null) => {
   return setActivePageChain;
 };
 
-export const useTabs = create<TabsState>()(
-  persist(
-    (set, get) => ({
-      openTabs: [],
-      activeTabId: null,
+export const useTabs = create<TabsState>()((set, get) => ({
+  openTabs: [],
+  activeTabId: null,
 
-      syncNotebookForPage: (pageId: string | null) => {
-        if (!pageId) return;
-        const page = usePages.getState().getPage(pageId);
-        if (!page) return;
-        const notebookStore = useNotebooks.getState();
-        if (notebookStore.activeNotebookId !== page.workspaceId) {
-          notebookStore.setActiveNotebook(page.workspaceId);
-        }
-      },
+  syncNotebookForPage: (pageId: string | null) => {
+    if (!pageId) return;
+    const page = usePages.getState().getPage(pageId);
+    if (!page) return;
+    const notebookStore = useNotebooks.getState();
+    if (notebookStore.activeNotebookId !== page.workspaceId) {
+      notebookStore.setActiveNotebook(page.workspaceId);
+    }
+  },
 
-      openTab: (pageId: string) => {
-        const { openTabs } = get();
-        const existingTab = openTabs.find((tab) => tab.pageId === pageId);
+  openTab: (pageId: string) => {
+    const { openTabs } = get();
+    const existingTab = openTabs.find((tab) => tab.pageId === pageId);
+    if (existingTab) {
+      set({ activeTabId: existingTab.id });
+      get().syncNotebookForPage(pageId);
+      void scheduleSetActivePage(pageId);
+      return;
+    }
 
-        if (existingTab) {
-          set({ activeTabId: existingTab.id });
-          get().syncNotebookForPage(pageId);
-          void scheduleSetActivePage(pageId);
-          return;
-        }
+    const newTab: TabItem = {
+      id: createTabId(pageId),
+      pageId,
+    };
+    set({
+      openTabs: [...openTabs, newTab],
+      activeTabId: newTab.id,
+    });
+    get().syncNotebookForPage(pageId);
+    void scheduleSetActivePage(pageId);
+  },
 
-        const newTab: TabItem = {
-          id: createTabId(pageId),
-          pageId,
-        };
-        const nextTabs = [...openTabs, newTab];
+  openInCurrentTab: (pageId: string) => {
+    const { openTabs, activeTabId } = get();
+    const activeIndex = openTabs.findIndex((tab) => tab.id === activeTabId);
+    if (activeIndex === -1) {
+      get().openTab(pageId);
+      return;
+    }
 
-        set({
-          openTabs: nextTabs,
-          activeTabId: newTab.id,
-        });
-        get().syncNotebookForPage(pageId);
-        void scheduleSetActivePage(pageId);
-      },
+    const nextTabs = [...openTabs];
+    nextTabs[activeIndex] = {
+      ...nextTabs[activeIndex],
+      pageId,
+    };
+    set({ openTabs: nextTabs });
+    get().syncNotebookForPage(pageId);
+    void scheduleSetActivePage(pageId);
+  },
 
-      openInCurrentTab: (pageId: string) => {
-        const { openTabs, activeTabId } = get();
-        const activeIndex = openTabs.findIndex((tab) => tab.id === activeTabId);
-        if (activeIndex === -1) {
-          get().openTab(pageId);
-          return;
-        }
+  closeTab: (tabId: string) => {
+    const { openTabs, activeTabId } = get();
+    const index = openTabs.findIndex((tab) => tab.id === tabId);
+    if (index === -1) return;
 
-        const nextTabs = [...openTabs];
-        nextTabs[activeIndex] = {
-          ...nextTabs[activeIndex],
-          pageId,
-        };
-        set({ openTabs: nextTabs });
-        get().syncNotebookForPage(pageId);
-        void scheduleSetActivePage(pageId);
-      },
+    const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
+    let nextActiveId: string | null = null;
+    if (activeTabId === tabId && nextTabs.length > 0) {
+      nextActiveId = nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;
+    } else if (activeTabId !== tabId) {
+      nextActiveId = activeTabId;
+    }
 
-      closeTab: (tabId: string) => {
-        const { openTabs, activeTabId } = get();
-        const index = openTabs.findIndex((tab) => tab.id === tabId);
-        if (index === -1) return;
+    set({ openTabs: nextTabs, activeTabId: nextActiveId });
+    const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
+    get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
+    void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+  },
 
-        const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
+  closeOtherTabs: (tabId: string) => {
+    const { openTabs } = get();
+    const currentTab = openTabs.find((tab) => tab.id === tabId);
+    if (!currentTab) return;
 
-        let nextActiveId: string | null = null;
-        if (activeTabId === tabId && nextTabs.length > 0) {
-          // 优先激活右边的标签，如果没有则激活左边的
-          nextActiveId = nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;
-        } else if (activeTabId !== tabId) {
-          nextActiveId = activeTabId;
-        }
+    set({ openTabs: [currentTab], activeTabId: currentTab.id });
+    get().syncNotebookForPage(currentTab.pageId);
+    void scheduleSetActivePage(currentTab.pageId);
+  },
 
-        set({ openTabs: nextTabs, activeTabId: nextActiveId });
-        const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-        get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
-      },
+  closeTabsToLeft: (tabId: string) => {
+    const { openTabs, activeTabId } = get();
+    const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
+    if (currentIndex <= 0) return;
 
-      closeOtherTabs: (tabId: string) => {
-        const { openTabs } = get();
-        const currentTab = openTabs.find((tab) => tab.id === tabId);
-        if (!currentTab) return;
-        set({ openTabs: [currentTab], activeTabId: currentTab.id });
-        get().syncNotebookForPage(currentTab.pageId);
-        void scheduleSetActivePage(currentTab.pageId);
-      },
+    const nextTabs = openTabs.slice(currentIndex);
+    const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
+      ? activeTabId
+      : tabId;
 
-      closeTabsToLeft: (tabId: string) => {
-        const { openTabs, activeTabId } = get();
-        const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
-        if (currentIndex <= 0) return;
+    set({ openTabs: nextTabs, activeTabId: nextActiveId });
+    const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
+    get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
+    void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+  },
 
-        const nextTabs = openTabs.slice(currentIndex);
-        const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
-          ? activeTabId
-          : tabId;
+  closeTabsToRight: (tabId: string) => {
+    const { openTabs, activeTabId } = get();
+    const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
+    if (currentIndex === -1 || currentIndex >= openTabs.length - 1) return;
 
-        set({ openTabs: nextTabs, activeTabId: nextActiveId });
-        const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-        get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
-      },
+    const nextTabs = openTabs.slice(0, currentIndex + 1);
+    const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
+      ? activeTabId
+      : tabId;
 
-      closeTabsToRight: (tabId: string) => {
-        const { openTabs, activeTabId } = get();
-        const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
-        if (currentIndex === -1 || currentIndex >= openTabs.length - 1) return;
+    set({ openTabs: nextTabs, activeTabId: nextActiveId });
+    const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
+    get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
+    void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+  },
 
-        const nextTabs = openTabs.slice(0, currentIndex + 1);
-        const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
-          ? activeTabId
-          : tabId;
+  setActiveTab: (tabId: string) => {
+    const { openTabs } = get();
+    const tab = openTabs.find((item) => item.id === tabId);
+    if (!tab) return;
 
-        set({ openTabs: nextTabs, activeTabId: nextActiveId });
-        const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-        get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
-      },
+    set({ activeTabId: tab.id });
+    get().syncNotebookForPage(tab.pageId);
+    void scheduleSetActivePage(tab.pageId);
+  },
 
-      setActiveTab: (tabId: string) => {
-        const { openTabs } = get();
-        const tab = openTabs.find((item) => item.id === tabId);
-        if (!tab) return;
-        set({ activeTabId: tab.id });
-        get().syncNotebookForPage(tab.pageId);
-        void scheduleSetActivePage(tab.pageId);
-      },
+  reorderTabs: (from: number, to: number) => {
+    const { openTabs } = get();
+    if (from < 0 || from >= openTabs.length) return;
+    if (to < 0 || to >= openTabs.length) return;
 
-      reorderTabs: (from: number, to: number) => {
-        const { openTabs } = get();
-        if (from < 0 || from >= openTabs.length) return;
-        if (to < 0 || to >= openTabs.length) return;
-        const next = [...openTabs];
-        const [moved] = next.splice(from, 1);
-        next.splice(to, 0, moved);
-        set({ openTabs: next });
-      },
+    const nextTabs = [...openTabs];
+    const [moved] = nextTabs.splice(from, 1);
+    nextTabs.splice(to, 0, moved);
+    set({ openTabs: nextTabs });
+  },
 
-      removeDeletedPage: (pageId: string) => {
-        const { openTabs, activeTabId } = get();
-        const deletedPage = usePages.getState().getPage(pageId);
-        const isDeletingTrashedPage = !!deletedPage?.trashedAt;
-        const nextTabs = openTabs.filter((tab) => tab.pageId !== pageId);
-        if (nextTabs.length === openTabs.length) return;
+  removeDeletedPage: (pageId: string) => {
+    const { openTabs, activeTabId } = get();
+    const deletedPage = usePages.getState().getPage(pageId);
+    const isDeletingTrashedPage = !!deletedPage?.trashedAt;
+    const nextTabs = openTabs.filter((tab) => tab.pageId !== pageId);
+    if (nextTabs.length === openTabs.length) return;
 
-        let nextActiveId = activeTabId;
-        if (!nextActiveId || !nextTabs.some((tab) => tab.id === nextActiveId)) {
-          nextActiveId = nextTabs[0]?.id ?? null;
-        }
+    let nextActiveId = activeTabId;
+    if (!nextActiveId || !nextTabs.some((tab) => tab.id === nextActiveId)) {
+      nextActiveId = nextTabs[0]?.id ?? null;
+    }
 
-        set({ openTabs: nextTabs, activeTabId: nextActiveId });
-        const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-        if (isDeletingTrashedPage) {
-          // 回收站删除后由 pages store 决定下一个页面，避免被标签切换覆盖。
-          return;
-        }
-        get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-        void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
-      },
-    }),
-    {
-      name: "goose-note-tabs",
-      storage: createJSONStorage(() => localStorage),
-      version: 2,
-      migrate: (persistedState, version) => {
-        if (!persistedState || version >= 2) return persistedState as TabsState;
-        const legacy = persistedState as {
-          openTabs?: unknown;
-          activeTabId?: unknown;
-        };
-        const legacyTabs = Array.isArray(legacy.openTabs) ? legacy.openTabs : [];
-        if (legacyTabs.length === 0 || typeof legacyTabs[0] !== "string") {
-          return persistedState as TabsState;
-        }
+    set({ openTabs: nextTabs, activeTabId: nextActiveId });
+    if (isDeletingTrashedPage) {
+      return;
+    }
 
-        const migratedTabs = (legacyTabs as string[]).map((pageId, index) => ({
-          id: `legacy-${index}-${pageId}`,
-          pageId,
-        }));
-        const legacyActivePageId =
-          typeof legacy.activeTabId === "string" ? legacy.activeTabId : null;
-        const activeTabId =
-          migratedTabs.find((tab) => tab.pageId === legacyActivePageId)?.id ??
-          migratedTabs[0]?.id ??
-          null;
-
-        return {
-          ...(persistedState as object),
-          openTabs: migratedTabs,
-          activeTabId,
-        } as TabsState;
-      },
-      partialize: (state) => ({
-        openTabs: state.openTabs,
-        activeTabId: state.activeTabId,
-      }),
-    },
-  ),
-);
+    const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
+    get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
+    void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+  },
+}));

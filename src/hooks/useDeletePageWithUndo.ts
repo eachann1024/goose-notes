@@ -2,9 +2,10 @@ import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
+import { useTabs } from "@/stores/useTabs";
 
 export function useDeletePageWithUndo() {
-  const { deletePage, restorePage, setActivePage, pages } = usePages();
+  const { deletePage, restorePage, pages } = usePages();
 
   const deletePageWithUndo = async (pageId: string) => {
     const page = pages[pageId];
@@ -17,6 +18,10 @@ export function useDeletePageWithUndo() {
     const deleted = await deletePage(pageId);
 
     if (!deleted) return;
+
+    useTabs
+      .getState()
+      .removeDeletedPage(pageId);
 
     if (isLocalFolder) {
       toast(`已删除「${pageTitle}」，已移入系统回收站`, {
@@ -33,8 +38,17 @@ export function useDeletePageWithUndo() {
         label: "撤回",
         onClick: () => {
           const result = restorePage(pageId);
-          setActivePage(pageId);
           if (!result.ok) return;
+
+          const tabsStore = useTabs.getState();
+          const existingTab = tabsStore.openTabs.find((tab) => tab.pageId === pageId);
+          if (existingTab) {
+            tabsStore.setActiveTab(existingTab.id);
+          } else if (tabsStore.activeTabId) {
+            tabsStore.openInCurrentTab(pageId);
+          } else {
+            tabsStore.openTab(pageId);
+          }
 
           const parentPath =
             result.parentTitles && result.parentTitles.length > 0

@@ -435,8 +435,14 @@ export function WorkspacePage() {
                     );
                   }}
                   onDelete={() => {
-                    useTabs.getState().removeDeletedPage(activePageId);
-                    void usePages.getState().permanentlyDeletePage(activePageId);
+                    const deletedPageId = activePageId;
+                    void (async () => {
+                      await usePages.getState().permanentlyDeletePage(deletedPageId);
+                      if (usePages.getState().getPage(deletedPageId)) return;
+                      useTabs
+                        .getState()
+                        .removeDeletedPage(deletedPageId);
+                    })();
                   }}
                 />
 

@@ -67,7 +67,7 @@ export function PageHeader({
         >
           {openTabs.map((tab, tabIndex) => {
             const tabPage = getPage(tab.pageId);
-            if (!tabPage) return null;
+            if (!tabPage || tabPage.trashedAt) return null;
             const isActive = activeTabId === tab.id;
             const hasLeftTabs = tabIndex > 0;
             const hasRightTabs = tabIndex < openTabs.length - 1;

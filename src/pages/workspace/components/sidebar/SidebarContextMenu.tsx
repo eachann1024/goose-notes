@@ -187,8 +187,13 @@ export function SidebarContextMenu({
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() => {
-                  useTabs.getState().removeDeletedPage(page.id);
-                  void permanentlyDeletePage(page.id);
+                  void (async () => {
+                    await permanentlyDeletePage(page.id);
+                    if (usePages.getState().getPage(page.id)) return;
+                    useTabs
+                      .getState()
+                      .removeDeletedPage(page.id);
+                  })();
                 }}
                 className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
               >
