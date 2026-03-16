@@ -153,28 +153,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handlePluginOut = () => {
-      void (async () => {
-        window.dispatchEvent(
-          new CustomEvent("goose-note:flush-editor", {
-            detail: { immediate: true },
-          }),
-        );
-        await usePages.getState().flushPendingLocalSaves();
-        const { flushUToolsStorageWrites } = await import("@/lib/storage");
-        await flushUToolsStorageWrites();
-      })();
-    };
-
-    window.addEventListener("goose-note:plugin-out", handlePluginOut);
-    return () => {
-      window.removeEventListener("goose-note:plugin-out", handlePluginOut);
-    };
-  }, []);
-
-  useEffect(() => {
     if (typeof window === "undefined" || !(window as any).gooseFs) return;
     const gooseFs = (window as any).gooseFs as GooseFs;
     const notebooksStore = useNotebooks.getState();
@@ -342,8 +320,6 @@ function App() {
             }),
           );
           await usePages.getState().flushPendingLocalSaves();
-          const { flushUToolsStorageWrites } = await import("@/lib/storage");
-          await flushUToolsStorageWrites();
           toast("内容已保存", { duration: 1500 });
         })();
       } else if (event.key === "+" || event.key === "=") {

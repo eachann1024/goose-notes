@@ -4,8 +4,10 @@ import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
 import type { SettingsTab, SettingsTabConfig } from "./settings/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
-import { usePages } from "@/stores/usePages";
+import { clearLocalPageMetadataCache, usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
+import { clearPersistedPages } from "@/lib/storage/pageRepository";
+import { clearLegacyStorage } from "@/lib/storage/migrateLegacyStorage";
 import { UToolsAdapter } from "@/lib/utools";
 import {
   exportNotebooks,
@@ -58,7 +60,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     utools,
     setOpenSearchInUtools,
     setUToolsWindowHeight,
-    setUToolsExportDirectory,
     privacy,
     setAutoOpenLastNote,
     showRecentInSearch,
@@ -120,7 +121,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         {
           format,
           notebookIds: selectedIds,
-          exportDirectory: utools.exportDirectory,
         },
         notebooks,
         Object.values(pages),
@@ -189,40 +189,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     input.click();
   };
 
-  const handleSelectExportDirectory = async () => {
-    try {
-      const utoolsApi = (window as Window & {
-        utools?: {
-          showOpenDialog?: (options: {
-            title?: string;
-            properties: string[];
-          }) => Promise<string[] | null>;
-        };
-      }).utools;
-
-      if (typeof utoolsApi?.showOpenDialog === "function") {
-        const result = await utoolsApi.showOpenDialog({
-          title: "选择默认导出文件夹",
-          properties: ["openDirectory"],
-        });
-        if (result && result.length > 0) {
-          setUToolsExportDirectory(result[0]);
-        }
-        return;
-      }
-
-      const path = await window.gooseFs?.selectDirectory?.();
-      if (path) {
-        setUToolsExportDirectory(path);
-      }
-    } catch (error) {
-      console.error("Select export directory failed", error);
-      toast.error("选择导出位置失败", {
-        description: "请稍后重试，或检查当前 uTools 文件选择能力。",
-      });
-    }
-  };
-
   useEffect(() => {
     if (!resetDialogOpen) {
       setResetInput("");
@@ -231,8 +197,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleReset = () => {
     if (!canReset) return;
-    dataStorage.removeItem("goose-note-storage");
     dataStorage.removeItem("goose-note-notebooks");
+    clearPersistedPages();
+    clearLegacyStorage();
+    clearLocalPageMetadataCache();
     const defaultNotebook = {
       id: DEFAULT_NOTEBOOK,
       name: "Note",
@@ -248,6 +216,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     usePages.setState({
       pages: {},
       activePageId: null,
+      pendingNavigatePageId: null,
+      expandPageId: null,
+      searchHighlightQuery: null,
+      searchHighlightPageId: null,
+      searchHighlightNonce: 0,
+      handledSearchHighlightNonce: 0,
+      hydrated: true,
+      lastSavedAt: null,
       onboardingCompleted: false,
     });
     setResetDialogOpen(false);
@@ -384,9 +360,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               onFormatChange={setFormat}
               exporting={exporting}
               onExport={handleExport}
-              exportDirectory={utools.exportDirectory}
-              onSelectExportDirectory={handleSelectExportDirectory}
-              onClearExportDirectory={() => setUToolsExportDirectory(null)}
               onOpenResetDialog={() => setResetDialogOpen(true)}
             />
           )}

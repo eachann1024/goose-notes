@@ -2,14 +2,6 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-let electronShell = null;
-
-try {
-  const electron = require("electron");
-  electronShell = electron?.shell ?? null;
-} catch (err) {
-  console.warn("[gooseFs] electron shell unavailable:", err);
-}
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
@@ -28,17 +20,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     } catch (err) {
       console.error("[gooseFs] shellTrashItem failed:", err);
-    }
-
-    try {
-      // Electron fallback
-      const { shell } = require("electron");
-      if (shell?.trashItem) {
-        await shell.trashItem(targetPath);
-        return true;
-      }
-    } catch (err) {
-      console.error("[gooseFs] electron shell.trashItem failed:", err);
     }
 
     return false;
@@ -120,29 +101,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
 
     try {
-      if (typeof electronShell?.showItemInFolder === "function") {
-        electronShell.showItemInFolder(targetPath);
-        return true;
-      }
-    } catch (err) {
-      console.error("[gooseFs] electron shell.showItemInFolder failed:", err);
-    }
-
-    try {
       if (typeof utools?.shellOpenPath === "function") {
         return !!utools.shellOpenPath(path.dirname(targetPath));
       }
     } catch (err) {
       console.error("[gooseFs] utools shellOpenPath failed:", err);
-    }
-
-    try {
-      if (typeof electronShell?.openPath === "function") {
-        electronShell.openPath(path.dirname(targetPath));
-        return true;
-      }
-    } catch (err) {
-      console.error("[gooseFs] electron shell.openPath failed:", err);
     }
 
     return false;

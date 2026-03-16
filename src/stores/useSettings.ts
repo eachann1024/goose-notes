@@ -18,7 +18,6 @@ export interface UToolsSettings {
     openSearchInUtools: boolean
 
     windowHeight: number
-    exportDirectory?: string
 }
 
 export type DesktopHotkeyStatusState = 'idle' | 'active' | 'occupied' | 'invalid' | 'disabled' | 'error'
@@ -104,7 +103,6 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
 
     setUToolsWindowHeight: (height: number) => void
-    setUToolsExportDirectory: (directory: string | null) => void
     setWakeHotkey: (hotkey: string) => void
     setWakeHotkeyEnabled: (enabled: boolean) => void
     setSearchHotkey: (hotkey: string) => void
@@ -299,7 +297,6 @@ export const useSettings = create<SettingsState>()(
                 openSearchInUtools: true,
 
                 windowHeight: UTOOLS_WINDOW_HEIGHT_MIN,
-                exportDirectory: undefined,
             },
             desktop: {
                 wakeHotkey: DEFAULT_WAKE_HOTKEY,
@@ -376,16 +373,6 @@ export const useSettings = create<SettingsState>()(
                             UTOOLS_WINDOW_HEIGHT_MAX,
                             Math.max(UTOOLS_WINDOW_HEIGHT_MIN, height),
                         ),
-                    },
-                })),
-            setUToolsExportDirectory: (directory) =>
-                set((state) => ({
-                    utools: {
-                        ...state.utools,
-                        exportDirectory:
-                            typeof directory === 'string' && directory.trim()
-                                ? directory.trim()
-                                : undefined,
                     },
                 })),
             setWakeHotkey: (hotkey) =>
@@ -509,6 +496,7 @@ export const useSettings = create<SettingsState>()(
         {
             name: 'goose-note-settings',
             storage: createJSONStorage(() => uToolsStorage),
+            skipHydration: true,
             onRehydrateStorage: () => (state) => {
                 const theme = state?.theme || 'system'
                 const codeStyle = normalizeCodeStyle(state?.codeStyle as string | undefined)
@@ -546,25 +534,25 @@ export const useSettings = create<SettingsState>()(
                     })
                 }
 
-                const normalizedExportDirectory =
-                    typeof state?.utools?.exportDirectory === 'string' &&
-                    state.utools.exportDirectory.trim()
-                        ? state.utools.exportDirectory.trim()
-                        : undefined
+                const normalizedUTools: UToolsSettings | null = state?.utools
+                    ? {
+                        globalSearchEnabled: Boolean(state.utools.globalSearchEnabled),
+                        openSearchInUtools:
+                            typeof state.utools.openSearchInUtools === 'boolean'
+                                ? state.utools.openSearchInUtools
+                                : true,
+                        windowHeight: normalizedWindowHeight,
+                    }
+                    : null
                 if (
-                    state?.utools &&
-                    state.utools.exportDirectory !== normalizedExportDirectory
+                    normalizedUTools &&
+                    JSON.stringify(state?.utools ?? null) !== JSON.stringify(normalizedUTools)
                 ) {
-                    useSettings.setState({
-                        utools: {
-                            ...state.utools,
-                            exportDirectory: normalizedExportDirectory,
-                        },
-                    })
+                    useSettings.setState({ utools: normalizedUTools })
                 }
 
                 // Apply window height immediately upon rehydration
-                if (state?.utools) {
+                if (normalizedUTools) {
                     // Try to apply directly if possible, or via adapter
                     // We need to import UToolsAdapter dynamically or assume it's available globally or rely on side effects
                     // Since UToolsAdapter is in lib, we can access it if we import it.
@@ -578,7 +566,7 @@ export const useSettings = create<SettingsState>()(
                                 setExpendHeight?: (height: number) => void
                             }
                          }
-                         hostWindow.utools?.setExpendHeight?.(normalizedWindowHeight)
+                         hostWindow.utools?.setExpendHeight?.(normalizedUTools.windowHeight)
                     } catch (e) {
                         console.error("Failed to apply window height on rehydrate", e)
                     }

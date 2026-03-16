@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { UToolsAdapter } from "@/lib/utools";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -35,12 +34,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, hideClose, ...props }, ref) => {
-  // uTools 环境下 Dialog 垂直居中显示
-  const isUTools = UToolsAdapter.isUTools;
-  const topPosition = isUTools
-    ? "top-[50%]"
-    : "top-[calc(10%+var(--goose-top-safe-area,0px))]";
-  const translateY = isUTools ? "translate-y-[-50%]" : "";
   const {
     "aria-describedby": ariaDescribedby,
     overlayClassName,
@@ -53,7 +46,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          `fixed left-[50%] ${topPosition} z-[100] grid w-full max-w-lg translate-x-[-50%] ${translateY} gap-4 border-0 bg-background p-6 shadow-[0_16px_36px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] duration-200 overflow-visible data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 sm:rounded-[14px]`,
+          "fixed left-[50%] top-[50%] z-[100] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-visible border-0 bg-background p-6 shadow-[0_16px_36px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 sm:rounded-[14px]",
           className,
         )}
         {...(ariaDescribedby === undefined

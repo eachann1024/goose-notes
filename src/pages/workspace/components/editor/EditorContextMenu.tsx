@@ -12,11 +12,9 @@ import {
   ContextMenuSubContent,
 } from "@/components/ui/context-menu";
 import * as LucideIcons from "lucide-react";
-import { UToolsAdapter } from "@/lib/utools";
 import type { CustomAction } from "@/stores/useSettings";
+import { UToolsAdapter } from "@/lib/utools";
 import { DragHandleBlockMenu } from "./DragHandleBlockMenu";
-
-const isUTools = UToolsAdapter.isUTools;
 
 interface EditorContextMenuProps {
   editor: Editor;
@@ -113,8 +111,7 @@ export function EditorContextMenu({
     [customActions],
   );
   const hasSearchText = selectedText.length > 0;
-  const showQuickActionsMenu =
-    isUTools && hasSearchText && enabledActions.length > 0;
+  const showQuickActionsMenu = hasSearchText && enabledActions.length > 0;
   const previewText =
     selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText;
 
