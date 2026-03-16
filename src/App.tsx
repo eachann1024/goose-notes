@@ -17,6 +17,68 @@ const UI_FONT_SIZE_MAP = {
   large: 18,
 } as const;
 
+type UToolsPluginEnterDetail = {
+  code?: string;
+  type?: string;
+  payload?: unknown;
+  optional?: boolean;
+};
+
+const applyUToolsWindowHeight = () => {
+  const state = useSettings.getState();
+  if (state.utools.windowHeight) {
+    UToolsAdapter.setExpendHeight(state.utools.windowHeight);
+  }
+};
+
+const resolveRestorablePageId = () => {
+  const notebooksStore = useNotebooks.getState();
+  const pagesStore = usePages.getState();
+  const activeNotebookId = notebooksStore.activeNotebookId;
+  if (!activeNotebookId) return null;
+
+  const pages = pagesStore.pages;
+  const lastPageId = notebooksStore.getLastActivePage(activeNotebookId);
+  const lastPage = lastPageId ? pages[lastPageId] : null;
+  if (
+    lastPage &&
+    lastPage.workspaceId === activeNotebookId &&
+    !lastPage.trashedAt
+  ) {
+    return lastPageId;
+  }
+
+  const activeNotebook = notebooksStore.notebooks[activeNotebookId];
+  if (activeNotebook?.source === "local-folder") {
+    return null;
+  }
+
+  const firstValidPage = Object.values(pages)
+    .filter((page) => page.workspaceId === activeNotebookId && !page.trashedAt)
+    .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt))[0];
+
+  return firstValidPage?.id ?? null;
+};
+
+const restoreLastNoteIfNeeded = () => {
+  const pagesStore = usePages.getState();
+  if (pagesStore.activePageId) return;
+
+  const targetPageId = resolveRestorablePageId();
+  if (!targetPageId) return;
+
+  useTabs.getState().openTab(targetPageId);
+};
+
+const clearActivePageForBlankEntry = () => {
+  // 保留已打开标签，仅取消当前激活态，使再次唤出回到空白页。
+  useTabs.setState({ activeTabId: null });
+  const pagesStore = usePages.getState();
+  if (!pagesStore.activePageId) return;
+
+  void pagesStore.setActivePage(null);
+};
+
 function App() {
   const {
     uiFontSize,
@@ -32,7 +94,7 @@ function App() {
 
   useEffect(() => {
     if (utools.windowHeight) {
-      UToolsAdapter.setExpendHeight(utools.windowHeight);
+      applyUToolsWindowHeight();
     }
   }, [utools.windowHeight]);
 
@@ -79,25 +141,46 @@ function App() {
   }, [hydrated]);
 
   useEffect(() => {
-    // 注册 uTools 进入插件事件监听，用于处理自动打开搜索等逻辑
-    if (typeof window !== "undefined" && (window as any).utools) {
-      (window as any).utools.onPluginEnter(() => {
-        const state = useSettings.getState();
+    if (typeof window === "undefined") return;
 
-        // 立即应用窗口高度
-        if (state.utools.windowHeight) {
-          UToolsAdapter.setExpendHeight(state.utools.windowHeight);
-        }
+    const handlePluginEnter = (event: Event) => {
+      const customEvent = event as CustomEvent<UToolsPluginEnterDetail>;
+      const { code } = customEvent.detail || {};
 
-        // 确保 CommandPalette 已挂载并能接收事件
-        // 使用 requestAnimationFrame 略微延迟以确保 UI 响应
-        // requestAnimationFrame(() => {
-        //   if (state.utools.autoOpenSearch) {
-        //      window.dispatchEvent(new CustomEvent("goose-note:open-search"));
-        //   }
-        // });
-      });
-    }
+      applyUToolsWindowHeight();
+
+      if (!usePages.getState().hydrated) return;
+      if (!useSettings.getState().privacy.autoOpenLastNote) return;
+      if (code === "open_folder" || code === "new_page") return;
+
+      restoreLastNoteIfNeeded();
+    };
+
+    const handlePluginOut = () => {
+      if (!useSettings.getState().privacy.autoOpenLastNote) {
+        clearActivePageForBlankEntry();
+      }
+    };
+
+    window.addEventListener(
+      "goose-note:plugin-enter",
+      handlePluginEnter as EventListener,
+    );
+    window.addEventListener(
+      "goose-note:plugin-out",
+      handlePluginOut as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "goose-note:plugin-enter",
+        handlePluginEnter as EventListener,
+      );
+      window.removeEventListener(
+        "goose-note:plugin-out",
+        handlePluginOut as EventListener,
+      );
+    };
   }, []);
 
   // 根据隐私设置决定是否自动打开上次笔记
@@ -106,10 +189,12 @@ function App() {
 
     const { privacy } = useSettings.getState();
     if (!privacy.autoOpenLastNote) {
-      // 关闭自动打开，清空当前活跃页面
-      usePages.getState().setActivePage(null);
+      clearActivePageForBlankEntry();
+      return;
     }
-  }, [hydrated]);
+
+    restoreLastNoteIfNeeded();
+  }, [hydrated, privacy.autoOpenLastNote]);
 
   useEffect(() => {
     const openFolder = async (folderPath: string) => {

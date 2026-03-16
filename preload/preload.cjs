@@ -336,7 +336,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     );
   };
 
-  utools.onPluginEnter(({ code, type, payload }) => {
+  utools.onPluginEnter(({ code, type, payload, optional }) => {
     // 确保每次进入插件都重新设置 subInput
     if (typeof utools.setSubInput === "function") {
       const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
@@ -358,6 +358,12 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         true,
       );
     }
+
+    window.dispatchEvent(
+      new CustomEvent("goose-note:plugin-enter", {
+        detail: { code, type, payload, optional },
+      }),
+    );
 
     if (code === "open_folder") {
       if ((type === "files" || type === "file") && payload && payload.length > 0) {
@@ -383,11 +389,18 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.__gooseNoteLastAppValue = "";
 
   if (typeof utools.onPluginOut === "function") {
-    utools.onPluginOut(() => {
+    utools.onPluginOut((isKill) => {
       if (typeof utools.removeSubInput === "function") {
         utools.removeSubInput();
       }
-      window.dispatchEvent(new CustomEvent("goose-note:plugin-out"));
+      window.dispatchEvent(
+        new CustomEvent("goose-note:plugin-out", {
+          detail: {
+            // isKill=true 表示插件进程被销毁，false 表示仅隐藏到后台。
+            isKill: isKill === true,
+          },
+        }),
+      );
     });
   }
 
