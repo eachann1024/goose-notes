@@ -12,8 +12,8 @@ interface SettingsAppearanceProps {
   customFonts: Record<"default" | "serif" | "mono", { label: string | null; font: string | null }>;
   setCustomLabel: (type: "default" | "serif" | "mono", label: string | null) => void;
   setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
-  uiFontSize: "small" | "normal" | "large";
-  setUIFontSize: (size: "small" | "normal" | "large") => void;
+  uiFontSize: "small" | "normal";
+  setUIFontSize: (size: "small" | "normal") => void;
 }
 
 const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
@@ -169,7 +169,7 @@ export function SettingsAppearance({
               )}
               onClick={() => setUIFontSize("small")}
             >
-              缩小
+              标准
             </Button>
             <Button
               size="sm"
@@ -179,17 +179,6 @@ export function SettingsAppearance({
                 uiFontSize === "normal" && "bg-background shadow-sm",
               )}
               onClick={() => setUIFontSize("normal")}
-            >
-              标准
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={cn(
-                "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "large" && "bg-background shadow-sm",
-              )}
-              onClick={() => setUIFontSize("large")}
             >
               放大
             </Button>

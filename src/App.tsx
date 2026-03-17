@@ -14,7 +14,6 @@ import {
 const UI_FONT_SIZE_MAP = {
   small: 14,
   normal: 16,
-  large: 18,
 } as const;
 
 type UToolsPluginEnterDetail = {

@@ -60,8 +60,8 @@ export interface CustomAction {
     isEnabled: boolean
 }
 
-// 界面字体大小选项
-export type UIFontSize = 'small' | 'normal' | 'large'
+// 界面字体大小选项：small 对应“标准”，normal 对应“放大”
+export type UIFontSize = 'small' | 'normal'
 
 // 编辑器字体大小边界
 export const EDITOR_FONT_SIZE_MIN = 12
@@ -73,7 +73,7 @@ export const DEFAULT_CLOSE_TAB_SHORTCUT = "Alt+W"
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = ""
 export const UTOOLS_WINDOW_HEIGHT_MIN = 600
 export const UTOOLS_WINDOW_HEIGHT_MAX = 1200
-const DEFAULT_UI_FONT_SIZE: UIFontSize = "small"
+const DEFAULT_UI_FONT_SIZE: UIFontSize = 'small'
 const LEGACY_DEFAULT_CUSTOM_ACTION_ID = 'default-translate'
 
 interface SettingsState {
@@ -225,6 +225,12 @@ function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
         return codeStyle
     }
     return 'default'
+}
+
+function normalizeUIFontSize(uiFontSize: string | undefined): UIFontSize {
+    if (uiFontSize === 'small') return 'small'
+    if (uiFontSize === 'normal' || uiFontSize === 'large') return 'normal'
+    return DEFAULT_UI_FONT_SIZE
 }
 
 function mergeSearchProvidersWithDefaults(searchProviders: SearchProvider[] | undefined): SearchProvider[] {
@@ -508,9 +514,7 @@ export const useSettings = create<SettingsState>()(
                 if (state && typeof state.defaultCodeBlockWrap !== 'boolean') {
                     useSettings.setState({ defaultCodeBlockWrap: false })
                 }
-                const normalizedUIFontSize = state?.uiFontSize === 'small' || state?.uiFontSize === 'normal' || state?.uiFontSize === 'large'
-                    ? state.uiFontSize
-                    : DEFAULT_UI_FONT_SIZE
+                const normalizedUIFontSize = normalizeUIFontSize(state?.uiFontSize as string | undefined)
                 if (state && state.uiFontSize !== normalizedUIFontSize) {
                     useSettings.setState({ uiFontSize: normalizedUIFontSize })
                 }
