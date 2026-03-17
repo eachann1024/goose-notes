@@ -5,6 +5,47 @@ import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
 
 const hostTarget = "utools";
+const vendorChunkGroups: Array<[string, string[]]> = [
+  ["vendor-react", ["react", "react-dom", "zustand"]],
+  [
+    "vendor-ui",
+    [
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-tooltip",
+      "lucide-react",
+    ],
+  ],
+  [
+    "vendor-tiptap",
+    [
+      "@tiptap/core",
+      "@tiptap/react",
+      "@tiptap/starter-kit",
+      "@tiptap/extension-image",
+      "@tiptap/extension-link",
+      "@tiptap/extension-placeholder",
+      "@tiptap/extension-task-list",
+      "@tiptap/extension-task-item",
+      "@tiptap/extension-table",
+    ],
+  ],
+  [
+    "vendor-hightlight",
+    ["lowlight", "@tiptap/extension-code-block-lowlight"],
+  ],
+];
+
+function resolveVendorChunk(id: string) {
+  if (!id.includes("node_modules")) {
+    return undefined;
+  }
+
+  return vendorChunkGroups.find(([, packages]) =>
+    packages.some((pkg) => id.includes(`node_modules/${pkg}/`)),
+  )?.[0];
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -84,31 +125,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "zustand"],
-          "vendor-ui": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-tooltip",
-            "lucide-react",
-          ],
-          "vendor-tiptap": [
-            "@tiptap/core",
-            "@tiptap/react",
-            "@tiptap/starter-kit",
-            "@tiptap/extension-image",
-            "@tiptap/extension-link",
-            "@tiptap/extension-placeholder",
-            "@tiptap/extension-task-list",
-            "@tiptap/extension-task-item",
-            "@tiptap/extension-table",
-          ],
-          "vendor-hightlight": [
-            "lowlight",
-            "@tiptap/extension-code-block-lowlight",
-          ],
-        },
+        manualChunks: resolveVendorChunk,
       },
     },
     chunkSizeWarningLimit: 1000, // Tiptap is heavy, increase limit
