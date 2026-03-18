@@ -13,6 +13,7 @@ import {
   decodeUnsupportedMarkdownForDisk,
   encodeUnsupportedMarkdownForEditor,
 } from "./lib/markdown-raw-guard";
+import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import { UToolsAdapter } from "./lib/utools";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
@@ -54,6 +55,17 @@ const runFlushOnce = () => {
 
 const isMarkdownPath = (filePath: string) => /\.(md|markdown)$/i.test(filePath);
 const normalizeFilePath = (filePath: string) => filePath.replace(/\\/g, "/");
+
+const hasVisiblePagesInNotebook = (
+  notebookId: string | null,
+  pages: ReturnType<typeof usePages.getState>["pages"],
+) => {
+  if (!notebookId) return false;
+
+  return Object.values(pages).some(
+    (page) => page.workspaceId === notebookId && !page.trashedAt,
+  );
+};
 
 const captureMarkdownRead = (filePath: string, content: string | null | undefined) => {
   if (!isMarkdownPath(filePath)) return;
@@ -283,10 +295,35 @@ const bootstrap = async () => {
     useNotebooks.persist.rehydrate(),
   ]);
   await usePages.getState().hydrateFromStorage();
+  const pagesStore = usePages.getState();
   const notebooksStore = useNotebooks.getState();
-  if (!notebooksStore.notebooks[notebooksStore.activeNotebookId || ""]) {
+  const recoveredNotebooks = recoverMissingNotebooksFromPages({
+    notebooks: notebooksStore.notebooks,
+    pages: pagesStore.pages,
+  });
+
+  if (recoveredNotebooks) {
+    const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
+      notebooksStore.activeNotebookId,
+      pagesStore.pages,
+    );
+    useNotebooks.setState({
+      notebooks: recoveredNotebooks.notebooks,
+      ...(shouldFocusRecoveredNotebook
+        ? { activeNotebookId: recoveredNotebooks.recoveredNotebookIds[0] ?? null }
+        : {}),
+    });
+    console.warn(
+      `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
+    );
+  }
+
+  const nextNotebooksStore = useNotebooks.getState();
+  if (
+    !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
+  ) {
     const firstNotebookId =
-      Object.keys(notebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
+      Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
     useNotebooks.setState({ activeNotebookId: firstNotebookId });
   }
   setupEditorMutationTracker();
