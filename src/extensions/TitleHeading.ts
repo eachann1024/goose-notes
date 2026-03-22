@@ -1,6 +1,7 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, Selection, Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { moveSelectionToBlockBoundary } from "@/extensions/blockBoundarySelection";
 
 export const TitleHeading = Extension.create({
   name: "titleHeading",
@@ -65,8 +66,6 @@ export const TitleHeading = Extension.create({
     const cleanupImeConfirmGuard = () => {
       if (imeConfirmGuardHandler) {
         window.removeEventListener("keydown", imeConfirmGuardHandler, true);
-        window.removeEventListener("keyup", imeConfirmGuardHandler, true);
-        window.removeEventListener("keypress", imeConfirmGuardHandler, true);
         imeConfirmGuardHandler = null;
       }
       if (imeConfirmGuardCleanupTimer !== null) {
@@ -132,11 +131,9 @@ export const TitleHeading = Extension.create({
         cleanupImeConfirmGuard();
       };
       window.addEventListener("keydown", imeConfirmGuardHandler, true);
-      window.addEventListener("keyup", imeConfirmGuardHandler, true);
-      window.addEventListener("keypress", imeConfirmGuardHandler, true);
       imeConfirmGuardCleanupTimer = window.setTimeout(() => {
         cleanupImeConfirmGuard();
-      }, 420);
+      }, 32);
     };
 
     const getScrollContainer = (view: EditorView) => {
@@ -534,7 +531,7 @@ export const TitleHeading = Extension.create({
               composingInTitle = false;
               titleTextBeforeComposition = "";
               if (endedInTitle) {
-                suppressImeConfirmKeyUntil = Date.now() + 380;
+                suppressImeConfirmKeyUntil = Date.now() + 32;
                 setImeScrollLock(view, true);
                 startScrollFreeze(view);
                 armImeConfirmGuard();
@@ -620,11 +617,7 @@ export const TitleHeading = Extension.create({
                   $from.before(1) === titleSize &&
                   view.endOfTextblock("up")
                 ) {
-                  const tr = state.tr;
-                  const titleEnd = titleSize - 1;
-                  tr.setSelection(Selection.near(tr.doc.resolve(titleEnd)));
-                  view.dispatch(tr);
-                  return true;
+                  return moveSelectionToBlockBoundary(view, 0, "end");
                 }
               }
               return false;
@@ -656,15 +649,8 @@ export const TitleHeading = Extension.create({
 
             if (event.key === "ArrowDown") {
               if (view.endOfTextblock("down")) {
-                const titleNode = doc.firstChild;
-                const titleSize = titleNode ? titleNode.nodeSize : 0;
                 if (doc.childCount > 1) {
-                  const tr = state.tr;
-                  tr.setSelection(
-                    Selection.near(tr.doc.resolve(titleSize + 1)),
-                  );
-                  view.dispatch(tr);
-                  return true;
+                  return moveSelectionToBlockBoundary(view, 0, "after");
                 }
               }
             }

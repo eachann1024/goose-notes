@@ -5,12 +5,13 @@ import {
   useEditorState,
 } from "@tiptap/react";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { Selection, Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { CodeBlockToolbar } from "@/pages/workspace/components/editor/CodeBlockToolbar";
 import { MathView } from "@/pages/workspace/components/editor/extensions/MathView";
 import { MermaidView } from "@/pages/workspace/components/editor/extensions/MermaidView";
 import { useSettings } from "@/stores/useSettings";
 import { InputRule } from "@tiptap/core";
+import { moveSelectionToBlockBoundary } from "@/extensions/blockBoundarySelection";
 
 // LaTeX 常用语法提示
 const LATEX_SNIPPETS = [
@@ -438,6 +439,28 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
   },
 
   addKeyboardShortcuts() {
+    const moveCursorOutOfCodeBlock = (
+      editor: any,
+      direction: "up" | "down",
+    ) => {
+      const { state } = editor;
+      const { selection } = state;
+      const { $from, empty } = selection;
+
+      if (!empty) return false;
+      if (!editor.isActive("codeBlock")) return false;
+      if (direction === "up" && $from.parentOffset !== 0) return false;
+      if (direction === "down" && $from.parentOffset !== $from.parent.nodeSize - 2) {
+        return false;
+      }
+
+      return moveSelectionToBlockBoundary(
+        editor.view,
+        $from.before(),
+        direction === "up" ? "before" : "after",
+      );
+    };
+
     return {
       ...this.parent?.(),
       Enter: ({ editor }) => {
@@ -470,55 +493,16 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
         return true;
       },
       ArrowUp: ({ editor }) => {
-        const { state } = editor;
-        const { selection, doc } = state;
-        const { $from, empty } = selection;
-
-        if (!empty) return false;
-        if (!editor.isActive("codeBlock")) return false;
-
-        const isAtStart = $from.parentOffset === 0;
-
-        if (isAtStart) {
-          const beforePos = $from.before();
-          if (beforePos > 0) {
-            const tr = state.tr;
-            const newSelection = Selection.near(doc.resolve(beforePos - 1));
-            tr.setSelection(newSelection);
-            editor.view.dispatch(tr);
-            return true;
-          }
-        }
-
-        return false;
+        return moveCursorOutOfCodeBlock(editor, "up");
       },
       ArrowDown: ({ editor }) => {
-        const { state } = editor;
-        const { selection, doc } = state;
-        const { $from, empty } = selection;
-
-        if (!empty) return false;
-        if (!editor.isActive("codeBlock")) return false;
-
-        const isAtEnd = $from.parentOffset === $from.parent.nodeSize - 2;
-
-        if (isAtEnd) {
-          const afterPos = $from.after();
-          if (afterPos < doc.content.size) {
-            const tr = state.tr;
-            try {
-              const newSelection = Selection.near(doc.resolve(afterPos + 1));
-              tr.setSelection(newSelection);
-              editor.view.dispatch(tr);
-              return true;
-            } catch (e) {
-              console.warn("Failed to move cursor out of code block", e);
-              return false;
-            }
-          }
-        }
-
-        return false;
+        return moveCursorOutOfCodeBlock(editor, "down");
+      },
+      "Mod-ArrowUp": ({ editor }) => {
+        return moveCursorOutOfCodeBlock(editor, "up");
+      },
+      "Mod-ArrowDown": ({ editor }) => {
+        return moveCursorOutOfCodeBlock(editor, "down");
       },
       Tab: ({ editor }) => {
         const { state, dispatch } = editor.view;
