@@ -6,7 +6,7 @@ export const TIPS = [
   "粘贴 Markdown 格式文本会自动转换为富文本",
   "拖拽左侧手柄可调整段落顺序",
   "选中文字后出现格式工具栏",
-  () => `${formatShortcut("Mod+S")} 无需手动保存，内容自动保存`,
+  "内容会自动保存，不需要手动点击保存",
   () => `${formatShortcut("Mod+K")} 可快速搜索页面（uTools 输入会自动同步）`,
   () => `${formatShortcut("Mod++/-")} 可缩放编辑器文字`,
   () => `${formatShortcut("Mod+N")} 快速新建空白笔记`,

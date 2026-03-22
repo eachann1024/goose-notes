@@ -189,6 +189,9 @@ declare global {
   const lazy: typeof import('react').lazy
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
+  const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
+  const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
+  const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
