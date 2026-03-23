@@ -461,6 +461,23 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
       );
     };
 
+    const moveCursorWithinCodeBlock = (
+      editor: any,
+      direction: "start" | "end",
+    ) => {
+      const { state } = editor;
+      const { selection } = state;
+      const { $from, empty } = selection;
+
+      if (!empty) return false;
+      if (!editor.isActive("codeBlock")) return false;
+
+      editor.commands.setTextSelection(
+        direction === "start" ? $from.start() : $from.end(),
+      );
+      return true;
+    };
+
     return {
       ...this.parent?.(),
       Enter: ({ editor }) => {
@@ -499,10 +516,10 @@ export const CodeBlockWithLanguageExtension = CodeBlockLowlight.extend({
         return moveCursorOutOfCodeBlock(editor, "down");
       },
       "Mod-ArrowUp": ({ editor }) => {
-        return moveCursorOutOfCodeBlock(editor, "up");
+        return moveCursorWithinCodeBlock(editor, "start");
       },
       "Mod-ArrowDown": ({ editor }) => {
-        return moveCursorOutOfCodeBlock(editor, "down");
+        return moveCursorWithinCodeBlock(editor, "end");
       },
       Tab: ({ editor }) => {
         const { state, dispatch } = editor.view;
