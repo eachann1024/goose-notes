@@ -12,6 +12,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCellCustom } from "@/extensions/TableCellCustom";
 import { all, createLowlight } from "lowlight";
 import { configureSlashCommand } from "@/extensions/SlashCommand";
+import { configureSpaceAiToolbar } from "@/extensions/SpaceAiToolbar";
 import { ResizableImage } from "@/extensions/ResizableImage";
 import { CustomGlobalDragHandle } from "@/extensions/CustomGlobalDragHandle";
 import { DragHandleInteractionPatch } from "@/extensions/DragHandleInteractionPatch";
@@ -106,7 +107,7 @@ export const editorExtensions = [
       if (!hasAnchor) return "";
 
       if (node.type.name === "paragraph") {
-        return "输入 '/' 或 '、' 来输入指令...";
+        return "空格唤起 AI，/ 插入块...";
       }
 
       return "";
@@ -141,6 +142,7 @@ export const editorExtensions = [
   TableHeader,
   TableCellCustom,
   configureSlashCommand(),
+  configureSpaceAiToolbar(),
   CustomGlobalDragHandle.configure({
     dragHandleWidth: 24,
     scrollTreshold: 100,

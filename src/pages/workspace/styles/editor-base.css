@@ -250,11 +250,15 @@
 }
 
 .ProseMirror p.is-empty::before {
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.78);
   content: attr(data-placeholder);
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+.ProseMirror p.is-empty.has-focus::before {
+  color: hsl(var(--muted-foreground) / 0.92);
 }
 
 .slash-command-capsule {

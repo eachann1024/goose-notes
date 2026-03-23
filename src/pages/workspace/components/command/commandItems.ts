@@ -6,16 +6,17 @@ export interface CommandSuggestionItem {
   title?: string;
   description?: string;
   searchTerms?: string[];
+  keywords?: string[];
   icon?: any;
   shortcut?: string;
   disabled?: boolean;
   disabledReason?: string;
-  command?: (params: { editor: any; range: any }) => void;
+  children?: CommandSuggestionItem[];
+  command?: (params: { editor: any; range: any }) => void | Promise<void>;
 }
 
 export const getSuggestionItems = ({ query }: { query: string }) => {
-  const normalizedQuery =
-    typeof query === "string" ? query.trim().toLowerCase() : "";
+  const normalizedQuery = query.trim().toLowerCase();
   const defaultCodeBlockWrap = useSettings.getState().defaultCodeBlockWrap;
 
   const items: CommandSuggestionItem[] = [
@@ -26,12 +27,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       icon: LucideIcons.Heading1,
       shortcut: "#",
       command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 1 })
-          .run();
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run();
       },
     },
     {
@@ -41,12 +37,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       icon: LucideIcons.Heading2,
       shortcut: "##",
       command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 2 })
-          .run();
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run();
       },
     },
     {
@@ -56,17 +47,10 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       icon: LucideIcons.Heading3,
       shortcut: "###",
       command: ({ editor, range }: any) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 3 })
-          .run();
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run();
       },
     },
-    {
-      type: "divider",
-    },
+    { type: "divider" },
     {
       title: "待办事项",
       description: "带有复选框的任务列表",
@@ -127,9 +111,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run();
       },
     },
-    {
-      type: "divider",
-    },
+    { type: "divider" },
     {
       title: "表格",
       description: "插入一个简单的表格",
@@ -210,41 +192,36 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
         editor.chain().focus().deleteRange(range).setFileUploadPlaceholder().run();
       },
     },
-
   ];
 
-  return items.filter((item: CommandSuggestionItem) => {
-    if (item.type === "divider") return true;
-    if (
-      normalizedQuery.length > 0 &&
-      item.title &&
-      item.description
-    ) {
-      return (
-        item.title.toLowerCase().includes(normalizedQuery) ||
-        item.description.toLowerCase().includes(normalizedQuery) ||
-        (item.searchTerms &&
-          item.searchTerms.some((term: string) =>
-            term.toLowerCase().includes(normalizedQuery),
-          ))
-      );
-    }
-    return true;
-  }).reduce((acc: CommandSuggestionItem[], item: CommandSuggestionItem) => {
-    // Pass 1: Collapse adjacent dividers
-    if (item.type === "divider") {
-      const lastItem = acc[acc.length - 1];
-      if (!lastItem || lastItem.type === "divider") {
-        return acc;
+  return items
+    .filter((item) => {
+      if (item.type === "divider") return true;
+      if (!normalizedQuery.length) return true;
+
+      const haystacks = [
+        item.title ?? "",
+        item.description ?? "",
+        ...(item.searchTerms ?? []),
+        ...(item.keywords ?? []),
+      ].map((value) => value.toLowerCase());
+
+      return haystacks.some((value) => value.includes(normalizedQuery));
+    })
+    .reduce((acc: CommandSuggestionItem[], item: CommandSuggestionItem) => {
+      if (item.type === "divider") {
+        const lastItem = acc[acc.length - 1];
+        if (!lastItem || lastItem.type === "divider") {
+          return acc;
+        }
       }
-    }
-    acc.push(item);
-    return acc;
-  }, []).filter((item: CommandSuggestionItem, index: number, array: CommandSuggestionItem[]) => {
-    // Pass 2: Remove trailing divider (Leading was handled by reducing !lastItem check implicitly if we consider empty acc, but let's be explicit)
-    if (item.type === "divider") {
-         if (index === array.length - 1) return false;
-    }
-    return true;
-  });
+      acc.push(item);
+      return acc;
+    }, [])
+    .filter((item: CommandSuggestionItem, index: number, array: CommandSuggestionItem[]) => {
+      if (item.type === "divider" && index === array.length - 1) {
+        return false;
+      }
+      return true;
+    });
 };
