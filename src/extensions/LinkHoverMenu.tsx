@@ -281,7 +281,7 @@ export function LinkHoverMenu({ editor }: LinkHoverMenuProps) {
         }}
         onMouseEnter={handleMenuMouseEnter}
         onMouseLeave={handleMenuMouseLeave}
-        className="fixed z-[20000] overflow-hidden rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/15 dark:bg-[#2f3437]"
+        className="fixed z-[20000] overflow-hidden rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/15 dark:bg-[#2f3437]"
         style={{ left: position.x, top: position.y }}
       >
         {isEditing ? (
