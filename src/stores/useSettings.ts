@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import type { AIModelOption, CustomAIProtocol } from '@/lib/ai-provider'
 import { uToolsStorage } from '@/lib/storage'
 
 export interface SearchProvider {
@@ -23,6 +24,16 @@ export interface UToolsSettings {
 export interface AISettings {
     enabled: boolean
     selectedModelId: string | null
+    // 是否关闭 uTools AI 并改用自定义协议。可选值：true / false。副作用：开启后编辑器请求会改走自定义接口。可扩展用途：后续可继续接更多协议。
+    useCustomProvider: boolean
+    // 自定义 AI 协议类型。可选值：openai / claude。副作用：切换后模型列表读取接口会变化。可扩展用途：后续可继续扩展其他兼容协议。
+    customProtocol: CustomAIProtocol
+    // OpenAI 兼容接口地址。可选值：任意兼容 OpenAI `/models` 与聊天接口的 baseURL。副作用：仅在 openai 协议下生效。可扩展用途：支持私有网关和代理。
+    customBaseURL: string
+    // 自定义 AI 的访问密钥。可选值：对应协议签发的 API Key。副作用：保存后会用于拉模型和生成文本。可扩展用途：后续可加密存储或分账号配置。
+    customApiKey: string
+    // 自定义 AI 已获取到的模型列表。可选值：协议返回的模型数组。副作用：保存新配置后会覆盖旧列表。可扩展用途：后续可做缓存时间和分协议模型记忆。
+    customModelOptions: AIModelOption[]
 }
 
 export type DesktopHotkeyStatusState = 'idle' | 'active' | 'occupied' | 'invalid' | 'disabled' | 'error'
@@ -109,6 +120,13 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
     setAIEnabled: (enabled: boolean) => void
     setAISelectedModelId: (modelId: string | null) => void
+    setAICustomProviderEnabled: (enabled: boolean) => void
+    saveAICustomConfig: (config: {
+        protocol: CustomAIProtocol
+        baseURL: string
+        apiKey: string
+        modelOptions: AIModelOption[]
+    }) => void
 
     setUToolsWindowHeight: (height: number) => void
     setWakeHotkey: (hotkey: string) => void
@@ -298,6 +316,43 @@ function normalizeCustomActions(customActions: CustomAction[] | undefined): Cust
     return normalized
 }
 
+function normalizeAIModelOptions(modelOptions: AIModelOption[] | undefined): AIModelOption[] {
+    if (!Array.isArray(modelOptions)) {
+        return []
+    }
+
+    return modelOptions
+        .filter((item): item is AIModelOption => Boolean(item && typeof item === 'object'))
+        .map((item) => ({
+            id: typeof item.id === 'string' ? item.id.trim() : '',
+            label: typeof item.label === 'string' ? item.label.trim() : '',
+            description:
+                typeof item.description === 'string' && item.description.trim()
+                    ? item.description.trim()
+                    : undefined,
+        }))
+        .filter((item) => item.id && item.label)
+}
+
+function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
+    const customModelOptions = normalizeAIModelOptions(ai?.customModelOptions)
+    const selectedModelId =
+        typeof ai?.selectedModelId === 'string' && ai.selectedModelId.trim()
+            ? ai.selectedModelId.trim()
+            : null
+    const customProtocol = ai?.customProtocol === 'claude' ? 'claude' : 'openai'
+
+    return {
+        enabled: Boolean(ai?.enabled),
+        selectedModelId,
+        useCustomProvider: Boolean(ai?.useCustomProvider),
+        customProtocol,
+        customBaseURL: typeof ai?.customBaseURL === 'string' ? ai.customBaseURL.trim() : '',
+        customApiKey: typeof ai?.customApiKey === 'string' ? ai.customApiKey.trim() : '',
+        customModelOptions,
+    }
+}
+
 export const useSettings = create<SettingsState>()(
     persist(
         (set) => ({
@@ -315,6 +370,11 @@ export const useSettings = create<SettingsState>()(
             ai: {
                 enabled: false,
                 selectedModelId: null,
+                useCustomProvider: false,
+                customProtocol: 'openai',
+                customBaseURL: '',
+                customApiKey: '',
+                customModelOptions: [],
             },
             desktop: {
                 wakeHotkey: DEFAULT_WAKE_HOTKEY,
@@ -390,6 +450,25 @@ export const useSettings = create<SettingsState>()(
                 set((state) => ({
                     ai: { ...state.ai, selectedModelId },
                 })),
+            setAICustomProviderEnabled: (useCustomProvider) =>
+                set((state) => ({
+                    ai: { ...state.ai, useCustomProvider },
+                })),
+            saveAICustomConfig: ({ protocol, baseURL, apiKey, modelOptions }) =>
+                set((state) => {
+                    const normalizedModelOptions = normalizeAIModelOptions(modelOptions)
+
+                    return {
+                        ai: {
+                            ...state.ai,
+                            customProtocol: protocol,
+                            customBaseURL: baseURL.trim(),
+                            customApiKey: apiKey.trim(),
+                            customModelOptions: normalizedModelOptions,
+                            selectedModelId: normalizedModelOptions[0]?.id ?? state.ai.selectedModelId,
+                        },
+                    }
+                }),
 
             setUToolsWindowHeight: (height) =>
                 set((state) => ({
@@ -596,18 +675,7 @@ export const useSettings = create<SettingsState>()(
                     }
                 }
 
-                const normalizedAI = state?.ai
-                    ? {
-                        enabled: Boolean(state.ai.enabled),
-                        selectedModelId:
-                            typeof state.ai.selectedModelId === 'string' && state.ai.selectedModelId.trim()
-                                ? state.ai.selectedModelId.trim()
-                                : null,
-                    }
-                    : {
-                        enabled: false,
-                        selectedModelId: null,
-                    }
+                const normalizedAI = normalizeAISettings(state?.ai as Partial<AISettings> | undefined)
                 if (JSON.stringify(state?.ai ?? null) !== JSON.stringify(normalizedAI)) {
                     useSettings.setState({ ai: normalizedAI })
                 }
