@@ -64,6 +64,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setOpenSearchInUtools,
     setAIEnabled,
     setAISelectedModelId,
+    setAICustomProviderEnabled,
+    saveAICustomConfig,
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
@@ -356,10 +358,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "ai" && (
             <div>
               <SettingsAI
+                ai={ai}
                 enabled={ai.enabled}
                 setEnabled={setAIEnabled}
                 selectedModelId={ai.selectedModelId}
                 setSelectedModelId={setAISelectedModelId}
+                setCustomProviderEnabled={setAICustomProviderEnabled}
+                saveCustomConfig={saveAICustomConfig}
               />
             </div>
           )}

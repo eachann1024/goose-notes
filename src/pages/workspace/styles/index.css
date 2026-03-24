@@ -151,6 +151,40 @@
   }
 }
 
+@keyframes ai-stream-wave-char {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@keyframes ai-stream-wave-dot {
+  0%,
+  100% {
+    transform: translateY(0) scale(0.92);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translateY(-3px) scale(1);
+    opacity: 1;
+  }
+}
+
+.ai-stream-wave-char {
+  animation: ai-stream-wave-char 1.45s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.ai-stream-wave-dot {
+  animation: ai-stream-wave-dot 1.15s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
 @media (max-width: 768px) {
   .workspace-shell .workspace-main-sheet {
     border-radius: 14px;

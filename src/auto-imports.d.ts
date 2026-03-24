@@ -157,12 +157,15 @@ declare global {
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
+  const fetchCustomAIModels: typeof import('./lib/ai-provider').fetchCustomAIModels
   const fileStorage: typeof import('./lib/fileStorage').fileStorage
   const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
+  const getAIAvailability: typeof import('./lib/ai-provider').getAIAvailability
+  const getAIProviderMode: typeof import('./lib/ai-provider').getAIProviderMode
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
@@ -179,6 +182,7 @@ declare global {
   const getRandomBlockBgColor: typeof import('./lib/blockColorPresets').getRandomBlockBgColor
   const getRandomBlockColorPair: typeof import('./lib/blockColorPresets').getRandomBlockColorPair
   const getRandomTip: typeof import('./lib/tips').getRandomTip
+  const getStoredAIModelOptions: typeof import('./lib/ai-provider').getStoredAIModelOptions
   const iconButtonVariants: typeof import('./components/ui/icon-button').iconButtonVariants
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
@@ -202,6 +206,8 @@ declare global {
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
+  const runAIText: typeof import('./lib/ai-provider').runAIText
+  const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
@@ -254,6 +260,9 @@ declare global {
   // @ts-ignore
   export type { TabItem } from './stores/useTabs'
   import('./stores/useTabs')
+  // @ts-ignore
+  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate } from './lib/ai-provider'
+  import('./lib/ai-provider')
   // @ts-ignore
   export type { BlockBgColorValue } from './lib/blockColorPresets'
   import('./lib/blockColorPresets')
