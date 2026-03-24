@@ -36,7 +36,7 @@ export function TableBubbleMenu({ editor, ...props }: TableBubbleMenuProps) {
           return !isHidden && editor.isEditable && editor.isActive("table");
         }}
         className={cn(
-          "z-[20000] flex flex-row items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-opacity duration-200 max-w-none dark:border-white/15 dark:bg-[#2f3437]",
+          "z-[20000] flex flex-row items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 max-w-none dark:border-white/15 dark:bg-[#2f3437]",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         {...props}

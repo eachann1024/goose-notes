@@ -1,5 +1,7 @@
 import { BubbleMenu } from "@tiptap/react/menus";
 import { ColorPicker } from "./ColorPicker";
+import { useSettings } from "@/stores/useSettings";
+import * as LucideIcons from "lucide-react";
 
 type EditorBubbleMenuProps = Omit<
   React.ComponentProps<typeof BubbleMenu>,
@@ -73,7 +75,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         pluginKey="textBubbleMenu"
         appendTo={() => document.body}
         className={cn(
-          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]",
+          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]",
           shouldHideMenu ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor, state }) => {
@@ -102,6 +104,65 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         }}
         {...props}
       >
+        {useSettings.getState().ai.enabled && (
+          <>
+            <Tooltip {...bindTooltip("ai-polish")}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    const bubbleMenuEl = e.currentTarget.closest('.tippy-box') || e.currentTarget.closest('[data-tippy-root]');
+                    let overrideRect = undefined;
+                    if (menuRef.current) {
+                      const rect = menuRef.current.getBoundingClientRect();
+                      overrideRect = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+                    }
+                    document.dispatchEvent(
+                      new CustomEvent("open-ai-input-popover", {
+                        detail: { editor, initialAction: "polish", overrideRect },
+                      }),
+                    );
+                  }}
+                  aria-label="AI 润色"
+                  className="h-7 w-7 rounded-md p-0 text-[#10b981] hover:bg-muted hover:text-[#10b981]"
+                >
+                  <LucideIcons.Sparkles className="h-[15px] w-[15px]" />
+                </Button>
+              </TooltipTrigger>
+              <BubbleMenuTooltip label="AI 润色" />
+            </Tooltip>
+
+            <Tooltip {...bindTooltip("ai-rewrite")}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    const bubbleMenuEl = e.currentTarget.closest('.tippy-box') || e.currentTarget.closest('[data-tippy-root]');
+                    let overrideRect = undefined;
+                    if (menuRef.current) {
+                      const rect = menuRef.current.getBoundingClientRect();
+                      overrideRect = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+                    }
+                    document.dispatchEvent(
+                      new CustomEvent("open-ai-input-popover", {
+                        detail: { editor, initialAction: "rewrite", overrideRect },
+                      }),
+                    );
+                  }}
+                  aria-label="AI 改写"
+                  className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
+                >
+                  <LucideIcons.RefreshCcw className="h-[15px] w-[15px]" />
+                </Button>
+              </TooltipTrigger>
+              <BubbleMenuTooltip label="AI 改写" />
+            </Tooltip>
+
+            <Separator orientation="vertical" className="h-5 opacity-70 mx-0.5" />
+          </>
+        )}
         <Tooltip {...bindTooltip("bold")}>
           <TooltipTrigger asChild>
             <Toggle

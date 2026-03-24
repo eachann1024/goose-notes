@@ -482,7 +482,7 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
         pluginKey="imageBubbleMenu"
         appendTo={() => document.body}
         className={cn(
-          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity dark:border-white/15 dark:bg-[#2f3437]",
+          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 transition-opacity dark:border-white/15 dark:bg-[#2f3437]",
           isHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         shouldShow={({ editor }: { editor: Editor }) => {

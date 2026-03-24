@@ -350,7 +350,7 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
       }}
       className="animate-in fade-in zoom-in-95 slide-in-from-left-1 duration-100"
     >
-      <div className="rounded-[10px] border border-border/40 bg-[hsl(var(--popover)/0.99)] text-popover-foreground shadow-[0_8px_30px_rgba(15,23,42,0.14),0_2px_8px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+      <div className="rounded-[10px] border border-border/40 bg-[hsl(var(--popover)/0.99)] text-popover-foreground shadow-[0_8px_30px_rgba(15,23,42,0.14),0_2px_8px_rgba(15,23,42,0.08)] overflow-hidden">
 
         {!isTable && (
           <>

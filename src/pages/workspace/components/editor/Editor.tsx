@@ -12,6 +12,7 @@ import { ImageBubbleMenu } from "./ImageBubbleMenu";
 import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
+import { AiInputPopover } from "./AiInputPopover";
 import { editorExtensions } from "./editorExtensions";
 import {
   getImageFromClipboard,
@@ -1333,6 +1334,7 @@ export function Editor({ editable = true }: EditorProps) {
         <Portal container={findOverlayContainer}>{findWidget}</Portal>
       )}
       <div className={widthClass}>
+        <AiInputPopover editor={editor} />
         <EditorBubbleMenu editor={editor} />
         <LinkHoverMenu editor={editor} />
         <TableHoverControls editor={editor} />
