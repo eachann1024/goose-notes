@@ -48,4 +48,41 @@ test.describe("编辑流程", () => {
     await page.keyboard.press("Backspace");
     await expect(page.locator(".slash-command-capsule")).not.toBeVisible();
   });
+
+  test("标题后正文段首退格不会并入标题", async ({ page }) => {
+    const title = `E2E 标题退格 ${Date.now()}`;
+    const body = `正文保持段落 ${Date.now()}`;
+
+    await bootApp(page);
+    await createPageFromSidebar(page);
+    await writeNote(page, title, body);
+
+    await page.evaluate(() => {
+      const editor = (
+        window as {
+          __gooseNoteEditor?: {
+            state?: {
+              doc?: {
+                firstChild?: {
+                  nodeSize?: number;
+                };
+              };
+            };
+            commands?: {
+              setTextSelection?: (position: number) => void;
+              focus?: () => void;
+            };
+          };
+        }
+      ).__gooseNoteEditor;
+
+      const titleNodeSize = editor?.state?.doc?.firstChild?.nodeSize ?? 0;
+      editor?.commands?.setTextSelection?.(titleNodeSize + 1);
+      editor?.commands?.focus?.();
+    });
+    await page.keyboard.press("Backspace");
+
+    await expect(page.locator(".ProseMirror > h1")).toHaveText(title);
+    await expect(page.locator(".ProseMirror > p").first()).toHaveText(body);
+  });
 });
