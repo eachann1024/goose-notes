@@ -20,6 +20,24 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
   const defaultCodeBlockWrap = useSettings.getState().defaultCodeBlockWrap;
 
   const items: CommandSuggestionItem[] = [
+    ...((useSettings.getState().ai.enabled
+      ? [
+          {
+            title: "生成",
+            description: "接着写点什么...",
+            searchTerms: ["ai", "generate", "shengcheng", "xiezuo", "sparkle"],
+            icon: LucideIcons.Sparkles,
+            // 空格键触发（仅 AI 启用时），此处 shortcut 作展示用
+            shortcut: "Space",
+            command: ({ editor, range }: any) => {
+              editor.chain().focus().deleteRange(range).run();
+              document.dispatchEvent(
+                new CustomEvent("open-ai-input-popover", { detail: { editor } }),
+              );
+            },
+          },
+        ]
+      : []) as CommandSuggestionItem[]),
     {
       title: "一级标题",
       description: "大标题",

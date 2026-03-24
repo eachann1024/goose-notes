@@ -125,7 +125,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
 
   if (props.items.length === 0) {
     return (
-      <div className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover/98 p-2.5 text-sm text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] backdrop-blur-[6px]">
+      <div className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover/98 p-2.5 text-sm text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]">
         暂无匹配动作
       </div>
     );
@@ -142,7 +142,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
     >
       <div
         ref={containerRef}
-        className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover/98 p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] backdrop-blur-[6px]"
+        className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover/98 p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
       >
         <div className="flex items-start gap-2 px-2 py-1.5 select-none">
           {props.onBack && (
@@ -260,7 +260,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
       </div>
 
       {showHint && selectedItem?.hint && (
-        <div className="absolute left-[288px] top-0 z-[60] flex h-fit w-[200px] flex-col gap-3 rounded-xl border border-border/75 bg-muted p-3 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)] backdrop-blur-[1px] transition-all animate-in fade-in slide-in-from-left-1">
+        <div className="absolute left-[288px] top-0 z-[60] flex h-fit w-[200px] flex-col gap-3 rounded-xl border border-border/75 bg-muted p-3 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)] transition-all animate-in fade-in slide-in-from-left-1">
           <div className="flex items-center gap-2 border-b border-border/50 pb-2">
             {selectedItem.icon && <selectedItem.icon className="h-4 w-4 text-primary" />}
             <span className="text-[12px] font-bold text-primary">{selectedItem.hint.title}</span>

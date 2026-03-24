@@ -1,6 +1,8 @@
 import * as LucideIcons from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { toast } from "sonner";
+import { useSettings } from "@/stores/useSettings";
+import { getAvailableUToolsAiModels, isUToolsAiSupported, type UToolsAiModel } from "@/lib/utools-ai";
 
 type AiMessageRole = "system" | "user" | "assistant";
 
@@ -9,19 +11,11 @@ interface AiMessage {
   content?: string;
 }
 
-interface UToolsAiModel {
-  id: string;
-  label: string;
-  description?: string;
-  cost?: number;
-}
-
 interface UToolsAiApi {
   ai?: (option: {
     model?: string;
     messages: AiMessage[];
   }) => Promise<{ content?: string }>;
-  allAiModels?: () => Promise<UToolsAiModel[]>;
 }
 
 interface EditorRange {
@@ -92,7 +86,10 @@ function getRecentContext(editor: Editor, currentBlockFrom: number, maxBlocks = 
 function ensureAiSupport() {
   const utools = getUToolsApi();
   if (!utools) return { ok: false as const, reason: "当前不在 uTools 环境内" };
-  if (typeof utools.ai !== "function") {
+  if (!useSettings.getState().ai.enabled) {
+    return { ok: false as const, reason: "AI 助手尚未开启，请先到设置中打开" };
+  }
+  if (!isUToolsAiSupported() || typeof utools.ai !== "function") {
     return { ok: false as const, reason: "当前 uTools 版本未提供 AI 能力" };
   }
   return { ok: true as const, api: utools };
@@ -103,9 +100,14 @@ async function resolvePreferredModel() {
   if (!support.ok) return { modelId: DEFAULT_AI_MODEL, available: false };
 
   try {
-    const models = await support.api.allAiModels?.();
-    if (!models?.length) {
+    const models = await getAvailableUToolsAiModels();
+    if (!models.length) {
       return { modelId: DEFAULT_AI_MODEL, available: true };
+    }
+
+    const selectedModelId = useSettings.getState().ai.selectedModelId;
+    if (selectedModelId && models.some((item) => item.id === selectedModelId)) {
+      return { modelId: selectedModelId, available: true };
     }
 
     const deepseek = models.find((item) => item.id === DEFAULT_AI_MODEL);

@@ -1,12 +1,13 @@
 import { Extension } from "@tiptap/core";
-import Suggestion, { findSuggestionMatch } from "@tiptap/suggestion";
+import Suggestion, { findSuggestionMatch, SuggestionPluginKey } from "@tiptap/suggestion";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
-import { CommandList } from "@/pages/workspace/components/command/CommandList";
+import { SlashCommandList } from "@/pages/workspace/components/command/SlashCommandList";
 import { getSuggestionItems } from "@/pages/workspace/components/command/commandItems";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/stores/useSettings";
 
 const TRIGGER_CHARS = ["/", "、"];
 const DEFAULT_ALLOWED_PREFIXES: string[] | null = null;
@@ -92,6 +93,63 @@ export const SlashCommand = Extension.create({
         command: ({ editor, range, props }: any) => {
           props.command({ editor, range });
         },
+      },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      /**
+       * 修复退格无法删除斜杠：
+       * 当 suggestion 处于活跃状态且 query 为空（光标紧贴 `/` 后面），
+       * 主动删除触发字符，让菜单自然关闭。
+       */
+      Backspace: () => {
+        const { editor } = this;
+        const { state } = editor;
+
+        const suggestionState = SuggestionPluginKey.getState(state) as
+          | { active?: boolean; query?: string; range?: { from: number; to: number } }
+          | undefined;
+
+        if (!suggestionState?.active) return false;
+
+        // query 为空说明光标紧跟在触发字符后，需要删除触发字符
+        if ((suggestionState.query ?? "") === "") {
+          const range = suggestionState.range;
+          if (!range) return false;
+          editor.chain().focus().deleteRange(range).run();
+          return true;
+        }
+
+        return false;
+      },
+
+      /**
+       * 空格触发 AI（仅当 AI 功能已启用）：
+       * 在完全空的段落中按空格键时，触发 AI 输入弹窗，而不是插入空格。
+       */
+      Space: () => {
+        const { editor } = this;
+        if (!useSettings.getState().ai.enabled) return false;
+
+        const { state } = editor;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        // 只在空段落且光标在段落开头时触发
+        if (
+          !empty ||
+          $from.parent.type.name !== "paragraph" ||
+          $from.parent.content.size !== 0
+        ) {
+          return false;
+        }
+
+        document.dispatchEvent(
+          new CustomEvent("open-ai-input-popover", { detail: { editor, triggeredBy: "space" } }),
+        );
+        return true;
       },
     };
   },
@@ -190,7 +248,8 @@ export const configureSlashCommand = () => {
 
         return {
           onStart: (props: any) => {
-            component = new ReactRenderer(CommandList, {
+            // 使用独立的 SlashCommandList 而非通用的 CommandList，防止样式互相影响
+            component = new ReactRenderer(SlashCommandList, {
               props: { ...props, placement: "bottom" },
               editor: props.editor,
             });
