@@ -20,6 +20,11 @@ export interface UToolsSettings {
     windowHeight: number
 }
 
+export interface AISettings {
+    enabled: boolean
+    selectedModelId: string | null
+}
+
 export type DesktopHotkeyStatusState = 'idle' | 'active' | 'occupied' | 'invalid' | 'disabled' | 'error'
 
 export interface DesktopHotkeyStatus {
@@ -83,6 +88,7 @@ interface SettingsState {
     globalEditorFullWidth: boolean
     searchProviders: SearchProvider[]
     utools: UToolsSettings
+    ai: AISettings
     desktop: DesktopSettings
     privacy: PrivacySettings
     searchAllNotebooks: boolean
@@ -101,6 +107,8 @@ interface SettingsState {
     reorderSearchProviders: (nextIds: string[]) => void
     setUToolsGlobalSearchEnabled: (enabled: boolean) => void
     setOpenSearchInUtools: (enabled: boolean) => void
+    setAIEnabled: (enabled: boolean) => void
+    setAISelectedModelId: (modelId: string | null) => void
 
     setUToolsWindowHeight: (height: number) => void
     setWakeHotkey: (hotkey: string) => void
@@ -304,6 +312,10 @@ export const useSettings = create<SettingsState>()(
 
                 windowHeight: UTOOLS_WINDOW_HEIGHT_MIN,
             },
+            ai: {
+                enabled: false,
+                selectedModelId: null,
+            },
             desktop: {
                 wakeHotkey: DEFAULT_WAKE_HOTKEY,
                 wakeHotkeyEnabled: true,
@@ -369,6 +381,14 @@ export const useSettings = create<SettingsState>()(
             setOpenSearchInUtools: (enabled) =>
                 set((state) => ({
                     utools: { ...state.utools, openSearchInUtools: enabled },
+                })),
+            setAIEnabled: (enabled) =>
+                set((state) => ({
+                    ai: { ...state.ai, enabled },
+                })),
+            setAISelectedModelId: (selectedModelId) =>
+                set((state) => ({
+                    ai: { ...state.ai, selectedModelId },
                 })),
 
             setUToolsWindowHeight: (height) =>
@@ -574,6 +594,22 @@ export const useSettings = create<SettingsState>()(
                     } catch (e) {
                         console.error("Failed to apply window height on rehydrate", e)
                     }
+                }
+
+                const normalizedAI = state?.ai
+                    ? {
+                        enabled: Boolean(state.ai.enabled),
+                        selectedModelId:
+                            typeof state.ai.selectedModelId === 'string' && state.ai.selectedModelId.trim()
+                                ? state.ai.selectedModelId.trim()
+                                : null,
+                    }
+                    : {
+                        enabled: false,
+                        selectedModelId: null,
+                    }
+                if (JSON.stringify(state?.ai ?? null) !== JSON.stringify(normalizedAI)) {
+                    useSettings.setState({ ai: normalizedAI })
                 }
 
                 if (state) {

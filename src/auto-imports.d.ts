@@ -164,6 +164,7 @@ declare global {
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
+  const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
@@ -184,6 +185,7 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
+  const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
@@ -247,7 +249,7 @@ declare global {
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
+  export type { SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/useSettings'
   import('./stores/useSettings')
   // @ts-ignore
   export type { TabItem } from './stores/useTabs'
@@ -261,6 +263,9 @@ declare global {
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
+  // @ts-ignore
+  export type { UToolsAiModel } from './lib/utools-ai'
+  import('./lib/utools-ai')
   // @ts-ignore
   export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')
