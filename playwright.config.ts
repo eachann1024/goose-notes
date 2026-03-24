@@ -15,6 +15,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   webServer: autoStartServer
     ? {
+        // 本地跑 E2E 时自动启动 Vite，避免手动分两步执行。
         command: "bun run dev",
         url: "http://localhost:6001",
         timeout: 120_000,
@@ -35,6 +36,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:6001",
     channel: browserChannel,
+    // 默认无头执行，配合 PW_HEADED=1 可切到可视化浏览器调试。
     headless: !headedMode,
     viewport: {
       width: 1440,
