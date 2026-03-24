@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type SettingsTab = "general" | "appearance" | "data";
+export type SettingsTab = "general" | "appearance" | "ai" | "data";
 
 export interface SettingsTabConfig {
   id: SettingsTab;

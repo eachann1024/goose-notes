@@ -1,6 +1,7 @@
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
+import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
 import type { SettingsTab, SettingsTabConfig } from "./settings/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
@@ -27,6 +28,7 @@ interface SettingsDialogProps {
 const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "general", label: "通用设置", icon: LucideIcons.Settings },
   { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
+  { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
 ];
 
@@ -58,7 +60,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     toggleSearchProvider,
     reorderSearchProviders,
     utools,
+    ai,
     setOpenSearchInUtools,
+    setAIEnabled,
+    setAISelectedModelId,
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
@@ -344,6 +349,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCustomFont={setCustomFont}
                 uiFontSize={uiFontSize}
                 setUIFontSize={setUIFontSize}
+              />
+            </div>
+          )}
+
+          {activeTab === "ai" && (
+            <div>
+              <SettingsAI
+                enabled={ai.enabled}
+                setEnabled={setAIEnabled}
+                selectedModelId={ai.selectedModelId}
+                setSelectedModelId={setAISelectedModelId}
               />
             </div>
           )}

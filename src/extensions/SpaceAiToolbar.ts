@@ -4,6 +4,7 @@ import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 import { CommandList } from "@/pages/workspace/components/command/CommandList";
+import { useSettings } from "@/stores/useSettings";
 import {
   getAiToolbarItems,
   type AiToolbarActionItem,
@@ -12,6 +13,7 @@ import {
 const SPACE_AI_PLUGIN_KEY = new PluginKey("space-ai-toolbar");
 
 function isSpaceAiAllowed({ state, range, editor }: any) {
+  if (!useSettings.getState().ai.enabled) return false;
   if (!editor.isFocused || !state.selection.empty) return false;
 
   const $to = state.doc.resolve(range.to);
@@ -86,6 +88,7 @@ export const SpaceAiToolbar = Extension.create({
             component.updateProps({
               ...latestProps,
               placement: "bottom",
+              variant: "space-ai",
               title: stack.at(-1)?.title ?? "AI 写作",
               subtitle: stack.length > 0 ? "选择一个动作继续" : "空格唤起，继续输入可筛选",
               items: getCurrentItems(),
@@ -119,6 +122,7 @@ export const SpaceAiToolbar = Extension.create({
                 props: {
                   ...props,
                   placement: "bottom",
+                  variant: "space-ai",
                   title: "AI 写作",
                   subtitle: "空格唤起，继续输入可筛选",
                   items: getCurrentItems(),
