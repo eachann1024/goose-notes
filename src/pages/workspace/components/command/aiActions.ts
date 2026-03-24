@@ -1,22 +1,8 @@
 import * as LucideIcons from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { toast } from "sonner";
+import { getAIAvailability, runAIText, type AIMessage } from "@/lib/ai-provider";
 import { useSettings } from "@/stores/useSettings";
-import { getAvailableUToolsAiModels, isUToolsAiSupported, type UToolsAiModel } from "@/lib/utools-ai";
-
-type AiMessageRole = "system" | "user" | "assistant";
-
-interface AiMessage {
-  role: AiMessageRole;
-  content?: string;
-}
-
-interface UToolsAiApi {
-  ai?: (option: {
-    model?: string;
-    messages: AiMessage[];
-  }) => Promise<{ content?: string }>;
-}
 
 interface EditorRange {
   from: number;
@@ -35,15 +21,8 @@ export interface AiToolbarActionItem {
   children?: AiToolbarActionItem[];
 }
 
-const DEFAULT_AI_MODEL = "deepseek-v3";
 const AI_SYSTEM_PROMPT =
   "你是 Goose Note 内置写作助手。输出必须直接可落文，不要解释，不要加前后缀，不要使用 Markdown 代码围栏。";
-
-function getUToolsApi(): UToolsAiApi | null {
-  if (typeof window === "undefined") return null;
-  const maybeUTools = (window as Window & { utools?: UToolsAiApi }).utools;
-  return maybeUTools ?? null;
-}
 
 function extractPlainTextBetween(editor: Editor, from: number, to: number) {
   return editor.state.doc.textBetween(from, to, "\n", "\n").trim();
@@ -84,60 +63,11 @@ function getRecentContext(editor: Editor, currentBlockFrom: number, maxBlocks = 
 }
 
 function ensureAiSupport() {
-  const utools = getUToolsApi();
-  if (!utools) return { ok: false as const, reason: "当前不在 uTools 环境内" };
-  if (!useSettings.getState().ai.enabled) {
-    return { ok: false as const, reason: "AI 助手尚未开启，请先到设置中打开" };
-  }
-  if (!isUToolsAiSupported() || typeof utools.ai !== "function") {
-    return { ok: false as const, reason: "当前 uTools 版本未提供 AI 能力" };
-  }
-  return { ok: true as const, api: utools };
+  return getAIAvailability(useSettings.getState().ai);
 }
 
-async function resolvePreferredModel() {
-  const support = ensureAiSupport();
-  if (!support.ok) return { modelId: DEFAULT_AI_MODEL, available: false };
-
-  try {
-    const models = await getAvailableUToolsAiModels();
-    if (!models.length) {
-      return { modelId: DEFAULT_AI_MODEL, available: true };
-    }
-
-    const selectedModelId = useSettings.getState().ai.selectedModelId;
-    if (selectedModelId && models.some((item) => item.id === selectedModelId)) {
-      return { modelId: selectedModelId, available: true };
-    }
-
-    const deepseek = models.find((item) => item.id === DEFAULT_AI_MODEL);
-    return {
-      modelId: deepseek?.id ?? models[0].id,
-      available: true,
-    };
-  } catch {
-    return { modelId: DEFAULT_AI_MODEL, available: true };
-  }
-}
-
-async function runAiText(messages: AiMessage[]) {
-  const support = ensureAiSupport();
-  if (!support.ok) {
-    throw new Error(support.reason);
-  }
-
-  const { modelId } = await resolvePreferredModel();
-  const result = await support.api.ai?.({
-    model: modelId,
-    messages,
-  });
-
-  const content = result?.content?.trim();
-  if (!content) {
-    throw new Error("AI 没有返回可用内容");
-  }
-
-  return content;
+async function runAiText(messages: AIMessage[]) {
+  return runAIText(useSettings.getState().ai, messages);
 }
 
 function buildMessages(userPrompt: string) {
@@ -345,4 +275,3 @@ export function getAiToolbarItems(): AiToolbarActionItem[] {
     },
   ];
 }
-

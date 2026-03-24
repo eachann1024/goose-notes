@@ -133,33 +133,6 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
               <BubbleMenuTooltip label="AI 润色" />
             </Tooltip>
 
-            <Tooltip {...bindTooltip("ai-rewrite")}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    const bubbleMenuEl = e.currentTarget.closest('.tippy-box') || e.currentTarget.closest('[data-tippy-root]');
-                    let overrideRect = undefined;
-                    if (menuRef.current) {
-                      const rect = menuRef.current.getBoundingClientRect();
-                      overrideRect = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
-                    }
-                    document.dispatchEvent(
-                      new CustomEvent("open-ai-input-popover", {
-                        detail: { editor, initialAction: "rewrite", overrideRect },
-                      }),
-                    );
-                  }}
-                  aria-label="AI 改写"
-                  className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
-                >
-                  <LucideIcons.RefreshCcw className="h-[15px] w-[15px]" />
-                </Button>
-              </TooltipTrigger>
-              <BubbleMenuTooltip label="AI 改写" />
-            </Tooltip>
-
             <Separator orientation="vertical" className="h-5 opacity-70 mx-0.5" />
           </>
         )}

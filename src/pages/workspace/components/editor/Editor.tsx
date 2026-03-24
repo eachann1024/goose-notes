@@ -315,20 +315,35 @@ export function Editor({ editable = true }: EditorProps) {
 
           if (empty && $from.parentOffset === 0) {
             const parent = $from.parent;
-            // 如果在空段落的开头，检查前面是什么块
-            if (parent.type.name === "paragraph" && parent.content.size === 0) {
+            if (parent.type.name === "paragraph") {
               const paragraphStart = $from.before($from.depth);
               const paragraphEnd = $from.after($from.depth);
-
-              // 用 nodeBefore 获取真正的前一个兄弟节点
               const $start = state.doc.resolve(paragraphStart);
               const prevNode = $start.nodeBefore;
 
-              if (
-                prevNode &&
-                (prevNode.type.name === "blockquote" ||
-                  prevNode.type.name === "heading")
-              ) {
+              if (prevNode?.type.name === "heading") {
+                event.preventDefault();
+                const { view } = editor;
+                const cursorPos = paragraphStart - 1;
+
+                if (parent.content.size === 0) {
+                  let tr = state.tr.delete(paragraphStart, paragraphEnd);
+                  tr = tr.setSelection(
+                    Selection.near(tr.doc.resolve(cursorPos), -1),
+                  );
+                  view.dispatch(tr);
+                  return true;
+                }
+
+                const tr = state.tr.setSelection(
+                  Selection.near(state.doc.resolve(cursorPos), -1),
+                );
+                view.dispatch(tr);
+                return true;
+              }
+
+              // 如果在空段落的开头，检查前面是什么块
+              if (parent.content.size === 0 && prevNode?.type.name === "blockquote") {
                 event.preventDefault();
                 const { view } = editor;
 
