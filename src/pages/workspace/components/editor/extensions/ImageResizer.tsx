@@ -1,7 +1,9 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { createPortal } from "react-dom";
-import { X, Maximize2 } from "lucide-react";
+import { Maximize2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Lightbox from "yet-another-react-lightbox";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import "yet-another-react-lightbox/styles.css";
 
 export function ImageResizer(props: NodeViewProps) {
   const { node, updateAttributes, selected, editor } = props;
@@ -11,15 +13,14 @@ export function ImageResizer(props: NodeViewProps) {
   const isEditable = editor.isEditable;
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // ESC 关闭预览
+  // 预览打开时让编辑器失焦并取消选中，确保图片工具栏（BubbleMenu）隐藏
   useEffect(() => {
-    if (!previewOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPreviewOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [previewOpen]);
+    if (previewOpen) {
+      // blur 本身不清除 ProseMirror 选区；额外将选区移到位置 0
+      // 使 editor.isActive("imageResize") 返回 false，触发 BubbleMenu 的 shouldShow 隐藏
+      editor.chain().blur().setTextSelection(0).run();
+    }
+  }, [previewOpen, editor]);
 
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -145,15 +146,70 @@ export function ImageResizer(props: NodeViewProps) {
     () => resolveImageSystemPath(node.attrs.src),
     [node.attrs.src],
   );
-  const canOpenInSystem = Boolean(systemOpenPath);
+  // 远程 http/https 图片也可以用系统浏览器打开
+  const isRemoteSrc = useMemo(() => {
+    const src = node.attrs.src as string | undefined;
+    return Boolean(src && (src.startsWith("http://") || src.startsWith("https://")));
+  }, [node.attrs.src]);
+  const canOpenInSystem = Boolean(systemOpenPath) || isRemoteSrc;
 
   const handleSystemOpen = useCallback(async () => {
-    if (!systemOpenPath) return;
-    const opened = await UToolsAdapter.openPath(systemOpenPath);
-    if (!opened) {
-      UToolsAdapter.showNotification("打开失败：请确认图片文件仍存在");
+    // 1. 远程图片 → 用系统默认浏览器/应用打开
+    if (isRemoteSrc) {
+      UToolsAdapter.openUrl(node.attrs.src as string, false);
+      return;
     }
-  }, [systemOpenPath]);
+
+    // 2. 本地文件路径 → 直接用 openPath
+    if (systemOpenPath) {
+      const opened = await UToolsAdapter.openPath(systemOpenPath);
+      if (!opened) UToolsAdapter.showNotification("打开失败：请确认图片文件仍存在");
+      return;
+    }
+
+    // 3. uuid:/att: 等存储引用 → blob → 临时文件 → openPath
+    const src = node.attrs.src as string | undefined;
+    if (!src) return;
+
+    if (!window.gooseFs?.writeTempFile) {
+      UToolsAdapter.showNotification("当前环境不支持打开图片");
+      return;
+    }
+
+    try {
+      const { imageStorage } = await import("@/lib/imageStorage");
+      const blob = await imageStorage.load(src);
+      if (!blob) {
+        UToolsAdapter.showNotification("图片加载失败");
+        return;
+      }
+
+      // blob → base64
+      const arrayBuffer = await blob.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8.length; i += 0x8000) {
+        binary += String.fromCharCode(...uint8.subarray(i, i + 0x8000));
+      }
+      const base64 = btoa(binary);
+
+      // 写入临时文件
+      const ext = blob.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+      const tempName = `goose-note/preview/${Date.now()}.${ext}`;
+      const tempPath = await window.gooseFs.writeTempFile(tempName, base64);
+
+      if (!tempPath) {
+        UToolsAdapter.showNotification("临时文件写入失败");
+        return;
+      }
+
+      const opened = await UToolsAdapter.openPath(tempPath);
+      if (!opened) UToolsAdapter.showNotification("系统默认应用打开失败");
+    } catch (err) {
+      console.error("[ImageResizer] handleSystemOpen failed:", err);
+      UToolsAdapter.showNotification("打开图片时出现错误");
+    }
+  }, [systemOpenPath, isRemoteSrc, node.attrs.src]);
 
   return (
     <NodeViewWrapper
@@ -222,28 +278,52 @@ export function ImageResizer(props: NodeViewProps) {
               />
             </div>
 
-            {/* 预览按钮 - 编辑模式下悬浮显示 */}
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewOpen(true);
-                      editor.commands.blur();
-                    }}
-                    className={cn(
-                      "absolute top-2 left-1/2 -translate-x-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] opacity-0 transition-all hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground group-hover:opacity-100 dark:border-white/20",
-                      resizing && "opacity-100",
-                    )}
-                    aria-label="预览图片"
-                  >
-                    <Maximize2 className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">预览图片</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* 预览和系统打开按钮 - 编辑模式下悬浮显示 */}
+            <div
+              className={cn(
+                "absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 z-[10]",
+                resizing && "opacity-100",
+              )}
+            >
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewOpen(true);
+                        editor.commands.blur();
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground dark:border-white/20"
+                      aria-label="预览图片"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">预览图片</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void handleSystemOpen();
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground dark:border-white/20"
+                      aria-label="使用系统默认应用打开"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">使用系统默认应用打开</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
 
             <div
               className={cn(
@@ -263,52 +343,37 @@ export function ImageResizer(props: NodeViewProps) {
         )}
       </div>
 
-      {/* Image Preview - 编辑/只读模式都显示 */}
-      {previewOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[20001] flex items-center justify-center bg-black/30 backdrop-blur-[1px] animate-in fade-in-0 duration-200"
-            onClick={() => setPreviewOpen(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="图片预览"
-          >
-            <div
-              className="relative max-w-5xl w-[90vw]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 关闭按钮 */}
-              <button
-                type="button"
-                onClick={() => setPreviewOpen(false)}
-                className="absolute -top-10 right-0 text-white transition-colors hover:text-gray-300"
-              >
-                <X className="h-6 w-6" />
-              </button>
-
-              {/* 图片容器 */}
-              <div className="max-h-[80vh] overflow-hidden rounded-lg bg-black/70 backdrop-blur-[1px]">
-                <img
-                  src={resolvedSrc || node.attrs.src}
-                  alt={node.attrs.alt}
-                  className={cn(
-                    "max-w-full max-h-[75vh] object-contain",
-                    canOpenInSystem && "cursor-pointer",
-                  )}
-                  onClick={
-                    canOpenInSystem
-                      ? () => {
-                          void handleSystemOpen();
-                        }
-                      : undefined
-                  }
-                  title={canOpenInSystem ? "点击使用系统默认应用打开" : undefined}
-                />
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+      {/* 使用 yet-another-react-lightbox + Zoom 插件：支持鼠标滚轮缩放、按住拖动 */}
+      <Lightbox
+        open={previewOpen}
+        close={() => setPreviewOpen(false)}
+        slides={[{ src: resolvedSrc || node.attrs.src }]}
+        plugins={[Zoom]}
+        zoom={{
+          // 最大缩放倍率（像素比），8 倍已足够
+          maxZoomPixelRatio: 8,
+          // 双击缩放倍率
+          zoomInMultiplier: 2,
+          // 滚轮缩放灵敏度（越小越平滑）
+          wheelZoomDistanceFactor: 100,
+          // 开启滚轮缩放（代替滑动）
+          scrollToZoom: true,
+        }}
+        // 隐藏多余导航箭头（单图无需翻页）
+        render={{
+          buttonPrev: () => null,
+          buttonNext: () => null,
+        }}
+        styles={{
+          // 背景半透明磨砂风格，与原设计保持一致
+          // --yarl__zIndex 必须高于图片工具栏的 z-index(20000)
+          root: {
+            "--yarl__color_backdrop": "rgba(0,0,0,0.7)",
+            "--yarl__zIndex": 30000,
+          },
+        }}
+        carousel={{ finite: true }}
+      />
     </NodeViewWrapper>
   );
 }
