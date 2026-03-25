@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { AIModelOption, CustomAIProtocol } from '@/lib/ai-provider'
+import { getAIAnalyticsContext, trackEvent } from '@/lib/analytics'
 import { uToolsStorage } from '@/lib/storage'
 
 export interface SearchProvider {
@@ -443,30 +444,57 @@ export const useSettings = create<SettingsState>()(
                     utools: { ...state.utools, openSearchInUtools: enabled },
                 })),
             setAIEnabled: (enabled) =>
-                set((state) => ({
-                    ai: { ...state.ai, enabled },
-                })),
+                set((state) => {
+                    const nextAI = { ...state.ai, enabled }
+                    trackEvent('ai_settings_changed', {
+                        change_type: 'toggle_enabled',
+                        ...getAIAnalyticsContext(nextAI),
+                    })
+                    return {
+                        ai: nextAI,
+                    }
+                }),
             setAISelectedModelId: (selectedModelId) =>
-                set((state) => ({
-                    ai: { ...state.ai, selectedModelId },
-                })),
+                set((state) => {
+                    const nextAI = { ...state.ai, selectedModelId }
+                    trackEvent('ai_settings_changed', {
+                        change_type: 'change_model',
+                        ...getAIAnalyticsContext(nextAI),
+                    })
+                    return {
+                        ai: nextAI,
+                    }
+                }),
             setAICustomProviderEnabled: (useCustomProvider) =>
-                set((state) => ({
-                    ai: { ...state.ai, useCustomProvider },
-                })),
+                set((state) => {
+                    const nextAI = { ...state.ai, useCustomProvider }
+                    trackEvent('ai_settings_changed', {
+                        change_type: 'switch_provider',
+                        ...getAIAnalyticsContext(nextAI),
+                    })
+                    return {
+                        ai: nextAI,
+                    }
+                }),
             saveAICustomConfig: ({ protocol, baseURL, apiKey, modelOptions }) =>
                 set((state) => {
                     const normalizedModelOptions = normalizeAIModelOptions(modelOptions)
+                    const nextAI = {
+                        ...state.ai,
+                        customProtocol: protocol,
+                        customBaseURL: baseURL.trim(),
+                        customApiKey: apiKey.trim(),
+                        customModelOptions: normalizedModelOptions,
+                        selectedModelId: normalizedModelOptions[0]?.id ?? state.ai.selectedModelId,
+                    }
+
+                    trackEvent('ai_settings_changed', {
+                        change_type: 'save_custom_config',
+                        ...getAIAnalyticsContext(nextAI),
+                    })
 
                     return {
-                        ai: {
-                            ...state.ai,
-                            customProtocol: protocol,
-                            customBaseURL: baseURL.trim(),
-                            customApiKey: apiKey.trim(),
-                            customModelOptions: normalizedModelOptions,
-                            selectedModelId: normalizedModelOptions[0]?.id ?? state.ai.selectedModelId,
-                        },
+                        ai: nextAI,
                     }
                 }),
 
