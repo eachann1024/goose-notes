@@ -4,6 +4,19 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 export const TableCellCustom = TableCell.extend({
   name: "tableCell",
 
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      align: {
+        default: "left",
+        parseHTML: (element) => element.getAttribute("data-align") || "left",
+        renderHTML: (attributes) => ({
+          "data-align": attributes.align || "left",
+        }),
+      },
+    };
+  },
+
   addProseMirrorPlugins() {
     const applyPasteTransaction = (view: any, tr: any) => {
       tr.setMeta("uiEvent", "paste");

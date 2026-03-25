@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Trash2, ChevronRight, StretchHorizontal, PanelTop, PanelLeft } from "lucide-react";
+import {
+  Trash2,
+  ChevronRight,
+  StretchHorizontal,
+  PanelTop,
+  PanelLeft,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLOCK_BG_COLORS } from "@/lib/blockColorPresets";
 import type { Editor } from "@tiptap/core";
@@ -280,43 +286,116 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
     BLOCK_BG_COLORS.find((c) => c.value === curBgColor) ?? BLOCK_BG_COLORS[0];
 
   const isTable = detail?.nodeType === "table";
+  const tableAttrs =
+    isTable && detail?.nodePos != null ? editor?.state.doc.nodeAt(detail.nodePos)?.attrs : undefined;
+  const currentTableWidthMode = (tableAttrs?.tableWidthMode as "content" | "full" | undefined) ?? "content";
+  const isFitWidth = currentTableWidthMode === "full";
 
-  const handleClickTableCommand = (commandName: "toggleHeaderRow" | "toggleHeaderColumn" | "fitWidth") => {
+  const setTableAttrs = (attrs: Record<string, unknown>) => {
     if (!editor || detail?.nodePos == null) return;
     const pos = detail.nodePos;
-    
-    if (commandName === "fitWidth") {
-        editor.chain().focus().command(({ tr, state, dispatch }) => {
-          const node = state.doc.nodeAt(pos);
-          if (!node || node.type.name !== "table") return false;
-          if (dispatch) {
-            node.descendants((child, childPos) => {
-              if (child.type.name === "tableCell" || child.type.name === "tableHeader") {
-                tr.setNodeMarkup(pos + 1 + childPos, null, { ...child.attrs, colwidth: null });
-              }
-            });
-          }
-          return true;
-        }).run();
-        close();
-        return;
-    }
-
-    const node = editor.state.doc.nodeAt(pos);
-    if (!node) return;
-    let targetPos = pos + 2; 
-    editor.state.doc.nodesBetween(pos, pos + node.nodeSize, (n, p) => {
-        if (n.isTextblock && targetPos === pos + 2) {
-            targetPos = p + 1;
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, state, dispatch }) => {
+        const node = state.doc.nodeAt(pos);
+        if (!node || node.type.name !== "table") return false;
+        if (dispatch) {
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            ...attrs,
+          });
         }
+        return true;
+      })
+      .run();
+  };
+
+  const setTableWidthMode = (mode: "content" | "full") => {
+    setTableAttrs({ tableWidthMode: mode });
+  };
+
+  const applyTableCommandAtNode = (command: (targetPos: number) => boolean) => {
+    if (!editor || detail?.nodePos == null) return false;
+    const node = editor.state.doc.nodeAt(detail.nodePos);
+    if (!node) return false;
+    let targetPos = detail.nodePos + 2;
+    editor.state.doc.nodesBetween(detail.nodePos, detail.nodePos + node.nodeSize, (n, p) => {
+      if (n.isTextblock && targetPos === detail.nodePos! + 2) {
+        targetPos = p + 1;
+      }
     });
+    return command(targetPos);
+  };
+
+  const refreshTableDetailState = () => {
+    if (!editor || detail?.nodePos == null) return;
+    const node = editor.state.doc.nodeAt(detail.nodePos);
+    if (!node || node.type.name !== "table") return;
+    setDetail((prev) => (prev ? { ...prev } : prev));
+  };
+
+  const handleToggleHeaderRow = () => {
+    const changed = applyTableCommandAtNode((targetPos) =>
+      editor!.chain().focus().setTextSelection(targetPos).toggleHeaderRow().run()
+    );
+    if (changed) {
+      refreshTableDetailState();
+      close();
+    }
+  };
+
+  const handleToggleHeaderColumn = () => {
+    const changed = applyTableCommandAtNode((targetPos) =>
+      editor!.chain().focus().setTextSelection(targetPos).toggleHeaderColumn().run()
+    );
+    if (changed) {
+      refreshTableDetailState();
+      close();
+    }
+  };
+
+  const fitWidthLabel = "适应宽度";
+
+  const handleFitWidth = () => {
+    if (!editor || detail?.nodePos == null) return;
+    const pos = detail.nodePos;
+
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, state, dispatch }) => {
+        const node = state.doc.nodeAt(pos);
+        if (!node || node.type.name !== "table") return false;
+        if (dispatch) {
+          node.descendants((child, childPos) => {
+            if (child.type.name === "tableCell" || child.type.name === "tableHeader") {
+              tr.setNodeMarkup(pos + 1 + childPos, null, { ...child.attrs, colwidth: null });
+            }
+          });
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            tableWidthMode: "full",
+          });
+        }
+        return true;
+      })
+      .run();
+    close();
+  };
+
+  const handleClickTableCommand = (commandName: "toggleHeaderRow" | "toggleHeaderColumn" | "fitWidth") => {
+    if (commandName === "fitWidth") {
+      handleFitWidth();
+      return;
+    }
 
     if (commandName === "toggleHeaderRow") {
-        editor.chain().focus().setTextSelection(targetPos).toggleHeaderRow().run();
-    } else {
-        editor.chain().focus().setTextSelection(targetPos).toggleHeaderColumn().run();
+      handleToggleHeaderRow();
+      return;
     }
-    close();
+
+    handleToggleHeaderColumn();
   };
 
   let hasHeaderRow = false;
@@ -451,32 +530,42 @@ export function DragHandleBlockMenu({ editor }: DragHandleBlockMenuProps) {
             <button
               type="button"
               onClick={() => handleClickTableCommand("fitWidth")}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--goose-interactive-selected)] transition-colors"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:bg-[var(--goose-interactive-selected)]"
             >
               <div className="flex h-4 w-4 items-center justify-center shrink-0">
                 <StretchHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
-              <span className="flex-1 text-left text-foreground/90">适应宽度</span>
+              <span className="flex-1 text-left">{fitWidthLabel}</span>
             </button>
             <button
               type="button"
               onClick={() => handleClickTableCommand("toggleHeaderRow")}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--goose-interactive-selected)] transition-colors"
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors",
+                hasHeaderRow
+                  ? "bg-primary/5 text-primary hover:bg-primary/10"
+                  : "hover:bg-[var(--goose-interactive-selected)]"
+              )}
             >
               <div className="flex h-4 w-4 items-center justify-center shrink-0">
-                <PanelTop className="h-3.5 w-3.5 text-muted-foreground" />
+                <PanelTop className={cn("h-3.5 w-3.5", hasHeaderRow ? "text-primary" : "text-muted-foreground")} />
               </div>
-              <span className="flex-1 text-left text-foreground/90">{hasHeaderRow ? "取消标题行" : "设为标题行"}</span>
+              <span className="flex-1 text-left">{hasHeaderRow ? "取消标题行" : "设为标题行"}</span>
             </button>
             <button
               type="button"
               onClick={() => handleClickTableCommand("toggleHeaderColumn")}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--goose-interactive-selected)] transition-colors"
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors",
+                hasHeaderColumn
+                  ? "bg-primary/5 text-primary hover:bg-primary/10"
+                  : "hover:bg-[var(--goose-interactive-selected)]"
+              )}
             >
               <div className="flex h-4 w-4 items-center justify-center shrink-0">
-                <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                <PanelLeft className={cn("h-3.5 w-3.5", hasHeaderColumn ? "text-primary" : "text-muted-foreground")} />
               </div>
-              <span className="flex-1 text-left text-foreground/90">{hasHeaderColumn ? "取消标题列" : "设为标题列"}</span>
+              <span className="flex-1 text-left">{hasHeaderColumn ? "取消标题列" : "设为标题列"}</span>
             </button>
           </>
         )}

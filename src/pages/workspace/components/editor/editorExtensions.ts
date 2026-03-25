@@ -6,10 +6,10 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { CodeBlockWithLanguageExtension } from "@/extensions/CodeBlockWithLanguage";
 import { Markdown } from "tiptap-markdown";
-import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCellCustom } from "@/extensions/TableCellCustom";
+import { TableCustom } from "@/extensions/TableCustom";
 import { all, createLowlight } from "lowlight";
 import { configureSlashCommand } from "@/extensions/SlashCommand";
 import { ResizableImage } from "@/extensions/ResizableImage";
@@ -136,7 +136,7 @@ export const editorExtensions = [
   CodeBlockWithLanguageExtension.configure({
     lowlight,
   }),
-  Table.configure({
+  TableCustom.configure({
     resizable: true,
     renderWrapper: true,
   }),

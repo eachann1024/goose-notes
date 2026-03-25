@@ -94,7 +94,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
   useImperativeHandle(
     ref,
     () => ({
-      onKeyDown: async ({ event }: { event: KeyboardEvent }) => {
+      onKeyDown: ({ event }: { event: KeyboardEvent }) => {
         if (!selectableIndexes.length) return false;
 
         if (event.key === "ArrowUp") {
@@ -114,7 +114,7 @@ export const CommandList = forwardRef((props: CommandListProps, ref) => {
         }
         if (event.key === "Enter") {
           event.preventDefault();
-          await selectItem(selectedIndex);
+          void selectItem(selectedIndex);
           return true;
         }
         return false;

@@ -163,6 +163,18 @@
   }
 }
 
+@keyframes ai-streaming-sparkles-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @keyframes ai-stream-wave-dot {
   0%,
   100% {
@@ -178,6 +190,11 @@
 .ai-stream-wave-char {
   animation: ai-stream-wave-char 1.45s ease-in-out infinite;
   will-change: transform, opacity;
+}
+
+.ai-streaming-sparkles {
+  animation: ai-streaming-sparkles-shift 2.4s ease-in-out infinite;
+  will-change: background-position;
 }
 
 .ai-stream-wave-dot {

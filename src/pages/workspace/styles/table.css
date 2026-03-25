@@ -8,6 +8,128 @@
   position: relative;
 }
 
+.tableWrapper {
+  width: 100%;
+  margin: 1.5em 0;
+  padding-right: 20px;
+  padding-bottom: 20px;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.tableWrapper[data-table-align="left"] {
+  text-align: left;
+}
+
+.tableWrapper[data-table-align="center"] {
+  text-align: center;
+}
+
+.tableWrapper[data-table-align="right"] {
+  text-align: right;
+}
+
+.tableWrapper[data-table-width-mode="full"] {
+  text-align: initial;
+}
+
+.tableWrapper > table[data-table-align] {
+  margin-top: 0;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  position: relative;
+  background: transparent;
+}
+
+.tableWrapper > table[data-table-width-mode="content"] {
+  display: inline-table;
+  width: max-content;
+  min-width: max(320px, max-content);
+  max-width: none;
+}
+
+.tableWrapper > table[data-table-width-mode="full"] {
+  display: table;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+}
+
+.tableWrapper > table[data-table-width-mode="content"][data-table-align="left"] {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.tableWrapper > table[data-table-width-mode="content"][data-table-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tableWrapper > table[data-table-width-mode="content"][data-table-align="right"] {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.tableWrapper > table[data-table-width-mode="full"][data-table-align] {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.tableWrapper > table[data-table-align="left"] td,
+.tableWrapper > table[data-table-align="left"] th {
+  text-align: left;
+}
+
+.tableWrapper > table[data-table-align="center"] td,
+.tableWrapper > table[data-table-align="center"] th {
+  text-align: center;
+}
+
+.tableWrapper > table[data-table-align="right"] td,
+.tableWrapper > table[data-table-align="right"] th {
+  text-align: right;
+}
+
+.tableWrapper > table[data-table-align] td,
+.tableWrapper > table[data-table-align] th {
+  min-width: 100px;
+}
+
+.tableWrapper > table[data-table-align] th {
+  text-align: inherit;
+}
+
+.tableWrapper > table[data-table-width-mode="content"] colgroup col {
+  width: auto;
+}
+
+.tableWrapper > table[data-table-width-mode="full"] colgroup col {
+  width: auto !important;
+}
+
+.tableWrapper > table[data-table-width-mode="content"] tbody,
+.tableWrapper > table[data-table-width-mode="content"] colgroup {
+  width: auto;
+}
+
+.tableWrapper > table[data-table-width-mode="full"] tbody,
+.tableWrapper > table[data-table-width-mode="full"] colgroup {
+  width: 100%;
+}
+
+.tableWrapper > table[data-table-align] .selectedCell:after {
+  z-index: 2;
+}
+
+.tableWrapper:hover {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.tableWrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
 .ProseMirror td,
 .ProseMirror th {
   min-width: 100px;
@@ -132,12 +254,6 @@
 
 .ProseMirror.resize-cursor {
   cursor: col-resize;
-}
-
-/* Add a bit of gap wrapper for tables if needed */
-.tableWrapper {
-  margin: 1.5em 0;
-  overflow-x: auto;
 }
 
 /* Embedded row/col action handles (Notion style) */

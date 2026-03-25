@@ -103,7 +103,7 @@ export const SlashCommandList = forwardRef(
     useImperativeHandle(
       ref,
       () => ({
-        onKeyDown: async ({ event }: { event: KeyboardEvent }) => {
+        onKeyDown: ({ event }: { event: KeyboardEvent }) => {
           if (!selectableIndexes.length) return false;
 
           if (event.key === "ArrowUp") {
@@ -131,7 +131,7 @@ export const SlashCommandList = forwardRef(
           }
           if (event.key === "Enter") {
             event.preventDefault();
-            await selectItem(selectedIndex);
+            void selectItem(selectedIndex);
             return true;
           }
           return false;

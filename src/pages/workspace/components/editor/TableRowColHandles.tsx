@@ -14,9 +14,11 @@ type HandleState = {
   row: HandleInfo | null;
   col: HandleInfo | null;
   table: { rect: DOMRect; dom: HTMLTableElement } | null;
+  isLastRow?: boolean;
+  isLastCol?: boolean;
 };
 
-const emptyState: HandleState = { row: null, col: null, table: null };
+const emptyState: HandleState = { row: null, col: null, table: null, isLastRow: false, isLastCol: false };
 
 export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   const [handles, setHandles] = useState<HandleState>(emptyState);
@@ -88,10 +90,29 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         return;
       }
 
-      const cell = target.closest("td, th") as HTMLTableCellElement;
-      const table = cell?.closest("table");
+      const cell = target.closest("td, th") as HTMLTableCellElement | null;
+      const table = (cell?.closest("table") ?? target.closest(".tableWrapper table")) as HTMLTableElement | null;
 
-      if (!cell || !table || !editor.view.dom.contains(table)) {
+      if (!table || !editor.view.dom.contains(table)) {
+        scheduleHide();
+        return;
+      }
+
+      const tableRect = table.getBoundingClientRect();
+      const isNearTableControls =
+        Math.abs(e.clientX - (tableRect.right + 11)) <= 24 &&
+          e.clientY >= tableRect.top - 8 &&
+          e.clientY <= tableRect.bottom + 8 ||
+        Math.abs(e.clientY - (tableRect.bottom + 11)) <= 24 &&
+          e.clientX >= tableRect.left - 8 &&
+          e.clientX <= tableRect.right + 8;
+
+      if (!cell) {
+        if (isNearTableControls && handlesRef.current.table) {
+          clearHideTimeout();
+          setVisible(true);
+          return;
+        }
         scheduleHide();
         return;
       }
@@ -99,9 +120,10 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       clearHideTimeout();
 
       const row = cell.parentElement as HTMLTableRowElement;
-      const tableRect = table.getBoundingClientRect();
       const cellRect = cell.getBoundingClientRect();
       const rowRect = row.getBoundingClientRect();
+      const isLastRow = row.rowIndex === table.rows.length - 1;
+      const isLastCol = cell.cellIndex === row.cells.length - 1;
 
       try {
         const pos = editor.view.posAtDOM(cell, 0) - 1;
@@ -116,6 +138,8 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
           row: { rect: rowRect, cellPos: pos, index: row.rowIndex },
           col: { rect: colRect, cellPos: pos, index: cell.cellIndex },
           table: { rect: tableRect, dom: table as HTMLTableElement },
+          isLastRow,
+          isLastCol,
         };
 
         setHandles(newState);
@@ -183,7 +207,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (!lastCell) break;
         try {
           const pos = editor.view.posAtDOM(lastCell, 0);
-          editor.chain().focus().setTextSelection(pos).addRowAfter().run();
+          editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).addRowAfter().run();
           currentRows++;
         } catch { break; }
       }
@@ -194,7 +218,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (!lastCell) break;
         try {
           const pos = editor.view.posAtDOM(lastCell, 0);
-          editor.chain().focus().setTextSelection(pos).deleteRow().run();
+          editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).deleteRow().run();
           currentRows--;
         } catch { break; }
       }
@@ -217,7 +241,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (lastCell) {
           try {
             const pos = editor.view.posAtDOM(lastCell, 0);
-            editor.chain().focus().setTextSelection(pos).addRowAfter().run();
+            editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).addRowAfter().run();
             setTimeout(() => {
               const newRect = domTable.getBoundingClientRect();
               setHandles(prev =>
@@ -261,7 +285,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (!lastCell) break;
         try {
           const pos = editor.view.posAtDOM(lastCell, 0);
-          editor.chain().focus().setTextSelection(pos).addColumnAfter().run();
+          editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).addColumnAfter().run();
           currentCols++;
         } catch { break; }
       }
@@ -272,7 +296,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (!lastCell) break;
         try {
           const pos = editor.view.posAtDOM(lastCell, 0);
-          editor.chain().focus().setTextSelection(pos).deleteColumn().run();
+          editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).deleteColumn().run();
           currentCols--;
         } catch { break; }
       }
@@ -295,7 +319,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
         if (lastCell) {
           try {
             const pos = editor.view.posAtDOM(lastCell, 0);
-            editor.chain().focus().setTextSelection(pos).addColumnAfter().run();
+            editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(pos).addColumnAfter().run();
             setTimeout(() => {
               const newRect = domTable.getBoundingClientRect();
               setHandles(prev =>
@@ -320,7 +344,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
             label: "切换标题行",
             icon: LucideIcons.Heading,
             action: (cellPos: number) => {
-              editor.chain().focus().setTextSelection(cellPos + 1).toggleHeaderRow().run();
+              editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(cellPos + 1).toggleHeaderRow().run();
             },
             destructive: false,
           },
@@ -332,7 +356,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .addRowBefore()
           .run();
@@ -344,7 +368,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .addRowAfter()
           .run();
@@ -356,7 +380,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .deleteRow()
           .run();
@@ -372,7 +396,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
             label: "切换标题列",
             icon: LucideIcons.ArrowRight,
             action: (cellPos: number) => {
-              editor.chain().focus().setTextSelection(cellPos + 1).toggleHeaderColumn().run();
+              editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(cellPos + 1).toggleHeaderColumn().run();
             },
             destructive: false,
           },
@@ -384,7 +408,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .addColumnBefore()
           .run();
@@ -396,7 +420,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .addColumnAfter()
           .run();
@@ -408,7 +432,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       action: (cellPos: number) => {
         editor
           .chain()
-          .focus()
+          .focus(undefined, { scrollIntoView: false })
           .setTextSelection(cellPos + 1)
           .deleteColumn()
           .run();
@@ -436,10 +460,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
   return (
     <div
       ref={handleRef}
-      onMouseEnter={() => {
-        clearHideTimeout();
-        setVisible(true);
-      }}
+      onMouseEnter={clearHideTimeout}
       onMouseLeave={scheduleHide}
     >
       {handles.row && (
@@ -541,7 +562,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
           className={cn(
             "notion-border-handle",
             "rounded-sm",
-            visible ? "" : "opacity-0 pointer-events-none"
+            visible && handles.isLastRow ? "" : "opacity-0 pointer-events-none"
           )}
           onMouseDown={handleBottomDragStart}
           onMouseEnter={suppressDragHandle}
@@ -568,7 +589,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
           className={cn(
             "notion-border-handle",
             "rounded-sm",
-            visible ? "" : "opacity-0 pointer-events-none"
+            visible && handles.isLastCol ? "" : "opacity-0 pointer-events-none"
           )}
           onMouseDown={handleRightDragStart}
           onMouseEnter={suppressDragHandle}

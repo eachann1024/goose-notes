@@ -118,8 +118,33 @@ export const SlashCommand = Extension.create({
         if ((suggestionState.query ?? "") === "") {
           const range = suggestionState.range;
           if (!range) return false;
-          editor.chain().focus().deleteRange(range).run();
-          return true;
+
+          const triggerFrom = range.from;
+          const triggerTo = Math.min(triggerFrom + 1, state.doc.content.size);
+          const triggerChar = state.doc.textBetween(triggerFrom, triggerTo, null, "\ufffc");
+          const fallbackFrom = Math.max(0, state.selection.from - 1);
+          const fallbackChar = state.doc.textBetween(
+            fallbackFrom,
+            state.selection.from,
+            null,
+            "\ufffc",
+          );
+
+          if (TRIGGER_CHARS.includes(triggerChar)) {
+            editor.chain().focus().deleteRange({ from: triggerFrom, to: triggerTo }).run();
+            return true;
+          }
+
+          if (TRIGGER_CHARS.includes(fallbackChar)) {
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: fallbackFrom, to: state.selection.from })
+              .run();
+            return true;
+          }
+
+          return false;
         }
 
         return false;
@@ -299,6 +324,17 @@ export const configureSlashCommand = () => {
           },
 
           onKeyDown(props: any) {
+            const nativeEvent = props.event as KeyboardEvent & {
+              isComposing?: boolean;
+              keyCode?: number;
+            };
+            const isImeComposing =
+              nativeEvent.isComposing === true || nativeEvent.keyCode === 229;
+
+            if (isImeComposing) {
+              return false;
+            }
+
             if (props.event.key === "Escape") {
               popup?.[0]?.hide();
 
