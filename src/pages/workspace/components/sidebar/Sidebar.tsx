@@ -101,8 +101,16 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
   }, [handleDeleteShortcut]);
 
   useEffect(() => {
-    const handleOpenSettings = () => {
+    const handleOpenSettings = (event: Event) => {
+      const customEvent = event as CustomEvent<{ tab?: "general" | "appearance" | "ai" | "data" }>;
       setShowSettings(true);
+      if (customEvent.detail?.tab) {
+        window.dispatchEvent(
+          new CustomEvent("goose-note:settings-tab-change", {
+            detail: { tab: customEvent.detail.tab },
+          }),
+        );
+      }
     };
 
     window.addEventListener("goose-note:open-settings", handleOpenSettings);

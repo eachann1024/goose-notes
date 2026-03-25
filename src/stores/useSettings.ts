@@ -447,6 +447,11 @@ export const useSettings = create<SettingsState>()(
                 set((state) => {
                     const nextAI = { ...state.ai, enabled }
                     trackEvent('ai_settings_changed', {
+                        feature: 'ai_settings',
+                        action: 'toggle',
+                        source: 'settings',
+                        enabled,
+                        provider_type: nextAI.useCustomProvider ? nextAI.customProtocol : 'utools',
                         change_type: 'toggle_enabled',
                         ...getAIAnalyticsContext(nextAI),
                     })
@@ -458,6 +463,11 @@ export const useSettings = create<SettingsState>()(
                 set((state) => {
                     const nextAI = { ...state.ai, selectedModelId }
                     trackEvent('ai_settings_changed', {
+                        feature: 'ai_settings',
+                        action: 'change_model',
+                        source: 'settings',
+                        enabled: nextAI.enabled,
+                        provider_type: nextAI.useCustomProvider ? nextAI.customProtocol : 'utools',
                         change_type: 'change_model',
                         ...getAIAnalyticsContext(nextAI),
                     })
@@ -469,6 +479,11 @@ export const useSettings = create<SettingsState>()(
                 set((state) => {
                     const nextAI = { ...state.ai, useCustomProvider }
                     trackEvent('ai_settings_changed', {
+                        feature: 'ai_settings',
+                        action: 'switch_provider',
+                        source: 'settings',
+                        enabled: nextAI.enabled,
+                        provider_type: nextAI.useCustomProvider ? nextAI.customProtocol : 'utools',
                         change_type: 'switch_provider',
                         ...getAIAnalyticsContext(nextAI),
                     })
@@ -489,6 +504,11 @@ export const useSettings = create<SettingsState>()(
                     }
 
                     trackEvent('ai_settings_changed', {
+                        feature: 'ai_settings',
+                        action: 'save_config',
+                        source: 'settings',
+                        enabled: nextAI.enabled,
+                        provider_type: nextAI.useCustomProvider ? nextAI.customProtocol : 'utools',
                         change_type: 'save_custom_config',
                         ...getAIAnalyticsContext(nextAI),
                     })

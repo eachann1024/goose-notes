@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getNotebookAnalyticsContext, trackEvent } from "@/lib/analytics";
 import { uToolsStorage } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 
@@ -97,10 +98,18 @@ export const useNotebooks = create<NotebooksState>()(
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        set((state) => ({
-          notebooks: { ...state.notebooks, [id]: notebook },
+        const nextNotebooks = { ...get().notebooks, [id]: notebook };
+        set({
+          notebooks: nextNotebooks,
           activeNotebookId: id,
-        }));
+        });
+        trackEvent("notebook_created", {
+          feature: "notebook",
+          action: "create",
+          source: "sidebar",
+          notebook_type: notebook.source ?? "default",
+          notebook_count_after_create: Object.keys(nextNotebooks).length,
+        });
         return id;
       },
 
@@ -137,10 +146,18 @@ export const useNotebooks = create<NotebooksState>()(
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        set((state) => ({
-          notebooks: { ...state.notebooks, [id]: notebook },
+        const nextNotebooks = { ...get().notebooks, [id]: notebook };
+        set({
+          notebooks: nextNotebooks,
           activeNotebookId: id,
-        }));
+        });
+        trackEvent("notebook_created", {
+          feature: "notebook",
+          action: "create",
+          source: "local_folder",
+          notebook_type: notebook.source ?? "default",
+          notebook_count_after_create: Object.keys(nextNotebooks).length,
+        });
         return id;
       },
 
@@ -252,6 +269,15 @@ export const useNotebooks = create<NotebooksState>()(
       setActiveNotebook: (id) => {
         set({ activeNotebookId: id });
         const notebook = get().notebooks[id];
+        const notebookContext = getNotebookAnalyticsContext(get().notebooks);
+        trackEvent("notebook_switched", {
+          feature: "notebook",
+          action: "switch",
+          source: "sidebar",
+          target_notebook_type: notebook?.source ?? "default",
+          notebook_count_current: notebookContext.notebook_count_current,
+          is_multi_notebook_user: notebookContext.has_multiple_notebooks,
+        });
         if (
           notebook?.source === "local-folder" &&
           notebook.localPath &&

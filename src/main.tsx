@@ -15,6 +15,13 @@ import {
 } from "./lib/markdown-raw-guard";
 import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
+import {
+  getAIAnalyticsContext,
+  getNotebookAnalyticsContext,
+  initAnalytics,
+  syncAnalyticsContext,
+  trackEvent,
+} from "./lib/analytics";
 import { UToolsAdapter } from "./lib/utools";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
@@ -24,6 +31,20 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+
+const MIXPANEL_TOKEN =
+  import.meta.env.VITE_MIXPANEL_TOKEN ||
+  (import.meta.env.DEV
+    ? import.meta.env.VITE_MIXPANEL_TOKEN_DEV
+    : import.meta.env.VITE_MIXPANEL_TOKEN_PROD) ||
+  "";
+
+const syncAnalyticsSnapshot = () => {
+  syncAnalyticsContext({
+    ...getAIAnalyticsContext(useSettings.getState().ai),
+    ...getNotebookAnalyticsContext(useNotebooks.getState().notebooks),
+  });
+};
 
 let flushInFlight: Promise<void> | null = null;
 const MARKDOWN_OPEN_WRITE_BLOCK_MS = 5000;
@@ -341,6 +362,43 @@ const bootstrap = async () => {
   const settings = useSettings.getState();
   applyFontVariables(settings.customFonts);
   preloadFonts();
+
+  const analyticsInitResult = initAnalytics({
+    token: MIXPANEL_TOKEN,
+    appVersion: import.meta.env.VITE_APP_VERSION || "0.0.0",
+    appEnv: import.meta.env.DEV ? "dev" : "prod",
+    hostEnv: "utools",
+    platform: navigator.platform || "unknown",
+    isDev: import.meta.env.DEV,
+    enableReplay: true,
+  });
+
+  console.log("[analytics] bootstrap", {
+    hasToken: Boolean(MIXPANEL_TOKEN),
+    tokenPreview: MIXPANEL_TOKEN ? `${MIXPANEL_TOKEN.slice(0, 6)}...${MIXPANEL_TOKEN.slice(-4)}` : "",
+    initialized: Boolean(analyticsInitResult),
+    distinctId: analyticsInitResult?.distinctId ?? "",
+    installId: analyticsInitResult?.installId ?? "",
+    sessionId: analyticsInitResult?.sessionId ?? "",
+  });
+
+  syncAnalyticsSnapshot();
+  console.log("[analytics] snapshot_synced");
+
+  if (analyticsInitResult) {
+    trackEvent("app_opened", {
+      feature: "app",
+      action: "open",
+      result: "success",
+      source: "bootstrap",
+    });
+  }
+  useSettings.subscribe((state) => {
+    syncAnalyticsContext(getAIAnalyticsContext(state.ai));
+  });
+  useNotebooks.subscribe((state) => {
+    syncAnalyticsContext(getNotebookAnalyticsContext(state.notebooks));
+  });
 
   createRoot(rootElement).render(
     <StrictMode>

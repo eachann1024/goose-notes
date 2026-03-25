@@ -34,6 +34,7 @@ function BubbleMenuTooltip({
 }
 
 export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
+  const aiEnabled = useSettings((state) => state.ai.enabled);
   const isHidden = useScrollHide(editor);
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
@@ -104,7 +105,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
         }}
         {...props}
       >
-        {useSettings.getState().ai.enabled && (
+        {aiEnabled && (
           <>
             <Tooltip {...bindTooltip("ai-polish")}>
               <TooltipTrigger asChild>

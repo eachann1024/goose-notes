@@ -9,6 +9,7 @@ import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
@@ -386,6 +387,7 @@ export function WorkspacePage() {
           </div>
         )}
         <CommandPalette />
+        <AIFeatureNotice />
         <div className="workspace-stage">
           <Sidebar
             className="workspace-sidebar-pane"

@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 export {}
 
+interface ImportMetaEnv {
+  readonly VITE_APP_VERSION?: string;
+  readonly VITE_MIXPANEL_TOKEN?: string;
+  readonly VITE_MIXPANEL_TOKEN_DEV?: string;
+  readonly VITE_MIXPANEL_TOKEN_PROD?: string;
+}
+
 declare global {
   const __HOST_TARGET__: "utools";
 

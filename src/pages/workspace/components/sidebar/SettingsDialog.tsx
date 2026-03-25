@@ -89,6 +89,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { pages } = usePages();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
+  useEffect(() => {
+    const handleTabChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ tab?: SettingsTab }>;
+      if (customEvent.detail?.tab) {
+        setActiveTab(customEvent.detail.tab);
+      }
+    };
+
+    window.addEventListener("goose-note:settings-tab-change", handleTabChange);
+    return () => {
+      window.removeEventListener("goose-note:settings-tab-change", handleTabChange);
+    };
+  }, []);
+
   // 数据管理状态
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [format, setFormat] = useState<ExportOptions["format"]>("md");

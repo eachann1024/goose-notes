@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import * as LucideIcons from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { runAITextStream, type AIMessage, type AIStreamPhase } from "@/lib/ai-provider";
+import { getAIErrorType, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
 
@@ -76,6 +77,37 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const pendingApplyRangeRef = useRef<{ from: number; to: number } | null>(null);
   /** 自动 apply 计时器 */
   const autoApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undoCapsule, setUndoCapsule] = useState<{ x: number; y: number } | null>(null);
+  const undoCapsuleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoCapsuleHoveredRef = useRef(false);
+  const undoCapsuleRemainingMsRef = useRef(5000);
+  const undoCapsuleDeadlineRef = useRef<number | null>(null);
+
+  const clearUndoCapsule = useCallback(() => {
+    if (undoCapsuleTimerRef.current) {
+      clearTimeout(undoCapsuleTimerRef.current);
+      undoCapsuleTimerRef.current = null;
+    }
+    undoCapsuleHoveredRef.current = false;
+    undoCapsuleRemainingMsRef.current = 5000;
+    undoCapsuleDeadlineRef.current = null;
+    setUndoCapsule(null);
+  }, []);
+
+  const scheduleUndoCapsuleHide = useCallback((delay = 5000) => {
+    if (undoCapsuleTimerRef.current) {
+      clearTimeout(undoCapsuleTimerRef.current);
+    }
+    undoCapsuleRemainingMsRef.current = delay;
+    undoCapsuleDeadlineRef.current = Date.now() + delay;
+    undoCapsuleTimerRef.current = setTimeout(() => {
+      undoCapsuleTimerRef.current = null;
+      undoCapsuleDeadlineRef.current = null;
+      undoCapsuleRemainingMsRef.current = 5000;
+      if (undoCapsuleHoveredRef.current) return;
+      setUndoCapsule(null);
+    }, delay);
+  }, []);
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -86,21 +118,18 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         triggeredBy?: "space";
       }>;
       if (customEvent.detail.editor === editor) {
-        
-        // Calculate coordinates based on selection
         const { to, from } = editor.state.selection;
         const coords = editor.view.coordsAtPos(from);
-        
+
         const windowWidth = window.innerWidth;
-        const popoverWidth = 220; // estimate max width of mini popover
-        
+        const popoverWidth = 220;
+
         let x = coords.left;
         let y = 0;
 
         const overrideRect = customEvent.detail.overrideRect;
         if (overrideRect) {
           x = overrideRect.left + (overrideRect.width / 2) - (popoverWidth / 2);
-          // Place exactly at the bubble menu toolbar position
           y = overrideRect.top;
           if (y < 60) {
             y = overrideRect.bottom + 8;
@@ -111,12 +140,11 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
             x = 16;
           }
         } else {
-          // Fallback if no override rect provided
           if (x + popoverWidth > windowWidth - 16) {
             x = windowWidth - popoverWidth - 16;
           }
           const isSelection = from !== to;
-          y = coords.top - (isSelection ? 85 : 42); 
+          y = coords.top - (isSelection ? 85 : 42);
           if (y < 60) {
             y = coords.bottom + (isSelection ? 45 : 8);
           }
@@ -137,11 +165,19 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         setReasoningText("");
         setResultContent("");
         setQuery("");
-        setInitialAction(customEvent.detail.initialAction || "generate");
-        
+        const nextAction = customEvent.detail.initialAction || "generate";
+        setInitialAction(nextAction);
+        trackEvent("ai_entry_opened", {
+          feature: "ai",
+          action: "open",
+          source: "bubble_menu",
+          entry_action: nextAction,
+          has_selection: from !== to,
+          selection_mode: from !== to ? "has_selection" : "empty_selection",
+        });
+
         if (from !== to) {
           highlightRangeRef.current = { from, to };
-          // 仅折叠选区以隐藏气泡菜单，保留原范围供后续恢复/替换
           editor.chain().setTextSelection(to).run();
         } else {
           highlightRangeRef.current = null;
@@ -163,6 +199,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       clearTimeout(autoApplyTimerRef.current);
       autoApplyTimerRef.current = null;
     }
+    clearUndoCapsule();
 
     if (highlightRangeRef.current) {
       if (restoreSelection && editor && !editor.isDestroyed) {
@@ -185,17 +222,15 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     if (restoreSelection) {
       editor?.commands.focus();
     }
-  }, [editor]);
+  }, [editor, clearUndoCapsule]);
 
   const handleSubmit = useCallback(async () => {
     if (!editor) return;
 
-    // From highlight range, not current collapsed selection.
     const from = highlightRangeRef.current?.from ?? editor.state.selection.from;
     const to = highlightRangeRef.current?.to ?? editor.state.selection.to;
     const finalQuery = query.trim();
 
-    // 如果是输入状态且没有输入内容、也没有选中文字，且不是特定的操作
     if (!finalQuery && initialAction === "generate") {
       closePopover();
       return;
@@ -213,18 +248,38 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     setResultContent("");
     pendingApplyRangeRef.current = { from, to };
 
+    const savedFrom = from;
+    const savedTo = to;
+    const requestStartedAt = Date.now();
+    const aiSettings = useSettings.getState().ai;
+    const providerType = aiSettings.useCustomProvider ? aiSettings.customProtocol : "utools";
+    const modelId = aiSettings.selectedModelId ?? "";
+
     try {
-      // 在读取文本前先快照范围，避免后续操作影响 ref
-      const savedFrom = from;
-      const savedTo = to;
       const text = editor.state.doc.textBetween(savedFrom, savedTo, "\n", "\n").trim();
 
-      // 获取选区所在段落的完整文本作为上下文，防止 AI 脱离语境过度发散
       const { $from } = editor.state.doc.resolve(savedFrom) ? { $from: editor.state.doc.resolve(savedFrom) } : { $from: null };
       const blockText = $from ? editor.state.doc.textBetween($from.start(), $from.end(), "\n", "\n").trim() : "";
-      // 判断是否为部分选中（选中内容 ≠ 段落全文）
       const isPartial = text && blockText && text !== blockText;
-      
+      const contentScope = !text ? "new_content" : isPartial ? "partial_selection" : "full_block";
+      const usageType = initialAction;
+      const usageBucket = initialAction === "generate" ? "generate_new_content" : "edit_selected_content";
+
+      trackEvent("ai_request_submitted", {
+        feature: "ai",
+        action: "submit",
+        result: "submitted",
+        source: "bubble_menu",
+        usage_type: usageType,
+        usage_bucket: usageBucket,
+        content_scope: contentScope,
+        has_selection: savedFrom !== savedTo,
+        has_custom_query: Boolean(finalQuery),
+        query_length: finalQuery.length,
+        provider_type: providerType,
+        model_id: modelId,
+      });
+
       let prompt = finalQuery;
       if (text) {
         if (!finalQuery) {
@@ -261,11 +316,23 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       if (!content) throw new Error("AI 没有返回可用内容");
       if (activeRequestIdRef.current !== requestId) return;
 
+      trackEvent("ai_request_succeeded", {
+        feature: "ai",
+        action: "success",
+        result: "success",
+        source: "bubble_menu",
+        usage_type: initialAction,
+        has_selection: savedFrom !== savedTo,
+        duration_ms: Date.now() - requestStartedAt,
+        provider_type: providerType,
+        model_id: modelId,
+        output_length: content.trim().length,
+      });
+
       streamAbortRef.current = null;
       pendingApplyRangeRef.current = { from: savedFrom, to: savedTo };
       setResultContent(content);
       setStatus("review");
-      // 所有内容显示后 0.3 秒自动应用到编辑器
       autoApplyTimerRef.current = setTimeout(() => {
         if (!editor || editor.isDestroyed) return;
         const range = { from: savedFrom, to: savedTo };
@@ -280,6 +347,22 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         } else {
           editor.chain().focus().insertContent(content.trim()).run();
         }
+
+        const endPos = editor.state.selection.to;
+        const coords = editor.view.coordsAtPos(endPos);
+        setUndoCapsule({ x: coords.right + 10, y: coords.top + ((coords.bottom - coords.top) / 2) });
+        scheduleUndoCapsuleHide(5000);
+
+        trackEvent("ai_result_applied", {
+          feature: "ai",
+          action: "apply",
+          result: "success",
+          source: "bubble_menu",
+          apply_mode: "auto",
+          usage_type: initialAction,
+          provider_type: providerType,
+          model_id: modelId,
+        });
         highlightRangeRef.current = null;
         pendingApplyRangeRef.current = null;
         setIsOpen(false);
@@ -297,10 +380,22 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       if (controller.signal.aborted) {
         return;
       }
+      trackEvent("ai_request_failed", {
+        feature: "ai",
+        action: "fail",
+        result: "failed",
+        source: "bubble_menu",
+        usage_type: initialAction,
+        error_type: getAIErrorType(e),
+        duration_ms: Date.now() - requestStartedAt,
+        has_selection: savedFrom !== savedTo,
+        provider_type: providerType,
+        model_id: modelId,
+      });
       console.error(e);
       closePopover(true);
     }
-  }, [editor, query, closePopover, initialAction]);
+  }, [editor, query, closePopover, initialAction, scheduleUndoCapsuleHide]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isComposing) return;
@@ -313,14 +408,12 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     }
   };
 
-  /** 自动撑高 textarea，最多 MAX_LINES 行 */
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const maxH = LINE_HEIGHT * MAX_LINES + 8; // +8 for padding
+    const maxH = LINE_HEIGHT * MAX_LINES + 8;
     el.style.height = Math.min(el.scrollHeight, maxH) + "px";
-    // 新内容超出时滚动到底部
     el.scrollTop = el.scrollHeight;
   }, []);
 
@@ -355,17 +448,52 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       editor.chain().focus().insertContent(content).run();
     }
 
+    const aiSettings = useSettings.getState().ai;
+    const providerType = aiSettings.useCustomProvider ? aiSettings.customProtocol : "utools";
+    const modelId = aiSettings.selectedModelId ?? "";
+
+    trackEvent("ai_result_applied", {
+      feature: "ai",
+      action: "apply",
+      result: "success",
+      source: "bubble_menu",
+      apply_mode: "manual",
+      usage_type: initialAction,
+      provider_type: providerType,
+      model_id: modelId,
+    });
     highlightRangeRef.current = null;
     pendingApplyRangeRef.current = null;
     closePopover(false);
   };
 
-  /** textarea 内容变化时自动撑高 */
+  const handleUndoApply = () => {
+    if (!editor) return;
+    clearUndoCapsule();
+    editor.commands.undo();
+  };
+
+  const handleUndoCapsuleMouseEnter = () => {
+    undoCapsuleHoveredRef.current = true;
+    if (undoCapsuleTimerRef.current) {
+      clearTimeout(undoCapsuleTimerRef.current);
+      undoCapsuleTimerRef.current = null;
+    }
+    if (undoCapsuleDeadlineRef.current) {
+      undoCapsuleRemainingMsRef.current = Math.max(1, undoCapsuleDeadlineRef.current - Date.now());
+      undoCapsuleDeadlineRef.current = null;
+    }
+  };
+
+  const handleUndoCapsuleMouseLeave = () => {
+    undoCapsuleHoveredRef.current = false;
+    scheduleUndoCapsuleHide(Math.max(1, undoCapsuleRemainingMsRef.current));
+  };
+
   useEffect(() => {
     autoResize();
   }, [query, streamedContent, reasoningText, status, autoResize]);
 
-  // 依赖全局点击关闭面板，但排除自身和编辑面板
   useEffect(() => {
     if (!isOpen) return;
 
@@ -379,12 +507,17 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     return () => document.removeEventListener("mousedown", handleGlobalClick);
   }, [isOpen, closePopover]);
 
-  if (!editor || !isOpen) return null;
+  useEffect(() => {
+    return () => {
+      clearUndoCapsule();
+    };
+  }, [clearUndoCapsule]);
+
+  if (!editor) return null;
+  if (!isOpen && !undoCapsule) return null;
 
   const phaseMeta = STREAM_PHASE_META[streamPhase];
-  /** 输入框在思考/生成时显示的文案 */
   const streamPreview = getStreamPreview(streamedContent, reasoningText, streamPhase);
-  /** textarea 展示的内容：idle 用用户输入，其他用流式内容 */
   const textareaDisplayValue = status === "idle" ? query : (status === "review" ? resultContent : streamPreview);
   const placeholderText =
     initialAction === "polish"
@@ -393,80 +526,99 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         ? "输入自定义改写要求..."
         : "让 AI 帮你写点什么...";
 
-  return createPortal(
-    <div
-      data-ai-input-popover
-      className={cn(
-        "fixed z-[20005] flex items-center gap-1 rounded-[22px] border border-border/75 bg-popover p-1 pl-2.5",
-        "shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100",
-        "dark:border-white/15 dark:bg-[#2f3437]",
-      )}
-      style={{ left: position.x, top: position.y }}
-      onMouseDownCapture={(event) => {
-        const target = event.target as HTMLElement;
-        if (target.closest("textarea, [contenteditable='true']")) return;
-        event.preventDefault();
-      }}
-    >
-      {/* 图标：思考中时 pulse，否则绿色 */}
-      <LucideIcons.Sparkles
-        className={cn(
-          "h-3 w-3 shrink-0 self-center",
-          status === "streaming"
-            ? "text-sky-500 animate-pulse"
-            : "text-[#10b981]",
-        )}
-      />
-
-      {/* 统一输入区：idle 可编辑，streaming/review 只读展示流式内容 */}
-      <textarea
-        ref={textareaRef}
-        value={textareaDisplayValue}
-        readOnly={status !== "idle"}
-        rows={1}
-        onChange={(e) => {
-          if (status !== "idle") return;
-          setQuery(e.target.value);
-        }}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={() => setIsComposing(true)}
-        onCompositionEnd={() => setIsComposing(false)}
-        placeholder={placeholderText}
-        className={cn(
-          "flex-1 resize-none overflow-y-auto bg-transparent text-[12px] leading-5 outline-none",
-          "placeholder:text-muted-foreground/60 scrollbar-hide",
-          status === "idle"
-            ? "w-[160px] sm:w-[180px] text-foreground"
-            : "w-[220px] text-foreground/80",
-        )}
-        style={{
-          minHeight: `${LINE_HEIGHT}px`,
-          maxHeight: `${LINE_HEIGHT * MAX_LINES + 8}px`,
-        }}
-      />
-
-      {/* 提交按钮 / 点点动效 */}
-      {status === "idle" && (
-        <button
-          onClick={handleSubmit}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#10b981] hover:bg-[#059669] text-white transition-colors"
+  return (
+    <>
+      {isOpen && createPortal(
+        <div
+          data-ai-input-popover
+          className={cn(
+            "fixed z-[20005] flex items-center gap-2 rounded-[22px] border border-border/75 bg-popover px-[10px] py-1.5",
+            "shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100",
+            "dark:border-white/15 dark:bg-[#2f3437]",
+          )}
+          style={{ left: position.x, top: position.y }}
+          onMouseDownCapture={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest("textarea, [contenteditable='true']")) return;
+            event.preventDefault();
+          }}
         >
-          <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
-        </button>
+          <LucideIcons.Sparkles
+            className={cn(
+              "h-4 w-4 shrink-0 self-center ml-1",
+              status === "streaming"
+                ? "text-[#10b981]"
+                : "text-[#10b981]",
+            )}
+          />
+
+          <textarea
+            ref={textareaRef}
+            value={textareaDisplayValue}
+            readOnly={status !== "idle"}
+            rows={1}
+            onChange={(e) => {
+              if (status !== "idle") return;
+              setQuery(e.target.value);
+            }}
+            onKeyDown={handleKeyDown}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
+            placeholder={placeholderText}
+            className={cn(
+              "flex-1 self-center resize-none overflow-y-auto bg-transparent text-[12px] leading-[20px] outline-none",
+              "placeholder:text-muted-foreground/60 scrollbar-hide",
+              status === "idle"
+                ? "w-[160px] sm:w-[180px] text-foreground"
+                : "w-[220px] text-foreground/80",
+            )}
+            style={{
+              minHeight: `${LINE_HEIGHT}px`,
+              maxHeight: `${LINE_HEIGHT * MAX_LINES + 8}px`,
+            }}
+          />
+
+          {status === "idle" && (
+            <button
+              onClick={handleSubmit}
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#10b981] hover:bg-[#059669] text-white transition-colors"
+            >
+              <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
+            </button>
+          )}
+
+          {status === "streaming" && (
+            <span className="flex items-center gap-1 shrink-0 pr-1">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <span
+                  key={`wave-dot-${index}`}
+                  className={cn("ai-stream-wave-dot h-1.5 w-1.5 rounded-full", phaseMeta.dot)}
+                  style={{ animationDelay: `${index * 0.14}s` }}
+                />
+              ))}
+            </span>
+          )}
+        </div>,
+        document.body
       )}
 
-      {status === "streaming" && (
-        <span className="flex items-center gap-1 shrink-0">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <span
-              key={`wave-dot-${index}`}
-              className={cn("ai-stream-wave-dot h-1.5 w-1.5 rounded-full", phaseMeta.dot)}
-              style={{ animationDelay: `${index * 0.14}s` }}
-            />
-          ))}
-        </span>
+      {undoCapsule && createPortal(
+        <button
+          type="button"
+          data-ai-undo-capsule
+          onClick={handleUndoApply}
+          onMouseEnter={handleUndoCapsuleMouseEnter}
+          onMouseLeave={handleUndoCapsuleMouseLeave}
+          onFocus={handleUndoCapsuleMouseEnter}
+          onBlur={handleUndoCapsuleMouseLeave}
+          style={{ left: undoCapsule.x, top: undoCapsule.y, transform: "translateY(-50%)" }}
+          className="fixed z-[20006] inline-flex items-center gap-1.5 rounded-full border border-border/75 bg-popover/95 px-3 py-1.5 text-[12px] font-medium leading-none text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-all duration-150 animate-in fade-in-0 hover:border-border hover:bg-muted/80 dark:border-white/15 dark:bg-[#2f3437]/95 dark:hover:bg-[#3a4044]"
+        >
+          <LucideIcons.RotateCcw className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span>取消应用</span>
+        </button>,
+        document.body
       )}
-    </div>,
-    document.body
+    </>
   );
 }

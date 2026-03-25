@@ -164,8 +164,13 @@ declare global {
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
+  const getAIAnalyticsContext: typeof import('./lib/analytics').getAIAnalyticsContext
   const getAIAvailability: typeof import('./lib/ai-provider').getAIAvailability
+  const getAIErrorType: typeof import('./lib/analytics').getAIErrorType
   const getAIProviderMode: typeof import('./lib/ai-provider').getAIProviderMode
+  const getAnalyticsContext: typeof import('./lib/analytics').getAnalyticsContext
+  const getAnalyticsInstallId: typeof import('./lib/analytics').getAnalyticsInstallId
+  const getAnalyticsSessionId: typeof import('./lib/analytics').getAnalyticsSessionId
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
@@ -174,6 +179,7 @@ declare global {
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
+  const getNotebookAnalyticsContext: typeof import('./lib/analytics').getNotebookAnalyticsContext
   const getPageTitle: typeof import('./lib/page-title').getPageTitle
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
@@ -188,6 +194,8 @@ declare global {
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
+  const initAnalytics: typeof import('./lib/analytics').initAnalytics
+  const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -205,6 +213,7 @@ declare global {
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
+  const resetAnalytics: typeof import('./lib/analytics').resetAnalytics
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
   const runAIText: typeof import('./lib/ai-provider').runAIText
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
@@ -215,7 +224,11 @@ declare global {
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const startTransition: typeof import('react').startTransition
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
+  const syncAIAnalyticsContext: typeof import('./lib/analytics').syncAIAnalyticsContext
+  const syncAnalyticsContext: typeof import('./lib/analytics').syncAnalyticsContext
+  const syncNotebookAnalyticsContext: typeof import('./lib/analytics').syncNotebookAnalyticsContext
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
+  const trackEvent: typeof import('./lib/analytics').trackEvent
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
@@ -263,6 +276,9 @@ declare global {
   // @ts-ignore
   export type { CustomAIProtocol, AIModelOption, AIProviderMode, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate } from './lib/ai-provider'
   import('./lib/ai-provider')
+  // @ts-ignore
+  export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'
+  import('./lib/analytics')
   // @ts-ignore
   export type { BlockBgColorValue } from './lib/blockColorPresets'
   import('./lib/blockColorPresets')
