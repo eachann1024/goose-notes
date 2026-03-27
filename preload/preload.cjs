@@ -6,6 +6,73 @@ const path = require("path");
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
   const PENDING_OPEN_FOLDER_KEY = "__gooseNotePendingOpenFolder";
+  const SETTINGS_STORAGE_KEY = "goose-note-settings";
+  const UTOOLS_WINDOW_HEIGHT_MIN = 600;
+  const UTOOLS_WINDOW_HEIGHT_MAX = 1200;
+
+  const clampWindowHeight = (height) => {
+    const normalized = Number(height);
+    if (!Number.isFinite(normalized)) return UTOOLS_WINDOW_HEIGHT_MIN;
+    return Math.min(
+      UTOOLS_WINDOW_HEIGHT_MAX,
+      Math.max(UTOOLS_WINDOW_HEIGHT_MIN, Math.round(normalized)),
+    );
+  };
+
+  const readStoredSettingsWindowHeight = () => {
+    const parseWindowHeight = (rawValue) => {
+      if (typeof rawValue !== "string" || !rawValue) return null;
+      try {
+        const parsed = JSON.parse(rawValue);
+        return clampWindowHeight(parsed?.state?.utools?.windowHeight);
+      } catch (error) {
+        console.error("[goose-note] parse persisted settings failed:", error);
+        return null;
+      }
+    };
+
+    try {
+      if (typeof utools?.dbStorage?.getItem === "function") {
+        const dbStorageValue = utools.dbStorage.getItem(SETTINGS_STORAGE_KEY);
+        const dbStorageHeight = parseWindowHeight(dbStorageValue);
+        if (dbStorageHeight !== null) return dbStorageHeight;
+      }
+    } catch (error) {
+      console.error("[goose-note] read dbStorage window height failed:", error);
+    }
+
+    try {
+      if (utools?.db?.get) {
+        const fallbackDoc = utools.db.get(`gn:storage:${SETTINGS_STORAGE_KEY}`);
+        const fallbackRawValue =
+          typeof fallbackDoc?.data === "string"
+            ? fallbackDoc.data
+            : typeof fallbackDoc?.data?.value === "string"
+              ? fallbackDoc.data.value
+              : null;
+        const fallbackHeight = parseWindowHeight(fallbackRawValue);
+        if (fallbackHeight !== null) return fallbackHeight;
+      }
+    } catch (error) {
+      console.error("[goose-note] read fallback window height failed:", error);
+    }
+
+    return null;
+  };
+
+  const applyStoredWindowHeightBeforeRender = () => {
+    try {
+      const storedHeight = readStoredSettingsWindowHeight();
+      const initialHeight = storedHeight ?? UTOOLS_WINDOW_HEIGHT_MIN;
+      if (typeof utools?.setExpendHeight === "function") {
+        utools.setExpendHeight(initialHeight);
+      }
+    } catch (error) {
+      console.error("[goose-note] apply initial window height failed:", error);
+    }
+  };
+
+  applyStoredWindowHeightBeforeRender();
 
   // 本地文件变更监听映射
   const watchers = new Map();
