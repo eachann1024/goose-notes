@@ -58,6 +58,100 @@ function getStreamPreview(streamedContent: string, reasoningText: string, phase:
   return "正在整理最后结果…";
 }
 
+type StructuredListType = "bulletList" | "orderedList" | "taskList";
+
+const STRUCTURED_LIST_KEYWORDS: Record<StructuredListType, string[]> = {
+  bulletList: ["无序列表", "项目符号列表", "圆点列表", "bulletlist", "bullet"],
+  orderedList: ["有序列表", "编号列表", "数字列表", "序号列表", "orderedlist", "numberedlist", "编号", "序号"],
+  taskList: ["提醒事项", "提醒列表", "待办事项", "待办列表", "任务列表", "todo", "tasklist", "checklist", "复选框列表"],
+};
+
+function detectStructuredListTarget(query: string): StructuredListType | null {
+  const normalized = query.toLowerCase().replace(/\s+/g, "");
+  let matchedType: StructuredListType | null = null;
+  let matchedIndex = -1;
+
+  (Object.entries(STRUCTURED_LIST_KEYWORDS) as Array<[StructuredListType, string[]]>).forEach(
+    ([type, keywords]) => {
+      keywords.forEach((keyword) => {
+        const index = normalized.lastIndexOf(keyword);
+        if (index < 0) return;
+        if (index > matchedIndex) {
+          matchedType = type;
+          matchedIndex = index;
+        }
+      });
+    },
+  );
+
+  return matchedType;
+}
+
+function getSelectionStructure(editor: Editor, from: number, to: number) {
+  const listTypes = new Set<StructuredListType>();
+  let textblockCount = 0;
+
+  const collectListType = (nodeName: string) => {
+    if (nodeName === "bulletList" || nodeName === "orderedList" || nodeName === "taskList") {
+      listTypes.add(nodeName);
+    }
+  };
+
+  const collectAncestorListTypes = ($pos: any) => {
+    for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+      collectListType($pos.node(depth).type.name);
+    }
+  };
+
+  collectAncestorListTypes(editor.state.doc.resolve(from));
+  collectAncestorListTypes(editor.state.doc.resolve(to));
+
+  editor.state.doc.nodesBetween(from, to, (node) => {
+    if (node.isTextblock) {
+      textblockCount += 1;
+    }
+    collectListType(node.type.name);
+  });
+
+  return { listTypes, textblockCount };
+}
+
+function resolveStructuredListIntent(editor: Editor, from: number, to: number, query: string) {
+  if (from === to) return null;
+
+  const targetListType = detectStructuredListTarget(query);
+  if (!targetListType) return null;
+
+  const { listTypes, textblockCount } = getSelectionStructure(editor, from, to);
+  if (!listTypes.size && textblockCount < 2) {
+    return null;
+  }
+
+  return { targetListType };
+}
+
+function applyStructuredListIntent(
+  editor: Editor,
+  range: { from: number; to: number },
+  targetListType: StructuredListType,
+) {
+  const didSelectRange = editor.chain().focus().setTextSelection(range).run();
+  if (!didSelectRange) return "failed" as const;
+
+  if (editor.isActive(targetListType)) {
+    return "already-active" as const;
+  }
+
+  const didApply =
+    targetListType === "bulletList"
+      ? editor.chain().focus().toggleBulletList().run()
+      : targetListType === "orderedList"
+        ? editor.chain().focus().toggleOrderedList().run()
+        : editor.chain().focus().toggleTaskList().run();
+
+  return didApply ? ("applied" as const) : ("failed" as const);
+}
+
 export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
@@ -224,6 +318,33 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     }
   }, [editor, clearUndoCapsule]);
 
+  const hidePopoverAfterApply = useCallback(() => {
+    streamAbortRef.current = null;
+    if (autoApplyTimerRef.current) {
+      clearTimeout(autoApplyTimerRef.current);
+      autoApplyTimerRef.current = null;
+    }
+    highlightRangeRef.current = null;
+    pendingApplyRangeRef.current = null;
+    setIsOpen(false);
+    isOpenRef.current = false;
+    setStatus("idle");
+    setStreamPhase("connecting");
+    setStreamedContent("");
+    setReasoningText("");
+    setResultContent("");
+    setQuery("");
+    editor?.commands.focus();
+  }, [editor]);
+
+  const showUndoCapsuleAtSelection = useCallback(() => {
+    if (!editor || editor.isDestroyed) return;
+    const endPos = editor.state.selection.to;
+    const coords = editor.view.coordsAtPos(endPos);
+    setUndoCapsule({ x: coords.right + 10, y: coords.top + ((coords.bottom - coords.top) / 2) });
+    scheduleUndoCapsuleHide(5000);
+  }, [editor, scheduleUndoCapsuleHide]);
+
   const handleSubmit = useCallback(async () => {
     if (!editor) return;
 
@@ -257,6 +378,32 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
 
     try {
       const text = editor.state.doc.textBetween(savedFrom, savedTo, "\n", "\n").trim();
+      const structuredListIntent = resolveStructuredListIntent(editor, savedFrom, savedTo, finalQuery);
+
+      if (structuredListIntent) {
+        const applyResult = applyStructuredListIntent(editor, { from: savedFrom, to: savedTo }, structuredListIntent.targetListType);
+
+        if (applyResult === "failed") {
+          throw new Error("列表类型切换失败");
+        }
+
+        if (applyResult === "applied") {
+          trackEvent("ai_result_applied", {
+            feature: "ai",
+            action: "apply",
+            result: "success",
+            source: "bubble_menu",
+            apply_mode: "local_command",
+            usage_type: initialAction,
+            provider_type: providerType,
+            model_id: modelId,
+          });
+          showUndoCapsuleAtSelection();
+        }
+
+        hidePopoverAfterApply();
+        return;
+      }
 
       const { $from } = editor.state.doc.resolve(savedFrom) ? { $from: editor.state.doc.resolve(savedFrom) } : { $from: null };
       const blockText = $from ? editor.state.doc.textBetween($from.start(), $from.end(), "\n", "\n").trim() : "";
@@ -348,10 +495,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
           editor.chain().focus().insertContent(content.trim()).run();
         }
 
-        const endPos = editor.state.selection.to;
-        const coords = editor.view.coordsAtPos(endPos);
-        setUndoCapsule({ x: coords.right + 10, y: coords.top + ((coords.bottom - coords.top) / 2) });
-        scheduleUndoCapsuleHide(5000);
+        showUndoCapsuleAtSelection();
 
         trackEvent("ai_result_applied", {
           feature: "ai",
@@ -363,17 +507,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
           provider_type: providerType,
           model_id: modelId,
         });
-        highlightRangeRef.current = null;
-        pendingApplyRangeRef.current = null;
-        setIsOpen(false);
-        isOpenRef.current = false;
-        setStatus("idle");
-        setStreamPhase("connecting");
-        setStreamedContent("");
-        setReasoningText("");
-        setResultContent("");
-        setQuery("");
-        autoApplyTimerRef.current = null;
+        hidePopoverAfterApply();
       }, 300);
 
     } catch (e: any) {
@@ -395,7 +529,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       console.error(e);
       closePopover(true);
     }
-  }, [editor, query, closePopover, initialAction, scheduleUndoCapsuleHide]);
+  }, [editor, query, closePopover, initialAction, hidePopoverAfterApply, showUndoCapsuleAtSelection]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isComposing) return;
@@ -462,9 +596,8 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       provider_type: providerType,
       model_id: modelId,
     });
-    highlightRangeRef.current = null;
-    pendingApplyRangeRef.current = null;
-    closePopover(false);
+    showUndoCapsuleAtSelection();
+    hidePopoverAfterApply();
   };
 
   const handleUndoApply = () => {

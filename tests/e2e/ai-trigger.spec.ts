@@ -7,7 +7,11 @@ async function seedCustomOpenAISettings(page: Page, overrides?: {
   enabled?: boolean;
   selectedModelId?: string | null;
   useCustomProvider?: boolean;
-  customBaseURL?: string;
+  customProtocol?: "openai" | "claude";
+  customOpenAIBaseURL?: string;
+  customClaudeBaseURL?: string;
+  customOpenAIApiKey?: string;
+  customClaudeApiKey?: string;
   customModelOptions?: Array<{ id: string; label: string; description?: string }>;
 }) {
   await page.addInitScript((payload) => {
@@ -18,9 +22,11 @@ async function seedCustomOpenAISettings(page: Page, overrides?: {
       enabled: payload.enabled,
       selectedModelId: payload.selectedModelId,
       useCustomProvider: payload.useCustomProvider,
-      customProtocol: "openai",
-      customBaseURL: payload.customBaseURL,
-      customApiKey: "test-key",
+      customProtocol: payload.customProtocol,
+      customOpenAIBaseURL: payload.customOpenAIBaseURL,
+      customClaudeBaseURL: payload.customClaudeBaseURL,
+      customOpenAIApiKey: payload.customOpenAIApiKey,
+      customClaudeApiKey: payload.customClaudeApiKey,
       customModelOptions: payload.customModelOptions,
     };
 
@@ -29,10 +35,110 @@ async function seedCustomOpenAISettings(page: Page, overrides?: {
     enabled: overrides?.enabled ?? true,
     selectedModelId: overrides?.selectedModelId ?? "mock-model",
     useCustomProvider: overrides?.useCustomProvider ?? true,
-    customBaseURL: overrides?.customBaseURL ?? "https://api.example.com/v1",
+    customProtocol: overrides?.customProtocol ?? "openai",
+    customOpenAIBaseURL: overrides?.customOpenAIBaseURL ?? "https://api.openai.com/v1",
+    customClaudeBaseURL: overrides?.customClaudeBaseURL ?? "https://api.anthropic.com/v1",
+    customOpenAIApiKey: overrides?.customOpenAIApiKey ?? "test-key",
+    customClaudeApiKey: overrides?.customClaudeApiKey ?? "",
     customModelOptions: overrides?.customModelOptions ?? [
       { id: "mock-model", label: "Mock Model" },
     ],
+  });
+}
+
+async function openAISettings(page: Page) {
+  await page.getByLabel("设置").click();
+  await page.getByRole("button", { name: "AI 助手" }).click();
+}
+
+async function switchCustomProtocol(page: Page, currentLabel: RegExp, targetLabel: RegExp) {
+  await page.getByRole("button", { name: currentLabel }).click();
+  await page.getByRole("menuitemradio", { name: targetLabel }).click();
+}
+
+async function setSelectedBulletList(page: Page, items: string[]) {
+  await page.evaluate((payload) => {
+    const editor = (window as { __gooseNoteEditor?: any }).__gooseNoteEditor;
+    if (!editor) {
+      throw new Error("编辑器未挂载");
+    }
+
+    editor.commands.setContent(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "AI 列表改写测试" }],
+          },
+          {
+            type: "bulletList",
+            content: payload.items.map((item) => ({
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: item }],
+                },
+              ],
+            })),
+          },
+        ],
+      },
+      true,
+    );
+
+    let listRange: { from: number; to: number } | null = null;
+    editor.state.doc.descendants((node: any, pos: number) => {
+      if (listRange) return false;
+      if (node.type.name === "bulletList") {
+        listRange = { from: pos, to: pos + node.nodeSize };
+        return false;
+      }
+      return true;
+    });
+
+    if (!listRange) {
+      throw new Error("未找到无序列表");
+    }
+
+    let from: number | null = null;
+    let to: number | null = null;
+    editor.state.doc.nodesBetween(listRange.from, listRange.to, (node: any, pos: number) => {
+      if (!node.isText) return true;
+      if (from === null) {
+        from = pos;
+      }
+      to = pos + node.text.length;
+      return true;
+    });
+
+    if (from === null || to === null) {
+      throw new Error("未找到列表文本范围");
+    }
+
+    editor.chain().focus().setTextSelection({ from, to }).run();
+
+    document.dispatchEvent(
+      new CustomEvent("open-ai-input-popover", {
+        detail: { editor },
+      }),
+    );
+  }, { items });
+}
+
+async function submitAiPrompt(page: Page, prompt: string) {
+  const input = page.getByPlaceholder("让 AI 帮你写点什么...");
+  await expect(input).toBeVisible();
+  await input.fill(prompt);
+  await input.press("Enter");
+}
+
+async function getFirstBodyNodeType(page: Page) {
+  return page.evaluate(() => {
+    const editor = (window as { __gooseNoteEditor?: { getJSON?: () => any } }).__gooseNoteEditor;
+    return editor?.getJSON?.().content?.[1]?.type ?? null;
   });
 }
 
@@ -151,12 +257,34 @@ async function startMockOpenAIStreamServer() {
 }
 
 test.describe("AI 交互流程", () => {
+  test("选中无序列表后可通过 AI 指令改成有序列表", async ({ page }) => {
+    await seedCustomOpenAISettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    await setSelectedBulletList(page, ["条目一", "条目二", "条目三"]);
+    await submitAiPrompt(page, "把选中的无序列表改成有序列表");
+
+    await expect.poll(() => getFirstBodyNodeType(page)).toBe("orderedList");
+  });
+
+  test("选中无序列表后可通过 AI 指令改成提醒事项", async ({ page }) => {
+    await seedCustomOpenAISettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    await setSelectedBulletList(page, ["待处理一", "待处理二", "待处理三"]);
+    await submitAiPrompt(page, "把选中的内容改成提醒事项");
+
+    await expect.poll(() => getFirstBodyNodeType(page)).toBe("taskList");
+  });
+
   test("自定义 OpenAI 协议可以触发润色并生成结果", async ({ page }) => {
     const mockServer = await startMockOpenAIStreamServer();
 
     try {
       await seedCustomOpenAISettings(page, {
-        customBaseURL: mockServer.baseURL,
+        customOpenAIBaseURL: mockServer.baseURL,
       });
       await bootApp(page);
       await createPageFromSidebar(page);
@@ -220,7 +348,7 @@ test.describe("AI 交互流程", () => {
     }
   });
 
-  test("保存自定义 AI 配置后默认模型自动切到第一项", async ({ page }) => {
+  test("保存自定义 OpenAI 配置后默认模型自动切到第一项", async ({ page }) => {
     await page.route("https://api.example.com/v1/models", async (route) => {
       await route.fulfill({
         status: 200,
@@ -238,12 +366,12 @@ test.describe("AI 交互流程", () => {
       enabled: false,
       selectedModelId: null,
       useCustomProvider: false,
+      customOpenAIApiKey: "",
       customModelOptions: [],
     });
     await bootApp(page);
 
-    await page.getByLabel("设置").click();
-    await page.getByRole("button", { name: "AI 助手" }).click();
+    await openAISettings(page);
 
     await page.getByRole("switch", { name: "启用 AI 写作助手" }).click();
     await page.getByRole("switch", { name: "关闭 utoolsAI 使用自定义 AI" }).click();
@@ -260,5 +388,96 @@ test.describe("AI 交互流程", () => {
     }).toBe("alpha-model");
 
     await expect(page.getByRole("button", { name: /Alpha Model/ })).toBeVisible();
+  });
+
+  test("Claude 协议支持自定义 Base URL 并读取模型", async ({ page }) => {
+    await page.route("https://claude-proxy.example.com/v1/models", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [
+            { id: "claude-model", display_name: "Claude Model" },
+          ],
+        }),
+      });
+    });
+
+    await seedCustomOpenAISettings(page, {
+      enabled: false,
+      selectedModelId: null,
+      useCustomProvider: false,
+      customOpenAIApiKey: "",
+      customModelOptions: [],
+    });
+    await bootApp(page);
+    await openAISettings(page);
+
+    await page.getByRole("switch", { name: "启用 AI 写作助手" }).click();
+    await page.getByRole("switch", { name: "关闭 utoolsAI 使用自定义 AI" }).click();
+    await switchCustomProtocol(page, /OpenAI 兼容协议/, /Claude 协议/);
+
+    const baseURLInput = page.getByLabel("Base URL");
+    await expect(baseURLInput).toHaveValue("https://api.anthropic.com/v1");
+    await baseURLInput.fill("https://claude-proxy.example.com/v1");
+    await page.getByLabel("API Key").fill("claude-test-key");
+    await page.getByRole("button", { name: "保存", exact: true }).first().click();
+
+    await expect.poll(async () => {
+      return page.evaluate(() => {
+        const state = JSON.parse(window.localStorage.getItem("goose-note-settings") || "{}");
+        return {
+          selectedModelId: state.state?.ai?.selectedModelId ?? null,
+          customClaudeBaseURL: state.state?.ai?.customClaudeBaseURL ?? null,
+        };
+      });
+    }).toEqual({
+      selectedModelId: "claude-model",
+      customClaudeBaseURL: "https://claude-proxy.example.com/v1",
+    });
+
+    await expect(page.getByRole("button", { name: /Claude Model/ })).toBeVisible();
+  });
+
+  test("切换协议时 OpenAI 和 Claude 输入框各自保留", async ({ page }) => {
+    await seedCustomOpenAISettings(page, {
+      enabled: false,
+      selectedModelId: null,
+      useCustomProvider: false,
+      customOpenAIApiKey: "",
+      customModelOptions: [],
+    });
+    await bootApp(page);
+    await openAISettings(page);
+
+    await page.getByRole("switch", { name: "启用 AI 写作助手" }).click();
+    await page.getByRole("switch", { name: "关闭 utoolsAI 使用自定义 AI" }).click();
+
+    const baseURLInput = page.getByLabel("Base URL");
+    const apiKeyInput = page.getByLabel("API Key");
+
+    await expect(baseURLInput).toHaveValue("https://api.openai.com/v1");
+    await expect(apiKeyInput).toHaveValue("");
+
+    await baseURLInput.fill("https://openai-proxy.example.com/v1");
+    await apiKeyInput.fill("openai-key");
+
+    await switchCustomProtocol(page, /OpenAI 兼容协议/, /Claude 协议/);
+
+    await expect(baseURLInput).toHaveValue("https://api.anthropic.com/v1");
+    await expect(apiKeyInput).toHaveValue("");
+
+    await baseURLInput.fill("https://claude-proxy.example.com/v1");
+    await apiKeyInput.fill("claude-key");
+
+    await switchCustomProtocol(page, /Claude 协议/, /OpenAI 兼容协议/);
+
+    await expect(baseURLInput).toHaveValue("https://openai-proxy.example.com/v1");
+    await expect(apiKeyInput).toHaveValue("openai-key");
+
+    await switchCustomProtocol(page, /OpenAI 兼容协议/, /Claude 协议/);
+
+    await expect(baseURLInput).toHaveValue("https://claude-proxy.example.com/v1");
+    await expect(apiKeyInput).toHaveValue("claude-key");
   });
 });

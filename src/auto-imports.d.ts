@@ -35,8 +35,10 @@ declare global {
   const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
+  const DEFAULT_CLAUDE_BASE_URL: typeof import('./lib/ai-provider').DEFAULT_CLAUDE_BASE_URL
   const DEFAULT_CLOSE_TAB_SHORTCUT: typeof import('./stores/useSettings').DEFAULT_CLOSE_TAB_SHORTCUT
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
+  const DEFAULT_OPENAI_BASE_URL: typeof import('./lib/ai-provider').DEFAULT_OPENAI_BASE_URL
   const DEFAULT_SEARCH_HOTKEY: typeof import('./stores/useSettings').DEFAULT_SEARCH_HOTKEY
   const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT: typeof import('./stores/useSettings').DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
@@ -173,7 +175,10 @@ declare global {
   const getAnalyticsSessionId: typeof import('./lib/analytics').getAnalyticsSessionId
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
+  const getCustomAIApiKey: typeof import('./lib/ai-provider').getCustomAIApiKey
+  const getCustomAIBaseURL: typeof import('./lib/ai-provider').getCustomAIBaseURL
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
+  const getDefaultCustomAIBaseURL: typeof import('./lib/ai-provider').getDefaultCustomAIBaseURL
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
   const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad

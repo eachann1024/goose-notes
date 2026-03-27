@@ -18,8 +18,10 @@ export interface AISettingsLike {
   selectedModelId: string | null;
   useCustomProvider: boolean;
   customProtocol: CustomAIProtocol;
-  customBaseURL: string;
-  customApiKey: string;
+  customOpenAIBaseURL: string;
+  customClaudeBaseURL: string;
+  customOpenAIApiKey: string;
+  customClaudeApiKey: string;
   customModelOptions: AIModelOption[];
 }
 
@@ -49,7 +51,8 @@ interface UToolsAiApi {
 }
 
 const DEFAULT_UTOOLS_MODEL = "deepseek-v3";
-const ANTHROPIC_MODELS_URL = "https://api.anthropic.com/v1/models";
+export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
+export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
 const SETTINGS_ENTRY_HINT = "请前往“设置 -> AI 助手 -> 自定义 AI”检查配置。";
 
 function getUToolsApi(): UToolsAiApi | null {
@@ -99,6 +102,35 @@ function normalizeModelOption(input: unknown): AIModelOption | null {
 
 function getOpenAIModelsUrl(baseURL: string) {
   return `${baseURL.replace(/\/+$/, "")}/models`;
+}
+
+function getClaudeModelsUrl(baseURL: string) {
+  return `${baseURL.replace(/\/+$/, "")}/models`;
+}
+
+export function getDefaultCustomAIBaseURL(protocol: CustomAIProtocol) {
+  return protocol === "openai" ? DEFAULT_OPENAI_BASE_URL : DEFAULT_CLAUDE_BASE_URL;
+}
+
+function normalizeCustomAIBaseURL(baseURL: string, protocol: CustomAIProtocol) {
+  return baseURL.trim() || getDefaultCustomAIBaseURL(protocol);
+}
+
+export function getCustomAIBaseURL(
+  settings: AISettingsLike,
+  protocol: CustomAIProtocol = settings.customProtocol,
+) {
+  return normalizeCustomAIBaseURL(
+    protocol === "openai" ? settings.customOpenAIBaseURL : settings.customClaudeBaseURL,
+    protocol,
+  );
+}
+
+export function getCustomAIApiKey(
+  settings: AISettingsLike,
+  protocol: CustomAIProtocol = settings.customProtocol,
+) {
+  return (protocol === "openai" ? settings.customOpenAIApiKey : settings.customClaudeApiKey).trim();
 }
 
 async function readErrorMessage(response: Response) {
@@ -159,12 +191,8 @@ export function getAIAvailability(settings: AISettingsLike) {
     return { ok: true as const, provider: "utools" as const };
   }
 
-  if (!settings.customApiKey.trim()) {
+  if (!getCustomAIApiKey(settings)) {
     return { ok: false as const, reason: getApiKeyMissingMessage() };
-  }
-
-  if (settings.customProtocol === "openai" && !settings.customBaseURL.trim()) {
-    return { ok: false as const, reason: "请先填写 OpenAI 兼容接口地址后再保存" };
   }
 
   const selectedModelId = settings.selectedModelId ?? settings.customModelOptions[0]?.id ?? null;
@@ -181,18 +209,19 @@ export async function fetchCustomAIModels(config: {
   apiKey: string;
 }) {
   const apiKey = config.apiKey.trim();
+  const baseURL = normalizeCustomAIBaseURL(config.baseURL, config.protocol);
   if (!apiKey) {
     throw new Error(getApiKeyMissingMessage());
   }
 
   const response =
     config.protocol === "openai"
-      ? await fetch(getOpenAIModelsUrl(config.baseURL.trim()), {
+      ? await fetch(getOpenAIModelsUrl(baseURL), {
           headers: {
             Authorization: `Bearer ${apiKey}`,
           },
         })
-      : await fetch(ANTHROPIC_MODELS_URL, {
+      : await fetch(getClaudeModelsUrl(baseURL), {
           headers: {
             "x-api-key": apiKey,
             "anthropic-version": "2023-06-01",
@@ -264,15 +293,19 @@ async function runCustomText(settings: AISettingsLike, messages: AIMessage[]) {
     throw new Error("请先保存自定义 AI 配置并获取模型列表");
   }
 
+  const baseURL = getCustomAIBaseURL(settings);
+  const apiKey = getCustomAIApiKey(settings);
+
   const model =
     settings.customProtocol === "openai"
       ? createOpenAICompatible({
-          baseURL: settings.customBaseURL.trim(),
-          apiKey: settings.customApiKey.trim(),
+          baseURL,
+          apiKey,
           name: "custom.openai",
         }).chatModel(selectedModelId)
       : createAnthropic({
-          apiKey: settings.customApiKey.trim(),
+          baseURL,
+          apiKey,
           name: "custom.claude",
         })(selectedModelId);
 
@@ -335,15 +368,19 @@ async function runCustomTextStream(
     throw new Error("请先保存自定义 AI 配置并获取模型列表");
   }
 
+  const baseURL = getCustomAIBaseURL(settings);
+  const apiKey = getCustomAIApiKey(settings);
+
   const model =
     settings.customProtocol === "openai"
       ? createOpenAICompatible({
-          baseURL: settings.customBaseURL.trim(),
-          apiKey: settings.customApiKey.trim(),
+          baseURL,
+          apiKey,
           name: "custom.openai",
         }).chatModel(selectedModelId)
       : createAnthropic({
-          apiKey: settings.customApiKey.trim(),
+          baseURL,
+          apiKey,
           name: "custom.claude",
         })(selectedModelId);
 

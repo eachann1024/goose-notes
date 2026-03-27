@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { AIModelOption, CustomAIProtocol } from '@/lib/ai-provider'
+import { DEFAULT_CLAUDE_BASE_URL, DEFAULT_OPENAI_BASE_URL, type AIModelOption, type CustomAIProtocol } from '@/lib/ai-provider'
 import { getAIAnalyticsContext, trackEvent } from '@/lib/analytics'
 import { uToolsStorage } from '@/lib/storage'
 
@@ -30,9 +30,13 @@ export interface AISettings {
     // 自定义 AI 协议类型。可选值：openai / claude。副作用：切换后模型列表读取接口会变化。可扩展用途：后续可继续扩展其他兼容协议。
     customProtocol: CustomAIProtocol
     // OpenAI 兼容接口地址。可选值：任意兼容 OpenAI `/models` 与聊天接口的 baseURL。副作用：仅在 openai 协议下生效。可扩展用途：支持私有网关和代理。
-    customBaseURL: string
-    // 自定义 AI 的访问密钥。可选值：对应协议签发的 API Key。副作用：保存后会用于拉模型和生成文本。可扩展用途：后续可加密存储或分账号配置。
-    customApiKey: string
+    customOpenAIBaseURL: string
+    // Claude 接口地址。可选值：Anthropic 官方地址或兼容代理的 baseURL。副作用：仅在 claude 协议下生效。可扩展用途：支持企业网关与中转层。
+    customClaudeBaseURL: string
+    // OpenAI 兼容协议的访问密钥。可选值：对应协议签发的 API Key。副作用：保存后会用于拉模型和生成文本。可扩展用途：后续可加密存储或分账号配置。
+    customOpenAIApiKey: string
+    // Claude 协议的访问密钥。可选值：Anthropic 或兼容代理签发的 API Key。副作用：保存后会用于拉模型和生成文本。可扩展用途：后续可加密存储或分账号配置。
+    customClaudeApiKey: string
     // 自定义 AI 已获取到的模型列表。可选值：协议返回的模型数组。副作用：保存新配置后会覆盖旧列表。可扩展用途：后续可做缓存时间和分协议模型记忆。
     customModelOptions: AIModelOption[]
 }
@@ -335,6 +339,14 @@ function normalizeAIModelOptions(modelOptions: AIModelOption[] | undefined): AIM
         .filter((item) => item.id && item.label)
 }
 
+function normalizeAIBaseURL(value: unknown, fallback: string) {
+    return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function normalizeAIApiKey(value: unknown, fallback = '') {
+    return typeof value === 'string' ? value.trim() : fallback
+}
+
 function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
     const customModelOptions = normalizeAIModelOptions(ai?.customModelOptions)
     const selectedModelId =
@@ -342,14 +354,34 @@ function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
             ? ai.selectedModelId.trim()
             : null
     const customProtocol = ai?.customProtocol === 'claude' ? 'claude' : 'openai'
+    const legacyAI = (ai ?? {}) as Partial<AISettings> & {
+        customBaseURL?: unknown
+        customApiKey?: unknown
+    }
+    const legacyBaseURL = typeof legacyAI.customBaseURL === 'string' ? legacyAI.customBaseURL.trim() : ''
+    const legacyApiKey = typeof legacyAI.customApiKey === 'string' ? legacyAI.customApiKey.trim() : ''
 
     return {
         enabled: Boolean(ai?.enabled),
         selectedModelId,
         useCustomProvider: Boolean(ai?.useCustomProvider),
         customProtocol,
-        customBaseURL: typeof ai?.customBaseURL === 'string' ? ai.customBaseURL.trim() : '',
-        customApiKey: typeof ai?.customApiKey === 'string' ? ai.customApiKey.trim() : '',
+        customOpenAIBaseURL: normalizeAIBaseURL(
+            ai?.customOpenAIBaseURL,
+            customProtocol === 'openai' && legacyBaseURL ? legacyBaseURL : DEFAULT_OPENAI_BASE_URL,
+        ),
+        customClaudeBaseURL: normalizeAIBaseURL(
+            ai?.customClaudeBaseURL,
+            customProtocol === 'claude' && legacyBaseURL ? legacyBaseURL : DEFAULT_CLAUDE_BASE_URL,
+        ),
+        customOpenAIApiKey: normalizeAIApiKey(
+            ai?.customOpenAIApiKey,
+            customProtocol === 'openai' ? legacyApiKey : '',
+        ),
+        customClaudeApiKey: normalizeAIApiKey(
+            ai?.customClaudeApiKey,
+            customProtocol === 'claude' ? legacyApiKey : '',
+        ),
         customModelOptions,
     }
 }
@@ -373,8 +405,10 @@ export const useSettings = create<SettingsState>()(
                 selectedModelId: null,
                 useCustomProvider: false,
                 customProtocol: 'openai',
-                customBaseURL: '',
-                customApiKey: '',
+                customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
+                customClaudeBaseURL: DEFAULT_CLAUDE_BASE_URL,
+                customOpenAIApiKey: '',
+                customClaudeApiKey: '',
                 customModelOptions: [],
             },
             desktop: {
@@ -494,11 +528,17 @@ export const useSettings = create<SettingsState>()(
             saveAICustomConfig: ({ protocol, baseURL, apiKey, modelOptions }) =>
                 set((state) => {
                     const normalizedModelOptions = normalizeAIModelOptions(modelOptions)
+                    const normalizedBaseURL = protocol === 'openai'
+                        ? normalizeAIBaseURL(baseURL, DEFAULT_OPENAI_BASE_URL)
+                        : normalizeAIBaseURL(baseURL, DEFAULT_CLAUDE_BASE_URL)
+                    const normalizedApiKey = normalizeAIApiKey(apiKey)
                     const nextAI = {
                         ...state.ai,
                         customProtocol: protocol,
-                        customBaseURL: baseURL.trim(),
-                        customApiKey: apiKey.trim(),
+                        customOpenAIBaseURL: protocol === 'openai' ? normalizedBaseURL : state.ai.customOpenAIBaseURL,
+                        customClaudeBaseURL: protocol === 'claude' ? normalizedBaseURL : state.ai.customClaudeBaseURL,
+                        customOpenAIApiKey: protocol === 'openai' ? normalizedApiKey : state.ai.customOpenAIApiKey,
+                        customClaudeApiKey: protocol === 'claude' ? normalizedApiKey : state.ai.customClaudeApiKey,
                         customModelOptions: normalizedModelOptions,
                         selectedModelId: normalizedModelOptions[0]?.id ?? state.ai.selectedModelId,
                     }

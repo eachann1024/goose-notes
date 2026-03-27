@@ -18,7 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { fetchCustomAIModels, getStoredAIModelOptions, type AIModelOption, type CustomAIProtocol } from "@/lib/ai-provider";
+import {
+  DEFAULT_CLAUDE_BASE_URL,
+  DEFAULT_OPENAI_BASE_URL,
+  fetchCustomAIModels,
+  getStoredAIModelOptions,
+  type AIModelOption,
+  type CustomAIProtocol,
+} from "@/lib/ai-provider";
 import { getAvailableUToolsAiModels, isUToolsAiSupported, type UToolsAiModel } from "@/lib/utools-ai";
 import type { AISettings } from "@/stores/useSettings";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
@@ -55,7 +62,7 @@ const CUSTOM_PROTOCOL_OPTIONS: Array<{
   {
     id: "claude",
     label: "Claude 协议",
-    description: "使用 Anthropic 官方模型接口",
+    description: "支持自定义 baseURL 与 API Key",
   },
 ];
 
@@ -74,8 +81,10 @@ export function SettingsAI({
   const [loadingUToolsModels, setLoadingUToolsModels] = useState(false);
   const [utoolsLoadError, setUToolsLoadError] = useState<string | null>(null);
   const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(ai.customProtocol);
-  const [customBaseURL, setCustomBaseURL] = useState(ai.customBaseURL);
-  const [customApiKey, setCustomApiKey] = useState(ai.customApiKey);
+  const [customOpenAIBaseURL, setCustomOpenAIBaseURL] = useState(ai.customOpenAIBaseURL);
+  const [customClaudeBaseURL, setCustomClaudeBaseURL] = useState(ai.customClaudeBaseURL);
+  const [customOpenAIApiKey, setCustomOpenAIApiKey] = useState(ai.customOpenAIApiKey);
+  const [customClaudeApiKey, setCustomClaudeApiKey] = useState(ai.customClaudeApiKey);
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
 
@@ -88,12 +97,20 @@ export function SettingsAI({
   }, [ai.customProtocol]);
 
   useEffect(() => {
-    setCustomBaseURL(ai.customBaseURL);
-  }, [ai.customBaseURL]);
+    setCustomOpenAIBaseURL(ai.customOpenAIBaseURL);
+  }, [ai.customOpenAIBaseURL]);
 
   useEffect(() => {
-    setCustomApiKey(ai.customApiKey);
-  }, [ai.customApiKey]);
+    setCustomClaudeBaseURL(ai.customClaudeBaseURL);
+  }, [ai.customClaudeBaseURL]);
+
+  useEffect(() => {
+    setCustomOpenAIApiKey(ai.customOpenAIApiKey);
+  }, [ai.customOpenAIApiKey]);
+
+  useEffect(() => {
+    setCustomClaudeApiKey(ai.customClaudeApiKey);
+  }, [ai.customClaudeApiKey]);
 
   useEffect(() => {
     let active = true;
@@ -153,14 +170,15 @@ export function SettingsAI({
   const currentModels = usingCustomProvider ? customModels : utoolsModels;
   const currentModel = currentModels.find((item) => item.id === selectedModelId) ?? null;
   const selectedProtocol = CUSTOM_PROTOCOL_OPTIONS.find((item) => item.id === customProtocol) ?? CUSTOM_PROTOCOL_OPTIONS[0];
+  const customBaseURL = customProtocol === "openai" ? customOpenAIBaseURL : customClaudeBaseURL;
+  const customApiKey = customProtocol === "openai" ? customOpenAIApiKey : customClaudeApiKey;
+  const currentBaseURLPlaceholder = customProtocol === "openai" ? DEFAULT_OPENAI_BASE_URL : DEFAULT_CLAUDE_BASE_URL;
 
   const saveButtonReason = savingCustomConfig
     ? "正在保存并读取模型列表"
     : !customApiKey.trim()
       ? CUSTOM_AI_KEY_HINT
-      : customProtocol === "openai" && !customBaseURL.trim()
-        ? "请先填写 OpenAI 兼容接口地址"
-        : null;
+      : null;
 
   const modelButtonDisabled = !enabled
     || (usingCustomProvider
@@ -201,7 +219,7 @@ export function SettingsAI({
 
       saveCustomConfig({
         protocol: customProtocol,
-        baseURL: customProtocol === "openai" ? customBaseURL : "",
+        baseURL: customBaseURL,
         apiKey: customApiKey,
         modelOptions,
       });
@@ -295,23 +313,25 @@ export function SettingsAI({
                 </DropdownMenu>
               </div>
 
-              {customProtocol === "openai" ? (
-                <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-                  <Label htmlFor="custom-ai-base-url" className="text-sm font-medium text-foreground">
-                    Base URL
-                  </Label>
-                  <Input
-                    id="custom-ai-base-url"
-                    value={customBaseURL}
-                    onChange={(event) => {
-                      setCustomSaveError(null);
-                      setCustomBaseURL(event.target.value);
-                    }}
-                    placeholder="https://api.example.com/v1"
-                    autoComplete="off"
-                  />
-                </div>
-              ) : null}
+              <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+                <Label htmlFor="custom-ai-base-url" className="text-sm font-medium text-foreground">
+                  Base URL
+                </Label>
+                <Input
+                  id="custom-ai-base-url"
+                  value={customBaseURL}
+                  onChange={(event) => {
+                    setCustomSaveError(null);
+                    if (customProtocol === "openai") {
+                      setCustomOpenAIBaseURL(event.target.value);
+                      return;
+                    }
+                    setCustomClaudeBaseURL(event.target.value);
+                  }}
+                  placeholder={currentBaseURLPlaceholder}
+                  autoComplete="off"
+                />
+              </div>
 
               <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
                 <Label htmlFor="custom-ai-api-key" className="text-sm font-medium text-foreground">
@@ -323,7 +343,11 @@ export function SettingsAI({
                   value={customApiKey}
                   onChange={(event) => {
                     setCustomSaveError(null);
-                    setCustomApiKey(event.target.value);
+                    if (customProtocol === "openai") {
+                      setCustomOpenAIApiKey(event.target.value);
+                      return;
+                    }
+                    setCustomClaudeApiKey(event.target.value);
                   }}
                   placeholder="输入后点保存自动拉取模型"
                   autoComplete="off"
