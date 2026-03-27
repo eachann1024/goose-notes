@@ -4,7 +4,8 @@
       "Bash(pnpm exec tsc:*)",
       "Bash(pnpm tsc:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(pnpm build:*)"
     ]
   }
 }

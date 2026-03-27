@@ -3,10 +3,25 @@
   background-color: transparent;
   border: none;
   box-shadow: none;
+  border-radius: var(--radius-notion-slash);
+  overflow: visible;
 }
 
-.tippy-box[data-theme~="notion-slash"] .tippy-content {
+.tippy-box[data-theme~="notion-slash"] > .tippy-content {
   padding: 0;
+  overflow: visible;
+  border-radius: inherit;
+}
+
+.tippy-box[data-theme~="notion-slash"] [data-notion-slash-root="true"] {
+  background: transparent !important;
+  border-radius: inherit;
+}
+
+.tippy-box[data-theme~="notion-slash"]
+  [data-notion-slash-root="true"]
+  [data-notion-slash-surface="true"] {
+  border-radius: var(--radius-notion-slash);
 }
 
 /* 气泡菜单主题 - 移除默认样式 */

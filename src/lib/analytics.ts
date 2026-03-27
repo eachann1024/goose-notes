@@ -11,6 +11,7 @@ type Primitive = string | number | boolean;
 type EventProps = Record<string, Primitive | null | undefined>;
 
 const ANALYTICS_INSTALL_ID_KEY = "goose-note-analytics-install-id";
+const MCP_TOOL_USAGE_STORAGE_KEY = "goose-note-mcp-tool-usage-v1";
 const DEFAULT_HOST_ENV = "utools";
 const REPLAY_SAMPLE_RATE = 100;
 const SESSION_ID_SEPARATOR = "-";
@@ -66,6 +67,19 @@ const analyticsContext: AnalyticsContext = {
 let analyticsInitialized = false;
 let currentToken = "";
 
+interface PendingMcpToolUsageEntry {
+  toolName: string;
+  day: string;
+  distinctId: string;
+  sourceTypes?: string;
+  count: number;
+}
+
+interface PendingMcpToolUsagePayload {
+  version: number;
+  entries: PendingMcpToolUsageEntry[];
+}
+
 function safeAnalyticsCall<T>(callback: () => T): T | undefined {
   try {
     return callback();
@@ -78,6 +92,44 @@ function normalizeEventProps(props: EventProps = {}) {
   return Object.fromEntries(
     Object.entries(props).filter(([, value]) => value !== undefined && value !== null),
   ) as Record<string, Primitive>;
+}
+
+function readPendingMcpToolUsage(): PendingMcpToolUsagePayload {
+  const raw = getDbStorageItem(MCP_TOOL_USAGE_STORAGE_KEY);
+  if (!raw) {
+    return { version: 1, entries: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as PendingMcpToolUsagePayload;
+    return {
+      version: 1,
+      entries: Array.isArray(parsed?.entries) ? parsed.entries : [],
+    };
+  } catch {
+    return { version: 1, entries: [] };
+  }
+}
+
+function clearPendingMcpToolUsage() {
+  removeDbStorageItem(MCP_TOOL_USAGE_STORAGE_KEY);
+}
+
+function flushPendingMcpToolUsage() {
+  const payload = readPendingMcpToolUsage();
+  if (payload.entries.length === 0) return;
+
+  payload.entries.forEach((entry) => {
+    trackEvent("mcp_tool_used", {
+      tool_name: entry.toolName,
+      day: entry.day,
+      count: entry.count,
+      source_types: entry.sourceTypes ?? "",
+      distinct_id: entry.distinctId,
+    });
+  });
+
+  clearPendingMcpToolUsage();
 }
 
 function createRandomId(prefix: string) {
@@ -252,6 +304,7 @@ export function initAnalytics(options: AnalyticsInitOptions) {
   });
 
   registerSuperProperties();
+  flushPendingMcpToolUsage();
 
   if (options.enableReplay !== false) {
     safeAnalyticsCall(() => {

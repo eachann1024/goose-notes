@@ -12,6 +12,22 @@
   line-height: 1.7;
 }
 
+.ProseMirror[data-ai-composer-editor="true"] {
+  min-height: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.ProseMirror[data-ai-composer-editor="true"][data-ai-composer-variant="compact"] {
+  padding-right: 1.5rem !important;
+}
+
+.ProseMirror[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+  min-height: 72px !important;
+}
+
 .editor-full-width .ProseMirror {
   padding-left: 1.75rem;
   padding-right: 1.75rem;

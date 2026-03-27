@@ -1,7 +1,11 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText, streamText } from "ai";
-import { getAvailableUToolsAiModels, isUToolsAiSupported } from "@/lib/utools-ai";
+import {
+  getAvailableUToolsAiModels,
+  isUToolsAiSupported,
+  type UToolsAiModel,
+} from "@/lib/utools-ai";
 
 export type CustomAIProtocol = "openai" | "claude";
 
@@ -12,6 +16,7 @@ export interface AIModelOption {
 }
 
 export type AIProviderMode = "utools" | "custom";
+export type AIReasoningLevel = "low" | "medium" | "high";
 
 export interface AISettingsLike {
   enabled: boolean;
@@ -38,14 +43,21 @@ export interface AIStreamUpdate {
   reasoningText: string;
 }
 
+export interface AIRequestOverrides {
+  selectedModelId?: string | null;
+  reasoningLevel?: AIReasoningLevel | null;
+}
+
 interface RunAITextStreamOptions {
   abortSignal?: AbortSignal;
   onUpdate?: (update: AIStreamUpdate) => void;
+  requestOverrides?: AIRequestOverrides;
 }
 
 interface UToolsAiApi {
   ai?: (option: {
     model?: string;
+    reasoningEffort?: AIReasoningLevel;
     messages: AIMessage[];
   }) => Promise<{ content?: string }>;
 }
@@ -54,6 +66,11 @@ const DEFAULT_UTOOLS_MODEL = "deepseek-v3";
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
 const SETTINGS_ENTRY_HINT = "请前往“设置 -> AI 助手 -> 自定义 AI”检查配置。";
+const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
+  low: 1024,
+  medium: 4096,
+  high: 12000,
+};
 
 function getUToolsApi(): UToolsAiApi | null {
   if (typeof window === "undefined") return null;
@@ -169,11 +186,75 @@ export function getAIProviderMode(settings: AISettingsLike): AIProviderMode {
   return settings.useCustomProvider ? "custom" : "utools";
 }
 
-export function getStoredAIModelOptions(settings: AISettingsLike) {
+export function getStoredAIModelOptions(settings: Pick<AISettingsLike, "useCustomProvider" | "customModelOptions">) {
   return settings.useCustomProvider ? settings.customModelOptions : [];
 }
 
-export function getAIAvailability(settings: AISettingsLike) {
+export function mapUToolsAiModelsToOptions(models: UToolsAiModel[]): AIModelOption[] {
+  return models
+    .filter((item) => Boolean(item?.id && item?.label))
+    .map((item) => ({
+      id: item.id.trim(),
+      label: item.label.trim(),
+      description: item.description?.trim() || undefined,
+    }))
+    .filter((item) => item.id && item.label);
+}
+
+export async function getAvailableAIModelOptions(settings: Pick<AISettingsLike, "useCustomProvider" | "customModelOptions">) {
+  if (settings.useCustomProvider) {
+    return getStoredAIModelOptions(settings);
+  }
+
+  const models = await getAvailableUToolsAiModels();
+  return mapUToolsAiModelsToOptions(models);
+}
+
+function getRequestedModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
+  const overrideModelId = requestOverrides?.selectedModelId?.trim();
+  if (overrideModelId) {
+    return overrideModelId;
+  }
+
+  return settings.selectedModelId?.trim() || null;
+}
+
+function getCustomSelectedModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
+  return getRequestedModelId(settings, requestOverrides) ?? settings.customModelOptions[0]?.id ?? null;
+}
+
+function getRequestReasoningLevel(requestOverrides?: AIRequestOverrides) {
+  return requestOverrides?.reasoningLevel ?? null;
+}
+
+function getCustomProviderOptions(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+): Record<string, Record<string, unknown>> | undefined {
+  const reasoningLevel = getRequestReasoningLevel(requestOverrides);
+  if (!reasoningLevel) {
+    return undefined;
+  }
+
+  if (settings.customProtocol === "openai") {
+    return {
+      openaiCompatible: {
+        reasoningEffort: reasoningLevel,
+      },
+    };
+  }
+
+  return {
+    anthropic: {
+      thinking: {
+        type: "enabled" as const,
+        budgetTokens: ANTHROPIC_THINKING_BUDGET[reasoningLevel],
+      },
+    },
+  };
+}
+
+export function getAIAvailability(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
   if (!settings.enabled) {
     return { ok: false as const, reason: "AI 助手尚未开启，请先到设置中打开" };
   }
@@ -195,7 +276,7 @@ export function getAIAvailability(settings: AISettingsLike) {
     return { ok: false as const, reason: getApiKeyMissingMessage() };
   }
 
-  const selectedModelId = settings.selectedModelId ?? settings.customModelOptions[0]?.id ?? null;
+  const selectedModelId = getCustomSelectedModelId(settings, requestOverrides);
   if (!selectedModelId) {
     return { ok: false as const, reason: "请先保存自定义 AI 配置并获取模型列表" };
   }
@@ -249,33 +330,39 @@ export async function fetchCustomAIModels(config: {
   return models;
 }
 
-async function resolveUToolsModelId(settings: AISettingsLike) {
+async function resolveUToolsModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
   try {
     const models = await getAvailableUToolsAiModels();
     if (!models.length) {
       return DEFAULT_UTOOLS_MODEL;
     }
 
-    if (settings.selectedModelId && models.some((item) => item.id === settings.selectedModelId)) {
-      return settings.selectedModelId;
+    const requestedModelId = getRequestedModelId(settings, requestOverrides);
+    if (requestedModelId && models.some((item) => item.id === requestedModelId)) {
+      return requestedModelId;
     }
 
     const defaultModel = models.find((item) => item.id === DEFAULT_UTOOLS_MODEL);
     return defaultModel?.id ?? models[0].id;
   } catch {
-    return settings.selectedModelId ?? DEFAULT_UTOOLS_MODEL;
+    return getRequestedModelId(settings, requestOverrides) ?? DEFAULT_UTOOLS_MODEL;
   }
 }
 
-async function runUToolsText(settings: AISettingsLike, messages: AIMessage[]) {
+async function runUToolsText(
+  settings: AISettingsLike,
+  messages: AIMessage[],
+  requestOverrides?: AIRequestOverrides,
+) {
   const utools = getUToolsApi();
   if (!utools?.ai) {
     throw new Error("当前 uTools 版本未提供 AI 能力");
   }
 
-  const modelId = await resolveUToolsModelId(settings);
+  const modelId = await resolveUToolsModelId(settings, requestOverrides);
   const result = await utools.ai({
     model: modelId,
+    reasoningEffort: getRequestReasoningLevel(requestOverrides) ?? undefined,
     messages,
   });
 
@@ -287,8 +374,12 @@ async function runUToolsText(settings: AISettingsLike, messages: AIMessage[]) {
   return content;
 }
 
-async function runCustomText(settings: AISettingsLike, messages: AIMessage[]) {
-  const selectedModelId = settings.selectedModelId ?? settings.customModelOptions[0]?.id ?? null;
+async function runCustomText(
+  settings: AISettingsLike,
+  messages: AIMessage[],
+  requestOverrides?: AIRequestOverrides,
+) {
+  const selectedModelId = getCustomSelectedModelId(settings, requestOverrides);
   if (!selectedModelId) {
     throw new Error("请先保存自定义 AI 配置并获取模型列表");
   }
@@ -311,6 +402,7 @@ async function runCustomText(settings: AISettingsLike, messages: AIMessage[]) {
 
   const { text } = await generateText({
     model,
+    providerOptions: getCustomProviderOptions(settings, requestOverrides) as any,
     messages: messages
       .filter((message) => typeof message.content === "string" && message.content.trim())
       .map((message) => ({
@@ -347,7 +439,7 @@ async function runUToolsTextStream(
     reasoningText: "",
   });
 
-  const content = await runUToolsText(settings, messages);
+  const content = await runUToolsText(settings, messages, options.requestOverrides);
 
   options.onUpdate?.({
     phase: "finishing",
@@ -363,7 +455,7 @@ async function runCustomTextStream(
   messages: AIMessage[],
   options: RunAITextStreamOptions = {},
 ) {
-  const selectedModelId = settings.selectedModelId ?? settings.customModelOptions[0]?.id ?? null;
+  const selectedModelId = getCustomSelectedModelId(settings, options.requestOverrides);
   if (!selectedModelId) {
     throw new Error("请先保存自定义 AI 配置并获取模型列表");
   }
@@ -402,6 +494,7 @@ async function runCustomTextStream(
   const result = streamText({
     model,
     abortSignal: options.abortSignal,
+    providerOptions: getCustomProviderOptions(settings, options.requestOverrides) as any,
     messages: normalizeMessages(messages),
   });
 
@@ -448,15 +541,19 @@ async function runCustomTextStream(
   return content;
 }
 
-export async function runAIText(settings: AISettingsLike, messages: AIMessage[]) {
-  const availability = getAIAvailability(settings);
+export async function runAIText(
+  settings: AISettingsLike,
+  messages: AIMessage[],
+  requestOverrides?: AIRequestOverrides,
+) {
+  const availability = getAIAvailability(settings, requestOverrides);
   if (!availability.ok) {
     throw new Error(availability.reason);
   }
 
   return availability.provider === "custom"
-    ? runCustomText(settings, messages)
-    : runUToolsText(settings, messages);
+    ? runCustomText(settings, messages, requestOverrides)
+    : runUToolsText(settings, messages, requestOverrides);
 }
 
 export async function runAITextStream(
@@ -464,7 +561,7 @@ export async function runAITextStream(
   messages: AIMessage[],
   options: RunAITextStreamOptions = {},
 ) {
-  const availability = getAIAvailability(settings);
+  const availability = getAIAvailability(settings, options.requestOverrides);
   if (!availability.ok) {
     throw new Error(availability.reason);
   }

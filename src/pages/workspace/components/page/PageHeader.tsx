@@ -1,9 +1,13 @@
 import type { Page } from "@/types";
+import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/lib/page-title";
 
 interface PageHeaderProps {
   page: Page;
+  isAiPageOpen?: boolean;
+  onToggleAiPage?: () => void;
+  onExitAiPage?: () => void;
   onOpenSearch: () => void;
   onToggleFavorite: () => void;
   onTogglePinned: () => void;
@@ -13,12 +17,16 @@ interface PageHeaderProps {
 
 export function PageHeader({
   page,
+  isAiPageOpen = false,
+  onToggleAiPage,
+  onExitAiPage,
   onOpenSearch,
   onToggleFavorite,
   onTogglePinned,
   onRestore,
   onDelete,
 }: PageHeaderProps) {
+  const aiEnabled = useSettings((state) => state.ai.enabled);
   const isLocalItem = !!page.localFilePath;
   const { lastSavedAt, getPage } = usePages();
   const {
@@ -60,6 +68,31 @@ export function PageHeader({
   return (
     <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-shell-bg))] sticky top-0 z-10 shrink-0">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        {aiEnabled ? (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-[8px] border transition-colors",
+                    isAiPageOpen
+                      ? "border-foreground/10 bg-[var(--goose-interactive-selected)]"
+                      : "border-transparent hover:bg-[var(--goose-interactive-hover)]",
+                  )}
+                  onClick={onToggleAiPage}
+                  aria-label="打开 AI 页面"
+                >
+                  <AiGradientIcon className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">AI 页面</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
+
         <div
           ref={tabsScrollerRef}
           className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -79,10 +112,14 @@ export function PageHeader({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      onExitAiPage?.();
+                      setActiveTab(tab.id);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
+                        onExitAiPage?.();
                         setActiveTab(tab.id);
                       }
                     }}

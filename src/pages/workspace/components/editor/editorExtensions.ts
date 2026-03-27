@@ -107,9 +107,7 @@ export const editorExtensions = [
       if (!hasAnchor) return "";
 
       if (node.type.name === "paragraph") {
-        return useSettings.getState().ai.enabled
-          ? "空格唤起 AI，/ 插入块..."
-          : "输入 '/' 或 '、' 来输入指令...";
+        return "输入 '/' 或 '、' 来输入指令...";
       }
 
       return "";

@@ -7,6 +7,7 @@
 export {}
 declare global {
   const Activity: typeof import('react').Activity
+  const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
   const BLOCK_BG_COLORS: typeof import('./lib/blockColorPresets').BLOCK_BG_COLORS
   const Button: typeof import('./components/ui/button').Button
   const CREATOR_FLOW_CONTENT: typeof import('./lib/onboarding').CREATOR_FLOW_CONTENT
@@ -174,6 +175,7 @@ declare global {
   const getAnalyticsInstallId: typeof import('./lib/analytics').getAnalyticsInstallId
   const getAnalyticsSessionId: typeof import('./lib/analytics').getAnalyticsSessionId
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
+  const getAvailableAIModelOptions: typeof import('./lib/ai-provider').getAvailableAIModelOptions
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getCustomAIApiKey: typeof import('./lib/ai-provider').getCustomAIApiKey
   const getCustomAIBaseURL: typeof import('./lib/ai-provider').getCustomAIBaseURL
@@ -206,6 +208,7 @@ declare global {
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
+  const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider').mapUToolsAiModelsToOptions
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
@@ -237,6 +240,7 @@ declare global {
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
+  const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
   const useCallback: typeof import('react').useCallback
   const useContext: typeof import('react').useContext
   const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
@@ -270,6 +274,9 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
+  export type { AiSessionMessage, AiSession } from './stores/useAiSessions'
+  import('./stores/useAiSessions')
+  // @ts-ignore
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
@@ -279,7 +286,7 @@ declare global {
   export type { TabItem } from './stores/useTabs'
   import('./stores/useTabs')
   // @ts-ignore
-  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate } from './lib/ai-provider'
+  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides } from './lib/ai-provider'
   import('./lib/ai-provider')
   // @ts-ignore
   export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'

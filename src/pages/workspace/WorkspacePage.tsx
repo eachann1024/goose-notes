@@ -5,10 +5,16 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
 import { IconSelector } from "./components/shared/IconSelector";
+import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
+import {
+  OPEN_AI_WORKSPACE_EVENT,
+  type OpenAiWorkspaceDetail,
+} from "./components/ai/events";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -91,7 +97,7 @@ export function WorkspacePage() {
   const { activePageId, updatePage, getPage, setActivePage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openTabs, activeTabId, closeTab, setActiveTab } = useTabs();
-  const { globalEditorFullWidth, closeTabShortcut } = useSettings();
+  const { globalEditorFullWidth, closeTabShortcut, ai } = useSettings();
 
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
@@ -103,7 +109,9 @@ export function WorkspacePage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageScrollPositionsRef = useRef<Record<string, number>>({});
   const lastActivePageRef = useRef<string | null>(null);
+  const lastViewedPageIdRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAiPageOpen, setIsAiPageOpen] = useState(false);
   const dragCounter = useRef(0);
 
   const isExternalFileDrag = (e: React.DragEvent) =>
@@ -355,6 +363,61 @@ export function WorkspacePage() {
     };
   }, [openTabs, setActiveTab]);
 
+  useEffect(() => {
+    const handleOpenAiWorkspace = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenAiWorkspaceDetail>;
+      if (!useSettings.getState().ai.enabled) {
+        toast.error("请先在设置中启用 AI 助手");
+        return;
+      }
+
+      if (!usePages.getState().activePageId) {
+        toast("请先打开一个页面，再进入 AI 页面");
+        return;
+      }
+
+      setIsAiPageOpen(true);
+      trackEvent("ai_page_opened", {
+        feature: "ai",
+        action: "open_page",
+        result: "success",
+        source: customEvent.detail?.source ?? "header",
+      });
+    };
+
+    window.addEventListener(
+      OPEN_AI_WORKSPACE_EVENT,
+      handleOpenAiWorkspace as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        OPEN_AI_WORKSPACE_EVENT,
+        handleOpenAiWorkspace as EventListener,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activePageId || !page) {
+      setIsAiPageOpen(false);
+      lastViewedPageIdRef.current = null;
+      return;
+    }
+
+    if (lastViewedPageIdRef.current && lastViewedPageIdRef.current !== activePageId) {
+      setIsAiPageOpen(false);
+    }
+
+    lastViewedPageIdRef.current = activePageId;
+  }, [activePageId, page]);
+
+  useEffect(() => {
+    if (!ai.enabled) {
+      setIsAiPageOpen(false);
+    }
+  }, [ai.enabled]);
+
   return (
     <>
       <style>{`
@@ -399,7 +462,15 @@ export function WorkspacePage() {
               <>
                 <PageHeader
                   page={page}
+                  isAiPageOpen={isAiPageOpen}
+                  onToggleAiPage={() => {
+                    setIsAiPageOpen((current) => !current);
+                  }}
+                  onExitAiPage={() => {
+                    setIsAiPageOpen(false);
+                  }}
                   onOpenSearch={() => {
+                    setIsAiPageOpen(false);
                     window.dispatchEvent(
                       new CustomEvent("goose-note:open-search", {
                         detail: { resetQuery: true, openInNewTab: true },
@@ -449,127 +520,126 @@ export function WorkspacePage() {
                 />
 
                 <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
-                  <div
-                    ref={scrollContainerRef}
-                    className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
-                  >
-                    {(() => {
-                      // 判断是否是新页面（创建时间等于更新时间且内容为空）
-                      const isNewPage =
-                        page.createdAt === page.updatedAt &&
-                        (!page.content?.content?.[1]?.content ||
-                          page.content.content[1].content.length === 0);
+                  {isAiPageOpen ? (
+                    <AiWorkspacePage page={page} />
+                  ) : (
+                    <div
+                      ref={scrollContainerRef}
+                      className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
+                    >
+                      {(() => {
+                        // 判断是否是新页面（创建时间等于更新时间且内容为空）
+                        const isNewPage =
+                          page.createdAt === page.updatedAt &&
+                          (!page.content?.content?.[1]?.content ||
+                            page.content.content[1].content.length === 0);
 
-                      // 判断是否有实际内容（除了标题行之外还有内容）
-                      const hasRealContent =
-                        page.content?.content &&
-                        page.content.content.length > 2;
-
-                      return (
-                        <div
-                          className={cn(
-                            "min-h-screen",
-                            isEditorFullWidth
-                              ? "px-6 md:px-8 lg:px-10"
-                              : "px-8",
-                            page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
-                          )}
-                        >
+                        return (
                           <div
                             className={cn(
-                              page.icon ? "mb-3 mt-2" : "mt-1",
+                              "min-h-screen",
                               isEditorFullWidth
-                                ? "max-w-full"
-                                : "max-w-3xl mx-auto",
+                                ? "px-6 md:px-8 lg:px-10"
+                                : "px-8",
+                              page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
                             )}
                           >
-                            {!isLocalFolderPage && (
-                              <div
-                                className={cn(
-                                  "group relative mb-2",
-                                  !page.icon && "min-h-[20px]",
-                                )}
-                              >
-                                <IconSelector
-                                  value={page.icon}
-                                  onChange={(icon) =>
-                                    !page.trashedAt &&
-                                    !page.isLocked &&
-                                    updatePage(activePageId, { icon })
-                                  }
-                                  scope="file"
+                            <div
+                              className={cn(
+                                page.icon ? "mb-3 mt-2" : "mt-1",
+                                isEditorFullWidth
+                                  ? "max-w-full"
+                                  : "max-w-3xl mx-auto",
+                              )}
+                            >
+                              {!isLocalFolderPage && (
+                                <div
+                                  className={cn(
+                                    "group relative mb-2",
+                                    !page.icon && "min-h-[20px]",
+                                  )}
                                 >
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                      "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
-                                      page.icon && "[&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]",
-                                      page.icon
-                                        ? "opacity-100 scale-100"
-                                        : page.trashedAt || page.isLocked
-                                          ? "opacity-0"
-                                          : isNewPage
-                                            ? "opacity-100 animate-slow-pulse hover:scale-105"
-                                            : "opacity-0 group-hover:opacity-100 hover:scale-105",
-                                    )}
-                                    onClick={() => {
-                                      if (
-                                        !isNewPage ||
-                                        page.icon ||
-                                        page.trashedAt ||
-                                        page.isLocked
-                                      ) {
-                                        return;
-                                      }
-
-                                      const randomEmoji =
-                                        DEFAULT_RANDOM_PAGE_EMOJIS[
-                                          Math.floor(
-                                            Math.random() *
-                                              DEFAULT_RANDOM_PAGE_EMOJIS.length,
-                                          )
-                                        ];
-                                      updatePage(activePageId, {
-                                        icon: randomEmoji,
-                                      });
-                                    }}
+                                  <IconSelector
+                                    value={page.icon}
+                                    onChange={(icon) =>
+                                      !page.trashedAt &&
+                                      !page.isLocked &&
+                                      updatePage(activePageId, { icon })
+                                    }
+                                    scope="file"
                                   >
-                                    {page.icon ? (
-                                      <div className="flex items-center justify-center h-24 w-24 text-8xl">
-                                        {(LucideIcons as any)[page.icon] ? (
-                                          (() => {
-                                            const Icon = (LucideIcons as any)[
-                                              page.icon
-                                            ];
-                                            return (
-                                              <Icon className="h-full w-full" />
-                                            );
-                                          })()
-                                        ) : (
-                                          <span>{page.icon}</span>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
-                                        <LucideIcons.Smile className="h-4 w-4" />
-                                        <span>添加图标</span>
-                                      </div>
-                                    )}
-                                  </Button>
-                                </IconSelector>
-                              </div>
-                            )}
-                          </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className={cn(
+                                        "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
+                                        page.icon && "[&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]",
+                                        page.icon
+                                          ? "opacity-100 scale-100"
+                                          : page.trashedAt || page.isLocked
+                                            ? "opacity-0"
+                                            : isNewPage
+                                              ? "opacity-100 animate-slow-pulse hover:scale-105"
+                                              : "opacity-0 group-hover:opacity-100 hover:scale-105",
+                                      )}
+                                      onClick={() => {
+                                        if (
+                                          !isNewPage ||
+                                          page.icon ||
+                                          page.trashedAt ||
+                                          page.isLocked
+                                        ) {
+                                          return;
+                                        }
 
-                          <Editor
-                            editable={!page.isLocked && !page.trashedAt}
-                          />
-                        </div>
-                      );
-                    })()}
-                  </div>
+                                        const randomEmoji =
+                                          DEFAULT_RANDOM_PAGE_EMOJIS[
+                                            Math.floor(
+                                              Math.random() *
+                                                DEFAULT_RANDOM_PAGE_EMOJIS.length,
+                                            )
+                                          ];
+                                        updatePage(activePageId, {
+                                          icon: randomEmoji,
+                                        });
+                                      }}
+                                    >
+                                      {page.icon ? (
+                                        <div className="flex items-center justify-center h-24 w-24 text-8xl">
+                                          {(LucideIcons as any)[page.icon] ? (
+                                            (() => {
+                                              const Icon = (LucideIcons as any)[
+                                                page.icon
+                                              ];
+                                              return (
+                                                <Icon className="h-full w-full" />
+                                              );
+                                            })()
+                                          ) : (
+                                            <span>{page.icon}</span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
+                                          <LucideIcons.Smile className="h-4 w-4" />
+                                          <span>添加图标</span>
+                                        </div>
+                                      )}
+                                    </Button>
+                                  </IconSelector>
+                                </div>
+                              )}
+                            </div>
+
+                            <Editor
+                              editable={!page.isLocked && !page.trashedAt}
+                            />
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </>
             ) : (

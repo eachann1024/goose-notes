@@ -29,3 +29,4 @@ docs
 *.sw?
 bun.lock
 output/playwright
+.claude/worktrees/

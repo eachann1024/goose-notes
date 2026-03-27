@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -22,11 +23,12 @@ import {
   DEFAULT_CLAUDE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
   fetchCustomAIModels,
+  getAvailableAIModelOptions,
   getStoredAIModelOptions,
   type AIModelOption,
   type CustomAIProtocol,
 } from "@/lib/ai-provider";
-import { getAvailableUToolsAiModels, isUToolsAiSupported, type UToolsAiModel } from "@/lib/utools-ai";
+import { isUToolsAiSupported } from "@/lib/utools-ai";
 import type { AISettings } from "@/stores/useSettings";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { cn } from "@/lib/utils";
@@ -77,7 +79,7 @@ export function SettingsAI({
   setCustomProviderEnabled,
   saveCustomConfig,
 }: SettingsAIProps) {
-  const [utoolsModels, setUToolsModels] = useState<UToolsAiModel[]>([]);
+  const [utoolsModels, setUToolsModels] = useState<AIModelOption[]>([]);
   const [loadingUToolsModels, setLoadingUToolsModels] = useState(false);
   const [utoolsLoadError, setUToolsLoadError] = useState<string | null>(null);
   const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(ai.customProtocol);
@@ -126,7 +128,7 @@ export function SettingsAI({
       setUToolsLoadError(null);
 
       try {
-        const nextModels = await getAvailableUToolsAiModels();
+        const nextModels = await getAvailableAIModelOptions(ai);
         if (!active) return;
 
         setUToolsModels(nextModels);
@@ -155,7 +157,7 @@ export function SettingsAI({
     return () => {
       active = false;
     };
-  }, [aiSupported, enabled, selectedModelId, setSelectedModelId, usingCustomProvider]);
+  }, [ai, aiSupported, enabled, selectedModelId, setSelectedModelId, usingCustomProvider]);
 
   useEffect(() => {
     if (!usingCustomProvider || customModels.length === 0) {
@@ -244,13 +246,19 @@ export function SettingsAI({
 
       <SettingsSectionCard
         title="AI 开关"
-        description="开启后，空白段落按空格会唤起 AI 工具栏。"
+        description="开启后，页头会显示 AI 页面入口，空白段落按空格也会唤起 AI 工具栏。"
       >
         <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-          <div className="space-y-1">
-            <Label htmlFor="ai-enabled" className="cursor-pointer text-sm font-medium text-foreground">
-              启用 AI 写作助手
-            </Label>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <AiGradientIcon className="h-4 w-4" />
+              <Label htmlFor="ai-enabled" className="cursor-pointer text-sm font-medium text-foreground">
+                启用 AI 写作助手
+              </Label>
+            </div>
+            <div className="text-xs leading-5 text-muted-foreground">
+              关闭后页头不会显示 AI 图标，已打开的 AI 页面也会自动收起。
+            </div>
           </div>
           <Switch id="ai-enabled" checked={enabled} onCheckedChange={setEnabled} />
         </div>

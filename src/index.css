@@ -34,6 +34,9 @@
     --input: 0 0% 86%;
     --ring: 0 0% 58%;
     --radius: 0.75rem;
+    --radius-notion-slash: 18px;
+    --radius-notion-slash-item: 12px;
+    --radius-notion-slash-icon: 10px;
     --goose-top-safe-area: 0px;
     --workspace-drag-line-color: hsl(var(--primary));
     --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.4);
@@ -292,4 +295,67 @@
       var(--tw-gradient-to) 70%
     );
   }
+}
+
+/* ── AI 对话气泡内的 Markdown 渲染样式 ── */
+.ai-markdown {
+  /* 段落 */
+  & p {
+    @apply my-1.5 leading-7;
+  }
+  & p:first-child { @apply mt-0; }
+  & p:last-child  { @apply mb-0; }
+
+  /* 标题 */
+  & h1 { @apply mt-4 mb-2 text-base font-bold; }
+  & h2 { @apply mt-3 mb-2 text-sm  font-bold; }
+  & h3 { @apply mt-2 mb-1 text-sm  font-semibold; }
+
+  /* 列表 */
+  & ul { @apply my-1.5 list-disc pl-5 space-y-0.5; }
+  & ol { @apply my-1.5 list-decimal pl-5 space-y-0.5; }
+  & li { @apply leading-7; }
+
+  /* 行内代码 */
+  & code:not(pre > code) {
+    @apply rounded-[4px] bg-muted/60 px-1 py-0.5 font-mono text-[0.82em];
+  }
+
+  /* 代码块 */
+  & pre {
+    @apply my-2 overflow-x-auto rounded-lg bg-muted/60 px-4 py-3;
+  }
+  & pre code {
+    @apply font-mono text-[0.82em] leading-6;
+  }
+
+  /* 引用块 */
+  & blockquote {
+    @apply my-2 border-l-2 border-border/60 pl-3 text-muted-foreground;
+  }
+
+  /* 表格 */
+  & table {
+    @apply my-2 w-full border-collapse text-sm;
+  }
+  & th {
+    @apply border border-border/50 bg-muted/40 px-3 py-1.5 text-left font-semibold;
+  }
+  & td {
+    @apply border border-border/50 px-3 py-1.5;
+  }
+
+  /* 分割线 */
+  & hr {
+    @apply my-3 border-border/40;
+  }
+
+  /* 链接 */
+  & a {
+    @apply text-foreground underline underline-offset-2 opacity-80 hover:opacity-100;
+  }
+
+  /* 粗体 / 斜体 */
+  & strong { @apply font-semibold; }
+  & em     { @apply italic; }
 }

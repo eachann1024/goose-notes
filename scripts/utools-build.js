@@ -19,6 +19,14 @@ try {
     console.warn('⚠️ 未找到 preload/preload.cjs');
   }
 
+  const preloadHelperSrc = path.join(rootDir, 'preload/mcp-tools.cjs');
+  if (fs.existsSync(preloadHelperSrc)) {
+    fs.copyFileSync(preloadHelperSrc, path.join(distDir, 'mcp-tools.cjs'));
+    console.log('✅ mcp-tools.cjs 已复制');
+  } else {
+    console.warn('⚠️ 未找到 preload/mcp-tools.cjs');
+  }
+
   // 2. 创建 dist/package.json 设置 type: commonjs
   const distPackageJson = { type: 'commonjs' };
   fs.writeFileSync(path.join(distDir, 'package.json'), JSON.stringify(distPackageJson, null, 2));

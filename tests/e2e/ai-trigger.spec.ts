@@ -348,6 +348,33 @@ test.describe("AI 交互流程", () => {
     }
   });
 
+  test("应用页引用不显示源标签", async ({ page }) => {
+    await seedCustomOpenAISettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    await writeNote(page, "应用参考页", "这里是应用页正文。");
+
+    await page.locator('button[aria-label="打开 AI 页面"]').click();
+    const composer = page.locator('[data-ai-composer-editor="true"]').first();
+    await expect(composer).toBeVisible();
+    await composer.click();
+    await composer.type("@应用参考页");
+    await expect(page.locator("[data-ai-reference-menu]")).toContainText(
+      "应用参考页",
+    );
+    await page.keyboard.press("Enter");
+
+    await expect(page.locator('[data-type="ai-file-reference"]')).toHaveCount(
+      1,
+    );
+    await expect(
+      page.locator(
+        '[data-type="ai-file-reference"] [data-ai-reference-source-label="true"]',
+      ),
+    ).toHaveCount(0);
+  });
+
   test("保存自定义 OpenAI 配置后默认模型自动切到第一项", async ({ page }) => {
     await page.route("https://api.example.com/v1/models", async (route) => {
       await route.fulfill({

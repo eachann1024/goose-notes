@@ -25,6 +25,10 @@ export interface UToolsSettings {
 export interface AISettings {
     enabled: boolean
     selectedModelId: string | null
+    // 独立 AI 页面记忆的模型。可选值：当前 AI 来源返回的任意模型 ID。副作用：仅影响独立 AI 页面请求，不会改写设置里的默认模型。
+    workspaceSelectedModelId: string | null
+    // 独立 AI 页面的推理等级。可选值：low / medium / high。副作用：提交时会尽力映射到不同 provider 的推理参数。
+    workspaceReasoningLevel: 'low' | 'medium' | 'high'
     // 是否关闭 uTools AI 并改用自定义协议。可选值：true / false。副作用：开启后编辑器请求会改走自定义接口。可扩展用途：后续可继续接更多协议。
     useCustomProvider: boolean
     // 自定义 AI 协议类型。可选值：openai / claude。副作用：切换后模型列表读取接口会变化。可扩展用途：后续可继续扩展其他兼容协议。
@@ -125,6 +129,8 @@ interface SettingsState {
     setOpenSearchInUtools: (enabled: boolean) => void
     setAIEnabled: (enabled: boolean) => void
     setAISelectedModelId: (modelId: string | null) => void
+    setAIWorkspaceSelectedModelId: (modelId: string | null) => void
+    setAIWorkspaceReasoningLevel: (level: 'low' | 'medium' | 'high') => void
     setAICustomProviderEnabled: (enabled: boolean) => void
     saveAICustomConfig: (config: {
         protocol: CustomAIProtocol
@@ -347,11 +353,23 @@ function normalizeAIApiKey(value: unknown, fallback = '') {
     return typeof value === 'string' ? value.trim() : fallback
 }
 
+function normalizeAIReasoningLevel(value: unknown): 'low' | 'medium' | 'high' {
+    if (value === 'low' || value === 'medium' || value === 'high') {
+        return value
+    }
+
+    return 'high'
+}
+
 function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
     const customModelOptions = normalizeAIModelOptions(ai?.customModelOptions)
     const selectedModelId =
         typeof ai?.selectedModelId === 'string' && ai.selectedModelId.trim()
             ? ai.selectedModelId.trim()
+            : null
+    const workspaceSelectedModelId =
+        typeof ai?.workspaceSelectedModelId === 'string' && ai.workspaceSelectedModelId.trim()
+            ? ai.workspaceSelectedModelId.trim()
             : null
     const customProtocol = ai?.customProtocol === 'claude' ? 'claude' : 'openai'
     const legacyAI = (ai ?? {}) as Partial<AISettings> & {
@@ -364,6 +382,8 @@ function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
     return {
         enabled: Boolean(ai?.enabled),
         selectedModelId,
+        workspaceSelectedModelId,
+        workspaceReasoningLevel: normalizeAIReasoningLevel(ai?.workspaceReasoningLevel),
         useCustomProvider: Boolean(ai?.useCustomProvider),
         customProtocol,
         customOpenAIBaseURL: normalizeAIBaseURL(
@@ -403,6 +423,8 @@ export const useSettings = create<SettingsState>()(
             ai: {
                 enabled: false,
                 selectedModelId: null,
+                workspaceSelectedModelId: null,
+                workspaceReasoningLevel: 'high',
                 useCustomProvider: false,
                 customProtocol: 'openai',
                 customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
@@ -509,6 +531,20 @@ export const useSettings = create<SettingsState>()(
                         ai: nextAI,
                     }
                 }),
+            setAIWorkspaceSelectedModelId: (workspaceSelectedModelId) =>
+                set((state) => ({
+                    ai: {
+                        ...state.ai,
+                        workspaceSelectedModelId,
+                    },
+                })),
+            setAIWorkspaceReasoningLevel: (workspaceReasoningLevel) =>
+                set((state) => ({
+                    ai: {
+                        ...state.ai,
+                        workspaceReasoningLevel,
+                    },
+                })),
             setAICustomProviderEnabled: (useCustomProvider) =>
                 set((state) => {
                     const nextAI = { ...state.ai, useCustomProvider }

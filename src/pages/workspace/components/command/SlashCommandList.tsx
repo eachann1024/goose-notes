@@ -143,8 +143,14 @@ export const SlashCommandList = forwardRef(
     if (props.items.length === 0) {
       return (
         // workspace-shell 保证 CSS 变量在 tippy body 注入时也能正确解析
-        <div className="workspace-shell">
-          <div className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover p-2.5 text-sm text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]">
+        <div
+          className="workspace-shell bg-transparent"
+          data-notion-slash-root="true"
+        >
+          <div
+            data-notion-slash-surface="true"
+            className="z-50 w-[280px] rounded-[var(--radius-notion-slash)] border border-border/75 bg-popover p-2.5 text-sm text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
+          >
             暂无匹配动作
           </div>
         </div>
@@ -155,7 +161,11 @@ export const SlashCommandList = forwardRef(
 
     return (
       // workspace-shell 保证 CSS 变量在 tippy body 注入时也能正确解析
-      <div className="workspace-shell">
+      <div
+        className="workspace-shell bg-transparent"
+        data-notion-slash-root="true"
+        data-placement={props.placement ?? "bottom"}
+      >
         <div
           className={cn(
             "relative flex gap-2 animate-in fade-in zoom-in-95",
@@ -166,7 +176,8 @@ export const SlashCommandList = forwardRef(
         >
           <div
             ref={containerRef}
-            className="z-50 w-[280px] rounded-[18px] border border-border/75 bg-popover p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
+            data-notion-slash-surface="true"
+            className="z-50 w-[280px] rounded-[var(--radius-notion-slash)] border border-border/75 bg-popover p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
           >
             <div className="flex items-start gap-2 px-2 py-1.5 select-none">
               {props.onBack && (
@@ -214,7 +225,7 @@ export const SlashCommandList = forwardRef(
                       data-index={index}
                       disabled={item.disabled}
                       className={cn(
-                        "relative flex h-auto min-h-[40px] w-full items-center justify-start rounded-[10px] px-2.5 py-2 text-left outline-none transition-colors whitespace-normal",
+                        "relative flex h-auto min-h-[40px] w-full items-center justify-start rounded-[var(--radius-notion-slash-item)] px-2.5 py-2 text-left outline-none transition-colors whitespace-normal",
                         item.disabled
                           ? "cursor-not-allowed text-muted-foreground/55 hover:bg-transparent"
                           : index === selectedIndex
@@ -226,7 +237,7 @@ export const SlashCommandList = forwardRef(
                         void selectItem(index);
                       }}
                     >
-                      <div className="mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-muted/65">
+                      <div className="mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-notion-slash-icon)] bg-muted/65">
                         {Icon ? (
                           <Icon
                             className={cn(
@@ -313,24 +324,29 @@ export const SlashCommandList = forwardRef(
                 {selectedItem.hint.items.map((hint: any, i: number) => (
                   <div key={i} className="flex flex-col gap-1">
                     <span className="flex items-center gap-1">
-                      {hint.key.split(" ").map((keyPart: string, keyIndex: number) => {
-                        const isOperator = keyPart === "+" || keyPart === "/";
-                        if (isOperator) {
+                      {hint.key
+                        .split(" ")
+                        .map((keyPart: string, keyIndex: number) => {
+                          const isOperator = keyPart === "+" || keyPart === "/";
+                          if (isOperator) {
+                            return (
+                              <span
+                                key={keyIndex}
+                                className="text-[9px] opacity-40"
+                              >
+                                {keyPart}
+                              </span>
+                            );
+                          }
                           return (
-                            <span key={keyIndex} className="text-[9px] opacity-40">
-                              {keyPart}
-                            </span>
+                            <kbd
+                              key={keyIndex}
+                              className="flex h-4 min-w-[16px] items-center justify-center rounded-[4px] border border-border bg-background px-1 text-[10px] font-mono font-medium text-foreground shadow-sm"
+                            >
+                              {formatShortcut(keyPart)}
+                            </kbd>
                           );
-                        }
-                        return (
-                          <kbd
-                            key={keyIndex}
-                            className="flex h-4 min-w-[16px] items-center justify-center rounded-[4px] border border-border bg-background px-1 text-[10px] font-mono font-medium text-foreground shadow-sm"
-                          >
-                            {formatShortcut(keyPart)}
-                          </kbd>
-                        );
-                      })}
+                        })}
                     </span>
                     <span className="px-0.5 text-[10px] leading-tight text-muted-foreground">
                       {hint.description}

@@ -6,165 +6,32 @@ import { runAITextStream, type AIMessage, type AIStreamPhase } from "@/lib/ai-pr
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
-
-/** 单行行高（px），用于计算 textarea 最多 4 行对应的 max-height */
-const LINE_HEIGHT = 20;
-const MAX_LINES = 4;
+import { AiComposerInput, type AiComposerInputHandle } from "./ai-composer/AiComposerInput";
+import {
+  formatAiReferenceContextBlock,
+  getAiReferenceStats,
+  resolveAiReferenceContexts,
+} from "./ai-composer/referenceLookup";
+import { AI_SYSTEM_PROMPT, STREAM_PHASE_META } from "./ai-popover/constants";
+import { getStreamPreview } from "./ai-popover/streamPreview";
+import { applyStructuredListIntent, resolveStructuredListIntent } from "./ai-popover/structuredList";
 
 interface AiInputPopoverProps {
   editor: Editor | null;
-}
-
-const AI_SYSTEM_PROMPT =
-  "你是 Goose Note 内置写作助手。输出必须直接可落文，不要解释，不要加前后缀，不要使用 Markdown 代码围栏。只输出最终文本。";
-
-const STREAM_PHASE_META: Record<AIStreamPhase, { label: string; tone: string; dot: string }> = {
-  connecting: {
-    label: "正在连接",
-    tone: "text-slate-500 dark:text-slate-300",
-    dot: "bg-slate-400/70",
-  },
-  thinking: {
-    label: "AI 思考中",
-    tone: "text-amber-600 dark:text-amber-300",
-    dot: "bg-amber-400/80",
-  },
-  generating: {
-    label: "正在生成",
-    tone: "text-sky-600 dark:text-sky-300",
-    dot: "bg-sky-400/80",
-  },
-  finishing: {
-    label: "正在整理",
-    tone: "text-emerald-600 dark:text-emerald-300",
-    dot: "bg-emerald-400/80",
-  },
-};
-
-function getStreamPreview(streamedContent: string, reasoningText: string, phase: AIStreamPhase) {
-  const cleanedText = streamedContent.trim();
-  if (cleanedText) {
-    return cleanedText;
-  }
-
-  const cleanedReasoning = reasoningText.replace(/\s+/g, " ").trim();
-  if (cleanedReasoning) {
-    return cleanedReasoning;
-  }
-
-  if (phase === "connecting") return "正在连接自定义 AI 服务…";
-  if (phase === "thinking") return "正在分析上下文与任务要求…";
-  if (phase === "generating") return "模型已开始输出，内容会实时出现…";
-  return "正在整理最后结果…";
-}
-
-type StructuredListType = "bulletList" | "orderedList" | "taskList";
-
-const STRUCTURED_LIST_KEYWORDS: Record<StructuredListType, string[]> = {
-  bulletList: ["无序列表", "项目符号列表", "圆点列表", "bulletlist", "bullet"],
-  orderedList: ["有序列表", "编号列表", "数字列表", "序号列表", "orderedlist", "numberedlist", "编号", "序号"],
-  taskList: ["提醒事项", "提醒列表", "待办事项", "待办列表", "任务列表", "todo", "tasklist", "checklist", "复选框列表"],
-};
-
-function detectStructuredListTarget(query: string): StructuredListType | null {
-  const normalized = query.toLowerCase().replace(/\s+/g, "");
-  let matchedType: StructuredListType | null = null;
-  let matchedIndex = -1;
-
-  (Object.entries(STRUCTURED_LIST_KEYWORDS) as Array<[StructuredListType, string[]]>).forEach(
-    ([type, keywords]) => {
-      keywords.forEach((keyword) => {
-        const index = normalized.lastIndexOf(keyword);
-        if (index < 0) return;
-        if (index > matchedIndex) {
-          matchedType = type;
-          matchedIndex = index;
-        }
-      });
-    },
-  );
-
-  return matchedType;
-}
-
-function getSelectionStructure(editor: Editor, from: number, to: number) {
-  const listTypes = new Set<StructuredListType>();
-  let textblockCount = 0;
-
-  const collectListType = (nodeName: string) => {
-    if (nodeName === "bulletList" || nodeName === "orderedList" || nodeName === "taskList") {
-      listTypes.add(nodeName);
-    }
-  };
-
-  const collectAncestorListTypes = ($pos: any) => {
-    for (let depth = $pos.depth; depth >= 0; depth -= 1) {
-      collectListType($pos.node(depth).type.name);
-    }
-  };
-
-  collectAncestorListTypes(editor.state.doc.resolve(from));
-  collectAncestorListTypes(editor.state.doc.resolve(to));
-
-  editor.state.doc.nodesBetween(from, to, (node) => {
-    if (node.isTextblock) {
-      textblockCount += 1;
-    }
-    collectListType(node.type.name);
-  });
-
-  return { listTypes, textblockCount };
-}
-
-function resolveStructuredListIntent(editor: Editor, from: number, to: number, query: string) {
-  if (from === to) return null;
-
-  const targetListType = detectStructuredListTarget(query);
-  if (!targetListType) return null;
-
-  const { listTypes, textblockCount } = getSelectionStructure(editor, from, to);
-  if (!listTypes.size && textblockCount < 2) {
-    return null;
-  }
-
-  return { targetListType };
-}
-
-function applyStructuredListIntent(
-  editor: Editor,
-  range: { from: number; to: number },
-  targetListType: StructuredListType,
-) {
-  const didSelectRange = editor.chain().focus().setTextSelection(range).run();
-  if (!didSelectRange) return "failed" as const;
-
-  if (editor.isActive(targetListType)) {
-    return "already-active" as const;
-  }
-
-  const didApply =
-    targetListType === "bulletList"
-      ? editor.chain().focus().toggleBulletList().run()
-      : targetListType === "orderedList"
-        ? editor.chain().focus().toggleOrderedList().run()
-        : editor.chain().focus().toggleTaskList().run();
-
-  return didApply ? ("applied" as const) : ("failed" as const);
 }
 
 export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [query, setQuery] = useState("");
   const [initialAction, setInitialAction] = useState<"polish" | "rewrite" | "generate">("generate");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerInputRef = useRef<AiComposerInputHandle | null>(null);
+  const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [status, setStatus] = useState<"idle" | "streaming" | "review">("idle");
   const [streamPhase, setStreamPhase] = useState<AIStreamPhase>("connecting");
   const [streamedContent, setStreamedContent] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [resultContent, setResultContent] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
   const highlightRangeRef = useRef<{ from: number; to: number } | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const activeRequestIdRef = useRef(0);
@@ -258,9 +125,9 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         setStreamedContent("");
         setReasoningText("");
         setResultContent("");
-        setQuery("");
         const nextAction = customEvent.detail.initialAction || "generate";
         setInitialAction(nextAction);
+        setComposerFocusToken((value) => value + 1);
         trackEvent("ai_entry_opened", {
           feature: "ai",
           action: "open",
@@ -278,7 +145,8 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         }
 
         setTimeout(() => {
-          textareaRef.current?.focus();
+          composerInputRef.current?.clear();
+          composerInputRef.current?.focus();
         }, 50);
       }
     };
@@ -311,7 +179,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     setStreamedContent("");
     setReasoningText("");
     setResultContent("");
-    setQuery("");
+    composerInputRef.current?.clear();
     pendingApplyRangeRef.current = null;
     if (restoreSelection) {
       editor?.commands.focus();
@@ -333,7 +201,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     setStreamedContent("");
     setReasoningText("");
     setResultContent("");
-    setQuery("");
+    composerInputRef.current?.clear();
     editor?.commands.focus();
   }, [editor]);
 
@@ -345,17 +213,31 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     scheduleUndoCapsuleHide(5000);
   }, [editor, scheduleUndoCapsuleHide]);
 
+  const handleReferenceAdded = useCallback((reference: {
+    sourceType: "app-page" | "local-file";
+  }) => {
+    trackEvent("ai_reference_added", {
+      feature: "ai",
+      action: "reference_add",
+      result: "success",
+      source: "bubble_menu",
+      reference_source_type: reference.sourceType,
+      reference_scope: "ai_input",
+    });
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     if (!editor) return;
 
     const from = highlightRangeRef.current?.from ?? editor.state.selection.from;
     const to = highlightRangeRef.current?.to ?? editor.state.selection.to;
-    const finalQuery = query.trim();
-
-    if (!finalQuery && initialAction === "generate") {
-      closePopover();
-      return;
-    }
+    const composerPayload = composerInputRef.current?.getPayload() ?? {
+      promptText: "",
+      freeformText: "",
+      references: [],
+    };
+    const finalQuery = composerPayload.promptText.trim();
+    const freeformQuery = composerPayload.freeformText.trim();
 
     const requestId = activeRequestIdRef.current + 1;
     activeRequestIdRef.current = requestId;
@@ -378,6 +260,11 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
 
     try {
       const text = editor.state.doc.textBetween(savedFrom, savedTo, "\n", "\n").trim();
+      if (!freeformQuery && !text && initialAction === "generate") {
+        closePopover();
+        return;
+      }
+
       const structuredListIntent = resolveStructuredListIntent(editor, savedFrom, savedTo, finalQuery);
 
       if (structuredListIntent) {
@@ -411,6 +298,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       const contentScope = !text ? "new_content" : isPartial ? "partial_selection" : "full_block";
       const usageType = initialAction;
       const usageBucket = initialAction === "generate" ? "generate_new_content" : "edit_selected_content";
+      const referenceStats = getAiReferenceStats(composerPayload.references);
 
       trackEvent("ai_request_submitted", {
         feature: "ai",
@@ -421,11 +309,26 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         usage_bucket: usageBucket,
         content_scope: contentScope,
         has_selection: savedFrom !== savedTo,
-        has_custom_query: Boolean(finalQuery),
-        query_length: finalQuery.length,
+        has_custom_query: Boolean(freeformQuery),
+        query_length: freeformQuery.length,
+        reference_count: referenceStats.referenceCount,
+        app_reference_count: referenceStats.appReferenceCount,
+        local_reference_count: referenceStats.localReferenceCount,
         provider_type: providerType,
         model_id: modelId,
       });
+
+      if (referenceStats.referenceCount > 0) {
+        trackEvent("ai_reference_submitted", {
+          feature: "ai",
+          action: "reference_submit",
+          result: "submitted",
+          source: "bubble_menu",
+          reference_count: referenceStats.referenceCount,
+          app_reference_count: referenceStats.appReferenceCount,
+          local_reference_count: referenceStats.localReferenceCount,
+        });
+      }
 
       let prompt = finalQuery;
       if (text) {
@@ -446,6 +349,18 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
             ? `完整句子是：「${blockText}」\n其中「${text}」需要处理。任务：${finalQuery}\n请只输出用来替换「${text}」的文字，不要输出完整句子，不要解释。`
             : `针对以下文本执行任务：${finalQuery}\n\n文本：${text}`;
         }
+      }
+
+      const referenceContexts = resolveAiReferenceContexts(composerPayload.references);
+      const referenceContextBlock = formatAiReferenceContextBlock(referenceContexts);
+      if (referenceContextBlock) {
+        prompt = [
+          prompt,
+          "补充上下文（以下是用户通过 @ 引用的完整文件内容，请结合这些信息回答）：",
+          referenceContextBlock,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
       }
 
       const content = await runAITextStream(useSettings.getState().ai, [
@@ -529,76 +444,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       console.error(e);
       closePopover(true);
     }
-  }, [editor, query, closePopover, initialAction, hidePopoverAfterApply, showUndoCapsuleAtSelection]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isComposing) return;
-    if (e.key === "Enter" && !e.shiftKey && status === "idle") {
-      e.preventDefault();
-      handleSubmit();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      closePopover(true);
-    }
-  };
-
-  const autoResize = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const maxH = LINE_HEIGHT * MAX_LINES + 8;
-    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
-    el.scrollTop = el.scrollHeight;
-  }, []);
-
-  const handleDiscard = () => {
-    setStatus("idle");
-    setStreamPhase("connecting");
-    setStreamedContent("");
-    setReasoningText("");
-    setResultContent("");
-    textareaRef.current?.focus();
-  };
-
-  const handleAccept = () => {
-    if (!editor) return;
-
-    const range = pendingApplyRangeRef.current ?? highlightRangeRef.current;
-    const content = resultContent.trim();
-    if (!content) {
-      closePopover(true);
-      return;
-    }
-
-    if (range) {
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from: range.from, to: range.to })
-        .deleteSelection()
-        .insertContent(content)
-        .run();
-    } else {
-      editor.chain().focus().insertContent(content).run();
-    }
-
-    const aiSettings = useSettings.getState().ai;
-    const providerType = aiSettings.useCustomProvider ? aiSettings.customProtocol : "utools";
-    const modelId = aiSettings.selectedModelId ?? "";
-
-    trackEvent("ai_result_applied", {
-      feature: "ai",
-      action: "apply",
-      result: "success",
-      source: "bubble_menu",
-      apply_mode: "manual",
-      usage_type: initialAction,
-      provider_type: providerType,
-      model_id: modelId,
-    });
-    showUndoCapsuleAtSelection();
-    hidePopoverAfterApply();
-  };
+  }, [editor, closePopover, initialAction, hidePopoverAfterApply, showUndoCapsuleAtSelection]);
 
   const handleUndoApply = () => {
     if (!editor) return;
@@ -624,15 +470,16 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
   };
 
   useEffect(() => {
-    autoResize();
-  }, [query, streamedContent, reasoningText, status, autoResize]);
-
-  useEffect(() => {
     if (!isOpen) return;
 
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest("[data-ai-input-popover]")) return;
+      if (
+        target.closest("[data-ai-input-popover]") ||
+        target.closest("[data-ai-reference-menu]")
+      ) {
+        return;
+      }
       closePopover(true);
     };
 
@@ -651,7 +498,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
 
   const phaseMeta = STREAM_PHASE_META[streamPhase];
   const streamPreview = getStreamPreview(streamedContent, reasoningText, streamPhase);
-  const textareaDisplayValue = status === "idle" ? query : (status === "review" ? resultContent : streamPreview);
+  const previewText = status === "review" ? resultContent : streamPreview;
   const placeholderText =
     initialAction === "polish"
       ? "输入自定义润色要求..."
@@ -665,63 +512,58 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         <div
           data-ai-input-popover
           className={cn(
-            "fixed z-[20005] flex items-center gap-2 rounded-[22px] border border-border/75 bg-popover px-[10px] py-1.5",
+            "fixed z-[20005] flex items-center gap-1.5 rounded-[22px] border border-border/75 bg-popover",
             "shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100",
             "dark:border-white/15 dark:bg-[#2f3437]",
+            "min-w-[180px] max-w-[360px] w-max",
+            status === "idle" ? "px-2 py-1.5" : "px-3 py-1.5",
           )}
           style={{ left: position.x, top: position.y }}
           onMouseDownCapture={(event) => {
             const target = event.target as HTMLElement;
-            if (target.closest("textarea, [contenteditable='true']")) return;
+            if (
+              target.closest("[contenteditable='true']") ||
+              target.closest("[data-ai-reference-menu]")
+            ) {
+              return;
+            }
             event.preventDefault();
           }}
         >
           <LucideIcons.Sparkles
-            className={cn(
-              "h-4 w-4 shrink-0 self-center ml-1",
-              status === "streaming"
-                ? "text-[#10b981]"
-                : "text-[#10b981]",
-            )}
+            className="h-4 w-4 shrink-0 self-center text-[#10b981]"
           />
 
-          <textarea
-            ref={textareaRef}
-            value={textareaDisplayValue}
-            readOnly={status !== "idle"}
-            rows={1}
-            onChange={(e) => {
-              if (status !== "idle") return;
-              setQuery(e.target.value);
-            }}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            placeholder={placeholderText}
-            className={cn(
-              "flex-1 self-center resize-none overflow-y-auto bg-transparent text-[12px] leading-[20px] outline-none",
-              "placeholder:text-muted-foreground/60 scrollbar-hide",
-              status === "idle"
-                ? "w-[160px] sm:w-[180px] text-foreground"
-                : "w-[220px] text-foreground/80",
-            )}
-            style={{
-              minHeight: `${LINE_HEIGHT}px`,
-              maxHeight: `${LINE_HEIGHT * MAX_LINES + 8}px`,
-            }}
-          />
-
-          {status === "idle" && (
-            <button
-              onClick={handleSubmit}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#10b981] hover:bg-[#059669] text-white transition-colors"
+          {status === "idle" ? (
+            <div className="relative min-w-0 flex-1">
+              <AiComposerInput
+                ref={composerInputRef}
+                placeholder={placeholderText}
+                autoFocusToken={composerFocusToken}
+                onSubmit={handleSubmit}
+                onEscape={() => closePopover(true)}
+                onReferenceAdded={handleReferenceAdded}
+              />
+              <button
+                onClick={handleSubmit}
+                className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] hover:bg-[#059669] text-white transition-colors"
+              >
+                <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
+              </button>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "min-h-[20px] max-h-[88px] overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-[20px] text-foreground/80 rounded-md",
+                status === "streaming" && phaseMeta.tone,
+              )}
             >
-              <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
-            </button>
+              {previewText}
+            </div>
           )}
 
           {status === "streaming" && (
-            <span className="flex items-center gap-1 shrink-0 pr-1">
+            <span className="flex items-center gap-1 shrink-0">
               {Array.from({ length: 3 }).map((_, index) => (
                 <span
                   key={`wave-dot-${index}`}
