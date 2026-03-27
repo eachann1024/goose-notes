@@ -300,4 +300,97 @@ test.describe("编辑流程", () => {
       widthMode: "full",
     });
   });
+
+  test("折叠标题后拖拽手柄保持在当前标题旁", async ({ page }) => {
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    const positions = await page.evaluate(async () => {
+      const editor = (window as { __gooseNoteEditor?: any }).__gooseNoteEditor;
+      if (!editor) return null;
+
+      editor.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1 },
+              content: [{ type: "text", text: "AI 功能介绍与展示" }],
+            },
+            {
+              type: "heading",
+              attrs: { level: 2, collapsed: false },
+              content: [{ type: "text", text: "面试场景：" }],
+            },
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "你好刚才面试完了，大概啥时候有反馈" }],
+            },
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "我对小红书运营有些经验，但是这个行业我没做过" }],
+            },
+            {
+              type: "heading",
+              attrs: { level: 2, collapsed: false },
+              content: [{ type: "text", text: "文章生成" }],
+            },
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "生成一篇关于新能源汽车固态电池的小红书科普文章" }],
+            },
+          ],
+        },
+        true,
+      );
+      editor.commands.focus("end");
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+
+      const editorShell = document.querySelector(".ProseMirror")?.parentElement;
+      const heading = Array.from(document.querySelectorAll(".ProseMirror > h2")).find(
+        (element) => element.textContent?.includes("文章生成"),
+      );
+      const indicator = Array.from(document.querySelectorAll(".heading-collapse-indicator")).find(
+        (element) => element.parentElement?.textContent?.includes("文章生成"),
+      );
+      const handle = document.querySelector(".drag-handle");
+
+      if (!editorShell || !heading || !indicator || !handle) {
+        return null;
+      }
+
+      const headingRect = heading.getBoundingClientRect();
+      editorShell.dispatchEvent(
+        new MouseEvent("mousemove", {
+          bubbles: true,
+          clientX: headingRect.left + 2,
+          clientY: headingRect.top + headingRect.height / 2,
+        }),
+      );
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+
+      const beforeRect = handle.getBoundingClientRect();
+      const indicatorRect = indicator.getBoundingClientRect();
+      indicator.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          clientX: indicatorRect.left + 5,
+          clientY: indicatorRect.top + 5,
+        }),
+      );
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+
+      const afterRect = handle.getBoundingClientRect();
+      return {
+        beforeTop: beforeRect.top,
+        afterTop: afterRect.top,
+      };
+    });
+
+    expect(positions).not.toBeNull();
+    expect(Math.abs(positions!.afterTop - positions!.beforeTop)).toBeLessThan(20);
+  });
 });

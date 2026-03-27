@@ -137,6 +137,38 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
     }
   }
 
+  function isVisibleHandleAnchor(node: Element) {
+    const style = window.getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return false;
+    }
+    return node.getClientRects().length > 0;
+  }
+
+  function resolveVisibleHandleNode(node: Element) {
+    const editorRoot = node.closest(".ProseMirror");
+    if (!editorRoot) return node;
+
+    let target = node;
+    while (target.parentElement && target.parentElement !== editorRoot) {
+      target = target.parentElement;
+    }
+
+    if (isVisibleHandleAnchor(target)) {
+      return target;
+    }
+
+    let fallback = target.previousElementSibling;
+    while (fallback) {
+      if (isVisibleHandleAnchor(fallback)) {
+        return fallback;
+      }
+      fallback = fallback.previousElementSibling;
+    }
+
+    return target;
+  }
+
   function updateHandlePosition(node: Element) {
     if (!dragHandleElement) return;
 
@@ -244,6 +276,8 @@ function DragHandlePlugin(options: DragHandleOptions & { pluginKey: string }) {
       hideDragHandle();
       return;
     }
+
+    domNode = resolveVisibleHandleNode(domNode);
 
     // blockquote/table 内部元素统一定位到容器本身
     const blockquoteParent = domNode.closest("blockquote");
