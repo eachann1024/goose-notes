@@ -9,6 +9,7 @@ import { clearLocalPageMetadataCache, usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import { clearPersistedPages } from "@/lib/storage/pageRepository";
 import { clearLegacyStorage } from "@/lib/storage/migrateLegacyStorage";
+import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
 import { UToolsAdapter } from "@/lib/utools";
 import {
   exportNotebooks,
@@ -18,7 +19,6 @@ import {
 import { uToolsStorage as dataStorage } from "@/lib/storage";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { useState as useReactState } from "react";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -47,6 +47,7 @@ const RECOMMENDED_APPS = [
 ];
 
 const FEEDBACK_URL = "https://wj.qq.com/s2/25958121/2d2e/";
+const SETTINGS_APPS_BANNER_ID = "settings:recommended-apps-banner";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const {
@@ -110,9 +111,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [importing, setImporting] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetInput, setResetInput] = useState("");
-  const [appsBannerClosed, setAppsBannerClosed] = useReactState(() => {
-    return localStorage.getItem("goose-note-apps-banner-closed") === "true";
-  });
+  const { visible: appsBannerVisible, dismiss: dismissAppsBanner } =
+    usePersistentDismissState(SETTINGS_APPS_BANNER_ID);
 
   const notebookList = Object.values(notebooks);
   const { createNotebook } = useNotebooks();
@@ -252,8 +252,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   const handleCloseAppsBanner = () => {
-    setAppsBannerClosed(true);
-    localStorage.setItem("goose-note-apps-banner-closed", "true");
+    dismissAppsBanner();
   };
 
   const handleOpenAppUrl = (url: string) => {
@@ -293,7 +292,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           }
           appsBanner={
-            !appsBannerClosed ? (
+            appsBannerVisible ? (
               <div className="relative rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
                 <button
                   type="button"

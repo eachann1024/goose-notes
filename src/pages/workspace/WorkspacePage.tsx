@@ -455,6 +455,7 @@ export function WorkspacePage() {
           <Sidebar
             className="workspace-sidebar-pane"
             disableResize={false}
+            selectedPageId={isAiPageOpen ? null : activePageId}
           />
 
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
@@ -521,7 +522,7 @@ export function WorkspacePage() {
 
                 <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
                   {isAiPageOpen ? (
-                    <AiWorkspacePage page={page} />
+                    <AiWorkspacePage />
                   ) : (
                     <div
                       ref={scrollContainerRef}

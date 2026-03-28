@@ -5,6 +5,7 @@ import type {
   NodeRendererProps,
   TreeApi,
 } from "react-arborist";
+import { Files, FolderOpen } from "lucide-react";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "./SidebarContextMenu";
 import { getPageTitle } from "@/lib/page-title";
@@ -585,14 +586,30 @@ export function SidebarTree({
   const isLocalNotebook = notebook?.source === "local-folder";
 
   if (treeData.length === 0) {
+    const EmptyIcon = isLocalNotebook ? FolderOpen : Files;
+    const isCompactEmptyState = width <= 172;
     return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
-        <div className="mb-2">👻</div>
-        <p>{isLocalNotebook ? "暂无文件" : "暂无页面"}</p>
+      <div className={isCompactEmptyState ? "px-2 py-10 text-center" : "px-4 py-10 text-center"}>
+        <div className="flex flex-col items-center gap-2.5">
+          <EmptyIcon className="h-7 w-7 text-foreground/45 stroke-[1.75]" />
+          <p
+            className={
+              isCompactEmptyState
+                ? "text-[14px] font-medium tracking-[0.01em] text-foreground/70"
+                : "text-[15px] font-medium tracking-[0.01em] text-foreground/70"
+            }
+          >
+            {isLocalNotebook ? "暂无文件" : "暂无页面"}
+          </p>
+        </div>
         <Button
           variant="link"
           onClick={onCreatePage}
-          className="h-auto p-0 mt-1"
+          className={
+            isCompactEmptyState
+              ? "mt-1 h-auto max-w-[9.5rem] whitespace-normal break-words p-0 text-[13px] font-medium leading-snug text-muted-foreground hover:text-foreground"
+              : "mt-1 h-auto max-w-[11rem] whitespace-normal break-words p-0 text-[15px] font-medium leading-snug text-muted-foreground hover:text-foreground"
+          }
         >
           {isLocalNotebook ? "创建第一个文件" : "创建第一个页面"}
         </Button>

@@ -26,15 +26,18 @@ import {
   type AiComposerInputHandle,
 } from "../editor/ai-composer/AiComposerInput";
 import type { AiFileReferenceAttrs } from "../editor/ai-composer/referenceLookup";
+import type { JSONContent } from "@/types";
 
 interface AiWorkspaceComposerBarProps {
   composerRef: MutableRefObject<AiComposerInputHandle | null>;
   composerFocusToken: number;
   isStreaming: boolean;
+  draftContent: JSONContent | null;
   onSubmit: (params: {
     selectedModelId: string | null;
     reasoningLevel: AIReasoningLevel;
   }) => void;
+  onDraftChange: (content: JSONContent | null) => void;
   onReferenceAdded: (reference: AiFileReferenceAttrs) => void;
 }
 
@@ -60,11 +63,46 @@ const REASONING_LEVEL_OPTIONS: Array<{
   },
 ];
 
+const AI_WORKSPACE_PLACEHOLDER_PRESETS = [
+  "可以这样说：帮我写一篇关于新能源固态电池的抖音口播脚本",
+  "可以这样说：结合 @竞品拆解，帮我出 5 条小红书标题",
+  "可以这样说：参考 @采访纪要，整理一版公众号推文",
+  "可以这样说：把 @会议记录 润色成对外可发的项目周报",
+  "可以这样说：基于 @产品说明，写一版直播口播稿",
+  "可以这样说：参考 @需求文档，帮我起草一版 PRD 摘要",
+  "可以这样说：把这页内容改成更适合老板看的汇报口径",
+  "可以这样说：结合 @用户反馈，整理 10 条短视频选题",
+  "可以这样说：参考 @发布节奏，帮我排一周小红书选题",
+  "可以这样说：把 @采访提纲 扩成一篇人物稿",
+  "可以这样说：结合 @课程大纲，生成一版招生海报文案",
+  "可以这样说：参考 @商品卖点，写一版电商详情页文案",
+  "可以这样说：把 @竞品评论区 提炼成用户痛点清单",
+  "可以这样说：帮我写一份适合抖音的 60 秒短视频脚本",
+  "可以这样说：帮我生成一篇新能源固态电池科普笔记",
+  "可以这样说：帮我起草一封更体面的商务跟进邮件",
+  "可以这样说：结合 @销售录音，整理客户异议与回应话术",
+  "可以这样说：把 @方案初稿 润色得更专业、更可信",
+  "可以这样说：参考 @培训笔记，整理成 SOP 流程",
+  "可以这样说：帮我把这页内容压缩成 3 条结论",
+  "可以这样说：结合 @品牌手册，改成统一语气",
+  "可以这样说：参考 @数据复盘，写一版老板能快速看懂的结论",
+  "可以这样说：帮我列 10 个更像爆款的小红书开头",
+  "可以这样说：帮我把这个想法扩成一篇完整提案",
+  "可以这样说：参考 @脚本A @脚本B，融合成一版新脚本",
+  "可以这样说：通过 @文件名 引用资料，我会一起参考",
+  "可以这样说：像“帮我生成一份…”这类请求，会默认在当前记事本根目录新建笔记",
+  "可以这样说：如果要写到指定页面，直接说“生成到 @页面名”",
+  "可以这样说：如果只想聊一聊，直接说“仅聊天”或“不要写入”",
+  "可以这样说：需要改现有内容时，说“追加到当前页”或“替换 @页面名”",
+];
+
 export function AiWorkspaceComposerBar({
   composerRef,
   composerFocusToken,
   isStreaming,
+  draftContent,
   onSubmit,
+  onDraftChange,
   onReferenceAdded,
 }: AiWorkspaceComposerBarProps) {
   const ai = useSettings((state) => state.ai);
@@ -74,6 +112,7 @@ export function AiWorkspaceComposerBar({
   const [modelOptions, setModelOptions] = useState<AIModelOption[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -113,6 +152,18 @@ export function AiWorkspaceComposerBar({
       active = false;
     };
   }, [ai.customModelOptions, ai.customProtocol, ai.enabled, ai.useCustomProvider]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setPlaceholderIndex((current) =>
+        current >= AI_WORKSPACE_PLACEHOLDER_PRESETS.length - 1 ? 0 : current + 1,
+      );
+    }, 3600);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const resolvedModelId = useMemo(() => {
     if (!modelOptions.length) {
@@ -163,10 +214,13 @@ export function AiWorkspaceComposerBar({
         <div className="px-3">
           <AiComposerInput
             ref={composerRef}
-            placeholder="问当前页面，或 @ 其他页面 / 本地文件..."
+            placeholder="输入问题或生成需求"
+            placeholderOverlayText={AI_WORKSPACE_PLACEHOLDER_PRESETS[placeholderIndex]}
             autoFocusToken={composerFocusToken}
             onSubmit={handleSubmit}
             onEscape={() => composerRef.current?.clear()}
+            initialContent={draftContent}
+            onContentChange={onDraftChange}
             onReferenceAdded={onReferenceAdded}
             variant="panel"
           />

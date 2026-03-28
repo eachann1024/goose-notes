@@ -254,6 +254,11 @@ interface PagesState {
 
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
+  createPageRecord: (options: {
+    workspaceId: string;
+    parentId?: string;
+    content?: JSONContent;
+  }) => string;
   updatePage: (id: string, updates: Partial<Page>) => void;
   deletePage: (id: string) => Promise<boolean>;
   restorePage: (id: string) => {
@@ -316,6 +321,21 @@ interface PagesState {
     parentId?: string,
     workspaceId?: string,
   ) => Promise<string | null> | string | null;
+  createLocalPageRecord: (options: {
+    workspaceId: string;
+    parentId?: string;
+    title?: string;
+    content?: JSONContent;
+  }) => Promise<string | null>;
+  writePageContent: (
+    pageId: string,
+    content: JSONContent,
+    mode?: "replace",
+  ) => Promise<boolean>;
+  appendPageContent: (
+    pageId: string,
+    content: JSONContent,
+  ) => Promise<boolean>;
 }
 
 const cloneJSONContent = (content: JSONContent): JSONContent => {
@@ -415,6 +435,60 @@ const initialContent: JSONContent = {
     },
   ],
 };
+
+function createDefaultPageContent(title = ""): JSONContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        ...(title
+          ? {
+              content: [{ type: "text", text: title }],
+            }
+          : {}),
+      },
+      {
+        type: "paragraph",
+      },
+    ],
+  };
+}
+
+function clonePageContent(content?: JSONContent | null) {
+  if (!content) {
+    return cloneJSONContent(initialContent);
+  }
+  return cloneJSONContent(content);
+}
+
+function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent {
+  const baseBlocks = base.content ? [...base.content] : [];
+  const additionBlocks = addition.content ? [...addition.content] : [];
+  if (!additionBlocks.length) {
+    return {
+      type: "doc",
+      content: baseBlocks,
+    };
+  }
+
+  const lastBlock = baseBlocks.at(-1);
+  const firstAdditionBlock = additionBlocks[0];
+  const needsSpacer =
+    baseBlocks.length > 0 &&
+    lastBlock?.type !== "paragraph" &&
+    firstAdditionBlock?.type !== "paragraph";
+
+  return {
+    type: "doc",
+    content: [
+      ...baseBlocks,
+      ...(needsSpacer ? [{ type: "paragraph" }] : []),
+      ...additionBlocks,
+    ],
+  };
+}
 
 export const flushEditorContent = (immediate = false) => {
   if (typeof window !== "undefined") {
@@ -557,29 +631,11 @@ export const usePages = create<PagesState>()((set, get) => ({
       createPage: (parentId, workspaceId = DEFAULT_NOTEBOOK) => {
         flushEditorContent();
 
-        const id = uuidv4();
-        const now = Date.now();
-        const newPage: Page = {
-          id,
+        const id = get().createPageRecord({
           workspaceId,
           parentId,
-          content: initialContent,
-          isFolder: false,
-          isLocked: false,
-          isFullWidth: false,
-          fontSize: "default",
-          fontFamily: "default",
-          createdAt: now,
-          updatedAt: now,
-          order: now,
-        };
-
-        set((state) => ({
-          pages: { ...state.pages, [id]: newPage },
-          activePageId: id,
-        }));
-
-        persistPageSnapshot(get().pages[id]);
+        });
+        set({ activePageId: id });
         useNotebooks.getState().setLastActivePage(workspaceId, id);
 
         // 新建页面时自动聚焦标题
@@ -594,8 +650,61 @@ export const usePages = create<PagesState>()((set, get) => ({
         return id;
       },
 
+      createPageRecord: ({ workspaceId, parentId, content }) => {
+        const id = uuidv4();
+        const now = Date.now();
+        const newPage: Page = {
+          id,
+          workspaceId,
+          parentId,
+          content: clonePageContent(content),
+          isFolder: false,
+          isLocked: false,
+          isFullWidth: false,
+          fontSize: "default",
+          fontFamily: "default",
+          createdAt: now,
+          updatedAt: now,
+          order: now,
+        };
+
+        set((state) => ({
+          pages: { ...state.pages, [id]: newPage },
+        }));
+
+        persistPageSnapshot(get().pages[id]);
+        return id;
+      },
+
       createLocalPage: async (parentId?: string, workspaceId?: string) => {
         if (!workspaceId) return null;
+        const id = await get().createLocalPageRecord({
+          workspaceId,
+          parentId,
+          title: "新页面",
+          content: createDefaultPageContent(""),
+        });
+        if (!id) return null;
+        set({ activePageId: id });
+        useNotebooks.getState().setLastActivePage(workspaceId, id);
+
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent("goose-note:focus-editor-start"),
+            );
+          }, 100);
+        }
+
+        return id;
+      },
+
+      createLocalPageRecord: async ({
+        workspaceId,
+        parentId,
+        title,
+        content,
+      }) => {
         const notebook = useNotebooks.getState().notebooks[workspaceId];
         if (
           !notebook?.localPath ||
@@ -621,16 +730,21 @@ export const usePages = create<PagesState>()((set, get) => ({
         };
 
         const now = Date.now();
-        const title = "新页面";
+        const normalizedTitle =
+          ((title || "新页面").trim() || "新页面").replace(/[\\/:*?"<>|]/g, "_");
         const parentPath = resolveParentPath();
         const parentPage = parentId ? get().pages[parentId] : undefined;
+        const storedParentId =
+          parentPage?.localFilePath && !parentPage.isFolder
+            ? parentPage.parentId
+            : parentId;
         const baseDir = parentPath
           ? parentPage?.isFolder
             ? parentPath
             : parentPath.replace(/[^\/\\]+$/, "")
           : notebook.localPath;
         const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
-        let filePath = `${normalizedBaseDir}/${title}.md`;
+        let filePath = `${normalizedBaseDir}/${normalizedTitle}.md`;
 
         const checkExists = async (path: string) => {
           if (window.gooseFs?.existsAsync) {
@@ -642,11 +756,11 @@ export const usePages = create<PagesState>()((set, get) => ({
         if (await checkExists(filePath)) {
           let suffix = 1;
           while (
-            await checkExists(`${normalizedBaseDir}/${title} (${suffix}).md`)
+            await checkExists(`${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`)
           ) {
             suffix++;
           }
-          filePath = `${normalizedBaseDir}/${title} (${suffix}).md`;
+          filePath = `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`;
         }
 
         if (window.gooseFs.writeFileAsync) {
@@ -662,8 +776,8 @@ export const usePages = create<PagesState>()((set, get) => ({
         const newPage: Page = {
           id,
           workspaceId,
-          parentId,
-          content: initialContent,
+          parentId: storedParentId,
+          content: clonePageContent(content),
           isFolder: false,
           isLocked: false,
           isFullWidth: false,
@@ -677,18 +791,17 @@ export const usePages = create<PagesState>()((set, get) => ({
 
         set((state) => ({
           pages: { ...state.pages, [id]: newPage },
-          activePageId: id,
         }));
 
         syncLocalPageMetadataCache(id, null);
-        useNotebooks.getState().setLastActivePage(workspaceId, id);
-
-        if (typeof window !== "undefined") {
-          setTimeout(() => {
-            window.dispatchEvent(
-              new CustomEvent("goose-note:focus-editor-start"),
-            );
-          }, 100);
+        const saved = await get().saveLocalPageContent(id, clonePageContent(newPage.content));
+        if (!saved) {
+          set((state) => {
+            const nextPages = { ...state.pages };
+            delete nextPages[id];
+            return { pages: nextPages };
+          });
+          return null;
         }
 
         return id;
@@ -1728,6 +1841,33 @@ export const usePages = create<PagesState>()((set, get) => ({
             finishedAt: Date.now(),
           });
         }
+      },
+
+      writePageContent: async (pageId, content, _mode = "replace") => {
+        const page = get().pages[pageId];
+        if (!page || page.isFolder) return false;
+
+        get().updatePage(pageId, {
+          content: clonePageContent(content),
+        });
+
+        if (isLocalFolderPage(page)) {
+          await get().flushPendingLocalSaveByPageId(pageId);
+        }
+
+        return true;
+      },
+
+      appendPageContent: async (pageId, content) => {
+        const page = get().pages[pageId];
+        if (!page || page.isFolder) return false;
+
+        const mergedContent = mergePageContent(
+          clonePageContent(page.content),
+          clonePageContent(content),
+        );
+
+        return await get().writePageContent(pageId, mergedContent);
       },
 
       saveLocalPageContent: async (pageId, content) => {

@@ -24,6 +24,7 @@ interface SidebarDragGuideState {
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   disableResize?: boolean;
+  selectedPageId?: string | null;
 }
 
 const useItemHeight = () => {
@@ -37,7 +38,11 @@ const useItemHeight = () => {
   }, [uiFontSize]);
 };
 
-export function Sidebar({ className, disableResize = false }: SidebarProps) {
+export function Sidebar({
+  className,
+  disableResize = false,
+  selectedPageId,
+}: SidebarProps) {
   const {
     pages,
     activePageId,
@@ -385,6 +390,7 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
           dragGuide={dragGuide}
+          selectedPageId={selectedPageId}
           onOpenPinnedPage={() => {
             setCurrentView("pages");
             setShowSettings(false);
@@ -412,6 +418,7 @@ export function Sidebar({ className, disableResize = false }: SidebarProps) {
               <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0">
                 <SidebarTree
                   activeNotebookId={activeNotebookId}
+                  selectedPageId={selectedPageId}
                   width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
                   rowHeight={rowHeight}
                   itemHeight={itemHeight}

@@ -1,6 +1,5 @@
 import * as LucideIcons from "lucide-react";
 import { useSettings } from "@/stores/useSettings";
-import { OPEN_AI_WORKSPACE_EVENT } from "../ai/events";
 
 export interface CommandSuggestionItem {
   type?: "divider" | "item";
@@ -25,14 +24,15 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       ? [
           {
             title: "生成",
-            description: "打开 AI 页面继续写",
+            description: "接着写点什么...",
             searchTerms: ["ai", "generate", "shengcheng", "xiezuo", "sparkle"],
             icon: LucideIcons.Sparkles,
+            shortcut: "Space",
             command: ({ editor, range }: any) => {
               editor.chain().focus().deleteRange(range).run();
-              window.dispatchEvent(
-                new CustomEvent(OPEN_AI_WORKSPACE_EVENT, {
-                  detail: { source: "slash_command" },
+              document.dispatchEvent(
+                new CustomEvent("open-ai-input-popover", {
+                  detail: { editor },
                 }),
               );
             },

@@ -8,7 +8,6 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
-import { OPEN_AI_WORKSPACE_EVENT } from "@/pages/workspace/components/ai/events";
 
 const TRIGGER_CHARS = ["/", "、"];
 const DEFAULT_ALLOWED_PREFIXES: string[] | null = null;
@@ -152,8 +151,8 @@ export const SlashCommand = Extension.create({
       },
 
       /**
-       * 空段落空格键打开独立 AI 页面：
-       * 将原来的浮窗入口迁移到工作区 AI 页面。
+       * 空段落空格键打开 AI 浮窗：
+       * 保持当前页面内联写作流，不跳转到独立 AI 页面。
        */
       Space: () => {
         const { editor } = this;
@@ -172,9 +171,9 @@ export const SlashCommand = Extension.create({
           return false;
         }
 
-        window.dispatchEvent(
-          new CustomEvent(OPEN_AI_WORKSPACE_EVENT, {
-            detail: { source: "space" },
+        document.dispatchEvent(
+          new CustomEvent("open-ai-input-popover", {
+            detail: { editor, triggeredBy: "space" },
           }),
         );
         return true;

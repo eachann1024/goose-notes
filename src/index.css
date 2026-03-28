@@ -303,18 +303,34 @@
   & p {
     @apply my-1.5 leading-7;
   }
-  & p:first-child { @apply mt-0; }
-  & p:last-child  { @apply mb-0; }
+  & p:first-child {
+    @apply mt-0;
+  }
+  & p:last-child {
+    @apply mb-0;
+  }
 
   /* 标题 */
-  & h1 { @apply mt-4 mb-2 text-base font-bold; }
-  & h2 { @apply mt-3 mb-2 text-sm  font-bold; }
-  & h3 { @apply mt-2 mb-1 text-sm  font-semibold; }
+  & h1 {
+    @apply mt-4 mb-2 text-base font-bold;
+  }
+  & h2 {
+    @apply mt-3 mb-2 text-sm  font-bold;
+  }
+  & h3 {
+    @apply mt-2 mb-1 text-sm  font-semibold;
+  }
 
   /* 列表 */
-  & ul { @apply my-1.5 list-disc pl-5 space-y-0.5; }
-  & ol { @apply my-1.5 list-decimal pl-5 space-y-0.5; }
-  & li { @apply leading-7; }
+  & ul {
+    @apply my-1.5 list-disc pl-5 space-y-0.5;
+  }
+  & ol {
+    @apply my-1.5 list-decimal pl-5 space-y-0.5;
+  }
+  & li {
+    @apply leading-7;
+  }
 
   /* 行内代码 */
   & code:not(pre > code) {
@@ -356,6 +372,164 @@
   }
 
   /* 粗体 / 斜体 */
-  & strong { @apply font-semibold; }
-  & em     { @apply italic; }
+  & strong {
+    @apply font-semibold;
+  }
+  & em {
+    @apply italic;
+  }
+}
+
+@keyframes ai-lingcai-pan {
+  0% {
+    background-position: 0% 50%;
+    transform: translate3d(-6%, -5%, 0) scale(1);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: translate3d(7%, 6%, 0) scale(1.08);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: translate3d(-6%, -5%, 0) scale(1);
+  }
+}
+
+@keyframes ai-lingcai-orb {
+  0% {
+    transform: translate3d(-8%, -10%, 0) scale(0.96);
+  }
+  50% {
+    transform: translate3d(8%, 7%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-8%, -10%, 0) scale(0.96);
+  }
+}
+
+@keyframes ai-lingcai-text {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.ai-lingcai-card {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ai-lingcai-card::before {
+  content: "";
+  position: absolute;
+  inset: -24%;
+  z-index: -2;
+  border-radius: inherit;
+  background: linear-gradient(
+    118deg,
+    rgba(140, 242, 221, 0.28),
+    rgba(104, 205, 255, 0.23),
+    rgba(171, 140, 255, 0.2),
+    rgba(255, 150, 197, 0.2),
+    rgba(255, 203, 112, 0.18),
+    rgba(119, 235, 229, 0.22)
+  );
+  background-size: 240% 240%;
+  filter: blur(28px);
+  opacity: 0.96;
+  animation: ai-lingcai-pan 28s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ai-lingcai-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.88),
+    rgba(255, 255, 255, 0.76)
+  );
+  backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+.dark .ai-lingcai-card::after {
+  background: linear-gradient(
+    140deg,
+    rgba(43, 43, 43, 0.74),
+    rgba(32, 32, 32, 0.66)
+  );
+}
+
+.ai-lingcai-icon {
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 10px 26px rgba(99, 215, 255, 0.16);
+}
+
+.ai-lingcai-icon::before {
+  content: "";
+  position: absolute;
+  inset: -42%;
+  z-index: -1;
+  border-radius: 9999px;
+  background:
+    radial-gradient(
+      circle at 16% 24%,
+      rgba(140, 242, 221, 0.88),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 80% 18%,
+      rgba(111, 170, 255, 0.72),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 62% 80%,
+      rgba(255, 151, 200, 0.7),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 24% 82%,
+      rgba(255, 211, 115, 0.66),
+      transparent 30%
+    );
+  filter: blur(16px);
+  opacity: 0.9;
+  animation: ai-lingcai-orb 24s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ai-lingcai-text {
+  background-image: linear-gradient(
+    90deg,
+    #58d7b8 0%,
+    #61b8ff 24%,
+    #9f86ff 50%,
+    #ff7ea9 74%,
+    #ffb56a 100%
+  );
+  background-size: 220% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ai-lingcai-text 20s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-lingcai-card::before,
+  .ai-lingcai-icon::before,
+  .ai-lingcai-text {
+    animation: none;
+  }
 }

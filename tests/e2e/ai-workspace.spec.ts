@@ -185,6 +185,100 @@ async function startMockOpenAIStreamServer() {
   };
 }
 
+async function startSlowMockOpenAIStreamServer() {
+  const requests: string[] = [];
+  const server = createServer(async (req, res) => {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      });
+      res.end();
+      return;
+    }
+
+    if (req.url !== "/v1/chat/completions" || req.method !== "POST") {
+      res.writeHead(404).end();
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    requests.push(Buffer.concat(chunks).toString("utf8"));
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      Connection: "keep-alive",
+      "Cache-Control": "no-cache, no-transform",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    res.write(
+      `data: ${JSON.stringify({
+        id: "chatcmpl-workspace-slow",
+        object: "chat.completion.chunk",
+        created: Date.now(),
+        model: "beta-model",
+        choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
+      })}\n\n`,
+    );
+
+    await delay(100);
+
+    res.write(
+      `data: ${JSON.stringify({
+        id: "chatcmpl-workspace-slow",
+        object: "chat.completion.chunk",
+        created: Date.now(),
+        model: "beta-model",
+        choices: [{ index: 0, delta: { content: "流式内容保留中" }, finish_reason: null }],
+      })}\n\n`,
+    );
+
+    await delay(1500);
+
+    res.write(
+      `data: ${JSON.stringify({
+        id: "chatcmpl-workspace-slow",
+        object: "chat.completion.chunk",
+        created: Date.now(),
+        model: "beta-model",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+      })}\n\n`,
+    );
+    res.write("data: [DONE]\n\n");
+    res.end();
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("无法启动慢速 mock OpenAI 流式服务");
+  }
+
+  return {
+    baseURL: `http://127.0.0.1:${address.port}/v1`,
+    getRequests: () => [...requests],
+    close: async () => {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    },
+  };
+}
+
 test.describe("独立 AI 页面底栏", () => {
   test("显示模型、推理等级和发送按钮", async ({ page }) => {
     await seedAiSettings(page);
@@ -409,6 +503,83 @@ test.describe("独立 AI 页面底栏", () => {
       });
   });
 
+  test("切换页面后历史会话仍保留且可继续查看", async ({ page }) => {
+    const mockServer = await startMockOpenAIStreamServer();
+
+    try {
+      await seedAiSettings(page, {
+        customOpenAIBaseURL: mockServer.baseURL,
+      });
+      await bootApp(page);
+      await createPageFromSidebar(page);
+      await writeNote(page, "页面甲标题", "页面甲正文");
+
+      await openAiWorkspace(page);
+      await submitWorkspacePrompt(page, "记录这次独立聊天");
+      await expect(page.getByText("模拟结果")).toBeVisible();
+
+      await createPageFromSidebar(page);
+      await writeNote(page, "页面乙标题", "页面乙正文");
+
+      await openAiWorkspace(page);
+      await page.locator('button[title="历史会话"]').click();
+      await expect(page.getByText("记录这次独立聊天")).toBeVisible();
+      await page.getByText("记录这次独立聊天").click();
+      await expect(page.getByText("模拟结果")).toBeVisible();
+    } finally {
+      await mockServer.close();
+    }
+  });
+
+  test("切换标签后未发送草稿不会丢失", async ({ page }) => {
+    await seedAiSettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+    await writeNote(page, "页面甲标题", "页面甲正文");
+
+    await openAiWorkspace(page);
+    const input = page.locator('[data-ai-composer-editor="true"]').first();
+    await input.click();
+    await input.type("这段草稿先别发");
+    await expect(input).toContainText("这段草稿先别发");
+
+    await createPageFromSidebar(page);
+    await writeNote(page, "页面乙标题", "页面乙正文");
+    await page.keyboard.press("Alt+Digit1");
+
+    await openAiWorkspace(page);
+    await expect(page.locator('[data-ai-composer-editor="true"]').first()).toContainText(
+      "这段草稿先别发",
+    );
+  });
+
+  test("流式回复中途切换标签后当前内容仍会保留", async ({ page }) => {
+    const mockServer = await startSlowMockOpenAIStreamServer();
+
+    try {
+      await seedAiSettings(page, {
+        customOpenAIBaseURL: mockServer.baseURL,
+      });
+      await bootApp(page);
+      await createPageFromSidebar(page);
+      await writeNote(page, "页面甲标题", "页面甲正文");
+
+      await openAiWorkspace(page);
+      await submitWorkspacePrompt(page, "保留流式内容");
+      await expect(page.getByText("流式内容保留中")).toBeVisible();
+
+      await createPageFromSidebar(page);
+      await writeNote(page, "页面乙标题", "页面乙正文");
+      await page.keyboard.press("Alt+Digit1");
+
+      await openAiWorkspace(page);
+      await expect(page.getByText("流式内容保留中")).toBeVisible();
+      await expect(page.getByText("保留流式内容")).toBeVisible();
+    } finally {
+      await mockServer.close();
+    }
+  });
+
   test("自定义 OpenAI 请求会带上当前模型和推理等级", async ({ page }) => {
     const mockServer = await startMockOpenAIStreamServer();
 
@@ -430,6 +601,33 @@ test.describe("独立 AI 页面底栏", () => {
 
       expect(requestBody).toContain('"model":"beta-model"');
       expect(requestBody).toContain('"reasoning_effort":"low"');
+      expect(requestBody).not.toContain("[当前页面]");
+      expect(requestBody).not.toContain("这里是当前页面正文。");
+    } finally {
+      await mockServer.close();
+    }
+  });
+
+  test("独立 AI 页未使用引用时不会自动带入当前页面标题和正文", async ({ page }) => {
+    const mockServer = await startMockOpenAIStreamServer();
+
+    try {
+      await seedAiSettings(page, {
+        customOpenAIBaseURL: mockServer.baseURL,
+      });
+      await bootApp(page);
+      await createPageFromSidebar(page);
+      await writeNote(page, "不会自动注入的标题", "不会自动注入的正文");
+
+      await openAiWorkspace(page);
+      await submitWorkspacePrompt(page, "帮我概括一下");
+
+      await expect.poll(() => mockServer.getRequests().length).toBe(1);
+      const requestBody = mockServer.getRequests()[0] ?? "";
+
+      expect(requestBody).not.toContain("[当前页面]");
+      expect(requestBody).not.toContain("不会自动注入的标题");
+      expect(requestBody).not.toContain("不会自动注入的正文");
     } finally {
       await mockServer.close();
     }
@@ -467,5 +665,65 @@ test.describe("独立 AI 页面底栏", () => {
         model: "deepseek-r1",
         reasoningEffort: "medium",
       });
+  });
+
+  test("新建会话会清空当前消息和输入草稿", async ({ page }) => {
+    const mockServer = await startMockOpenAIStreamServer();
+
+    try {
+      await seedAiSettings(page, {
+        customOpenAIBaseURL: mockServer.baseURL,
+      });
+      await bootApp(page);
+      await createPageFromSidebar(page);
+      await writeNote(page, "当前页面", "这里是当前页面正文。");
+
+      await openAiWorkspace(page);
+      await submitWorkspacePrompt(page, "先保留一条旧消息");
+      await expect(
+        page.getByRole("paragraph").filter({ hasText: "模拟结果" }).first(),
+      ).toBeVisible();
+
+      const input = page.locator('[data-ai-composer-editor="true"]').first();
+      await input.click();
+      await input.type("这段草稿应该被清空");
+      await expect(input).toContainText("这段草稿应该被清空");
+
+      await page.locator('button[title="新建会话"]').click();
+
+      await expect(page.getByText("在底部输入框直接提问")).toBeVisible();
+      await expect(input).not.toContainText("这段草稿应该被清空");
+      await expect(page.getByText("先保留一条旧消息")).toHaveCount(0);
+      await expect(page.getByText("模拟结果")).toHaveCount(0);
+    } finally {
+      await mockServer.close();
+    }
+  });
+
+  test("连续点击新建会话后仍可继续输入", async ({ page }) => {
+    await seedAiSettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+    await writeNote(page, "当前页面", "这里是当前页面正文。");
+
+    await openAiWorkspace(page);
+
+    const input = page.locator('[data-ai-composer-editor="true"]').first();
+    await input.click();
+    await input.type("先输一点内容");
+    await expect(input).toContainText("先输一点内容");
+
+    const newSessionButton = page.locator('button[title="新建会话"]');
+    await newSessionButton.click();
+    await newSessionButton.click();
+    await newSessionButton.click();
+
+    await expect(page.getByText("在底部输入框直接提问")).toBeVisible();
+    await expect(input).toBeVisible();
+    await expect(input).not.toContainText("先输一点内容");
+
+    await input.click();
+    await input.type("现在还能继续输入");
+    await expect(input).toContainText("现在还能继续输入");
   });
 });

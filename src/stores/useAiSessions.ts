@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { AiResolvedTarget, AiWritePlan } from "@/lib/ai-write";
+import type { AgentArtifact, AgentPlan } from "@/agent/core/types";
 import { uToolsStorage } from "@/lib/storage";
 import type { AiFileReferenceAttrs } from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+import type { JSONContent } from "@/types";
 
 // ── 持久化的消息结构（去掉 streaming / error 等瞬态字段）
 export interface AiSessionMessage {
@@ -10,6 +13,9 @@ export interface AiSessionMessage {
   text: string;
   references?: AiFileReferenceAttrs[];
   error?: boolean;
+  agentPlan?: AgentPlan | null;
+  artifact?: AgentArtifact | null;
+  writePlan?: AiWritePlan | null;
 }
 
 // ── 一条历史会话
@@ -18,8 +24,20 @@ export interface AiSession {
   id: string;
   /** 显示标题：取自第一条用户消息（前 40 个字符） */
   title: string;
-  /** 关联的笔记页 ID（可为 undefined，即仅在 workspace 级别发起的对话） */
-  pageId: string | undefined;
+  /** 旧字段：历史数据里可能存在，新逻辑不再依赖 */
+  pageId?: string;
+  /** AI 页面来源页 */
+  originPageId?: string | null;
+  /** AI 页面来源笔记本 */
+  originNotebookId?: string | null;
+  /** 当前会话最近一次解析出的目标 */
+  resolvedTarget?: AiResolvedTarget | null;
+  /** 最近一次待确认/已提交的写入计划 */
+  lastWritePlan?: AiWritePlan | null;
+  /** 最近一次 Agent 规划结果 */
+  lastAgentPlan?: AgentPlan | null;
+  /** 最近一次 Agent 产物 */
+  lastArtifact?: AgentArtifact | null;
   /** 消息列表（不含 streaming 中的临时消息） */
   messages: AiSessionMessage[];
   /** 创建时间戳 */
@@ -33,11 +51,43 @@ interface AiSessionsState {
   sessions: AiSession[];
   /** 当前活动会话 ID（null 表示新会话未保存） */
   activeSessionId: string | null;
+  /** 当前界面里的消息快照，支持中途切走后恢复 */
+  activeMessages: AiSessionMessage[];
+  /** 当前输入框草稿 */
+  draftContent: JSONContent | null;
+  /** 当前解析出的目标 */
+  activeResolvedTarget: AiResolvedTarget | null;
+  /** 当前 AI 页来源页 */
+  activeOriginPageId: string | null;
+  /** 当前 AI 页来源笔记本 */
+  activeOriginNotebookId: string | null;
+  /** 当前最近一次写入计划 */
+  activeLastWritePlan: AiWritePlan | null;
+  /** 当前最近一次 Agent plan */
+  activeLastAgentPlan: AgentPlan | null;
+  /** 当前最近一次 Agent artifact */
+  activeLastArtifact: AgentArtifact | null;
 
   /** 保存 / 更新一条会话（首次保存时插入，后续覆盖） */
   saveSession: (session: Omit<AiSession, "createdAt" | "updatedAt"> & Partial<Pick<AiSession, "createdAt">>) => void;
   /** 切换到指定会话 */
   setActiveSession: (id: string | null) => void;
+  /** 保存当前界面消息快照 */
+  setActiveMessages: (messages: AiSessionMessage[]) => void;
+  /** 保存当前输入框草稿 */
+  setDraftContent: (content: JSONContent | null) => void;
+  setActiveResolvedTarget: (target: AiResolvedTarget | null) => void;
+  setActiveOrigin: (params: {
+    pageId?: string | null;
+    notebookId?: string | null;
+  }) => void;
+  setActiveLastWritePlan: (plan: AiWritePlan | null) => void;
+  setActiveLastAgentPlan: (plan: AgentPlan | null) => void;
+  setActiveLastArtifact: (artifact: AgentArtifact | null) => void;
+  resetActiveState: (params?: {
+    pageId?: string | null;
+    notebookId?: string | null;
+  }) => void;
   /** 删除指定会话 */
   deleteSession: (id: string) => void;
   /** 清空所有历史 */
@@ -51,6 +101,14 @@ export const useAiSessions = create<AiSessionsState>()(
     (set) => ({
       sessions: [],
       activeSessionId: null,
+      activeMessages: [],
+      draftContent: null,
+      activeResolvedTarget: null,
+      activeOriginPageId: null,
+      activeOriginNotebookId: null,
+      activeLastWritePlan: null,
+      activeLastAgentPlan: null,
+      activeLastArtifact: null,
 
       saveSession: (session) =>
         set((state) => {
@@ -85,19 +143,86 @@ export const useAiSessions = create<AiSessionsState>()(
 
       setActiveSession: (id) => set({ activeSessionId: id }),
 
+      setActiveMessages: (messages) => set({ activeMessages: messages }),
+
+      setDraftContent: (content) => set({ draftContent: content }),
+
+      setActiveResolvedTarget: (target) => set({ activeResolvedTarget: target }),
+
+      setActiveOrigin: ({ pageId, notebookId }) =>
+        set({
+          activeOriginPageId: pageId ?? null,
+          activeOriginNotebookId: notebookId ?? null,
+        }),
+
+      setActiveLastWritePlan: (plan) => set({ activeLastWritePlan: plan }),
+
+      setActiveLastAgentPlan: (plan) => set({ activeLastAgentPlan: plan }),
+
+      setActiveLastArtifact: (artifact) => set({ activeLastArtifact: artifact }),
+
+      resetActiveState: (params) =>
+        set({
+          activeSessionId: null,
+          activeMessages: [],
+          draftContent: null,
+          activeResolvedTarget: null,
+          activeOriginPageId: params?.pageId ?? null,
+          activeOriginNotebookId: params?.notebookId ?? null,
+          activeLastWritePlan: null,
+          activeLastAgentPlan: null,
+          activeLastArtifact: null,
+        }),
+
       deleteSession: (id) =>
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
           activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
+          activeMessages:
+            state.activeSessionId === id ? [] : state.activeMessages,
+          activeResolvedTarget:
+            state.activeSessionId === id ? null : state.activeResolvedTarget,
+          activeOriginPageId:
+            state.activeSessionId === id ? null : state.activeOriginPageId,
+          activeOriginNotebookId:
+            state.activeSessionId === id ? null : state.activeOriginNotebookId,
+          activeLastWritePlan:
+            state.activeSessionId === id ? null : state.activeLastWritePlan,
+          activeLastAgentPlan:
+            state.activeSessionId === id ? null : state.activeLastAgentPlan,
+          activeLastArtifact:
+            state.activeSessionId === id ? null : state.activeLastArtifact,
         })),
 
-      clearSessions: () => set({ sessions: [], activeSessionId: null }),
+      clearSessions: () =>
+        set({
+          sessions: [],
+          activeSessionId: null,
+          activeMessages: [],
+          draftContent: null,
+          activeResolvedTarget: null,
+          activeOriginPageId: null,
+          activeOriginNotebookId: null,
+          activeLastWritePlan: null,
+          activeLastAgentPlan: null,
+          activeLastArtifact: null,
+        }),
     }),
     {
       name: "goose-note:ai-sessions", // uTools dbStorage key
       storage: createJSONStorage(() => uToolsStorage),
-      // 只持久化 sessions，activeSessionId 每次启动重置
-      partialize: (state) => ({ sessions: state.sessions }),
+      partialize: (state) => ({
+        sessions: state.sessions,
+        activeSessionId: state.activeSessionId,
+        activeMessages: state.activeMessages,
+        draftContent: state.draftContent,
+        activeResolvedTarget: state.activeResolvedTarget,
+        activeOriginPageId: state.activeOriginPageId,
+        activeOriginNotebookId: state.activeOriginNotebookId,
+        activeLastWritePlan: state.activeLastWritePlan,
+        activeLastAgentPlan: state.activeLastAgentPlan,
+        activeLastArtifact: state.activeLastArtifact,
+      }),
     },
   ),
 );

@@ -1,0 +1,181 @@
+import type {
+  AIMessage,
+  AIRequestOverrides,
+  AISettingsLike,
+  AIStreamUpdate,
+} from "@/lib/ai-provider";
+import type {
+  AiResolvedTarget,
+  AiWritePlan,
+} from "@/lib/ai-write";
+import type {
+  AiComposerPayload,
+  AiComposerToken,
+  AiFileReferenceAttrs,
+} from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+
+export type AgentSurface = "workspace" | "inline";
+export type AgentExecutionStrategy = "single" | "delegated";
+export type AgentArtifactType =
+  | "text_response"
+  | "markdown_note"
+  | "visual_block"
+  | "chart_spec";
+export type AgentCapabilityId =
+  | "note.chat"
+  | "note.create"
+  | "note.replace"
+  | "note.append"
+  | string;
+export type AgentTokenRole = "context" | "target";
+
+export type AgentComposerToken =
+  | Extract<AiComposerToken, { type: "text" }>
+  | (Extract<AiComposerToken, { type: "reference" }> & {
+      role?: AgentTokenRole;
+    });
+
+export interface AgentInputContext {
+  surface: AgentSurface;
+  payload: AiComposerPayload;
+  originPageId?: string | null;
+  originNotebookId?: string | null;
+  selectionText?: string;
+  blockText?: string;
+  initialAction?: "polish" | "rewrite" | "generate";
+}
+
+export interface AgentParsedInput {
+  payload: Omit<AiComposerPayload, "tokens"> & {
+    tokens: AgentComposerToken[];
+  };
+  normalizedPrompt: string;
+  targetReference?: AiFileReferenceAttrs | null;
+  resolvedTarget: AiResolvedTarget;
+}
+
+export interface AgentIntent {
+  capabilityId: AgentCapabilityId;
+  artifactType: AgentArtifactType;
+  targetType: AiResolvedTarget["mode"] | "inline_selection";
+  reason: string;
+}
+
+export interface AgentPlan {
+  id: string;
+  capabilityId: AgentCapabilityId;
+  artifactType: AgentArtifactType;
+  executionStrategy: AgentExecutionStrategy;
+  surface: AgentSurface;
+  promptText: string;
+  systemPrompt: string;
+  userPrompt: string;
+  intentReason: string;
+  targetType: AiResolvedTarget["mode"] | "inline_selection";
+  resolvedTarget?: AiResolvedTarget | null;
+  createdAt: number;
+}
+
+export interface TextResponseArtifact {
+  type: "text_response";
+  text: string;
+  error?: boolean;
+}
+
+export interface MarkdownNoteArtifact {
+  type: "markdown_note";
+  plan: AiWritePlan;
+}
+
+export interface VisualBlockArtifact {
+  type: "visual_block";
+  payload?: Record<string, unknown>;
+}
+
+export interface ChartSpecArtifact {
+  type: "chart_spec";
+  spec?: Record<string, unknown>;
+}
+
+export type AgentArtifact =
+  | TextResponseArtifact
+  | MarkdownNoteArtifact
+  | VisualBlockArtifact
+  | ChartSpecArtifact;
+
+export interface AgentExecutionResult {
+  intent: AgentIntent;
+  plan: AgentPlan;
+  artifact: AgentArtifact;
+  rawText: string;
+}
+
+export interface AgentPlanBuildResult {
+  intent: AgentIntent;
+  plan?: AgentPlan;
+  artifact?: AgentArtifact;
+}
+
+export interface AgentCapabilityMatchResult extends AgentIntent {}
+
+export interface AgentCapabilityBuildPlanParams {
+  context: AgentInputContext;
+  parsed: AgentParsedInput;
+  match: AgentCapabilityMatchResult;
+}
+
+export interface AgentCapabilityBuildArtifactParams {
+  context: AgentInputContext;
+  parsed: AgentParsedInput;
+  plan: AgentPlan;
+  outputText: string;
+}
+
+export interface AgentCapabilityManifest {
+  id: AgentCapabilityId;
+  label: string;
+  surfaces: AgentSurface[];
+  outputArtifactTypes: AgentArtifactType[];
+  match: (
+    context: AgentInputContext,
+    parsed: AgentParsedInput,
+  ) => AgentCapabilityMatchResult | null;
+  buildPlan: (
+    params: AgentCapabilityBuildPlanParams,
+  ) => AgentPlanBuildResult;
+  buildArtifact: (
+    params: AgentCapabilityBuildArtifactParams,
+  ) => AgentArtifact;
+}
+
+export interface AgentExecutePlanOptions {
+  settings: AISettingsLike;
+  plan: AgentPlan;
+  context: AgentInputContext;
+  parsed: AgentParsedInput;
+  historyMessages?: AIMessage[];
+  requestOverrides?: AIRequestOverrides;
+  onUpdate?: (update: AIStreamUpdate) => void;
+  abortSignal?: AbortSignal;
+}
+
+export interface AgentCommitResult {
+  pageId?: string;
+  workspaceId?: string;
+}
+
+export interface AgentCommitHandler {
+  artifactType: AgentArtifactType;
+  commit: (artifact: AgentArtifact) => Promise<AgentCommitResult | null>;
+}
+
+export interface AgentSubtask {
+  id: string;
+  title: string;
+  capabilityId: AgentCapabilityId;
+}
+
+export interface AgentWorkerAdapter {
+  strategy: AgentExecutionStrategy;
+  runSubtasks?: (subtasks: AgentSubtask[]) => Promise<unknown>;
+}

@@ -2,7 +2,6 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { ColorPicker } from "./ColorPicker";
 import { useSettings } from "@/stores/useSettings";
 import * as LucideIcons from "lucide-react";
-import { OPEN_AI_WORKSPACE_EVENT } from "../ai/events";
 
 type EditorBubbleMenuProps = Omit<
   React.ComponentProps<typeof BubbleMenu>,
@@ -114,19 +113,35 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    window.dispatchEvent(
-                      new CustomEvent(OPEN_AI_WORKSPACE_EVENT, {
-                        detail: { source: "bubble_menu" },
+                    let overrideRect = undefined;
+                    if (menuRef.current) {
+                      const rect = menuRef.current.getBoundingClientRect();
+                      overrideRect = {
+                        left: rect.left,
+                        top: rect.top,
+                        right: rect.right,
+                        bottom: rect.bottom,
+                        width: rect.width,
+                        height: rect.height,
+                      };
+                    }
+                    document.dispatchEvent(
+                      new CustomEvent("open-ai-input-popover", {
+                        detail: {
+                          editor,
+                          initialAction: "polish",
+                          overrideRect,
+                        },
                       }),
                     );
                   }}
-                  aria-label="打开 AI 页面"
+                  aria-label="AI 润色"
                   className="h-7 w-7 rounded-md p-0 text-[#10b981] hover:bg-muted hover:text-[#10b981]"
                 >
                   <LucideIcons.Sparkles className="h-[15px] w-[15px]" />
                 </Button>
               </TooltipTrigger>
-              <BubbleMenuTooltip label="AI 页面" />
+              <BubbleMenuTooltip label="AI 润色" />
             </Tooltip>
 
             <Separator orientation="vertical" className="h-5 opacity-70 mx-0.5" />

@@ -8,14 +8,17 @@ interface SidebarHeaderProps {
     mode: "sort" | "nest-pending" | "nest-ready";
   } | null;
   onOpenPinnedPage?: () => void;
+  selectedPageId?: string | null;
 }
 
 export function SidebarHeader({
   dragGuide,
   onOpenPinnedPage,
+  selectedPageId,
 }: SidebarHeaderProps) {
   const pages = usePages((state) => state.pages);
   const activePageId = usePages((state) => state.activePageId);
+  const highlightedPageId = selectedPageId ?? activePageId;
   const setExpandPageId = usePages((state) => state.setExpandPageId);
   const setPendingNavigatePageId = usePages(
     (state) => state.setPendingNavigatePageId,
@@ -333,7 +336,7 @@ export function SidebarHeader({
               onWheel={handlePinnedWheel}
             >
               {pinnedPages.map((page) => {
-                const isActive = activePageId === page.id;
+                const isActive = highlightedPageId === page.id;
                 const title = getPageTitle(page);
                 return (
                   <TooltipProvider key={page.id} delayDuration={100}>

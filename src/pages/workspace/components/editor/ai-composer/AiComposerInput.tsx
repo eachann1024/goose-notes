@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import type { EditorView } from "@tiptap/pm/view";
 import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -16,6 +16,7 @@ import {
   type AiFileReferenceAttrs,
   type AiReferenceSuggestionItem,
 } from "./referenceLookup";
+import type { JSONContent } from "@/types";
 
 const EMPTY_AI_COMPOSER_CONTENT = {
   type: "doc",
@@ -304,11 +305,15 @@ export interface AiComposerInputHandle {
 
 interface AiComposerInputProps {
   placeholder: string;
+  placeholderOverlayText?: string;
   autoFocusToken: number;
   onSubmit: () => void;
   onEscape: () => void;
+  initialContent?: JSONContent | null;
+  onContentChange?: (content: JSONContent | null) => void;
   onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
   variant?: "compact" | "panel";
+  compactWidthClass?: string;
 }
 
 export const AiComposerInput = forwardRef<
@@ -318,14 +323,19 @@ export const AiComposerInput = forwardRef<
   (
     {
       placeholder,
+      placeholderOverlayText,
       autoFocusToken,
       onSubmit,
       onEscape,
+      initialContent,
+      onContentChange,
       onReferenceAdded,
       variant = "compact",
+      compactWidthClass,
     },
     ref,
   ) => {
+    const [isEmpty, setIsEmpty] = useState(true);
     const extensions = useMemo(
       () => [
         StarterKit.configure({
@@ -341,16 +351,16 @@ export const AiComposerInput = forwardRef<
           orderedList: false,
         }),
         Placeholder.configure({
-          placeholder,
+          placeholder: placeholderOverlayText ? "" : placeholder,
         }),
         createAiFileReferenceExtension(onReferenceAdded),
       ],
-      [onReferenceAdded, placeholder],
+      [onReferenceAdded, placeholder, placeholderOverlayText],
     );
 
     const composerEditor = useEditor({
       extensions,
-      content: EMPTY_AI_COMPOSER_CONTENT,
+      content: initialContent ?? EMPTY_AI_COMPOSER_CONTENT,
       editorProps: {
         attributes: {
           "aria-label": "AI 输入",
@@ -412,6 +422,15 @@ export const AiComposerInput = forwardRef<
           return false;
         },
       },
+      onUpdate: ({ editor }) => {
+        const nextContent = editor.getJSON();
+        const payload = serializeAiComposerDoc(nextContent);
+        setIsEmpty(
+          !payload.promptText.trim() &&
+            payload.references.length === 0,
+        );
+        onContentChange?.(nextContent);
+      },
       immediatelyRender: false,
     });
 
@@ -425,6 +444,7 @@ export const AiComposerInput = forwardRef<
           composerEditor?.commands.setContent(EMPTY_AI_COMPOSER_CONTENT, {
             emitUpdate: false,
           });
+          setIsEmpty(true);
         },
         getPayload: () => serializeAiComposerDoc(composerEditor?.getJSON()),
       }),
@@ -436,8 +456,52 @@ export const AiComposerInput = forwardRef<
       composerEditor.commands.focus("end");
     }, [autoFocusToken, composerEditor]);
 
+    useEffect(() => {
+      if (!composerEditor) return;
+
+      const nextContent = initialContent ?? EMPTY_AI_COMPOSER_CONTENT;
+      const current = JSON.stringify(composerEditor.getJSON());
+      const next = JSON.stringify(nextContent);
+      if (current === next) return;
+
+      composerEditor.commands.setContent(nextContent, {
+        emitUpdate: false,
+      });
+      const payload = serializeAiComposerDoc(nextContent);
+      setIsEmpty(
+        !payload.promptText.trim() &&
+          payload.references.length === 0,
+      );
+    }, [composerEditor, initialContent]);
+
+    useEffect(() => {
+      if (!composerEditor) return;
+      const payload = serializeAiComposerDoc(composerEditor.getJSON());
+      setIsEmpty(
+        !payload.promptText.trim() &&
+          payload.references.length === 0,
+      );
+    }, [composerEditor]);
+
     return (
-      <div className={cn("min-w-0 flex-1", variant === "panel" && "w-full px-0")}>
+      <div
+        className={cn(
+          "relative min-w-0 flex-1",
+          variant === "panel" ? "w-full px-0" : compactWidthClass,
+        )}
+      >
+        {placeholderOverlayText && isEmpty ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground/60",
+              variant === "panel"
+                ? "top-0 line-clamp-3 pr-10 text-[14px] leading-7"
+                : "top-0 pr-8 text-[12px] leading-[20px]",
+            )}
+          >
+            {placeholderOverlayText}
+          </div>
+        ) : null}
         <EditorContent editor={composerEditor} />
       </div>
     );

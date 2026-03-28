@@ -257,6 +257,127 @@ async function startMockOpenAIStreamServer() {
 }
 
 test.describe("AI 交互流程", () => {
+  test("空白段落按空格会打开当前页 AI 浮窗而不是独立 AI 页面", async ({ page }) => {
+    await seedCustomOpenAISettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    await page.evaluate(() => {
+      const editor = (
+        window as {
+          __gooseNoteEditor?: {
+            commands?: {
+              setContent?: (content: unknown, emitUpdate?: boolean) => void;
+              focus?: (position: string | number) => void;
+            };
+          };
+        }
+      ).__gooseNoteEditor;
+
+      if (!editor?.commands?.setContent || !editor.commands.focus) {
+        throw new Error("编辑器未挂载");
+      }
+
+      editor.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1 },
+              content: [{ type: "text", text: "空格触发测试" }],
+            },
+            {
+              type: "paragraph",
+            },
+          ],
+        },
+        true,
+      );
+      editor.commands.focus("end");
+    });
+
+    await page.keyboard.press("Space");
+
+    await expect(page.locator("[data-ai-input-popover]")).toBeVisible();
+    await expect(page.locator('[data-ai-workspace-composer="true"]')).toHaveCount(0);
+  });
+
+  test("空格唤起的 AI 输入框会把后续内容顶下去", async ({ page }) => {
+    await seedCustomOpenAISettings(page);
+    await bootApp(page);
+    await createPageFromSidebar(page);
+
+    await page.evaluate(() => {
+      const editor = (
+        window as {
+          __gooseNoteEditor?: {
+            commands?: {
+              setContent?: (content: unknown, emitUpdate?: boolean) => void;
+              focus?: (position: string | number) => void;
+            };
+            state?: {
+              doc?: {
+                descendants?: (fn: (node: any, pos: number) => boolean | void) => void;
+              };
+            };
+          };
+        }
+      ).__gooseNoteEditor;
+
+      if (!editor?.commands?.setContent || !editor.commands.focus || !editor.state?.doc?.descendants) {
+        throw new Error("编辑器未挂载");
+      }
+
+      editor.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1 },
+              content: [{ type: "text", text: "空格顶开测试" }],
+            },
+            {
+              type: "paragraph",
+            },
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "这段内容应该被往下推开，而不是被浮层挡住。" }],
+            },
+          ],
+        },
+        true,
+      );
+
+      let emptyParagraphPos: number | null = null;
+      editor.state.doc.descendants((node: any, pos: number) => {
+        if (node.type?.name === "paragraph" && node.content?.size === 0) {
+          emptyParagraphPos = pos + 1;
+          return false;
+        }
+        return true;
+      });
+
+      if (emptyParagraphPos == null) {
+        throw new Error("未找到空段落");
+      }
+
+      editor.commands.focus(emptyParagraphPos);
+    });
+
+    const followingParagraph = page.locator(".ProseMirror p").nth(1);
+    const beforeBox = await followingParagraph.boundingBox();
+    expect(beforeBox).not.toBeNull();
+
+    await page.keyboard.press("Space");
+    await expect(page.locator('[data-ai-input-popover][data-ai-input-mode="inline"]')).toBeVisible();
+
+    const afterBox = await followingParagraph.boundingBox();
+    expect(afterBox).not.toBeNull();
+    expect(afterBox!.y).toBeGreaterThan((beforeBox?.y ?? 0) + 20);
+  });
+
   test("选中无序列表后可通过 AI 指令改成有序列表", async ({ page }) => {
     await seedCustomOpenAISettings(page);
     await bootApp(page);

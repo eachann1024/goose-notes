@@ -1,10 +1,15 @@
 import { Search, Plus, Sparkles } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getPageTitle } from "@/lib/page-title";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
+import { trackEvent } from "@/lib/analytics";
+import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
+import { OPEN_AI_WORKSPACE_EVENT } from "../ai/events";
+import { cn } from "@/lib/utils";
+import { useSettings } from "@/stores/useSettings";
 
 const tips = [
   "使用 / 或 、 命令快速插入内容块",
@@ -14,6 +19,14 @@ const tips = [
 
 function getRandomTip() {
   return tips[Math.floor(Math.random() * tips.length)];
+}
+
+function openAISettings() {
+  window.dispatchEvent(
+    new CustomEvent("goose-note:open-settings", {
+      detail: { tab: "ai" },
+    }),
+  );
 }
 
 const isEmptyContent = (
@@ -57,10 +70,11 @@ export function PageEmptyState() {
     setActiveNotebook,
     createLocalFolderNotebook,
   } = useNotebooks();
+  const aiEnabled = useSettings((state) => state.ai.enabled);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
-  const onCreatePage = useCallback(() => {
+  const activateOrCreatePage = useCallback(async () => {
     // 如果没有活跃笔记本，创建一个默认笔记本
     let notebookId = activeNotebookId;
     if (!notebookId) {
@@ -78,8 +92,7 @@ export function PageEmptyState() {
     const isLocalFolder = notebook?.source === "local-folder";
 
     if (isLocalFolder) {
-      createLocalPage(undefined, notebookId || undefined);
-      return;
+      return createLocalPage(undefined, notebookId || undefined);
     }
 
     const matchWorkspaceId = notebookId || DEFAULT_NOTEBOOK;
@@ -95,11 +108,12 @@ export function PageEmptyState() {
     if (existingBlankPage) {
       setActivePage(existingBlankPage.id);
       window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
-      return;
+      return existingBlankPage.id;
     }
 
     const newPageId = createPage(undefined, matchWorkspaceId);
     setActivePage(newPageId);
+    return newPageId;
   }, [
     activeNotebookId,
     notebooks,
@@ -111,9 +125,44 @@ export function PageEmptyState() {
     createPage,
   ]);
 
+  const onCreatePage = useCallback(async () => {
+    await activateOrCreatePage();
+  }, [activateOrCreatePage]);
+
   const onSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
   }, []);
+
+  const onOpenAi = useCallback(async () => {
+    if (!aiEnabled) {
+      trackEvent("workspace_empty_state_action_clicked", {
+        feature: "ai",
+        action: "open_settings",
+        source: "empty_state",
+        result: "redirect_settings",
+      });
+      openAISettings();
+      return;
+    }
+
+    const pageId = await activateOrCreatePage();
+    if (!pageId) return;
+
+    trackEvent("workspace_empty_state_action_clicked", {
+      feature: "ai",
+      action: "open_workspace",
+      source: "empty_state",
+      result: "success",
+    });
+
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_AI_WORKSPACE_EVENT, {
+          detail: { source: "empty_state" },
+        }),
+      );
+    });
+  }, [activateOrCreatePage, aiEnabled]);
 
   const onOpenLocalFolder = useCallback(async () => {
     const utools = (
@@ -134,10 +183,7 @@ export function PageEmptyState() {
       if (result && result.length > 0) {
         const folderPath = result[0];
         const folderName = folderPath.split(/[\\/]/).pop() || "Unknown";
-        const notebookId = createLocalFolderNotebook(
-          folderName,
-          folderPath,
-        );
+        const notebookId = createLocalFolderNotebook(folderName, folderPath);
         await loadLocalFolderPages(notebookId, folderPath, {
           showWelcome: true,
         });
@@ -174,8 +220,31 @@ export function PageEmptyState() {
     };
   }, [onCreatePage]);
 
-  const actions = [
+  const actions: Array<{
+    key: string;
+    title: string;
+    description: string;
+    onClick: () => void | Promise<void>;
+    icon?: typeof Plus;
+    renderIcon?: () => ReactNode;
+    variant?: "default" | "ai";
+  }> = [
+    ...(aiEnabled
+      ? [
+          {
+            key: "ai",
+            title: "AI 助手",
+            description: "新建空白页后直接开始 AI 对话",
+            onClick: onOpenAi,
+            variant: "ai" as const,
+            renderIcon: () => (
+              <AiGradientIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 drop-shadow-[0_0_14px_rgba(99,215,255,0.28)]" />
+            ),
+          },
+        ]
+      : []),
     {
+      key: "create-page",
       icon: Plus,
       title: isLocalFolder ? "新建文件" : "新建页面",
       description: isLocalFolder
@@ -184,12 +253,14 @@ export function PageEmptyState() {
       onClick: onCreatePage,
     },
     {
+      key: "open-folder",
       icon: Sparkles,
       title: "打开本地文件夹",
       description: "批量管理 Markdown 笔记",
       onClick: onOpenLocalFolder,
     },
     {
+      key: "search",
       icon: Search,
       title: "搜索内容",
       description: "快速查找已记录的内容",
@@ -200,53 +271,69 @@ export function PageEmptyState() {
   return (
     <div className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]">
       <div className="min-h-full flex items-start justify-center pt-2 sm:pt-4 md:pt-6">
-      {/* 内容区 */}
-      <div className="relative w-full max-w-4xl">
-        {/* Logo 和标题 */}
-        <div className="text-center mb-6 sm:mb-8 md:mb-12">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-[12px] md:rounded-[14px] bg-[hsl(var(--goose-editor-bg))] mb-3 sm:mb-4 md:mb-6 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
-            <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-muted-foreground/75" />
+        {/* 内容区 */}
+        <div className="relative w-full max-w-4xl">
+          {/* Logo 和标题 */}
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-[12px] md:rounded-[14px] bg-[hsl(var(--goose-editor-bg))] mb-3 sm:mb-4 md:mb-6 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
+              <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-muted-foreground/75" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 md:mb-4">
+              准备好记录想法了吗？
+            </h1>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              {isLocalFolder
+                ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
+                : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 md:mb-4">
-            准备好记录想法了吗？
-          </h1>
-          <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            {isLocalFolder
-              ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
-              : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
-          </p>
-        </div>
 
-        {/* 操作卡片网格 */}
-        <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 max-w-4xl mx-auto">
-          {actions.map((action, index) => {
-            const Icon = action.icon;
-            return (
+          {/* 操作卡片网格 */}
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 max-w-4xl mx-auto">
+            {actions.map((action) => {
+              const Icon = action.icon;
+              return (
                 <button
-                  key={index}
+                  key={action.key}
                   onClick={() => {
-                    action.onClick();
+                    void action.onClick();
                   }}
                   type="button"
-                  className="group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:border-[hsl(var(--foreground)/0.12)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--foreground)/0.03)] dark:hover:bg-[hsl(var(--foreground)/0.1)] dark:hover:border-[hsl(var(--foreground)/0.24)] dark:hover:shadow-[0_12px_28px_rgba(2,6,23,0.45)]"
+                  className={cn(
+                    "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:border-[hsl(var(--foreground)/0.12)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--foreground)/0.03)] dark:hover:bg-[hsl(var(--foreground)/0.1)] dark:hover:border-[hsl(var(--foreground)/0.24)] dark:hover:shadow-[0_12px_28px_rgba(2,6,23,0.45)]",
+                    action.variant === "ai" &&
+                      "ai-lingcai-card border-[hsl(var(--foreground)/0.08)] bg-transparent hover:bg-transparent hover:border-[hsl(var(--foreground)/0.14)] hover:shadow-[0_16px_38px_rgba(99,215,255,0.18)] dark:bg-transparent dark:hover:bg-transparent dark:hover:border-[hsl(var(--foreground)/0.18)] dark:hover:shadow-[0_16px_42px_rgba(0,0,0,0.28)]",
+                  )}
                 >
-                <div
-                  className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-all dark:bg-[hsl(var(--foreground)/0.06)] dark:group-hover:bg-[hsl(var(--foreground)/0.16)]"
-                >
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75" />
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 text-left transition-colors dark:text-foreground/90 dark:group-hover:text-foreground">
-                  {action.title}
-                </h3>
-                <p className="hidden min-[420px]:block text-xs sm:text-sm text-muted-foreground text-left leading-relaxed transition-colors dark:text-muted-foreground/80 dark:group-hover:text-muted-foreground/95">
-                  {action.description}
-                </p>
-              </button>
-            );
-          })}
+                  <div
+                    className={cn(
+                      "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-all dark:bg-[hsl(var(--foreground)/0.06)] dark:group-hover:bg-[hsl(var(--foreground)/0.16)]",
+                      action.variant === "ai" &&
+                        "ai-lingcai-icon bg-white/80 dark:bg-white/8 dark:group-hover:bg-white/10",
+                    )}
+                  >
+                    {action.renderIcon ? (
+                      action.renderIcon()
+                    ) : Icon ? (
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75" />
+                    ) : null}
+                  </div>
+                  <h3
+                    className={cn(
+                      "text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 text-left transition-colors dark:text-foreground/90 dark:group-hover:text-foreground",
+                      action.variant === "ai" && "ai-lingcai-text",
+                    )}
+                  >
+                    {action.title}
+                  </h3>
+                  <p className="hidden min-[420px]:block text-xs sm:text-sm text-muted-foreground text-left leading-relaxed transition-colors dark:text-muted-foreground/80 dark:group-hover:text-muted-foreground/95">
+                    {action.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-
-      </div>
       </div>
     </div>
   );

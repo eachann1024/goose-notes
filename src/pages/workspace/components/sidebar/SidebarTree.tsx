@@ -43,6 +43,7 @@ import {
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
+  selectedPageId?: string | null;
   width: number;
   rowHeight: number;
   itemHeight: number;
@@ -483,6 +484,7 @@ function SortablePageRow({
 
 export function SidebarTree({
   activeNotebookId,
+  selectedPageId,
   width,
   rowHeight,
   itemHeight,
@@ -509,6 +511,7 @@ export function SidebarTree({
     expandPageId,
     setExpandPageId,
   } = usePages();
+  const highlightedPageId = selectedPageId ?? activePageId;
 
   const notebook = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]
@@ -1247,12 +1250,30 @@ export function SidebarTree({
 
   if (flatItems.length === 0) {
     if (!showEmptyState) return null;
+    const EmptyIcon = isLocalNotebook ? LucideIcons.FolderOpen : LucideIcons.Files;
+    const isCompactEmptyState = width <= 172;
     return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground/65 px-4 py-8 text-center bg-gradient-to-br from-muted/40 to-muted/20 rounded mx-2 border border-dashed">
-        <div className="mb-2">👻</div>
-        <p>{isLocalNotebook ? "暂无文件可选" : "暂无页面可选"}</p>
-        <Button variant="link" onClick={onCreatePage} className="h-auto p-0 mt-1">
-          {isLocalNotebook ? "新建文件" : "新建页面"}
+      <div className={cn("py-10 text-center", isCompactEmptyState ? "px-2" : "px-4")}>
+        <div className="flex flex-col items-center gap-2.5">
+          <EmptyIcon className="h-7 w-7 text-foreground/45 stroke-[1.75]" />
+          <p
+            className={cn(
+              "font-medium tracking-[0.01em] text-foreground/70",
+              isCompactEmptyState ? "text-[14px]" : "text-[15px]",
+            )}
+          >
+            {isLocalNotebook ? "暂无文件可选" : "暂无页面可选"}
+          </p>
+        </div>
+        <Button
+          variant="link"
+          onClick={onCreatePage}
+          className={cn(
+            "mt-1 h-auto p-0 font-medium text-muted-foreground hover:text-foreground whitespace-normal break-words leading-snug",
+            isCompactEmptyState ? "max-w-[9.5rem] text-[13px]" : "max-w-[11rem] text-[15px]",
+          )}
+        >
+          {isLocalNotebook ? "新建文件" : "点击侧栏右上角加号创建"}
         </Button>
       </div>
     );
@@ -1378,7 +1399,7 @@ export function SidebarTree({
                     depth={item.depth}
                     itemHeight={itemHeight}
                     isLocalNotebook={isLocalNotebook}
-                    isActive={activePageId === item.id}
+                    isActive={highlightedPageId === item.id}
                     isNestDropTarget={isNestDropTarget}
                     nestGuideState={nestGuideState}
                     showDropLine={showDropLine}

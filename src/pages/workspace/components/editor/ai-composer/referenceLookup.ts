@@ -19,12 +19,25 @@ export interface AiFileReferenceAttrs {
 export interface AiReferenceSuggestionItem extends AiFileReferenceAttrs {
   title: string;
   description: string;
+  isFolder?: boolean;
 }
+
+export type AiComposerToken =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "reference";
+      reference: AiFileReferenceAttrs;
+      role?: "context" | "target";
+    };
 
 export interface AiComposerPayload {
   promptText: string;
   freeformText: string;
   references: AiFileReferenceAttrs[];
+  tokens: AiComposerToken[];
 }
 
 export interface ResolvedAiReferenceContext {
@@ -69,6 +82,10 @@ function getLocationSnapshot(page: Page) {
 function buildDescription(page: Page) {
   const notebook = getNotebookSnapshot(page.workspaceId);
   const notebookName = notebook?.name ?? "未知笔记本";
+
+  if (page.isFolder) {
+    return `文件夹 · ${notebookName} · ${getLocationSnapshot(page)}`;
+  }
 
   if (!page.localFilePath) {
     return `应用页面 · ${notebookName}`;
@@ -126,14 +143,20 @@ export function buildAiFileReferenceAttrs(page: Page): AiFileReferenceAttrs {
   };
 }
 
-export function getAiReferenceSuggestionItems(query: string) {
+export function getAiReferenceSuggestionItems(
+  query: string,
+  options?: {
+    includeFolders?: boolean;
+  },
+) {
   const normalizedQuery = normalizeSearchValue(query);
 
   const { pages } = usePages.getState();
   const { activeNotebookId } = useNotebooks.getState();
 
   return Object.values(pages)
-    .filter((page) => !page.trashedAt && !page.isFolder)
+    .filter((page) => !page.trashedAt)
+    .filter((page) => options?.includeFolders || !page.isFolder)
     .filter((page) => {
       if (!normalizedQuery) return true;
       return getSearchHaystack(page).includes(normalizedQuery);
@@ -146,6 +169,7 @@ export function getAiReferenceSuggestionItems(query: string) {
         ...attrs,
         title: attrs.titleSnapshot,
         description: buildDescription(page),
+        isFolder: page.isFolder,
       } satisfies AiReferenceSuggestionItem;
     });
 }
@@ -153,6 +177,7 @@ export function getAiReferenceSuggestionItems(query: string) {
 function collectInlineContent(
   content: JSONContent[] | undefined,
   references: AiFileReferenceAttrs[],
+  tokens: AiComposerToken[],
 ) {
   let promptText = "";
   let freeformText = "";
@@ -162,12 +187,20 @@ function collectInlineContent(
       const text = node.text ?? "";
       promptText += text;
       freeformText += text;
+      tokens.push({
+        type: "text",
+        text,
+      });
       return;
     }
 
     if (node.type === "hardBreak") {
       promptText += "\n";
       freeformText += "\n";
+      tokens.push({
+        type: "text",
+        text: "\n",
+      });
       return;
     }
 
@@ -194,6 +227,10 @@ function collectInlineContent(
 
       references.push(attrs);
       promptText += `@${attrs.titleSnapshot}`;
+      tokens.push({
+        type: "reference",
+        reference: attrs,
+      });
     }
   });
 
@@ -206,27 +243,34 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
       promptText: "",
       freeformText: "",
       references: [],
+      tokens: [],
     };
   }
 
   const references: AiFileReferenceAttrs[] = [];
   const promptBlocks: string[] = [];
   const freeformBlocks: string[] = [];
+  const tokens: AiComposerToken[] = [];
 
   content.content.forEach((block) => {
     if (block.type !== "paragraph") {
       return;
     }
 
-    const inline = collectInlineContent(block.content, references);
+    const inline = collectInlineContent(block.content, references, tokens);
     promptBlocks.push(inline.promptText);
     freeformBlocks.push(inline.freeformText);
+    tokens.push({
+      type: "text",
+      text: "\n",
+    });
   });
 
   return {
     promptText: promptBlocks.join("\n").trim(),
     freeformText: freeformBlocks.join("\n").trim(),
     references,
+    tokens,
   };
 }
 

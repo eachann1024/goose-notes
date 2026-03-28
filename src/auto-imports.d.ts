@@ -74,6 +74,7 @@ declare global {
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN
+  const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
   const FileText: typeof import('lucide-react').FileText
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
@@ -140,6 +141,9 @@ declare global {
   const X: typeof import('lucide-react').X
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
+  const buildAiContextBundle: typeof import('./lib/ai-write').buildAiContextBundle
+  const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write').buildAiWorkspaceUserPrompt
+  const buildAiWritePlan: typeof import('./lib/ai-write').buildAiWritePlan
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
@@ -147,9 +151,11 @@ declare global {
   const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
+  const commitAiWritePlan: typeof import('./lib/ai-write').commitAiWritePlan
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const countWords: typeof import('./lib/content-text-extractor').countWords
+  const createAiChatOnlyTarget: typeof import('./lib/ai-write').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
@@ -220,8 +226,12 @@ declare global {
   const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
   const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
+  const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const resetAnalytics: typeof import('./lib/analytics').resetAnalytics
+  const resolveAiTargetIntent: typeof import('./lib/ai-write').resolveAiTargetIntent
+  const resolveAiTargetReference: typeof import('./lib/ai-write').resolveAiTargetReference
+  const resolveAiTargetSelection: typeof import('./lib/ai-write').resolveAiTargetSelection
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
   const runAIText: typeof import('./lib/ai-provider').runAIText
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
@@ -260,6 +270,7 @@ declare global {
   const useOnboardingGuide: typeof import('./stores/useOnboardingGuide').useOnboardingGuide
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/usePages').usePages
+  const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
   const useScrollHide: typeof import('./hooks/useScrollHide').useScrollHide
@@ -270,6 +281,7 @@ declare global {
   const useTransition: typeof import('react').useTransition
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
   const writeDbStorageJSON: typeof import('./lib/storage').writeDbStorageJSON
+  const writePersistentDismissState: typeof import('./lib/dismiss-state').writePersistentDismissState
 }
 // for type re-export
 declare global {
@@ -288,6 +300,9 @@ declare global {
   // @ts-ignore
   export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides } from './lib/ai-provider'
   import('./lib/ai-provider')
+  // @ts-ignore
+  export type { AiWriteAction, AiTargetMode, AiTargetSelection, AiTargetRef, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write'
+  import('./lib/ai-write')
   // @ts-ignore
   export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'
   import('./lib/analytics')

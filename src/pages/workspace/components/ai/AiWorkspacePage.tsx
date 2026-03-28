@@ -1,21 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
-import MarkdownIt from "markdown-it";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import {
-  runAITextStream,
-  type AIMessage,
+  buildAgentPlan,
+  commitAgentArtifact,
+  executeAgentPlan,
+} from "@/agent/core/runtime";
+import type {
+  AgentArtifact,
+  AgentPlan,
+  MarkdownNoteArtifact,
+} from "@/agent/core/types";
+import { AgentArtifactView } from "@/agent/renderers/AgentArtifactView";
+import {
   type AIReasoningLevel,
   type AIStreamPhase,
 } from "@/lib/ai-provider";
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
-import { extractTextFromContent } from "@/lib/content-text-extractor";
-import { getPageTitle } from "@/lib/page-title";
+import { type AiWritePlan } from "@/lib/ai-write";
 import { cn } from "@/lib/utils";
-import type { Page } from "@/types";
 import { useSettings } from "@/stores/useSettings";
 import { useAiSessions, type AiSession } from "@/stores/useAiSessions";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { usePages } from "@/stores/usePages";
+import { useTabs } from "@/stores/useTabs";
 import {
   Popover,
   PopoverContent,
@@ -25,24 +34,14 @@ import {
   type AiComposerInputHandle,
 } from "../editor/ai-composer/AiComposerInput";
 import {
-  formatAiReferenceContextBlock,
   getAiReferenceStats,
-  resolveAiReferenceContexts,
+  serializeAiComposerDoc,
   type AiFileReferenceAttrs,
 } from "../editor/ai-composer/referenceLookup";
 import { AiWorkspaceComposerBar } from "./AiWorkspaceComposerBar";
 
-// markdown-it 实例：启用表格、linkify，禁止原始 HTML（安全）
-const md = new MarkdownIt({ html: false, linkify: true, typographer: false }).enable("table");
-
-const AI_WORKSPACE_SYSTEM_PROMPT =
-  "你是 Goose Note 内置 AI 助手。优先结合当前页面和用户 @ 引用的文件内容回答。回答直接给结果，简洁清楚，不要自我介绍。";
 const AI_WORKSPACE_DEFAULT_DIAGRAM_URL =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/AI%20default%20diagram.png";
-
-interface AiWorkspacePageProps {
-  page: Page | undefined;
-}
 
 interface AiConversationMessage {
   id: string;
@@ -51,6 +50,9 @@ interface AiConversationMessage {
   references?: AiFileReferenceAttrs[];
   streaming?: boolean;
   error?: boolean;
+  agentPlan?: AgentPlan | null;
+  artifact?: AgentArtifact | null;
+  writePlan?: AiWritePlan | null;
 }
 
 const STREAM_PHASE_LABEL: Record<AIStreamPhase, string> = {
@@ -59,37 +61,6 @@ const STREAM_PHASE_LABEL: Record<AIStreamPhase, string> = {
   generating: "正在生成回答",
   finishing: "正在整理结果",
 };
-
-function buildCurrentPageContext(page: Page | undefined) {
-  if (!page) return "";
-
-  const title = getPageTitle(page);
-  const content = extractTextFromContent(page.content).trim();
-
-  return [
-    "[当前页面]",
-    `标题：${title}`,
-    "内容：",
-    content || "（空白内容）",
-  ].join("\n");
-}
-
-function buildUserPrompt(params: {
-  promptText: string;
-  pageContext: string;
-  referenceContext: string;
-}) {
-  return [
-    "用户问题：",
-    params.promptText,
-    params.pageContext ? `\n${params.pageContext}` : "",
-    params.referenceContext
-      ? `\n补充上下文（以下是用户通过 @ 引用的文件内容）：\n${params.referenceContext}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 /** 生成新会话 ID */
 function genSessionId() {
@@ -116,6 +87,103 @@ function formatSessionTime(ts: number) {
   if (hours < 24) return `${hours} 小时前`;
   if (days < 7) return `${days} 天前`;
   return new Date(ts).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+}
+
+function normalizeMessagesForPersistence(
+  messages: AiConversationMessage[],
+  streamPhase: AIStreamPhase,
+) {
+  return messages.map(({
+    id,
+    role,
+    text,
+    references,
+    error,
+    streaming,
+    agentPlan,
+    artifact,
+    writePlan,
+  }) => ({
+    id,
+    role,
+    text: text || (streaming ? STREAM_PHASE_LABEL[streamPhase] : ""),
+    references,
+    error,
+    agentPlan,
+    artifact,
+    writePlan:
+      artifact?.type === "markdown_note"
+        ? artifact.plan
+        : writePlan,
+  }));
+}
+
+function legacyWritePlanToAgentPlan(writePlan: AiWritePlan | null | undefined): AgentPlan | null {
+  if (!writePlan) return null;
+  const capabilityId =
+    writePlan.action === "append_page"
+      ? "note.append"
+      : writePlan.action === "replace_page"
+        ? "note.replace"
+        : "note.create";
+  return {
+    id: `legacy-plan-${writePlan.action}-${writePlan.previewTitle}`,
+    capabilityId,
+    artifactType: "markdown_note",
+    executionStrategy: "single",
+    surface: "workspace",
+    promptText: writePlan.promptText,
+    systemPrompt: "",
+    userPrompt: "",
+    intentReason: "legacy_write_plan",
+    targetType: writePlan.target.mode,
+    resolvedTarget: writePlan.target,
+    createdAt: Date.now(),
+  };
+}
+
+function legacyWritePlanToArtifact(writePlan: AiWritePlan | null | undefined): AgentArtifact | null {
+  if (!writePlan) return null;
+  return {
+    type: "markdown_note",
+    plan: writePlan,
+  } as MarkdownNoteArtifact;
+}
+
+function normalizeConversationMessage<T extends AiConversationMessage>(message: T): T {
+  const artifact = message.artifact ?? legacyWritePlanToArtifact(message.writePlan);
+  const agentPlan = message.agentPlan ?? legacyWritePlanToAgentPlan(message.writePlan);
+  return {
+    ...message,
+    text:
+      artifact?.type === "text_response"
+        ? artifact.text
+        : message.text,
+    agentPlan,
+    artifact,
+    writePlan:
+      artifact?.type === "markdown_note"
+        ? artifact.plan
+        : message.writePlan,
+  };
+}
+
+function getLastAgentPlan(messages: AiConversationMessage[]) {
+  return (
+    messages
+      .map((message) => message.agentPlan)
+      .filter(Boolean)
+      .at(-1) ?? null
+  );
+}
+
+function getLastArtifact(messages: AiConversationMessage[]) {
+  return (
+    messages
+      .map((message) => message.artifact)
+      .filter(Boolean)
+      .at(-1) ?? null
+  );
 }
 
 // ── 历史会话下拉面板
@@ -185,34 +253,180 @@ function SessionHistoryPanel({
   );
 }
 
-export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
+export function AiWorkspacePage() {
   const composerRef = useRef<AiComposerInputHandle | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const activeRequestIdRef = useRef(0);
   const streamAbortRef = useRef<AbortController | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
+  const latestMessagesRef = useRef<AiConversationMessage[]>([]);
+  const latestStreamPhaseRef = useRef<AIStreamPhase>("connecting");
+  const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
 
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [messages, setMessages] = useState<AiConversationMessage[]>([]);
   const [streamPhase, setStreamPhase] = useState<AIStreamPhase>("connecting");
   const [isStreaming, setIsStreaming] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const { activePageId } = usePages();
+  const { activeNotebookId } = useNotebooks();
+  const { openTab } = useTabs();
 
-  const { sessions, activeSessionId, saveSession, setActiveSession, deleteSession } =
-    useAiSessions();
+  const {
+    sessions,
+    activeSessionId,
+    activeMessages,
+    draftContent,
+    activeOriginPageId,
+    activeOriginNotebookId,
+    activeLastWritePlan,
+    activeLastAgentPlan,
+    activeLastArtifact,
+    saveSession,
+    setActiveSession,
+    setActiveMessages,
+    setDraftContent,
+    setActiveOrigin,
+    setActiveResolvedTarget,
+    setActiveLastWritePlan,
+    setActiveLastAgentPlan,
+    setActiveLastArtifact,
+    resetActiveState,
+    deleteSession,
+  } = useAiSessions();
+  const originPageId = activeOriginPageId ?? activePageId;
+  const originNotebookId = activeOriginNotebookId ?? activeNotebookId;
+  const draftPayload = useMemo(
+    () => serializeAiComposerDoc(draftContent),
+    [draftContent],
+  );
 
-  const currentPageContext = useMemo(() => buildCurrentPageContext(page), [page]);
+  const syncActiveMessages = useCallback(
+    (nextMessages: AiConversationMessage[], phase: AIStreamPhase = streamPhase) => {
+      latestMessagesRef.current = nextMessages;
+      latestStreamPhaseRef.current = phase;
+      setActiveMessages(normalizeMessagesForPersistence(nextMessages, phase));
+    },
+    [setActiveMessages, streamPhase],
+  );
 
-  // ── 切换页面时重置会话
+  const persistSessionSnapshot = useCallback(
+    (
+      nextMessages: AiConversationMessage[],
+      options?: {
+        plan?: AgentPlan | null;
+        artifact?: AgentArtifact | null;
+      },
+    ) => {
+      const snapshot = normalizeMessagesForPersistence(
+        nextMessages,
+        latestStreamPhaseRef.current,
+      );
+      const sessionId = currentSessionIdRef.current;
+      if (!sessionId || snapshot.length === 0) return;
+
+      saveSession({
+        id: sessionId,
+        title: extractSessionTitle(nextMessages),
+        pageId: undefined,
+        originPageId,
+        originNotebookId,
+        resolvedTarget:
+          options?.plan?.resolvedTarget ??
+          (options?.artifact?.type === "markdown_note"
+            ? options.artifact.plan.target
+            : null),
+        lastWritePlan:
+          options?.artifact?.type === "markdown_note"
+            ? options.artifact.plan
+            : activeLastWritePlan,
+        lastAgentPlan: options?.plan ?? activeLastAgentPlan,
+        lastArtifact: options?.artifact ?? activeLastArtifact,
+        messages: snapshot,
+      });
+    },
+    [
+      activeLastAgentPlan,
+      activeLastArtifact,
+      activeLastWritePlan,
+      originNotebookId,
+      originPageId,
+      saveSession,
+    ],
+  );
+
   useEffect(() => {
-    setMessages([]);
-    setIsStreaming(false);
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
-    currentSessionIdRef.current = null;
-    setActiveSession(null);
-    setComposerFocusToken((v) => v + 1);
-  }, [page?.id, setActiveSession]);
+    latestMessagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    latestStreamPhaseRef.current = streamPhase;
+  }, [streamPhase]);
+
+  useEffect(() => {
+    const restoredMessages =
+      activeMessages.length > 0
+        ? activeMessages.map((message) =>
+            normalizeConversationMessage({
+              ...message,
+              streaming: false,
+            } as AiConversationMessage),
+          )
+        : activeSessionId
+          ? sessions
+              .find((session) => session.id === activeSessionId)
+              ?.messages.map((message) =>
+                normalizeConversationMessage({
+                  ...message,
+                  streaming: false,
+                } as AiConversationMessage),
+              ) ?? []
+          : [];
+
+    currentSessionIdRef.current = activeSessionId;
+    setMessages(restoredMessages);
+    latestMessagesRef.current = restoredMessages;
+    if (activeSessionId) {
+      const session = sessions.find((item) => item.id === activeSessionId);
+      setActiveOrigin({
+        pageId: session?.originPageId ?? null,
+        notebookId: session?.originNotebookId ?? null,
+      });
+      setActiveResolvedTarget(session?.resolvedTarget ?? null);
+      setActiveLastWritePlan(
+        session?.lastWritePlan ??
+          (session?.lastArtifact?.type === "markdown_note"
+            ? session.lastArtifact.plan
+            : null),
+      );
+      setActiveLastAgentPlan(
+        session?.lastAgentPlan ??
+          legacyWritePlanToAgentPlan(session?.lastWritePlan ?? null),
+      );
+      setActiveLastArtifact(
+        session?.lastArtifact ??
+          legacyWritePlanToArtifact(session?.lastWritePlan ?? null),
+      );
+    }
+  }, [
+    activeMessages,
+    activeSessionId,
+    sessions,
+    setActiveLastAgentPlan,
+    setActiveLastArtifact,
+    setActiveLastWritePlan,
+    setActiveOrigin,
+    setActiveResolvedTarget,
+  ]);
+
+  useEffect(() => {
+    if (!activeOriginPageId && activePageId) {
+      setActiveOrigin({
+        pageId: activePageId,
+        notebookId: activeNotebookId,
+      });
+    }
+  }, [activeNotebookId, activeOriginPageId, activePageId, setActiveOrigin]);
 
   // ── 自动滚动到底部
   useEffect(() => {
@@ -222,41 +436,102 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
   // ── 卸载时终止流
   useEffect(() => {
     return () => {
+      const snapshot = normalizeMessagesForPersistence(
+        latestMessagesRef.current,
+        latestStreamPhaseRef.current,
+      );
+
       streamAbortRef.current?.abort();
       streamAbortRef.current = null;
+
+      setActiveMessages(snapshot);
+
+      persistSessionSnapshot(latestMessagesRef.current, {
+        plan: activeLastAgentPlan,
+        artifact: activeLastArtifact,
+      });
     };
+  }, [
+    activeLastAgentPlan,
+    activeLastArtifact,
+    activeLastWritePlan,
+    persistSessionSnapshot,
+    setActiveMessages,
+  ]);
+
+  const cancelActiveRequest = useCallback(() => {
+    activeRequestIdRef.current += 1;
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setIsStreaming(false);
+    setStreamPhase("connecting");
   }, []);
 
   // ── 加载历史会话
   const handleSelectSession = useCallback(
     (session: AiSession) => {
-      streamAbortRef.current?.abort();
-      streamAbortRef.current = null;
-      setIsStreaming(false);
+      cancelActiveRequest();
       currentSessionIdRef.current = session.id;
       setActiveSession(session.id);
-      setMessages(
-        session.messages.map((m) => ({
+      setActiveOrigin({
+        pageId: session.originPageId ?? null,
+        notebookId: session.originNotebookId ?? null,
+      });
+      setActiveResolvedTarget(session.resolvedTarget ?? null);
+      setActiveLastWritePlan(
+        session.lastWritePlan ??
+          (session.lastArtifact?.type === "markdown_note"
+            ? session.lastArtifact.plan
+            : null),
+      );
+      setActiveLastAgentPlan(
+        session.lastAgentPlan ??
+          legacyWritePlanToAgentPlan(session.lastWritePlan ?? null),
+      );
+      setActiveLastArtifact(
+        session.lastArtifact ??
+          legacyWritePlanToArtifact(session.lastWritePlan ?? null),
+      );
+      const restoredMessages = session.messages.map((m) =>
+        normalizeConversationMessage({
           ...m,
           streaming: false,
-        })),
+        } as AiConversationMessage),
       );
+      setMessages(restoredMessages);
+      syncActiveMessages(restoredMessages, "connecting");
       setComposerFocusToken((v) => v + 1);
     },
-    [setActiveSession],
+    [
+      cancelActiveRequest,
+      setActiveLastAgentPlan,
+      setActiveLastArtifact,
+      setActiveLastWritePlan,
+      setActiveSession,
+      syncActiveMessages,
+    ],
   );
 
   // ── 新建会话
   const handleNewSession = useCallback(() => {
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
-    setIsStreaming(false);
+    cancelActiveRequest();
     currentSessionIdRef.current = null;
-    setActiveSession(null);
+    latestMessagesRef.current = [];
+    latestStreamPhaseRef.current = "connecting";
+    composerRef.current?.clear();
     setMessages([]);
+    resetActiveState({
+      pageId: activePageId ?? null,
+      notebookId: activeNotebookId ?? null,
+    });
     setComposerFocusToken((v) => v + 1);
     setHistoryOpen(false);
-  }, [setActiveSession]);
+  }, [
+    activeNotebookId,
+    activePageId,
+    cancelActiveRequest,
+    resetActiveState,
+  ]);
 
   const handleReferenceAdded = (reference: AiFileReferenceAttrs) => {
     trackEvent("ai_reference_added", {
@@ -279,9 +554,29 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
       promptText: "",
       freeformText: "",
       references: [],
+      tokens: [],
     };
     const promptText = payload.promptText.trim();
     if (!promptText) return;
+    const agentContext = {
+      surface: "workspace" as const,
+      payload,
+      originPageId,
+      originNotebookId,
+    };
+    const planning = buildAgentPlan(agentContext);
+    const submitPlan = planning.plan ?? null;
+    const submitArtifact = planning.artifact ?? null;
+    const submitTarget = submitPlan?.resolvedTarget ?? null;
+    const capabilityId = planning.intent.capabilityId;
+    const artifactType = planning.intent.artifactType;
+
+    trackEvent("agent_capability_matched", {
+      feature: "agent_runtime",
+      capability_id: capabilityId,
+      artifact_type: artifactType,
+      target_type: planning.intent.targetType,
+    });
 
     const aiSettings = useSettings.getState().ai;
     const providerType = aiSettings.useCustomProvider
@@ -300,28 +595,53 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
 
     const userMessageId = `user-${requestId}`;
     const assistantMessageId = `assistant-${requestId}`;
-    const referenceContexts = resolveAiReferenceContexts(payload.references);
-    const referenceContextBlock = formatAiReferenceContextBlock(referenceContexts);
     const referenceStats = getAiReferenceStats(payload.references);
+    setActiveResolvedTarget(submitTarget);
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: userMessageId,
-        role: "user",
-        text: promptText,
-        references: payload.references,
-      },
-      {
-        id: assistantMessageId,
-        role: "assistant",
-        text: "",
-        streaming: true,
-      },
-    ]);
-    setIsStreaming(true);
+    setMessages((current) => {
+      const nextMessages = [
+        ...current,
+        {
+          id: userMessageId,
+          role: "user" as const,
+          text: promptText,
+          references: payload.references,
+        },
+        {
+          id: assistantMessageId,
+          role: "assistant" as const,
+          text:
+            submitArtifact?.type === "text_response"
+              ? submitArtifact.text
+              : "",
+          streaming: Boolean(submitPlan),
+          error: submitArtifact?.type === "text_response" && submitArtifact.error,
+          agentPlan: submitPlan,
+          artifact: submitArtifact,
+          writePlan:
+            submitArtifact?.type === "markdown_note"
+              ? submitArtifact.plan
+              : null,
+        },
+      ];
+      syncActiveMessages(nextMessages, "connecting");
+      if (submitArtifact) {
+        const latestWritePlan =
+          submitArtifact.type === "markdown_note" ? submitArtifact.plan : null;
+        setActiveLastWritePlan(latestWritePlan);
+        setActiveLastAgentPlan(submitPlan);
+        setActiveLastArtifact(submitArtifact);
+        persistSessionSnapshot(nextMessages, {
+          plan: submitPlan,
+          artifact: submitArtifact,
+        });
+      }
+      return nextMessages;
+    });
+    setIsStreaming(Boolean(submitPlan));
     setStreamPhase("connecting");
     composerRef.current?.clear();
+    setDraftContent(null);
     setComposerFocusToken((v) => v + 1);
 
     trackEvent("ai_request_submitted", {
@@ -329,9 +649,14 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
       action: "submit",
       result: "submitted",
       source: "ai_page",
-      usage_type: "chat",
-      usage_bucket: "workspace_chat",
-      content_scope: page ? "page_context" : "workspace_only",
+      usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
+      usage_bucket:
+        artifactType === "markdown_note"
+          ? "workspace_write"
+          : "workspace_chat",
+      content_scope:
+        submitTarget?.mode ??
+        planning.intent.targetType,
       has_selection: false,
       has_custom_query: true,
       query_length: payload.freeformText.trim().length,
@@ -340,6 +665,12 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
       local_reference_count: referenceStats.localReferenceCount,
       provider_type: providerType,
       model_id: modelId,
+      write_action: submitTarget?.action ?? "chat_only",
+      target_type:
+        submitTarget?.mode ??
+        planning.intent.targetType,
+      capability_id: capabilityId,
+      artifact_type: artifactType,
     });
 
     if (referenceStats.referenceCount > 0) {
@@ -354,86 +685,105 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
       });
     }
 
+    if (!submitPlan) {
+      if (submitArtifact) {
+        trackEvent("agent_artifact_rendered", {
+          feature: "agent_runtime",
+          capability_id: capabilityId,
+          artifact_type: submitArtifact.type,
+          target_type: planning.intent.targetType,
+        });
+      }
+      return;
+    }
+
+    trackEvent("agent_plan_built", {
+      feature: "agent_runtime",
+      capability_id: capabilityId,
+      artifact_type: submitPlan.artifactType,
+      target_type: submitPlan.targetType,
+    });
+
     try {
       const historyMessages = messages
         .filter((message) => !message.streaming)
         .map((message) => ({
           role: message.role,
-          content: message.text,
-        })) satisfies AIMessage[];
+          content:
+            message.artifact?.type === "markdown_note"
+              ? message.artifact.plan.outputMarkdown
+              : message.artifact?.type === "text_response"
+                ? message.artifact.text
+                : message.text,
+        }));
 
-      const assistantText = await runAITextStream(
-        useSettings.getState().ai,
-        [
-          { role: "system", content: AI_WORKSPACE_SYSTEM_PROMPT },
-          ...historyMessages,
-          {
-            role: "user",
-            content: buildUserPrompt({
-              promptText,
-              pageContext: currentPageContext,
-              referenceContext: referenceContextBlock,
-            }),
-          },
-        ],
-        {
-          abortSignal: controller.signal,
-          requestOverrides,
-          onUpdate: (update) => {
-            if (activeRequestIdRef.current !== requestId) return;
-            setStreamPhase(update.phase);
-            setMessages((current) =>
-              current.map((message) =>
-                message.id === assistantMessageId
-                  ? {
-                      ...message,
-                      text: update.text || update.reasoningText,
-                    }
-                  : message,
-              ),
+      const result = await executeAgentPlan({
+        settings: useSettings.getState().ai,
+        plan: submitPlan,
+        context: agentContext,
+        parsed: planning.parsed,
+        requestOverrides,
+        abortSignal: controller.signal,
+        historyMessages,
+        onUpdate: (update) => {
+          if (activeRequestIdRef.current !== requestId) return;
+          setStreamPhase(update.phase);
+          setMessages((current) => {
+            const nextMessages = current.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    text: update.text || update.reasoningText,
+                  }
+                : message,
             );
-          },
+            syncActiveMessages(nextMessages, update.phase);
+            return nextMessages;
+          });
         },
-      );
+      });
 
       if (activeRequestIdRef.current !== requestId) return;
 
-      const finalText = assistantText?.trim();
-      if (!finalText) {
-        throw new Error("AI 没有返回可用内容");
-      }
+      const finalText =
+        result.artifact.type === "text_response"
+          ? result.artifact.text
+          : result.rawText;
 
       setMessages((current) => {
         const finalMessages = current.map((message) =>
           message.id === assistantMessageId
-            ? {
+            ? normalizeConversationMessage({
                 ...message,
-                text: finalText,
+                text:
+                  result.artifact.type === "text_response"
+                    ? result.artifact.text
+                    : "已生成写入预览，确认后会落到目标页面。",
                 streaming: false,
-              }
+                error:
+                  result.artifact.type === "text_response" &&
+                  Boolean(result.artifact.error),
+                agentPlan: result.plan,
+                artifact: result.artifact,
+                writePlan:
+                  result.artifact.type === "markdown_note"
+                    ? result.artifact.plan
+                    : null,
+              })
             : message,
         );
-
-        // ── 持久化：完成后保存会话
-        const sessionId = currentSessionIdRef.current;
-        if (sessionId) {
-          const persistMessages = finalMessages
-            .filter((m) => !m.streaming)
-            .map(({ id, role, text, references, error }) => ({
-              id,
-              role,
-              text,
-              references,
-              error,
-            }));
-
-          saveSession({
-            id: sessionId,
-            title: extractSessionTitle(finalMessages),
-            pageId: page?.id,
-            messages: persistMessages,
-          });
-        }
+        syncActiveMessages(finalMessages, "finishing");
+        setActiveLastWritePlan(
+          result.artifact.type === "markdown_note"
+            ? result.artifact.plan
+            : null,
+        );
+        setActiveLastAgentPlan(result.plan);
+        setActiveLastArtifact(result.artifact);
+        persistSessionSnapshot(finalMessages, {
+          plan: result.plan,
+          artifact: result.artifact,
+        });
 
         return finalMessages;
       });
@@ -443,29 +793,60 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
         action: "success",
         result: "success",
         source: "ai_page",
-        usage_type: "chat",
+        usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
         has_selection: false,
         provider_type: providerType,
         model_id: modelId,
         output_length: finalText.length,
       });
+
+      trackEvent("agent_artifact_rendered", {
+        feature: "agent_runtime",
+        capability_id: result.plan.capabilityId,
+        artifact_type: result.artifact.type,
+        target_type: result.plan.targetType,
+      });
+
+      if (result.artifact.type === "markdown_note") {
+        trackEvent("ai_write_previewed", {
+          feature: "ai_write",
+          action: "preview",
+          write_action: result.artifact.plan.action,
+          target_type: result.artifact.plan.target.mode,
+          is_local_folder: Boolean(result.artifact.plan.target.isLocalFolder),
+          cross_notebook: Boolean(
+            result.artifact.plan.target.workspaceId &&
+              activeNotebookId &&
+              result.artifact.plan.target.workspaceId !== activeNotebookId,
+          ),
+        });
+      }
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || activeRequestIdRef.current !== requestId) return;
 
       const errorMessage =
         error instanceof Error ? error.message : "AI 处理失败，请稍后再试";
 
       setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantMessageId
-            ? {
-                ...message,
-                text: errorMessage,
-                streaming: false,
-                error: true,
-              }
-            : message,
-        ),
+        {
+          const nextMessages = current.map((message) =>
+            message.id === assistantMessageId
+              ? {
+                  ...message,
+                  text: errorMessage,
+                  streaming: false,
+                  error: true,
+                  artifact: {
+                    type: "text_response",
+                    text: errorMessage,
+                    error: true,
+                  } as AgentArtifact,
+                }
+              : message,
+          );
+          syncActiveMessages(nextMessages, latestStreamPhaseRef.current);
+          return nextMessages;
+        },
       );
 
       trackEvent("ai_request_failed", {
@@ -473,11 +854,12 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
         action: "fail",
         result: "failed",
         source: "ai_page",
-        usage_type: "chat",
+        usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
         error_type: getAIErrorType(error),
         has_selection: false,
         provider_type: providerType,
         model_id: modelId,
+        capability_id: capabilityId,
       });
       toast.error(errorMessage);
     } finally {
@@ -487,6 +869,157 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
       }
     }
   };
+
+  const updateMessageArtifact = useCallback(
+    (
+      messageId: string,
+      updater: (artifact: MarkdownNoteArtifact) => MarkdownNoteArtifact,
+    ) => {
+      setMessages((current) => {
+        const nextMessages = current.map((message) => {
+          if (message.id !== messageId || message.artifact?.type !== "markdown_note") {
+            return message;
+          }
+
+          const nextArtifact = updater(message.artifact);
+          return normalizeConversationMessage({
+            ...message,
+            artifact: nextArtifact,
+            writePlan: nextArtifact.plan,
+          });
+        });
+        syncActiveMessages(nextMessages, latestStreamPhaseRef.current);
+        const latestPlan = getLastAgentPlan(nextMessages);
+        const latestArtifact = getLastArtifact(nextMessages);
+        setActiveLastWritePlan(
+          latestArtifact?.type === "markdown_note"
+            ? latestArtifact.plan
+            : null,
+        );
+        setActiveLastAgentPlan(latestPlan);
+        setActiveLastArtifact(latestArtifact);
+        persistSessionSnapshot(nextMessages, {
+          plan: latestPlan,
+          artifact: latestArtifact,
+        });
+        return nextMessages;
+      });
+    },
+    [
+      persistSessionSnapshot,
+      setActiveLastAgentPlan,
+      setActiveLastArtifact,
+      setActiveLastWritePlan,
+      syncActiveMessages,
+    ],
+  );
+
+  const handleConfirmWrite = useCallback(
+    async (messageId: string, artifact: MarkdownNoteArtifact) => {
+      setApplyingMessageId(messageId);
+      trackEvent("agent_commit_confirmed", {
+        feature: "agent_runtime",
+        capability_id: "note.commit",
+        artifact_type: artifact.type,
+        target_type: artifact.plan.target.mode,
+      });
+      trackEvent("ai_write_confirmed", {
+        feature: "ai_write",
+        action: "confirm",
+        write_action: artifact.plan.action,
+        target_type: artifact.plan.target.mode,
+        is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
+        cross_notebook: Boolean(
+          artifact.plan.target.workspaceId &&
+            activeNotebookId &&
+            artifact.plan.target.workspaceId !== activeNotebookId,
+        ),
+      });
+
+      try {
+        const result = await commitAgentArtifact(artifact);
+        if (!result?.pageId) {
+          throw new Error("写入失败，请稍后再试");
+        }
+
+        updateMessageArtifact(messageId, (currentArtifact) => ({
+          ...currentArtifact,
+          plan: {
+            ...currentArtifact.plan,
+            status: "committed",
+            committedPageId: result.pageId,
+          },
+        }));
+
+        trackEvent("agent_commit_succeeded", {
+          feature: "agent_runtime",
+          capability_id: "note.commit",
+          artifact_type: artifact.type,
+          target_type: artifact.plan.target.mode,
+        });
+        trackEvent("ai_write_committed", {
+          feature: "ai_write",
+          action: "commit",
+          result: "success",
+          write_action: artifact.plan.action,
+          target_type: artifact.plan.target.mode,
+          is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
+          cross_notebook: Boolean(
+            artifact.plan.target.workspaceId &&
+              activeNotebookId &&
+              artifact.plan.target.workspaceId !== activeNotebookId,
+          ),
+        });
+        toast.success("已写入目标页面");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "写入失败，请稍后再试";
+        toast.error(message);
+      } finally {
+        setApplyingMessageId(null);
+      }
+    },
+    [activeNotebookId, updateMessageArtifact],
+  );
+
+  const handleCancelWrite = useCallback(
+    (messageId: string, artifact: MarkdownNoteArtifact) => {
+      updateMessageArtifact(messageId, (currentArtifact) => ({
+        ...currentArtifact,
+        plan: {
+          ...currentArtifact.plan,
+          status: "cancelled",
+        },
+      }));
+      trackEvent("agent_commit_cancelled", {
+        feature: "agent_runtime",
+        capability_id: "note.commit",
+        artifact_type: artifact.type,
+        target_type: artifact.plan.target.mode,
+      });
+      trackEvent("ai_write_cancelled", {
+        feature: "ai_write",
+        action: "cancel",
+        write_action: artifact.plan.action,
+        target_type: artifact.plan.target.mode,
+        is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
+        cross_notebook: Boolean(
+          artifact.plan.target.workspaceId &&
+            activeNotebookId &&
+            artifact.plan.target.workspaceId !== activeNotebookId,
+        ),
+      });
+    },
+    [activeNotebookId, updateMessageArtifact],
+  );
+
+  const handleOpenResultPage = useCallback(
+    (pageId: string) => {
+      openTab(pageId);
+      usePages.getState().setExpandPageId(pageId);
+    },
+    [openTab],
+  );
 
   return (
     <div className="flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]">
@@ -571,7 +1104,7 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
                   在底部输入框直接提问
                 </div>
                 <div className="mt-2 max-w-xl text-sm leading-6 text-white dark:text-white/72">
-                  可以直接问当前页面，也可以通过 @ 引用其他应用页面或本地文件。
+                  可以直接发起独立聊天，也可以通过 @ 引用应用页面或本地文件。
                 </div>
               </div>
             </div>
@@ -591,12 +1124,22 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
                 )}
               >
                 {message.role === "assistant" && !message.error ? (
-                  message.text ? (
-                    <div
-                      className="ai-markdown break-words text-sm leading-7"
-                      // eslint-disable-next-line react/no-danger
-                      dangerouslySetInnerHTML={{ __html: md.render(message.text) }}
+                  message.artifact ? (
+                    <AgentArtifactView
+                      artifact={message.artifact}
+                      applying={applyingMessageId === message.id}
+                      onConfirmMarkdownNote={(artifact) => {
+                        void handleConfirmWrite(message.id, artifact);
+                      }}
+                      onCancelMarkdownNote={(artifact) => {
+                        handleCancelWrite(message.id, artifact);
+                      }}
+                      onOpenResult={handleOpenResultPage}
                     />
+                  ) : message.text ? (
+                    <div className="whitespace-pre-wrap break-words text-sm leading-7">
+                      {message.text}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2 text-sm leading-7 text-muted-foreground">
                       {message.streaming && (
@@ -640,9 +1183,11 @@ export function AiWorkspacePage({ page }: AiWorkspacePageProps) {
         composerRef={composerRef}
         composerFocusToken={composerFocusToken}
         isStreaming={isStreaming}
+        draftContent={draftContent}
         onSubmit={(params) => {
           void handleSubmit(params);
         }}
+        onDraftChange={setDraftContent}
         onReferenceAdded={handleReferenceAdded}
       />
     </div>

@@ -2,17 +2,21 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import * as LucideIcons from "lucide-react";
 import type { Editor } from "@tiptap/core";
-import { runAITextStream, type AIMessage, type AIStreamPhase } from "@/lib/ai-provider";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import {
+  buildAgentPlan,
+  executeAgentPlan,
+} from "@/agent/core/runtime";
+import type { AIStreamPhase } from "@/lib/ai-provider";
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
 import { AiComposerInput, type AiComposerInputHandle } from "./ai-composer/AiComposerInput";
 import {
-  formatAiReferenceContextBlock,
   getAiReferenceStats,
-  resolveAiReferenceContexts,
 } from "./ai-composer/referenceLookup";
-import { AI_SYSTEM_PROMPT, STREAM_PHASE_META } from "./ai-popover/constants";
+import { STREAM_PHASE_META } from "./ai-popover/constants";
 import { getStreamPreview } from "./ai-popover/streamPreview";
 import { applyStructuredListIntent, resolveStructuredListIntent } from "./ai-popover/structuredList";
 
@@ -20,12 +24,24 @@ interface AiInputPopoverProps {
   editor: Editor | null;
 }
 
+interface AiInlineAnchorState {
+  anchorId: string | null;
+  anchorPos: number | null;
+}
+
+const AI_INPUT_INLINE_ANCHOR_KEY = new PluginKey<AiInlineAnchorState>(
+  "goose-note-ai-input-inline-anchor",
+);
+
 export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [renderMode, setRenderMode] = useState<"floating" | "inline">("floating");
   const [initialAction, setInitialAction] = useState<"polish" | "rewrite" | "generate">("generate");
   const composerInputRef = useRef<AiComposerInputHandle | null>(null);
+  const inlineAnchorIdRef = useRef<string | null>(null);
+  const [inlineAnchorElement, setInlineAnchorElement] = useState<HTMLElement | null>(null);
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [status, setStatus] = useState<"idle" | "streaming" | "review">("idle");
   const [streamPhase, setStreamPhase] = useState<AIStreamPhase>("connecting");
@@ -36,7 +52,6 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const streamAbortRef = useRef<AbortController | null>(null);
   const activeRequestIdRef = useRef(0);
   const pendingApplyRangeRef = useRef<{ from: number; to: number } | null>(null);
-  /** 自动 apply 计时器 */
   const autoApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [undoCapsule, setUndoCapsule] = useState<{ x: number; y: number } | null>(null);
   const undoCapsuleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +85,113 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     }, delay);
   }, []);
 
+  const clearInlineAnchor = useCallback(() => {
+    inlineAnchorIdRef.current = null;
+    setInlineAnchorElement(null);
+
+    if (!editor || editor.isDestroyed) return;
+
+    const pluginState = AI_INPUT_INLINE_ANCHOR_KEY.getState(editor.state);
+    if (!pluginState?.anchorId && pluginState?.anchorPos == null) return;
+
+    editor.view.dispatch(
+      editor.state.tr.setMeta(AI_INPUT_INLINE_ANCHOR_KEY, { clear: true }),
+    );
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const inlineAnchorPlugin = new Plugin<AiInlineAnchorState>({
+      key: AI_INPUT_INLINE_ANCHOR_KEY,
+      state: {
+        init: () => ({ anchorId: null, anchorPos: null }),
+        apply: (tr, pluginState) => {
+          const meta = tr.getMeta(AI_INPUT_INLINE_ANCHOR_KEY) as
+            | { anchorId?: string | null; anchorPos?: number | null; clear?: boolean }
+            | undefined;
+
+          if (meta?.clear) {
+            return { anchorId: null, anchorPos: null };
+          }
+
+          if (meta && ("anchorId" in meta || "anchorPos" in meta)) {
+            return {
+              anchorId: meta.anchorId ?? null,
+              anchorPos: typeof meta.anchorPos === "number" ? meta.anchorPos : null,
+            };
+          }
+
+          if (!tr.docChanged || pluginState.anchorPos == null) {
+            return pluginState;
+          }
+
+          return {
+            ...pluginState,
+            anchorPos: tr.mapping.map(pluginState.anchorPos),
+          };
+        },
+      },
+      props: {
+        decorations: (state) => {
+          const pluginState = AI_INPUT_INLINE_ANCHOR_KEY.getState(state);
+          if (!pluginState?.anchorId || pluginState.anchorPos == null) {
+            return DecorationSet.empty;
+          }
+
+          const anchor = document.createElement("div");
+          anchor.className = "ai-input-inline-anchor";
+          anchor.setAttribute("contenteditable", "false");
+          anchor.setAttribute("data-ai-input-inline-anchor", pluginState.anchorId);
+
+          return DecorationSet.create(state.doc, [
+            Decoration.widget(pluginState.anchorPos, anchor, {
+              side: -1,
+              key: `${pluginState.anchorId}:${pluginState.anchorPos}`,
+            }),
+          ]);
+        },
+      },
+    });
+
+    editor.registerPlugin(inlineAnchorPlugin);
+
+    return () => {
+      try {
+        editor.unregisterPlugin(AI_INPUT_INLINE_ANCHOR_KEY);
+      } catch {
+        // ignore unregister errors
+      }
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor || !isOpen || renderMode !== "inline") return;
+    const anchorId = inlineAnchorIdRef.current;
+    if (!anchorId) return;
+
+    const syncAnchorElement = () => {
+      const nextAnchor = editor.view.dom.querySelector(
+        `[data-ai-input-inline-anchor="${anchorId}"]`,
+      ) as HTMLElement | null;
+      setInlineAnchorElement(nextAnchor);
+    };
+
+    syncAnchorElement();
+    const frameId = window.requestAnimationFrame(syncAnchorElement);
+    const observer = new MutationObserver(syncAnchorElement);
+    observer.observe(editor.view.dom, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, [editor, isOpen, renderMode]);
+
   useEffect(() => {
     const handleOpen = (e: Event) => {
       const customEvent = e as CustomEvent<{
@@ -78,10 +200,27 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         overrideRect?: { left: number; top: number; right: number; bottom: number; width: number; height: number };
         triggeredBy?: "space";
       }>;
-      if (customEvent.detail.editor === editor) {
-        const { to, from } = editor.state.selection;
-        const coords = editor.view.coordsAtPos(from);
+      if (customEvent.detail.editor !== editor) return;
 
+      const { to, from } = editor.state.selection;
+      const shouldRenderInline = customEvent.detail.triggeredBy === "space";
+
+      if (shouldRenderInline) {
+        const anchorId = `ai-inline-anchor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        inlineAnchorIdRef.current = anchorId;
+        setRenderMode("inline");
+        setInlineAnchorElement(null);
+        editor.view.dispatch(
+          editor.state.tr.setMeta(AI_INPUT_INLINE_ANCHOR_KEY, {
+            anchorId,
+            anchorPos: from,
+          }),
+        );
+      } else {
+        clearInlineAnchor();
+        setRenderMode("floating");
+
+        const coords = editor.view.coordsAtPos(from);
         const windowWidth = window.innerWidth;
         const popoverWidth = 220;
 
@@ -109,50 +248,46 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
           if (y < 60) {
             y = coords.bottom + (isSelection ? 45 : 8);
           }
-
-          if (customEvent.detail.triggeredBy === "space") {
-            x -= 25;
-            y += 10;
-          }
         }
 
         setPosition({ x, y });
-
-        setIsOpen(true);
-        isOpenRef.current = true;
-        setStatus("idle");
-        setStreamPhase("connecting");
-        setStreamedContent("");
-        setReasoningText("");
-        setResultContent("");
-        const nextAction = customEvent.detail.initialAction || "generate";
-        setInitialAction(nextAction);
-        setComposerFocusToken((value) => value + 1);
-        trackEvent("ai_entry_opened", {
-          feature: "ai",
-          action: "open",
-          source: "bubble_menu",
-          entry_action: nextAction,
-          has_selection: from !== to,
-          selection_mode: from !== to ? "has_selection" : "empty_selection",
-        });
-
-        if (from !== to) {
-          highlightRangeRef.current = { from, to };
-          editor.chain().setTextSelection(to).run();
-        } else {
-          highlightRangeRef.current = null;
-        }
-
-        setTimeout(() => {
-          composerInputRef.current?.clear();
-          composerInputRef.current?.focus();
-        }, 50);
       }
+
+      setIsOpen(true);
+      isOpenRef.current = true;
+      setStatus("idle");
+      setStreamPhase("connecting");
+      setStreamedContent("");
+      setReasoningText("");
+      setResultContent("");
+      const nextAction = customEvent.detail.initialAction || "generate";
+      setInitialAction(nextAction);
+      setComposerFocusToken((value) => value + 1);
+      trackEvent("ai_entry_opened", {
+        feature: "ai",
+        action: "open",
+        source: "bubble_menu",
+        entry_action: nextAction,
+        has_selection: from !== to,
+        selection_mode: from !== to ? "has_selection" : "empty_selection",
+      });
+
+      if (from !== to) {
+        highlightRangeRef.current = { from, to };
+        editor.chain().setTextSelection(to).run();
+      } else {
+        highlightRangeRef.current = null;
+      }
+
+      setTimeout(() => {
+        composerInputRef.current?.clear();
+        composerInputRef.current?.focus();
+      }, 50);
     };
+
     document.addEventListener("open-ai-input-popover", handleOpen);
     return () => document.removeEventListener("open-ai-input-popover", handleOpen);
-  }, [editor]);
+  }, [editor, clearInlineAnchor]);
 
   const closePopover = useCallback((restoreSelection: boolean = true) => {
     streamAbortRef.current?.abort();
@@ -181,10 +316,12 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     setResultContent("");
     composerInputRef.current?.clear();
     pendingApplyRangeRef.current = null;
+    setRenderMode("floating");
+    clearInlineAnchor();
     if (restoreSelection) {
       editor?.commands.focus();
     }
-  }, [editor, clearUndoCapsule]);
+  }, [editor, clearInlineAnchor, clearUndoCapsule]);
 
   const hidePopoverAfterApply = useCallback(() => {
     streamAbortRef.current = null;
@@ -202,8 +339,10 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
     setReasoningText("");
     setResultContent("");
     composerInputRef.current?.clear();
+    setRenderMode("floating");
+    clearInlineAnchor();
     editor?.commands.focus();
-  }, [editor]);
+  }, [editor, clearInlineAnchor]);
 
   const showUndoCapsuleAtSelection = useCallback(() => {
     if (!editor || editor.isDestroyed) return;
@@ -235,6 +374,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       promptText: "",
       freeformText: "",
       references: [],
+      tokens: [],
     };
     const finalQuery = composerPayload.promptText.trim();
     const freeformQuery = composerPayload.freeformText.trim();
@@ -268,7 +408,11 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       const structuredListIntent = resolveStructuredListIntent(editor, savedFrom, savedTo, finalQuery);
 
       if (structuredListIntent) {
-        const applyResult = applyStructuredListIntent(editor, { from: savedFrom, to: savedTo }, structuredListIntent.targetListType);
+        const applyResult = applyStructuredListIntent(
+          editor,
+          { from: savedFrom, to: savedTo },
+          structuredListIntent.targetListType,
+        );
 
         if (applyResult === "failed") {
           throw new Error("列表类型切换失败");
@@ -292,13 +436,27 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         return;
       }
 
-      const { $from } = editor.state.doc.resolve(savedFrom) ? { $from: editor.state.doc.resolve(savedFrom) } : { $from: null };
+      const { $from } = editor.state.doc.resolve(savedFrom)
+        ? { $from: editor.state.doc.resolve(savedFrom) }
+        : { $from: null };
       const blockText = $from ? editor.state.doc.textBetween($from.start(), $from.end(), "\n", "\n").trim() : "";
       const isPartial = text && blockText && text !== blockText;
       const contentScope = !text ? "new_content" : isPartial ? "partial_selection" : "full_block";
       const usageType = initialAction;
       const usageBucket = initialAction === "generate" ? "generate_new_content" : "edit_selected_content";
       const referenceStats = getAiReferenceStats(composerPayload.references);
+      const agentContext = {
+        surface: "inline" as const,
+        payload: composerPayload,
+        selectionText: text,
+        blockText,
+        initialAction,
+      };
+      const planning = buildAgentPlan(agentContext);
+      const submitPlan = planning.plan ?? null;
+      const submitArtifact = planning.artifact ?? null;
+      const capabilityId = planning.intent.capabilityId;
+      const artifactType = planning.intent.artifactType;
 
       trackEvent("ai_request_submitted", {
         feature: "ai",
@@ -316,6 +474,15 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         local_reference_count: referenceStats.localReferenceCount,
         provider_type: providerType,
         model_id: modelId,
+        capability_id: capabilityId,
+        artifact_type: artifactType,
+      });
+
+      trackEvent("agent_capability_matched", {
+        feature: "agent_runtime",
+        capability_id: capabilityId,
+        artifact_type: artifactType,
+        target_type: planning.intent.targetType,
       });
 
       if (referenceStats.referenceCount > 0) {
@@ -330,43 +497,71 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         });
       }
 
-      let prompt = finalQuery;
-      if (text) {
-        if (!finalQuery) {
-          if (initialAction === "polish") {
-            prompt = isPartial
-              ? `完整句子是：「${blockText}」\n其中「${text}」需要润色。请只输出润色后用来替换「${text}」的文字，保持与前后文衔接自然，不要输出完整句子，不要解释。`
-              : `请润色下面这段中文，保留原意，只输出润色结果：\n\n${text}`;
-          } else if (initialAction === "rewrite") {
-            prompt = isPartial
-              ? `完整句子是：「${blockText}」\n其中「${text}」需要改写得更正式。请只输出改写后用来替换「${text}」的文字，保持与前后文衔接自然，不要输出完整句子，不要解释。`
-              : `请将下面内容改写得更正式、更适合文档语气，只输出改写结果：\n\n${text}`;
-          } else {
-            prompt = `请处理这段文本，只输出处理结果：\n\n${text}`;
-          }
-        } else {
-          prompt = isPartial
-            ? `完整句子是：「${blockText}」\n其中「${text}」需要处理。任务：${finalQuery}\n请只输出用来替换「${text}」的文字，不要输出完整句子，不要解释。`
-            : `针对以下文本执行任务：${finalQuery}\n\n文本：${text}`;
+      if (!submitPlan) {
+        const immediateText =
+          submitArtifact?.type === "text_response"
+            ? submitArtifact.text.trim()
+            : "";
+        if (!immediateText) {
+          closePopover();
+          return;
         }
+
+        setResultContent(immediateText);
+        setStatus("review");
+        trackEvent("agent_artifact_rendered", {
+          feature: "agent_runtime",
+          capability_id: capabilityId,
+          artifact_type: submitArtifact?.type ?? artifactType,
+          target_type: planning.intent.targetType,
+        });
+
+        autoApplyTimerRef.current = setTimeout(() => {
+          if (!editor || editor.isDestroyed) return;
+          const range = { from: savedFrom, to: savedTo };
+          if (range.from !== range.to) {
+            editor
+              .chain()
+              .focus()
+              .setTextSelection({ from: range.from, to: range.to })
+              .deleteSelection()
+              .insertContent(immediateText)
+              .run();
+          } else {
+            editor.chain().focus().insertContent(immediateText).run();
+          }
+
+          showUndoCapsuleAtSelection();
+          trackEvent("ai_result_applied", {
+            feature: "ai",
+            action: "apply",
+            result: "success",
+            source: "bubble_menu",
+            apply_mode: "auto",
+            usage_type: initialAction,
+            provider_type: providerType,
+            model_id: modelId,
+          });
+          hidePopoverAfterApply();
+        }, 300);
+        return;
       }
 
-      const referenceContexts = resolveAiReferenceContexts(composerPayload.references);
-      const referenceContextBlock = formatAiReferenceContextBlock(referenceContexts);
-      if (referenceContextBlock) {
-        prompt = [
-          prompt,
-          "补充上下文（以下是用户通过 @ 引用的完整文件内容，请结合这些信息回答）：",
-          referenceContextBlock,
-        ]
-          .filter(Boolean)
-          .join("\n\n");
-      }
+      trackEvent("agent_plan_built", {
+        feature: "agent_runtime",
+        capability_id: capabilityId,
+        artifact_type: submitPlan.artifactType,
+        target_type: submitPlan.targetType,
+      });
 
-      const content = await runAITextStream(useSettings.getState().ai, [
-        { role: "system", content: AI_SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ] satisfies AIMessage[], {
+      const result = await executeAgentPlan({
+        settings: useSettings.getState().ai,
+        context: agentContext,
+        parsed: planning.parsed,
+        plan: submitPlan,
+        requestOverrides: {
+          selectedModelId: modelId,
+        },
         abortSignal: controller.signal,
         onUpdate: (update) => {
           if (activeRequestIdRef.current !== requestId) return;
@@ -375,6 +570,10 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
           setReasoningText(update.reasoningText);
         },
       });
+      const content =
+        result.artifact.type === "text_response"
+          ? result.artifact.text.trim()
+          : result.rawText.trim();
       if (!content) throw new Error("AI 没有返回可用内容");
       if (activeRequestIdRef.current !== requestId) return;
 
@@ -388,7 +587,14 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         duration_ms: Date.now() - requestStartedAt,
         provider_type: providerType,
         model_id: modelId,
-        output_length: content.trim().length,
+        output_length: content.length,
+      });
+
+      trackEvent("agent_artifact_rendered", {
+        feature: "agent_runtime",
+        capability_id: result.plan.capabilityId,
+        artifact_type: result.artifact.type,
+        target_type: result.plan.targetType,
       });
 
       streamAbortRef.current = null;
@@ -404,10 +610,10 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
             .focus()
             .setTextSelection({ from: range.from, to: range.to })
             .deleteSelection()
-            .insertContent(content.trim())
+            .insertContent(content)
             .run();
         } else {
-          editor.chain().focus().insertContent(content.trim()).run();
+          editor.chain().focus().insertContent(content).run();
         }
 
         showUndoCapsuleAtSelection();
@@ -424,7 +630,6 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         });
         hidePopoverAfterApply();
       }, 300);
-
     } catch (e: any) {
       if (controller.signal.aborted) {
         return;
@@ -490,8 +695,9 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
   useEffect(() => {
     return () => {
       clearUndoCapsule();
+      clearInlineAnchor();
     };
-  }, [clearUndoCapsule]);
+  }, [clearInlineAnchor, clearUndoCapsule]);
 
   if (!editor) return null;
   if (!isOpen && !undoCapsule) return null;
@@ -506,76 +712,80 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         ? "输入自定义改写要求..."
         : "让 AI 帮你写点什么...";
 
+  const popoverContent = (
+    <div
+      data-ai-input-popover
+      data-ai-input-mode={renderMode}
+      className={cn(
+        "flex items-center gap-1.5 rounded-[22px] border border-border/75 bg-popover",
+        "shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100",
+        "dark:border-white/15 dark:bg-[#2f3437]",
+        renderMode === "inline"
+          ? "relative z-10 my-2 w-[360px] max-w-[min(520px,calc(100vw-56px))]"
+          : "fixed z-[20005] min-w-[380px] max-w-[520px] w-max",
+        status === "idle" ? "px-2 py-1.5" : "px-3 py-1.5",
+      )}
+      style={renderMode === "floating" ? { left: position.x, top: position.y } : undefined}
+      onMouseDownCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (
+          target.closest("[contenteditable='true']") ||
+          target.closest("[data-ai-reference-menu]")
+        ) {
+          return;
+        }
+        event.preventDefault();
+      }}
+    >
+      <LucideIcons.Sparkles className="h-4 w-4 shrink-0 self-center text-[#10b981]" />
+
+      {status === "idle" ? (
+        <div className="relative min-w-0 flex-1">
+          <AiComposerInput
+            ref={composerInputRef}
+            placeholder={placeholderText}
+            autoFocusToken={composerFocusToken}
+            onSubmit={handleSubmit}
+            onEscape={() => closePopover(true)}
+            onReferenceAdded={handleReferenceAdded}
+            compactWidthClass="w-[300px] sm:w-[360px]"
+          />
+          <button
+            onClick={handleSubmit}
+            className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] text-white transition-colors hover:bg-[#059669]"
+          >
+            <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
+          </button>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "min-h-[20px] max-h-[88px] overflow-y-auto whitespace-pre-wrap break-words rounded-md text-[12px] leading-[20px] text-foreground/80",
+            status === "streaming" && phaseMeta.tone,
+          )}
+        >
+          {previewText}
+        </div>
+      )}
+
+      {status === "streaming" && (
+        <span className="flex shrink-0 items-center gap-1">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <span
+              key={`wave-dot-${index}`}
+              className={cn("ai-stream-wave-dot h-1.5 w-1.5 rounded-full", phaseMeta.dot)}
+              style={{ animationDelay: `${index * 0.14}s` }}
+            />
+          ))}
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {isOpen && createPortal(
-        <div
-          data-ai-input-popover
-          className={cn(
-            "fixed z-[20005] flex items-center gap-1.5 rounded-[22px] border border-border/75 bg-popover",
-            "shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-100",
-            "dark:border-white/15 dark:bg-[#2f3437]",
-            "min-w-[180px] max-w-[360px] w-max",
-            status === "idle" ? "px-2 py-1.5" : "px-3 py-1.5",
-          )}
-          style={{ left: position.x, top: position.y }}
-          onMouseDownCapture={(event) => {
-            const target = event.target as HTMLElement;
-            if (
-              target.closest("[contenteditable='true']") ||
-              target.closest("[data-ai-reference-menu]")
-            ) {
-              return;
-            }
-            event.preventDefault();
-          }}
-        >
-          <LucideIcons.Sparkles
-            className="h-4 w-4 shrink-0 self-center text-[#10b981]"
-          />
-
-          {status === "idle" ? (
-            <div className="relative min-w-0 flex-1">
-              <AiComposerInput
-                ref={composerInputRef}
-                placeholder={placeholderText}
-                autoFocusToken={composerFocusToken}
-                onSubmit={handleSubmit}
-                onEscape={() => closePopover(true)}
-                onReferenceAdded={handleReferenceAdded}
-              />
-              <button
-                onClick={handleSubmit}
-                className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] hover:bg-[#059669] text-white transition-colors"
-              >
-                <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
-              </button>
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "min-h-[20px] max-h-[88px] overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-[20px] text-foreground/80 rounded-md",
-                status === "streaming" && phaseMeta.tone,
-              )}
-            >
-              {previewText}
-            </div>
-          )}
-
-          {status === "streaming" && (
-            <span className="flex items-center gap-1 shrink-0">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <span
-                  key={`wave-dot-${index}`}
-                  className={cn("ai-stream-wave-dot h-1.5 w-1.5 rounded-full", phaseMeta.dot)}
-                  style={{ animationDelay: `${index * 0.14}s` }}
-                />
-              ))}
-            </span>
-          )}
-        </div>,
-        document.body
-      )}
+      {isOpen && renderMode === "inline" && inlineAnchorElement && createPortal(popoverContent, inlineAnchorElement)}
+      {isOpen && renderMode === "floating" && createPortal(popoverContent, document.body)}
 
       {undoCapsule && createPortal(
         <button
@@ -592,7 +802,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
           <LucideIcons.RotateCcw className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span>取消应用</span>
         </button>,
-        document.body
+        document.body,
       )}
     </>
   );
