@@ -311,6 +311,7 @@ interface AiComposerInputProps {
   onEscape: () => void;
   initialContent?: JSONContent | null;
   onContentChange?: (content: JSONContent | null) => void;
+  onIsEmptyChange?: (isEmpty: boolean) => void;
   onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
   variant?: "compact" | "panel";
   compactWidthClass?: string;
@@ -329,6 +330,7 @@ export const AiComposerInput = forwardRef<
       onEscape,
       initialContent,
       onContentChange,
+      onIsEmptyChange,
       onReferenceAdded,
       variant = "compact",
       compactWidthClass,
@@ -368,13 +370,13 @@ export const AiComposerInput = forwardRef<
           "data-ai-composer-variant": variant,
           class: cn(
             variant === "panel"
-              ? "ai-composer-editor min-h-[72px] max-h-[168px] overflow-y-auto bg-transparent px-0 pt-0 pb-0 text-[14px] leading-7 text-foreground outline-none"
-              : "ai-composer-editor min-h-[20px] max-h-[88px] overflow-y-auto bg-transparent px-0 pt-0 pb-0 pr-6 text-[12px] leading-[20px] text-foreground outline-none",
+              ? "ai-composer-editor min-h-[56px] max-h-[144px] overflow-y-auto bg-transparent px-0 pt-0 pb-0 text-[13px] leading-6 text-foreground outline-none"
+              : "ai-composer-editor min-h-[20px] max-h-[88px] overflow-y-auto bg-transparent px-0 pt-0 pb-0 text-[12px] leading-[20px] text-foreground outline-none",
             variant === "panel"
               ? "break-words whitespace-pre-wrap"
               : "break-words whitespace-pre-wrap",
             variant === "panel"
-              ? "min-h-[72px] whitespace-pre-wrap break-words text-[14px] leading-7"
+              ? "min-h-[56px] whitespace-pre-wrap break-words text-[13px] leading-6"
               : "min-h-[20px] whitespace-pre-wrap break-words text-[12px] leading-[20px]",
             "[&_p]:m-0 [&_ul]:my-0 [&_ul]:pl-0 [&_ol]:my-0 [&_ol]:pl-0",
             "[&_ul>li::before]:hidden [&_ol>li::before]:static [&_ol>li::before]:mr-1",
@@ -425,10 +427,11 @@ export const AiComposerInput = forwardRef<
       onUpdate: ({ editor }) => {
         const nextContent = editor.getJSON();
         const payload = serializeAiComposerDoc(nextContent);
-        setIsEmpty(
+        const nextIsEmpty =
           !payload.promptText.trim() &&
-            payload.references.length === 0,
-        );
+            payload.references.length === 0;
+        setIsEmpty(nextIsEmpty);
+        onIsEmptyChange?.(nextIsEmpty);
         onContentChange?.(nextContent);
       },
       immediatelyRender: false,
@@ -445,6 +448,7 @@ export const AiComposerInput = forwardRef<
             emitUpdate: false,
           });
           setIsEmpty(true);
+          onIsEmptyChange?.(true);
         },
         getPayload: () => serializeAiComposerDoc(composerEditor?.getJSON()),
       }),
@@ -495,7 +499,7 @@ export const AiComposerInput = forwardRef<
             className={cn(
               "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground/60",
               variant === "panel"
-                ? "top-0 line-clamp-3 pr-10 text-[14px] leading-7"
+                ? "top-0 line-clamp-3 pr-10 text-[13px] leading-6"
                 : "top-0 pr-8 text-[12px] leading-[20px]",
             )}
           >

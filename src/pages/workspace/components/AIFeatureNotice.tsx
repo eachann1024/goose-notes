@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import * as LucideIcons from "lucide-react";
 import { FeatureToastCard } from "@/components/ui/feature-toast-card";
-import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
+import { useSettings } from "@/stores/useSettings";
 import { toast } from "sonner";
 
-const NOTICE_ID = "feature-toast:ai-writing-assistant";
-const NOTICE_EVENT_NAME = "goose-note:show-ai-feature-notice";
+const NOTICE_ID = "ai-writing-assistant";
 const NOTICE_TOAST_ID = "ai-feature-notice";
 
 function openAISettings() {
@@ -45,24 +44,18 @@ function createNoticeContent(handleClose: () => void) {
 }
 
 export function AIFeatureNotice() {
-  const { visible, dismiss, reset } = usePersistentDismissState(NOTICE_ID);
+  const dismissed = useSettings(
+    (s) => s.dismissedNotices[NOTICE_ID] === true,
+  );
+  const hydrated = useSettings((s) => s._hasHydrated === true);
+  const dismissNotice = useSettings((s) => s.dismissNotice);
 
   useEffect(() => {
-    const handleShowNotice = () => {
-      reset();
-    };
-
-    window.addEventListener(NOTICE_EVENT_NAME, handleShowNotice);
-    return () => {
-      window.removeEventListener(NOTICE_EVENT_NAME, handleShowNotice);
-    };
-  }, [reset]);
-
-  useEffect(() => {
-    if (!visible) return;
+    // 等 hydration 完成后再决定是否弹窗，避免读到默认值
+    if (!hydrated || dismissed) return;
 
     const handleClose = () => {
-      dismiss();
+      dismissNotice(NOTICE_ID);
       toast.dismiss(NOTICE_TOAST_ID);
     };
 
@@ -75,11 +68,7 @@ export function AIFeatureNotice() {
     return () => {
       toast.dismiss(NOTICE_TOAST_ID);
     };
-  }, [dismiss, visible]);
+  }, [dismissed, hydrated, dismissNotice]);
 
   return null;
-}
-
-export function showAIFeatureNotice() {
-  window.dispatchEvent(new CustomEvent(NOTICE_EVENT_NAME));
 }

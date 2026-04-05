@@ -202,6 +202,52 @@
   will-change: transform, opacity;
 }
 
+/* ── AI Workspace 流式加载动画 ── */
+
+@keyframes ai-workspace-stream-dot {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes ai-workspace-stream-shimmer {
+  0% {
+    background-position: -200% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.ai-workspace-stream-dot {
+  background: linear-gradient(90deg, hsl(var(--muted-foreground)), #10b981, hsl(var(--muted-foreground)));
+  background-size: 200% 100%;
+  animation:
+    ai-workspace-stream-dot 1.2s ease-in-out infinite,
+    ai-workspace-stream-shimmer 2s linear infinite;
+  will-change: transform, opacity, background-position;
+}
+
+.ai-workspace-stream-label {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)) 0%,
+    #10b981 40%,
+    hsl(var(--muted-foreground)) 80%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: ai-workspace-stream-shimmer 2.5s linear infinite;
+  will-change: background-position;
+}
+
 @media (max-width: 768px) {
   .workspace-shell .workspace-main-sheet {
     border-radius: 14px;

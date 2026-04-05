@@ -58,8 +58,9 @@ export const BlockColors = Extension.create({
       {
         types: [...BLOCK_COLOR_TYPES],
         attributes: {
-          blockTextColor: createBlockColorAttribute("data-block-text-color"),
-          blockBgColor: createBlockColorAttribute("data-block-bg-color"),
+          // 回车分裂块时不继承颜色，保持与 heading 一致的行为
+          blockTextColor: createBlockColorAttribute("data-block-text-color", false),
+          blockBgColor: createBlockColorAttribute("data-block-bg-color", false),
         },
       },
     ];

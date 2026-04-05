@@ -15,9 +15,8 @@ export function getStreamPreview(
     return cleanedReasoning;
   }
 
-  if (phase === "connecting") return "正在连接自定义 AI 服务…";
-  if (phase === "thinking") return "正在分析上下文与任务要求…";
-  if (phase === "generating") return "模型已开始输出，内容会实时出现…";
-  return "正在整理最后结果…";
+  if (phase === "connecting") return "正在准备请求…";
+  if (phase === "thinking") return "AI 思考中…";
+  if (phase === "generating") return "正在生成回答…";
+  return "正在整理结果…";
 }
-

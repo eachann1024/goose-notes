@@ -15,6 +15,7 @@ import type {
 import { AgentArtifactView } from "@/agent/renderers/AgentArtifactView";
 import {
   type AIReasoningLevel,
+  type AIMessage,
   type AIStreamPhase,
 } from "@/lib/ai-provider";
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
@@ -153,12 +154,18 @@ function legacyWritePlanToArtifact(writePlan: AiWritePlan | null | undefined): A
 function normalizeConversationMessage<T extends AiConversationMessage>(message: T): T {
   const artifact = message.artifact ?? legacyWritePlanToArtifact(message.writePlan);
   const agentPlan = message.agentPlan ?? legacyWritePlanToAgentPlan(message.writePlan);
+
+  // 运行时类型检查：确保 text 始终是字符串，防止 localStorage 数据损坏导致对象被渲染为 React child
+  let text = message.text;
+  if (artifact?.type === "text_response") {
+    text = typeof artifact.text === "string" ? artifact.text : "";
+  } else {
+    text = typeof message.text === "string" ? message.text : "";
+  }
+
   return {
     ...message,
-    text:
-      artifact?.type === "text_response"
-        ? artifact.text
-        : message.text,
+    text,
     agentPlan,
     artifact,
     writePlan:
@@ -261,7 +268,17 @@ export function AiWorkspacePage() {
   const currentSessionIdRef = useRef<string | null>(null);
   const latestMessagesRef = useRef<AiConversationMessage[]>([]);
   const latestStreamPhaseRef = useRef<AIStreamPhase>("connecting");
+  // RAF throttle refs for streaming updates
+  const streamingAccRef = useRef<{ text: string; phase: AIStreamPhase }>({ text: "", phase: "connecting" });
+  const streamingRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  // Stable refs for unmount cleanup — avoids re-registering cleanup on every plan/artifact change
+  const persistSessionSnapshotRef = useRef<typeof persistSessionSnapshot | null>(null);
+  const activeLastAgentPlanRef = useRef<AgentPlan | null>(null);
+  const activeLastArtifactRef = useRef<AgentArtifact | null>(null);
   const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
+  // Retry: store last submitted payload and model overrides
+  const lastSubmitPayloadRef = useRef<import("../editor/ai-composer/referenceLookup").AiComposerPayload | null>(null);
+  const lastSubmitOverridesRef = useRef<{ selectedModelId: string | null; reasoningLevel: AIReasoningLevel } | null>(null);
 
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [messages, setMessages] = useState<AiConversationMessage[]>([]);
@@ -363,7 +380,24 @@ export function AiWorkspacePage() {
     latestStreamPhaseRef.current = streamPhase;
   }, [streamPhase]);
 
+  // Keep refs in sync so the unmount cleanup can access the latest values
+  // without being re-registered every time these change (which would cause
+  // the cleanup to fire prematurely and trigger an infinite setState loop).
   useEffect(() => {
+    persistSessionSnapshotRef.current = persistSessionSnapshot;
+  }, [persistSessionSnapshot]);
+  useEffect(() => {
+    activeLastAgentPlanRef.current = activeLastAgentPlan;
+  }, [activeLastAgentPlan]);
+  useEffect(() => {
+    activeLastArtifactRef.current = activeLastArtifact;
+  }, [activeLastArtifact]);
+
+  useEffect(() => {
+    // Guard: do not overwrite local messages state while a stream is active.
+    // syncActiveMessages → setActiveMessages would otherwise trigger this effect and
+    // reset all message.streaming flags to false, causing a false "未收到响应" flash.
+    if (isStreaming) return;
     const restoredMessages =
       activeMessages.length > 0
         ? activeMessages.map((message) =>
@@ -409,6 +443,7 @@ export function AiWorkspacePage() {
       );
     }
   }, [
+    isStreaming,
     activeMessages,
     activeSessionId,
     sessions,
@@ -434,6 +469,9 @@ export function AiWorkspacePage() {
   }, [messages, isStreaming]);
 
   // ── 卸载时终止流
+  // 使用 [] 依赖（仅卸载时执行），通过 refs 读取最新值，
+  // 避免每次 activeLastAgentPlan / persistSessionSnapshot 变化时提前触发 cleanup，
+  // 从而防止 cleanup → setActiveMessages → restore effect → setActiveLastAgentPlan → cleanup 的无限循环。
   useEffect(() => {
     return () => {
       const snapshot = normalizeMessagesForPersistence(
@@ -446,18 +484,13 @@ export function AiWorkspacePage() {
 
       setActiveMessages(snapshot);
 
-      persistSessionSnapshot(latestMessagesRef.current, {
-        plan: activeLastAgentPlan,
-        artifact: activeLastArtifact,
+      persistSessionSnapshotRef.current?.(latestMessagesRef.current, {
+        plan: activeLastAgentPlanRef.current,
+        artifact: activeLastArtifactRef.current,
       });
     };
-  }, [
-    activeLastAgentPlan,
-    activeLastArtifact,
-    activeLastWritePlan,
-    persistSessionSnapshot,
-    setActiveMessages,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cancelActiveRequest = useCallback(() => {
     activeRequestIdRef.current += 1;
@@ -544,13 +577,16 @@ export function AiWorkspacePage() {
     });
   };
 
-  const handleSubmit = async (requestOverrides: {
-    selectedModelId: string | null;
-    reasoningLevel: AIReasoningLevel;
-  }) => {
+  const handleSubmit = async (
+    requestOverrides: {
+      selectedModelId: string | null;
+      reasoningLevel: AIReasoningLevel;
+    },
+    payloadOverride?: import("../editor/ai-composer/referenceLookup").AiComposerPayload,
+  ) => {
     if (isStreaming) return;
 
-    const payload = composerRef.current?.getPayload() ?? {
+    const payload = payloadOverride ?? composerRef.current?.getPayload() ?? {
       promptText: "",
       freeformText: "",
       references: [],
@@ -558,313 +594,229 @@ export function AiWorkspacePage() {
     };
     const promptText = payload.promptText.trim();
     if (!promptText) return;
-    const agentContext = {
-      surface: "workspace" as const,
-      payload,
-      originPageId,
-      originNotebookId,
-    };
-    const planning = buildAgentPlan(agentContext);
-    const submitPlan = planning.plan ?? null;
-    const submitArtifact = planning.artifact ?? null;
-    const submitTarget = submitPlan?.resolvedTarget ?? null;
-    const capabilityId = planning.intent.capabilityId;
-    const artifactType = planning.intent.artifactType;
 
-    trackEvent("agent_capability_matched", {
-      feature: "agent_runtime",
-      capability_id: capabilityId,
-      artifact_type: artifactType,
-      target_type: planning.intent.targetType,
+    // 仅非重试时更新 retry refs
+    if (!payloadOverride) {
+      lastSubmitPayloadRef.current = payload;
+      lastSubmitOverridesRef.current = requestOverrides;
+    }
+
+    setIsStreaming(true);
+    setStreamPhase("connecting");
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
     });
 
-    const aiSettings = useSettings.getState().ai;
-    const providerType = aiSettings.useCustomProvider
-      ? aiSettings.customProtocol
-      : "utools";
-    const modelId = requestOverrides.selectedModelId ?? aiSettings.selectedModelId ?? "";
     const requestId = activeRequestIdRef.current + 1;
     activeRequestIdRef.current = requestId;
-    const controller = new AbortController();
-    streamAbortRef.current = controller;
 
-    // 若是新会话，生成 sessionId
     if (!currentSessionIdRef.current) {
       currentSessionIdRef.current = genSessionId();
     }
 
     const userMessageId = `user-${requestId}`;
     const assistantMessageId = `assistant-${requestId}`;
-    const referenceStats = getAiReferenceStats(payload.references);
-    setActiveResolvedTarget(submitTarget);
 
-    setMessages((current) => {
-      const nextMessages = [
-        ...current,
-        {
-          id: userMessageId,
-          role: "user" as const,
-          text: promptText,
-          references: payload.references,
-        },
-        {
-          id: assistantMessageId,
-          role: "assistant" as const,
-          text:
-            submitArtifact?.type === "text_response"
-              ? submitArtifact.text
-              : "",
-          streaming: Boolean(submitPlan),
-          error: submitArtifact?.type === "text_response" && submitArtifact.error,
-          agentPlan: submitPlan,
-          artifact: submitArtifact,
-          writePlan:
-            submitArtifact?.type === "markdown_note"
-              ? submitArtifact.plan
-              : null,
-        },
-      ];
-      syncActiveMessages(nextMessages, "connecting");
-      if (submitArtifact) {
-        const latestWritePlan =
-          submitArtifact.type === "markdown_note" ? submitArtifact.plan : null;
-        setActiveLastWritePlan(latestWritePlan);
-        setActiveLastAgentPlan(submitPlan);
-        setActiveLastArtifact(submitArtifact);
-        persistSessionSnapshot(nextMessages, {
-          plan: submitPlan,
-          artifact: submitArtifact,
-        });
-      }
-      return nextMessages;
-    });
-    setIsStreaming(Boolean(submitPlan));
-    setStreamPhase("connecting");
-    composerRef.current?.clear();
-    setDraftContent(null);
+    const previousMessages = latestMessagesRef.current;
+
+    // ── 在 setMessages updater 外构建消息并同步 Zustand，避免 React error #185
+    const initMessages: AiConversationMessage[] = [
+      ...latestMessagesRef.current,
+      { id: userMessageId, role: "user" as const, text: promptText, references: payload.references },
+      { id: assistantMessageId, role: "assistant" as const, text: "", streaming: true, error: false, agentPlan: null, artifact: null, writePlan: null },
+    ];
+    latestMessagesRef.current = initMessages;
+    setMessages(initMessages);
+    syncActiveMessages(initMessages, "connecting");
+
+    // 重试时不清空 composer（composer 本身没有内容）
+    if (!payloadOverride) {
+      composerRef.current?.clear();
+      setDraftContent(null);
+    }
     setComposerFocusToken((v) => v + 1);
 
-    trackEvent("ai_request_submitted", {
-      feature: "ai",
-      action: "submit",
-      result: "submitted",
-      source: "ai_page",
-      usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
-      usage_bucket:
-        artifactType === "markdown_note"
-          ? "workspace_write"
-          : "workspace_chat",
-      content_scope:
-        submitTarget?.mode ??
-        planning.intent.targetType,
-      has_selection: false,
-      has_custom_query: true,
-      query_length: payload.freeformText.trim().length,
-      reference_count: referenceStats.referenceCount,
-      app_reference_count: referenceStats.appReferenceCount,
-      local_reference_count: referenceStats.localReferenceCount,
-      provider_type: providerType,
-      model_id: modelId,
-      write_action: submitTarget?.action ?? "chat_only",
-      target_type:
-        submitTarget?.mode ??
-        planning.intent.targetType,
-      capability_id: capabilityId,
-      artifact_type: artifactType,
-    });
+    const aiSettings = useSettings.getState().ai;
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    const requestStartedAt = Date.now();
+    const providerType = aiSettings.useCustomProvider ? aiSettings.customProtocol : "utools";
+    const modelId = requestOverrides.selectedModelId ?? aiSettings.selectedModelId ?? "";
 
-    if (referenceStats.referenceCount > 0) {
-      trackEvent("ai_reference_submitted", {
-        feature: "ai",
-        action: "reference_submit",
-        result: "submitted",
-        source: "ai_page",
-        reference_count: referenceStats.referenceCount,
-        app_reference_count: referenceStats.appReferenceCount,
-        local_reference_count: referenceStats.localReferenceCount,
-      });
+    // 重置流式累积器，取消旧的待执行 RAF
+    streamingAccRef.current = { text: "", phase: "connecting" };
+    if (streamingRafRef.current !== null) {
+      cancelAnimationFrame(streamingRafRef.current);
+      streamingRafRef.current = null;
     }
 
-    if (!submitPlan) {
-      if (submitArtifact) {
-        trackEvent("agent_artifact_rendered", {
-          feature: "agent_runtime",
-          capability_id: capabilityId,
-          artifact_type: submitArtifact.type,
-          target_type: planning.intent.targetType,
-        });
-      }
-      return;
-    }
-
-    trackEvent("agent_plan_built", {
-      feature: "agent_runtime",
-      capability_id: capabilityId,
-      artifact_type: submitPlan.artifactType,
-      target_type: submitPlan.targetType,
-    });
+    const historyMessages: AIMessage[] = previousMessages
+      .filter((m) => !m.streaming && (m.text?.trim() || m.artifact?.type === "text_response"))
+      .reduce<AIMessage[]>((acc, m) => {
+        if (m.role === "user" && m.text?.trim()) {
+          acc.push({ role: "user", content: m.text });
+        } else if (m.role === "assistant") {
+          const text = m.artifact?.type === "text_response" ? m.artifact.text : m.text;
+          if (text?.trim()) acc.push({ role: "assistant", content: text.trim() });
+        }
+        return acc;
+      }, []);
 
     try {
-      const historyMessages = messages
-        .filter((message) => !message.streaming)
-        .map((message) => ({
-          role: message.role,
-          content:
-            message.artifact?.type === "markdown_note"
-              ? message.artifact.plan.outputMarkdown
-              : message.artifact?.type === "text_response"
-                ? message.artifact.text
-                : message.text,
-        }));
+      const agentContext = {
+        surface: "workspace" as const,
+        payload,
+        originPageId,
+        originNotebookId,
+      };
+
+      const planning = await buildAgentPlan(agentContext);
+      if (activeRequestIdRef.current !== requestId) return;
+
+      trackEvent("ai_request_submitted", {
+        feature: "ai",
+        action: "submit",
+        result: "submitted",
+        source: "ai_workspace",
+        provider_type: providerType,
+        model_id: modelId,
+        capability_id: planning.intent?.capabilityId,
+        has_reference: payload.references.length > 0,
+      });
+
+      if (!planning.plan) {
+        const immediateArtifact: AgentArtifact = {
+          type: "text_response",
+          text: planning.artifact?.type === "text_response"
+            ? planning.artifact.text.trim() || "暂无响应"
+            : "暂无响应",
+        };
+        const idx = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
+        if (idx !== -1) {
+          const nextMsgs = [...latestMessagesRef.current];
+          nextMsgs[idx] = { ...nextMsgs[idx], streaming: false, artifact: immediateArtifact };
+          latestMessagesRef.current = nextMsgs;
+          setMessages(nextMsgs);
+          syncActiveMessages(nextMsgs, "finishing");
+          persistSessionSnapshot(nextMsgs, { plan: null, artifact: immediateArtifact });
+        }
+        setIsStreaming(false);
+        setStreamPhase("connecting");
+        streamAbortRef.current = null;
+        return;
+      }
 
       const result = await executeAgentPlan({
-        settings: useSettings.getState().ai,
-        plan: submitPlan,
+        settings: aiSettings,
+        plan: planning.plan,
         context: agentContext,
         parsed: planning.parsed,
-        requestOverrides,
-        abortSignal: controller.signal,
         historyMessages,
-        onUpdate: (update) => {
+        requestOverrides: {
+          selectedModelId: requestOverrides.selectedModelId,
+          reasoningLevel: requestOverrides.reasoningLevel,
+        },
+        abortSignal: controller.signal,
+        // RAF 节流：只更新内存累积值，每帧最多一次 setMessages，且不在 updater 内调用 Zustand
+        onUpdate: (update: { phase: AIStreamPhase; text: string }) => {
           if (activeRequestIdRef.current !== requestId) return;
-          setStreamPhase(update.phase);
-          setMessages((current) => {
-            const nextMessages = current.map((message) =>
-              message.id === assistantMessageId
-                ? {
-                    ...message,
-                    text: update.text || update.reasoningText,
-                  }
-                : message,
-            );
-            syncActiveMessages(nextMessages, update.phase);
-            return nextMessages;
-          });
+          streamingAccRef.current = { text: update.text, phase: update.phase };
+          if (streamingRafRef.current === null) {
+            streamingRafRef.current = requestAnimationFrame(() => {
+              streamingRafRef.current = null;
+              if (activeRequestIdRef.current !== requestId) return;
+              const { text, phase } = streamingAccRef.current;
+              setStreamPhase(phase);
+              setMessages((current) => {
+                const i = current.findIndex((m) => m.id === assistantMessageId);
+                if (i === -1) return current;
+                const next = [...current];
+                next[i] = { ...next[i], text };
+                return next;
+              });
+            });
+          }
         },
       });
 
       if (activeRequestIdRef.current !== requestId) return;
 
-      const finalText =
-        result.artifact.type === "text_response"
-          ? result.artifact.text
-          : result.rawText;
-
-      setMessages((current) => {
-        const finalMessages = current.map((message) =>
-          message.id === assistantMessageId
-            ? normalizeConversationMessage({
-                ...message,
-                text:
-                  result.artifact.type === "text_response"
-                    ? result.artifact.text
-                    : "已生成写入预览，确认后会落到目标页面。",
-                streaming: false,
-                error:
-                  result.artifact.type === "text_response" &&
-                  Boolean(result.artifact.error),
-                agentPlan: result.plan,
-                artifact: result.artifact,
-                writePlan:
-                  result.artifact.type === "markdown_note"
-                    ? result.artifact.plan
-                    : null,
-              })
-            : message,
-        );
-        syncActiveMessages(finalMessages, "finishing");
-        setActiveLastWritePlan(
-          result.artifact.type === "markdown_note"
-            ? result.artifact.plan
-            : null,
-        );
-        setActiveLastAgentPlan(result.plan);
-        setActiveLastArtifact(result.artifact);
-        persistSessionSnapshot(finalMessages, {
-          plan: result.plan,
-          artifact: result.artifact,
-        });
-
-        return finalMessages;
-      });
+      // 取消未执行的 RAF，确保使用最终文本
+      if (streamingRafRef.current !== null) {
+        cancelAnimationFrame(streamingRafRef.current);
+        streamingRafRef.current = null;
+      }
+      const finalText = streamingAccRef.current.text;
 
       trackEvent("ai_request_succeeded", {
         feature: "ai",
         action: "success",
         result: "success",
-        source: "ai_page",
-        usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
-        has_selection: false,
+        source: "ai_workspace",
+        duration_ms: Date.now() - requestStartedAt,
         provider_type: providerType,
         model_id: modelId,
-        output_length: finalText.length,
-      });
-
-      trackEvent("agent_artifact_rendered", {
-        feature: "agent_runtime",
         capability_id: result.plan.capabilityId,
-        artifact_type: result.artifact.type,
-        target_type: result.plan.targetType,
       });
 
-      if (result.artifact.type === "markdown_note") {
-        trackEvent("ai_write_previewed", {
-          feature: "ai_write",
-          action: "preview",
-          write_action: result.artifact.plan.action,
-          target_type: result.artifact.plan.target.mode,
-          is_local_folder: Boolean(result.artifact.plan.target.isLocalFolder),
-          cross_notebook: Boolean(
-            result.artifact.plan.target.workspaceId &&
-              activeNotebookId &&
-              result.artifact.plan.target.workspaceId !== activeNotebookId,
-          ),
-        });
+      const idxSuccess = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
+      if (idxSuccess !== -1) {
+        const nextMsgsSuccess = [...latestMessagesRef.current];
+        nextMsgsSuccess[idxSuccess] = {
+          ...nextMsgsSuccess[idxSuccess],
+          text: finalText,
+          streaming: false,
+          artifact: result.artifact,
+          agentPlan: result.plan,
+        };
+        latestMessagesRef.current = nextMsgsSuccess;
+        setMessages(nextMsgsSuccess);
+        syncActiveMessages(nextMsgsSuccess, "finishing");
+        persistSessionSnapshot(nextMsgsSuccess, { plan: result.plan, artifact: result.artifact });
       }
-    } catch (error) {
-      if (controller.signal.aborted || activeRequestIdRef.current !== requestId) return;
 
-      const errorMessage =
-        error instanceof Error ? error.message : "AI 处理失败，请稍后再试";
+      setActiveLastAgentPlan(result.plan);
+      setActiveLastArtifact(result.artifact);
+      if (result.artifact.type === "markdown_note") {
+        setActiveLastWritePlan(result.artifact.plan);
+      }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+      if (activeRequestIdRef.current !== requestId) return;
 
-      setMessages((current) =>
-        {
-          const nextMessages = current.map((message) =>
-            message.id === assistantMessageId
-              ? {
-                  ...message,
-                  text: errorMessage,
-                  streaming: false,
-                  error: true,
-                  artifact: {
-                    type: "text_response",
-                    text: errorMessage,
-                    error: true,
-                  } as AgentArtifact,
-                }
-              : message,
-          );
-          syncActiveMessages(nextMessages, latestStreamPhaseRef.current);
-          return nextMessages;
-        },
-      );
+      if (streamingRafRef.current !== null) {
+        cancelAnimationFrame(streamingRafRef.current);
+        streamingRafRef.current = null;
+      }
 
+      const errMsg = err instanceof Error ? err.message : "请求失败，请重试";
       trackEvent("ai_request_failed", {
         feature: "ai",
         action: "fail",
         result: "failed",
-        source: "ai_page",
-        usage_type: artifactType === "markdown_note" ? "write_preview" : "chat",
-        error_type: getAIErrorType(error),
-        has_selection: false,
+        source: "ai_workspace",
+        error_type: getAIErrorType(err),
+        duration_ms: Date.now() - requestStartedAt,
         provider_type: providerType,
         model_id: modelId,
-        capability_id: capabilityId,
       });
-      toast.error(errorMessage);
+
+      const idxErr = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
+      if (idxErr !== -1) {
+        const nextMsgsErr = [...latestMessagesRef.current];
+        nextMsgsErr[idxErr] = { ...nextMsgsErr[idxErr], text: errMsg, streaming: false, error: true };
+        latestMessagesRef.current = nextMsgsErr;
+        setMessages(nextMsgsErr);
+        syncActiveMessages(nextMsgsErr, "connecting");
+        persistSessionSnapshot(nextMsgsErr);
+      }
     } finally {
       if (activeRequestIdRef.current === requestId) {
         setIsStreaming(false);
+        setStreamPhase("connecting");
         streamAbortRef.current = null;
       }
     }
@@ -875,34 +827,37 @@ export function AiWorkspacePage() {
       messageId: string,
       updater: (artifact: MarkdownNoteArtifact) => MarkdownNoteArtifact,
     ) => {
-      setMessages((current) => {
-        const nextMessages = current.map((message) => {
-          if (message.id !== messageId || message.artifact?.type !== "markdown_note") {
-            return message;
-          }
+      // Compute next messages from the latest ref to avoid stale closures,
+      // then call all state setters OUTSIDE the setMessages updater (React rule:
+      // no side effects / nested setState inside an updater function).
+      const current = latestMessagesRef.current;
+      const nextMessages = current.map((message) => {
+        if (message.id !== messageId || message.artifact?.type !== "markdown_note") {
+          return message;
+        }
 
-          const nextArtifact = updater(message.artifact);
-          return normalizeConversationMessage({
-            ...message,
-            artifact: nextArtifact,
-            writePlan: nextArtifact.plan,
-          });
+        const nextArtifact = updater(message.artifact);
+        return normalizeConversationMessage({
+          ...message,
+          artifact: nextArtifact,
+          writePlan: nextArtifact.plan,
         });
-        syncActiveMessages(nextMessages, latestStreamPhaseRef.current);
-        const latestPlan = getLastAgentPlan(nextMessages);
-        const latestArtifact = getLastArtifact(nextMessages);
-        setActiveLastWritePlan(
-          latestArtifact?.type === "markdown_note"
-            ? latestArtifact.plan
-            : null,
-        );
-        setActiveLastAgentPlan(latestPlan);
-        setActiveLastArtifact(latestArtifact);
-        persistSessionSnapshot(nextMessages, {
-          plan: latestPlan,
-          artifact: latestArtifact,
-        });
-        return nextMessages;
+      });
+      latestMessagesRef.current = nextMessages;
+      setMessages(nextMessages);
+      syncActiveMessages(nextMessages, latestStreamPhaseRef.current);
+      const latestPlan = getLastAgentPlan(nextMessages);
+      const latestArtifact = getLastArtifact(nextMessages);
+      setActiveLastWritePlan(
+        latestArtifact?.type === "markdown_note"
+          ? latestArtifact.plan
+          : null,
+      );
+      setActiveLastAgentPlan(latestPlan);
+      setActiveLastArtifact(latestArtifact);
+      persistSessionSnapshot(nextMessages, {
+        plan: latestPlan,
+        artifact: latestArtifact,
       });
     },
     [
@@ -1013,6 +968,20 @@ export function AiWorkspacePage() {
     [activeNotebookId, updateMessageArtifact],
   );
 
+  const handleRetry = useCallback(() => {
+    if (isStreaming || !lastSubmitPayloadRef.current || !lastSubmitOverridesRef.current) return;
+    // 移除末尾的 user + assistant error 这一对消息
+    const currentMsgs = latestMessagesRef.current;
+    const lastMsg = currentMsgs[currentMsgs.length - 1];
+    if (lastMsg?.role !== "assistant" || !lastMsg.error) return;
+    const trimmed = currentMsgs.slice(0, -2);
+    latestMessagesRef.current = trimmed;
+    setMessages(trimmed);
+    syncActiveMessages(trimmed, latestStreamPhaseRef.current);
+    void handleSubmit(lastSubmitOverridesRef.current, lastSubmitPayloadRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming, syncActiveMessages]);
+
   const handleOpenResultPage = useCallback(
     (pageId: string) => {
       openTab(pageId);
@@ -1110,69 +1079,122 @@ export function AiWorkspacePage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 pb-10">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "rounded-[24px] border px-5 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
-                  message.role === "user"
-                    ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
-                    : message.error
-                      ? "border-destructive/20 bg-destructive/5 text-destructive"
-                      : "border-border/70 bg-background/80 text-foreground",
-                )}
-              >
-                {message.role === "assistant" && !message.error ? (
-                  message.artifact ? (
-                    <AgentArtifactView
-                      artifact={message.artifact}
-                      applying={applyingMessageId === message.id}
-                      onConfirmMarkdownNote={(artifact) => {
-                        void handleConfirmWrite(message.id, artifact);
-                      }}
-                      onCancelMarkdownNote={(artifact) => {
-                        handleCancelWrite(message.id, artifact);
-                      }}
-                      onOpenResult={handleOpenResultPage}
-                    />
-                  ) : message.text ? (
-                    <div className="whitespace-pre-wrap break-words text-sm leading-7">
-                      {message.text}
+          <div className="flex flex-col gap-3 pb-10">
+            {messages.map((message, index) => {
+              const isLastMessage = index === messages.length - 1;
+              const isRetryable =
+                message.role === "assistant" &&
+                message.error &&
+                isLastMessage &&
+                !isStreaming &&
+                !draftPayload.promptText.trim() &&
+                !!lastSubmitPayloadRef.current;
+
+              return (
+              <div key={message.id} className="flex flex-col gap-1.5">
+                <div
+                  className={cn(
+                    "rounded-2xl border px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)]",
+                    message.role === "user"
+                      ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
+                      : message.error
+                        ? "border-destructive/20 bg-destructive/5 text-destructive"
+                        : "border-border/70 bg-background/80 text-foreground",
+                  )}
+                >
+                  {message.role === "assistant" && !message.error ? (
+                    message.artifact ? (
+                      <AgentArtifactView
+                        artifact={message.artifact}
+                        applying={applyingMessageId === message.id}
+                        onConfirmMarkdownNote={(artifact) => {
+                          void handleConfirmWrite(message.id, artifact);
+                        }}
+                        onCancelMarkdownNote={(artifact) => {
+                          handleCancelWrite(message.id, artifact);
+                        }}
+                        onOpenResult={handleOpenResultPage}
+                      />
+                    ) : message.text ? (
+                      <>
+                        <div className="whitespace-pre-wrap break-words text-sm leading-7">
+                          {message.text}
+                        </div>
+                        {message.streaming && (
+                          <div className="mt-2.5 flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
+                              style={{ animationDelay: "0ms", animationDuration: "1s" }}
+                            />
+                            <span
+                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
+                              style={{ animationDelay: "200ms", animationDuration: "1s" }}
+                            />
+                            <span
+                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
+                              style={{ animationDelay: "400ms", animationDuration: "1s" }}
+                            />
+                            <span className="ml-1 text-xs text-muted-foreground/70">
+                              {STREAM_PHASE_LABEL[streamPhase]}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm leading-6 text-muted-foreground">
+                        {message.streaming ? (
+                          <>
+                            <LucideIcons.LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                            <span>{STREAM_PHASE_LABEL[streamPhase]}</span>
+                          </>
+                        ) : (
+                          <span className="text-destructive">未收到响应，请重试</span>
+                        )}
+                      </div>
+                    )
+                  ) : message.role === "assistant" && message.error ? (
+                    <div className="flex items-center gap-2 text-sm leading-6">
+                      <LucideIcons.AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span className="whitespace-pre-wrap break-words">{message.text || "请求失败，请重试"}</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-sm leading-7 text-muted-foreground">
-                      {message.streaming && (
-                        <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                      )}
-                      {message.streaming ? STREAM_PHASE_LABEL[streamPhase] : ""}
+                    <div className="whitespace-pre-wrap break-words text-sm leading-6">
+                      {message.text}
                     </div>
-                  )
-                ) : (
-                  <div className="whitespace-pre-wrap break-words text-sm leading-7">
-                    {message.text ||
-                      (message.streaming ? STREAM_PHASE_LABEL[streamPhase] : "")}
-                  </div>
-                )}
-                {message.references && message.references.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {message.references.map((reference) => (
-                      <span
-                        key={`${message.id}-${reference.pageId}`}
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium",
-                          message.role === "user"
-                            ? "bg-white/15 text-white/90"
-                            : "border border-border/70 bg-muted/60 text-muted-foreground",
-                        )}
-                      >
-                        @{reference.titleSnapshot}
-                      </span>
-                    ))}
-                  </div>
+                  )}
+                  {message.references && message.references.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {message.references.map((reference) => (
+                        <span
+                          key={`${message.id}-${reference.pageId}`}
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium",
+                            message.role === "user"
+                              ? "bg-white/15 text-white/90"
+                              : "border border-border/70 bg-muted/60 text-muted-foreground",
+                          )}
+                        >
+                          @{reference.titleSnapshot}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* 重试按钮：仅错误消息 & 最后一条 & composer 为空时显示 */}
+                {isRetryable && (
+                  <button
+                    type="button"
+                    title="重新发送"
+                    onClick={handleRetry}
+                    className="flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <LucideIcons.RotateCcw className="h-3 w-3" />
+                    重试
+                  </button>
                 )}
               </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}

@@ -402,6 +402,32 @@ export const EditorPasteHandler = Extension.create({
               return true;
             }
 
+            // 优先尝试处理 HTML 格式粘贴（外部 Word/浏览器复制，以及内部带颜色 mark 序列化后的 HTML）
+            // 必须在 shouldLiteralPasteHtmlTagText 之前检查，避免 tiptap-markdown 把 Highlight/Color
+            // mark 序列化为 <mark style="..."> 标签后被误当作字面量 HTML 文本插入
+            if (htmlData && !hasMarkdownStructure(processedTextPlain)) {
+              try {
+                const parser = DOMParser.fromSchema(state.schema);
+                const tempDiv = new window.DOMParser().parseFromString(
+                  htmlData,
+                  "text/html",
+                );
+
+                // 解析为 ProseMirror Slice
+                const slice = parser.parseSlice(tempDiv.body);
+
+                if (slice.content.size > 0) {
+                  const tr = state.tr.replaceSelection(slice);
+                  applyPasteTransaction(view, tr);
+                  return true;
+                }
+              } catch (e) {
+                console.warn("[EditorPasteHandler] HTML parse failed, fallback to markdown", e);
+                // 降级到后续处理
+              }
+            }
+
+            // 当没有 htmlData 时，若 text/plain 包含 HTML 标签则作为字面量文本插入
             const shouldLiteralPasteHtmlTagText =
               !hasMarkdownStructure(processedTextPlain) &&
               hasHtmlLikeTag(processedTextPlain) &&
@@ -424,29 +450,6 @@ export const EditorPasteHandler = Extension.create({
               const tr = state.tr.replaceSelection(slice);
               applyPasteTransaction(view, tr);
               return true;
-            }
-
-            // 尝试处理外部 HTML 格式粘贴（如 Word、浏览器复制）
-            if (htmlData && !hasMarkdownStructure(processedTextPlain)) {
-              try {
-                const parser = DOMParser.fromSchema(state.schema);
-                const tempDiv = new window.DOMParser().parseFromString(
-                  htmlData,
-                  "text/html",
-                );
-
-                // 解析为 ProseMirror Slice
-                const slice = parser.parseSlice(tempDiv.body);
-
-                if (slice.content.size > 0) {
-                  const tr = state.tr.replaceSelection(slice);
-                  applyPasteTransaction(view, tr);
-                  return true;
-                }
-              } catch (e) {
-                console.warn("[EditorPasteHandler] HTML parse failed, fallback to markdown", e);
-                // 降级到 Markdown 处理
-              }
             }
 
             let processedText = convertChineseLists(processedTextPlain);

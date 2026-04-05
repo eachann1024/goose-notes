@@ -47,6 +47,11 @@ const REASONING_LEVEL_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    id: "default",
+    label: "默认",
+    description: "不额外传思考长度，交给第三方模型自己决定。",
+  },
+  {
     id: "low",
     label: "低",
     description: "优先更快返回，尽量少走深推理。",
@@ -113,6 +118,7 @@ export function AiWorkspaceComposerBar({
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isComposerEmpty, setIsComposerEmpty] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -191,7 +197,8 @@ export function AiWorkspaceComposerBar({
 
   const currentModel = modelOptions.find((item) => item.id === resolvedModelId) ?? null;
   const currentReasoning = REASONING_LEVEL_OPTIONS.find((item) => item.id === ai.workspaceReasoningLevel)
-    ?? REASONING_LEVEL_OPTIONS[2];
+    ?? REASONING_LEVEL_OPTIONS[0];
+  const supportsReasoningLevel = ai.useCustomProvider;
 
   const modelButtonDisabled = loadingModels || Boolean(modelLoadError) || !modelOptions.length;
   const modelButtonReason = loadingModels
@@ -209,9 +216,9 @@ export function AiWorkspaceComposerBar({
     <div className="shrink-0 px-3 pb-3 pt-2">
       <div
         data-ai-workspace-composer="true"
-        className="rounded-[28px] border border-border/70 bg-background/96 px-2.5 pb-2.5 pt-3 shadow-[0_18px_44px_rgba(15,23,42,0.08)] backdrop-blur-[10px]"
+        className="rounded-3xl border border-border/70 bg-background/96 px-2 pb-2 pt-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur-[10px]"
       >
-        <div className="px-3">
+        <div className="px-2.5">
           <AiComposerInput
             ref={composerRef}
             placeholder="输入问题或生成需求"
@@ -221,15 +228,16 @@ export function AiWorkspaceComposerBar({
             onEscape={() => composerRef.current?.clear()}
             initialContent={draftContent}
             onContentChange={onDraftChange}
+            onIsEmptyChange={setIsComposerEmpty}
             onReferenceAdded={onReferenceAdded}
             variant="panel"
           />
         </div>
 
-        <div className="mt-2.5 h-px bg-border/70" />
+        <div className="mt-2 h-px bg-border/70" />
 
-        <div className="mt-2.5 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -282,60 +290,72 @@ export function AiWorkspaceComposerBar({
               </Tooltip>
             </TooltipProvider>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  data-ai-workspace-reasoning-trigger="true"
-                  className="justify-between rounded-full border border-border/70 bg-muted/35 px-3 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <LucideIcons.Brain className="h-3.5 w-3.5 shrink-0" />
-                    <span>{currentReasoning.label}</span>
-                  </span>
-                  <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[220px]">
-                <DropdownMenuRadioGroup
-                  value={ai.workspaceReasoningLevel}
-                  onValueChange={(value) => setAIWorkspaceReasoningLevel(value as AIReasoningLevel)}
-                >
-                  {REASONING_LEVEL_OPTIONS.map((option) => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id} className="items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-foreground">{option.label}</div>
-                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {option.description}
+            {supportsReasoningLevel ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-ai-workspace-reasoning-trigger="true"
+                    className="justify-between rounded-full border border-border/70 bg-muted/35 px-3 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <LucideIcons.Brain className="h-3.5 w-3.5 shrink-0" />
+                      <span>{currentReasoning.label}</span>
+                    </span>
+                    <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[220px]">
+                  <DropdownMenuRadioGroup
+                    value={ai.workspaceReasoningLevel}
+                    onValueChange={(value) => setAIWorkspaceReasoningLevel(value as AIReasoningLevel)}
+                  >
+                    {REASONING_LEVEL_OPTIONS.map((option) => (
+                      <DropdownMenuRadioItem key={option.id} value={option.id} className="items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-foreground">{option.label}</div>
+                          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                            {option.description}
+                          </div>
                         </div>
-                      </div>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </div>
 
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleSubmit}
-            disabled={isStreaming}
-            data-ai-workspace-send="true"
-            title={isStreaming ? "生成中…" : "发送"}
-            className={cn(
-              "h-10 w-10 rounded-full shadow-none",
-              isStreaming && "cursor-not-allowed",
-            )}
-          >
-            {isStreaming ? (
-              <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : (
-              <LucideIcons.ArrowUp className="h-4 w-4" />
-            )}
-          </Button>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={handleSubmit}
+                  disabled={isStreaming || isComposerEmpty}
+                  data-ai-workspace-send="true"
+                  className={cn(
+                    "h-9 w-9 rounded-full shadow-none transition-colors duration-150",
+                    isComposerEmpty || isStreaming
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
+                      : "hover:bg-primary/85 active:bg-primary/75 active:scale-95 dark:hover:bg-primary/80 dark:active:bg-primary/65",
+                  )}
+                >
+                  {isStreaming ? (
+                    <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LucideIcons.ArrowUp className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {isStreaming ? "生成中…" : isComposerEmpty ? "请先输入内容" : "发送"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>

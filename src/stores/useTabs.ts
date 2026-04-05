@@ -186,22 +186,56 @@ export const useTabs = create<TabsState>()((set, get) => ({
 
   removeDeletedPage: (pageId: string) => {
     const { openTabs, activeTabId } = get();
+    const deletedIndex = openTabs.findIndex((tab) => tab.pageId === pageId);
     const deletedPage = usePages.getState().getPage(pageId);
-    const isDeletingTrashedPage = !!deletedPage?.trashedAt;
+    const preferredPageId = usePages.getState().activePageId;
     const nextTabs = openTabs.filter((tab) => tab.pageId !== pageId);
     if (nextTabs.length === openTabs.length) return;
 
+    let finalTabs = nextTabs;
     let nextActiveId = activeTabId;
+
     if (!nextActiveId || !nextTabs.some((tab) => tab.id === nextActiveId)) {
-      nextActiveId = nextTabs[0]?.id ?? null;
+      if (preferredPageId) {
+        const existingPreferredTab = nextTabs.find(
+          (tab) => tab.pageId === preferredPageId,
+        );
+
+        if (existingPreferredTab) {
+          nextActiveId = existingPreferredTab.id;
+        } else {
+          const insertionIndex =
+            deletedIndex === -1
+              ? nextTabs.length
+              : Math.min(deletedIndex, nextTabs.length);
+          const replacementTab: TabItem = {
+            id: createTabId(preferredPageId),
+            pageId: preferredPageId,
+          };
+          finalTabs = [
+            ...nextTabs.slice(0, insertionIndex),
+            replacementTab,
+            ...nextTabs.slice(insertionIndex),
+          ];
+          nextActiveId = replacementTab.id;
+        }
+      } else {
+        nextActiveId =
+          nextTabs[Math.min(deletedIndex, nextTabs.length - 1)]?.id ?? null;
+      }
     }
 
-    set({ openTabs: nextTabs, activeTabId: nextActiveId });
-    if (isDeletingTrashedPage) {
+    set({ openTabs: finalTabs, activeTabId: nextActiveId });
+
+    const nextActiveTab = finalTabs.find((tab) => tab.id === nextActiveId);
+    if (deletedPage?.trashedAt) {
+      if (nextActiveTab?.pageId && nextActiveTab.pageId !== preferredPageId) {
+        get().syncNotebookForPage(nextActiveTab.pageId);
+        void scheduleSetActivePage(nextActiveTab.pageId);
+      }
       return;
     }
 
-    const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
     get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
     void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
   },

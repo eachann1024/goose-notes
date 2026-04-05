@@ -47,6 +47,24 @@ function getSelectedText(editor: Editor) {
   return extractPlainTextBetween(editor, from, to);
 }
 
+function buildErrorMessage(error: unknown): string {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+
+  const lines = ["⚠️ AI 执行失败", "", `错误: ${rawMessage}`];
+
+  const requestIdMatch = rawMessage.match(/Request id:\s*([a-f0-9]+)/i);
+  if (requestIdMatch) {
+    lines.push(`请求 ID: ${requestIdMatch[1]}`);
+  }
+
+  const endpointMatch = rawMessage.match(/targeted an endpoint that is (.+?)(?:\.|$)/i);
+  if (endpointMatch) {
+    lines.push(`详情: ${endpointMatch[1]}`);
+  }
+
+  return lines.join("\n");
+}
+
 function getRecentContext(editor: Editor, currentBlockFrom: number, maxBlocks = 3) {
   const snippets: string[] = [];
 
@@ -112,13 +130,13 @@ async function applyAiAction(params: {
     } else {
       const lines = content
         .split(/\r?\n+/)
-        .map((line) => line.trim())
+        .map((line: string) => line.trim())
         .filter(Boolean);
 
       chain
         .insertContent({
           type: "taskList",
-          content: lines.map((line) => ({
+          content: lines.map((line: string) => ({
             type: "taskItem",
             attrs: { checked: false },
             content: [{ type: "paragraph", content: [{ type: "text", text: line }] }],
@@ -131,6 +149,14 @@ async function applyAiAction(params: {
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI 执行失败";
     toast.error(message, { id: loadingId });
+
+    // 将错误信息格式化为文本并插入编辑器，支持换行查看和复制
+    if (range.from !== range.to) {
+      editor.chain().focus().deleteRange(range).run();
+    }
+    const errorText = buildErrorMessage(error);
+    editor.chain().focus().insertContent(errorText).run();
+
     throw error;
   }
 }

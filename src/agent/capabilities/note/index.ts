@@ -8,7 +8,15 @@ import {
   resolveAiTargetSelection,
   resolveAiTargetReference,
   type AiResolvedTarget,
+  type AiTargetSelection,
 } from "@/lib/ai-write";
+import {
+  buildIntentRouterContext,
+  classifyIntent,
+  verdictToTargetMode,
+} from "@/lib/ai-intent-router";
+import type { AISettingsLike } from "@/lib/ai-provider";
+import type { AiSessionMessage } from "@/stores/useAiSessions";
 import { usePages } from "@/stores/usePages";
 import type { Page } from "@/types";
 import type {
@@ -142,20 +150,83 @@ function validateWorkspaceWriteTarget(parsed: AgentParsedInput) {
   return null;
 }
 
-export function parseNoteAgentInput(context: AgentInputContext): AgentParsedInput {
+export interface IntentRouterDeps {
+  settings: AISettingsLike;
+  messages: AiSessionMessage[];
+  lastArtifact?: AgentArtifact | null;
+  originPageTitle?: string;
+  originNotebookName?: string;
+}
+
+export async function parseNoteAgentInput(
+  context: AgentInputContext,
+  routerDeps?: IntentRouterDeps,
+): Promise<AgentParsedInput> {
   const targetRefMatch =
     context.surface === "workspace"
       ? resolveAiTargetReference(context.payload)
       : null;
+
+  let selection: AiTargetSelection | null = context.surface === "workspace"
+    ? resolveAiTargetSelection({
+        payload: context.payload,
+        manualSelection: context.manualTargetSelection,
+        stickyTarget: context.stickyTarget,
+        recentWriteTarget: context.recentWriteTarget,
+        originPageId: context.originPageId,
+        originNotebookId: context.originNotebookId,
+      })
+    : null;
+  let intentClassification: AgentParsedInput["intentClassification"];
+
+  // 如果确定性路径返回 "ambiguous"，尝试 LLM 路由
+  if (selection?.mode === "ambiguous") {
+    if (routerDeps) {
+      const routerContext = buildIntentRouterContext({
+        userMessage: context.payload.promptText,
+        messages: routerDeps.messages,
+        originPageTitle: routerDeps.originPageTitle,
+        originNotebookName: routerDeps.originNotebookName,
+        stickyTarget: context.stickyTarget,
+        lastArtifact: routerDeps.lastArtifact,
+      });
+
+      const result = await classifyIntent(routerDeps.settings, routerContext);
+      const mappedMode = verdictToTargetMode(
+        result.verdict,
+        Boolean(context.originPageId),
+        Boolean(context.originNotebookId),
+      );
+
+      intentClassification = {
+        verdict: result.verdict,
+        confidence: result.confidence,
+        reason: result.reason,
+        source: result.source,
+      };
+
+      selection = {
+        mode: mappedMode,
+        source: "llm_router",
+      };
+    } else {
+      // 无 LLM 依赖时用确定性兜底
+      selection = {
+        mode: context.originPageId
+          ? "current_page"
+          : context.originNotebookId
+            ? "current_notebook"
+            : "chat_only",
+        source: "prompt_rule",
+      };
+    }
+  }
+
   const resolvedTarget =
-    context.surface === "workspace"
+    context.surface === "workspace" && selection
       ? resolveAiTargetIntent({
           payload: context.payload,
-          selection: resolveAiTargetSelection({
-            payload: context.payload,
-            originPageId: context.originPageId,
-            originNotebookId: context.originNotebookId,
-          }),
+          selection,
           originPageId: context.originPageId,
           originNotebookId: context.originNotebookId,
         })
@@ -184,6 +255,7 @@ export function parseNoteAgentInput(context: AgentInputContext): AgentParsedInpu
       .toLowerCase(),
     targetReference: targetRefMatch?.reference ?? null,
     resolvedTarget,
+    ...(intentClassification ? { intentClassification } : {}),
   };
 }
 

@@ -144,10 +144,12 @@ declare global {
   const buildAiContextBundle: typeof import('./lib/ai-write').buildAiContextBundle
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write').buildAiWorkspaceUserPrompt
   const buildAiWritePlan: typeof import('./lib/ai-write').buildAiWritePlan
+  const buildIntentRouterContext: typeof import('./lib/ai-intent-router').buildIntentRouterContext
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
+  const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
   const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
@@ -158,6 +160,7 @@ declare global {
   const createAiChatOnlyTarget: typeof import('./lib/ai-write').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
+  const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write').createStickyTargetFromResolvedTarget
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
@@ -220,6 +223,7 @@ declare global {
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
+  const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
@@ -229,10 +233,12 @@ declare global {
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const resetAnalytics: typeof import('./lib/analytics').resetAnalytics
+  const resolveAiTargetFromSelection: typeof import('./lib/ai-write').resolveAiTargetFromSelection
   const resolveAiTargetIntent: typeof import('./lib/ai-write').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write').resolveAiTargetSelection
   const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
+  const resolvedTargetToSelection: typeof import('./lib/ai-write').resolvedTargetToSelection
   const runAIText: typeof import('./lib/ai-provider').runAIText
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
@@ -241,6 +247,7 @@ declare global {
   const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const startTransition: typeof import('react').startTransition
+  const stickyTargetToSelection: typeof import('./lib/ai-write').stickyTargetToSelection
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
   const syncAIAnalyticsContext: typeof import('./lib/analytics').syncAIAnalyticsContext
   const syncAnalyticsContext: typeof import('./lib/analytics').syncAnalyticsContext
@@ -279,6 +286,7 @@ declare global {
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
+  const verdictToTargetMode: typeof import('./lib/ai-intent-router').verdictToTargetMode
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
   const writeDbStorageJSON: typeof import('./lib/storage').writeDbStorageJSON
   const writePersistentDismissState: typeof import('./lib/dismiss-state').writePersistentDismissState
@@ -298,10 +306,13 @@ declare global {
   export type { TabItem } from './stores/useTabs'
   import('./stores/useTabs')
   // @ts-ignore
-  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides } from './lib/ai-provider'
+  export type { IntentVerdict, IntentRouterContext, IntentRouterResult } from './lib/ai-intent-router'
+  import('./lib/ai-intent-router')
+  // @ts-ignore
+  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider'
   import('./lib/ai-provider')
   // @ts-ignore
-  export type { AiWriteAction, AiTargetMode, AiTargetSelection, AiTargetRef, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write'
+  export type { AiWriteAction, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write'
   import('./lib/ai-write')
   // @ts-ignore
   export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'

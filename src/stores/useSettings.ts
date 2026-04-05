@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { DEFAULT_CLAUDE_BASE_URL, DEFAULT_OPENAI_BASE_URL, type AIModelOption, type CustomAIProtocol } from '@/lib/ai-provider'
+import { DEFAULT_CLAUDE_BASE_URL, DEFAULT_OPENAI_BASE_URL, type AIModelOption, type AIReasoningLevel, type CustomAIProtocol } from '@/lib/ai-provider'
 import { getAIAnalyticsContext, trackEvent } from '@/lib/analytics'
 import { uToolsStorage } from '@/lib/storage'
 
@@ -27,8 +27,8 @@ export interface AISettings {
     selectedModelId: string | null
     // 独立 AI 页面记忆的模型。可选值：当前 AI 来源返回的任意模型 ID。副作用：仅影响独立 AI 页面请求，不会改写设置里的默认模型。
     workspaceSelectedModelId: string | null
-    // 独立 AI 页面的推理等级。可选值：low / medium / high。副作用：提交时会尽力映射到不同 provider 的推理参数。
-    workspaceReasoningLevel: 'low' | 'medium' | 'high'
+    // 独立 AI 页面的推理等级。可选值：default / low / medium / high。副作用：仅第三方 provider 会尽力映射到对应推理参数；default 表示不额外传参。
+    workspaceReasoningLevel: AIReasoningLevel
     // 是否关闭 uTools AI 并改用自定义协议。可选值：true / false。副作用：开启后编辑器请求会改走自定义接口。可扩展用途：后续可继续接更多协议。
     useCustomProvider: boolean
     // 自定义 AI 协议类型。可选值：openai / claude。副作用：切换后模型列表读取接口会变化。可扩展用途：后续可继续扩展其他兼容协议。
@@ -119,6 +119,9 @@ interface SettingsState {
     uiFontSize: UIFontSize
     editorFontSize: number
     customActions: CustomAction[]
+    // 已关闭的通知 ID 集合，持久化存储
+    dismissedNotices: Record<string, boolean>
+    _hasHydrated: boolean
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
     setDefaultCodeBlockWrap: (enabled: boolean) => void
@@ -130,7 +133,7 @@ interface SettingsState {
     setAIEnabled: (enabled: boolean) => void
     setAISelectedModelId: (modelId: string | null) => void
     setAIWorkspaceSelectedModelId: (modelId: string | null) => void
-    setAIWorkspaceReasoningLevel: (level: 'low' | 'medium' | 'high') => void
+    setAIWorkspaceReasoningLevel: (level: AIReasoningLevel) => void
     setAICustomProviderEnabled: (enabled: boolean) => void
     saveAICustomConfig: (config: {
         protocol: CustomAIProtocol
@@ -162,6 +165,7 @@ interface SettingsState {
     addCustomAction: (action: Omit<CustomAction, 'id'>) => void
     updateCustomAction: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void
     removeCustomAction: (id: string) => void
+    dismissNotice: (noticeId: string) => void
 }
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -353,12 +357,12 @@ function normalizeAIApiKey(value: unknown, fallback = '') {
     return typeof value === 'string' ? value.trim() : fallback
 }
 
-function normalizeAIReasoningLevel(value: unknown): 'low' | 'medium' | 'high' {
-    if (value === 'low' || value === 'medium' || value === 'high') {
+function normalizeAIReasoningLevel(value: unknown): AIReasoningLevel {
+    if (value === 'default' || value === 'low' || value === 'medium' || value === 'high') {
         return value
     }
 
-    return 'high'
+    return 'default'
 }
 
 function normalizeAISettings(ai: Partial<AISettings> | undefined): AISettings {
@@ -424,7 +428,7 @@ export const useSettings = create<SettingsState>()(
                 enabled: false,
                 selectedModelId: null,
                 workspaceSelectedModelId: null,
-                workspaceReasoningLevel: 'high',
+                workspaceReasoningLevel: 'default',
                 useCustomProvider: false,
                 customProtocol: 'openai',
                 customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
@@ -456,6 +460,12 @@ export const useSettings = create<SettingsState>()(
             uiFontSize: DEFAULT_UI_FONT_SIZE,
             editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
             customActions: [],
+            dismissedNotices: {},
+            _hasHydrated: false,
+            dismissNotice: (noticeId) =>
+                set((state) => ({
+                    dismissedNotices: { ...state.dismissedNotices, [noticeId]: true },
+                })),
             setTheme: (theme) => {
                 set({ theme })
                 applyTheme(theme)
@@ -850,6 +860,9 @@ export const useSettings = create<SettingsState>()(
                         useSettings.setState({ desktop: mergedDesktop })
                     }
                 }
+
+                // 标记 hydration 完成
+                useSettings.setState({ _hasHydrated: true })
             },
         }
     )

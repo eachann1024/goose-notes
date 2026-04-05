@@ -16,6 +16,63 @@ function getUToolsApi(): UToolsAiApi | null {
   return ((window as Window & { utools?: UToolsAiApi }).utools ?? null);
 }
 
+function readStringField(input: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function readNumberField(input: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function normalizeUToolsAiModel(input: unknown): UToolsAiModel | null {
+  if (!input) return null;
+
+  if (typeof input === "string") {
+    const id = input.trim();
+    return id ? { id, label: id } : null;
+  }
+
+  if (typeof input !== "object") {
+    return null;
+  }
+
+  const record = input as Record<string, unknown>;
+  const id = readStringField(record, ["id", "model", "name", "value", "key"]);
+  if (!id) {
+    return null;
+  }
+
+  const label = readStringField(record, [
+    "label",
+    "displayName",
+    "display_name",
+    "title",
+    "name",
+    "model",
+    "id",
+  ]) || id;
+
+  return {
+    id,
+    label,
+    description: readStringField(record, ["description", "desc", "type"]) || undefined,
+    icon: readStringField(record, ["icon"]) || undefined,
+    cost: readNumberField(record, ["cost", "price"]),
+  };
+}
+
 export function isUToolsAiSupported() {
   const api = getUToolsApi();
   return Boolean(api?.ai && api?.allAiModels);
@@ -28,5 +85,16 @@ export async function getAvailableUToolsAiModels() {
   }
 
   const models = await api.allAiModels();
-  return Array.isArray(models) ? models : [];
+  if (!Array.isArray(models)) {
+    return [];
+  }
+
+  const deduped = new Map<string, UToolsAiModel>();
+  models.forEach((item) => {
+    const normalized = normalizeUToolsAiModel(item);
+    if (!normalized) return;
+    deduped.set(normalized.id, normalized);
+  });
+
+  return Array.from(deduped.values());
 }

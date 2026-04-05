@@ -43,7 +43,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
   const inlineAnchorIdRef = useRef<string | null>(null);
   const [inlineAnchorElement, setInlineAnchorElement] = useState<HTMLElement | null>(null);
   const [composerFocusToken, setComposerFocusToken] = useState(0);
-  const [status, setStatus] = useState<"idle" | "streaming" | "review">("idle");
+  const [status, setStatus] = useState<"idle" | "streaming" | "review" | "error">("idle");
   const [streamPhase, setStreamPhase] = useState<AIStreamPhase>("connecting");
   const [streamedContent, setStreamedContent] = useState("");
   const [reasoningText, setReasoningText] = useState("");
@@ -452,11 +452,28 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         blockText,
         initialAction,
       };
-      const planning = buildAgentPlan(agentContext);
+      const planning = await buildAgentPlan(agentContext);
       const submitPlan = planning.plan ?? null;
       const submitArtifact = planning.artifact ?? null;
       const capabilityId = planning.intent.capabilityId;
       const artifactType = planning.intent.artifactType;
+      const intentClassification = planning.parsed.intentClassification;
+
+      if (intentClassification) {
+        trackEvent("ai_intent_classified", {
+          feature: "ai_intent_router",
+          source: intentClassification.source,
+          verdict: intentClassification.verdict,
+          confidence: intentClassification.confidence,
+          reason: intentClassification.reason,
+          provider_type: providerType,
+          model_id: modelId,
+          surface: "inline",
+          target_type: planning.intent.targetType,
+          capability_id: capabilityId,
+          has_reference: composerPayload.references.length > 0,
+        });
+      }
 
       trackEvent("ai_request_submitted", {
         feature: "ai",
@@ -647,7 +664,8 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
         model_id: modelId,
       });
       console.error(e);
-      closePopover(true);
+      setResultContent(e instanceof Error ? e.message : "请求失败");
+      setStatus("error");
     }
   }, [editor, closePopover, initialAction, hidePopoverAfterApply, showUndoCapsuleAtSelection]);
 
@@ -740,7 +758,7 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
       <LucideIcons.Sparkles className="h-4 w-4 shrink-0 self-center text-[#10b981]" />
 
       {status === "idle" ? (
-        <div className="relative min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <AiComposerInput
             ref={composerInputRef}
             placeholder={placeholderText}
@@ -748,13 +766,33 @@ export function AiInputPopover({ editor }: AiInputPopoverProps) {
             onSubmit={handleSubmit}
             onEscape={() => closePopover(true)}
             onReferenceAdded={handleReferenceAdded}
-            compactWidthClass="w-[300px] sm:w-[360px]"
+            compactWidthClass="flex-1 min-w-0"
           />
           <button
+            type="button"
             onClick={handleSubmit}
-            className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] text-white transition-colors hover:bg-[#059669]"
+            className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] text-white transition-colors hover:bg-[#059669]"
           >
             <LucideIcons.Check className="h-3 w-3" strokeWidth={3} />
+          </button>
+        </div>
+      ) : status === "error" ? (
+        <div className="relative min-w-0 flex-1 flex items-center gap-2 pr-6">
+          <span className="text-[12px] font-medium text-destructive leading-5 truncate flex-1" title={resultContent}>
+            {resultContent}
+          </span>
+          <button
+            onClick={() => {
+              setStatus("idle");
+              setComposerFocusToken(v => v + 1);
+              setTimeout(() => {
+                composerInputRef.current?.focus();
+              }, 50);
+            }}
+            className="absolute right-0 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="返回编辑"
+          >
+            <LucideIcons.RotateCcw className="h-3 w-3" />
           </button>
         </div>
       ) : (

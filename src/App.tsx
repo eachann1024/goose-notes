@@ -89,7 +89,7 @@ function App() {
     privacy,
     utools,
   } = useSettings();
-  const { hydrated, onboardingCompleted } = usePages();
+  const { hydrated, onboardingCompleted, activePageId } = usePages();
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -137,7 +137,7 @@ function App() {
     ) {
       openTab(activePageId);
     }
-  }, [hydrated]);
+  }, [hydrated, activePageId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

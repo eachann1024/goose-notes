@@ -1,6 +1,4 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText, streamText } from "ai";
+
 import {
   getAvailableUToolsAiModels,
   isUToolsAiSupported,
@@ -16,11 +14,12 @@ export interface AIModelOption {
 }
 
 export type AIProviderMode = "utools" | "custom";
-export type AIReasoningLevel = "low" | "medium" | "high";
+export type AIReasoningLevel = "default" | "low" | "medium" | "high";
 
 export interface AISettingsLike {
   enabled: boolean;
   selectedModelId: string | null;
+  workspaceReasoningLevel: AIReasoningLevel;
   useCustomProvider: boolean;
   customProtocol: CustomAIProtocol;
   customOpenAIBaseURL: string;
@@ -48,18 +47,31 @@ export interface AIRequestOverrides {
   reasoningLevel?: AIReasoningLevel | null;
 }
 
-interface RunAITextStreamOptions {
+export interface RunAITextOptions {
   abortSignal?: AbortSignal;
-  onUpdate?: (update: AIStreamUpdate) => void;
   requestOverrides?: AIRequestOverrides;
 }
 
+export interface RunAITextStreamOptions extends RunAITextOptions {
+  onUpdate?: (update: AIStreamUpdate) => void;
+  streamIdleTimeoutMs?: number;
+}
+
 interface UToolsAiApi {
-  ai?: (option: {
-    model?: string;
-    reasoningEffort?: AIReasoningLevel;
-    messages: AIMessage[];
-  }) => Promise<{ content?: string }>;
+  ai?: (
+    option: {
+      model?: string;
+      messages: AIMessage[];
+    },
+    streamCallback?: (chunk: {
+      role?: "system" | "user" | "assistant";
+      content?: string;
+      reasoning_content?: string;
+    }) => void,
+  ) => Promise<{
+    content?: string;
+    reasoning_content?: string;
+  }> & { abort?: () => void };
 }
 
 const DEFAULT_UTOOLS_MODEL = "deepseek-v3";
@@ -67,6 +79,7 @@ export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
 const SETTINGS_ENTRY_HINT = "请前往“设置 -> AI 助手 -> 自定义 AI”检查配置。";
 const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
+  default: 0,
   low: 1024,
   medium: 4096,
   high: 12000,
@@ -223,15 +236,24 @@ function getCustomSelectedModelId(settings: AISettingsLike, requestOverrides?: A
   return getRequestedModelId(settings, requestOverrides) ?? settings.customModelOptions[0]?.id ?? null;
 }
 
-function getRequestReasoningLevel(requestOverrides?: AIRequestOverrides) {
-  return requestOverrides?.reasoningLevel ?? null;
+function getRequestReasoningLevel(
+  settings: Pick<AISettingsLike, "workspaceReasoningLevel">,
+  requestOverrides?: AIRequestOverrides,
+) {
+  const reasoningLevel =
+    requestOverrides?.reasoningLevel ?? settings.workspaceReasoningLevel;
+  if (!reasoningLevel || reasoningLevel === "default") {
+    return null;
+  }
+
+  return reasoningLevel;
 }
 
 function getCustomProviderOptions(
   settings: AISettingsLike,
   requestOverrides?: AIRequestOverrides,
 ): Record<string, Record<string, unknown>> | undefined {
-  const reasoningLevel = getRequestReasoningLevel(requestOverrides);
+  const reasoningLevel = getRequestReasoningLevel(settings, requestOverrides);
   if (!reasoningLevel) {
     return undefined;
   }
@@ -290,283 +312,379 @@ export async function fetchCustomAIModels(config: {
   apiKey: string;
 }) {
   const apiKey = config.apiKey.trim();
-  const baseURL = normalizeCustomAIBaseURL(config.baseURL, config.protocol);
   if (!apiKey) {
     throw new Error(getApiKeyMissingMessage());
   }
 
-  const response =
-    config.protocol === "openai"
-      ? await fetch(getOpenAIModelsUrl(baseURL), {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        })
-      : await fetch(getClaudeModelsUrl(baseURL), {
-          headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-          },
-        });
+  const modelsUrl = config.protocol === "openai" ? getOpenAIModelsUrl(config.baseURL) : getClaudeModelsUrl(config.baseURL);
+
+  const response = await fetch(modelsUrl, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+    },
+  });
 
   if (!response.ok) {
-    const detail = await readErrorMessage(response);
-    if (response.status === 401 || response.status === 403) {
-      throw new Error(getAuthFailedMessage(config.protocol === "openai" ? "OpenAI 兼容接口" : "Claude 接口"));
-    }
-    throw new Error(detail || `读取模型列表失败（${response.status}）`);
+    const errorMsg = await readErrorMessage(response);
+    throw new Error(errorMsg || getAuthFailedMessage(config.protocol === "openai" ? "自定义 OpenAI兼容源" : "自定义 Claude源"));
   }
 
   const payload = await response.json();
-  const rawModels = Array.isArray(payload?.data) ? payload.data : [];
-  const models = rawModels
-    .map((item: unknown) => normalizeModelOption(item))
-    .filter((item: AIModelOption | null): item is AIModelOption => Boolean(item));
+  const rawList = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
 
-  if (models.length === 0) {
-    throw new Error("未读取到可用模型");
+  if (rawList.length === 0 && config.protocol === "claude") {
+    return [
+      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
+      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+      { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+      { id: "claude-3-opus-20240229", label: "Claude 3 Opus" }
+    ];
   }
 
-  return models;
+  const parsed = (rawList as unknown[])
+    .map(normalizeModelOption)
+    .filter((item): item is AIModelOption => item !== null && Boolean(item.id && item.label));
+
+  return parsed;
 }
 
 async function resolveUToolsModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
   try {
     const models = await getAvailableUToolsAiModels();
-    if (!models.length) {
+    const validModels = models.filter((item) => item.id?.trim());
+    if (!validModels.length) {
       return DEFAULT_UTOOLS_MODEL;
     }
 
     const requestedModelId = getRequestedModelId(settings, requestOverrides);
-    if (requestedModelId && models.some((item) => item.id === requestedModelId)) {
-      return requestedModelId;
+    if (requestedModelId) {
+      const normalizedRequested = requestedModelId.trim().toLowerCase();
+      const matchedRequestedModel = validModels.find((item) => {
+        const normalizedId = item.id.trim().toLowerCase();
+        const normalizedLabel = item.label.trim().toLowerCase();
+        return (
+          normalizedId === normalizedRequested ||
+          normalizedLabel === normalizedRequested
+        );
+      });
+      if (matchedRequestedModel) {
+        return matchedRequestedModel.id;
+      }
     }
 
-    const defaultModel = models.find((item) => item.id === DEFAULT_UTOOLS_MODEL);
-    return defaultModel?.id ?? models[0].id;
+    const defaultModel = validModels.find((item) => item.id === DEFAULT_UTOOLS_MODEL);
+    return defaultModel?.id ?? validModels[0].id;
   } catch {
     return getRequestedModelId(settings, requestOverrides) ?? DEFAULT_UTOOLS_MODEL;
   }
 }
 
-async function runUToolsText(
-  settings: AISettingsLike,
-  messages: AIMessage[],
-  requestOverrides?: AIRequestOverrides,
-) {
-  const utools = getUToolsApi();
-  if (!utools?.ai) {
-    throw new Error("当前 uTools 版本未提供 AI 能力");
-  }
+// --- Native SSE Parser Utilities ---
+async function* readSSELines(response: Response, signal: AbortSignal) {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("无法读取底层数据流");
 
-  const modelId = await resolveUToolsModelId(settings, requestOverrides);
-  const result = await utools.ai({
-    model: modelId,
-    reasoningEffort: getRequestReasoningLevel(requestOverrides) ?? undefined,
-    messages,
-  });
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
 
-  const content = result?.content?.trim();
-  if (!content) {
-    throw new Error("AI 没有返回可用内容");
-  }
-
-  return content;
-}
-
-async function runCustomText(
-  settings: AISettingsLike,
-  messages: AIMessage[],
-  requestOverrides?: AIRequestOverrides,
-) {
-  const selectedModelId = getCustomSelectedModelId(settings, requestOverrides);
-  if (!selectedModelId) {
-    throw new Error("请先保存自定义 AI 配置并获取模型列表");
-  }
-
-  const baseURL = getCustomAIBaseURL(settings);
-  const apiKey = getCustomAIApiKey(settings);
-
-  const model =
-    settings.customProtocol === "openai"
-      ? createOpenAICompatible({
-          baseURL,
-          apiKey,
-          name: "custom.openai",
-        }).chatModel(selectedModelId)
-      : createAnthropic({
-          baseURL,
-          apiKey,
-          name: "custom.claude",
-        })(selectedModelId);
-
-  const { text } = await generateText({
-    model,
-    providerOptions: getCustomProviderOptions(settings, requestOverrides) as any,
-    messages: messages
-      .filter((message) => typeof message.content === "string" && message.content.trim())
-      .map((message) => ({
-        role: message.role,
-        content: message.content!.trim(),
-      })),
-  });
-
-  const content = text.trim();
-  if (!content) {
-    throw new Error("AI 没有返回可用内容");
-  }
-
-  return content;
-}
-
-function normalizeMessages(messages: AIMessage[]) {
-  return messages
-    .filter((message) => typeof message.content === "string" && message.content.trim())
-    .map((message) => ({
-      role: message.role,
-      content: message.content!.trim(),
-    }));
-}
-
-async function runUToolsTextStream(
-  settings: AISettingsLike,
-  messages: AIMessage[],
-  options: RunAITextStreamOptions = {},
-) {
-  options.onUpdate?.({
-    phase: "generating",
-    text: "",
-    reasoningText: "",
-  });
-
-  const content = await runUToolsText(settings, messages, options.requestOverrides);
-
-  options.onUpdate?.({
-    phase: "finishing",
-    text: content,
-    reasoningText: "",
-  });
-
-  return content;
-}
-
-async function runCustomTextStream(
-  settings: AISettingsLike,
-  messages: AIMessage[],
-  options: RunAITextStreamOptions = {},
-) {
-  const selectedModelId = getCustomSelectedModelId(settings, options.requestOverrides);
-  if (!selectedModelId) {
-    throw new Error("请先保存自定义 AI 配置并获取模型列表");
-  }
-
-  const baseURL = getCustomAIBaseURL(settings);
-  const apiKey = getCustomAIApiKey(settings);
-
-  const model =
-    settings.customProtocol === "openai"
-      ? createOpenAICompatible({
-          baseURL,
-          apiKey,
-          name: "custom.openai",
-        }).chatModel(selectedModelId)
-      : createAnthropic({
-          baseURL,
-          apiKey,
-          name: "custom.claude",
-        })(selectedModelId);
-
-  let text = "";
-  let reasoningText = "";
-  let phase: AIStreamPhase = "connecting";
-
-  const emit = (nextPhase: AIStreamPhase) => {
-    phase = nextPhase;
-    options.onUpdate?.({
-      phase,
-      text,
-      reasoningText,
-    });
-  };
-
-  emit("connecting");
-
-  const result = streamText({
-    model,
-    abortSignal: options.abortSignal,
-    providerOptions: getCustomProviderOptions(settings, options.requestOverrides) as any,
-    messages: normalizeMessages(messages),
-  });
-
-  for await (const part of result.fullStream) {
-    switch (part.type) {
-      case "start":
-      case "start-step":
-      case "reasoning-start": {
-        emit("thinking");
-        break;
-      }
-      case "reasoning-delta": {
-        reasoningText += part.text;
-        emit("thinking");
-        break;
-      }
-      case "text-start": {
-        emit("generating");
-        break;
-      }
-      case "text-delta": {
-        text += part.text;
-        emit("generating");
-        break;
-      }
-      case "finish-step":
-      case "text-end":
-      case "reasoning-end":
-      case "finish": {
-        emit(text.trim() ? "finishing" : "thinking");
-        break;
-      }
-      case "error": {
-        throw part.error instanceof Error ? part.error : new Error("AI 流式生成失败");
+  try {
+    while (!signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      let eolIndex;
+      while ((eolIndex = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, eolIndex).trim();
+        buffer = buffer.slice(eolIndex + 1);
+        if (line) yield line;
       }
     }
+    if (buffer.trim()) yield buffer.trim();
+  } finally {
+    reader.releaseLock();
   }
+}
 
-  const content = text.trim();
-  if (!content) {
-    throw new Error("AI 没有返回可用内容");
+async function handleCustomStream(
+  settings: AISettingsLike,
+  messages: AIMessage[],
+  signal: AbortSignal,
+  emit: (phase: AIStreamPhase, text: string, isReasoning: boolean) => void,
+  requestOverrides?: AIRequestOverrides
+) {
+  const protocol = settings.customProtocol;
+  const apiKey = getCustomAIApiKey(settings, protocol);
+  const baseURL = getCustomAIBaseURL(settings, protocol).replace(/\/+$/, "");
+  const modelId = getCustomSelectedModelId(settings, requestOverrides);
+  const options = getCustomProviderOptions(settings, requestOverrides);
+
+  if (protocol === "openai") {
+    const body: Record<string, unknown> = {
+      model: modelId,
+      messages: messages,
+      stream: true,
+    };
+    if (options?.openaiCompatible) {
+      const openaiOpts = options.openaiCompatible as Record<string, unknown>;
+      if (openaiOpts.reasoningEffort) {
+        body.reasoning_effort = openaiOpts.reasoningEffort;
+      }
+    }
+
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+    
+    if (!response.ok) {
+      const errMs = await readErrorMessage(response);
+      throw new Error(errMs || "请求自定义 OpenAI 模型失败");
+    }
+    
+    let fullText = "";
+    let fullReasoning = "";
+    for await (const line of readSSELines(response, signal)) {
+      if (line === "data: [DONE]") break;
+      if (line.startsWith("data: ")) {
+        const dataStr = line.slice(6);
+        if (!dataStr) continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const delta = json.choices?.[0]?.delta;
+          if (delta) {
+             if (delta.reasoning_content) {
+                fullReasoning += delta.reasoning_content;
+                emit("thinking", delta.reasoning_content, true);
+             }
+             if (delta.content) {
+                fullText += delta.content;
+                emit("generating", delta.content, false);
+             }
+          }
+        } catch (e) {
+          // ignore parse error on single line
+        }
+      }
+    }
+    return { text: fullText, reasoningText: fullReasoning };
+    
+  } else {
+    // Claude Stream
+    const claudeMessages = messages.filter(m => m.role !== "system");
+    const systemInstruction = messages.filter(m => m.role === "system").map(m => m.content).join("\n");
+    
+    const body: Record<string, unknown> = {
+      model: modelId,
+      messages: claudeMessages,
+      max_tokens: 8192,
+      stream: true,
+    };
+    if (systemInstruction) {
+      body.system = systemInstruction;
+    }
+    if (options?.anthropic) {
+      const claudeOpts = options.anthropic as any;
+      if (claudeOpts.thinking?.budgetTokens) {
+        body.thinking = {
+           type: "enabled",
+           budget_tokens: claudeOpts.thinking.budgetTokens
+        };
+      }
+    }
+    
+    const response = await fetch(`${baseURL}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errMs = await readErrorMessage(response);
+      throw new Error(errMs || "请求自定义 Claude 模型失败");
+    }
+
+    let fullText = "";
+    let fullReasoning = "";
+    for await (const line of readSSELines(response, signal)) {
+      if (line.startsWith("data: ")) {
+        try {
+          const json = JSON.parse(line.slice(6));
+          if (json.type === "content_block_delta" && json.delta) {
+             if (json.delta.type === "thinking_delta") {
+                fullReasoning += json.delta.thinking;
+                emit("thinking", json.delta.thinking, true);
+             } else if (json.delta.type === "text_delta") {
+                fullText += json.delta.text;
+                emit("generating", json.delta.text, false);
+             }
+          }
+        } catch (e) {
+          // parse error
+        }
+      }
+    }
+    return { text: fullText, reasoningText: fullReasoning };
   }
+}
 
-  return content;
+async function handleUToolsStream(
+  settings: AISettingsLike,
+  messages: AIMessage[],
+  signal: AbortSignal,
+  emit: (phase: AIStreamPhase, text: string, isReasoning: boolean) => void,
+  requestOverrides?: AIRequestOverrides
+) {
+  const modelId = await resolveUToolsModelId(settings, requestOverrides);
+  const utools = getUToolsApi();
+  const utoolsAi = utools?.ai;
+  if (!utoolsAi) throw new Error("当前 uTools 环境未提供 AI 方法");
+
+  let fullText = "";
+  let fullReasoning = "";
+  
+  return new Promise<{ text: string, reasoningText: string }>((resolve, reject) => {
+    let internalHandler: any = null;
+    
+    const onAbort = () => {
+      internalHandler?.abort?.();
+      reject(new DOMException("The operation was aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort);
+
+    const callPromise = utoolsAi({
+      model: modelId,
+      messages: messages as any
+    }, (chunk: any) => {
+      if (signal.aborted) return;
+      if (chunk.reasoning_content) {
+        fullReasoning += chunk.reasoning_content;
+        emit("thinking", chunk.reasoning_content, true);
+      }
+      if (chunk.content) {
+        fullText += chunk.content;
+        emit("generating", chunk.content, false);
+      }
+    });
+
+    internalHandler = callPromise;
+    
+    callPromise.then((res) => {
+      signal.removeEventListener("abort", onAbort);
+      if (!fullText && res?.content) {
+         emit("generating", res.content, false);
+         fullText = res.content;
+      }
+      if (!fullReasoning && res?.reasoning_content) {
+         emit("thinking", res.reasoning_content, true);
+         fullReasoning = res.reasoning_content;
+      }
+      resolve({ text: fullText, reasoningText: fullReasoning });
+    }).catch(err => {
+      signal.removeEventListener("abort", onAbort);
+      reject(err);
+    });
+  });
 }
 
 export async function runAIText(
   settings: AISettingsLike,
   messages: AIMessage[],
-  requestOverrides?: AIRequestOverrides,
+  options: RunAITextOptions = {},
 ) {
-  const availability = getAIAvailability(settings, requestOverrides);
-  if (!availability.ok) {
-    throw new Error(availability.reason);
-  }
-
-  return availability.provider === "custom"
-    ? runCustomText(settings, messages, requestOverrides)
-    : runUToolsText(settings, messages, requestOverrides);
+  let finalResultText = "";
+  await runAITextStream(settings, messages, {
+    ...options,
+    onUpdate: (update) => {
+      if (update.phase === "finishing" || update.phase === "generating" || update.phase === "thinking") {
+        if (update.text) {
+          finalResultText = update.text;
+        }
+      }
+    }
+  });
+  return finalResultText;
 }
 
 export async function runAITextStream(
   settings: AISettingsLike,
-  messages: AIMessage[],
+  rawMessages: AIMessage[],
   options: RunAITextStreamOptions = {},
 ) {
+  const messages = rawMessages
+    .filter((m) => typeof m.content === "string" && m.content.trim() !== "")
+    .map(m => {
+      const cleanMessage: any = { role: m.role, content: m.content };
+      if ((m as any).reasoning_content) {
+         cleanMessage.reasoning_content = (m as any).reasoning_content;
+      }
+      return cleanMessage;
+    });
+
   const availability = getAIAvailability(settings, options.requestOverrides);
   if (!availability.ok) {
     throw new Error(availability.reason);
   }
 
-  return availability.provider === "custom"
-    ? runCustomTextStream(settings, messages, options)
-    : runUToolsTextStream(settings, messages, options);
+  const { provider } = availability;
+  const abortController = new AbortController();
+  const signal = options.abortSignal ?? abortController.signal;
+
+  let currentPhase: AIStreamPhase = "connecting";
+  let contentText = "";
+  let reasoningText = "";
+
+  const emit = (phaseMatch: string, contentUpdate: string, isReasoning: boolean) => {
+    // Phase flow logic: connecting -> thinking -> generating
+    if (currentPhase === "connecting" || (isReasoning && currentPhase !== "thinking")) {
+      currentPhase = isReasoning ? "thinking" : "generating";
+    }
+    // Automatically jump to generating if payload has content and it's not reasoning
+    if (!isReasoning && contentUpdate) {
+       currentPhase = "generating";
+    }
+
+    if (isReasoning) {
+       reasoningText += contentUpdate;
+    } else {
+       contentText += contentUpdate;
+    }
+
+    options.onUpdate?.({ phase: currentPhase, text: contentText, reasoningText });
+  };
+
+  if (options.onUpdate) {
+    options.onUpdate({ phase: "connecting", text: "", reasoningText: "" });
+  }
+
+  try {
+    let finalChunk;
+    if (provider === "utools") {
+      finalChunk = await handleUToolsStream(settings, messages, signal, emit, options.requestOverrides);
+    } else {
+      finalChunk = await handleCustomStream(settings, messages, signal, emit, options.requestOverrides);
+    }
+
+    if (options.onUpdate) {
+      options.onUpdate({ phase: "finishing", text: finalChunk.text, reasoningText: finalChunk.reasoningText });
+    }
+    return finalChunk.text;
+  } catch (err: any) {
+    if (signal.aborted) {
+      throw new DOMException("The operation was aborted", "AbortError");
+    }
+    throw err;
+  }
 }

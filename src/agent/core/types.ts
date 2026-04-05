@@ -3,9 +3,12 @@ import type {
   AIRequestOverrides,
   AISettingsLike,
   AIStreamUpdate,
+  RunAITextStreamOptions,
 } from "@/lib/ai-provider";
 import type {
   AiResolvedTarget,
+  AiStickyTarget,
+  AiTargetSelection,
   AiWritePlan,
 } from "@/lib/ai-write";
 import type {
@@ -40,9 +43,20 @@ export interface AgentInputContext {
   payload: AiComposerPayload;
   originPageId?: string | null;
   originNotebookId?: string | null;
+  /** @deprecated 历史兼容字段，已不再由 UI 使用 */
+  manualTargetSelection?: AiTargetSelection | null;
+  stickyTarget?: AiStickyTarget | null;
+  recentWriteTarget?: AiTargetSelection | null;
   selectionText?: string;
   blockText?: string;
   initialAction?: "polish" | "rewrite" | "generate";
+}
+
+export interface AgentIntentClassification {
+  verdict: "edit_current" | "create_new" | "chat_only";
+  confidence: number;
+  reason: string;
+  source: "llm" | "fallback";
 }
 
 export interface AgentParsedInput {
@@ -52,6 +66,7 @@ export interface AgentParsedInput {
   normalizedPrompt: string;
   targetReference?: AiFileReferenceAttrs | null;
   resolvedTarget: AiResolvedTarget;
+  intentClassification?: AgentIntentClassification;
 }
 
 export interface AgentIntent {
@@ -157,6 +172,7 @@ export interface AgentExecutePlanOptions {
   requestOverrides?: AIRequestOverrides;
   onUpdate?: (update: AIStreamUpdate) => void;
   abortSignal?: AbortSignal;
+  streamIdleTimeoutMs?: RunAITextStreamOptions["streamIdleTimeoutMs"];
 }
 
 export interface AgentCommitResult {

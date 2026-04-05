@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AiResolvedTarget, AiWritePlan } from "@/lib/ai-write";
+import type { AiResolvedTarget, AiStickyTarget, AiTargetSelection, AiWritePlan } from "@/lib/ai-write";
 import type { AgentArtifact, AgentPlan } from "@/agent/core/types";
 import { uToolsStorage } from "@/lib/storage";
 import type { AiFileReferenceAttrs } from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
@@ -32,8 +32,14 @@ export interface AiSession {
   originNotebookId?: string | null;
   /** 当前会话最近一次解析出的目标 */
   resolvedTarget?: AiResolvedTarget | null;
+  /** @deprecated 历史持久化字段，已不再由 UI 使用 */
+  manualTargetSelection?: AiTargetSelection | null;
+  /** 当前会话稳定写入目标 */
+  stickyTarget?: AiStickyTarget | null;
   /** 最近一次待确认/已提交的写入计划 */
   lastWritePlan?: AiWritePlan | null;
+  /** 最近一次成功写入页面 */
+  lastCommittedPageId?: string | null;
   /** 最近一次 Agent 规划结果 */
   lastAgentPlan?: AgentPlan | null;
   /** 最近一次 Agent 产物 */
@@ -57,12 +63,18 @@ interface AiSessionsState {
   draftContent: JSONContent | null;
   /** 当前解析出的目标 */
   activeResolvedTarget: AiResolvedTarget | null;
+  /** @deprecated 历史持久化字段，已不再由 UI 使用 */
+  activeManualTargetSelection: AiTargetSelection | null;
+  /** 当前稳定写入目标 */
+  activeStickyTarget: AiStickyTarget | null;
   /** 当前 AI 页来源页 */
   activeOriginPageId: string | null;
   /** 当前 AI 页来源笔记本 */
   activeOriginNotebookId: string | null;
   /** 当前最近一次写入计划 */
   activeLastWritePlan: AiWritePlan | null;
+  /** 当前最近一次成功写入页面 */
+  activeLastCommittedPageId: string | null;
   /** 当前最近一次 Agent plan */
   activeLastAgentPlan: AgentPlan | null;
   /** 当前最近一次 Agent artifact */
@@ -77,11 +89,15 @@ interface AiSessionsState {
   /** 保存当前输入框草稿 */
   setDraftContent: (content: JSONContent | null) => void;
   setActiveResolvedTarget: (target: AiResolvedTarget | null) => void;
+  /** @deprecated 历史持久化字段，已不再由 UI 使用 */
+  setActiveManualTargetSelection: (target: AiTargetSelection | null) => void;
+  setActiveStickyTarget: (target: AiStickyTarget | null) => void;
   setActiveOrigin: (params: {
     pageId?: string | null;
     notebookId?: string | null;
   }) => void;
   setActiveLastWritePlan: (plan: AiWritePlan | null) => void;
+  setActiveLastCommittedPageId: (pageId: string | null) => void;
   setActiveLastAgentPlan: (plan: AgentPlan | null) => void;
   setActiveLastArtifact: (artifact: AgentArtifact | null) => void;
   resetActiveState: (params?: {
@@ -104,9 +120,12 @@ export const useAiSessions = create<AiSessionsState>()(
       activeMessages: [],
       draftContent: null,
       activeResolvedTarget: null,
+      activeManualTargetSelection: null,
+      activeStickyTarget: null,
       activeOriginPageId: null,
       activeOriginNotebookId: null,
       activeLastWritePlan: null,
+      activeLastCommittedPageId: null,
       activeLastAgentPlan: null,
       activeLastArtifact: null,
 
@@ -149,6 +168,10 @@ export const useAiSessions = create<AiSessionsState>()(
 
       setActiveResolvedTarget: (target) => set({ activeResolvedTarget: target }),
 
+      setActiveManualTargetSelection: (target) => set({ activeManualTargetSelection: target }),
+
+      setActiveStickyTarget: (target) => set({ activeStickyTarget: target }),
+
       setActiveOrigin: ({ pageId, notebookId }) =>
         set({
           activeOriginPageId: pageId ?? null,
@@ -156,6 +179,8 @@ export const useAiSessions = create<AiSessionsState>()(
         }),
 
       setActiveLastWritePlan: (plan) => set({ activeLastWritePlan: plan }),
+
+      setActiveLastCommittedPageId: (pageId) => set({ activeLastCommittedPageId: pageId }),
 
       setActiveLastAgentPlan: (plan) => set({ activeLastAgentPlan: plan }),
 
@@ -167,9 +192,12 @@ export const useAiSessions = create<AiSessionsState>()(
           activeMessages: [],
           draftContent: null,
           activeResolvedTarget: null,
+          activeManualTargetSelection: null,
+          activeStickyTarget: null,
           activeOriginPageId: params?.pageId ?? null,
           activeOriginNotebookId: params?.notebookId ?? null,
           activeLastWritePlan: null,
+          activeLastCommittedPageId: null,
           activeLastAgentPlan: null,
           activeLastArtifact: null,
         }),
@@ -182,12 +210,18 @@ export const useAiSessions = create<AiSessionsState>()(
             state.activeSessionId === id ? [] : state.activeMessages,
           activeResolvedTarget:
             state.activeSessionId === id ? null : state.activeResolvedTarget,
+          activeManualTargetSelection:
+            state.activeSessionId === id ? null : state.activeManualTargetSelection,
+          activeStickyTarget:
+            state.activeSessionId === id ? null : state.activeStickyTarget,
           activeOriginPageId:
             state.activeSessionId === id ? null : state.activeOriginPageId,
           activeOriginNotebookId:
             state.activeSessionId === id ? null : state.activeOriginNotebookId,
           activeLastWritePlan:
             state.activeSessionId === id ? null : state.activeLastWritePlan,
+          activeLastCommittedPageId:
+            state.activeSessionId === id ? null : state.activeLastCommittedPageId,
           activeLastAgentPlan:
             state.activeSessionId === id ? null : state.activeLastAgentPlan,
           activeLastArtifact:
@@ -201,9 +235,12 @@ export const useAiSessions = create<AiSessionsState>()(
           activeMessages: [],
           draftContent: null,
           activeResolvedTarget: null,
+          activeManualTargetSelection: null,
+          activeStickyTarget: null,
           activeOriginPageId: null,
           activeOriginNotebookId: null,
           activeLastWritePlan: null,
+          activeLastCommittedPageId: null,
           activeLastAgentPlan: null,
           activeLastArtifact: null,
         }),
@@ -217,9 +254,12 @@ export const useAiSessions = create<AiSessionsState>()(
         activeMessages: state.activeMessages,
         draftContent: state.draftContent,
         activeResolvedTarget: state.activeResolvedTarget,
+        activeManualTargetSelection: state.activeManualTargetSelection,
+        activeStickyTarget: state.activeStickyTarget,
         activeOriginPageId: state.activeOriginPageId,
         activeOriginNotebookId: state.activeOriginNotebookId,
         activeLastWritePlan: state.activeLastWritePlan,
+        activeLastCommittedPageId: state.activeLastCommittedPageId,
         activeLastAgentPlan: state.activeLastAgentPlan,
         activeLastArtifact: state.activeLastArtifact,
       }),

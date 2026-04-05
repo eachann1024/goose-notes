@@ -8,16 +8,22 @@ import type {
   AgentParsedInput,
   AgentPlanBuildResult,
 } from "@/agent/core/types";
-import { parseNoteAgentInput } from "@/agent/capabilities/note";
+import { parseNoteAgentInput, type IntentRouterDeps } from "@/agent/capabilities/note";
 
-export function parseAgentInput(context: AgentInputContext): AgentParsedInput {
-  return parseNoteAgentInput(context);
+export async function parseAgentInput(
+  context: AgentInputContext,
+  routerDeps?: IntentRouterDeps,
+): Promise<AgentParsedInput> {
+  return parseNoteAgentInput(context, routerDeps);
 }
 
-export function buildAgentPlan(context: AgentInputContext): AgentPlanBuildResult & {
+export async function buildAgentPlan(
+  context: AgentInputContext,
+  routerDeps?: IntentRouterDeps,
+): Promise<AgentPlanBuildResult & {
   parsed: AgentParsedInput;
-} {
-  const parsed = parseAgentInput(context);
+}> {
+  const parsed = await parseAgentInput(context, routerDeps);
   const capability = getAgentCapabilities().find((item) =>
     item.surfaces.includes(context.surface) && item.match(context, parsed),
   );
@@ -86,6 +92,7 @@ export async function executeAgentPlan(
       abortSignal: options.abortSignal,
       onUpdate: options.onUpdate,
       requestOverrides: options.requestOverrides,
+      streamIdleTimeoutMs: options.streamIdleTimeoutMs,
     },
   );
 

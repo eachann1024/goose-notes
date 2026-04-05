@@ -24,21 +24,40 @@ export type AiTargetMode =
   | "chat_only"
   | "current_page"
   | "current_notebook"
-  | "specific_page";
+  | "specific_page"
+  | "ambiguous";
+
+export type AiTargetSource =
+  | "selector"
+  | "reference"
+  | "session_memory"
+  | "prompt_rule"
+  | "llm_router";
 
 export interface AiTargetSelection {
   mode: AiTargetMode;
   pageId?: string | null;
-  manual?: boolean;
+  source: AiTargetSource;
 }
 
 export interface AiTargetRef extends AiFileReferenceAttrs {
   role: "destination";
 }
 
+export interface AiStickyTarget {
+  pageId: string;
+  workspaceId?: string;
+  defaultAction?: "replace_page";
+  source: AiTargetSource;
+  pageTitle?: string;
+  notebookName?: string;
+  isLocalFolder?: boolean;
+}
+
 export interface AiResolvedTarget {
   mode: AiTargetMode;
   action: AiWriteAction;
+  source: AiTargetSource;
   pageId?: string;
   workspaceId?: string;
   parentId?: string;
@@ -47,7 +66,6 @@ export interface AiResolvedTarget {
   notebookName?: string;
   isLocalFolder?: boolean;
   isFolder?: boolean;
-  manual?: boolean;
 }
 
 export interface AiWritePlan {
@@ -70,20 +88,14 @@ export interface AiContextBundle {
 }
 
 const EXPLICIT_CHAT_PATTERN = /(仅聊天|只聊天|只回答|不要写入|不要落盘|仅回复|只讨论)/;
-const CURRENT_NOTEBOOK_PATTERN = /((当前|这个|本)(笔记本|记事本))/;
-const CURRENT_PAGE_PATTERN = /((当前|这|本)(页|个页面|篇|份|段内容)|本文|这篇内容|这份内容)/;
 const APPEND_PATTERN =
   /(追加|补充|添加|附加|继续写|续写|补到|加到|append)/;
 const CHILD_PATTERN = /(下面|下边|下方|子页面|子页|子文档)/;
-const PAGE_EDIT_PATTERN =
-  /(润色|改写|重写|续写|扩写|精简|压缩|翻译|补充|完善|整理|优化|提炼|总结|改成|改写成)/;
-const ROOT_GENERATION_PATTERN =
-  /(帮我生成|给我生成|生成一(篇|份|个|套)|写一(篇|份|个|套)|帮我写|给我写|起草|拟一份|做一份|产出一份|整理成一(篇|份|个)|输出一(篇|份|个)|来一(篇|份|个)|小红书|抖音|公众号|朋友圈|视频脚本|口播稿|直播脚本|文案|脚本|方案|提纲|清单|周报|纪要|发言稿|演讲稿|邮件|推文|笔记)/;
-const QUESTION_PATTERN =
-  /(什么|怎么|为什么|是否|能否|可不可以|有哪些|有啥|区别|解释|怎么看|帮我看|请问|\?|？)/;
 const TARGET_VERB_PATTERN =
   /(生成到|写到|写入到|写进|放到|放进|保存到|同步到|落到|输出到|创建到|替换到|覆盖到|改写到|更新到|生成进|写入|替换|覆盖|改写|重写)/;
 const CONTEXT_HINT_PATTERN = /(参考|参照|结合|基于|根据|对照|引用|查看|看下|看看|分析)/;
+const FOLLOW_UP_EDIT_PATTERN =
+  /(再改|继续改|接着改|接着写|再写|改得更|更正式|更口语|更简洁|更自然|缩短一点|短一点|展开一点|扩写一下|润色一下|换个口吻|调整一下|修改一下|优化一下|再来一版|重来一版)/;
 
 function cloneContent<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -177,7 +189,7 @@ function getResolvedPageTarget(
   pageId: string,
   action: AiWriteAction,
   mode: AiTargetMode,
-  manual = false,
+  source: AiTargetSource,
 ): AiResolvedTarget | null {
   const page = usePages.getState().pages[pageId];
   if (!page) return null;
@@ -190,6 +202,7 @@ function getResolvedPageTarget(
     return {
       mode,
       action: "create_child_page",
+      source,
       pageId: page.id,
       parentId: page.id,
       workspaceId: page.workspaceId,
@@ -198,13 +211,13 @@ function getResolvedPageTarget(
       notebookName: notebook?.name ?? "未知笔记本",
       isLocalFolder,
       isFolder: true,
-      manual,
     };
   }
 
   return {
     mode,
     action,
+    source,
     pageId: page.id,
     workspaceId: page.workspaceId,
     targetLabel:
@@ -215,103 +228,156 @@ function getResolvedPageTarget(
     notebookName: notebook?.name ?? "未知笔记本",
     isLocalFolder,
     isFolder: false,
-    manual,
   };
 }
 
-export function createAiChatOnlyTarget(manual = false): AiResolvedTarget {
+function createUnavailableSpecificPageTarget(
+  pageId: string,
+  action: Extract<AiWriteAction, "replace_page" | "append_page">,
+  source: AiTargetSource,
+): AiResolvedTarget {
+  return {
+    mode: "specific_page",
+    action,
+    source,
+    pageId,
+    targetLabel: action === "append_page" ? "追加到目标页" : "写入目标页",
+  } satisfies AiResolvedTarget;
+}
+
+export function createAiChatOnlyTarget(source: AiTargetSource = "prompt_rule"): AiResolvedTarget {
   return {
     mode: "chat_only",
     action: "chat_only",
+    source,
     targetLabel: "仅聊天",
-    manual,
   } satisfies AiResolvedTarget;
+}
+
+export function resolvedTargetToSelection(
+  target: AiResolvedTarget | null | undefined,
+): AiTargetSelection | null {
+  if (!target) return null;
+
+  if (target.mode === "specific_page") {
+    if (!target.pageId) return null;
+    return {
+      mode: "specific_page",
+      pageId: target.pageId,
+      source: target.source,
+    } satisfies AiTargetSelection;
+  }
+
+  return {
+    mode: target.mode,
+    source: target.source,
+  } satisfies AiTargetSelection;
+}
+
+export function stickyTargetToSelection(
+  stickyTarget: AiStickyTarget | null | undefined,
+): AiTargetSelection | null {
+  if (!stickyTarget?.pageId) return null;
+  return {
+    mode: "specific_page",
+    pageId: stickyTarget.pageId,
+    source: "session_memory",
+  } satisfies AiTargetSelection;
+}
+
+export function createStickyTargetFromResolvedTarget(
+  target: AiResolvedTarget | null | undefined,
+): AiStickyTarget | null {
+  if (!target?.pageId) return null;
+  if (target.action !== "replace_page" && target.action !== "append_page") {
+    return null;
+  }
+
+  return {
+    pageId: target.pageId,
+    workspaceId: target.workspaceId,
+    defaultAction: "replace_page",
+    source: target.source === "selector" ? "selector" : "session_memory",
+    pageTitle: target.pageTitle,
+    notebookName: target.notebookName,
+    isLocalFolder: target.isLocalFolder,
+  } satisfies AiStickyTarget;
+}
+
+function isFollowUpEditPrompt(normalizedPrompt: string) {
+  return Boolean(normalizedPrompt) && FOLLOW_UP_EDIT_PATTERN.test(normalizedPrompt);
 }
 
 export function resolveAiTargetSelection(params: {
   payload: AiComposerPayload;
   manualSelection?: AiTargetSelection | null;
+  stickyTarget?: AiStickyTarget | null;
+  recentWriteTarget?: AiTargetSelection | null;
   originPageId?: string | null;
   originNotebookId?: string | null;
 }) {
-  const { manualSelection, payload, originPageId, originNotebookId } = params;
+  const { manualSelection, stickyTarget, recentWriteTarget, payload } = params;
+  const normalizedPrompt = normalizeSemanticText(
+    payload.freeformText || payload.promptText,
+  );
+  const stickySelection = stickyTargetToSelection(stickyTarget);
+  const followUpPrompt = isFollowUpEditPrompt(normalizedPrompt);
+
+  // 优先级 1：显式聊天
+  if (EXPLICIT_CHAT_PATTERN.test(normalizedPrompt)) {
+    return {
+      mode: "chat_only",
+      source: "prompt_rule",
+    } satisfies AiTargetSelection;
+  }
+
+  // 优先级 2：目标引用
+  const destinationRef = detectDestinationReference(payload);
+  if (destinationRef) {
+    return {
+      mode: "specific_page",
+      pageId: destinationRef.pageId,
+      source: "reference",
+    } satisfies AiTargetSelection;
+  }
+
+  // 优先级 3：手动选择（保留给程序化调用）
   if (manualSelection?.mode === "specific_page" && manualSelection.pageId) {
     return {
       mode: "specific_page",
       pageId: manualSelection.pageId,
-      manual: true,
+      source: "selector",
     } satisfies AiTargetSelection;
   }
 
   if (manualSelection) {
     return {
       ...manualSelection,
-      manual: true,
+      source: "selector",
     } satisfies AiTargetSelection;
   }
 
-  const normalizedPrompt = normalizeSemanticText(
-    payload.freeformText || payload.promptText,
-  );
-
-  if (EXPLICIT_CHAT_PATTERN.test(normalizedPrompt)) {
-    return {
-      mode: "chat_only",
-      manual: false,
-    } satisfies AiTargetSelection;
-  }
-
-  const destinationRef = detectDestinationReference(payload);
-  if (destinationRef) {
+  // 优先级 4：follow-up 编辑 + 最近写入目标 / stickyTarget
+  if (followUpPrompt && recentWriteTarget?.mode === "specific_page" && recentWriteTarget.pageId) {
     return {
       mode: "specific_page",
-      pageId: destinationRef.pageId,
-      manual: false,
+      pageId: recentWriteTarget.pageId,
+      source: "session_memory",
     } satisfies AiTargetSelection;
   }
 
-  if (CURRENT_NOTEBOOK_PATTERN.test(normalizedPrompt) && TARGET_VERB_PATTERN.test(normalizedPrompt)) {
+  if (followUpPrompt && stickySelection?.pageId) {
     return {
-      mode: "current_notebook",
-      manual: false,
+      mode: "specific_page",
+      pageId: stickySelection.pageId,
+      source: "session_memory",
     } satisfies AiTargetSelection;
   }
 
-  if (CURRENT_PAGE_PATTERN.test(normalizedPrompt)) {
-    return {
-      mode: originPageId ? "current_page" : originNotebookId ? "current_notebook" : "chat_only",
-      manual: false,
-    } satisfies AiTargetSelection;
-  }
-
-  if (
-    originPageId &&
-    PAGE_EDIT_PATTERN.test(normalizedPrompt) &&
-    !ROOT_GENERATION_PATTERN.test(normalizedPrompt)
-  ) {
-    return {
-      mode: "current_page",
-      manual: false,
-    } satisfies AiTargetSelection;
-  }
-
-  if (QUESTION_PATTERN.test(normalizedPrompt) && !ROOT_GENERATION_PATTERN.test(normalizedPrompt)) {
-    return {
-      mode: "chat_only",
-      manual: false,
-    } satisfies AiTargetSelection;
-  }
-
-  if (originNotebookId && ROOT_GENERATION_PATTERN.test(normalizedPrompt)) {
-    return {
-      mode: "current_notebook",
-      manual: false,
-    } satisfies AiTargetSelection;
-  }
-
+  // 优先级 5：模糊场景交给 LLM
   return {
-    mode: originNotebookId ? "current_notebook" : originPageId ? "current_page" : "chat_only",
-    manual: false,
+    mode: "ambiguous",
+    source: "prompt_rule",
   } satisfies AiTargetSelection;
 }
 
@@ -329,7 +395,7 @@ export function resolveAiTargetIntent(params: {
   const wantsChild = CHILD_PATTERN.test(normalizedPrompt);
 
   if (selection.mode === "chat_only") {
-    return createAiChatOnlyTarget(selection.manual);
+    return createAiChatOnlyTarget(selection.source);
   }
 
   if (selection.mode === "current_notebook") {
@@ -340,26 +406,22 @@ export function resolveAiTargetIntent(params: {
     return {
       mode: "current_notebook",
       action: "create_root_page",
+      source: selection.source,
       workspaceId: notebookId ?? undefined,
       targetLabel: notebook ? `在 ${notebook.name} 中新建` : "在当前笔记本中新建",
       notebookName: notebook?.name ?? "当前笔记本",
       isLocalFolder: notebook?.source === "local-folder",
-      manual: selection.manual,
     } satisfies AiResolvedTarget;
   }
 
   if (selection.mode === "specific_page" && selection.pageId) {
     const targetPage = usePages.getState().pages[selection.pageId];
     if (!targetPage) {
-      return resolveAiTargetIntent({
-        payload,
-        selection: {
-          mode: originPageId ? "current_page" : "chat_only",
-          manual: selection.manual,
-        },
-        originPageId,
-        originNotebookId,
-      });
+      return createUnavailableSpecificPageTarget(
+        selection.pageId,
+        wantsAppend ? "append_page" : "replace_page",
+        selection.source,
+      );
     }
 
     if (targetPage.isFolder || wantsChild) {
@@ -367,7 +429,7 @@ export function resolveAiTargetIntent(params: {
         targetPage.id,
         "create_child_page",
         "specific_page",
-        Boolean(selection.manual),
+        selection.source,
       )!;
     }
 
@@ -375,7 +437,7 @@ export function resolveAiTargetIntent(params: {
       targetPage.id,
       wantsAppend ? "append_page" : "replace_page",
       "specific_page",
-      Boolean(selection.manual),
+      selection.source,
     )!;
   }
 
@@ -384,14 +446,29 @@ export function resolveAiTargetIntent(params: {
       originPageId,
       wantsAppend ? "append_page" : "replace_page",
       "current_page",
-      Boolean(selection.manual),
+      selection.source,
     )!;
   }
 
-  return {
-    ...createAiChatOnlyTarget(selection.manual),
-    manual: selection.manual,
-  } satisfies AiResolvedTarget;
+  return createAiChatOnlyTarget(selection.source);
+}
+
+export function resolveAiTargetFromSelection(params: {
+  selection: AiTargetSelection;
+  originPageId?: string | null;
+  originNotebookId?: string | null;
+}) {
+  return resolveAiTargetIntent({
+    payload: {
+      promptText: "",
+      freeformText: "",
+      references: [],
+      tokens: [],
+    },
+    selection: params.selection,
+    originPageId: params.originPageId,
+    originNotebookId: params.originNotebookId,
+  });
 }
 
 function createPlainTextDoc(text: string, title?: string) {
