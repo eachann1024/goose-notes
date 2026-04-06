@@ -11,6 +11,8 @@ import {
   writeNote,
 } from "./helpers";
 
+const shortcutModifier = process.platform === "darwin" ? "Meta" : "Control";
+
 async function seedAiSettings(
   page: Page,
   overrides?: {
@@ -323,6 +325,37 @@ test.describe("独立 AI 页面底栏", () => {
         paddingLeft: "10.5px",
         paddingRight: "10.5px",
       });
+  });
+
+  test("独立 AI 页会跟随编辑器缩放快捷键同步缩放", async ({ page }) => {
+    await seedAiSettings(page);
+    await installHostMocks(page);
+    await page.goto("/");
+    await expect(page.locator('button[aria-label="新建页面"]')).toBeVisible();
+    await createPageFromSidebar(page);
+    await writeNote(page, "当前页面", "这里是当前页面正文。");
+
+    await openAiWorkspace(page);
+
+    const composer = page.locator('[data-ai-composer-editor="true"]').first();
+    const workspace = page.locator('[data-ai-workspace-root="true"]');
+    await composer.click();
+
+    await expect
+      .poll(() => workspace.evaluate((node) => (node as HTMLElement).style.zoom || getComputedStyle(node as HTMLElement).zoom))
+      .toBe("1");
+
+    await page.keyboard.press(`${shortcutModifier}+Equal`);
+
+    await expect
+      .poll(() => workspace.evaluate((node) => (node as HTMLElement).style.zoom || getComputedStyle(node as HTMLElement).zoom))
+      .toBe("1.0625");
+
+    await page.keyboard.press(`${shortcutModifier}+Minus`);
+
+    await expect
+      .poll(() => workspace.evaluate((node) => (node as HTMLElement).style.zoom || getComputedStyle(node as HTMLElement).zoom))
+      .toBe("1");
   });
 
   test("应用页引用卡片会隐藏应用标识并留出右侧间距", async ({ page }) => {

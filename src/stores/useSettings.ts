@@ -118,6 +118,8 @@ interface SettingsState {
     customFonts: CustomFonts
     uiFontSize: UIFontSize
     editorFontSize: number
+    /** AI 聊天界面字号缩放比。可选值：0.8 / 0.9 / 1.0 / 1.1 / 1.2。副作用：影响 AI 聊天面板所有文字大小。 */
+    aiChatScale: number
     customActions: CustomAction[]
     // 已关闭的通知 ID 集合，持久化存储
     dismissedNotices: Record<string, boolean>
@@ -162,6 +164,9 @@ interface SettingsState {
     increaseEditorFontSize: () => void
     decreaseEditorFontSize: () => void
     resetEditorFontSize: () => void
+    setAiChatScale: (scale: number) => void
+    increaseAiChatScale: () => void
+    decreaseAiChatScale: () => void
     addCustomAction: (action: Omit<CustomAction, 'id'>) => void
     updateCustomAction: (id: string, updates: Partial<Omit<CustomAction, 'id'>>) => void
     removeCustomAction: (id: string) => void
@@ -459,6 +464,7 @@ export const useSettings = create<SettingsState>()(
             },
             uiFontSize: DEFAULT_UI_FONT_SIZE,
             editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
+            aiChatScale: 1.0,
             customActions: [],
             dismissedNotices: {},
             _hasHydrated: false,
@@ -710,6 +716,11 @@ export const useSettings = create<SettingsState>()(
                     editorFontSize: Math.max(EDITOR_FONT_SIZE_MIN, state.editorFontSize - 1),
                 })),
             resetEditorFontSize: () => set({ editorFontSize: EDITOR_FONT_SIZE_DEFAULT }),
+            setAiChatScale: (scale) => set({ aiChatScale: Math.max(0.7, Math.min(1.5, scale)) }),
+            increaseAiChatScale: () =>
+                set((state) => ({ aiChatScale: Math.min(1.5, Math.round((state.aiChatScale + 0.1) * 10) / 10) })),
+            decreaseAiChatScale: () =>
+                set((state) => ({ aiChatScale: Math.max(0.7, Math.round((state.aiChatScale - 0.1) * 10) / 10) })),
             addCustomAction: (action) =>
                 set((state) => ({
                     customActions: [...state.customActions, {

@@ -32,8 +32,78 @@ import type {
   AgentPlanBuildResult,
 } from "@/agent/core/types";
 
+const DATAVIZ_SYSTEM_PROMPT = `
+## 数据可视化能力
+
+### 主动使用可视化（重要）
+当你的回答涉及以下场景时，**即使用户没有明确要求图表，也应主动附带可视化**：
+- 数值对比（多个选项/产品/方案的指标对比）
+- 趋势变化（时间序列数据、增长率等）
+- 占比分布（市场份额、成分比例、问卷结果等）
+- 多维分类统计（柱状图更直观的数据表格）
+- 流程关系（步骤、决策树、系统架构）
+
+遇到上述场景时，先用 1-2 句文字回答核心问题，然后附带相应图表。
+
+### 格式选择
+当用户要求画图、可视化、图表，或回答内容适合可视化时，使用 \`\`\`echarts 代码围栏输出 JSON 配置。
+当用户要求 SVG 流程图、交互控件、UI 原型、生成式艺术时，使用 \`\`\`html 代码围栏输出 HTML 片段（无 DOCTYPE/html/head/body，只写内容）。
+
+### ECharts JSON 格式（数据图表默认）
+\`\`\`echarts
+{
+  "type": "bar|line|area|pie|scatter|heatmap",
+  "title": "标题",
+  "categories": ["类目数组"],
+  "series": [{"name": "系列名", "data": [数据]}]
+}
+\`\`\`
+可选字段：xAxisName, yAxisName, yCategories（热力图）, visualMap（热力图 min/max）, series[].stack（堆叠）。
+饼图 data 用 [{name,value}] 对象数组。散点 data 用 [[x,y]] 二元数组。热力图 data 用 [[xi,yi,val]] 三元数组。
+
+### HTML 片段格式（非图表）
+如果选择 HTML 方案，**先用一句话说明将生成什么**（如"我来生成一个交互式滑块来展示这个关系。"），然后输出一个 \`\`\`html 围栏。不要直接裸输出 HTML 标签文本。
+
+\`\`\`html
+<div style="padding:1.5rem">内容片段</div>
+<script>交互逻辑</script>
+\`\`\`
+
+**宿主已完整注入所有基础样式**，禁止在 HTML 片段中重复定义以下内容：
+- CSS 变量（--color-*、--border-radius-* 等）、color-scheme、font-family、box-sizing 等全局 reset
+- 已提供的语义类（.card、.badge、.tab-bar、.metric-row 等）的 CSS 定义
+
+直接使用注入的工具类：布局（flex/grid/gap/p-*/m-*/text-* Tailwind 风格）、语义类（\`.card .badge .tab-bar .tab .metric-row .metric .compare-grid .compare-card .record .avatar .nav-pills .pill .btn-row\`）。
+颜色优先使用 CSS 变量，禁止依赖 \`light-dark()\`。深色模式由宿主自动适配。
+宿主已经提供共享外层容器，**不要再写页面级 max-width + margin:auto 外壳**；内容默认铺满可用宽度。
+如果有多个主题 / 标题 / 视角，拆成多个顶层 \`<section class="viz-module">\` 或 \`<article class="viz-module">\`，让多个模块共用宿主外层容器与 gap。
+布局优先用 flex / grid + gap，并给可伸缩列补 \`min-w-0\` / \`w-full\`；避免固定宽度、固定高度和大块左右留白。
+不要人为制造内部滚动区域；默认让内容自然撑开高度，禁止使用 \`overflow-auto / overflow-y-auto / max-height\` 这类滚动容器来承载主内容。
+**只在宿主未覆盖的细节样式时**才用内联 \`<style>\` 块补充，且尽量简短。
+**JS 只写业务交互逻辑**，不封装通用框架代码。整体 HTML 内容目标控制在 40 行以内。
+
+### 模块选择规则（参考 readme_cn）
+- \`diagram\`：流程图 / 结构图 / ER 图 / 原理图，优先 SVG 或 Mermaid。优先使用 \`.t .ts .th .box .arr .leader .node\` 和色阶类。
+- \`mockup\`：卡片 / 仪表盘 / 数据记录 / 对比方案，优先使用 \`.card .metric-row .metric .badge .compare-grid .compare-card .record .avatar\`。
+- \`interactive\`：滑块 / 选项卡 / 分步讲解 / 解释器，优先使用 \`.card .tab-bar .tab .nav-pills .pill .btn-row\`，只写必要交互。切换 tab / pill 后调用 \`window.__gooseWidgetResize?.()\` 重新上报高度。
+- \`chart\`：默认输出 \`\`\`echarts\`；仅当用户明确要求"不要 echarts / 要交互页面"时，才输出 \`\`\`html\` 版本，但仍必须包在 \`\`\`html\` 围栏里。
+- \`art\`：生成式艺术或装饰性可视化，仍需遵守同一套颜色与圆角规则。
+
+### 复杂度预算
+- 盒子副标题尽量不超过 5 个词，详细说明放在正文
+- 单张图尽量不超过 2 条主色阶；若颜色有语义，补一行图例
+- 全宽一行最多 4 个主卡片；超过则自动换行、拆分或分段展示
+- 优先拆成多个小模块 / 小图表，让用户更快看到结果
+- tab 内容高度差异大时，优先让面板跟随内容自适应；必要时再局部 \`overflow-y-auto\`，不要把内容直接裁掉
+
+### 禁止事项
+- echarts JSON 禁止使用 function()，必须是合法 JSON
+- html 片段禁止输出 DOCTYPE/html/head/body
+- 禁止输出复制/下载按钮、toast、html2canvas 等宿主逻辑
+- 数据解析失败时报错终止，禁止用示例数据替代
+`.trim();
 const WORKSPACE_NOTE_SYSTEM_PROMPT =
-  "你是 Goose Note 内置 AI 助手。优先结合当前页面与用户 @ 引用的内容工作。若用户要写入页面，就直接输出可落文的最终 Markdown，不要解释，不要自我介绍。";
+  `你是 Goose Note 内置 AI 助手。结合用户 @ 引用的内容工作。若当前任务确定需要写入页面，输出可落文的最终 Markdown，不要解释，不要自我介绍；否则直接回答用户问题。\n\n${DATAVIZ_SYSTEM_PROMPT}`;
 
 const INLINE_NOTE_SYSTEM_PROMPT =
   "你是 Goose Note 内置写作助手。输出必须直接可落文，不要解释，不要加前后缀，不要使用 Markdown 代码围栏。只输出最终文本。";
@@ -210,13 +280,11 @@ export async function parseNoteAgentInput(
         source: "llm_router",
       };
     } else {
-      // 无 LLM 依赖时用确定性兜底
+      // 无 LLM 依赖时用保守兜底：不自动覆写当前页，歧义请求默认新建或聊天
       selection = {
-        mode: context.originPageId
-          ? "current_page"
-          : context.originNotebookId
-            ? "current_notebook"
-            : "chat_only",
+        mode: context.originNotebookId
+          ? "current_notebook"
+          : "chat_only",
         source: "prompt_rule",
       };
     }

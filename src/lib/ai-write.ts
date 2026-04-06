@@ -88,6 +88,8 @@ export interface AiContextBundle {
 }
 
 const EXPLICIT_CHAT_PATTERN = /(仅聊天|只聊天|只回答|不要写入|不要落盘|仅回复|只讨论)/;
+// 可视化请求强制走 chat_only，图表只在聊天界面渲染
+const DATAVIZ_CHAT_PATTERN = /(图表|折线图|柱状图|饼图|散点图|热力图|面积图|趋势图|可视化|画图|画个图|出个图|对比图|交互式视图|交互视图|echarts|数据图|柱形图|扇形图|曲线图|雷达图)/;
 const APPEND_PATTERN =
   /(追加|补充|添加|附加|继续写|续写|补到|加到|append)/;
 const CHILD_PATTERN = /(下面|下边|下方|子页面|子页|子文档)/;
@@ -323,8 +325,8 @@ export function resolveAiTargetSelection(params: {
   const stickySelection = stickyTargetToSelection(stickyTarget);
   const followUpPrompt = isFollowUpEditPrompt(normalizedPrompt);
 
-  // 优先级 1：显式聊天
-  if (EXPLICIT_CHAT_PATTERN.test(normalizedPrompt)) {
+  // 优先级 1：显式聊天 / 可视化请求
+  if (EXPLICIT_CHAT_PATTERN.test(normalizedPrompt) || DATAVIZ_CHAT_PATTERN.test(normalizedPrompt)) {
     return {
       mode: "chat_only",
       source: "prompt_rule",

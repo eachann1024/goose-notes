@@ -12,7 +12,7 @@ import type {
   AgentPlan,
   MarkdownNoteArtifact,
 } from "@/agent/core/types";
-import { AgentArtifactView } from "@/agent/renderers/AgentArtifactView";
+import { AgentArtifactView, StreamingDatavizText, textHasDataviz, artifactHasDataviz } from "@/agent/renderers/AgentArtifactView";
 import {
   type AIReasoningLevel,
   type AIMessage,
@@ -21,7 +21,10 @@ import {
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
 import { type AiWritePlan } from "@/lib/ai-write";
 import { cn } from "@/lib/utils";
-import { useSettings } from "@/stores/useSettings";
+import {
+  EDITOR_FONT_SIZE_DEFAULT,
+  useSettings,
+} from "@/stores/useSettings";
 import { useAiSessions, type AiSession } from "@/stores/useAiSessions";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -40,6 +43,7 @@ import {
   type AiFileReferenceAttrs,
 } from "../editor/ai-composer/referenceLookup";
 import { AiWorkspaceComposerBar } from "./AiWorkspaceComposerBar";
+import { CLOSE_AI_WORKSPACE_EVENT } from "./events";
 
 const AI_WORKSPACE_DEFAULT_DIAGRAM_URL =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/AI%20default%20diagram.png";
@@ -263,6 +267,9 @@ function SessionHistoryPanel({
 export function AiWorkspacePage() {
   const composerRef = useRef<AiComposerInputHandle | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+  // 用于智能自动滚动：记录用户是否已主动上滚
+  const userScrolledUpRef = useRef(false);
   const activeRequestIdRef = useRef(0);
   const streamAbortRef = useRef<AbortController | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
@@ -317,6 +324,9 @@ export function AiWorkspacePage() {
     () => serializeAiComposerDoc(draftContent),
     [draftContent],
   );
+
+  const editorFontSize = useSettings((s) => s.editorFontSize);
+  const aiWorkspaceScale = editorFontSize / EDITOR_FONT_SIZE_DEFAULT;
 
   const syncActiveMessages = useCallback(
     (nextMessages: AiConversationMessage[], phase: AIStreamPhase = streamPhase) => {
@@ -463,9 +473,30 @@ export function AiWorkspacePage() {
     }
   }, [activeNotebookId, activeOriginPageId, activePageId, setActiveOrigin]);
 
-  // ── 自动滚动到底部
+  // ── 智能自动滚动：用户上滚时不打断，新消息发出时强制滚底
+  const isAutoScrollingRef = useRef(false);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "end" });
+    const container = messagesScrollRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      if (isAutoScrollingRef.current) return;
+      const nearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
+      userScrolledUpRef.current = !nearBottom;
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!userScrolledUpRef.current) {
+      isAutoScrollingRef.current = true;
+      messagesEndRef.current?.scrollIntoView({ block: "end" });
+      // scrollIntoView 是同步的，但 scroll 事件在下一微任务才触发，用 rAF 安全恢复
+      requestAnimationFrame(() => {
+        isAutoScrollingRef.current = false;
+      });
+    }
   }, [messages, isStreaming]);
 
   // ── 卸载时终止流
@@ -603,6 +634,8 @@ export function AiWorkspacePage() {
 
     setIsStreaming(true);
     setStreamPhase("connecting");
+    // 新消息发出时重置上滚标记，强制滚到底部
+    userScrolledUpRef.current = false;
 
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve());
@@ -984,6 +1017,7 @@ export function AiWorkspacePage() {
 
   const handleOpenResultPage = useCallback(
     (pageId: string) => {
+      window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
       openTab(pageId);
       usePages.getState().setExpandPageId(pageId);
     },
@@ -991,7 +1025,11 @@ export function AiWorkspacePage() {
   );
 
   return (
-    <div className="flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]">
+    <div
+      data-ai-workspace-root="true"
+      className="flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]"
+      style={{ zoom: aiWorkspaceScale }}
+    >
 
       {/* ── 顶部工具栏：历史 & 新建会话 */}
       <div className="flex shrink-0 items-center justify-end gap-1 px-4 pt-3 pb-1">
@@ -1051,12 +1089,13 @@ export function AiWorkspacePage() {
       </div>
 
       {/* ── 消息列表 */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div ref={messagesScrollRef} className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[760px] py-2">
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col justify-center pb-10">
+          <div className="flex h-[calc(100vh-180px)] flex-col justify-center px-4 pb-10">
             <div
               data-ai-empty-state-card="true"
-              className="relative overflow-hidden rounded-[30px] border border-border/70 bg-[#1c2027] shadow-[0_18px_48px_rgba(15,23,42,0.18)]"
+              className="relative overflow-hidden rounded-[30px] border border-border/70 bg-muted/60 dark:bg-[#1c2027] shadow-[0_18px_48px_rgba(15,23,42,0.18)]"
             >
               <div
                 className="absolute inset-0 bg-cover bg-center opacity-90"
@@ -1064,7 +1103,7 @@ export function AiWorkspacePage() {
                   backgroundImage: `url("${AI_WORKSPACE_DEFAULT_DIAGRAM_URL}")`,
                 }}
               />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,16,24,0.14)_0%,rgba(12,16,24,0.5)_48%,rgba(12,16,24,0.82)_100%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,16,24,0.14)_0%,rgba(12,16,24,0.35)_48%,rgba(12,16,24,0.6)_100%)] dark:bg-[linear-gradient(180deg,rgba(12,16,24,0.14)_0%,rgba(12,16,24,0.5)_48%,rgba(12,16,24,0.82)_100%)]" />
               <div className="relative flex min-h-[220px] flex-col justify-end px-6 py-7 sm:min-h-[248px] sm:px-7">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-black/20 backdrop-blur-[6px]">
                   <AiGradientIcon className="h-5 w-5" />
@@ -1079,7 +1118,7 @@ export function AiWorkspacePage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 pb-10">
+          <div className="flex flex-col pb-10">
             {messages.map((message, index) => {
               const isLastMessage = index === messages.length - 1;
               const isRetryable =
@@ -1090,16 +1129,35 @@ export function AiWorkspacePage() {
                 !draftPayload.promptText.trim() &&
                 !!lastSubmitPayloadRef.current;
 
+              const isDataviz =
+                message.role === "assistant" &&
+                !message.error &&
+                (artifactHasDataviz(message.artifact) || textHasDataviz(message.text));
+
+              const isUserMsg = message.role === "user";
+
               return (
-              <div key={message.id} className="flex flex-col gap-1.5">
+              <div key={message.id} className={cn(
+                "flex flex-col gap-1.5",
+                isDataviz
+                  ? "px-4 py-2"
+                  : isUserMsg
+                    ? "items-end px-4 py-1"
+                    : "px-4 py-1"
+              )}>
                 <div
                   className={cn(
-                    "rounded-2xl border px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)]",
-                    message.role === "user"
-                      ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
-                      : message.error
-                        ? "border-destructive/20 bg-destructive/5 text-destructive"
-                        : "border-border/70 bg-background/80 text-foreground",
+                    "select-text",
+                    isDataviz
+                      ? "text-foreground w-full"
+                      : cn(
+                          "rounded-2xl border px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)]",
+                          message.role === "user"
+                            ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
+                            : message.error
+                              ? "border-destructive/20 bg-destructive/5 text-destructive"
+                              : "border-border/70 bg-background/80 text-foreground",
+                        ),
                   )}
                 >
                   {message.role === "assistant" && !message.error ? (
@@ -1116,30 +1174,11 @@ export function AiWorkspacePage() {
                         onOpenResult={handleOpenResultPage}
                       />
                     ) : message.text ? (
-                      <>
-                        <div className="whitespace-pre-wrap break-words text-sm leading-7">
-                          {message.text}
-                        </div>
-                        {message.streaming && (
-                          <div className="mt-2.5 flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
-                              style={{ animationDelay: "0ms", animationDuration: "1s" }}
-                            />
-                            <span
-                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
-                              style={{ animationDelay: "200ms", animationDuration: "1s" }}
-                            />
-                            <span
-                              className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50"
-                              style={{ animationDelay: "400ms", animationDuration: "1s" }}
-                            />
-                            <span className="ml-1 text-xs text-muted-foreground/70">
-                              {STREAM_PHASE_LABEL[streamPhase]}
-                            </span>
-                          </div>
-                        )}
-                      </>
+                      <StreamingDatavizText
+                        text={message.text}
+                        streaming={!!message.streaming}
+                        streamPhaseLabel={STREAM_PHASE_LABEL[streamPhase]}
+                      />
                     ) : (
                       <div className="flex items-center gap-2 text-sm leading-6 text-muted-foreground">
                         {message.streaming ? (
@@ -1198,6 +1237,7 @@ export function AiWorkspacePage() {
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
       </div>
 
       {/* ── 底部输入框：全宽，去除多余边距 */}

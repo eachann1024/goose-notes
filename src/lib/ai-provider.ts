@@ -483,7 +483,7 @@ async function handleCustomStream(
     const body: Record<string, unknown> = {
       model: modelId,
       messages: claudeMessages,
-      max_tokens: 8192,
+      max_tokens: 32768,
       stream: true,
     };
     if (systemInstruction) {

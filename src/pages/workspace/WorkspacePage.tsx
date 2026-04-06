@@ -8,6 +8,7 @@ import { IconSelector } from "./components/shared/IconSelector";
 import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import {
   OPEN_AI_WORKSPACE_EVENT,
+  CLOSE_AI_WORKSPACE_EVENT,
   type OpenAiWorkspaceDetail,
 } from "./components/ai/events";
 import * as LucideIcons from "lucide-react";
@@ -395,6 +396,16 @@ export function WorkspacePage() {
         OPEN_AI_WORKSPACE_EVENT,
         handleOpenAiWorkspace as EventListener,
       );
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleCloseAiWorkspace = () => {
+      setIsAiPageOpen(false);
+    };
+    window.addEventListener(CLOSE_AI_WORKSPACE_EVENT, handleCloseAiWorkspace);
+    return () => {
+      window.removeEventListener(CLOSE_AI_WORKSPACE_EVENT, handleCloseAiWorkspace);
     };
   }, []);
 

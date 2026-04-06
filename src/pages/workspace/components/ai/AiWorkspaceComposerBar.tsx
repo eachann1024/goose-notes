@@ -99,6 +99,10 @@ const AI_WORKSPACE_PLACEHOLDER_PRESETS = [
   "可以这样说：如果要写到指定页面，直接说“生成到 @页面名”",
   "可以这样说：如果只想聊一聊，直接说“仅聊天”或“不要写入”",
   "可以这样说：需要改现有内容时，说“追加到当前页”或“替换 @页面名”",
+  "可以这样说：帮我把这份数据做成一个柱状图",
+  "可以这样说：用折线图展示这几个月的增长趋势",
+  "可以这样说：把 @数据表 可视化成交互式对比图",
+  "可以这样说：生成一个能点击筛选的数据 Dashboard",
 ];
 
 export function AiWorkspaceComposerBar({
@@ -164,7 +168,7 @@ export function AiWorkspaceComposerBar({
       setPlaceholderIndex((current) =>
         current >= AI_WORKSPACE_PLACEHOLDER_PRESETS.length - 1 ? 0 : current + 1,
       );
-    }, 3600);
+    }, 6600);
 
     return () => {
       window.clearInterval(timer);
@@ -264,7 +268,13 @@ export function AiWorkspaceComposerBar({
                           <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-[320px]">
+                      <DropdownMenuContent
+                        align="start"
+                        side="top"
+                        sideOffset={10}
+                        collisionPadding={12}
+                        className="w-[320px] max-h-[min(26rem,var(--radix-dropdown-menu-content-available-height))]"
+                      >
                         <DropdownMenuRadioGroup
                           value={resolvedModelId ?? ""}
                           onValueChange={(value) => setAIWorkspaceSelectedModelId(value)}
@@ -307,7 +317,13 @@ export function AiWorkspaceComposerBar({
                     <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[220px]">
+                <DropdownMenuContent
+                  align="start"
+                  side="top"
+                  sideOffset={10}
+                  collisionPadding={12}
+                  className="w-[220px] max-h-[min(20rem,var(--radix-dropdown-menu-content-available-height))]"
+                >
                   <DropdownMenuRadioGroup
                     value={ai.workspaceReasoningLevel}
                     onValueChange={(value) => setAIWorkspaceReasoningLevel(value as AIReasoningLevel)}

@@ -331,6 +331,20 @@ function App() {
 
   useEffect(() => {
     const handleZoomKeys = (event: KeyboardEvent) => {
+      const isZoomInKey =
+        event.key === "+" ||
+        event.key === "=" ||
+        event.code === "Equal" ||
+        event.code === "NumpadAdd";
+      const isZoomOutKey =
+        event.key === "-" ||
+        event.code === "Minus" ||
+        event.code === "NumpadSubtract";
+      const isZoomResetKey =
+        event.key === "0" ||
+        event.code === "Digit0" ||
+        event.code === "Numpad0";
+
       if (event.key === "F3") {
         event.preventDefault();
         event.stopPropagation();
@@ -393,6 +407,24 @@ function App() {
         return;
       }
 
+      if (isZoomInKey) {
+        event.preventDefault();
+        increaseEditorFontSize();
+        return;
+      }
+
+      if (isZoomOutKey) {
+        event.preventDefault();
+        decreaseEditorFontSize();
+        return;
+      }
+
+      if (isZoomResetKey) {
+        event.preventDefault();
+        setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
+        return;
+      }
+
       if (isEditableInput) return;
 
       if (event.key.toLowerCase() === "s" && !event.shiftKey) {
@@ -406,15 +438,6 @@ function App() {
           await usePages.getState().flushPendingLocalSaves();
           toast("内容已保存", { duration: 1500 });
         })();
-      } else if (event.key === "+" || event.key === "=") {
-        event.preventDefault();
-        increaseEditorFontSize();
-      } else if (event.key === "-") {
-        event.preventDefault();
-        decreaseEditorFontSize();
-      } else if (event.key === "0") {
-        event.preventDefault();
-        setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
       } else if (event.key.toLowerCase() === "n") {
         event.preventDefault();
         const { createPage } = usePages.getState();
@@ -427,9 +450,9 @@ function App() {
       }
     };
 
-    document.addEventListener("keydown", handleZoomKeys);
+    document.addEventListener("keydown", handleZoomKeys, true);
     return () => {
-      document.removeEventListener("keydown", handleZoomKeys);
+      document.removeEventListener("keydown", handleZoomKeys, true);
     };
   }, [
     uiFontSize,

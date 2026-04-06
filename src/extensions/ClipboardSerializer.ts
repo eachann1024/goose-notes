@@ -346,7 +346,25 @@ export const ClipboardSerializer = Extension.create({
                 return true;
               }
 
-              // 3. 其他情况返回 false，交给 tiptap-markdown 处理
+              // 3. 跨块选中（含带背景色的块）：提取纯文本，避免 tiptap-markdown 将
+              //    data-block-bg-color 等 HTML 属性序列化为可见代码字符串。
+              const { selection: sel, doc } = view.state;
+              if (!sel.empty) {
+                const plainText = doc.textBetween(sel.from, sel.to, "\n", "\n");
+                if (plainText) {
+                  event.preventDefault();
+                  const copied = writePlainTextToClipboard(event, plainText);
+                  if (!copied) {
+                    Promise.resolve()
+                      .then(() => UToolsAdapter.copyToClipboard(plainText))
+                      .catch((err) => {
+                        console.error("Failed to copy cross-block text:", err);
+                      });
+                  }
+                  return true;
+                }
+              }
+
               return false;
             },
             cut: (view, event) => {
@@ -439,6 +457,33 @@ export const ClipboardSerializer = Extension.create({
                     });
                 }
                 return true;
+              }
+
+              // 跨块剪切（含带背景色的块）：同样走纯文本路径，避免序列化出 HTML 属性代码。
+              const { selection: cutSel, doc: cutDoc } = view.state;
+              if (!cutSel.empty) {
+                const plainText = cutDoc.textBetween(cutSel.from, cutSel.to, "\n", "\n");
+                if (plainText) {
+                  event.preventDefault();
+                  const copied = writePlainTextToClipboard(event, plainText);
+                  if (copied) {
+                    const { state } = view;
+                    const tr = state.tr.deleteSelection();
+                    applyCutTransaction(view, tr);
+                  } else {
+                    navigator.clipboard
+                      .writeText(plainText)
+                      .then(() => {
+                        const { state } = view;
+                        const tr = state.tr.deleteSelection();
+                        applyCutTransaction(view, tr);
+                      })
+                      .catch((err) => {
+                        console.error("Failed to cut cross-block text:", err);
+                      });
+                  }
+                  return true;
+                }
               }
 
               return false;

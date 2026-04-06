@@ -40,6 +40,7 @@ import {
   type FlatTreeItem,
   type VisibleTreeItem,
 } from "./tree-dnd";
+import { CLOSE_AI_WORKSPACE_EVENT } from "../ai/events";
 
 interface SidebarTreeProps {
   activeNotebookId: string | null;
@@ -377,6 +378,7 @@ function SortablePageRow({
               onToggleOpen(page.id);
               return;
             }
+            window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
             openInCurrentTab(page.id);
           }}
         >
@@ -511,7 +513,8 @@ export function SidebarTree({
     expandPageId,
     setExpandPageId,
   } = usePages();
-  const highlightedPageId = selectedPageId ?? activePageId;
+  // selectedPageId 传 null 表示"不高亮任何项"（如 AI 界面打开时），undefined 才 fallback 到 activePageId
+  const highlightedPageId = selectedPageId !== undefined ? selectedPageId : activePageId;
 
   const notebook = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]
