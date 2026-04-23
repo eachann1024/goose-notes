@@ -1,4 +1,4 @@
-import { useRef, useMemo, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import MarkdownIt from "markdown-it";
 import { AiWritePreviewCard } from "@/pages/workspace/components/ai/AiWritePreviewCard";
@@ -9,7 +9,8 @@ import type {
 import type { AiWritePlan } from "@/lib/ai-write";
 import { EChartsBlock } from "./EChartsBlock";
 import { HtmlWidgetBlock } from "./HtmlWidgetBlock";
-import { DatavizToolbar } from "./DatavizToolbar";
+import { JSONUIProvider, Renderer } from "@json-render/react";
+import { registry } from "./json-render-registry";
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: false }).enable("table");
 
@@ -20,7 +21,8 @@ const md = new MarkdownIt({ html: false, linkify: true, typographer: false }).en
 type Segment =
   | { type: "markdown"; content: string }
   | { type: "echarts"; content: string }
-  | { type: "html"; content: string };
+  | { type: "html"; content: string }
+  | { type: "json-render"; content: string };
 
 const HTML_FRAGMENT_RE =
   /<(div|section|article|main|aside|header|footer|svg|canvas|table|style|script)\b/i;
@@ -40,7 +42,7 @@ function looksLikeStandaloneHtml(text: string): boolean {
 
 function parseDatavizSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  const fenceRe = /```(echarts|html)\s*\n([\s\S]*?)```/g;
+  const fenceRe = /```(echarts|html|json-render)\s*\n([\s\S]*?)```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -49,7 +51,7 @@ function parseDatavizSegments(text: string): Segment[] {
       const before = text.slice(lastIndex, match.index).trim();
       if (before) segments.push({ type: "markdown", content: before });
     }
-    const lang = match[1] as "echarts" | "html";
+    const lang = match[1] as "echarts" | "html" | "json-render";
     segments.push({ type: lang, content: match[2].trim() });
     lastIndex = match.index + match[0].length;
   }
@@ -77,7 +79,7 @@ function parseDatavizSegments(text: string): Segment[] {
 /** 流式场景：额外检测尾部未闭合的 dataviz 围栏 */
 function parseStreamingSegments(text: string) {
   const segments: Segment[] = [];
-  const fenceRe = /```(echarts|html)\s*\n([\s\S]*?)```/g;
+  const fenceRe = /```(echarts|html|json-render)\s*\n([\s\S]*?)```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -91,7 +93,7 @@ function parseStreamingSegments(text: string) {
   }
 
   const remaining = text.slice(lastIndex);
-  const incompleteRe = /```(echarts|html)\s*\n([\s\S]*)$/;
+  const incompleteRe = /```(echarts|html|json-render)\s*\n([\s\S]*)$/;
   const incompleteMatch = remaining.match(incompleteRe);
 
   if (incompleteMatch) {
@@ -100,7 +102,7 @@ function parseStreamingSegments(text: string) {
     return {
       segments,
       hasIncompleteBlock: true,
-      incompleteBlockType: incompleteMatch[1] as "echarts" | "html",
+      incompleteBlockType: incompleteMatch[1] as "echarts" | "html" | "json-render",
     };
   }
 
@@ -141,14 +143,14 @@ interface AgentArtifactViewProps {
 
 function DatavizSurface({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-3">{children}</div>
+    <div className="flex w-full flex-col gap-4">{children}</div>
   );
 }
 
 function MarkdownSegmentModule({ content }: { content: string }) {
   return (
     <section
-      className="ai-markdown break-words text-sm leading-7 px-1"
+      className="ai-markdown break-words text-sm leading-7"
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: md.render(content) }}
     />
@@ -175,9 +177,8 @@ function EChartsSegment({ content }: { content: string }) {
   }
 
   return (
-    <section className="group relative overflow-visible">
+    <section className="relative overflow-visible">
       <EChartsBlock ref={ref} config={config} />
-      <DatavizToolbar targetRef={ref} blockType="echarts" />
     </section>
   );
 }
@@ -186,24 +187,52 @@ function EChartsSegment({ content }: { content: string }) {
 function HtmlWidgetSegment({ content }: { content: string }) {
   const ref = useRef<HTMLDivElement>(null);
   return (
-    <section className="group relative overflow-visible">
+    <section className="relative overflow-visible">
       <HtmlWidgetBlock ref={ref} html={content} />
-      <DatavizToolbar targetRef={ref} blockType="html" />
     </section>
   );
 }
 
 /** 图表/组件生成中的 loading 占位 */
-function DatavizLoadingPlaceholder({ type }: { type: "echarts" | "html" }) {
+function DatavizLoadingPlaceholder({ type }: { type: "echarts" | "html" | "json-render" }) {
+  const label =
+    type === "echarts"
+      ? "正在生成图表…"
+      : type === "html"
+        ? "正在生成交互组件…"
+        : "正在生成界面组件…";
   return (
-    <div className="rounded-[1.125rem] border border-border/50 bg-background/60 p-1.5">
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border/30 bg-background/40 p-7">
-        <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
-          {type === "echarts" ? "正在生成图表…" : "正在生成交互组件…"}
-        </span>
-      </div>
+    <div className="flex items-center gap-2 px-1 py-2 text-sm text-muted-foreground">
+      <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+      <span>{label}</span>
     </div>
+  );
+}
+
+/** 渲染单个 json-render UI 块 */
+function JsonRenderSegment({ content }: { content: string }) {
+  const spec = useMemo(() => {
+    try {
+      return JSON.parse(content) as import("@json-render/core").Spec;
+    } catch {
+      return null;
+    }
+  }, [content]);
+
+  if (!spec) {
+    return (
+      <div className="ai-markdown break-words text-sm leading-7">
+        <pre><code>{content}</code></pre>
+      </div>
+    );
+  }
+
+  return (
+    <section className="relative overflow-visible">
+      <JSONUIProvider registry={registry}>
+        <Renderer spec={spec} registry={registry} />
+      </JSONUIProvider>
+    </section>
   );
 }
 
@@ -223,6 +252,9 @@ function DatavizSegmentList({
         }
         if (seg.type === "html") {
           return <HtmlWidgetSegment key={`html-${i}`} content={seg.content} />;
+        }
+        if (seg.type === "json-render") {
+          return <JsonRenderSegment key={`json-render-${i}`} content={seg.content} />;
         }
         return <MarkdownSegmentModule key={`md-${i}`} content={seg.content} />;
       })}
@@ -354,7 +386,7 @@ const AGENT_ARTIFACT_RENDERERS = {
  */
 export function textHasDataviz(text: string | undefined | null): boolean {
   if (!text) return false;
-  if (/```(?:echarts|html)\s*\n/.test(text)) return true;
+  if (/```(?:echarts|html|json-render)\s*\n/.test(text)) return true;
   return looksLikeStandaloneHtml(text);
 }
 

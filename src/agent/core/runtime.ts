@@ -1,5 +1,10 @@
-import { runAITextStream } from "@/lib/ai-provider";
+import { runAITextStream, type AIMessage } from "@/lib/ai-provider";
 import { getAgentCapabilities, getAgentCapabilityById, getAgentCommitHandler } from "@/agent/core/registry";
+import {
+  buildToolContinuationPrompt,
+  executeNoteToolMarker,
+  parseNoteToolMarker,
+} from "@/agent/capabilities/note/toolMarkers";
 import type {
   AgentArtifact,
   AgentExecutePlanOptions,
@@ -81,20 +86,54 @@ export async function executeAgentPlan(
     throw new Error("未找到可执行的 Agent 能力");
   }
 
-  const rawText = await runAITextStream(
-    options.settings,
-    [
-      { role: "system", content: options.plan.systemPrompt },
-      ...(options.historyMessages ?? []),
-      { role: "user", content: options.plan.userPrompt },
-    ],
-    {
+  const baseMessages: AIMessage[] = [
+    { role: "system", content: options.plan.systemPrompt },
+    ...(options.historyMessages ?? []),
+    { role: "user", content: options.plan.userPrompt },
+  ];
+  const shouldHandleNoteToolMarkers =
+    options.plan.capabilityId === "note.chat" && options.context.surface === "workspace";
+  const seenToolMarkers = new Set<string>();
+  let currentMessages = baseMessages;
+  let rawText = "";
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    rawText = await runAITextStream(options.settings, currentMessages, {
       abortSignal: options.abortSignal,
       onUpdate: options.onUpdate,
       requestOverrides: options.requestOverrides,
       streamIdleTimeoutMs: options.streamIdleTimeoutMs,
-    },
-  );
+    });
+
+    if (!rawText?.trim()) {
+      throw new Error("AI 没有返回可用内容");
+    }
+
+    if (!shouldHandleNoteToolMarkers) {
+      break;
+    }
+
+    const marker = parseNoteToolMarker(rawText);
+    if (!marker) {
+      break;
+    }
+
+    const markerKey = `${marker.type}:${marker.argument}`;
+    if (seenToolMarkers.has(markerKey)) {
+      break;
+    }
+    seenToolMarkers.add(markerKey);
+
+    const toolResult = executeNoteToolMarker(marker, {
+      originNotebookId: options.context.originNotebookId,
+    });
+
+    currentMessages = [
+      ...currentMessages,
+      { role: "assistant", content: rawText.trim() },
+      { role: "user", content: buildToolContinuationPrompt(toolResult) },
+    ];
+  }
 
   if (!rawText?.trim()) {
     throw new Error("AI 没有返回可用内容");

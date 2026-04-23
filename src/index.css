@@ -264,10 +264,12 @@
   @apply text-[10px] text-muted-foreground transition-transform duration-200;
 }
 
-.details-wrapper[open] summary::before {
+.details-wrapper[open] summary::before,
+.details-wrapper.is-open summary::before {
   @apply rotate-90;
 }
 
+.details-wrapper div[data-type="detailsContent"],
 .details-wrapper > div[data-type="details-content"] {
   @apply p-3 pt-1 border-t border-border/20 bg-muted/5;
 }

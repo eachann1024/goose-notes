@@ -1,4 +1,6 @@
 import { Editor } from "@tiptap/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useScrollHide } from "@/hooks/useScrollHide";
 
 interface TableHoverControlsProps {
   editor: Editor;
@@ -30,6 +32,7 @@ const isSameHoverState = (a: HoverState | null, b: HoverState | null) => {
 };
 
 export function TableHoverControls({ editor }: TableHoverControlsProps) {
+  const isHidden = useScrollHide(editor);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -56,7 +59,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
     if (!editor) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!editor.isEditable) return;
+      if (!editor.isEditable || isHidden) return;
       const target = e.target as HTMLElement;
 
       if (controlsRef.current?.contains(target)) {
@@ -144,7 +147,14 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
       document.removeEventListener("mousemove", handleMouseMove);
       clearHideTimeout();
     };
-  }, [editor, clearHideTimeout, setHoverStateIfChanged]);
+  }, [editor, clearHideTimeout, setHoverStateIfChanged, isHidden]);
+
+  useEffect(() => {
+    if (!isHidden) return;
+    clearHideTimeout();
+    setVisible((prev) => (prev ? false : prev));
+    setHoverStateIfChanged(null);
+  }, [isHidden, clearHideTimeout, setHoverStateIfChanged]);
 
   useEffect(() => {
     return subscribeGlobalScrollActivity((nextSnapshot) => {
@@ -167,7 +177,7 @@ export function TableHoverControls({ editor }: TableHoverControlsProps) {
     }
   }, [hoverState]);
 
-  if (!hoverState) return null;
+  if (!hoverState || isHidden) return null;
 
   const { type, tableRect, pos } = hoverState;
 

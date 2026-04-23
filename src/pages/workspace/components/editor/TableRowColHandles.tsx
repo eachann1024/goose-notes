@@ -1,4 +1,6 @@
 import { Editor } from "@tiptap/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useScrollHide } from "@/hooks/useScrollHide";
 
 interface TableRowColHandlesProps {
   editor: Editor;
@@ -21,6 +23,7 @@ type HandleState = {
 const emptyState: HandleState = { row: null, col: null, table: null, isLastRow: false, isLastCol: false };
 
 export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
+  const isHidden = useScrollHide(editor);
   const [handles, setHandles] = useState<HandleState>(emptyState);
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState<"row" | "col" | null>(null);
@@ -63,7 +66,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
     if (!editor) return;
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!editor.isEditable || menuOpen) return;
+      if (!editor.isEditable || menuOpen || isHidden) return;
 
       // Don't show handles when multiple cells are selected
       try {
@@ -154,7 +157,15 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
       document.removeEventListener("mousemove", onMouseMove);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [editor, menuOpen, clearHideTimeout, scheduleHide]);
+  }, [editor, menuOpen, clearHideTimeout, scheduleHide, isHidden]);
+
+  useEffect(() => {
+    if (!isHidden) return;
+    clearHideTimeout();
+    setVisible(false);
+    setMenuOpen(null);
+    setHandles((prev) => (prev.row || prev.col ? emptyState : prev));
+  }, [isHidden, clearHideTimeout]);
 
   useEffect(() => {
     return subscribeGlobalScrollActivity((nextSnapshot) => {
@@ -335,7 +346,7 @@ export function TableRowColHandles({ editor }: TableRowColHandlesProps) {
     document.addEventListener("mouseup", onMouseUp);
   }, [editor, handles.table, suppressDragHandle, restoreDragHandle]);
 
-  if (!handles.row && !handles.col) return null;
+  if ((!handles.row && !handles.col) || isHidden) return null;
 
   const rowActions = [
     ...(handles.row?.index === 0

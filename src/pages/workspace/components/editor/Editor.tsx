@@ -9,6 +9,7 @@ import "tippy.js/dist/tippy.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { ImageBubbleMenu } from "./ImageBubbleMenu";
+import { getCollapsedHeadingPositionsAffectingPos } from "@/extensions/HeadingCollapse";
 import { LinkHoverMenu } from "@/extensions/LinkHoverMenu";
 import { TableHoverControls } from "./TableHoverControls";
 import { TableRowColHandles } from "./TableRowColHandles";
@@ -26,11 +27,27 @@ interface EditorProps {
 interface FindMatchRange {
   from: number;
   to: number;
+  anchorPos?: number;
+  source?: "doc" | "codeBlockSummary";
 }
 
 interface FindWidgetMeta {
   clear?: boolean;
   decorations?: DecorationSet;
+}
+
+interface FindTextSegment {
+  from: number;
+  textEnd: number;
+  textStart: number;
+  to: number;
+}
+
+interface FindTextScope {
+  anchorPos: number;
+  segments: FindTextSegment[];
+  source: "doc" | "codeBlockSummary";
+  text: string;
 }
 
 const editorFindPluginKey = new PluginKey<DecorationSet>(
@@ -57,21 +74,132 @@ function collectFindMatches(
   const normalizedQuery = matchCase ? query : query.toLowerCase();
   const matches: FindMatchRange[] = [];
 
-  doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return true;
+  const createDocTextScope = (
+    node: ProseMirrorNode,
+    pos: number,
+  ): FindTextScope | null => {
+    const segments: FindTextSegment[] = [];
+    let text = "";
 
-    const text = matchCase ? node.text : node.text.toLowerCase();
+    node.descendants((child, childPos) => {
+      if (!child.isText || !child.text) return true;
+
+      const textStart = text.length;
+      text += child.text;
+      segments.push({
+        from: pos + childPos,
+        textEnd: text.length,
+        textStart,
+        to: pos + childPos + child.text.length,
+      });
+      return true;
+    });
+
+    if (!text || !segments.length) {
+      return null;
+    }
+
+    return {
+      anchorPos: pos,
+      segments,
+      source: "doc",
+      text,
+    };
+  };
+
+  const createCodeBlockSummaryScope = (
+    node: ProseMirrorNode,
+    pos: number,
+  ): FindTextScope | null => {
+    const summary =
+      typeof node.attrs?.summary === "string" ? node.attrs.summary.trim() : "";
+    if (!summary) return null;
+
+    const contentStart = pos + 1;
+    const contentEnd = Math.max(contentStart, pos + node.nodeSize - 1);
+
+    return {
+      anchorPos: pos,
+      segments: [
+        {
+          from: contentStart,
+          textEnd: summary.length,
+          textStart: 0,
+          to: contentEnd,
+        },
+      ],
+      source: "codeBlockSummary",
+      text: summary,
+    };
+  };
+
+  const mapStartOffsetToDocPos = (
+    segments: FindTextSegment[],
+    offset: number,
+  ): number => {
+    for (const segment of segments) {
+      if (offset < segment.textEnd) {
+        return segment.from + Math.max(0, offset - segment.textStart);
+      }
+    }
+
+    return segments[segments.length - 1]?.to ?? 0;
+  };
+
+  const mapEndOffsetToDocPos = (
+    segments: FindTextSegment[],
+    offset: number,
+  ): number => {
+    for (const segment of segments) {
+      if (offset < segment.textEnd) {
+        return segment.from + Math.max(0, offset - segment.textStart);
+      }
+      if (offset === segment.textEnd) {
+        return segment.to;
+      }
+    }
+
+    return segments[segments.length - 1]?.to ?? 0;
+  };
+
+  const scopes: FindTextScope[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === "codeBlock") {
+      const summaryScope = createCodeBlockSummaryScope(node, pos);
+      const codeScope = createDocTextScope(node, pos);
+      if (summaryScope) scopes.push(summaryScope);
+      if (codeScope) scopes.push(codeScope);
+      return false;
+    }
+
+    if (node.isTextblock) {
+      const textScope = createDocTextScope(node, pos);
+      if (textScope) scopes.push(textScope);
+      return false;
+    }
+
+    return true;
+  });
+
+  scopes.forEach((scope) => {
+    const text = matchCase ? scope.text : scope.text.toLowerCase();
     let startIndex = 0;
+
     while (startIndex <= text.length - normalizedQuery.length) {
       const foundIndex = text.indexOf(normalizedQuery, startIndex);
       if (foundIndex === -1) break;
+
       matches.push({
-        from: pos + foundIndex,
-        to: pos + foundIndex + query.length,
+        anchorPos: scope.anchorPos,
+        from: mapStartOffsetToDocPos(scope.segments, foundIndex),
+        source: scope.source,
+        to:
+          scope.source === "codeBlockSummary"
+            ? mapEndOffsetToDocPos(scope.segments, foundIndex + 1)
+            : mapEndOffsetToDocPos(scope.segments, foundIndex + query.length),
       });
       startIndex = foundIndex + Math.max(query.length, 1);
     }
-    return true;
   });
 
   return matches;
@@ -83,14 +211,20 @@ function createFindDecorations(
   activeIndex: number,
 ): DecorationSet {
   if (!matches.length) return DecorationSet.empty;
-  const decorations = matches.map((match, index) =>
-    Decoration.inline(match.from, match.to, {
-      class:
-        index === activeIndex
-          ? "editor-find-match editor-find-match-active"
-          : "editor-find-match",
-    }),
-  );
+  const decorations = matches.flatMap((match, index) => {
+    if (match.source === "codeBlockSummary" || match.from >= match.to) {
+      return [];
+    }
+
+    return [
+      Decoration.inline(match.from, match.to, {
+        class:
+          index === activeIndex
+            ? "editor-find-match editor-find-match-active"
+            : "editor-find-match",
+      }),
+    ];
+  });
   return DecorationSet.create(doc, decorations);
 }
 
@@ -102,12 +236,99 @@ function areFindMatchesEqual(
   for (let index = 0; index < previous.length; index += 1) {
     if (
       previous[index].from !== next[index].from ||
-      previous[index].to !== next[index].to
+      previous[index].to !== next[index].to ||
+      previous[index].anchorPos !== next[index].anchorPos ||
+      previous[index].source !== next[index].source
     ) {
       return false;
     }
   }
   return true;
+}
+
+function revealFindMatchInTransaction(
+  editor: TiptapEditor,
+  match: FindMatchRange,
+): boolean {
+  const { state } = editor;
+  let tr = state.tr;
+  const targetPos = match.source === "codeBlockSummary"
+    ? (match.anchorPos ?? match.from) + 1
+    : match.from;
+  const headingPositions = getCollapsedHeadingPositionsAffectingPos(
+    state.doc,
+    targetPos,
+  );
+
+  headingPositions.forEach((headingPos) => {
+    const headingNode = tr.doc.nodeAt(headingPos);
+    if (!headingNode || headingNode.type.name !== "heading") return;
+    if (!headingNode.attrs?.collapsed) return;
+    tr = tr.setNodeMarkup(headingPos, undefined, {
+      ...headingNode.attrs,
+      collapsed: false,
+    });
+  });
+
+  const $match = tr.doc.resolve(targetPos);
+  for (let depth = $match.depth; depth > 0; depth -= 1) {
+    const node = $match.node(depth);
+    if (node.type.name !== "codeBlock" || !node.attrs?.collapsed) continue;
+    tr = tr.setNodeMarkup($match.before(depth), undefined, {
+      ...node.attrs,
+      collapsed: false,
+    });
+  }
+
+  if (tr.steps.length === 0) {
+    return false;
+  }
+
+  editor.view.dispatch(tr);
+  return true;
+}
+
+function revealFindMatchInDom(
+  editor: TiptapEditor,
+  match: FindMatchRange,
+): boolean {
+  const targetPos = match.source === "codeBlockSummary"
+    ? (match.anchorPos ?? match.from) + 1
+    : match.from;
+  const $match = editor.state.doc.resolve(targetPos);
+  const detailsPositions: number[] = [];
+
+  for (let depth = 1; depth <= $match.depth; depth += 1) {
+    if ($match.node(depth).type.name !== "detailsContent" || depth < 2) continue;
+    const detailsPos = $match.before(depth - 1);
+    if (!detailsPositions.includes(detailsPos)) {
+      detailsPositions.push(detailsPos);
+    }
+  }
+
+  let revealed = false;
+  detailsPositions.forEach((detailsPos) => {
+    const detailsDom = editor.view.nodeDOM(detailsPos);
+    if (!(detailsDom instanceof HTMLElement)) return;
+    if (detailsDom.classList.contains("is-open")) return;
+
+    detailsDom.classList.add("is-open");
+    const detailsContent = detailsDom.querySelector(
+      'div[data-type="detailsContent"]',
+    );
+    if (detailsContent instanceof HTMLElement) {
+      detailsContent.removeAttribute("hidden");
+    }
+    revealed = true;
+  });
+
+  return revealed;
+}
+
+function revealFindMatch(editor: TiptapEditor, match: FindMatchRange): boolean {
+  const changedState = revealFindMatchInTransaction(editor, match);
+  const changedDom = revealFindMatchInDom(editor, match);
+  return changedState || changedDom;
 }
 
 export function Editor({ editable = true }: EditorProps) {
@@ -138,6 +359,7 @@ export function Editor({ editable = true }: EditorProps) {
   const syncedContentSignatureRef = useRef<string | null>(null);
   const hasFindDecorationsRef = useRef(false);
   const findInputRef = useRef<HTMLInputElement | null>(null);
+  const activeFindSummaryElementRef = useRef<HTMLElement | null>(null);
   const bypassEnterMarkResetRef = useRef(false);
   const [findOverlayContainer, setFindOverlayContainer] =
     useState<Element | null>(null);
@@ -438,7 +660,85 @@ export function Editor({ editable = true }: EditorProps) {
       const container = document.querySelector(
         ".page-scroll-container",
       ) as HTMLElement | null;
+      const clearSummaryHighlight = () => {
+        activeFindSummaryElementRef.current?.classList.remove(
+          "editor-find-summary-active",
+        );
+        activeFindSummaryElementRef.current = null;
+      };
+
+      if (match.source === "codeBlockSummary") {
+        clearSummaryHighlight();
+        const codeBlockDom = editor.view.nodeDOM(match.anchorPos ?? match.from);
+        const summaryInput =
+          codeBlockDom instanceof HTMLElement
+            ? (codeBlockDom.querySelector(
+                ".code-block-summary-input",
+              ) as HTMLElement | null)
+            : null;
+
+        if (summaryInput) {
+          summaryInput.classList.add("editor-find-summary-active");
+          activeFindSummaryElementRef.current = summaryInput;
+          const rect = summaryInput.getBoundingClientRect();
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const targetTop =
+              rect.top -
+              containerRect.top +
+              container.scrollTop -
+              containerRect.height / 3;
+            const safeTop = Math.max(0, targetTop);
+            container.scrollTo({
+              top: safeTop,
+              behavior: resolveEditorScrollBehavior({
+                distance: safeTop - container.scrollTop,
+                smoothThreshold: 200,
+              }),
+            });
+          } else {
+            summaryInput.scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+          }
+          return;
+        }
+      } else {
+        clearSummaryHighlight();
+      }
+
+      const activeMatchElement = editor.view.dom.querySelector(
+        ".editor-find-match-active",
+      ) as HTMLElement | null;
+
       try {
+        if (activeMatchElement) {
+          const rect = activeMatchElement.getBoundingClientRect();
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const targetTop =
+              rect.top -
+              containerRect.top +
+              container.scrollTop -
+              containerRect.height / 3;
+            const safeTop = Math.max(0, targetTop);
+            container.scrollTo({
+              top: safeTop,
+              behavior: resolveEditorScrollBehavior({
+                distance: safeTop - container.scrollTop,
+                smoothThreshold: 200,
+              }),
+            });
+          } else {
+            activeMatchElement.scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+          }
+          return;
+        }
+
         const coords = editor.view.coordsAtPos(match.from);
         if (container) {
           const rect = container.getBoundingClientRect();
@@ -503,7 +803,10 @@ export function Editor({ editable = true }: EditorProps) {
         if (currentMatch) {
           const sameIndex = nextMatches.findIndex(
             (item) =>
-              item.from === currentMatch.from && item.to === currentMatch.to,
+              item.from === currentMatch.from &&
+              item.to === currentMatch.to &&
+              item.anchorPos === currentMatch.anchorPos &&
+              item.source === currentMatch.source,
           );
           if (sameIndex !== -1) {
             if (activeFindIndexRef.current !== sameIndex) {
@@ -581,6 +884,10 @@ export function Editor({ editable = true }: EditorProps) {
 
   const closeFindWidget = useCallback(
     (focusEditor: boolean) => {
+      activeFindSummaryElementRef.current?.classList.remove(
+        "editor-find-summary-active",
+      );
+      activeFindSummaryElementRef.current = null;
       setIsFindOpen(false);
       setFindQuery("");
       findMatchesRef.current = [];
@@ -739,6 +1046,10 @@ export function Editor({ editable = true }: EditorProps) {
   useEffect(() => {
     if (!editor) return;
     if (!isFindOpen || !findQuery.trim() || !findMatches.length) {
+      activeFindSummaryElementRef.current?.classList.remove(
+        "editor-find-summary-active",
+      );
+      activeFindSummaryElementRef.current = null;
       clearFindDecorations();
       return;
     }
@@ -757,8 +1068,17 @@ export function Editor({ editable = true }: EditorProps) {
     if (!isFindOpen || activeFindIndex < 0) return;
     const activeMatch = findMatches[activeFindIndex];
     if (!activeMatch) return;
+    const revealed = revealFindMatch(editor, activeMatch);
+    if (revealed) {
+      const timer = window.setTimeout(() => {
+        scrollToFindMatch(activeMatch);
+      }, 0);
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
     scrollToFindMatch(activeMatch);
-  }, [isFindOpen, activeFindIndex, findMatches, scrollToFindMatch]);
+  }, [editor, isFindOpen, activeFindIndex, findMatches, scrollToFindMatch]);
 
   useEffect(() => {
     if (!editor) return;
@@ -808,6 +1128,10 @@ export function Editor({ editable = true }: EditorProps) {
   useEffect(() => {
     findMatchesRef.current = [];
     activeFindIndexRef.current = -1;
+    activeFindSummaryElementRef.current?.classList.remove(
+      "editor-find-summary-active",
+    );
+    activeFindSummaryElementRef.current = null;
     setIsFindOpen(false);
     setFindQuery("");
     setFindMatches([]);

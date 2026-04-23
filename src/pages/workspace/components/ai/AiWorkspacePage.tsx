@@ -7,6 +7,7 @@ import {
   commitAgentArtifact,
   executeAgentPlan,
 } from "@/agent/core/runtime";
+import { buildWorkspaceIntentRouterDeps } from "@/agent/core/routerDeps";
 import type {
   AgentArtifact,
   AgentPlan,
@@ -19,13 +20,17 @@ import {
   type AIStreamPhase,
 } from "@/lib/ai-provider";
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
-import { type AiWritePlan } from "@/lib/ai-write";
+import {
+  createStickyTargetFromResolvedTarget,
+  resolvedTargetToSelection,
+  type AiWritePlan,
+} from "@/lib/ai-write";
 import { cn } from "@/lib/utils";
 import {
   EDITOR_FONT_SIZE_DEFAULT,
   useSettings,
 } from "@/stores/useSettings";
-import { useAiSessions, type AiSession } from "@/stores/useAiSessions";
+import { useAiSessions, type AiSession, type AiSessionMessage } from "@/stores/useAiSessions";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
@@ -48,16 +53,8 @@ import { CLOSE_AI_WORKSPACE_EVENT } from "./events";
 const AI_WORKSPACE_DEFAULT_DIAGRAM_URL =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/AI%20default%20diagram.png";
 
-interface AiConversationMessage {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  references?: AiFileReferenceAttrs[];
+interface AiConversationMessage extends AiSessionMessage {
   streaming?: boolean;
-  error?: boolean;
-  agentPlan?: AgentPlan | null;
-  artifact?: AgentArtifact | null;
-  writePlan?: AiWritePlan | null;
 }
 
 const STREAM_PHASE_LABEL: Record<AIStreamPhase, string> = {
@@ -697,14 +694,31 @@ export function AiWorkspacePage() {
       }, []);
 
     try {
+      const stickyTarget = activeLastWritePlan
+        ? createStickyTargetFromResolvedTarget(activeLastWritePlan.target)
+        : null;
+      const recentWriteTarget = activeLastWritePlan
+        ? resolvedTargetToSelection(activeLastWritePlan.target)
+        : null;
       const agentContext = {
         surface: "workspace" as const,
         payload,
         originPageId,
         originNotebookId,
+        stickyTarget,
+        recentWriteTarget,
       };
 
-      const planning = await buildAgentPlan(agentContext);
+      const planning = await buildAgentPlan(
+        agentContext,
+        buildWorkspaceIntentRouterDeps({
+          settings: aiSettings,
+          messages: previousMessages,
+          originPageId,
+          originNotebookId,
+          lastArtifact: activeLastArtifactRef.current,
+        }),
+      );
       if (activeRequestIdRef.current !== requestId) return;
 
       trackEvent("ai_request_submitted", {

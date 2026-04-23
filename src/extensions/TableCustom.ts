@@ -84,6 +84,7 @@ const syncTableDom = (root: ParentNode, view: { state: any; posAtDOM: (node: Nod
 export const TableCustom = Table.extend({
   addCommands() {
     return {
+      ...(this.parent?.() ?? {}),
       insertTable:
         (options?: { rows?: number; cols?: number; withHeaderRow?: boolean }) =>
         ({ editor, state, dispatch, tr }: any) => {

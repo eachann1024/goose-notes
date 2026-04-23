@@ -3,20 +3,32 @@ import * as echarts from "echarts";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
 
 /* ── colour system (from dataviz skill) ─────────────────────────── */
+// Imagine 600 色阶 — 与 claude-visualize-widget 设计系统对齐
 const PALETTE = [
-  "#7c6bf0",
-  "#3ca1a1",
-  "#e06c4c",
-  "#4a90d9",
-  "#8bbb46",
-  "#d9a032",
-  "#d35db3",
-  "#6a9fcf",
+  "#534ab7", // purple 600
+  "#0f6e56", // teal 600
+  "#993c1d", // coral 600
+  "#993556", // pink 600
+  "#185fa5", // blue 600
+  "#3b6d11", // green 600
+  "#854f0b", // amber 600
+  "#a32d2d", // red 600
 ];
 
+// 与 HtmlWidgetBlock HTML_THEME 精确对齐
 const TM = {
-  light: { bg: "#ffffff", tc: "#141413", sc: "#3d3d3a", gl: "rgba(31,30,29,.06)" },
-  dark: { bg: "#302e2e", tc: "#faf9f5", sc: "#c2c0b6", gl: "rgba(222,220,209,.08)" },
+  light: {
+    bg: "#ffffff",       // bgPrimary
+    tc: "#141413",       // textPrimary
+    sc: "#3d3d3a",       // textSecondary
+    gl: "rgba(31,30,29,.15)", // borderTertiary（轴线使用 tertiary 而非更淡的值）
+  },
+  dark: {
+    bg: "#302e2e",       // bgPrimary
+    tc: "#faf9f5",       // textPrimary
+    sc: "#c2c0b6",       // textSecondary
+    gl: "rgba(222,220,209,.15)", // borderTertiary
+  },
 };
 
 const CHART_MIN_HEIGHT = 220;
@@ -201,8 +213,8 @@ function buildOption(
       textStyle: { color: t.sc, fontSize: labelSmallFontSize },
       inRange: {
         color: isDark
-          ? ["#2a1f5e", "#7c6bf0", "#c8bfff"]
-          : ["#eee8ff", "#7c6bf0", "#3b2d80"],
+          ? ["#3c3489", "#7f77dd", "#cecbf6"]   // purple 800→400→100
+          : ["#eeedfe", "#7f77dd", "#3c3489"],  // purple 50→400→800
       },
     };
   }

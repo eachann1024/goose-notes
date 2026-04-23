@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useEditorState } from "@tiptap/react";
 import { useScrollHide } from "@/hooks/useScrollHide";
+import { Maximize2, ExternalLink } from "lucide-react";
 
 function isRemoteUrl(src: string | undefined): boolean {
   if (!src) return false;
@@ -474,6 +475,11 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
       .run();
   };
 
+  const fireImageEvent = (eventName: string) => {
+    if (!imageSrc) return;
+    document.dispatchEvent(new CustomEvent(eventName, { detail: { src: imageSrc } }));
+  };
+
   return (
     <TooltipProvider>
       <BubbleMenu
@@ -576,6 +582,38 @@ export function ImageBubbleMenu({ editor, ...props }: ImageBubbleMenuProps) {
             )}
           </TooltipTrigger>
           <TooltipContent>{copyTooltipContent}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fireImageEvent("image-preview-request")}
+              className={iconButtonClass}
+            >
+              <Maximize2 className="h-[15px] w-[15px]" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>预览图片</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fireImageEvent("image-system-open-request")}
+              className={iconButtonClass}
+            >
+              <ExternalLink className="h-[15px] w-[15px]" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>使用系统默认应用打开</p>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip delayDuration={0}>

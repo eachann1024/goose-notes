@@ -10,6 +10,7 @@ import {
   type AiResolvedTarget,
   type AiTargetSelection,
 } from "@/lib/ai-write";
+import { getJsonRenderPromptFragment } from "@/agent/renderers/json-render-catalog";
 import {
   buildIntentRouterContext,
   classifyIntent,
@@ -76,16 +77,20 @@ const DATAVIZ_SYSTEM_PROMPT = `
 直接使用注入的工具类：布局（flex/grid/gap/p-*/m-*/text-* Tailwind 风格）、语义类（\`.card .badge .tab-bar .tab .metric-row .metric .compare-grid .compare-card .record .avatar .nav-pills .pill .btn-row\`）。
 颜色优先使用 CSS 变量，禁止依赖 \`light-dark()\`。深色模式由宿主自动适配。
 宿主已经提供共享外层容器，**不要再写页面级 max-width + margin:auto 外壳**；内容默认铺满可用宽度。
+整体呈现应像正常回答一样平铺在消息流里：**外层容器保持透明，不要再包“演示大面板 / 外层背景板 / 技能卡片壳”**。
+真正承载信息的局部块（结论卡、对比卡、指标卡）默认各自带轻微底色或 card 底，不要把标题区 + 标签区 + 内容区一起塞进一个大 card。
+tab / pill / chip 默认也应是带底色的标签，不要只做成悬空的纯描边文字。
 如果有多个主题 / 标题 / 视角，拆成多个顶层 \`<section class="viz-module">\` 或 \`<article class="viz-module">\`，让多个模块共用宿主外层容器与 gap。
 布局优先用 flex / grid + gap，并给可伸缩列补 \`min-w-0\` / \`w-full\`；避免固定宽度、固定高度和大块左右留白。
+多行卡片 / 多段对比区若需要上下堆叠，记得给父容器明确加 \`gap-*\` 或拆成独立模块，避免换行后上下贴死。
 不要人为制造内部滚动区域；默认让内容自然撑开高度，禁止使用 \`overflow-auto / overflow-y-auto / max-height\` 这类滚动容器来承载主内容。
 **只在宿主未覆盖的细节样式时**才用内联 \`<style>\` 块补充，且尽量简短。
 **JS 只写业务交互逻辑**，不封装通用框架代码。整体 HTML 内容目标控制在 40 行以内。
 
 ### 模块选择规则（参考 readme_cn）
 - \`diagram\`：流程图 / 结构图 / ER 图 / 原理图，优先 SVG 或 Mermaid。优先使用 \`.t .ts .th .box .arr .leader .node\` 和色阶类。
-- \`mockup\`：卡片 / 仪表盘 / 数据记录 / 对比方案，优先使用 \`.card .metric-row .metric .badge .compare-grid .compare-card .record .avatar\`。
-- \`interactive\`：滑块 / 选项卡 / 分步讲解 / 解释器，优先使用 \`.card .tab-bar .tab .nav-pills .pill .btn-row\`，只写必要交互。切换 tab / pill 后调用 \`window.__gooseWidgetResize?.()\` 重新上报高度。
+- \`mockup\`：卡片 / 仪表盘 / 数据记录 / 对比方案，优先使用 \`.card .metric-row .metric .badge .compare-grid .compare-card .record .avatar\`；信息卡本身默认有底色，但只给局部块上底，不要整块厚重外壳。
+- \`interactive\`：滑块 / 选项卡 / 分步讲解 / 解释器，优先使用 \`.card .tab-bar .tab .nav-pills .pill .btn-row\`，只写必要交互。tab / pill 默认使用有底色的 chip，内容面板外层保持透明，不要再额外包一层大面板；切换后调用 \`window.__gooseWidgetResize?.()\` 重新上报高度。
 - \`chart\`：默认输出 \`\`\`echarts\`；仅当用户明确要求"不要 echarts / 要交互页面"时，才输出 \`\`\`html\` 版本，但仍必须包在 \`\`\`html\` 围栏里。
 - \`art\`：生成式艺术或装饰性可视化，仍需遵守同一套颜色与圆角规则。
 
@@ -94,7 +99,7 @@ const DATAVIZ_SYSTEM_PROMPT = `
 - 单张图尽量不超过 2 条主色阶；若颜色有语义，补一行图例
 - 全宽一行最多 4 个主卡片；超过则自动换行、拆分或分段展示
 - 优先拆成多个小模块 / 小图表，让用户更快看到结果
-- tab 内容高度差异大时，优先让面板跟随内容自适应；必要时再局部 \`overflow-y-auto\`，不要把内容直接裁掉
+- tab 内容高度差异大时，优先让面板跟随内容自适应；默认禁止主内容出现纵向滚动条，不要使用 \`overflow-y-auto\` / 固定 \`max-height\`。只有用户明确要求局部滚动区域时，才保留滚动并显式加 \`data-goose-keep-scroll\`
 
 ### 禁止事项
 - echarts JSON 禁止使用 function()，必须是合法 JSON
@@ -102,8 +107,28 @@ const DATAVIZ_SYSTEM_PROMPT = `
 - 禁止输出复制/下载按钮、toast、html2canvas 等宿主逻辑
 - 数据解析失败时报错终止，禁止用示例数据替代
 `.trim();
+const JSON_RENDER_PROMPT_FRAGMENT = getJsonRenderPromptFragment();
+
+const NOTE_SEARCH_TOOLS_PROMPT = [
+  "## 笔记检索能力",
+  "",
+  "你可以按需检索用户笔记库中的内容。当前页面和 @ 引用的页面仅提供了结构摘要（段落标题 + 开头摘要），而非全文。",
+  "",
+  "当你需要阅读完整内容时，在回答中使用以下标记：",
+  "",
+  "- <!--search:查询关键词--> — 搜索笔记，返回匹配的页面列表（标题 + 摘要）。默认搜索当前笔记本，加 scope:all 搜索所有笔记本。",
+  "- <!--read:页面标题--> — 读取指定页面的完整内容。",
+  "- <!--read-section:页面标题#段落标题--> — 读取指定页面的某个段落内容。",
+  "",
+  "使用规则：",
+  "- 优先基于已有上下文回答，不要每次都搜索",
+  "- 仅当用户明确要求查看其他笔记、或需要具体细节时才使用检索",
+  "- 每次检索后基于结果直接回答，不要反复搜索",
+  "- 如果用户没有提到其他笔记，不要主动搜索",
+].join("\n");
+
 const WORKSPACE_NOTE_SYSTEM_PROMPT =
-  `你是 Goose Note 内置 AI 助手。结合用户 @ 引用的内容工作。若当前任务确定需要写入页面，输出可落文的最终 Markdown，不要解释，不要自我介绍；否则直接回答用户问题。\n\n${DATAVIZ_SYSTEM_PROMPT}`;
+  `你是 Goose Note 内置 AI 助手。结合用户 @ 引用的内容工作。若当前任务确定需要写入页面，输出可落文的最终 Markdown，不要解释，不要自我介绍；否则直接回答用户问题。\n\n${NOTE_SEARCH_TOOLS_PROMPT}\n\n${DATAVIZ_SYSTEM_PROMPT}\n\n${JSON_RENDER_PROMPT_FRAGMENT}`;
 
 const INLINE_NOTE_SYSTEM_PROMPT =
   "你是 Goose Note 内置写作助手。输出必须直接可落文，不要解释，不要加前后缀，不要使用 Markdown 代码围栏。只输出最终文本。";

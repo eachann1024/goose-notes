@@ -1,7 +1,116 @@
 
 import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, Transaction } from "@tiptap/pm/state";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+
+function getHeadingLevel(node: ProseMirrorNode | null | undefined): number {
+  return Number(node?.attrs?.level ?? 1);
+}
+
+export function getHeadingSectionEnd(
+  doc: ProseMirrorNode,
+  headingPos: number,
+  headingLevel: number,
+): number {
+  let sectionEndPos = doc.content.size;
+  let scanPos = 0;
+  let foundCurrentHeading = false;
+
+  for (let index = 0; index < doc.childCount; index += 1) {
+    const child = doc.child(index);
+
+    if (!foundCurrentHeading) {
+      if (scanPos === headingPos) {
+        foundCurrentHeading = true;
+      }
+      scanPos += child.nodeSize;
+      continue;
+    }
+
+    if (child.type.name === "heading" && getHeadingLevel(child) <= headingLevel) {
+      sectionEndPos = scanPos;
+      break;
+    }
+
+    scanPos += child.nodeSize;
+  }
+
+  return foundCurrentHeading ? sectionEndPos : headingPos;
+}
+
+export function clearHeadingCollapseTailBreaks(
+  tr: Transaction,
+  sectionStartPos: number,
+  sectionEndPos: number,
+): Transaction {
+  let nextTr = tr;
+  let cursorPos = sectionStartPos;
+
+  while (cursorPos < sectionEndPos) {
+    const currentNode = nextTr.doc.nodeAt(cursorPos);
+    if (!currentNode) break;
+
+    if (
+      currentNode.type.name === "paragraph" &&
+      currentNode.attrs?.collapseTailBreak
+    ) {
+      nextTr = nextTr.setNodeMarkup(cursorPos, undefined, {
+        ...currentNode.attrs,
+        collapseTailBreak: false,
+      });
+    }
+
+    cursorPos += currentNode.nodeSize;
+  }
+
+  return nextTr;
+}
+
+export function getCollapsedHeadingPositionsAffectingPos(
+  doc: ProseMirrorNode,
+  targetPos: number,
+): number[] {
+  const collapsedHeadings: Array<{ pos: number; level: number }> = [];
+  let scanPos = 0;
+
+  for (let index = 0; index < doc.childCount; index += 1) {
+    const child = doc.child(index);
+    const nodeStart = scanPos;
+    const nodeEnd = scanPos + child.nodeSize;
+    const isTargetInsideNode = targetPos >= nodeStart && targetPos < nodeEnd;
+
+    if (child.type.name === "heading") {
+      const level = getHeadingLevel(child);
+      while (
+        collapsedHeadings.length > 0 &&
+        level <= collapsedHeadings[collapsedHeadings.length - 1].level
+      ) {
+        collapsedHeadings.pop();
+      }
+
+      if (isTargetInsideNode) {
+        break;
+      }
+
+      if (child.attrs?.collapsed) {
+        collapsedHeadings.push({ pos: nodeStart, level });
+      }
+    } else {
+      if (child.type.name === "paragraph" && child.attrs?.collapseTailBreak) {
+        collapsedHeadings.length = 0;
+      }
+
+      if (isTargetInsideNode) {
+        break;
+      }
+    }
+
+    scanPos = nodeEnd;
+  }
+
+  return collapsedHeadings.map((item) => item.pos);
+}
 
 export const HeadingCollapse = Extension.create({
   name: "headingCollapse",
@@ -205,57 +314,23 @@ export const HeadingCollapse = Extension.create({
               event.stopPropagation();
               ignoreIndicatorClickUntil = Date.now() + 250;
 
-              const nextCollapsed = !node.attrs.collapsed;
-              let tr = view.state.tr;
+                const nextCollapsed = !node.attrs.collapsed;
+                let tr = view.state.tr;
 
-              if (nextCollapsed) {
-                const currentLevel = Number(node.attrs.level ?? 1);
-                let sectionEndPos = doc.content.size;
-                let scanPos = 0;
-                let foundCurrentHeading = false;
-
-                for (let index = 0; index < doc.childCount; index += 1) {
-                  const child = doc.child(index);
-
-                  if (!foundCurrentHeading) {
-                    if (scanPos === pos) {
-                      foundCurrentHeading = true;
-                    }
-                    scanPos += child.nodeSize;
-                    continue;
-                  }
-
-                  if (
-                    child.type.name === "heading" &&
-                    Number(child.attrs?.level ?? 1) <= currentLevel
-                  ) {
-                    sectionEndPos = scanPos;
-                    break;
-                  }
-
-                  scanPos += child.nodeSize;
-                }
-
-                if (foundCurrentHeading) {
-                  let cursorPos = pos + node.nodeSize;
-                  while (cursorPos < sectionEndPos) {
-                    const currentNode = tr.doc.nodeAt(cursorPos);
-                    if (!currentNode) break;
-
-                    if (
-                      currentNode.type.name === "paragraph" &&
-                      currentNode.attrs?.collapseTailBreak
-                    ) {
-                      tr = tr.setNodeMarkup(cursorPos, undefined, {
-                        ...currentNode.attrs,
-                        collapseTailBreak: false,
-                      });
-                    }
-
-                    cursorPos += currentNode.nodeSize;
+                if (nextCollapsed) {
+                  const sectionEndPos = getHeadingSectionEnd(
+                    doc,
+                    pos,
+                    getHeadingLevel(node),
+                  );
+                  if (sectionEndPos > pos) {
+                    tr = clearHeadingCollapseTailBreaks(
+                      tr,
+                      pos + node.nodeSize,
+                      sectionEndPos,
+                    );
                   }
                 }
-              }
 
               tr = tr.setNodeMarkup(pos, undefined, {
                 ...node.attrs,
@@ -283,51 +358,17 @@ export const HeadingCollapse = Extension.create({
             let tr = view.state.tr;
 
             if (nextCollapsed) {
-              const currentLevel = Number(node.attrs.level ?? 1);
-              let sectionEndPos = doc.content.size;
-              let scanPos = 0;
-              let foundCurrentHeading = false;
-
-              for (let index = 0; index < doc.childCount; index += 1) {
-                const child = doc.child(index);
-
-                if (!foundCurrentHeading) {
-                  if (scanPos === pos) {
-                    foundCurrentHeading = true;
-                  }
-                  scanPos += child.nodeSize;
-                  continue;
-                }
-
-                if (
-                  child.type.name === "heading" &&
-                  Number(child.attrs?.level ?? 1) <= currentLevel
-                ) {
-                  sectionEndPos = scanPos;
-                  break;
-                }
-
-                scanPos += child.nodeSize;
-              }
-
-              if (foundCurrentHeading) {
-                let cursorPos = pos + node.nodeSize;
-                while (cursorPos < sectionEndPos) {
-                  const currentNode = tr.doc.nodeAt(cursorPos);
-                  if (!currentNode) break;
-
-                  if (
-                    currentNode.type.name === "paragraph" &&
-                    currentNode.attrs?.collapseTailBreak
-                  ) {
-                    tr = tr.setNodeMarkup(cursorPos, undefined, {
-                      ...currentNode.attrs,
-                      collapseTailBreak: false,
-                    });
-                  }
-
-                  cursorPos += currentNode.nodeSize;
-                }
+              const sectionEndPos = getHeadingSectionEnd(
+                doc,
+                pos,
+                getHeadingLevel(node),
+              );
+              if (sectionEndPos > pos) {
+                tr = clearHeadingCollapseTailBreaks(
+                  tr,
+                  pos + node.nodeSize,
+                  sectionEndPos,
+                );
               }
             }
 

@@ -155,16 +155,16 @@ const HTML_THEME = {
     textWarning: "#d1a041",
     bgDanger: "#602a28",
     textDanger: "#ee8884",
-    // color ramp 800 fills (dark)
-    purple: "#3c3489",
-    teal: "#085041",
-    coral: "#712b13",
-    pink: "#72243e",
-    blue: "#0c447c",
-    gray: "#444441",
-    green: "#27500a",
-    amber: "#633806",
-    red: "#791f1f",
+    // color ramp vibrant fills (dark) — ~500-level so they're visible on dark bg
+    purple: "#6c5ff5",
+    teal: "#009e79",
+    coral: "#e0522e",
+    pink: "#e0356e",
+    blue: "#2878d8",
+    gray: "#7a7875",
+    green: "#58ab1e",
+    amber: "#dd7c10",
+    red: "#d03c3c",
     // color ramp 200 strokes (dark)
     purpleStroke: "#afa9ec",
     tealStroke: "#5dcaa5",
@@ -213,7 +213,21 @@ rect.c-${name}, ellipse.c-${name}, circle.c-${name}, polygon.c-${name} {
   fill: ${fill}; stroke: ${stroke};
 }
 .c-${name} > .th, .c-${name} > .t { fill: ${textH}; }
-.c-${name} > .ts { fill: ${textS}; }`;
+.c-${name} > .ts { fill: ${textS}; }
+div.c-${name}, span.c-${name}, td.c-${name}, th.c-${name}, li.c-${name},
+section.c-${name}, article.c-${name}, header.c-${name}, p.c-${name},
+.bg-${name}, .ic-${name} {
+  background: ${fill};
+  color: ${textH};
+}
+.text-${name} { color: ${stroke}; }`;
+  }).join("\n");
+
+  const colorVarsCss = ramps.map(name => {
+    const fill = t[name];
+    const stroke = t[`${name}Stroke` as keyof typeof t];
+    const textH = t[`${name}TextH` as keyof typeof t];
+    return `  --c-${name}: ${fill};\n  --c-${name}-stroke: ${stroke};\n  --c-${name}-text: ${textH};`;
   }).join("\n");
 
   return `
@@ -276,6 +290,7 @@ rect.c-${name}, ellipse.c-${name}, circle.c-${name}, polygon.c-${name} {
   --t: var(--color-text-tertiary);
   --bg2: var(--color-background-secondary);
   --b: var(--color-border-secondary);
+${colorVarsCss}
   --border-radius-xs: 4px;
   --border-radius-sm: 6px;
   --border-radius-md: 8px;
@@ -291,30 +306,25 @@ rect.c-${name}, ellipse.c-${name}, circle.c-${name}, polygon.c-${name} {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 input, select, textarea, button { font-family: inherit; }
 html, body {
-  scrollbar-width: thin;
+  width: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
 }
+html { background: transparent !important; }
 html::-webkit-scrollbar, body::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
-  background: rgba(128,128,128,0.35);
-  border-radius: 3px;
-}
-html::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
-  background: transparent;
+  width: 0;
+  height: 0;
 }
 body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.6;
-  background: transparent;
+  background: transparent !important;
   color: var(--color-text-primary);
   padding: 0;
   margin: 0;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: hidden;
 }
 h1, h2, h3, h4, h5, h6 { color: var(--color-text-primary); }
 h1 { font-size: 22px; font-weight: 500; }
@@ -394,11 +404,11 @@ input[type=range]::-moz-range-thumb {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 clamp(4px, 1vw, 10px);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.6vw, 16px);
+  gap: clamp(12px, 1.9vw, 18px);
   min-width: 0;
   overflow: visible;
 }
@@ -414,58 +424,105 @@ input[type=range]::-moz-range-thumb {
   height: auto;
   overflow: visible;
 }
-#vis-container > :where(section, article, .viz-module) {
+#vis-container > :where(section, article, .viz-module, [data-viz-module]) {
   width: 100%;
-  border: 0.5px solid var(--color-border-tertiary);
-  border-radius: calc(var(--border-radius-xl) + 2px);
-  background: transparent;
-  padding: clamp(12px, 1.8vw, 18px);
+  min-width: 0;
   overflow: visible;
-}
-#vis-container > :where(section, article, .viz-module, .tab-content) > * + * {
-  margin-top: clamp(10px, 1.6vw, 16px);
-}
-#vis-container > :where(section, article, .viz-module) > :last-child {
-  margin-bottom: 0;
-}
-#vis-container > .tab-bar,
-#vis-container > .nav-pills {
-  margin-bottom: 0;
-  padding-inline: 4px;
 }
 #vis-container > .tab-content {
   width: 100%;
   min-width: 0;
-  border: 0.5px solid var(--color-border-tertiary);
-  border-radius: calc(var(--border-radius-xl) + 2px);
-  background: transparent;
-  padding: clamp(12px, 1.8vw, 18px);
   overflow: visible;
 }
-#vis-container :where(svg, canvas, img, table) {
-  max-width: 100%;
-}
-#vis-container :where(.overflow-auto, .overflow-x-auto, .overflow-y-auto) {
-  overflow: visible !important;
-  overflow-x: visible !important;
-  overflow-y: visible !important;
+#vis-container :where(.overflow-auto, .overflow-y-auto):not([data-goose-keep-scroll]) {
+  overflow-y: hidden !important;
   max-height: none !important;
   height: auto !important;
 }
 #vis-container :is(
   [style*="overflow:auto"],
   [style*="overflow: auto"],
+  [style*="overflow:scroll"],
+  [style*="overflow: scroll"],
   [style*="overflow-y:auto"],
   [style*="overflow-y: auto"],
-  [style*="overflow-x:auto"],
-  [style*="overflow-x: auto"]
-) {
-  overflow: visible !important;
-  overflow-x: visible !important;
-  overflow-y: visible !important;
+  [style*="overflow-y:scroll"],
+  [style*="overflow-y: scroll"]
+):not([data-goose-keep-scroll]) {
+  overflow-y: hidden !important;
   max-height: none !important;
   height: auto !important;
 }
+:where(
+  #vis-container > section:not(.tab-content):not(.gallery):not(.tab-bar):not(.nav-pills):not(.btn-row),
+  #vis-container > article:not(.tab-content):not(.gallery):not(.tab-bar):not(.nav-pills):not(.btn-row),
+  #vis-container > .viz-module:not(.tab-content):not(.gallery):not(.tab-bar):not(.nav-pills):not(.btn-row),
+  #vis-container > [data-viz-module]:not(.tab-content):not(.gallery):not(.tab-bar):not(.nav-pills):not(.btn-row)
+) > :where(* + *) {
+  margin-top: clamp(12px, 1.9vw, 18px);
+}
+#vis-container [data-goose-shell-root] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+#vis-container > .viz-module-stack {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+#vis-container > .viz-module-stack > :where(
+  section + section,
+  section + article,
+  section + .viz-module,
+  section + [data-viz-module],
+  article + section,
+  article + article,
+  article + .viz-module,
+  article + [data-viz-module],
+  .viz-module + section,
+  .viz-module + article,
+  .viz-module + .viz-module,
+  .viz-module + [data-viz-module],
+  [data-viz-module] + section,
+  [data-viz-module] + article,
+  [data-viz-module] + .viz-module,
+  [data-viz-module] + [data-viz-module]
+) {
+  margin-top: clamp(12px, 1.9vw, 18px);
+}
+#vis-container :where(svg, canvas, img, table) {
+  max-width: 100%;
+}
+/* Table styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 12px;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--color-border-secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+tbody td {
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) td { background: var(--color-background-secondary); }
+tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.025)"}; }
 /* flex / grid 布局工具（AI 生成 HTML 可直接使用） */
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
@@ -573,11 +630,11 @@ input[type=range]::-moz-range-thumb {
 .section-desc { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 16px; line-height: 1.6; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; align-items: stretch; }
 .card {
-  background: var(--color-background-primary);
+  background: var(--color-background-secondary);
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
-  padding: 1.25rem;
-  overflow: hidden;
+  padding: 1rem 1.125rem;
+  overflow: visible;
   height: 100%;
 }
 .card:hover { border-color: var(--color-border-secondary); }
@@ -595,7 +652,13 @@ input[type=range]::-moz-range-thumb {
 .card-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
 .card-sub { font-size: 11px; color: var(--color-text-secondary); line-height: 1.4; margin: 0; }
 .metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(148px, 100%), 1fr)); gap: 12px; margin-bottom: 0; align-items: stretch; }
-.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 16px; height: 100%; }
+.metric {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 12px 16px;
+  height: 100%;
+}
 .metric-label { font-size: 12px; color: var(--color-text-secondary); }
 .metric-val { font-size: 22px; font-weight: 500; margin-top: 6px; }
 .badge {
@@ -631,7 +694,7 @@ input[type=range]::-moz-range-thumb {
 .tab-content.active { display: flex; flex-direction: column; gap: 12px; }
 .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; align-items: stretch; }
 .compare-card {
-  background: var(--color-background-primary);
+  background: var(--color-background-secondary);
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   padding: 16px;
@@ -662,11 +725,17 @@ input[type=range]::-moz-range-thumb {
   border-radius: var(--border-radius-full);
   font-size: 12px;
   color: var(--color-text-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
   background: var(--color-background-secondary);
   cursor: pointer;
   transition: all .15s;
 }
-.pill.active { background: var(--color-text-primary); color: var(--color-text-inverse); }
+.pill.active {
+  border-color: var(--color-border-secondary);
+  background: var(--color-background-primary);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-primary);
+}
 .btn-row { display: flex; gap: 10px; margin-top: 16px; }
 .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 1.5rem 0; }
 .ic-blue { background: var(--color-background-info); color: var(--color-text-info); }
@@ -768,89 +837,6 @@ svg.erDiagram .labelBkg {
   background-color: var(--color-background-primary) !important;
   opacity: 1 !important;
 }
-${isDark ? buildDarkModeInlineOverrides() : ""}
-`;
-}
-
-/**
- * 深色模式下，对 AI 生成 HTML 里常见的硬编码浅色 inline style 进行覆盖。
- * 使用属性选择器匹配 style 属性中的常见字符串片段。
- */
-function buildDarkModeInlineOverrides(): string {
-  // 常见白色 / 浅色背景值列表
-  const lightBgs = [
-    "white", "#fff", "#ffffff",
-    "#f8f9fa", "#f9f9f9", "#f7f7f7",
-    "#f5f5f5", "#f4f4f4", "#f3f4f6",
-    "#fafafa", "#faf9f5", "#f1f1f1",
-    "#ebebeb", "#e8e8e8", "#eee", "#eeeeee",
-    "rgb(255,255,255)", "rgb(255, 255, 255)",
-    "rgba(255,255,255,1)", "rgba(255, 255, 255, 1)",
-  ];
-  // 常见黑色 / 深灰文字值
-  const darkTexts = [
-    "black", "#000", "#000000",
-    "#111", "#111111", "#1a1a1a",
-    "#222", "#222222", "#1f2937",
-    "#333", "#333333", "#111827",
-  ];
-  // 中间灰文字（映射到 secondary）
-  const midTexts = [
-    "#444", "#444444", "#4b5563",
-    "#555", "#555555",
-    "#666", "#666666", "#6b7280",
-    "#777", "#777777", "#374151",
-    "#888", "#888888",
-    "rgb(100,100,100)", "rgb(80,80,80)",
-  ];
-  // 常见浅色边框
-  const lightBorders = [
-    "#ddd", "#dddddd",
-    "#ccc", "#cccccc",
-    "#e5e5e5", "#e5e7eb",
-    "#d1d5db", "#d0d0d0",
-    "rgb(229,229,229)", "rgb(200,200,200)",
-  ];
-
-  const bgSelectors = (values: string[], prop: "background" | "background-color") =>
-    values.flatMap(v => [`[style*="${prop}:${v}"]`, `[style*="${prop}: ${v}"]`]).join(",\n");
-
-  const colorSelectors = (values: string[]) =>
-    values.flatMap(v => [`[style*="color:${v}"]`, `[style*="color: ${v}"]`]).join(",\n");
-
-  const borderSelectors = (values: string[]) =>
-    values.flatMap(v => [
-      `[style*="border-color:${v}"]`, `[style*="border-color: ${v}"]`,
-      `[style*="border:0.5px solid ${v}"]`, `[style*="border: 0.5px solid ${v}"]`,
-      `[style*="border:1px solid ${v}"]`, `[style*="border: 1px solid ${v}"]`,
-    ]).join(",\n");
-
-  return `
-/* ── Dark-mode: neutralise hardcoded light backgrounds ──────────── */
-:is(
-${bgSelectors(lightBgs, "background")},
-${bgSelectors(lightBgs, "background-color")}
-) {
-  background: var(--color-background-primary) !important;
-  background-color: var(--color-background-primary) !important;
-}
-/* ── Dark-mode: neutralise hardcoded dark text ───────────────────── */
-:is(
-${colorSelectors(darkTexts)}
-) {
-  color: var(--color-text-primary) !important;
-}
-:is(
-${colorSelectors(midTexts)}
-) {
-  color: var(--color-text-secondary) !important;
-}
-/* ── Dark-mode: neutralise hardcoded light borders ───────────────── */
-:is(
-${borderSelectors(lightBorders)}
-) {
-  border-color: var(--color-border-secondary) !important;
-}
 `;
 }
 
@@ -859,43 +845,186 @@ const RESIZE_SCRIPT = `<script>
   const container = document.getElementById('vis-container');
   let rafId = 0;
   let settleTimer = 0;
+  const TAB_CLASS_RE = /\btab(s|[-_](bar|nav|list|header|content|panel|pane|body|wrapper|container|buttons?|controls?))?\b/i;
 
-  function normalizeTopLevelHeadingModules() {
+  function isModuleElement(node) {
+    return (
+      node instanceof HTMLElement &&
+      (node.classList.contains('viz-module') ||
+        node.hasAttribute('data-viz-module') ||
+        node.tagName === 'SECTION' ||
+        node.tagName === 'ARTICLE')
+    );
+  }
+
+  function hasGapClass(node) {
+    return Array.from(node.classList).some((className) => /^gap(?:-[xy])?-/.test(className));
+  }
+
+  function isKnownLayoutContainer(node) {
+    const inlineStyle = (node.getAttribute('style') || '').replace(/\s+/g, '').toLowerCase();
+
+    return (
+      node.classList.contains('tab-content') ||
+      node.classList.contains('gallery') ||
+      node.classList.contains('tab-bar') ||
+      node.classList.contains('nav-pills') ||
+      node.classList.contains('nav-tabs') ||
+      node.classList.contains('btn-row') ||
+      node.classList.contains('flex') ||
+      node.classList.contains('inline-flex') ||
+      node.classList.contains('grid') ||
+      TAB_CLASS_RE.test(node.className) ||
+      hasGapClass(node) ||
+      node.matches('[role="tab"],[role="tabpanel"],[role="tablist"]') ||
+      !!node.querySelector('[role="tab"],[role="tabpanel"],[role="tablist"]') ||
+      inlineStyle.includes('display:flex') ||
+      inlineStyle.includes('display:grid') ||
+      inlineStyle.includes('gap:') ||
+      inlineStyle.includes('row-gap:') ||
+      inlineStyle.includes('column-gap:')
+    );
+  }
+
+  function annotateTopLevelModuleWrappers() {
     if (!container) return;
-    const blocks = Array.from(container.children).filter((child) =>
+
+    Array.from(container.children).forEach((child) => {
+      if (!(child instanceof HTMLElement)) return;
+      if (child.tagName !== 'DIV' && child.tagName !== 'MAIN') return;
+
+      child.classList.remove('viz-module-stack');
+      if (isKnownLayoutContainer(child)) return;
+
+      const moduleChildren = Array.from(child.children).filter((node) => isModuleElement(node));
+      if (moduleChildren.length < 2) return;
+
+      child.classList.add('viz-module-stack');
+    });
+  }
+
+  function isTransparentColor(value) {
+    return !value || value === 'transparent' || /^rgba?\(0,\s*0,\s*0,\s*0(?:\.0+)?\)$/.test(value);
+  }
+
+  function isLikelyShellRoot(node) {
+    if (!(node instanceof HTMLElement)) return false;
+    if (node.hasAttribute('data-goose-keep-shell')) return false;
+    if (
+      node.classList.contains('card') ||
+      node.classList.contains('metric') ||
+      node.classList.contains('compare-card') ||
+      node.classList.contains('tab-content') ||
+      node.classList.contains('tab') ||
+      node.classList.contains('pill')
+    ) {
+      return false;
+    }
+
+    const blocks = getContentBlocks(node);
+    if (blocks.length === 0) return false;
+
+    const headingCount = blocks.filter((child) => /^H[1-6]$/.test(child.tagName)).length;
+    const hasHeading = headingCount > 0 || !!node.querySelector('h1,h2,h3,h4,h5,h6');
+    const hasTabs = hasTabLayout(node, blocks);
+    const nestedCardCount = node.querySelectorAll(
+      '.cards > .card, .compare-grid > .compare-card, .metric-row > .metric'
+    ).length;
+    const nestedPanelCount = node.querySelectorAll('.tab-content, [data-viz-module], .viz-module').length;
+    const computed = window.getComputedStyle(node);
+    const hasBorder =
+      computed.borderStyle !== 'none' && Number.parseFloat(computed.borderTopWidth || '0') > 0;
+    const hasRadius = Number.parseFloat(computed.borderTopLeftRadius || '0') > 0;
+    const hasBackground = !isTransparentColor(computed.backgroundColor);
+
+    if (!(hasBorder || hasRadius || hasBackground)) return false;
+
+    return hasHeading && (hasTabs || nestedCardCount >= 2 || nestedPanelCount >= 2 || blocks.length >= 4);
+  }
+
+  function annotateShellRoots(root) {
+    getContentBlocks(root).forEach((child) => {
+      if (!(child instanceof HTMLElement)) return;
+      child.removeAttribute('data-goose-shell-root');
+
+      if (isLikelyShellRoot(child)) {
+        child.setAttribute('data-goose-shell-root', '');
+      }
+
+      if (child.tagName === 'DIV' || child.tagName === 'MAIN') {
+        annotateShellRoots(child);
+      }
+    });
+  }
+
+  function getContentBlocks(root) {
+    return Array.from(root.children).filter((child) =>
       child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE'
     );
-    const hasExplicitModules = blocks.some((child) =>
-      child.classList.contains('viz-module') ||
-      child.hasAttribute('data-viz-module') ||
-      child.tagName === 'SECTION' ||
-      child.tagName === 'ARTICLE'
-    );
-    const TAB_CLASS_RE = /\btab(s|[-_](bar|nav|list|header|content|panel|pane|body|wrapper|container|buttons?|controls?))?\b/i;
-    const hasTabLayout =
-      !!document.querySelector('[role="tab"],[role="tabpanel"],[role="tablist"]') ||
+  }
+
+  function hasTabLayout(root, blocks) {
+    return (
+      !!root.querySelector('[role="tab"],[role="tabpanel"],[role="tablist"]') ||
       blocks.some((child) =>
         TAB_CLASS_RE.test(child.className) ||
         child.classList.contains('nav-pills') ||
         child.classList.contains('nav-tabs') ||
         Array.from(child.querySelectorAll('[role="tab"],[role="tabpanel"]')).length > 0
-      );
+      ) ||
+      // Detect a row/nav of 3+ buttons acting as tab navigation
+      Array.from(root.querySelectorAll('div,nav,ul')).some((el) =>
+        Array.from(el.children).filter((c) => c.tagName === 'BUTTON' || c.tagName === 'LI').length >= 3
+      )
+    );
+  }
+
+  function normalizeHeadingModules(root) {
+    const blocks = getContentBlocks(root);
+    const explicitModuleCount = blocks.filter((child) => isModuleElement(child)).length;
     const headingCount = blocks.filter((child) => /^H[1-6]$/.test(child.tagName)).length;
 
-    if (hasExplicitModules || hasTabLayout || headingCount < 2) return;
+    if (
+      hasTabLayout(root, blocks) ||
+      headingCount === 0 ||
+      (headingCount < 2 && explicitModuleCount === 0)
+    ) return;
 
     let currentModule = null;
     blocks.forEach((block) => {
+      if (isModuleElement(block)) {
+        currentModule = null;
+        return;
+      }
+
       if (/^H[1-6]$/.test(block.tagName)) {
         currentModule = document.createElement('section');
         currentModule.className = 'viz-module';
-        container.insertBefore(currentModule, block);
+        root.insertBefore(currentModule, block);
       }
       currentModule?.appendChild(block);
     });
   }
 
+  function normalizeTopLevelHeadingModules() {
+    if (!container) return;
+
+    normalizeHeadingModules(container);
+
+    Array.from(container.children).forEach((child) => {
+      if (!(child instanceof HTMLElement)) return;
+      if (child.tagName !== 'DIV' && child.tagName !== 'MAIN') return;
+      if (isKnownLayoutContainer(child)) return;
+      normalizeHeadingModules(child);
+    });
+
+    annotateTopLevelModuleWrappers();
+    annotateShellRoots(container);
+  }
+
   function readHeight() {
+    expandVerticalOverflowContainers();
+
     const bodyTop = document.body.getBoundingClientRect().top;
     const directChildren = container ? Array.from(container.children) : [];
     const childrenBottom = directChildren.reduce((max, child) => {
@@ -903,15 +1032,73 @@ const RESIZE_SCRIPT = `<script>
       const rect = child.getBoundingClientRect();
       return Math.max(max, rect.bottom - bodyTop);
     }, 0);
+    const nestedScrollBottom = container
+      ? Array.from(container.querySelectorAll('*')).reduce((max, node) => {
+          if (!(node instanceof HTMLElement)) return max;
+          if (node.scrollHeight <= node.clientHeight + 1) return max;
+          const rect = node.getBoundingClientRect();
+          return Math.max(max, rect.top - bodyTop + node.scrollHeight);
+        }, 0)
+      : 0;
 
     return Math.ceil(Math.max(
+      document.scrollingElement ? document.scrollingElement.scrollHeight : 0,
       document.documentElement.scrollHeight,
       document.documentElement.offsetHeight,
       document.body.scrollHeight,
       document.body.offsetHeight,
       container ? container.scrollHeight : 0,
-      childrenBottom
+      childrenBottom,
+      nestedScrollBottom
     ));
+  }
+
+  function expandVerticalOverflowContainers() {
+    if (!container) return;
+
+    Array.from(container.querySelectorAll('*')).forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+      if (node.tagName === 'TEXTAREA' || node.tagName === 'SELECT') return;
+      if (node.hasAttribute('data-goose-keep-scroll')) return;
+      if (node.clientHeight <= 0) return;
+
+      const computed = window.getComputedStyle(node);
+      const overflowY = computed.overflowY;
+      const overflow = computed.overflow;
+      const isScrollableY =
+        overflowY === 'auto' ||
+        overflowY === 'scroll' ||
+        overflow === 'auto' ||
+        overflow === 'scroll';
+
+      if (!isScrollableY) return;
+      if (node.scrollHeight <= node.clientHeight + 1) return;
+
+      const nextHeight = String(Math.ceil(node.scrollHeight)) + 'px';
+
+      if (
+        node.style.getPropertyValue('overflow-y') !== 'hidden' ||
+        node.style.getPropertyPriority('overflow-y') !== 'important'
+      ) {
+        node.style.setProperty('overflow-y', 'hidden', 'important');
+      }
+      if (
+        computed.maxHeight !== 'none' &&
+        (
+          node.style.getPropertyValue('max-height') !== 'none' ||
+          node.style.getPropertyPriority('max-height') !== 'important'
+        )
+      ) {
+        node.style.setProperty('max-height', 'none', 'important');
+      }
+      if (
+        node.style.getPropertyValue('height') !== nextHeight ||
+        node.style.getPropertyPriority('height') !== 'important'
+      ) {
+        node.style.setProperty('height', nextHeight, 'important');
+      }
+    });
   }
 
   function notifyHeight() {
@@ -1084,6 +1271,7 @@ export const HtmlWidgetBlock = React.memo(
             ref={iframeRef}
             srcDoc={srcdoc}
             sandbox="allow-scripts"
+            scrolling="no"
             allowTransparency={true}
             style={{
               border: "none",

@@ -1,5 +1,4 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { Maximize2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Lightbox from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -211,18 +210,44 @@ export function ImageResizer(props: NodeViewProps) {
     }
   }, [systemOpenPath, isRemoteSrc, node.attrs.src]);
 
+  useEffect(() => {
+    const onPreview = (e: Event) => {
+      const customEvent = e as CustomEvent<{ src: string }>;
+      if (customEvent.detail?.src === node.attrs.src) {
+        setPreviewOpen(true);
+        editor.commands.blur();
+      }
+    };
+    const onSystemOpen = (e: Event) => {
+      const customEvent = e as CustomEvent<{ src: string }>;
+      if (customEvent.detail?.src === node.attrs.src) {
+        void handleSystemOpen();
+      }
+    };
+
+    document.addEventListener("image-preview-request", onPreview);
+    document.addEventListener("image-system-open-request", onSystemOpen);
+    
+    return () => {
+      document.removeEventListener("image-preview-request", onPreview);
+      document.removeEventListener("image-system-open-request", onSystemOpen);
+    };
+  }, [node.attrs.src, editor, handleSystemOpen]);
+
   return (
     <NodeViewWrapper
       className={cn(
-        "image-node relative block w-full group transition-all",
-        selected
-          ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-md dark:ring-blue-400"
-          : "",
+        "image-node relative block w-full group transition-all py-1.5 my-3",
       )}
     >
       <div
         ref={resizeRef}
-        className="relative block max-w-full"
+        className={cn(
+          "relative block max-w-full rounded-md",
+          selected
+            ? "ring-2 ring-primary ring-offset-2 ring-offset-[hsl(var(--background))] dark:ring-blue-400"
+            : "",
+        )}
         style={{
           width: width === "auto" ? "fit-content" : `${width}px`,
           maxWidth: "100%",
@@ -276,53 +301,6 @@ export function ImageResizer(props: NodeViewProps) {
                   resizing && "bg-[#2463EB] ring-0 dark:bg-blue-400",
                 )}
               />
-            </div>
-
-            {/* 预览和系统打开按钮 - 编辑模式下悬浮显示 */}
-            <div
-              className={cn(
-                "absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 z-[10]",
-                resizing && "opacity-100",
-              )}
-            >
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewOpen(true);
-                        editor.commands.blur();
-                      }}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground dark:border-white/20"
-                      aria-label="预览图片"
-                    >
-                      <Maximize2 className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">预览图片</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void handleSystemOpen();
-                      }}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/75 bg-popover text-muted-foreground/70 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] hover:bg-[hsl(var(--goose-selected-bg))] hover:text-foreground dark:border-white/20"
-                      aria-label="使用系统默认应用打开"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">使用系统默认应用打开</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
 
             <div

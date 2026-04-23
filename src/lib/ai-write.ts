@@ -1,5 +1,5 @@
 import type { JSONContent, Page } from "@/types";
-import { extractTextFromContent, extractTitleFromContent } from "@/lib/content-text-extractor";
+import { extractStructureSummary, extractTextFromContent, extractTitleFromContent } from "@/lib/content-text-extractor";
 import { importFromMarkdown } from "@/lib/export";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -181,10 +181,10 @@ function detectDestinationReference(payload: AiComposerPayload): AiTargetRef | n
 function getPageContextBlock(page: Page | undefined, label: string) {
   if (!page || page.isFolder) return "";
 
-  const context = resolveAiReferenceContexts([buildAiFileReferenceAttrs(page)]);
-  const content = formatAiReferenceContextBlock(context);
-  if (!content) return "";
-  return `${label}：\n${content}`;
+  // 使用结构摘要替代全文，大幅节省 token
+  const summary = extractStructureSummary(page.content);
+  if (!summary || summary === "（空白页面）") return "";
+  return `${label}：\n${summary}`;
 }
 
 function getResolvedPageTarget(

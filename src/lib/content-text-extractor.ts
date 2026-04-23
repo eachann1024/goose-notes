@@ -51,6 +51,79 @@ export function extractTitleFromContent(content: JSONContent): string {
 }
 
 /**
+ * 提取页面结构摘要，用于 AI 上下文（替代全文注入以节省 token）
+ *
+ * 输出格式：
+ * - 标题（h1）
+ * - 段落标题列表（h2/h3）
+ * - 前几段的开头摘要（各截取 summaryMaxChars 字）
+ * - 总字数
+ */
+export function extractStructureSummary(
+  content: JSONContent,
+  options?: {
+    summaryMaxChars?: number;
+    maxSummaryParagraphs?: number;
+  },
+): string {
+  const summaryMaxChars = options?.summaryMaxChars ?? 120;
+  const maxSummaryParagraphs = options?.maxSummaryParagraphs ?? 3;
+
+  if (!content?.content?.length) return "（空白页面）";
+
+  const headings: string[] = [];
+  const summaries: string[] = [];
+  let summaryCount = 0;
+  let wordCount = 0;
+
+  for (const block of content.content) {
+    // 提取标题
+    if (block.type === "heading" && block.attrs?.level) {
+      const headingText = extractTextFromContent(block).trim();
+      if (headingText) {
+        headings.push(`${"#".repeat(block.attrs.level)} ${headingText}`);
+      }
+      continue;
+    }
+
+    // 提取前几段摘要
+    if (
+      block.type === "paragraph" &&
+      summaryCount < maxSummaryParagraphs
+    ) {
+      const text = extractTextFromContent(block).trim();
+      if (text) {
+        const totalWords = countWords(block);
+        wordCount += totalWords;
+        const snippet =
+          text.length > summaryMaxChars
+            ? `${text.slice(0, summaryMaxChars)}...`
+            : text;
+        summaries.push(snippet);
+        summaryCount += 1;
+        continue;
+      }
+    }
+
+    // 统计其他块的文字
+    if (block.content) {
+      wordCount += countWords(block);
+    }
+  }
+
+  const parts: string[] = [];
+  if (headings.length > 0) {
+    parts.push(`段落结构：\n${headings.join("\n")}`);
+  }
+  if (summaries.length > 0) {
+    parts.push(`内容摘要：\n${summaries.join("\n")}`);
+  }
+  parts.push(`总字数：约 ${wordCount} 字`);
+
+  return parts.join("\n\n");
+}
+
+/**
  * 统计字数
  * - 中文字符：每个算 1 字
  * - 英文单词：每个算 1 字

@@ -121,6 +121,101 @@ async function insertDefaultTable(page: import("playwright/test").Page) {
   });
 }
 
+async function prepareCrossBlockCopySelection(page: import("playwright/test").Page) {
+  await page.evaluate(() => {
+    const editor = (window as { __gooseNoteEditor?: any }).__gooseNoteEditor;
+    if (!editor) return;
+
+    editor.commands.setContent(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "跨元素复制" }],
+          },
+          {
+            type: "table",
+            attrs: { tableAlignment: "left", tableWidthMode: "content" },
+            content: [
+              {
+                type: "tableRow",
+                content: [
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "111" }] }] },
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "222" }] }] },
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "33" }] }] },
+                ],
+              },
+              {
+                type: "tableRow",
+                content: [
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "44" }] }] },
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "55" }] }] },
+                  { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "66" }] }] },
+                ],
+              },
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "7" }],
+          },
+        ],
+      },
+      true,
+    );
+
+    let from: number | null = null;
+    let to: number | null = null;
+
+    editor.state.doc.descendants((node: any, pos: number) => {
+      if (!node.isText) return;
+      if (node.text === "111" && from == null) {
+        from = pos;
+      }
+      if (node.text === "7" && to == null) {
+        to = pos + node.text.length;
+      }
+    });
+
+    if (from == null || to == null) {
+      throw new Error("未找到跨元素复制测试选区");
+    }
+
+    editor.commands.focus();
+    editor.commands.setTextSelection({ from, to });
+  });
+}
+
+async function copyCurrentSelectionText(page: import("playwright/test").Page) {
+  return page.evaluate(() => {
+    const editor = (window as { __gooseNoteEditor?: any; utools?: any }).__gooseNoteEditor;
+    if (!editor?.view?.dom) return "";
+
+    let copiedText = "";
+    if ((window as { utools?: any }).utools) {
+      (window as { utools?: any }).utools.copyText = (text: string) => {
+        copiedText = text;
+      };
+    }
+
+    const copyEvent = new Event("copy", { bubbles: true, cancelable: true });
+    Object.defineProperty(copyEvent, "clipboardData", {
+      value: {
+        setData: (type: string, value: string) => {
+          if (type === "text/plain") {
+            copiedText = value;
+          }
+        },
+      },
+    });
+
+    editor.view.dom.dispatchEvent(copyEvent);
+    return copiedText;
+  });
+}
+
 async function prepareSlashParagraph(page: import("playwright/test").Page) {
   await page.evaluate(() => {
     const editor = (window as { __gooseNoteEditor?: any }).__gooseNoteEditor;
@@ -299,6 +394,16 @@ test.describe("编辑流程", () => {
     ).toMatchObject({
       widthMode: "full",
     });
+  });
+
+  test("跨元素复制时保留表格按行拼接", async ({ page }) => {
+    await bootApp(page);
+    await createPageFromSidebar(page);
+    await prepareCrossBlockCopySelection(page);
+
+    await expect.poll(() => copyCurrentSelectionText(page)).toBe(
+      "111 222 33\n44 55 66\n7",
+    );
   });
 
   test("折叠标题后拖拽手柄保持在当前标题旁", async ({ page }) => {

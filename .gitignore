@@ -30,3 +30,4 @@ docs
 bun.lock
 output/playwright
 .claude/worktrees/
+CHANGELOG.md

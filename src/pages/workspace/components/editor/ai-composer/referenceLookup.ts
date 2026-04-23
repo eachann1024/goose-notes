@@ -1,5 +1,5 @@
 import type { JSONContent, Page } from "@/types";
-import { extractTextFromContent } from "@/lib/content-text-extractor";
+import { extractStructureSummary, extractTextFromContent } from "@/lib/content-text-extractor";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -47,6 +47,7 @@ export interface ResolvedAiReferenceContext {
   notebookName: string;
   location: string;
   contentText: string;
+  structureSummary: string;
   readStatus: "ready" | "error";
   errorMessage?: string;
 }
@@ -294,6 +295,7 @@ function buildFallbackReferenceContext(
     notebookName: reference.notebookNameSnapshot ?? "未知笔记本",
     location: reference.locationSnapshot ?? "未知位置",
     contentText: "",
+    structureSummary: "",
     readStatus: "error",
     errorMessage,
   };
@@ -328,6 +330,7 @@ export function resolveAiReferenceContexts(references: AiFileReferenceAttrs[]) {
       notebookName,
       location: resolveReferenceLocation(page),
       contentText: extractTextFromContent(page.content).trim(),
+      structureSummary: extractStructureSummary(page.content),
       readStatus: "ready",
     } satisfies ResolvedAiReferenceContext;
   });
@@ -357,8 +360,7 @@ export function formatAiReferenceContextBlock(contexts: ResolvedAiReferenceConte
         `标题：${context.title}`,
         `来源：${sourceLabel} · ${context.notebookName}`,
         `位置：${context.location}`,
-        "内容：",
-        context.contentText || "（空白内容）",
+        context.structureSummary || context.contentText || "（空白内容）",
       ].join("\n");
     })
     .join("\n\n");

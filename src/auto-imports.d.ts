@@ -167,6 +167,7 @@ declare global {
   const exportToHTML: typeof import('./lib/export').exportToHTML
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
+  const extractStructureSummary: typeof import('./lib/content-text-extractor').extractStructureSummary
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
   const fetchCustomAIModels: typeof import('./lib/ai-provider').fetchCustomAIModels

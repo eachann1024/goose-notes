@@ -234,6 +234,106 @@ function applyCutTransaction(view: EditorView, tr: Transaction) {
   view.dispatch(tr);
 }
 
+function getTextFromNodeRange(
+  node: Node,
+  nodeStart: number,
+  selectionFrom: number,
+  selectionTo: number,
+): string {
+  const contentStart = nodeStart + 1;
+  const contentEnd = nodeStart + node.nodeSize - 1;
+  const from = Math.max(selectionFrom, contentStart);
+  const to = Math.min(selectionTo, contentEnd);
+
+  if (from >= to) {
+    return "";
+  }
+
+  return node.textBetween(from - contentStart, to - contentStart, "\n", "\n");
+}
+
+function getTableTextFromRange(
+  tableNode: Node,
+  tableStart: number,
+  selectionFrom: number,
+  selectionTo: number,
+): string {
+  const lines: string[] = [];
+
+  tableNode.forEach((row, rowOffset) => {
+    if (row.type.name !== "tableRow") {
+      return;
+    }
+
+    const rowStart = tableStart + 1 + rowOffset;
+    const cells: string[] = [];
+
+    row.forEach((cell, cellOffset) => {
+      if (cell.type.name !== "tableCell" && cell.type.name !== "tableHeader") {
+        return;
+      }
+
+      const cellStart = rowStart + 1 + cellOffset;
+      const cellContentStart = cellStart + 1;
+      const cellContentEnd = cellStart + cell.nodeSize - 1;
+      const from = Math.max(selectionFrom, cellContentStart);
+      const to = Math.min(selectionTo, cellContentEnd);
+
+      if (from >= to) {
+        return;
+      }
+
+      const cellText = normalizePlainText(
+        cell.textBetween(from - cellContentStart, to - cellContentStart, "\n", "\n"),
+      );
+      if (cellText) {
+        cells.push(cellText);
+      }
+    });
+
+    if (cells.length) {
+      lines.push(cells.join(" "));
+    }
+  });
+
+  return lines.join("\n");
+}
+
+function getCrossBlockSelectionText(view: EditorView): string | null {
+  const { selection, doc } = view.state;
+
+  if (
+    selection.empty ||
+    selection instanceof NodeSelection ||
+    selection.$from.sameParent(selection.$to)
+  ) {
+    return null;
+  }
+
+  const segments: string[] = [];
+
+  doc.forEach((node, offset) => {
+    const nodeStart = offset;
+    const nodeEnd = nodeStart + node.nodeSize;
+
+    if (selection.to <= nodeStart || selection.from >= nodeEnd) {
+      return;
+    }
+
+    const text =
+      node.type.name === "table"
+        ? getTableTextFromRange(node, nodeStart, selection.from, selection.to)
+        : getTextFromNodeRange(node, nodeStart, selection.from, selection.to);
+
+    const normalized = text.trim();
+    if (normalized) {
+      segments.push(normalized);
+    }
+  });
+
+  return segments.length ? segments.join("\n") : null;
+}
+
 function getTableSelectionText(view: EditorView): string | null {
   const { state } = view;
   const { selection } = state;
@@ -348,21 +448,18 @@ export const ClipboardSerializer = Extension.create({
 
               // 3. 跨块选中（含带背景色的块）：提取纯文本，避免 tiptap-markdown 将
               //    data-block-bg-color 等 HTML 属性序列化为可见代码字符串。
-              const { selection: sel, doc } = view.state;
-              if (!sel.empty) {
-                const plainText = doc.textBetween(sel.from, sel.to, "\n", "\n");
-                if (plainText) {
-                  event.preventDefault();
-                  const copied = writePlainTextToClipboard(event, plainText);
-                  if (!copied) {
-                    Promise.resolve()
-                      .then(() => UToolsAdapter.copyToClipboard(plainText))
-                      .catch((err) => {
-                        console.error("Failed to copy cross-block text:", err);
-                      });
-                  }
-                  return true;
+              const crossBlockSelectionText = getCrossBlockSelectionText(view);
+              if (crossBlockSelectionText) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, crossBlockSelectionText);
+                if (!copied) {
+                  Promise.resolve()
+                    .then(() => UToolsAdapter.copyToClipboard(crossBlockSelectionText))
+                    .catch((err) => {
+                      console.error("Failed to copy cross-block text:", err);
+                    });
                 }
+                return true;
               }
 
               return false;
@@ -460,30 +557,27 @@ export const ClipboardSerializer = Extension.create({
               }
 
               // 跨块剪切（含带背景色的块）：同样走纯文本路径，避免序列化出 HTML 属性代码。
-              const { selection: cutSel, doc: cutDoc } = view.state;
-              if (!cutSel.empty) {
-                const plainText = cutDoc.textBetween(cutSel.from, cutSel.to, "\n", "\n");
-                if (plainText) {
-                  event.preventDefault();
-                  const copied = writePlainTextToClipboard(event, plainText);
-                  if (copied) {
-                    const { state } = view;
-                    const tr = state.tr.deleteSelection();
-                    applyCutTransaction(view, tr);
-                  } else {
-                    navigator.clipboard
-                      .writeText(plainText)
-                      .then(() => {
-                        const { state } = view;
-                        const tr = state.tr.deleteSelection();
-                        applyCutTransaction(view, tr);
-                      })
-                      .catch((err) => {
-                        console.error("Failed to cut cross-block text:", err);
-                      });
-                  }
-                  return true;
+              const crossBlockCutText = getCrossBlockSelectionText(view);
+              if (crossBlockCutText) {
+                event.preventDefault();
+                const copied = writePlainTextToClipboard(event, crossBlockCutText);
+                if (copied) {
+                  const { state } = view;
+                  const tr = state.tr.deleteSelection();
+                  applyCutTransaction(view, tr);
+                } else {
+                  navigator.clipboard
+                    .writeText(crossBlockCutText)
+                    .then(() => {
+                      const { state } = view;
+                      const tr = state.tr.deleteSelection();
+                      applyCutTransaction(view, tr);
+                    })
+                    .catch((err) => {
+                      console.error("Failed to cut cross-block text:", err);
+                    });
                 }
+                return true;
               }
 
               return false;
