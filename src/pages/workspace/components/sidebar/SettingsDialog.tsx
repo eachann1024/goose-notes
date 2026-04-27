@@ -85,6 +85,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     addCustomAction,
     updateCustomAction,
     removeCustomAction,
+    notebookDropdownHoverExpand,
+    setNotebookDropdownHoverExpand,
   } = useSettings();
   const { notebooks } = useNotebooks();
   const { pages } = usePages();
@@ -342,6 +344,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCloseTabShortcut={setCloseTabShortcut}
                 searchPanelCloseShortcut={searchPanelCloseShortcut}
                 setSearchPanelCloseShortcut={setSearchPanelCloseShortcut}
+                notebookDropdownHoverExpand={notebookDropdownHoverExpand}
+                setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}

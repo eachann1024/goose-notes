@@ -123,6 +123,8 @@ interface SettingsState {
     customActions: CustomAction[]
     // 已关闭的通知 ID 集合，持久化存储
     dismissedNotices: Record<string, boolean>
+    /** 鼠标悬停时自动展开笔记本切换下拉菜单。默认关闭，需点击触发。 */
+    notebookDropdownHoverExpand: boolean
     _hasHydrated: boolean
     setTheme: (theme: Theme) => void
     setCodeStyle: (style: CodeStyle) => void
@@ -156,6 +158,7 @@ interface SettingsState {
     setShowRecentInSearch: (enabled: boolean) => void
     setCloseTabShortcut: (shortcut: string) => void
     setSearchPanelCloseShortcut: (shortcut: string) => void
+    setNotebookDropdownHoverExpand: (enabled: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
     setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
     resetCustomFont: (type: 'default' | 'serif' | 'mono') => void
@@ -467,6 +470,7 @@ export const useSettings = create<SettingsState>()(
             aiChatScale: 1.0,
             customActions: [],
             dismissedNotices: {},
+            notebookDropdownHoverExpand: false,
             _hasHydrated: false,
             dismissNotice: (noticeId) =>
                 set((state) => ({
@@ -678,6 +682,8 @@ export const useSettings = create<SettingsState>()(
                 })),
             setSearchAllNotebooks: (searchAll) => set({ searchAllNotebooks: searchAll }),
             setShowRecentInSearch: (enabled) => set({ showRecentInSearch: enabled }),
+            setNotebookDropdownHoverExpand: (enabled) =>
+                set({ notebookDropdownHoverExpand: enabled }),
             setCloseTabShortcut: (shortcut) => set({ closeTabShortcut: shortcut }),
             setSearchPanelCloseShortcut: (shortcut) =>
                 set({ searchPanelCloseShortcut: shortcut }),

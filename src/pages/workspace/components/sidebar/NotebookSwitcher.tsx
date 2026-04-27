@@ -14,6 +14,9 @@ export function NotebookSwitcher() {
     getLastActivePage,
   } = useNotebooks();
   const { setActivePage } = usePages();
+  const notebookDropdownHoverExpand = useSettings(
+    (state) => state.notebookDropdownHoverExpand,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const hovering = useRef({ trigger: false, content: false });
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,11 +165,13 @@ export function NotebookSwitcher() {
           <div
             className="w-full"
             onMouseEnter={() => {
+              if (!notebookDropdownHoverExpand) return;
               hovering.current.trigger = true;
               if (closeTimer.current !== null) clearTimeout(closeTimer.current);
               setIsOpen(true);
             }}
             onMouseLeave={() => {
+              if (!notebookDropdownHoverExpand) return;
               hovering.current.trigger = false;
               scheduleClose();
             }}
@@ -192,10 +197,12 @@ export function NotebookSwitcher() {
           sideOffset={-4}
           forceMount
           onMouseEnter={() => {
+            if (!notebookDropdownHoverExpand) return;
             hovering.current.content = true;
             if (closeTimer.current !== null) clearTimeout(closeTimer.current);
           }}
           onMouseLeave={() => {
+            if (!notebookDropdownHoverExpand) return;
             hovering.current.content = false;
             scheduleClose();
           }}

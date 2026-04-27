@@ -31,6 +31,8 @@ interface SettingsGeneralProps {
   setCloseTabShortcut: (shortcut: string) => void;
   searchPanelCloseShortcut: string;
   setSearchPanelCloseShortcut: (shortcut: string) => void;
+  notebookDropdownHoverExpand: boolean;
+  setNotebookDropdownHoverExpand: (enabled: boolean) => void;
   customActions?: CustomAction[];
   addCustomAction?: (action: Omit<CustomAction, "id">) => void;
   updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, "id">>) => void;
@@ -210,6 +212,8 @@ export function SettingsGeneral({
   setCloseTabShortcut,
   searchPanelCloseShortcut,
   setSearchPanelCloseShortcut,
+  notebookDropdownHoverExpand,
+  setNotebookDropdownHoverExpand,
   customActions = [],
   addCustomAction = () => {},
   updateCustomAction = () => {},
@@ -242,6 +246,22 @@ export function SettingsGeneral({
             id="auto-open-last-note"
             checked={autoOpenLastNote}
             onCheckedChange={setAutoOpenLastNote}
+            className={SETTINGS_SWITCH_CLASS}
+          />
+        </div>
+        <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
+          <div>
+            <Label htmlFor="notebook-hover-expand" className="cursor-pointer">
+              悬停展开笔记本切换
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              鼠标悬停在笔记本名称上时自动展开下拉菜单
+            </p>
+          </div>
+          <Switch
+            id="notebook-hover-expand"
+            checked={notebookDropdownHoverExpand}
+            onCheckedChange={setNotebookDropdownHoverExpand}
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>

@@ -370,11 +370,17 @@ export const useNotebooks = create<NotebooksState>()(
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
+        activeNotebookId: state.activeNotebookId,
+        lastActivePageByNotebook: state.lastActivePageByNotebook,
       }),
       skipHydration: true,
       migrate: (persistedState: unknown) => {
         const safeState = persistedState as
-          | { notebooks?: Record<string, Notebook> }
+          | {
+              notebooks?: Record<string, Notebook>
+              activeNotebookId?: string | null
+              lastActivePageByNotebook?: Record<string, string | null>
+            }
           | undefined;
         if (!safeState?.notebooks) return persistedState;
 
