@@ -84,6 +84,47 @@ function convertChineseLists(text: string): string {
 
 function convertCodeLines(text: string): string {
   const lines = text.split("\n");
+
+  // 文件级代码检测：若文本整体符合某语言特征，直接包裹为对应代码块（参考飞书自动识别）
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("```")) {
+    const hasPackage = lines.some((line) => /^\s*package\s+[\w.]+;/.test(line));
+    const hasPublicClass = lines.some((line) =>
+      /^\s*public\s+(class|interface|enum)\s+\w+/.test(line),
+    );
+    const javaImports = lines.filter((line) =>
+      /^\s*import\s+[\w.*]+;/.test(line),
+    ).length;
+    if (hasPackage || hasPublicClass || javaImports >= 2) {
+      return "```java\n" + text + "\n```";
+    }
+
+    const hasGoPackage = lines.some((line) => /^\s*package\s+\w+/.test(line));
+    const hasGoFunc = lines.some((line) => /^\s*func\s+\w+/.test(line));
+    if (hasGoPackage && hasGoFunc) {
+      return "```go\n" + text + "\n```";
+    }
+
+    const hasInclude = lines.some((line) => /^\s*#\s*include\s+[<"]/.test(line));
+    const hasNamespace = lines.some((line) =>
+      /^\s*namespace\s+[\w.]+/.test(line),
+    );
+    const hasUsing = lines.some((line) => /^\s*using\s+[\w.]+;/.test(line));
+    const hasMain = lines.some((line) =>
+      /^\s*(int|void)\s+main\s*\(/.test(line),
+    );
+    if (hasInclude || hasNamespace || hasUsing || hasMain) {
+      return "```cpp\n" + text + "\n```";
+    }
+
+    const hasFn = lines.some((line) => /^\s*fn\s+\w+/.test(line));
+    const hasUse = lines.some((line) => /^\s*use\s+[\w:：]+;/.test(line));
+    const hasMod = lines.some((line) => /^\s*mod\s+\w+;/.test(line));
+    if (hasFn && (hasUse || hasMod)) {
+      return "```rust\n" + text + "\n```";
+    }
+  }
+
   const result: string[] = [];
   let inCodeBlock = false;
 
@@ -102,7 +143,7 @@ function convertCodeLines(text: string): string {
     }
 
     const codeMatch = line.match(
-      /^\s*(print|log|console\.|function|const|let|var|import|export|class|if|for|while|def|return)\s*[\(\{]/,
+      /^\s*(print|log|console\.|function|const|let|var|export|class|if|for|while|def|return)\s*[\(\{]|^\s*(package|import|public|private|protected|static|final|abstract|void|int|long|boolean|float|double|char|byte|short)\b/,
     );
     if (codeMatch && line.trim()) {
       const prevLine = i > 0 ? lines[i - 1] : "";

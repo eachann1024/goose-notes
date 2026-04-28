@@ -156,7 +156,7 @@ export function exportToHTML(page: Page) {
 body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
 img { max-width: 100%; height: auto; }
 blockquote { border-left: 3px solid #ccc; padding-left: 1rem; color: #666; }
-code { background: #eee; padding: 0.2rem 0.4rem; border-radius: 3px; }
+code { background: #F2F3F5; color: #1F2329; padding: 1px 4px; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; }
 pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; }
 </style>
 </head>

@@ -1,7 +1,7 @@
 import { Extension } from "@tiptap/core";
 
 const DRAG_HANDLE_SELECTOR = ".drag-handle";
-const HOLD_TO_DRAG_DELAY_MS = 300;
+const HOLD_TO_DRAG_DELAY_MS = 150;
 
 function bridgeDragHandleClickToDocument(event: Event) {
   if (event.target !== window) return;

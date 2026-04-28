@@ -298,14 +298,20 @@
 }
 
 .ProseMirror code {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--foreground));
-  padding: var(--editor-inline-code-padding-y)
-    var(--editor-inline-code-padding-x);
-  border-radius: var(--editor-inline-code-radius);
-  font-size: 0.9em;
+  background-color: hsl(220 9% 96%);
+  color: hsl(220 9% 16%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.85em;
   font-family: var(--font-mono);
-  border: 1px solid hsl(var(--border) / 0.5);
+  border: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.dark .ProseMirror code {
+  background-color: hsl(220 6% 18%);
+  color: hsl(220 6% 88%);
 }
 
 /* Highlight styling for better readability */
