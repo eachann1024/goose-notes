@@ -4,7 +4,7 @@ function normalizeWhitespace(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
-function extractTextFromTiptapContent(content) {
+function extractTextFromPageContent(content) {
   if (!content || typeof content !== "object") return "";
 
   const texts = [];
@@ -23,12 +23,19 @@ function extractTextFromTiptapContent(content) {
   return normalizeWhitespace(texts.join(" "));
 }
 
-function extractTitleFromTiptapContent(content) {
+function extractTitleFromPageContent(content) {
   const firstNode = Array.isArray(content?.content) ? content.content[0] : null;
   if (firstNode?.type === "heading" && firstNode?.attrs?.level === 1) {
-    const title = extractTextFromTiptapContent(firstNode);
+    const title = extractTextFromPageContent(firstNode);
     return title || "无标题";
   }
+
+  const firstBlock = Array.isArray(content) ? content[0] : null;
+  if (firstBlock?.type === "heading") {
+    const title = extractTextFromPageContent(firstBlock);
+    return title || "无标题";
+  }
+
   return "无标题";
 }
 
@@ -261,8 +268,8 @@ module.exports = {
   buildLocalPageId,
   createSnippet,
   extractMarkdownTitle,
-  extractTextFromTiptapContent,
-  extractTitleFromTiptapContent,
+  extractTextFromPageContent,
+  extractTitleFromPageContent,
   getTodayKey,
   parseMcpUsagePayload,
   parsePersistedNotebooks,

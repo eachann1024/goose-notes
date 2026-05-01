@@ -288,7 +288,7 @@
           "contentText": { "type": "string" },
           "rawContentFormat": {
             "type": "string",
-            "enum": ["tiptap_json", "markdown"]
+            "enum": ["blocknote_json", "markdown"]
           },
           "rawContent": {}
         },

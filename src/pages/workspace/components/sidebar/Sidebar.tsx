@@ -85,7 +85,7 @@ export function Sidebar({
       if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
         const target = e.target as HTMLElement;
         const isInEditor =
-          target.closest(".ProseMirror") ||
+          target.closest(".bn-editor") ||
           target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA";
 

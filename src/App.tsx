@@ -365,7 +365,7 @@ function App() {
         ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
       const isRichTextEditing =
         target instanceof HTMLElement &&
-        (target.isContentEditable || !!target.closest(".ProseMirror"));
+        (target.isContentEditable || !!target.closest(".bn-editor"));
 
       const isOpenSettingsHotkey =
         (event.key === "," || event.key === "，" || event.code === "Comma") &&

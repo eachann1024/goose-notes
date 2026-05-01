@@ -633,7 +633,7 @@ export function buildAiWritePlan(params: {
 
   const imported = importFromMarkdown(params.markdown);
   let content =
-    imported.success && imported.content.content?.length
+    imported.success && imported.content.length
       ? cloneContent(imported.content)
       : createPlainTextDoc(params.markdown);
 

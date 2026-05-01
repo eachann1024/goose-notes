@@ -6,8 +6,8 @@ const {
   buildLocalPageId,
   createSnippet,
   extractMarkdownTitle,
-  extractTextFromTiptapContent,
-  extractTitleFromTiptapContent,
+  extractTextFromPageContent,
+  extractTitleFromPageContent,
   getTodayKey,
   parseMcpUsagePayload,
   parsePersistedNotebooks,
@@ -374,8 +374,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   const createInternalNoteRecord = (page, notebooksMap) => {
     const notebook = notebooksMap.get(page.workspaceId);
-    const title = extractTitleFromTiptapContent(page.content);
-    const contentText = extractTextFromTiptapContent(page.content);
+    const title = extractTitleFromPageContent(page.content);
+    const contentText = extractTextFromPageContent(page.content);
     return {
       id: page.id,
       title,
@@ -389,7 +389,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       trashedAt: typeof page.trashedAt === "number" ? page.trashedAt : undefined,
       snippet: createSnippet(contentText),
       contentText,
-      rawContentFormat: "tiptap_json",
+      rawContentFormat: "blocknote_json",
       rawContent: page.content,
     };
   };

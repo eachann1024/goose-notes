@@ -1,4 +1,5 @@
-import type { JSONContent } from "@/types";
+import type { PartialBlock } from "@blocknote/core";
+import type { BlockNoteContent } from "@/lib/blocknote-content";
 
 const WELCOME_IMAGE =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png";
@@ -15,91 +16,68 @@ type ShortcutSection = {
   items: ShortcutItem[];
 };
 
-const text = (value: string): JSONContent => ({
-  type: "text",
-  text: value,
+const paragraph = (value?: string): PartialBlock => ({
+  type: "paragraph",
+  content: value || "",
 });
 
-const paragraph = (value?: string | JSONContent[]): JSONContent =>
-  value === undefined
-    ? { type: "paragraph" }
-    : {
-        type: "paragraph",
-        content: Array.isArray(value) ? value : [text(value)],
-      };
-
-const heading = (level: number, value: string): JSONContent => ({
+const heading = (level: number, value: string): PartialBlock => ({
   type: "heading",
-  attrs: { level },
-  content: [text(value)],
+  props: { level },
+  content: value,
 });
 
-const bulletList = (items: string[]): JSONContent => ({
-  type: "bulletList",
-  content: items.map((item) => ({
-    type: "listItem",
-    content: [paragraph(item)],
-  })),
-});
+const bulletList = (items: string[]): PartialBlock[] =>
+  items.map((item) => ({ type: "bulletListItem", content: item }));
 
-const orderedList = (items: string[]): JSONContent => ({
-  type: "orderedList",
-  content: items.map((item) => ({
-    type: "listItem",
-    content: [paragraph(item)],
-  })),
-});
+const orderedList = (items: string[]): PartialBlock[] =>
+  items.map((item) => ({ type: "numberedListItem", content: item }));
 
 const taskList = (
   items: Array<{ checked: boolean; text: string }>,
-): JSONContent => ({
-  type: "taskList",
-  content: items.map((item) => ({
-    type: "taskItem",
-    attrs: { checked: item.checked },
-    content: [paragraph(item.text)],
-  })),
+): PartialBlock[] =>
+  items.map((item) => ({
+    type: "checkListItem",
+    props: { checked: item.checked },
+    content: item.text,
+  }));
+
+const quote = (value: string): PartialBlock => ({
+  type: "quote",
+  content: value,
 });
 
-const blockquote = (value: string): JSONContent => ({
-  type: "blockquote",
-  content: [paragraph(value)],
-});
+const callout = (icon: string, value: string): PartialBlock =>
+  ({
+    type: "callout",
+    props: { icon },
+    content: value,
+  } as unknown as PartialBlock);
 
-const callout = (emoji: string, value: string): JSONContent => ({
-  type: "callout",
-  attrs: { emoji },
-  content: [text(value)],
-});
-
-const codeBlock = (value: string, language?: string): JSONContent => ({
+const codeBlock = (value: string, language?: string): PartialBlock => ({
   type: "codeBlock",
-  ...(language ? { attrs: { language } } : {}),
-  content: [text(value)],
+  props: { language: language || "" },
+  content: value,
 });
 
-const table = (headers: string[], rows: string[][]): JSONContent => ({
+const table = (headers: string[], rows: string[][]): PartialBlock => ({
   type: "table",
-  content: [
-    {
-      type: "tableRow",
-      content: headers.map((header) => ({
-        type: "tableHeader",
-        content: [paragraph(header)],
-      })),
-    },
-    ...rows.map((row) => ({
-      type: "tableRow",
-      content: row.map((cell) => ({
-        type: "tableCell",
-        content: [paragraph(cell)],
-      })),
-    })),
-  ],
+  content: {
+    type: "tableContent",
+    rows: [
+      { cells: headers },
+      ...rows.map((row) => ({ cells: row })),
+    ],
+  },
 });
 
-const divider = (): JSONContent => ({
-  type: "horizontalRule",
+const divider = (): PartialBlock => ({
+  type: "divider",
+});
+
+const image = (src: string): PartialBlock => ({
+  type: "image",
+  props: { url: src, caption: "" },
 });
 
 const shortcutSections: ShortcutSection[] = [
@@ -267,7 +245,7 @@ const shortcutSections: ShortcutSection[] = [
   },
 ];
 
-function buildShortcutSection(section: ShortcutSection): JSONContent[] {
+function buildShortcutSection(section: ShortcutSection): PartialBlock[] {
   return [
     heading(2, section.title),
     paragraph(section.description),
@@ -282,162 +260,149 @@ function buildShortcutSection(section: ShortcutSection): JSONContent[] {
   ];
 }
 
-export const onboardingPageContent: JSONContent = {
-  type: "doc",
-  content: [
-    heading(1, "鹅的笔记 · 新手指南"),
-    paragraph("欢迎使用鹅的笔记。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。"),
-    paragraph("先用 3 分钟扫完，再边试边改，你会比死记快捷键更快上手。"),
-    callout(
-      "🪶",
-      "推荐顺序：先学页面结构，再学搜索与查找，最后记住最常用的几组编辑快捷键。",
-    ),
-    {
-      type: "imageResize",
-      attrs: { src: WELCOME_IMAGE },
-    },
-    heading(2, "第一次使用，建议先做这 4 步"),
-    orderedList([
-      "按 Cmd/Ctrl + N 新建一页，先随便记两行内容。",
-      "在空白行输入 /，看一遍能插入哪些块。",
-      "按 Cmd/Ctrl + Shift + K 试一次全局搜索，再按 Cmd/Ctrl + F 试一次页内查找。",
-      "选中一段文字，试试粗体、斜体、行内代码和对齐按钮。",
-    ]),
-    heading(2, "页面与侧边栏"),
-    bulletList([
-      "页面支持父子层级，适合按项目、主题、时间分层整理。",
-      "侧边栏里的页面可以拖拽排序，也可以拖成子页面。",
-      "常用页面可以收藏，重要页面可以置顶，方便长期保留在显眼位置。",
-      "删除的页面会进入垃圾箱，不是立刻消失，误删还有回退空间。",
-      "本地文件夹模式下，页面会和你的磁盘文件联动，适合管理现有 Markdown 文件。",
-    ]),
-    heading(2, "标签页"),
-    table(
-      ["能力", "怎么用", "适合什么场景"],
-      [
-        ["同时打开多页", "点开不同页面后会进入标签栏", "边写边查资料、对照多份内容"],
-        ["关闭当前标签页", "默认 Alt + W，也可在设置中改", "快速清理临时页面"],
-        ["按位置切换标签页", "Alt + 1...9 / 0", "手不离键盘切换常用页"],
-      ],
-    ),
-    heading(2, "搜索与查找"),
-    bulletList([
-      "全局搜索用于跨页面找内容；页内查找用于在当前页面定位某个词。",
-      "搜索面板里按 Tab 可以切换“当前记事本”与“全部记事本”。",
-      "查找框支持 Enter、Cmd/Ctrl + G 和 F3 继续跳转结果。",
-      "Esc 会关闭页内查找并把焦点还给编辑器。",
-    ]),
-    heading(2, "编辑器基础操作"),
-    bulletList([
-      "内容会自动保存，普通笔记不用养成手动保存的习惯。",
-      "撤销与重做分别是 Cmd/Ctrl + Z、Shift + Cmd/Ctrl + Z 或 Cmd/Ctrl + Y。",
-      "表格里按 Tab / Shift + Tab 可以继续在单元格间移动。",
-      "如果只是想快速输入结构，用 / 或 、 打开指令菜单通常比找按钮更快。",
-    ]),
-    heading(2, "常用块与输入方式"),
-    table(
-      ["块类型", "触发方式", "适合记录什么"],
-      [
-        ["标题", "# / ## / ###", "搭页面结构、做章节层级"],
-        ["列表与待办", "-、1.、[]", "任务清单、会议纪要、步骤说明"],
-        ["引用与标注", ">、co", "摘录原话、强调重点提醒"],
-        ["代码 / 数学 / Mermaid", "```、$$、斜杠菜单", "技术笔记、公式推导、流程图"],
-        ["表格与分隔线", "tb、---", "信息对比、把内容切成清晰区块"],
-        ["图片与文件", "直接粘贴、拖入或通过菜单插入", "资料归档、截图说明、附件记录"],
-      ],
-    ),
-    heading(2, "自动保存说明"),
-    callout(
-      "💾",
-      "普通页面会自动保存，不需要把 Cmd/Ctrl + S 当成日常必按键。",
-    ),
-    bulletList([
-      "普通页面：边写边自动保存，离开页面前也会主动提交最新内容。",
-      "本地文件页面：除了自动保存外，还支持用 Cmd/Ctrl + S 立即刷新落盘，适合你想马上确认文件写入磁盘时使用。",
-      "如果你看到“内容已保存”提示，多半是在本地文件或立即保存流程里触发的，不代表平时必须手动保存。",
-    ]),
-    heading(2, "常见上手建议"),
-    taskList([
-      { checked: true, text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。" },
-      { checked: false, text: "给常用页面加收藏或置顶，减少每天来回翻找。" },
-      { checked: false, text: "把自己最常用的关闭标签页、搜索面板退出键改成顺手的组合。" },
-      { checked: false, text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。" },
-    ]),
-    heading(2, "示例区块"),
-    paragraph("下面这些示例块可以直接改，边改边熟悉编辑体验。"),
-    blockquote("灵感先记下来，结构可以稍后再整理。"),
-    codeBlock("print(\"Hello, Goose Notes\")\nlog(\"记录想法，比回忆更可靠\")"),
-    paragraph([
-      text("行内公式示例："),
-      { type: "inlineMath", attrs: { value: "E=mc^2" } },
-      text("，适合穿插在普通句子里。"),
-    ]),
-    codeBlock("f(x)=\\int_0^1 x^2 \\, dx", "math"),
-    codeBlock(
-      "flowchart LR\nA[想法] --> B{要不要展开}\nB -->|是| C[继续写]\nB -->|否| D[先收藏待会儿回来看]",
-      "mermaid",
-    ),
-    callout("✨", "拖动块左侧手柄可以调整顺序，很多整理动作都比剪切粘贴更快。"),
-    divider(),
-    table(
-      ["你可能会用到", "在哪里更顺手"],
-      [
-        ["收藏 / 置顶", "页面头部操作区"],
-        ["垃圾箱", "侧边栏底部"],
-        ["导入 / 导出 / 锁定页面", "页面右上角更多操作"],
-      ],
-    ),
-  ],
-};
+export const onboardingPageContent: BlockNoteContent = [
+  heading(1, "鹅的笔记 · 新手指南"),
+  paragraph("欢迎使用鹅的笔记。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。"),
+  paragraph("先用 3 分钟扫完，再边试边改，你会比死记快捷键更快上手。"),
+  callout(
+    "🪶",
+    "推荐顺序：先学页面结构，再学搜索与查找，最后记住最常用的几组编辑快捷键。",
+  ),
+  image(WELCOME_IMAGE),
+  heading(2, "第一次使用，建议先做这 4 步"),
+  ...orderedList([
+    "按 Cmd/Ctrl + N 新建一页，先随便记两行内容。",
+    "在空白行输入 /，看一遍能插入哪些块。",
+    "按 Cmd/Ctrl + Shift + K 试一次全局搜索，再按 Cmd/Ctrl + F 试一次页内查找。",
+    "选中一段文字，试试粗体、斜体、行内代码和对齐按钮。",
+  ]),
+  heading(2, "页面与侧边栏"),
+  ...bulletList([
+    "页面支持父子层级，适合按项目、主题、时间分层整理。",
+    "侧边栏里的页面可以拖拽排序，也可以拖成子页面。",
+    "常用页面可以收藏，重要页面可以置顶，方便长期保留在显眼位置。",
+    "删除的页面会进入垃圾箱，不是立刻消失，误删还有回退空间。",
+    "本地文件夹模式下，页面会和你的磁盘文件联动，适合管理现有 Markdown 文件。",
+  ]),
+  heading(2, "标签页"),
+  table(
+    ["能力", "怎么用", "适合什么场景"],
+    [
+      ["同时打开多页", "点开不同页面后会进入标签栏", "边写边查资料、对照多份内容"],
+      ["关闭当前标签页", "默认 Alt + W，也可在设置中改", "快速清理临时页面"],
+      ["按位置切换标签页", "Alt + 1...9 / 0", "手不离键盘切换常用页"],
+    ],
+  ),
+  heading(2, "搜索与查找"),
+  ...bulletList([
+    "全局搜索用于跨页面找内容；页内查找用于在当前页面定位某个词。",
+    "搜索面板里按 Tab 可以切换“当前记事本”与“全部记事本”。",
+    "查找框支持 Enter、Cmd/Ctrl + G 和 F3 继续跳转结果。",
+    "Esc 会关闭页内查找并把焦点还给编辑器。",
+  ]),
+  heading(2, "编辑器基础操作"),
+  ...bulletList([
+    "内容会自动保存，普通笔记不用养成手动保存的习惯。",
+    "撤销与重做分别是 Cmd/Ctrl + Z、Shift + Cmd/Ctrl + Z 或 Cmd/Ctrl + Y。",
+    "表格里按 Tab / Shift + Tab 可以继续在单元格间移动。",
+    "如果只是想快速输入结构，用 / 或 、 打开指令菜单通常比找按钮更快。",
+  ]),
+  heading(2, "常用块与输入方式"),
+  table(
+    ["块类型", "触发方式", "适合记录什么"],
+    [
+      ["标题", "# / ## / ###", "搭页面结构、做章节层级"],
+      ["列表与待办", "-、1.、[]", "任务清单、会议纪要、步骤说明"],
+      ["引用与标注", ">、co", "摘录原话、强调重点提醒"],
+      ["代码 / 数学 / Mermaid", "```、$$、斜杠菜单", "技术笔记、公式推导、流程图"],
+      ["表格与分隔线", "tb、---", "信息对比、把内容切成清晰区块"],
+      ["图片与文件", "直接粘贴、拖入或通过菜单插入", "资料归档、截图说明、附件记录"],
+    ],
+  ),
+  heading(2, "自动保存说明"),
+  callout(
+    "💾",
+    "普通页面会自动保存，不需要把 Cmd/Ctrl + S 当成日常必按键。",
+  ),
+  ...bulletList([
+    "普通页面：边写边自动保存，离开页面前也会主动提交最新内容。",
+    "本地文件页面：除了自动保存外，还支持用 Cmd/Ctrl + S 立即刷新落盘，适合你想马上确认文件写入磁盘时使用。",
+    "如果你看到“内容已保存”提示，多半是在本地文件或立即保存流程里触发的，不代表平时必须手动保存。",
+  ]),
+  heading(2, "常见上手建议"),
+  ...taskList([
+    { checked: true, text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。" },
+    { checked: false, text: "给常用页面加收藏或置顶，减少每天来回翻找。" },
+    { checked: false, text: "把自己最常用的关闭标签页、搜索面板退出键改成顺手的组合。" },
+    { checked: false, text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。" },
+  ]),
+  heading(2, "示例区块"),
+  paragraph("下面这些示例块可以直接改，边改边熟悉编辑体验。"),
+  quote("灵感先记下来，结构可以稍后再整理。"),
+  codeBlock('print("Hello, Goose Notes")\nlog("记录想法，比回忆更可靠")'),
+  paragraph("行内公式示例：E=mc^2，适合穿插在普通句子里。"),
+  codeBlock("f(x)=\\int_0^1 x^2 \, dx", "math"),
+  codeBlock(
+    "flowchart LR\nA[想法] --> B{要不要展开}\nB -->|是| C[继续写]\nB -->|否| D[先收藏待会儿回来看]",
+    "mermaid",
+  ),
+  callout("✨", "拖动块左侧手柄可以调整顺序，很多整理动作都比剪切粘贴更快。"),
+  divider(),
+  table(
+    ["你可能会用到", "在哪里更顺手"],
+    [
+      ["收藏 / 置顶", "页面头部操作区"],
+      ["垃圾箱", "侧边栏底部"],
+      ["导入 / 导出 / 锁定页面", "页面右上角更多操作"],
+    ],
+  ),
+];
 
-export const onboardingChildPageContent: JSONContent = {
-  type: "doc",
-  content: [
-    heading(1, "功能速览"),
-    paragraph("这页适合第一次打开时快速扫读，知道每个模块大概是干什么的。"),
-    heading(2, "你会最先接触到的模块"),
-    bulletList([
-      "页面树：组织父子层级、拖拽调整顺序、收藏常用页。",
-      "标签栏：同时打开多页，适合在笔记、资料和草稿之间切换。",
-      "搜索：全局找页面内容，或在当前页内精准定位关键词。",
-      "编辑器：支持文本格式、表格、代码块、公式、Mermaid、图片与附件。",
-      "页面操作：导入、导出、锁定页面、调整全宽显示。",
-      "垃圾箱：删除后先暂存，避免误删直接丢失。",
-    ]),
-    heading(2, "最值得立刻记住的习惯"),
-    orderedList([
-      "输入 / 打开指令菜单，比到处找按钮快很多。",
-      "需要切换多个页面时用标签页，而不是反复回侧边栏。",
-      "需要找一句话时先用 Cmd/Ctrl + F，别把全局搜索当页内查找用。",
-      "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
-    ]),
-    heading(2, "本地文件模式和普通页面的区别"),
-    table(
-      ["场景", "普通页面", "本地文件页面"],
-      [
-        ["保存方式", "自动保存", "自动保存 + 可手动立即落盘"],
-        ["适合用途", "日常记录、知识整理", "管理已有 Markdown 文件"],
-        ["常见反馈", "通常无感保存", "更容易看到“已保存”反馈"],
-      ],
-    ),
-  ],
-};
+export const onboardingChildPageContent: BlockNoteContent = [
+  heading(1, "功能速览"),
+  paragraph("这页适合第一次打开时快速扫读，知道每个模块大概是干什么的。"),
+  heading(2, "你会最先接触到的模块"),
+  ...bulletList([
+    "页面树：组织父子层级、拖拽调整顺序、收藏常用页。",
+    "标签栏：同时打开多页，适合在笔记、资料和草稿之间切换。",
+    "搜索：全局找页面内容，或在当前页内精准定位关键词。",
+    "编辑器：支持文本格式、表格、代码块、公式、Mermaid、图片与附件。",
+    "页面操作：导入、导出、锁定页面、调整全宽显示。",
+    "垃圾箱：删除后先暂存，避免误删直接丢失。",
+  ]),
+  heading(2, "最值得立刻记住的习惯"),
+  ...orderedList([
+    "输入 / 打开指令菜单，比到处找按钮快很多。",
+    "需要切换多个页面时用标签页，而不是反复回侧边栏。",
+    "需要找一句话时先用 Cmd/Ctrl + F，别把全局搜索当页内查找用。",
+    "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
+  ]),
+  heading(2, "本地文件模式和普通页面的区别"),
+  table(
+    ["场景", "普通页面", "本地文件页面"],
+    [
+      ["保存方式", "自动保存", "自动保存 + 可手动立即落盘"],
+      ["适合用途", "日常记录、知识整理", "管理已有 Markdown 文件"],
+      ["常见反馈", "通常无感保存", "更容易看到“已保存”反馈"],
+    ],
+  ),
+];
 
-export const onboardingSecondChildContent: JSONContent = {
-  type: "doc",
-  content: [
-    heading(1, "快捷键指南"),
-    paragraph("把快捷键分组记，比从头背到尾更轻松。先记你每天会按到的 5 个。"),
-    callout(
-      "⌨️",
-      "如果某组你几乎不用，就先别背。会搜索、会查找、会撤销，效率已经能上来一大截。",
-    ),
-    ...shortcutSections.flatMap((section) => [...buildShortcutSection(section), paragraph()]),
-    heading(2, "关于保存这件事"),
-    bulletList([
-      "普通页面默认自动保存，所以这里不把 Cmd/Ctrl + S 当成必学快捷键。",
-      "如果你正在编辑本地文件页面，Cmd/Ctrl + S 更像“现在就立即落盘”。",
-      "真正值得优先记住的，是搜索、查找、标签切换和格式化这几组高频操作。",
-    ]),
-  ],
-};
+export const onboardingSecondChildContent: BlockNoteContent = [
+  heading(1, "快捷键指南"),
+  paragraph("把快捷键分组记，比从头背到尾更轻松。先记你每天会按到的 5 个。"),
+  callout(
+    "⌨️",
+    "如果某组你几乎不用，就先别背。会搜索、会查找、会撤销，效率已经能上来一大截。",
+  ),
+  ...shortcutSections.flatMap((section) => [
+    ...buildShortcutSection(section),
+    paragraph(),
+  ]),
+  heading(2, "关于保存这件事"),
+  ...bulletList([
+    "普通页面默认自动保存，所以这里不把 Cmd/Ctrl + S 当成必学快捷键。",
+    "如果你正在编辑本地文件页面，Cmd/Ctrl + S 更像“现在就立即落盘”。",
+    "真正值得优先记住的，是搜索、查找、标签切换和格式化这几组高频操作。",
+  ]),
+];

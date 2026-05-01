@@ -1,16 +1,36 @@
-import type { Page, JSONContent } from "@/types";
-import { generateHTML } from "@tiptap/html";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import Image from "@tiptap/extension-image";
-import Highlight from "@tiptap/extension-highlight";
+import type { Page } from "@/types";
+import type { BlockNoteContent } from "./blocknote-content";
 import JSZip from "jszip";
 import { extractTitleFromContent } from "./content-text-extractor";
 import { blobToBase64 } from "./imageStorage/utils";
+import {
+  isBlockNoteContent,
+  normalizePageContent,
+  createEmptyBlockNoteContent,
+} from "./blocknote-content";
 
-const extensions = [StarterKit, Link, TaskList, TaskItem, Image, Highlight];
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function contentToHTML(content: BlockNoteContent): string {
+  return jsonContentToMarkdown(content, true)
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      if (block.startsWith("# ")) return `<h1>${escapeHtml(block.slice(2))}</h1>`;
+      if (block.startsWith("## ")) return `<h2>${escapeHtml(block.slice(3))}</h2>`;
+      if (block.startsWith("### ")) return `<h3>${escapeHtml(block.slice(4))}</h3>`;
+      if (block.startsWith("```")) return `<pre><code>${escapeHtml(block.replace(/^```[^\n]*\n?/, "").replace(/```$/, ""))}</code></pre>`;
+      return `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`;
+    })
+    .join("\n");
+}
 
 let imageStoragePromise: Promise<{
   imageStorage: { load: (ref: string) => Promise<Blob | null> };
@@ -64,48 +84,36 @@ function alignToContainerStyle(align: "left" | "center" | "right"): string {
 }
 
 async function extractImagesFromContent(
-  content: JSONContent,
+  content: any[],
   assetsFolder: JSZip,
   imageMap: Map<string, string>,
   depth: number,
 ) {
   const fallbackBase64 =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2NkYGD4DwABBAEAf6S4JwAAAABJRU5ErkJggg==";
-  if (!content.content) return;
 
-  for (const node of content.content) {
-    if (
-      (node.type === "image" || node.type === "imageResize") &&
-      node.attrs?.src
-    ) {
-      const src = node.attrs.src;
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+
+    if (block.type === "image" && block.props?.url) {
+      const src = block.props.url;
       let finalSrc = src;
 
-      // 处理 uuid: 引用（IndexedDB）或 att: 引用（uTools attachment）
       if (src.startsWith("uuid:") || src.startsWith("att:")) {
         const { imageStorage } = await getImageStorage();
         const blob = await imageStorage.load(src);
         if (blob) {
           finalSrc = await blobToBase64(blob);
         } else {
-          // 防止导出残留引用
           finalSrc = fallbackBase64;
         }
       }
 
-      // 处理 ./assets/ 引用（uTools 本地文件）
-      if (src.startsWith("./assets/") && (window as any).gooseFs) {
-        // 需要获取笔记本路径，这里暂时跳过
-        // 因为导出时可能没有上下文信息
-      }
-
-      // 检查是否已经处理过这个图片
       if (imageMap.has(finalSrc)) {
-        node.attrs.src = getRelativeAssetPath(imageMap.get(finalSrc)!, depth);
+        block.props.url = getRelativeAssetPath(imageMap.get(finalSrc)!, depth);
         continue;
       }
 
-      // 处理 base64 图片
       if (finalSrc.startsWith("data:image")) {
         const parsed = parseBase64Image(finalSrc);
         if (parsed) {
@@ -113,13 +121,13 @@ async function extractImagesFromContent(
           assetsFolder.file(filename, parsed.data, { base64: true });
 
           imageMap.set(finalSrc, filename);
-          node.attrs.src = getRelativeAssetPath(filename, depth);
+          block.props.url = getRelativeAssetPath(filename, depth);
         }
       }
     }
 
-    if (node.content) {
-      await extractImagesFromContent(node, assetsFolder, imageMap, depth);
+    if (block.children?.length) {
+      await extractImagesFromContent(block.children, assetsFolder, imageMap, depth);
     }
   }
 }
@@ -136,7 +144,7 @@ export function exportToJSON(page: Page) {
 }
 
 export function exportToMarkdown(page: Page) {
-  const content = page.content as JSONContent;
+  const content = page.content as BlockNoteContent;
   const markdown = jsonContentToMarkdown(content, true);
   const title = extractTitleFromContent(page.content);
   const fullMarkdown = `# ${title}\n\n${markdown}`;
@@ -144,7 +152,7 @@ export function exportToMarkdown(page: Page) {
 }
 
 export function exportToHTML(page: Page) {
-  const html = generateHTML(page.content, extensions);
+  const html = contentToHTML(page.content);
   const title = extractTitleFromContent(page.content);
   const fullHtml = `
 <!DOCTYPE html>
@@ -226,7 +234,7 @@ export async function exportNotebooks(
           break;
         }
         case "html":
-          const html = generateHTML(pageClone.content, extensions);
+          const html = contentToHTML(pageClone.content);
           const titleForHtml = extractTitleFromContent(pageClone.content);
           content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleForHtml}</title><style>img { max-width: 100%; }</style></head><body><h1>${titleForHtml}</h1>${html}</body></html>`;
           extension = ".html";
@@ -427,22 +435,22 @@ export async function importNotebooksFromZip(
     }
   }
 
-  const restoreImages = (content: JSONContent) => {
-    if (!content.content) return;
-    for (const node of content.content) {
+  const restoreImages = (blocks: any[]) => {
+    for (const block of blocks) {
+      if (!block || typeof block !== "object") continue;
       if (
-        (node.type === "image" || node.type === "imageResize") &&
-        node.attrs?.src
+        (block.type === "image" || block.type === "imageResize") &&
+        block.props?.url
       ) {
-        const src = node.attrs.src as string;
+        const src = block.props.url as string;
         if (src.includes("assets/")) {
           const filename = src.split("assets/").pop();
           if (filename && assetMap.has(filename)) {
-            node.attrs.src = assetMap.get(filename);
+            block.props.url = assetMap.get(filename);
           }
         }
       }
-      if (node.content) restoreImages(node);
+      if (block.children?.length) restoreImages(block.children);
     }
   };
 
@@ -504,24 +512,22 @@ export async function importNotebooksFromZip(
         const text = await file.async("text");
         const imported = importFromMarkdown(text, title);
         const content = imported.content;
-        const firstNode = content.content?.[0];
+        const firstBlock = Array.isArray(content) ? content[0] : undefined;
         const hasH1Title =
-          firstNode?.type === "heading" &&
-          firstNode.attrs?.level === 1 &&
-          firstNode.content?.some(
-            (n: JSONContent) => n.text === imported.title,
-          );
+          firstBlock?.type === "heading" &&
+          firstBlock.props?.level === 1 &&
+          firstBlock.content === imported.title;
         if (!hasH1Title) {
-          content.content = [
-            {
-              type: "heading",
-              attrs: { level: 1 },
-              content: [{ type: "text", text: imported.title }],
-            },
-            ...(content.content || []),
-          ];
+          const blocks = Array.isArray(content) ? content : [];
+          pageData = {
+            content: [
+              { type: "heading", props: { level: 1 }, content: imported.title },
+              ...blocks,
+            ],
+          };
+        } else {
+          pageData = { content };
         }
-        pageData = { content };
         if (pageData.content) restoreImages(pageData.content);
       }
 
@@ -533,7 +539,7 @@ export async function importNotebooksFromZip(
 
 export interface ImportResult {
   title: string;
-  content: JSONContent;
+  content: BlockNoteContent;
   success: boolean;
   error?: string;
   filename?: string;
@@ -549,13 +555,12 @@ export function importFromJSON(
     if (!data.content || typeof data.content !== "object") {
       return {
         title: "",
-        content: { type: "doc", content: [] },
+        content: createEmptyBlockNoteContent(),
         success: false,
         error: "无效的 JSON 格式：缺少 content 字段",
       };
     }
 
-    // 如果有旧的 title 字段，提取它；否则从 content 提取
     let title = filename || "导入的页面";
     if ("title" in data && data.title) {
       title = data.title;
@@ -565,13 +570,13 @@ export function importFromJSON(
 
     return {
       title,
-      content: data.content,
+      content: normalizePageContent(data.content),
       success: true,
     };
   } catch (e) {
     return {
       title: "",
-      content: { type: "doc", content: [] },
+      content: createEmptyBlockNoteContent(),
       success: false,
       error: "解析 JSON 失败",
     };
@@ -583,7 +588,8 @@ export function importFromMarkdown(
   filename?: string,
 ): ImportResult {
   try {
-    const content = markdownToJsonContent(markdown);
+    const legacyContent = markdownToJsonContent(markdown);
+    const content = normalizePageContent(legacyContent);
 
     let title = filename || "导入的页面";
     if (!filename) {
@@ -597,7 +603,7 @@ export function importFromMarkdown(
   } catch (e) {
     return {
       title: "",
-      content: { type: "doc", content: [] },
+      content: createEmptyBlockNoteContent(),
       success: false,
       error: "解析 Markdown 失败",
     };
@@ -615,7 +621,7 @@ export function importFile(): Promise<ImportResult> {
       if (!file) {
         resolve({
           title: "",
-          content: { type: "doc", content: [] },
+          content: createEmptyBlockNoteContent(),
           success: false,
           error: "未选择文件",
         });
@@ -633,7 +639,7 @@ export function importFile(): Promise<ImportResult> {
       } else {
         resolve({
           title: "",
-          content: { type: "doc", content: [] },
+          content: createEmptyBlockNoteContent(),
           success: false,
           error: "不支持的文件格式",
         });
@@ -655,20 +661,97 @@ function downloadFile(content: string, filename: string, contentType: string) {
 }
 
 export function jsonContentToMarkdown(
-  content: JSONContent,
+  content: BlockNoteContent,
   skipFirstH1 = false,
 ): string {
-  if (!content.content) return "";
+  if (isBlockNoteContent(content)) {
+    let blocks = content as any[];
+    if (skipFirstH1 && blocks[0]?.type === "heading") {
+      blocks = blocks.slice(1);
+    }
+    return blocks.map(blockNoteBlockToMarkdown).join("\n");
+  }
 
-  let nodes = content.content;
-  if (skipFirstH1 && nodes.length > 0) {
-    const first = nodes[0];
-    if (first.type === "heading" && first.attrs?.level === 1) {
-      nodes = nodes.slice(1);
+  return "";
+}
+
+function blockNoteInlineToText(content: any): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((item: any) => {
+      if (typeof item === "string") return item;
+      let text = item?.text || "";
+      const styles = item?.styles || {};
+      if (styles.bold) text = `**${text}**`;
+      if (styles.italic) text = `*${text}*`;
+      if (styles.strike) text = `~~${text}~~`;
+      if (styles.code) text = `\`${text}\``;
+      if (item?.type === "link") text = `[${text}](${item.href || ""})`;
+      return text;
+    })
+    .join("");
+}
+
+function blockNoteBlockToMarkdown(block: any): string {
+  const text = blockNoteInlineToText(block.content);
+  let result = "";
+  switch (block.type) {
+    case "heading":
+      result = `${"#".repeat(block.props?.level || 1)} ${text}`;
+      break;
+    case "bulletListItem":
+      result = `- ${text}`;
+      break;
+    case "numberedListItem":
+      result = `1. ${text}`;
+      break;
+    case "checkListItem":
+      result = `- [${block.props?.checked ? "x" : " "}] ${text}`;
+      break;
+    case "quote":
+      result = `> ${text}`;
+      break;
+    case "codeBlock":
+      result = `\`\`\`${block.props?.language || ""}\n${text}\n\`\`\``;
+      break;
+    case "image":
+      result = `![${block.props?.caption || ""}](${block.props?.url || ""})`;
+      break;
+    case "table": {
+      const rows = block.content?.rows || [];
+      if (!rows.length) return "";
+      const tableRows = rows.map((row: any) => row.cells || []);
+      const header = tableRows[0].map((cell: any) => String(cell)).join(" | ");
+      const separator = tableRows[0].map(() => "---").join(" | ");
+      const body = tableRows.slice(1).map((row: any[]) => row.map((cell: any) => String(cell)).join(" | "));
+      result = [`| ${header} |`, `| ${separator} |`, ...body.map((row: string) => `| ${row} |`)].join("\n");
+      break;
+    }
+    case "callout":
+      result = `> [!INFO] ${block.props?.icon || "💡"} ${text}`;
+      break;
+    case "divider":
+      result = "---";
+      break;
+    case "file":
+      result = `[📎 ${block.props?.name || "文件"}](${block.props?.url || ""})`;
+      break;
+    default:
+      result = text;
+  }
+
+  if (block.children?.length) {
+    const childrenMarkdown = block.children
+      .map((child: any) => blockNoteBlockToMarkdown(child))
+      .filter(Boolean)
+      .join("\n");
+    if (childrenMarkdown) {
+      result += (result ? "\n" : "") + childrenMarkdown;
     }
   }
 
-  return nodes.map((node) => nodeToMarkdown(node)).join("\n");
+  return result;
 }
 
 function isLegacyCodeBlockMetaComment(line: string): boolean {
@@ -756,214 +839,12 @@ function parseCodeFenceInfo(infoLine: string): {
   };
 }
 
-function nodeToMarkdown(node: JSONContent): string {
-  switch (node.type) {
-    case "paragraph":
-      const text = inlineContentToMarkdown(node.content);
-      return text + "\n";
-
-    case "heading": {
-      const level = node.attrs?.level || 1;
-      return (
-        "#".repeat(level) + " " + inlineContentToMarkdown(node.content) + "\n"
-      );
-    }
-
-    case "bulletList":
-      return (
-        node.content?.map((item) => "- " + listItemContent(item)).join("\n") +
-        "\n"
-      );
-
-    case "orderedList":
-      return (
-        node.content
-          ?.map((item, i) => `${i + 1}. ` + listItemContent(item))
-          .join("\n") + "\n"
-      );
-
-    case "taskList":
-      return (
-        node.content
-          ?.map((item) => {
-            const checked = item.attrs?.checked ? "x" : " ";
-            return `- [${checked}] ` + listItemContent(item);
-          })
-          .join("\n") + "\n"
-      );
-
-    case "blockquote":
-      return (
-        "> " +
-        jsonContentToMarkdown(node).trim().split("\n").join("\n> ") +
-        "\n"
-      );
-
-    case "codeBlock": {
-      const lang = node.attrs?.language || "";
-      if (lang === "math") {
-        return "$$\n" + (node.content?.[0]?.text || "") + "\n$$\n";
-      }
-      if (lang === "yaml-frontmatter") {
-        return "---\n" + (node.content?.[0]?.text || "") + "\n---\n";
-      }
-      const fenceInfo = serializeCodeFenceInfo(
-        lang,
-        (node.attrs as Record<string, unknown>) || undefined,
-      );
-      const fenceHeader = fenceInfo ? "```" + fenceInfo : "```";
-      return fenceHeader + "\n" + (node.content?.[0]?.text || "") + "\n```\n";
-    }
-
-    case "horizontalRule":
-      return "---\n";
-
-    case "image":
-    case "imageResize": {
-      const alt = node.attrs?.alt || "";
-      const src = node.attrs?.src || "";
-      const align = getAlignFromContainerStyle(node.attrs?.containerStyle);
-      const width = node.attrs?.width ? `width=${node.attrs.width}` : "";
-      const height = node.attrs?.height ? `height=${node.attrs.height}` : "";
-      const meta = [align ? `align=${align}` : "", width, height]
-        .filter(Boolean)
-        .join(" ");
-      const metaTag = meta ? `{${meta}}` : "";
-      return `![${alt}](${src})${metaTag}\n`;
-    }
-
-    case "table": {
-      const rows = node.content || [];
-      if (rows.length === 0) return "\n";
-      const tableRows = rows.map((row) => row.content || []);
-      const columnCount = Math.max(
-        1,
-        ...tableRows.map((cells) => cells.length),
-      );
-
-      const cellText = (cell: JSONContent) => {
-        const parts = (cell.content || []).map((child) => {
-          if (child.type === "paragraph") {
-            return inlineContentToMarkdown(child.content);
-          }
-          return inlineContentToMarkdown(child.content);
-        });
-        return parts.join("<br>");
-      };
-
-      const normalizeRow = (cells: JSONContent[]) => {
-        const padded = [...cells];
-        while (padded.length < columnCount) padded.push({ type: "tableCell" });
-        return padded;
-      };
-
-      const headerCells = normalizeRow(tableRows[0]).map((cell) =>
-        cellText(cell).replace(/\|/g, "\\|"),
-      );
-      const headerLine = `| ${headerCells.join(" | ")} |`;
-      const separatorLine = `| ${Array(columnCount).fill("---").join(" | ")} |`;
-
-      const bodyLines = tableRows.slice(1).map((cells) => {
-        const rowCells = normalizeRow(cells).map((cell) =>
-          cellText(cell).replace(/\|/g, "\\|"),
-        );
-        return `| ${rowCells.join(" | ")} |`;
-      });
-
-      return [headerLine, separatorLine, ...bodyLines].join("\n") + "\n";
-    }
-
-    case "details": {
-      const summary = node.content?.find((c) => c.type === "detailsSummary");
-      const content = node.content?.find((c) => c.type === "detailsContent");
-      const summaryText = summary
-        ? inlineContentToMarkdown(summary.content)
-        : "详情";
-      const contentMarkdown = content ? jsonContentToMarkdown(content) : "";
-      return `<details>\n<summary>${summaryText}</summary>\n\n${contentMarkdown}\n</details>\n`;
-    }
-
-    case "callout": {
-      const emoji = node.attrs?.emoji || "💡";
-      const text = inlineContentToMarkdown(node.content);
-      return `> [!INFO] ${emoji} ${text}\n`;
-    }
-
-    default:
-      return inlineContentToMarkdown(node.content) + "\n";
-  }
-}
-
-function listItemContent(item: JSONContent): string {
-  const paragraphs = item.content?.filter((c) => c.type === "paragraph") || [];
-  return paragraphs.map((p) => inlineContentToMarkdown(p.content)).join(" ");
-}
-
-function inlineContentToMarkdown(content?: JSONContent[]): string {
-  if (!content || content.length === 0) return "";
-
-  return content
-    .map((node) => {
-      if (node.type === "inlineMath") {
-        return `$${node.attrs?.value || ""}$`;
-      }
-
-      let text = node.text || "";
-
-      if (node.marks) {
-        for (const mark of node.marks) {
-          switch (mark.type) {
-            case "bold":
-              text = `**${text}**`;
-              break;
-            case "italic":
-              text = `*${text}*`;
-              break;
-            case "strike":
-              text = `~~${text}~~`;
-              break;
-            case "code":
-              text = `\`${text}\``;
-              break;
-            case "link":
-              text = `[${text}](${mark.attrs?.href || ""})`;
-              break;
-            case "underline":
-              text = `<u>${text}</u>`;
-              break;
-            case "superscript":
-              text = `<sup>${text}</sup>`;
-              break;
-            case "subscript":
-              text = `<sub>${text}</sub>`;
-              break;
-            case "highlight":
-              if (mark.attrs?.color) {
-                text = `<span style="background-color: ${mark.attrs.color}">${text}</span>`;
-              } else {
-                text = `==${text}==`;
-              }
-              break;
-            case "textStyle":
-              if (mark.attrs?.color) {
-                text = `<span style="color: ${mark.attrs.color}">${text}</span>`;
-              }
-              break;
-          }
-        }
-      }
-
-      return text;
-    })
-    .join("");
-}
-
-function markdownToJsonContent(markdown: string): JSONContent {
+function markdownToJsonContent(markdown: string): any {
   const lines = markdown
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .split("\n");
-  const content: JSONContent[] = [];
+  const content: any[] = [];
   let i = 0;
 
   // 识别 YAML Frontmatter
@@ -1134,7 +1015,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
     const splitTableRow = (value: string) => {
       const trimmed = value.trim();
       const content = trimmed.replace(/^\|/, "").replace(/\|$/, "");
-      return content.split("|").map((cell) => cell.trim());
+      return content.split("|").map((cell: any) => cell.trim());
     };
 
     if (
@@ -1168,12 +1049,12 @@ function markdownToJsonContent(markdown: string): JSONContent {
 
       const headerRow = {
         type: "tableRow",
-        content: headerCells.map((cell) => toCell(cell, "tableHeader")),
+        content: headerCells.map((cell: any) => toCell(cell, "tableHeader")),
       };
 
-      const bodyRowNodes = bodyRows.map((row) => ({
+      const bodyRowNodes = bodyRows.map((row: any) => ({
         type: "tableRow",
-        content: row.map((cell) => toCell(cell, "tableCell")),
+        content: row.map((cell: any) => toCell(cell, "tableCell")),
       }));
 
       content.push({
@@ -1185,7 +1066,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
 
     const taskMatch = line.match(/^-\s+\[([ x])\]\s+(.+)$/);
     if (taskMatch) {
-      const items: JSONContent[] = [];
+      const items: any[] = [];
       while (i < lines.length) {
         const tm = lines[i].match(/^-\s+\[([ x])\]\s+(.+)$/);
         if (!tm) break;
@@ -1201,7 +1082,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
     }
 
     if (line.match(/^-\s+/)) {
-      const items: JSONContent[] = [];
+      const items: any[] = [];
       while (i < lines.length && lines[i].match(/^-\s+/)) {
         const text = lines[i].replace(/^-\s+/, "");
         items.push({
@@ -1215,7 +1096,7 @@ function markdownToJsonContent(markdown: string): JSONContent {
     }
 
     if (line.match(/^\d+\.\s+/)) {
-      const items: JSONContent[] = [];
+      const items: any[] = [];
       while (i < lines.length && lines[i].match(/^\d+\.\s+/)) {
         const text = lines[i].replace(/^\d+\.\s+/, "");
         items.push({
@@ -1322,8 +1203,8 @@ function markdownToJsonContent(markdown: string): JSONContent {
   return { type: "doc", content };
 }
 
-function parseInlineMarkdown(text: string): JSONContent[] {
-  const result: JSONContent[] = [];
+function parseInlineMarkdown(text: string): any[] {
+  const result: any[] = [];
   if (!text) return result;
 
   const regex =

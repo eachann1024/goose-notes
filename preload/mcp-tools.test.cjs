@@ -3,14 +3,14 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-  extractTextFromTiptapContent,
-  extractTitleFromTiptapContent,
+  extractTextFromPageContent,
+  extractTitleFromPageContent,
   parsePersistedNotebooks,
   searchNoteItems,
   stripMarkdownSyntax,
 } = require("./mcp-tools.cjs");
 
-test("提取 TipTap 标题和正文文本", () => {
+test("提取页面标题和正文文本", () => {
   const content = {
     type: "doc",
     content: [
@@ -26,8 +26,8 @@ test("提取 TipTap 标题和正文文本", () => {
     ],
   };
 
-  assert.equal(extractTitleFromTiptapContent(content), "测试标题");
-  assert.equal(extractTextFromTiptapContent(content), "测试标题 第一段正文");
+  assert.equal(extractTitleFromPageContent(content), "测试标题");
+  assert.equal(extractTextFromPageContent(content), "测试标题 第一段正文");
 });
 
 test("Markdown 文本提取会去掉常见标记", () => {

@@ -1,658 +1,69 @@
-/* Tiptap editor specific styles */
-.ProseMirror {
+.goose-blocknote-editor,
+.bn-editor {
+  min-height: 320px;
   outline: none;
   user-select: text;
   -webkit-user-select: text;
   overflow-anchor: none;
-  min-height: 150px;
-  padding-bottom: 100px;
-  padding-left: 2rem;
-  padding-right: 2rem;
   font-size: var(--editor-font-size);
   line-height: 1.7;
 }
 
-.ProseMirror[data-ai-composer-editor="true"] {
-  min-height: 0;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.ProseMirror[data-ai-composer-editor="true"][data-ai-composer-variant="compact"] {
-  padding-right: 1.5rem !important;
-}
-
-.ProseMirror[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
-  min-height: 72px !important;
-}
-
-.editor-full-width .ProseMirror {
-  padding-left: 1.75rem;
-  padding-right: 1.75rem;
-}
-
-/* Match Notion-like text selection in editor area only */
-.ProseMirror ::selection {
+.goose-blocknote-editor ::selection,
+.bn-editor ::selection {
   background-color: rgba(35, 131, 226, 0.28);
   color: inherit;
 }
 
-.ProseMirror ::-moz-selection {
-  background-color: rgba(35, 131, 226, 0.28);
-  color: inherit;
-}
-
-.dark .ProseMirror ::selection {
+.dark .goose-blocknote-editor ::selection,
+.dark .bn-editor ::selection {
   background-color: rgba(35, 131, 226, 0.4);
   color: inherit;
 }
 
-.dark .ProseMirror ::-moz-selection {
-  background-color: rgba(35, 131, 226, 0.4);
-  color: inherit;
+.workspace-editor-surface .bn-container {
+  background: transparent;
 }
 
-/* Keep empty line selection transparent (both light/dark) */
-.ProseMirror br.ProseMirror-trailingBreak::selection {
-  background-color: transparent;
+.workspace-editor-surface .bn-editor {
+  background: transparent;
+  padding-inline: 0;
 }
 
-.ProseMirror br.ProseMirror-trailingBreak::-moz-selection {
-  background-color: transparent;
-}
-
-/* Headings */
-.ProseMirror h1 {
-  font-size: 2.25em; /* 36px */
-  font-weight: 700;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-  line-height: 1.2;
-}
-
-/* 第一行标题特殊样式 */
-.ProseMirror > h1:first-child {
+.workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {
   margin-top: 0;
-  margin-bottom: 2rem;
 }
 
-.ProseMirror h2 {
-  font-size: 1.75em; /* 28px */
-  font-weight: 600;
-  margin-top: 1.3em;
-  margin-bottom: 0.4em;
-  line-height: 1.3;
+/* BlockNote 块间距全局优化 */
+.workspace-editor-surface .bn-block-outer {
+  margin-bottom: 0.35em;
 }
 
-.ProseMirror h3 {
-  font-size: 1.35em; /* 21.6px */
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.2em;
-  line-height: 1.4;
-}
-
-/* Lists - unified marker column (24px) */
-.ProseMirror ul,
-.ProseMirror ol {
-  list-style: none;
-  padding-left: 24px;
-  margin: 0.5em 0;
-}
-
-.ProseMirror ul > li,
-.ProseMirror ol > li {
-  position: relative;
+.workspace-editor-surface .bn-block-outer:last-child {
   margin-bottom: 0;
 }
 
-/* Bullet marker */
-.ProseMirror ul:not([data-type="taskList"]) > li::before {
-  content: "•";
-  position: absolute;
-  left: -24px;
-  width: 24px;
-  text-align: center;
-  color: hsl(var(--foreground));
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
+  margin-bottom: 0.6em;
 }
 
-/* Number marker */
-.ProseMirror ol {
-  counter-reset: list-counter;
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="table"]) {
+  margin-bottom: 0.6em;
 }
 
-.ProseMirror ol > li {
-  counter-increment: list-counter;
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="image"]) {
+  margin-bottom: 0.5em;
 }
 
-.ProseMirror ol > li::before {
-  content: counter(list-counter) ".";
-  position: absolute;
-  left: -24px;
-  width: 24px;
-  text-align: center;
-  color: hsl(var(--foreground));
+/* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
+.workspace-editor-surface[data-font-family="default"] .bn-default-styles {
+  font-family: var(--font-default);
 }
 
-/* Remove extra spacing between adjacent lists */
-.ProseMirror ul + ul,
-.ProseMirror ul + ol,
-.ProseMirror ul + ul[data-type="taskList"],
-.ProseMirror ol + ul,
-.ProseMirror ol + ol,
-.ProseMirror ol + ul[data-type="taskList"],
-.ProseMirror ul[data-type="taskList"] + ul,
-.ProseMirror ul[data-type="taskList"] + ol,
-.ProseMirror ul[data-type="taskList"] + ul[data-type="taskList"] {
-  margin-top: 0.1em;
+.workspace-editor-surface[data-font-family="serif"] .bn-default-styles {
+  font-family: var(--font-serif);
 }
 
-.ProseMirror ul li p,
-.ProseMirror ol li p {
-  margin: 0;
-}
-
-/* Blockquote */
-.ProseMirror blockquote {
-  border-left: 3px solid hsl(var(--foreground));
-  padding-left: 1rem;
-  margin-left: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-/* Images & Emojis */
-.ProseMirror img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  margin: 1rem 0;
-  display: block;
-}
-
-.dark .ProseMirror img {
-  filter: brightness(0.9) saturate(0.95);
-}
-
-/* 图片对齐 */
-.ProseMirror img[align="left"] {
-  margin-left: 0;
-  margin-right: auto;
-}
-
-.ProseMirror img[align="center"] {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.ProseMirror img[align="right"] {
-  margin-left: auto;
-  margin-right: 0;
-}
-
-/* Task List - aligned with bullet/number markers (24px column) */
-.ProseMirror ul[data-type="taskList"] {
-  list-style: none;
-  padding-left: 24px;
-  margin: 0.5em 0;
-}
-
-.ProseMirror ul[data-type="taskList"] > li {
-  position: relative;
-  margin-bottom: 0;
-}
-
-.ProseMirror ul[data-type="taskList"] > li::before {
-  display: none; /* Hide bullet marker */
-}
-
-.ProseMirror ul[data-type="taskList"] li > label {
-  position: absolute;
-  left: -24px;
-  width: 24px;
-  height: 1.7em;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
-  -webkit-appearance: none;
-  appearance: none;
-  background-color: transparent;
-  margin: 0;
-  width: 1em;
-  height: 1em;
-  border: 0.1em solid hsl(var(--foreground) / 0.2);
-  border-radius: 0.2em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.ProseMirror ul[data-type="taskList"] input[type="checkbox"]:hover {
-  background-color: hsl(var(--foreground) / 0.05);
-  border-color: hsl(var(--foreground) / 0.3);
-}
-
-.ProseMirror ul[data-type="taskList"] input[type="checkbox"]:checked {
-  background-color: #2383e2;
-  border-color: #2383e2;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
-  background-size: 0.75em;
-  background-position: 50% 55%;
-  background-repeat: no-repeat;
-}
-
-.ProseMirror ul[data-type="taskList"] li > div > p {
-  margin: 0;
-}
-
-.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div > p {
-  text-decoration: none !important;
-  color: hsl(var(--foreground) / 0.5);
-}
-
-.ProseMirror h1.is-empty:first-child::before {
-  color: hsl(var(--muted-foreground));
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.ProseMirror p.is-empty::before {
-  color: hsl(var(--muted-foreground) / 0.78);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.ProseMirror p.is-empty.has-focus::before {
-  color: hsl(var(--muted-foreground) / 0.92);
-}
-
-.slash-command-capsule {
-  background-color: hsl(var(--accent) / 0.8);
-  color: hsl(var(--accent-foreground));
-  padding: 2px 6px;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
   font-family: var(--font-mono);
-  font-weight: 500;
-  position: relative;
-  margin: 0 2px;
-}
-
-.slash-command-capsule.is-empty::after {
-  content: attr(data-placeholder);
-  opacity: 0.5;
-  margin-left: 4px;
-  font-size: 0.9em;
-  font-weight: normal;
-}
-
-.ProseMirror code {
-  background-color: hsl(220 9% 96%);
-  color: hsl(220 9% 16%);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-size: 0.85em;
-  font-family: var(--font-mono);
-  border: none;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-.dark .ProseMirror code {
-  background-color: hsl(220 6% 18%);
-  color: hsl(220 6% 88%);
-}
-
-/* Highlight styling for better readability */
-.ProseMirror mark {
-  padding: 2px 4px;
-  border-radius: 3px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-/* Links */
-.ProseMirror a {
-  color: #3b82f6;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-  cursor: pointer;
-  position: relative;
-}
-
-.ProseMirror a:hover {
-  color: #2563eb;
-  text-decoration-thickness: 1.5px;
-}
-
-.ProseMirror a[data-link-tooltip="true"]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 8px;
-  padding: var(--editor-link-tooltip-padding-y)
-    var(--editor-link-tooltip-padding-x);
-  background-color: hsl(var(--popover) / 0.98);
-  color: hsl(var(--popover-foreground));
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: var(--editor-link-tooltip-radius);
-  font-size: var(--editor-link-tooltip-font-size);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  backdrop-filter: blur(1px);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  z-index: 100;
-}
-
-.dark .ProseMirror a[data-link-tooltip="true"]::after {
-  border-color: hsl(var(--border) / 0.75);
-}
-
-.ProseMirror a[data-link-tooltip="true"]::before {
-  content: none;
-}
-
-.ProseMirror a[data-link-tooltip="true"]:hover::after {
-  opacity: 1;
-}
-
-/* Horizontal Rule */
-.ProseMirror .horizontal-rule-wrapper {
-  padding: 1rem 0;
-  margin: 0.5rem 0;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border-radius: 4px;
-}
-
-.ProseMirror .horizontal-rule-wrapper:hover {
-  background-color: hsl(var(--accent) / 0.1);
-}
-
-.ProseMirror .horizontal-rule-wrapper hr {
-  position: relative;
-  border: none;
-  height: 2px;
-  background: hsl(var(--border) / 0.45);
-  margin: 0;
-  border-radius: 1px;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.ProseMirror .horizontal-rule-wrapper hr::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 42%,
-    hsl(var(--border) / 0.15) 46%,
-    hsl(var(--border)) 50%,
-    hsl(var(--border) / 0.2) 54%,
-    transparent 58%,
-    transparent 100%
-  );
-  background-size: 260% 100%;
-  animation: horizontal-rule-flow 7.2s linear infinite;
-  filter: blur(0.2px);
-}
-
-@keyframes horizontal-rule-flow {
-  0% {
-    background-position: -160% 0%;
-  }
-  100% {
-    background-position: 160% 0%;
-  }
-}
-
-/* Selected state for horizontal rule */
-.ProseMirror .horizontal-rule-wrapper.ProseMirror-selectednode,
-.ProseMirror .ProseMirror-selectednode .horizontal-rule-wrapper {
-  background-color: hsl(var(--accent) / 0.15);
-  outline: 2px solid hsl(var(--primary) / 0.3);
-  outline-offset: 1px;
-}
-
-.ProseMirror .horizontal-rule-wrapper.ProseMirror-selectednode hr,
-.ProseMirror .ProseMirror-selectednode .horizontal-rule-wrapper hr {
-  background: hsl(var(--primary) / 0.45);
-}
-
-.ProseMirror .horizontal-rule-wrapper.ProseMirror-selectednode hr::before,
-.ProseMirror .ProseMirror-selectednode .horizontal-rule-wrapper hr::before {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 42%,
-    hsl(var(--primary) / 0.2) 46%,
-    hsl(var(--primary)) 50%,
-    hsl(var(--primary) / 0.25) 54%,
-    transparent 58%,
-    transparent 100%
-  );
-  background-size: 260% 100%;
-}
-
-/* Collapsible Headings */
-.ProseMirror .is-folded {
-  display: none !important;
-}
-
-/* Folding Arrow in Handle */
-.drag-handle .folding-arrow {
-  position: absolute;
-  left: -20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 24px;
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground));
-  border-radius: 4px;
-  pointer-events: auto;
-  z-index: 10;
-}
-
-.drag-handle.has-folding-arrow .folding-arrow {
-  opacity: 1;
-}
-
-.drag-handle:hover .folding-arrow,
-.drag-handle .folding-arrow:hover {
-  opacity: 1;
-}
-
-.drag-handle .folding-arrow:hover {
-  color: hsl(var(--foreground));
-  background-color: hsl(var(--muted) / 0.5);
-}
-
-.drag-handle .folding-arrow svg {
-  width: 14px;
-  height: 14px;
-  transition: transform 0.2s;
-}
-
-/* Collapsed state: pointing right */
-.drag-handle .folding-arrow.is-collapsed svg {
-  transform: rotate(-90deg);
-}
-
-.ProseMirror .heading-collapse-anchor {
-  position: relative;
-  margin-left: -2rem;
-  padding-left: 2rem;
-  width: calc(100% + 2rem);
-  box-sizing: border-box;
-}
-
-.ProseMirror .heading-collapse-indicator {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground));
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 1;
-  pointer-events: auto;
-  /* Keep heading toggle above drag handle so rapid re-click stays reliable. */
-  z-index: 60;
-  transition: opacity 0.12s ease;
-}
-
-.ProseMirror
-  .heading-collapse-anchor:not(:hover)
-  .heading-collapse-indicator:not(.is-collapsed):not(.is-active) {
-  opacity: 0;
-}
-
-.ProseMirror .heading-collapse-indicator:hover {
-  color: hsl(var(--foreground));
-  background-color: hsl(var(--muted) / 0.5);
-}
-
-.ProseMirror .heading-collapse-indicator svg {
-  width: 18px;
-  height: 18px;
-  transform: rotate(0deg);
-  transition: transform 0.15s ease;
-}
-
-.ProseMirror .heading-collapse-indicator.is-collapsed svg {
-  transform: rotate(-90deg);
-}
-
-/* 搜索高亮闪烁动画 */
-.search-highlight-flash {
-  position: relative;
-  padding: 0 3px;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    hsl(48 96% 53% / 0.45),
-    hsl(191 95% 63% / 0.45),
-    hsl(266 90% 65% / 0.45),
-    hsl(337 90% 60% / 0.45),
-    hsl(48 96% 53% / 0.45)
-  );
-  background-size: 220% 100%;
-  animation: search-highlight-wave 3s linear forwards;
-  text-shadow:
-    0 0 4px hsl(48 96% 70% / 0.9),
-    0 0 6px hsl(191 95% 70% / 0.7),
-    0 0 8px hsl(266 90% 75% / 0.6),
-    0 0 10px hsl(337 90% 70% / 0.5);
-  box-shadow:
-    0 0 6px hsl(48 96% 60% / 0.35),
-    0 0 10px hsl(191 95% 60% / 0.25),
-    inset 0 0 0 1px hsl(48 96% 60% / 0.25);
-}
-
-.ProseMirror mark[style*="--goose-search-highlight"] {
-  position: relative;
-  padding: 0;
-  border-radius: 4px;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-decoration-color: hsl(210 60% 85% / 0.7);
-  text-underline-offset: 3px;
-  background: linear-gradient(
-    90deg,
-    hsl(48 70% 88% / 0.5),
-    hsl(190 65% 90% / 0.5),
-    hsl(255 55% 90% / 0.5),
-    hsl(330 60% 90% / 0.5),
-    hsl(48 70% 88% / 0.5)
-  );
-  background-size: 260% 100%;
-  animation: search-highlight-wave 4s ease-in-out forwards;
-  text-shadow:
-    0 0 4px hsl(48 80% 90% / 0.6),
-    0 0 6px hsl(190 70% 92% / 0.5),
-    0 0 8px hsl(255 60% 92% / 0.45),
-    0 0 10px hsl(330 65% 92% / 0.4);
-  box-shadow:
-    0 0 0 3px hsl(48 70% 90% / 0.22),
-    0 0 8px hsl(48 70% 90% / 0.35),
-    0 0 14px hsl(190 65% 90% / 0.25),
-    inset 0 0 0 1px hsl(48 70% 90% / 0.2);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-.ProseMirror .editor-find-match {
-  border-radius: 3px;
-  background: hsl(58 95% 72% / 0.38);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-.dark .ProseMirror .editor-find-match {
-  background: hsl(52 88% 58% / 0.24);
-}
-
-.ProseMirror .editor-find-match-active {
-  background: hsl(206 98% 66% / 0.45);
-  box-shadow: inset 0 0 0 1px hsl(206 98% 42% / 0.5);
-}
-
-.dark .ProseMirror .editor-find-match-active {
-  background: hsl(206 90% 66% / 0.3);
-  box-shadow: inset 0 0 0 1px hsl(206 90% 72% / 0.58);
-}
-
-@keyframes search-highlight-wave {
-  0% {
-    background-position: 0% 50%;
-    opacity: 0.2;
-    filter: brightness(1.02);
-  }
-  55% {
-    background-position: 100% 50%;
-    opacity: 0.85;
-    filter: brightness(1.08);
-  }
-  75% {
-    opacity: 0.6;
-  }
-  100% {
-    background-position: 200% 50%;
-    opacity: 0.25;
-    filter: brightness(1);
-  }
 }

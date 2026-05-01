@@ -1,9 +1,37 @@
 import type { HostDoc, HostRuntime, HostPutResult, HostRemoveResult } from "./types";
 
+const WEB_DB_STORAGE_KEY = "goose-note:web-db";
+
 const isUToolsEnv = () =>
   typeof window !== "undefined" && typeof window.utools !== "undefined";
 
 const getUTools = () => (isUToolsEnv() ? (window as any).utools : null);
+
+const readWebDb = (): Record<string, HostDoc<unknown>> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(WEB_DB_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeWebDb = (db: Record<string, HostDoc<unknown>>): void => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(WEB_DB_STORAGE_KEY, JSON.stringify(db));
+  } catch {
+    // ignore local fallback write errors
+  }
+};
+
+const nextWebRev = (current?: string): string => {
+  const rev = Number(String(current || "0").split("-")[0] || 0) + 1;
+  return `${rev}-${Date.now().toString(36)}`;
+};
 
 export const hostRuntime: HostRuntime = {
   kind: "utools",
@@ -53,7 +81,11 @@ export const hostRuntime: HostRuntime = {
     put: <T>(id: string, data: T, rev?: string): HostPutResult => {
       const utools = getUTools();
       if (!utools) {
-        return { id, ok: false, error: "uTools 环境不可用" };
+        const db = readWebDb();
+        const nextRev = nextWebRev(rev || db[id]?._rev);
+        db[id] = { _id: id, _rev: nextRev, data };
+        writeWebDb(db);
+        return { id, ok: true, rev: nextRev };
       }
       try {
         return utools.db.put({
@@ -67,7 +99,7 @@ export const hostRuntime: HostRuntime = {
     },
     get: <T>(id: string): HostDoc<T> | null => {
       const utools = getUTools();
-      if (!utools) return null;
+      if (!utools) return (readWebDb()[id] as HostDoc<T> | undefined) ?? null;
       try {
         return utools.db.get(id);
       } catch {
@@ -77,7 +109,10 @@ export const hostRuntime: HostRuntime = {
     remove: (id: string): HostRemoveResult => {
       const utools = getUTools();
       if (!utools) {
-        return { id, ok: false, error: "uTools 环境不可用" };
+        const db = readWebDb();
+        delete db[id];
+        writeWebDb(db);
+        return { id, ok: true };
       }
       try {
         return utools.db.remove(id);
@@ -87,7 +122,11 @@ export const hostRuntime: HostRuntime = {
     },
     allDocs: <T>(prefix = ""): Array<HostDoc<T>> => {
       const utools = getUTools();
-      if (!utools) return [];
+      if (!utools) {
+        return Object.values(readWebDb()).filter((doc) =>
+          doc._id.startsWith(prefix),
+        ) as Array<HostDoc<T>>;
+      }
       try {
         return utools.db.allDocs(prefix);
       } catch {

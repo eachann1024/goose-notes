@@ -17,24 +17,7 @@ const vendorChunkGroups: Array<[string, string[]]> = [
       "lucide-react",
     ],
   ],
-  [
-    "vendor-tiptap",
-    [
-      "@tiptap/core",
-      "@tiptap/react",
-      "@tiptap/starter-kit",
-      "@tiptap/extension-image",
-      "@tiptap/extension-link",
-      "@tiptap/extension-placeholder",
-      "@tiptap/extension-task-list",
-      "@tiptap/extension-task-item",
-      "@tiptap/extension-table",
-    ],
-  ],
-  [
-    "vendor-hightlight",
-    ["lowlight", "@tiptap/extension-code-block-lowlight"],
-  ],
+  ["vendor-blocknote", ["@blocknote/core", "@blocknote/react"]],
 ];
 
 function resolveVendorChunk(id: string) {
@@ -74,7 +57,6 @@ export default defineConfig({
         "src/stores",
         "src/lib",
         "src/components/ui",
-        "src/pages/workspace/components/editor/utils",
       ],
     }),
     {
@@ -128,6 +110,6 @@ export default defineConfig({
         manualChunks: resolveVendorChunk,
       },
     },
-    chunkSizeWarningLimit: 1000, // Tiptap is heavy, increase limit
+    chunkSizeWarningLimit: 1000,
   },
 });

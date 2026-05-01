@@ -1,16 +1,27 @@
-import { BubbleMenu } from "@tiptap/react/menus";
-import { ColorPicker } from "./ColorPicker";
-import { useSettings } from "@/stores/useSettings";
+import {
+  useBlockNoteEditor,
+  useActiveStyles,
+  useSelectedBlocks,
+} from "@blocknote/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useSettings } from "@/stores/useSettings";
+import { useContextMenu } from "@/stores/useContextMenu";
+import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
+import { formatShortcut } from "@/lib/utils";
+import { FormattingToolbarColorPicker } from "./FormattingToolbarColorPicker";
+import type { DefaultBlockSchema } from "@blocknote/core";
 
-type EditorBubbleMenuProps = Omit<
-  React.ComponentProps<typeof BubbleMenu>,
-  "children"
->;
-
-import { useScrollHide } from "@/hooks/useScrollHide";
-
-function BubbleMenuTooltip({
+function ToolbarTooltip({
   label,
   shortcut,
 }: {
@@ -20,9 +31,7 @@ function BubbleMenuTooltip({
   return (
     <TooltipContent side="top" sideOffset={8}>
       <div className="inline-flex items-center gap-2 leading-none whitespace-nowrap">
-        <span className="text-[12px] font-medium text-foreground">
-          {label}
-        </span>
+        <span className="text-[12px] font-medium text-foreground">{label}</span>
         {shortcut ? (
           <kbd className="inline-flex h-5 select-none items-center rounded-md border border-border/85 bg-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
             {formatShortcut(shortcut)}
@@ -33,12 +42,16 @@ function BubbleMenuTooltip({
   );
 }
 
-export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
+export function EditorFormattingToolbar() {
+  const editor = useBlockNoteEditor();
+  const activeStyles = useActiveStyles();
+  const selectedBlocks = useSelectedBlocks();
   const aiEnabled = useSettings((state) => state.ai.enabled);
-  const isHidden = useScrollHide(editor);
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
-  const shouldHideMenu = isHidden || isContextMenuOpen;
+  const scrollActivity = useGlobalScrollActivity({ idleMs: 120 });
+  const isScrolling = scrollActivity.isScrolling;
+
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -49,7 +62,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
       onOpenChange: (open: boolean) =>
         setActiveTooltip((prev) => (open ? id : prev === id ? null : prev)),
     }),
-    [activeTooltip],
+    [activeTooltip]
   );
 
   useEffect(() => {
@@ -58,11 +71,54 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
   }, []);
 
   useEffect(() => {
-    if (!shouldHideMenu) return;
+    if (!isScrolling && !isContextMenuOpen) return;
     setActiveTooltip(null);
-  }, [shouldHideMenu]);
+  }, [isScrolling, isContextMenuOpen]);
 
-  if (!editor) return null;
+  const isBold = !!activeStyles.bold;
+  const isItalic = !!activeStyles.italic;
+  const isStrike = !!activeStyles.strike;
+  const isUnderline = !!activeStyles.underline;
+  const isCode = !!activeStyles.code;
+
+  // textAlignment is a block prop, check first selected block
+  const firstBlock = selectedBlocks[0];
+  const textAlignment =
+    (firstBlock?.props as { textAlignment?: string } | undefined)
+      ?.textAlignment ?? "left";
+
+  const linkUrl = editor.getSelectedLinkUrl();
+  const isLinkActive = !!linkUrl;
+
+  const setTextAlignment = useCallback(
+    (alignment: "left" | "center" | "right") => {
+      for (const block of selectedBlocks) {
+        editor.updateBlock(block, {
+          props: { textAlignment: alignment },
+        });
+      }
+    },
+    [editor, selectedBlocks]
+  );
+
+  const clearFormatting = useCallback(() => {
+    editor.removeStyles({
+      bold: true,
+      italic: true,
+      underline: true,
+      strike: true,
+      code: true,
+      textColor: true,
+      backgroundColor: true,
+    } as any);
+    for (const block of selectedBlocks) {
+      editor.updateBlock(block, {
+        props: { textAlignment: "left" },
+      });
+    }
+  }, [editor, selectedBlocks]);
+
+  const shouldHide = isScrolling || isContextMenuOpen;
 
   return (
     <TooltipProvider
@@ -70,40 +126,13 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
       skipDelayDuration={0}
       disableHoverableContent
     >
-      <BubbleMenu
+      <div
         ref={menuRef}
-        editor={editor}
-        pluginKey="textBubbleMenu"
-        appendTo={() => document.body}
-        className={cn(
-          "z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]",
-          shouldHideMenu ? "opacity-0 pointer-events-none" : "opacity-100"
-        )}
-        shouldShow={({ editor, state }) => {
-          if (!editor.isEditable) return false;
-          if (shouldHideMenu) return false;
-          if (isContextMenuOpen) return false;
-          const { selection } = state;
-
-          // 标题不显示工具栏
-          if (editor.isActive("heading", { level: 1 })) {
-            return false;
-          }
-
-          if (
-            editor.isActive("image") ||
-            editor.isActive("table") ||
-            editor.isActive("link") ||
-            editor.isActive("codeBlock") ||
-            editor.isActive("inlineMath") ||
-            "node" in selection
-          ) {
-            return false;
-          }
-
-          return !selection.empty;
+        className="z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-opacity duration-200 dark:border-white/15 dark:bg-[#2f3437]"
+        style={{
+          opacity: shouldHide ? 0 : 1,
+          pointerEvents: shouldHide ? "none" : "auto",
         }}
-        {...props}
       >
         {aiEnabled && (
           <>
@@ -132,7 +161,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
                           initialAction: "polish",
                           overrideRect,
                         },
-                      }),
+                      })
                     );
                   }}
                   aria-label="AI 润色"
@@ -141,34 +170,40 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
                   <LucideIcons.Sparkles className="h-[15px] w-[15px]" />
                 </Button>
               </TooltipTrigger>
-              <BubbleMenuTooltip label="AI 润色" />
+              <ToolbarTooltip label="AI 润色" />
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-5 opacity-70 mx-0.5" />
+            <Separator
+              orientation="vertical"
+              className="h-5 opacity-70 mx-0.5"
+            />
           </>
         )}
+
         <Tooltip {...bindTooltip("bold")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("bold")}
-              onPressedChange={() => editor.chain().focus().toggleBold().run()}
+              pressed={isBold}
+              onPressedChange={() =>
+                editor.toggleStyles({ bold: true })
+              }
               aria-label="粗体"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
             >
               <LucideIcons.Bold className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="粗体" shortcut="Mod+B" />
+          <ToolbarTooltip label="粗体" shortcut="Mod+B" />
         </Tooltip>
 
         <Tooltip {...bindTooltip("italic")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("italic")}
+              pressed={isItalic}
               onPressedChange={() =>
-                editor.chain().focus().toggleItalic().run()
+                editor.toggleStyles({ italic: true })
               }
               aria-label="斜体"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
@@ -176,16 +211,16 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
               <LucideIcons.Italic className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="斜体" shortcut="Mod+I" />
+          <ToolbarTooltip label="斜体" shortcut="Mod+I" />
         </Tooltip>
 
         <Tooltip {...bindTooltip("strike")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("strike")}
+              pressed={isStrike}
               onPressedChange={() =>
-                editor.chain().focus().toggleStrike().run()
+                editor.toggleStyles({ strike: true })
               }
               aria-label="删除线"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
@@ -193,18 +228,18 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
               <LucideIcons.Strikethrough className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="删除线" shortcut="Mod+Shift+S" />
+          <ToolbarTooltip label="删除线" shortcut="Mod+Shift+S" />
         </Tooltip>
 
-        <ColorPicker editor={editor} />
+        <FormattingToolbarColorPicker />
 
         <Tooltip {...bindTooltip("underline")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("underline")}
+              pressed={isUnderline}
               onPressedChange={() =>
-                editor.chain().focus().toggleUnderline().run()
+                editor.toggleStyles({ underline: true })
               }
               aria-label="下划线"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
@@ -212,7 +247,7 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
               <LucideIcons.Underline className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="下划线" shortcut="Mod+U" />
+          <ToolbarTooltip label="下划线" shortcut="Mod+U" />
         </Tooltip>
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
@@ -221,15 +256,43 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive("code")}
-              onPressedChange={() => editor.chain().focus().toggleCode().run()}
+              pressed={isCode}
+              onPressedChange={() =>
+                editor.toggleStyles({ code: true })
+              }
               aria-label="行内代码"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
             >
               <LucideIcons.Code className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="行内代码" shortcut="Mod+E" />
+          <ToolbarTooltip label="行内代码" shortcut="Mod+E" />
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-5 opacity-70" />
+
+        <Tooltip {...bindTooltip("link")}>
+          <TooltipTrigger asChild>
+            <Toggle
+              size="sm"
+              pressed={isLinkActive}
+              onPressedChange={() => {
+                if (isLinkActive) {
+                  editor.deleteLink();
+                } else {
+                  const url = window.prompt("输入链接地址:");
+                  if (url) {
+                    editor.createLink(url);
+                  }
+                }
+              }}
+              aria-label="链接"
+              className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
+            >
+              <LucideIcons.Link className="h-[15px] w-[15px]" />
+            </Toggle>
+          </TooltipTrigger>
+          <ToolbarTooltip label={isLinkActive ? "移除链接" : "添加链接"} />
         </Tooltip>
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
@@ -238,51 +301,45 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive({ textAlign: "left" })}
-              onPressedChange={() =>
-                editor.chain().focus().setTextAlign("left").run()
-              }
+              pressed={textAlignment === "left"}
+              onPressedChange={() => setTextAlignment("left")}
               aria-label="左对齐"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
             >
               <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="左对齐" shortcut="Mod+Shift+L" />
+          <ToolbarTooltip label="左对齐" shortcut="Mod+Shift+L" />
         </Tooltip>
 
         <Tooltip {...bindTooltip("align-center")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive({ textAlign: "center" })}
-              onPressedChange={() =>
-                editor.chain().focus().setTextAlign("center").run()
-              }
+              pressed={textAlignment === "center"}
+              onPressedChange={() => setTextAlignment("center")}
               aria-label="居中对齐"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
             >
               <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="居中对齐" shortcut="Mod+Shift+E" />
+          <ToolbarTooltip label="居中对齐" shortcut="Mod+Shift+E" />
         </Tooltip>
 
         <Tooltip {...bindTooltip("align-right")}>
           <TooltipTrigger asChild>
             <Toggle
               size="sm"
-              pressed={editor.isActive({ textAlign: "right" })}
-              onPressedChange={() =>
-                editor.chain().focus().setTextAlign("right").run()
-              }
+              pressed={textAlignment === "right"}
+              onPressedChange={() => setTextAlignment("right")}
               aria-label="右对齐"
               className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
             >
               <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
             </Toggle>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="右对齐" shortcut="Mod+Shift+R" />
+          <ToolbarTooltip label="右对齐" shortcut="Mod+Shift+R" />
         </Tooltip>
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
@@ -292,18 +349,16 @@ export function EditorBubbleMenu({ editor, ...props }: EditorBubbleMenuProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                editor.chain().focus().unsetAllMarks().unsetTextAlign().run()
-              }
+              onClick={clearFormatting}
               aria-label="清除格式"
               className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
             >
               <LucideIcons.Eraser className="h-[15px] w-[15px]" />
             </Button>
           </TooltipTrigger>
-          <BubbleMenuTooltip label="清除格式" />
+          <ToolbarTooltip label="清除格式" />
         </Tooltip>
-      </BubbleMenu>
+      </div>
     </TooltipProvider>
   );
 }

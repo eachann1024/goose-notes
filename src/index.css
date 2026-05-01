@@ -180,57 +180,57 @@
   }
 
   /* 全局隐藏滚动条（编辑器和页面滚动容器除外） */
-  *:not(.ProseMirror):not(.page-scroll-container)::-webkit-scrollbar {
+  *:not(.bn-editor):not(.page-scroll-container)::-webkit-scrollbar {
     display: none;
   }
-  *:not(.ProseMirror):not(.page-scroll-container) {
+  *:not(.bn-editor):not(.page-scroll-container) {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 
   /* 编辑器和页面内容区保留滚动条 */
-  .ProseMirror::-webkit-scrollbar,
+  .bn-editor::-webkit-scrollbar,
   .page-scroll-container::-webkit-scrollbar {
     display: block !important;
     width: 6px;
   }
-  .ProseMirror::-webkit-scrollbar-track,
+  .bn-editor::-webkit-scrollbar-track,
   .page-scroll-container::-webkit-scrollbar-track {
     background: transparent;
   }
-  .ProseMirror::-webkit-scrollbar-thumb,
+  .bn-editor::-webkit-scrollbar-thumb,
   .page-scroll-container::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0);
     border-radius: 10px;
     transition: background 0.3s ease;
   }
-  .ProseMirror:hover::-webkit-scrollbar-thumb,
+  .bn-editor:hover::-webkit-scrollbar-thumb,
   .page-scroll-container:hover::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.15);
   }
-  .ProseMirror::-webkit-scrollbar-thumb:hover,
+  .bn-editor::-webkit-scrollbar-thumb:hover,
   .page-scroll-container::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.25) !important;
   }
-  .dark .ProseMirror:hover::-webkit-scrollbar-thumb,
+  .dark .bn-editor:hover::-webkit-scrollbar-thumb,
   .dark .page-scroll-container:hover::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
   }
-  .dark .ProseMirror::-webkit-scrollbar-thumb:hover,
+  .dark .bn-editor::-webkit-scrollbar-thumb:hover,
   .dark .page-scroll-container::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.25) !important;
   }
-  .ProseMirror,
+  .bn-editor,
   .page-scroll-container {
     -ms-overflow-style: auto;
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
-  .ProseMirror:hover,
+  .bn-editor:hover,
   .page-scroll-container:hover {
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
   }
-  .dark .ProseMirror:hover,
+  .dark .bn-editor:hover,
   .dark .page-scroll-container:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }

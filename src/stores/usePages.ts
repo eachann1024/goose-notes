@@ -14,6 +14,11 @@ import {
   ONBOARDING_CHILD_PAGE_CONTENT,
   ONBOARDING_SECOND_CHILD_CONTENT,
 } from "@/lib/onboarding";
+import {
+  clonePageContent as cloneBlockNotePageContent,
+  createEmptyBlockNoteContent,
+  normalizePageContent,
+} from "@/lib/blocknote-content";
 import type { PersistedLocalPageMetaDoc } from "@/lib/storage/pageRepository";
 import {
   loadPagesFromStorage,
@@ -423,54 +428,24 @@ const flushAllPendingLocalSavesInternal = async (getState: () => PagesState) => 
   );
 };
 
-const initialContent: JSONContent = {
-  type: "doc",
-  content: [
-    {
-      type: "heading",
-      attrs: { level: 1 },
-    },
-    {
-      type: "paragraph",
-    },
-  ],
-};
+const initialContent: JSONContent = createEmptyBlockNoteContent();
 
 function createDefaultPageContent(title = ""): JSONContent {
-  return {
-    type: "doc",
-    content: [
-      {
-        type: "heading",
-        attrs: { level: 1 },
-        ...(title
-          ? {
-              content: [{ type: "text", text: title }],
-            }
-          : {}),
-      },
-      {
-        type: "paragraph",
-      },
-    ],
-  };
+  return createEmptyBlockNoteContent(title);
 }
 
 function clonePageContent(content?: JSONContent | null) {
   if (!content) {
-    return cloneJSONContent(initialContent);
+    return cloneBlockNotePageContent(initialContent);
   }
-  return cloneJSONContent(content);
+  return cloneBlockNotePageContent(normalizePageContent(content));
 }
 
 function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent {
-  const baseBlocks = base.content ? [...base.content] : [];
-  const additionBlocks = addition.content ? [...addition.content] : [];
+  const baseBlocks = normalizePageContent(base);
+  const additionBlocks = normalizePageContent(addition);
   if (!additionBlocks.length) {
-    return {
-      type: "doc",
-      content: baseBlocks,
-    };
+    return baseBlocks;
   }
 
   const lastBlock = baseBlocks.at(-1);
@@ -480,14 +455,11 @@ function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent
     lastBlock?.type !== "paragraph" &&
     firstAdditionBlock?.type !== "paragraph";
 
-  return {
-    type: "doc",
-    content: [
-      ...baseBlocks,
-      ...(needsSpacer ? [{ type: "paragraph" }] : []),
-      ...additionBlocks,
-    ],
-  };
+  return [
+    ...baseBlocks,
+    ...(needsSpacer ? ([{ type: "paragraph", content: "" }] as JSONContent) : []),
+    ...additionBlocks,
+  ];
 }
 
 export const flushEditorContent = (immediate = false) => {

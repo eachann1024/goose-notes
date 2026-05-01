@@ -1,5 +1,5 @@
-import type { JSONContent } from "@tiptap/react";
-export type { JSONContent };
+import type { PageContent } from "@/lib/blocknote-content";
+export type JSONContent = PageContent | any;
 
 export type SyncProvider = "local" | "jianguoyun" | "icloud";
 export type FontFamily = "default" | "serif" | "mono";

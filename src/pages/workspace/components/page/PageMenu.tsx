@@ -20,16 +20,12 @@ export function PageMenu() {
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
 
       const content = result.content;
-      content.content = [
-        {
-          type: "heading",
-          attrs: { level: 1 },
-          content: [{ type: "text", text: result.title }],
-        },
-        ...(content.content || []),
-      ];
+      const blocks = [
+        { type: "heading", props: { level: 1 }, content: result.title },
+        ...content,
+      ] as any[];
 
-      updatePage(newId, { content });
+      updatePage(newId, { content: blocks });
 
       setActivePage(null);
       requestAnimationFrame(() => {

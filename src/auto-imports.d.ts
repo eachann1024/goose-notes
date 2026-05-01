@@ -151,6 +151,7 @@ declare global {
   const cacheSignal: typeof import('react').cacheSignal
   const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
   const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
+  const clonePageContent: typeof import('./lib/blocknote-content').clonePageContent
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const commitAiWritePlan: typeof import('./lib/ai-write').commitAiWritePlan
@@ -159,6 +160,7 @@ declare global {
   const countWords: typeof import('./lib/content-text-extractor').countWords
   const createAiChatOnlyTarget: typeof import('./lib/ai-write').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
+  const createEmptyBlockNoteContent: typeof import('./lib/blocknote-content').createEmptyBlockNoteContent
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write').createStickyTargetFromResolvedTarget
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
@@ -167,6 +169,8 @@ declare global {
   const exportToHTML: typeof import('./lib/export').exportToHTML
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
+  const extractBlockNoteTitle: typeof import('./lib/blocknote-content').extractBlockNoteTitle
+  const extractPlainText: typeof import('./lib/blocknote-content').extractPlainText
   const extractStructureSummary: typeof import('./lib/content-text-extractor').extractStructureSummary
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
@@ -187,6 +191,7 @@ declare global {
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableAIModelOptions: typeof import('./lib/ai-provider').getAvailableAIModelOptions
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
+  const getContentSignature: typeof import('./lib/blocknote-content').getContentSignature
   const getCustomAIApiKey: typeof import('./lib/ai-provider').getCustomAIApiKey
   const getCustomAIBaseURL: typeof import('./lib/ai-provider').getCustomAIBaseURL
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
@@ -213,6 +218,7 @@ declare global {
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
   const initAnalytics: typeof import('./lib/analytics').initAnalytics
   const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
+  const isBlockNoteContent: typeof import('./lib/blocknote-content').isBlockNoteContent
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -221,6 +227,7 @@ declare global {
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider').mapUToolsAiModelsToOptions
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
+  const normalizePageContent: typeof import('./lib/blocknote-content').normalizePageContent
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
@@ -321,6 +328,9 @@ declare global {
   // @ts-ignore
   export type { BlockBgColorValue } from './lib/blockColorPresets'
   import('./lib/blockColorPresets')
+  // @ts-ignore
+  export type { BlockNoteContent, LegacyPageContent, PageContent } from './lib/blocknote-content'
+  import('./lib/blocknote-content')
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')

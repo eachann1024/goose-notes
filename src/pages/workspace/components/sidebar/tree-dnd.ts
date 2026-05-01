@@ -138,7 +138,7 @@ export function buildVisibleTree({
 
 function getPageTitle(page: Page): string {
   const nodes = Array.isArray(page.content?.content) ? page.content.content : [];
-  const headingNode = nodes.find((node) => {
+  const headingNode = nodes.find((node: any) => {
     const attrs = (node as { attrs?: { level?: number } }).attrs;
     return node.type === "heading" && attrs?.level === 1;
   });

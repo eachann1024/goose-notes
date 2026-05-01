@@ -41,7 +41,17 @@ export interface LegacyPersistedPagesState {
 
 const readLegacyRaw = (key: string): string | null => {
   const doc = UToolsAdapter.db.get<string>(key);
-  return typeof doc?.data === "string" ? doc.data : null;
+  if (typeof doc?.data === "string") return doc.data;
+
+  if (!UToolsAdapter.isUTools && typeof window !== "undefined") {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 };
 
 const parseLegacyEnvelope = <T>(raw: string | null): LegacyPersistEnvelope<T> | null => {
@@ -62,10 +72,19 @@ const writeLegacyMigrationMark = () => {
 
 const removeLegacyDoc = (id: string): void => {
   const current = UToolsAdapter.db.get(id);
-  if (!current) return;
-  const result = UToolsAdapter.db.remove(id);
-  if (result.ok === false) {
-    console.error("[storageMigration] remove legacy doc failed", id, result.error);
+  if (current) {
+    const result = UToolsAdapter.db.remove(id);
+    if (result.ok === false) {
+      console.error("[storageMigration] remove legacy doc failed", id, result.error);
+    }
+  }
+
+  if (!UToolsAdapter.isUTools && typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem(id);
+    } catch {
+      // ignore local fallback cleanup errors
+    }
   }
 };
 

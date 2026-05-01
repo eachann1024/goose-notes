@@ -253,7 +253,7 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
   const freeformBlocks: string[] = [];
   const tokens: AiComposerToken[] = [];
 
-  content.content.forEach((block) => {
+  content.content.forEach((block: any) => {
     if (block.type !== "paragraph") {
       return;
     }

@@ -1,16 +1,14 @@
-import { Editor } from "@tiptap/react";
-import * as LucideIcons from "lucide-react";
+import { useBlockNoteEditor, useActiveStyles } from "@blocknote/react";
 import { useEffect, useRef, useState } from "react";
+import * as LucideIcons from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Portal } from "@/components/ui/portal";
 import { cn } from "@/lib/utils";
-
-interface ColorPickerProps {
-  editor: Editor;
-}
 
 interface PositionState {
   top: number;
@@ -19,7 +17,7 @@ interface PositionState {
 }
 
 const TEXT_COLORS = [
-  { name: "默认", color: "inherit" },
+  { name: "默认", color: "default" },
   { name: "灰色", color: "#787774" },
   { name: "褐色", color: "#9F6B53" },
   { name: "橙色", color: "#D9730D" },
@@ -32,7 +30,7 @@ const TEXT_COLORS = [
 ];
 
 const HIGHLIGHT_COLORS = [
-  { name: "无背景", color: "transparent" },
+  { name: "无背景", color: "default" },
   { name: "灰色背景", color: "#F1F1EF" },
   { name: "褐色背景", color: "#F4EEEE" },
   { name: "橙色背景", color: "#FBECDD" },
@@ -44,22 +42,24 @@ const HIGHLIGHT_COLORS = [
   { name: "红色背景", color: "#FDEBEC" },
 ];
 
-export function ColorPicker({ editor }: ColorPickerProps) {
+export function FormattingToolbarColorPicker() {
+  const editor = useBlockNoteEditor();
+  const activeStyles = useActiveStyles();
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [position, setPosition] = useState<PositionState>({ top: 0, left: 0, showAbove: true });
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const closeAnimTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [position, setPosition] = useState<PositionState>({
+    top: 0,
+    left: 0,
+    showAbove: true,
+  });
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeAnimTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-      if (closeAnimTimeoutRef.current) {
-        clearTimeout(closeAnimTimeoutRef.current);
-      }
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
     };
   }, []);
 
@@ -72,7 +72,6 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       const panelHeight = 280;
       const spaceAbove = rect.top;
       const spaceBelow = window.innerHeight - rect.bottom;
-
       const showAbove = spaceAbove >= panelHeight || spaceAbove > spaceBelow;
 
       setPosition({
@@ -97,18 +96,26 @@ export function ColorPicker({ editor }: ColorPickerProps) {
       setIsMounted(true);
       return;
     }
-
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
     closeAnimTimeoutRef.current = setTimeout(() => {
       setIsMounted(false);
     }, 180);
   }, [isOpen]);
 
+  const currentTextColor = activeStyles.textColor;
+  const currentBgColor = activeStyles.backgroundColor;
+
+  const isTextColorActive = currentTextColor && currentTextColor !== "default";
+  const isBgColorActive =
+    currentBgColor && currentBgColor !== "default";
+
   const panelContent = isMounted ? (
     <div
       className={cn(
         "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
-        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+        isOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
       )}
       style={{
         top: position.top,
@@ -137,21 +144,25 @@ export function ColorPicker({ editor }: ColorPickerProps) {
               size="icon"
               className={cn(
                 "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
-                editor.isActive("textStyle", { color: item.color }) &&
-                  "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]",
+                isTextColorActive && currentTextColor === item.color
+                  ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
+                  : ""
               )}
               onClick={() => {
-                if (item.color === "inherit") {
-                  editor.chain().focus().unsetColor().run();
+                if (item.color === "default") {
+                  editor.removeStyles({ textColor: true } as any);
                 } else {
-                  editor.chain().focus().setColor(item.color).run();
+                  editor.addStyles({ textColor: item.color });
                 }
               }}
             >
               <div
                 className="font-serif text-[34px] leading-none scale-[0.56]"
                 style={{
-                  color: item.color === "inherit" ? undefined : item.color,
+                  color:
+                    item.color === "default"
+                      ? undefined
+                      : item.color,
                 }}
               >
                 A
@@ -174,24 +185,24 @@ export function ColorPicker({ editor }: ColorPickerProps) {
               size="icon"
               className={cn(
                 "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
-                editor.isActive("highlight", { color: item.color }) &&
-                  "border-primary ring-1 ring-primary/25",
+                isBgColorActive && currentBgColor === item.color
+                  ? "border-primary ring-1 ring-primary/25"
+                  : ""
               )}
               onClick={() => {
-                if (item.color === "transparent") {
-                  editor.chain().focus().unsetHighlight().run();
+                if (item.color === "default") {
+                  editor.removeStyles({ backgroundColor: true } as any);
                 } else {
-                  editor
-                    .chain()
-                    .focus()
-                    .setHighlight({ color: item.color })
-                    .run();
+                  editor.addStyles({ backgroundColor: item.color });
                 }
               }}
             >
               <div
                 className="h-5 w-5 rounded-[4px] border border-border/20"
-                style={{ backgroundColor: item.color }}
+                style={{
+                  backgroundColor:
+                    item.color === "default" ? "transparent" : item.color,
+                }}
               />
             </Button>
           ))}
@@ -218,9 +229,7 @@ export function ColorPicker({ editor }: ColorPickerProps) {
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={8}>
-          <div className="text-[12px] font-medium leading-none">
-            颜色
-          </div>
+          <div className="text-[12px] font-medium leading-none">颜色</div>
         </TooltipContent>
       </Tooltip>
       <Portal>{panelContent}</Portal>

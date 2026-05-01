@@ -110,7 +110,7 @@ const setupEditorMutationTracker = () => {
     if (!(target instanceof Node)) return;
     const baseElement =
       target instanceof Element ? target : target.parentElement;
-    if (!baseElement?.closest(".ProseMirror")) return;
+    if (!baseElement?.closest(".bn-editor")) return;
 
     const pagesState = usePages.getState();
     const activePageId = pagesState.activePageId;
