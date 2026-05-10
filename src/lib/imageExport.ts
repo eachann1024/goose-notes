@@ -566,16 +566,21 @@ function extractCellTextForHtml(cell: any): string {
 
 // ── Core Capture Logic ─────────────────────────────────────────
 async function captureElementToPng(element: HTMLElement, filename: string) {
-  await Promise.all([
-    document.fonts.ready,
-    waitForImages(element),
-  ]);
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  const { toast } = await import("sonner");
+  const loadingToast = toast.loading("正在生成图片...");
 
   try {
+    await Promise.all([
+      document.fonts.ready,
+      waitForImages(element),
+    ]);
+
+    // Yield to browser so the loading toast renders
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+
     const dataUrl = await toPng(element, {
       pixelRatio: 2,
-      quality: 0.95,
+      quality: 0.92,
       cacheBust: true,
       skipFonts: false,
       imagePlaceholder:
@@ -587,12 +592,14 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
 
     const { saveBlobAndReveal } = await import("./export");
     const saved = await saveBlobAndReveal(blob, filename);
-    if (!saved) {
-      const { toast } = await import("sonner");
+    toast.dismiss(loadingToast);
+    if (saved) {
+      toast.success("图片已保存");
+    } else {
       toast.error("导出失败，请确保在 uTools 环境中运行");
     }
   } catch (error) {
-    const { toast } = await import("sonner");
+    toast.dismiss(loadingToast);
     toast.error("导出图片失败，请重试");
     console.error("[imageExport] capture failed:", error);
   }
@@ -607,7 +614,7 @@ function waitForImages(container: HTMLElement): Promise<void> {
       if (img.complete) { resolve(); return; }
       img.onload = () => resolve();
       img.onerror = () => resolve();
-      setTimeout(() => resolve(), 2000);
+      setTimeout(() => resolve(), 500);
     });
   });
 
