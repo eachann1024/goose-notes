@@ -25,6 +25,69 @@ export function isBlockNoteContent(content: unknown): content is BlockNoteConten
   return Array.isArray(content);
 }
 
+const VALID_BLOCK_TYPES = new Set([
+  "paragraph",
+  "heading",
+  "bulletListItem",
+  "numberedListItem",
+  "checkListItem",
+  "table",
+  "image",
+  "video",
+  "file",
+  "audio",
+  "codeBlock",
+  "quote",
+  "alert",
+  "link",
+  "embed",
+]);
+
+function simpleExtractText(block: any): string {
+  if (!block || typeof block !== "object") return "";
+  if (typeof block.content === "string") return block.content;
+  if (Array.isArray(block.content)) {
+    return block.content
+      .map((inline: any) =>
+        typeof inline === "string" ? inline : inline?.text ?? "",
+      )
+      .join("");
+  }
+  if (block.content?.rows) {
+    const rows = block.content.rows as any[];
+    return rows
+      .flatMap((row) =>
+        (row.cells ?? []).map((cell: any) =>
+          typeof cell === "string" ? cell : simpleExtractText(cell),
+        ),
+      )
+      .join(" ");
+  }
+  return "";
+}
+
+function sanitizeBlock(block: any): PartialBlock | null {
+  if (!block || typeof block !== "object") return null;
+
+  const type = block.type;
+  if (!type || !VALID_BLOCK_TYPES.has(type)) {
+    const text = simpleExtractText(block).trim();
+    if (text) return { type: "paragraph", content: text };
+    return null;
+  }
+
+  const children = Array.isArray(block.children)
+    ? (block.children.map(sanitizeBlock).filter(Boolean) as PartialBlock[])
+    : undefined;
+
+  const sanitized: PartialBlock = { type };
+  if (block.props) sanitized.props = block.props;
+  if (block.content !== undefined) sanitized.content = block.content;
+  if (children?.length) sanitized.children = children;
+
+  return sanitized;
+}
+
 function textFromLegacy(node: LegacyPageContent | undefined): string {
   if (!node) return "";
   if (typeof node.text === "string") return node.text;
@@ -125,7 +188,10 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
 
 export function normalizePageContent(content: PageContent | null | undefined): BlockNoteContent {
   if (!content) return createEmptyBlockNoteContent();
-  if (isBlockNoteContent(content)) return content.length ? content : createEmptyBlockNoteContent();
+  if (isBlockNoteContent(content)) {
+    const sanitized = content.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
+    return sanitized.length ? sanitized : createEmptyBlockNoteContent();
+  }
   const blocks = childrenFromLegacy(content.content);
   return blocks.length ? blocks : createEmptyBlockNoteContent();
 }
