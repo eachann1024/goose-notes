@@ -572,18 +572,30 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
   ]);
   await new Promise((resolve) => setTimeout(resolve, 300));
 
-  const dataUrl = await toPng(element, {
-    pixelRatio: 2,
-    quality: 0.95,
-    cacheBust: true,
-    skipFonts: false,
-  });
+  try {
+    const dataUrl = await toPng(element, {
+      pixelRatio: 2,
+      quality: 0.95,
+      cacheBust: true,
+      skipFonts: false,
+      imagePlaceholder:
+        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOWNhM2FmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lr4bnoIHnvJbnsbvlkI7lj5bor4E8L3RleHQ+PC9zdmc+",
+    });
 
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
 
-  const { saveBlobAndReveal } = await import("./export");
-  await saveBlobAndReveal(blob, filename);
+    const { saveBlobAndReveal } = await import("./export");
+    const saved = await saveBlobAndReveal(blob, filename);
+    if (!saved) {
+      const { toast } = await import("sonner");
+      toast.error("导出失败，请确保在 uTools 环境中运行");
+    }
+  } catch (error) {
+    const { toast } = await import("sonner");
+    toast.error("导出图片失败，请重试");
+    console.error("[imageExport] capture failed:", error);
+  }
 }
 
 function waitForImages(container: HTMLElement): Promise<void> {

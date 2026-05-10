@@ -112,30 +112,34 @@ export function PageMenu() {
               <LucideIcons.Download className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
               <span>导出</span>
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="min-w-[160px]">
+              <DropdownMenuItem
+                className="text-xs relative overflow-hidden group"
+                onSelect={() => exportPageToImage(page)}
+              >
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-rose-50/80 to-amber-50/80 dark:from-rose-950/30 dark:to-amber-950/30 pointer-events-none" />
+                <LucideIcons.Image className="relative mr-2 h-3.5 w-3.5 text-rose-500" />
+                <span className="relative font-medium">图片</span>
+                <span className="relative ml-auto text-[10px] text-rose-400/70 font-normal">卡片</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1 bg-border/50" />
               <DropdownMenuItem
                 className="text-xs"
                 onSelect={() => exportToJSON(page)}
               >
-                <LucideIcons.FileJson className="mr-2 h-3.5 w-3.5" /> JSON
+                <LucideIcons.FileJson className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> JSON
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-xs"
                 onSelect={() => exportToMarkdown(page)}
               >
-                <LucideIcons.FileCode className="mr-2 h-3.5 w-3.5" /> Markdown
+                <LucideIcons.FileCode className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Markdown
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-xs"
                 onSelect={() => exportToHTML(page)}
               >
-                <LucideIcons.FileType className="mr-2 h-3.5 w-3.5" /> HTML
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-xs"
-                onSelect={() => exportPageToImage(page)}
-              >
-                <LucideIcons.Image className="mr-2 h-3.5 w-3.5" /> 图片
+                <LucideIcons.FileType className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> HTML
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
