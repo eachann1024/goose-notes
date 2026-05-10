@@ -17,6 +17,7 @@ import {
   clonePageContent,
   getContentSignature,
   normalizePageContent,
+  extractBlockNoteTitle,
   type BlockNoteContent,
 } from "@/lib/blocknote-content";
 import {
@@ -25,6 +26,11 @@ import {
 } from "@/pages/workspace/components/command/blocknoteSlashItems";
 import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
 import { EditorFormattingToolbar } from "./EditorFormattingToolbar";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+} from "@/components/ui/context-menu";
 
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;
@@ -188,61 +194,87 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     }
   }, [theme]);
 
+  const [selectedText, setSelectedText] = useState("");
+
+  const handleContextMenuOpen = () => {
+    try {
+      const text = editor.getSelectedText();
+      setSelectedText(text || "");
+    } catch {
+      setSelectedText("");
+    }
+  };
+
   if (!page) return null;
 
   return (
-    <div
-      ref={editorContainerRef}
-      data-font-family={page.fontFamily ?? "default"}
-      className={cn(
-        "workspace-editor-surface mx-auto min-h-full w-full px-6 pb-24 pt-2",
-        isEditorFullWidth ? "max-w-none" : "max-w-4xl",
-      )}
-    >
-      <BlockNoteView
-        editor={editor}
-        editable={editable}
-        theme={effectiveTheme}
-        slashMenu={false}
-        sideMenu={false}
-        onChange={() => {
-          const safePageId = pageIdForUpdateRef.current;
-          if (!safePageId) return;
-          const nextContent = clonePageContent(editor.document as BlockNoteContent);
-          syncedContentSignatureRef.current = getContentSignature(nextContent);
-          debouncedUpdate(safePageId, nextContent);
-        }}
+    <ContextMenu onOpenChange={(open) => { if (open) handleContextMenuOpen(); }}>
+      <div
+        ref={editorContainerRef}
+        data-font-family={page.fontFamily ?? "default"}
+        className={cn(
+          "workspace-editor-surface mx-auto min-h-full w-full px-6 pb-24 pt-2",
+          isEditorFullWidth ? "max-w-none" : "max-w-4xl",
+        )}
       >
-        <FormattingToolbarController
-          formattingToolbar={EditorFormattingToolbar}
-        />
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={getSlashItems}
-          shouldOpen={(event) => {
-            return !event.selection.$from.parent.type.isInGroup("tableContent");
+        <BlockNoteView
+          editor={editor}
+          editable={editable}
+          theme={effectiveTheme}
+          slashMenu={false}
+          sideMenu={false}
+          onChange={() => {
+            const safePageId = pageIdForUpdateRef.current;
+            if (!safePageId) return;
+            const nextContent = clonePageContent(editor.document as BlockNoteContent);
+            syncedContentSignatureRef.current = getContentSignature(nextContent);
+            debouncedUpdate(safePageId, nextContent);
           }}
-          suggestionMenuComponent={CustomSlashMenu}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
-        <SuggestionMenuController
-          triggerCharacter="、"
-          getItems={getSlashItems}
-          shouldOpen={(event) => {
-            return !event.selection.$from.parent.type.isInGroup("tableContent");
-          }}
-          suggestionMenuComponent={CustomSlashMenu}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
-      </BlockNoteView>
-    </div>
+        >
+          <FormattingToolbarController
+            formattingToolbar={EditorFormattingToolbar}
+          />
+          <SuggestionMenuController
+            triggerCharacter="/"
+            getItems={getSlashItems}
+            shouldOpen={(event) => {
+              return !event.selection.$from.parent.type.isInGroup("tableContent");
+            }}
+            suggestionMenuComponent={CustomSlashMenu}
+            onItemClick={(item) => {
+              if (item && "onItemClick" in item) {
+                (item as any).onItemClick();
+              }
+            }}
+          />
+          <SuggestionMenuController
+            triggerCharacter="、"
+            getItems={getSlashItems}
+            shouldOpen={(event) => {
+              return !event.selection.$from.parent.type.isInGroup("tableContent");
+            }}
+            suggestionMenuComponent={CustomSlashMenu}
+            onItemClick={(item) => {
+              if (item && "onItemClick" in item) {
+                (item as any).onItemClick();
+              }
+            }}
+          />
+        </BlockNoteView>
+      </div>
+      <ContextMenuContent className="w-[200px]">
+        {selectedText.trim() && (
+          <ContextMenuItem
+            onSelect={() => {
+              const title = extractBlockNoteTitle(page?.content) || "选中内容";
+              exportSelectionToImage(selectedText, title);
+            }}
+          >
+            <LucideIcons.Image className="mr-2 h-4 w-4" />
+            分享选中内容为图片
+          </ContextMenuItem>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });

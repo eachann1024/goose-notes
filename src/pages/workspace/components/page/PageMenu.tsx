@@ -131,6 +131,12 @@ export function PageMenu() {
               >
                 <LucideIcons.FileType className="mr-2 h-3.5 w-3.5" /> HTML
               </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs"
+                onSelect={() => exportPageToImage(page)}
+              >
+                <LucideIcons.Image className="mr-2 h-3.5 w-3.5" /> 图片
+              </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuGroup>
