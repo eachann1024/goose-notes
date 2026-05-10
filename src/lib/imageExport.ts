@@ -565,9 +565,33 @@ function extractCellTextForHtml(cell: any): string {
 }
 
 // ── Core Capture Logic ─────────────────────────────────────────
+function createLoadingOverlay(): HTMLElement {
+  const overlay = document.createElement("div");
+  overlay.id = "goose-image-export-loading";
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.35); backdrop-filter: blur(2px);
+    transition: opacity 0.2s ease;
+  `;
+  overlay.innerHTML = `
+    <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:goose-spin 0.8s linear infinite;"></div>
+    <div style="margin-top:16px;color:#fff;font-size:14px;font-weight:500;letter-spacing:0.02em;">正在生成图片</div>
+    <style>@keyframes goose-spin{to{transform:rotate(360deg)}}</style>
+  `;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function removeLoadingOverlay(): void {
+  const overlay = document.getElementById("goose-image-export-loading");
+  if (!overlay) return;
+  overlay.style.opacity = "0";
+  setTimeout(() => overlay.remove(), 200);
+}
+
 async function captureElementToPng(element: HTMLElement, filename: string) {
-  const { toast } = await import("sonner");
-  const loadingToast = toast.loading("正在生成图片...");
+  const overlay = createLoadingOverlay();
 
   try {
     await Promise.all([
@@ -575,7 +599,7 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
       waitForImages(element),
     ]);
 
-    // Yield to browser so the loading toast renders
+    // Yield to browser so the overlay paints
     await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
 
     const dataUrl = await toPng(element, {
@@ -592,16 +616,16 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
 
     const { saveBlobAndReveal } = await import("./export");
     const saved = await saveBlobAndReveal(blob, filename);
-    toast.dismiss(loadingToast);
     if (saved) {
+      const { toast } = await import("sonner");
       toast.success("图片已保存");
-    } else {
-      toast.error("导出失败，请确保在 uTools 环境中运行");
     }
   } catch (error) {
-    toast.dismiss(loadingToast);
+    const { toast } = await import("sonner");
     toast.error("导出图片失败，请重试");
     console.error("[imageExport] capture failed:", error);
+  } finally {
+    removeLoadingOverlay();
   }
 }
 
