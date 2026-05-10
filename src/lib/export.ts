@@ -386,7 +386,7 @@ async function saveBlobViaUTools(
   return true;
 }
 
-async function saveBlobAndReveal(
+export async function saveBlobAndReveal(
   blob: Blob,
   filename: string,
 ): Promise<boolean> {

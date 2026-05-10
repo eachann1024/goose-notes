@@ -93,9 +93,9 @@
 }
 
 .workspace-shell .workspace-main-sheet {
-  background: var(--workspace-sidebar-surface);
+  background: var(--workspace-main-surface);
   border: 0;
-  border-radius: 18px;
+  border-radius: 0;
   box-shadow: none;
   margin-left: 0;
 }
@@ -103,8 +103,8 @@
 .workspace-shell .workspace-editor-surface {
   background: var(--workspace-main-surface);
   border: 0;
-  border-radius: 16px;
-  box-shadow: var(--workspace-main-shadow);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .workspace-shell .page-scroll-container {
@@ -242,11 +242,11 @@
 
 @media (max-width: 768px) {
   .workspace-shell .workspace-main-sheet {
-    border-radius: 14px;
+    border-radius: 0;
     margin-left: 0;
   }
 
   .workspace-shell .workspace-editor-surface {
-    border-radius: 12px;
+    border-radius: 0;
   }
 }

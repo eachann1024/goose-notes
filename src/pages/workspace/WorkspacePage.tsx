@@ -1,6 +1,7 @@
 import "./styles/index.css";
 import { CommandPalette } from "./components/command/CommandPalette";
-import { Editor } from "./components/editor/Editor";
+import { Editor, type EditorRef } from "./components/editor/Editor";
+
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
@@ -114,6 +115,7 @@ export function WorkspacePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isAiPageOpen, setIsAiPageOpen] = useState(false);
   const dragCounter = useRef(0);
+  const editorRef = useRef<EditorRef>(null);
 
   const isExternalFileDrag = (e: React.DragEvent) =>
     Array.from(e.dataTransfer.types || []).includes("Files");
@@ -467,6 +469,9 @@ export function WorkspacePage() {
             className="workspace-sidebar-pane"
             disableResize={false}
             selectedPageId={isAiPageOpen ? null : activePageId}
+            editorRef={editorRef}
+            scrollContainerRef={scrollContainerRef}
+            isAiPageOpen={isAiPageOpen}
           />
 
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
@@ -529,6 +534,7 @@ export function WorkspacePage() {
                         .removeDeletedPage(deletedPageId);
                     })();
                   }}
+
                 />
 
                 <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
@@ -645,6 +651,7 @@ export function WorkspacePage() {
                             </div>
 
                             <Editor
+                              ref={editorRef}
                               editable={!page.isLocked && !page.trashedAt}
                             />
                           </div>
@@ -653,6 +660,8 @@ export function WorkspacePage() {
                     </div>
                   )}
                 </div>
+
+
               </>
             ) : (
               <PageEmptyState />
@@ -663,3 +672,5 @@ export function WorkspacePage() {
     </>
   );
 }
+
+

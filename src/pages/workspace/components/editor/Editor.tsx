@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import {
   BlockNoteViewRaw as BlockNoteView,
   FormattingToolbarController,
@@ -26,11 +26,15 @@ import {
 import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
 import { EditorFormattingToolbar } from "./EditorFormattingToolbar";
 
+export interface EditorRef {
+  editor: ReturnType<typeof useCreateBlockNote> | null;
+}
+
 interface EditorProps {
   editable?: boolean;
 }
 
-export function Editor({ editable = true }: EditorProps) {
+export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true }, ref) {
   const { activePageId, getPage, updatePage } = usePages();
   const { notebooks } = useNotebooks();
   const { globalEditorFullWidth, customFonts, theme } = useSettings();
@@ -144,6 +148,10 @@ export function Editor({ editable = true }: EditorProps) {
     };
   }, [commitEditorContent, editor]);
 
+  useImperativeHandle(ref, () => ({
+    editor,
+  }), [editor]);
+
   useEffect(() => {
     (window as any).__gooseNoteEditor = editor;
     return () => {
@@ -187,7 +195,7 @@ export function Editor({ editable = true }: EditorProps) {
       ref={editorContainerRef}
       data-font-family={page.fontFamily ?? "default"}
       className={cn(
-        "workspace-editor-surface mx-auto min-h-[480px] w-full px-6 pb-24 pt-2",
+        "workspace-editor-surface mx-auto min-h-full w-full px-6 pb-24 pt-2",
         isEditorFullWidth ? "max-w-none" : "max-w-4xl",
       )}
     >
@@ -196,6 +204,7 @@ export function Editor({ editable = true }: EditorProps) {
         editable={editable}
         theme={effectiveTheme}
         slashMenu={false}
+        sideMenu={false}
         onChange={() => {
           const safePageId = pageIdForUpdateRef.current;
           if (!safePageId) return;
@@ -236,4 +245,4 @@ export function Editor({ editable = true }: EditorProps) {
       </BlockNoteView>
     </div>
   );
-}
+});

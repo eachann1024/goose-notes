@@ -944,6 +944,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     );
   };
 
+  const UTOOLS_STICKY_HEIGHT = 480;
+
   utools.onPluginEnter(({ code, type, payload, optional }) => {
     // 确保每次进入插件都重新设置 subInput
     if (typeof utools.setSubInput === "function") {
@@ -972,6 +974,18 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         detail: { code, type, payload, optional },
       }),
     );
+
+    if (code === "sticky_note") {
+      if (typeof utools?.setExpendHeight === "function") {
+        utools.setExpendHeight(UTOOLS_STICKY_HEIGHT);
+      }
+      window.dispatchEvent(
+        new CustomEvent("goose-note:open-sticky-note", {
+          detail: {},
+        }),
+      );
+      return;
+    }
 
     if (code === "open_folder") {
       if ((type === "files" || type === "file") && payload && payload.length > 0) {

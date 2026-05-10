@@ -7,13 +7,17 @@ import { TrashList } from "./TrashList";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
+import type { EditorRef } from "../editor/Editor";
+import { OutlinePanel } from "../outline/OutlinePanel";
+import { useHeadings } from "../outline/useHeadings";
+import { useActiveHeading } from "../outline/useActiveHeading";
 
 const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_SIDE_GAP_LEFT = 0;
 const SIDEBAR_SIDE_GAP_RIGHT = 9;
 const SIDEBAR_CONTENT_WIDTH_OFFSET = SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;
 
-type SidebarView = "pages" | "trash";
+type SidebarView = "pages" | "trash" | "outline";
 type SidebarDragGuideMode = "sort" | "nest-pending" | "nest-ready";
 
 interface SidebarDragGuideState {
@@ -25,6 +29,9 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   disableResize?: boolean;
   selectedPageId?: string | null;
+  editorRef?: React.RefObject<EditorRef | null>;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  isAiPageOpen?: boolean;
 }
 
 const useItemHeight = () => {
@@ -42,6 +49,9 @@ export function Sidebar({
   className,
   disableResize = false,
   selectedPageId,
+  editorRef,
+  scrollContainerRef,
+  isAiPageOpen = false,
 }: SidebarProps) {
   const {
     pages,
@@ -104,6 +114,12 @@ export function Sidebar({
       document.removeEventListener("keydown", handleDeleteShortcut);
     };
   }, [handleDeleteShortcut]);
+
+  useEffect(() => {
+    if (isAiPageOpen && currentView === "outline") {
+      setCurrentView("pages");
+    }
+  }, [isAiPageOpen, currentView]);
 
   useEffect(() => {
     const handleOpenSettings = (event: Event) => {
@@ -397,7 +413,14 @@ export function Sidebar({
           }}
         />
 
-        {currentView === "pages" ? (
+        {currentView === "outline" ? (
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <SidebarOutline
+              editorRef={editorRef}
+              scrollContainerRef={scrollContainerRef}
+            />
+          </div>
+        ) : currentView === "pages" ? (
           <>
             <FavoritesSection
               width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
@@ -448,6 +471,10 @@ export function Sidebar({
           setCurrentView("trash");
           setShowSettings(false);
           setActivePage(null);
+        }}
+        onSwitchToOutline={() => {
+          setCurrentView("outline");
+          setShowSettings(false);
         }}
         onOpenSettings={() => {
           setShowSettings(true);
@@ -512,5 +539,40 @@ export function Sidebar({
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
+  );
+}
+
+function SidebarOutline({
+  editorRef,
+  scrollContainerRef,
+}: {
+  editorRef?: React.RefObject<EditorRef | null>;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const editor = editorRef?.current?.editor ?? null;
+  const headings = useHeadings(editor);
+  const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
+  const activeId = useActiveHeading(scrollContainerRef, headingIds);
+
+  const handleHeadingClick = useCallback(
+    (blockId: string) => {
+      const container = scrollContainerRef?.current;
+      if (!container) return;
+      const el = container.querySelector(`[data-id="${blockId}"]`) as HTMLElement | null;
+      if (!el) return;
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const targetScroll = container.scrollTop + elRect.top - containerRect.top - 24;
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+    },
+    [scrollContainerRef],
+  );
+
+  return (
+    <OutlinePanel
+      headings={headings}
+      activeId={activeId}
+      onHeadingClick={handleHeadingClick}
+    />
   );
 }

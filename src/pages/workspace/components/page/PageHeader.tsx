@@ -3,6 +3,7 @@ import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/lib/page-title";
 
+
 interface PageHeaderProps {
   page: Page;
   isAiPageOpen?: boolean;
@@ -13,6 +14,7 @@ interface PageHeaderProps {
   onTogglePinned: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
+
 }
 
 export function PageHeader({
@@ -25,6 +27,7 @@ export function PageHeader({
   onTogglePinned,
   onRestore,
   onDelete,
+
 }: PageHeaderProps) {
   const aiEnabled = useSettings((state) => state.ai.enabled);
   const isLocalItem = !!page.localFilePath;

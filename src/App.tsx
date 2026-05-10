@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
+import { useStickyNote } from "./stores/useStickyNote";
+import { StickyNotePage } from "./pages/sticky-note";
 import {
   useSettings,
   EDITOR_FONT_SIZE_DEFAULT,
@@ -90,6 +92,7 @@ function App() {
     utools,
   } = useSettings();
   const { hydrated, onboardingCompleted, activePageId } = usePages();
+  const { active: stickyNoteActive, open: openStickyNote } = useStickyNote();
 
   useEffect(() => {
     if (utools.windowHeight) {
@@ -161,6 +164,11 @@ function App() {
       }
     };
 
+    const handleOpenStickyNote = () => {
+      if (!usePages.getState().hydrated) return;
+      openStickyNote();
+    };
+
     window.addEventListener(
       "goose-note:plugin-enter",
       handlePluginEnter as EventListener,
@@ -168,6 +176,10 @@ function App() {
     window.addEventListener(
       "goose-note:plugin-out",
       handlePluginOut as EventListener,
+    );
+    window.addEventListener(
+      "goose-note:open-sticky-note",
+      handleOpenStickyNote as EventListener,
     );
 
     return () => {
@@ -178,6 +190,10 @@ function App() {
       window.removeEventListener(
         "goose-note:plugin-out",
         handlePluginOut as EventListener,
+      );
+      window.removeEventListener(
+        "goose-note:open-sticky-note",
+        handleOpenStickyNote as EventListener,
       );
     };
   }, []);
@@ -464,6 +480,7 @@ function App() {
   return (
     <>
       <WorkspacePage />
+      <StickyNotePage />
       <Toaster />
     </>
   );

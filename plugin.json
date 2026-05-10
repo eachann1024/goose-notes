@@ -36,6 +36,11 @@
           "maxLength": 1
         }
       ]
+    },
+    {
+      "code": "sticky_note",
+      "explain": "以便签模式打开笔记",
+      "cmds": ["便签", "sticky", "小窗", "note"]
     }
   ],
   "tools": {

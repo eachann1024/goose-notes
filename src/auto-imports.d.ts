@@ -166,9 +166,13 @@ declare global {
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
+  const exportPageToImage: typeof import('./lib/imageExport').exportPageToImage
+  const exportSelectionToImage: typeof import('./lib/imageExport').exportSelectionToImage
   const exportToHTML: typeof import('./lib/export').exportToHTML
+  const exportToImage: typeof import('./lib/imageExport').exportToImage
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
+  const exportToWord: typeof import('./lib/docxExport').exportToWord
   const extractBlockNoteTitle: typeof import('./lib/blocknote-content').extractBlockNoteTitle
   const extractPlainText: typeof import('./lib/blocknote-content').extractPlainText
   const extractStructureSummary: typeof import('./lib/content-text-extractor').extractStructureSummary
@@ -181,6 +185,7 @@ declare global {
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
+  const generateDocxBuffer: typeof import('./lib/docxExport').generateDocxBuffer
   const getAIAnalyticsContext: typeof import('./lib/analytics').getAIAnalyticsContext
   const getAIAvailability: typeof import('./lib/ai-provider').getAIAvailability
   const getAIErrorType: typeof import('./lib/analytics').getAIErrorType
@@ -251,6 +256,7 @@ declare global {
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
+  const saveBlobAndReveal: typeof import('./lib/export').saveBlobAndReveal
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
@@ -291,6 +297,7 @@ declare global {
   const useScrollHide: typeof import('./hooks/useScrollHide').useScrollHide
   const useSettings: typeof import('./stores/useSettings').useSettings
   const useState: typeof import('react').useState
+  const useStickyNote: typeof import('./stores/useStickyNote').useStickyNote
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition

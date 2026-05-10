@@ -16,31 +16,57 @@ interface PositionState {
   showAbove: boolean;
 }
 
+/** BlockNote 命名颜色 —— 必须与 BlockNote CSS 中定义的颜色名一致 */
 const TEXT_COLORS = [
   { name: "默认", color: "default" },
-  { name: "灰色", color: "#787774" },
-  { name: "褐色", color: "#9F6B53" },
-  { name: "橙色", color: "#D9730D" },
-  { name: "黄色", color: "#CB912F" },
-  { name: "绿色", color: "#448361" },
-  { name: "蓝色", color: "#337EA9" },
-  { name: "紫色", color: "#9065B0" },
-  { name: "粉色", color: "#C14C8A" },
-  { name: "红色", color: "#D44C47" },
+  { name: "灰色", color: "gray" },
+  { name: "褐色", color: "brown" },
+  { name: "红色", color: "red" },
+  { name: "橙色", color: "orange" },
+  { name: "黄色", color: "yellow" },
+  { name: "绿色", color: "green" },
+  { name: "蓝色", color: "blue" },
+  { name: "紫色", color: "purple" },
+  { name: "粉色", color: "pink" },
 ];
 
 const HIGHLIGHT_COLORS = [
   { name: "无背景", color: "default" },
-  { name: "灰色背景", color: "#F1F1EF" },
-  { name: "褐色背景", color: "#F4EEEE" },
-  { name: "橙色背景", color: "#FBECDD" },
-  { name: "黄色背景", color: "#FBF3DB" },
-  { name: "绿色背景", color: "#EDF3EC" },
-  { name: "蓝色背景", color: "#EBF5FE" },
-  { name: "紫色背景", color: "#F5F3F8" },
-  { name: "粉色背景", color: "#FAF1F5" },
-  { name: "红色背景", color: "#FDEBEC" },
+  { name: "灰色背景", color: "gray" },
+  { name: "褐色背景", color: "brown" },
+  { name: "红色背景", color: "red" },
+  { name: "橙色背景", color: "orange" },
+  { name: "黄色背景", color: "yellow" },
+  { name: "绿色背景", color: "green" },
+  { name: "蓝色背景", color: "blue" },
+  { name: "紫色背景", color: "purple" },
+  { name: "粉色背景", color: "pink" },
 ];
+
+/** 颜色名 → CSS 颜色值（用于预览，与 BlockNote COLORS_DEFAULT 保持一致） */
+const COLOR_PREVIEW: Record<string, string> = {
+  gray: "#9b9a97",
+  brown: "#64473a",
+  red: "#e03e3e",
+  orange: "#d9730d",
+  yellow: "#dfab01",
+  green: "#4d6461",
+  blue: "#0b6e99",
+  purple: "#6940a5",
+  pink: "#ad1a72",
+};
+
+const BG_PREVIEW: Record<string, string> = {
+  gray: "#ebeced",
+  brown: "#e9e5e3",
+  red: "#fbe4e4",
+  orange: "#f6e9d9",
+  yellow: "#fbf3db",
+  green: "#ddedea",
+  blue: "#ddebf1",
+  purple: "#eae4f2",
+  pink: "#f4dfeb",
+};
 
 export function FormattingToolbarColorPicker() {
   const editor = useBlockNoteEditor();
@@ -112,7 +138,7 @@ export function FormattingToolbarColorPicker() {
   const panelContent = isMounted ? (
     <div
       className={cn(
-        "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
+        "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
         isOpen
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
@@ -162,7 +188,7 @@ export function FormattingToolbarColorPicker() {
                   color:
                     item.color === "default"
                       ? undefined
-                      : item.color,
+                      : COLOR_PREVIEW[item.color],
                 }}
               >
                 A
@@ -201,7 +227,7 @@ export function FormattingToolbarColorPicker() {
                 className="h-5 w-5 rounded-[4px] border border-border/20"
                 style={{
                   backgroundColor:
-                    item.color === "default" ? "transparent" : item.color,
+                    item.color === "default" ? "transparent" : BG_PREVIEW[item.color],
                 }}
               />
             </Button>

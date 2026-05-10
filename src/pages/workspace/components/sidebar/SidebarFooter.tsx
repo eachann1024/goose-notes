@@ -1,8 +1,9 @@
 interface SidebarFooterProps {
-  currentView: "pages" | "trash";
+  currentView: "pages" | "trash" | "outline";
   isSettingsOpen: boolean;
   onSwitchToPages: () => void;
   onSwitchToTrash: () => void;
+  onSwitchToOutline: () => void;
   onOpenSettings: () => void;
 }
 
@@ -11,6 +12,7 @@ export function SidebarFooter({
   isSettingsOpen,
   onSwitchToPages,
   onSwitchToTrash,
+  onSwitchToOutline,
   onOpenSettings,
 }: SidebarFooterProps) {
   const tabButtonClass =
@@ -57,6 +59,25 @@ export function SidebarFooter({
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">垃圾箱</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  tabButtonClass,
+                  !isSettingsOpen && currentView === "outline"
+                    ? "bg-[var(--goose-interactive-selected)] text-foreground"
+                    : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                )}
+                aria-label="大纲"
+                onClick={onSwitchToOutline}
+              >
+                <LucideIcons.List className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">大纲</TooltipContent>
           </Tooltip>
 
           <Tooltip>
