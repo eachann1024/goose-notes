@@ -8,6 +8,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
+import { Kbd } from "@/components/ui/kbd";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -369,9 +370,7 @@ export function CommandPalette() {
           </Label>
         </div>
         <div className="w-px h-4 bg-border mx-2" />
-        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded-[10px] border border-transparent bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--input)/0.7)]">
-          <span className="text-xs">Tab</span>
-        </kbd>
+        <Kbd shortcut="Tab" className="rounded-[10px] border-transparent shadow-[inset_0_0_0_1px_hsl(var(--input)/0.7)]" />
       </div>
 
       <Command.List className="max-h-[300px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-foreground/90">

@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cn, formatShortcut } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 import { Button } from "@/components/ui/button";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
 
@@ -37,7 +38,13 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     );
 
     useEffect(() => {
-      setSelectedIndex(externalIndex ?? selectableIndexes[0] ?? 0);
+      if (selectableIndexes.length === 0) {
+        setSelectedIndex(0);
+      } else if (externalIndex !== undefined && selectableIndexes.includes(externalIndex)) {
+        setSelectedIndex(externalIndex);
+      } else {
+        setSelectedIndex(selectableIndexes[0]);
+      }
       setShowHint(false);
     }, [items, selectableIndexes, externalIndex]);
 
@@ -55,17 +62,23 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
         if (!selectableIndexes.length) return;
         if (e.key === "ArrowUp") {
           e.preventDefault();
+          e.stopPropagation();
           const pos = Math.max(selectableIndexes.indexOf(selectedIndex), 0);
-          const next = (pos - 1 + selectableIndexes.length) % selectableIndexes.length;
+          const next = Math.max(0, pos - 1);
           setSelectedIndex(selectableIndexes[next]);
         } else if (e.key === "ArrowDown") {
           e.preventDefault();
+          e.stopPropagation();
           const pos = Math.max(selectableIndexes.indexOf(selectedIndex), 0);
-          const next = (pos + 1) % selectableIndexes.length;
+          const next = Math.min(selectableIndexes.length - 1, pos + 1);
           setSelectedIndex(selectableIndexes[next]);
         } else if (e.key === "Enter") {
           e.preventDefault();
-          selectItem(selectedIndex);
+          e.stopPropagation();
+          const validIndex = selectableIndexes.includes(selectedIndex)
+            ? selectedIndex
+            : selectableIndexes[0];
+          selectItem(validIndex);
         }
       };
       window.addEventListener("keydown", handler, true);
@@ -149,9 +162,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       </div>
 
                       {item.badge && (
-                        <div className="ml-2 text-[9px] font-mono opacity-45">
-                          {formatShortcut(item.badge)}
-                        </div>
+                        <Kbd shortcut={item.badge} className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none" />
                       )}
                     </Button>
                   );

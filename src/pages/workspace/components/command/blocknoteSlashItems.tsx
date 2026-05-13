@@ -15,16 +15,28 @@ export interface SlashMenuItem {
   onItemClick: () => void;
 }
 
-export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuItem[] {
+export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any>): SlashMenuItem[] {
   const currentBlock = editor.getTextCursorPosition().block;
 
   const insertOrUpdate = (block: any) => {
     const content = currentBlock.content as any;
+    const hasTrigger =
+      Array.isArray(content) &&
+      content.length >= 1 &&
+      content[0]?.type === "text" &&
+      ((content[0].text || "").startsWith("/") || (content[0].text || "").startsWith("、"));
+
+    if (hasTrigger) {
+      editor.updateBlock(currentBlock, { content: [] });
+      const clearedBlock = editor.getTextCursorPosition().block;
+      editor.updateBlock(clearedBlock, block);
+      return;
+    }
+
     const isEmpty =
       !content ||
       (Array.isArray(content) && content.length === 0) ||
-      (typeof content === "string" && content.trim() === "") ||
-      (Array.isArray(content) && content.length === 1 && content[0]?.text === "/");
+      (typeof content === "string" && content.trim() === "");
     if (isEmpty) {
       editor.updateBlock(currentBlock, block);
     } else {
@@ -43,8 +55,33 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuIt
       aliases: ["ai", "generate", "shengcheng", "xiezuo", "sparkle"],
       badge: "Space",
       onItemClick: () => {
+        // 删除触发字符 / 或 、
+        const pos = editor.getTextCursorPosition();
+        const block = pos.block;
+        const content = block.content as any[];
+        if (
+          Array.isArray(content) &&
+          content.length === 1 &&
+          content[0]?.type === "text" &&
+          (content[0].text === "/" || content[0].text === "、")
+        ) {
+          editor.updateBlock(block, { content: [] });
+        } else if (
+          Array.isArray(content) &&
+          content.length >= 1 &&
+          content[0]?.type === "text" &&
+          (content[0].text.startsWith("/") || content[0].text.startsWith("、"))
+        ) {
+          const newText = content[0].text.slice(1);
+          editor.updateBlock(block, {
+            content: newText ? [{ ...content[0], text: newText }] : [],
+          });
+        }
+
         document.dispatchEvent(
-          new CustomEvent("open-ai-input-popover", { detail: { editor } }),
+          new CustomEvent("open-ai-input-popover", {
+            detail: { editor },
+          }),
         );
       },
     });
@@ -57,7 +94,11 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuIt
       icon: <LucideIcons.Heading1 size={18} />,
       aliases: ["h1", "heading1", "title", "biaoti"],
       badge: "#",
-      onItemClick: () => insertOrUpdate({ type: "heading", props: { level: 1 } }),
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 1, isToggleable: true },
+        }),
     },
     {
       title: "二级标题",
@@ -65,7 +106,11 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuIt
       icon: <LucideIcons.Heading2 size={18} />,
       aliases: ["h2", "heading2", "subtitle", "biaoti"],
       badge: "##",
-      onItemClick: () => insertOrUpdate({ type: "heading", props: { level: 2 } }),
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 2, isToggleable: true },
+        }),
     },
     {
       title: "三级标题",
@@ -73,7 +118,11 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuIt
       icon: <LucideIcons.Heading3 size={18} />,
       aliases: ["h3", "heading3", "biaoti"],
       badge: "###",
-      onItemClick: () => insertOrUpdate({ type: "heading", props: { level: 3 } }),
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 3, isToggleable: true },
+        }),
     },
     { type: "divider" } as any,
     {
@@ -99,6 +148,14 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor): SlashMenuIt
       aliases: ["ordered", "list", "liebiao"],
       badge: "1.",
       onItemClick: () => insertOrUpdate({ type: "numberedListItem" }),
+    },
+    {
+      title: "折叠列表",
+      description: "可展开/收起内容的折叠列表",
+      icon: <LucideIcons.ChevronRight size={18} />,
+      aliases: ["toggle", "collapse", "fold", "zhedie", "shouqi"],
+      badge: ">",
+      onItemClick: () => insertOrUpdate({ type: "toggleListItem" }),
     },
     {
       title: "引用",
