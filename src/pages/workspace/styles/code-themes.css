@@ -1,0 +1,98 @@
+/* ===== Code Theme CSS Variables ===== */
+/* Shiki handles syntax highlighting via inline styles (ProseMirror decorations).
+   These CSS variables control background/border/line-number colors for the code block shell. */
+
+:root {
+  --code-bg: hsl(var(--background));
+  --code-fg: hsl(var(--foreground) / 0.95);
+  --code-border: hsl(var(--foreground) / 0.14);
+  --code-line-number: hsl(var(--muted-foreground) / 0.72);
+  --code-toolbar-chip-bg: hsl(var(--muted) / 0.92);
+  --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.95);
+  --code-toolbar-chip-active-bg: hsl(var(--accent) / 0.86);
+  --code-toolbar-chip-fg: hsl(var(--foreground) / 0.9);
+  --code-toolbar-chip-active-fg: hsl(var(--foreground));
+}
+
+.dark {
+  --code-bg: hsl(var(--background) / 0.94);
+  --code-border: hsl(var(--foreground) / 0.24);
+  --code-line-number: hsl(var(--muted-foreground) / 0.78);
+  --code-toolbar-chip-bg: hsl(var(--muted) / 0.72);
+  --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.92);
+  --code-toolbar-chip-active-bg: hsl(var(--accent) / 0.85);
+  --code-toolbar-chip-fg: hsl(var(--foreground) / 0.92);
+  --code-toolbar-chip-active-fg: hsl(var(--foreground));
+}
+
+/* ===== Theme-specific variable overrides ===== */
+
+.github-light {
+  --code-bg: #ffffff;
+  --code-fg: #24292f;
+  --code-border: #d0d7de;
+  --code-line-number: #6e7781;
+}
+
+.github-dark {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-border: #30363d;
+  --code-line-number: #484f58;
+}
+
+.one-light {
+  --code-bg: #fafafa;
+  --code-fg: #383a42;
+  --code-border: #e6e6e6;
+  --code-line-number: #a0a1a7;
+}
+
+.one-dark {
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-border: #21252b;
+  --code-line-number: #495162;
+}
+
+.atom-light {
+  --code-bg: #ffffff;
+  --code-fg: #333;
+  --code-border: #dbdbdb;
+  --code-line-number: #999;
+}
+
+.dracula {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-border: #44475a;
+  --code-line-number: #6272a4;
+}
+
+.tokyo-night {
+  --code-bg: #1a1b26;
+  --code-fg: #c0caf5;
+  --code-border: #292e42;
+  --code-line-number: #565f89;
+}
+
+.nord {
+  --code-bg: #2e3440;
+  --code-fg: #d8dee9;
+  --code-border: #3b4252;
+  --code-line-number: #616e88;
+}
+
+.nord-light {
+  --code-bg: #eceff4;
+  --code-fg: #2e3440;
+  --code-border: #d8dee9;
+  --code-line-number: #8f98aa;
+}
+
+.github-light-mod {
+  --code-bg: #d5d6db;
+  --code-fg: #343b58;
+  --code-border: #c0c2cc;
+  --code-line-number: #9699a3;
+}

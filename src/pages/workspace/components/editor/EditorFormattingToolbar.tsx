@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useSettings } from "@/stores/useSettings";
 import { useContextMenu } from "@/stores/useContextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
-import { formatShortcut } from "@/lib/utils";
+import { Kbd } from "@/components/ui/kbd";
 import { FormattingToolbarColorPicker } from "./FormattingToolbarColorPicker";
 import type { DefaultBlockSchema } from "@blocknote/core";
 
@@ -32,11 +32,7 @@ function ToolbarTooltip({
     <TooltipContent side="top" sideOffset={8}>
       <div className="inline-flex items-center gap-2 leading-none whitespace-nowrap">
         <span className="text-[12px] font-medium text-foreground">{label}</span>
-        {shortcut ? (
-          <kbd className="inline-flex h-5 select-none items-center rounded-md border border-border/85 bg-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
-            {formatShortcut(shortcut)}
-          </kbd>
-        ) : null}
+        {shortcut ? <Kbd shortcut={shortcut} /> : null}
       </div>
     </TooltipContent>
   );
@@ -86,6 +82,12 @@ export function EditorFormattingToolbar() {
   const textAlignment =
     (firstBlock?.props as { textAlignment?: string } | undefined)
       ?.textAlignment ?? "left";
+
+  const isHeading = firstBlock?.type === "heading";
+  const isToggleable =
+    isHeading &&
+    (firstBlock?.props as { isToggleable?: boolean } | undefined)
+      ?.isToggleable;
 
   const linkUrl = editor.getSelectedLinkUrl();
   const isLinkActive = !!linkUrl;
@@ -341,6 +343,36 @@ export function EditorFormattingToolbar() {
           </TooltipTrigger>
           <ToolbarTooltip label="右对齐" shortcut="Mod+Shift+R" />
         </Tooltip>
+
+        {isHeading && (
+          <>
+            <Separator orientation="vertical" className="h-5 opacity-70" />
+            <Tooltip {...bindTooltip("heading-toggle")}>
+              <TooltipTrigger asChild>
+                <Toggle
+                  size="sm"
+                  pressed={!!isToggleable}
+                  onPressedChange={() => {
+                    for (const block of selectedBlocks) {
+                      if (block.type === "heading") {
+                        editor.updateBlock(block, {
+                          props: {
+                            isToggleable: !isToggleable,
+                          },
+                        });
+                      }
+                    }
+                  }}
+                  aria-label="折叠子内容"
+                  className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
+                >
+                  <LucideIcons.ChevronRight className="h-[15px] w-[15px]" />
+                </Toggle>
+              </TooltipTrigger>
+              <ToolbarTooltip label="折叠子内容" />
+            </Tooltip>
+          </>
+        )}
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
