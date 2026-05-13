@@ -10,17 +10,13 @@ declare global {
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
   const BLOCK_BG_COLORS: typeof import('./lib/blockColorPresets').BLOCK_BG_COLORS
   const Button: typeof import('./components/ui/button').Button
-  const CREATOR_FLOW_CONTENT: typeof import('./lib/onboarding').CREATOR_FLOW_CONTENT
+  const CARD_THEMES: typeof import('./lib/imageExport').CARD_THEMES
   const Card: typeof import('./components/ui/card').Card
   const CardContent: typeof import('./components/ui/card').CardContent
   const CardDescription: typeof import('./components/ui/card').CardDescription
   const CardFooter: typeof import('./components/ui/card').CardFooter
   const CardHeader: typeof import('./components/ui/card').CardHeader
   const CardTitle: typeof import('./components/ui/card').CardTitle
-  const Check: typeof import('lucide-react').Check
-  const ChevronDown: typeof import('lucide-react').ChevronDown
-  const ChevronRight: typeof import('lucide-react').ChevronRight
-  const Code: typeof import('lucide-react').Code
   const ContextMenu: typeof import('./components/ui/context-menu').ContextMenu
   const ContextMenuCheckboxItem: typeof import('./components/ui/context-menu').ContextMenuCheckboxItem
   const ContextMenuContent: typeof import('./components/ui/context-menu').ContextMenuContent
@@ -44,6 +40,7 @@ declare global {
   const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT: typeof import('./stores/useSettings').DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/useSettings').DEFAULT_SEARCH_PROVIDERS
   const DEFAULT_WAKE_HOTKEY: typeof import('./stores/useSettings').DEFAULT_WAKE_HOTKEY
+  const DEFAULT_WATERMARK_CONFIG: typeof import('./lib/imageExport').DEFAULT_WATERMARK_CONFIG
   const Dialog: typeof import('./components/ui/dialog').Dialog
   const DialogClose: typeof import('./components/ui/dialog').DialogClose
   const DialogContent: typeof import('./components/ui/dialog').DialogContent
@@ -70,42 +67,30 @@ declare global {
   const DropdownMenuSubContent: typeof import('./components/ui/dropdown-menu').DropdownMenuSubContent
   const DropdownMenuSubTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuSubTrigger
   const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
-  const ECOMMERCE_DATA_CONTENT: typeof import('./lib/onboarding').ECOMMERCE_DATA_CONTENT
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/useSettings').EDITOR_FONT_SIZE_MIN
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
-  const FileText: typeof import('lucide-react').FileText
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
-  const HighlightText: typeof import('./lib/highlight-text').HighlightText
   const IconButton: typeof import('./components/ui/icon-button').IconButton
-  const Image: typeof import('lucide-react').Image
+  const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
   const Input: typeof import('./components/ui/input').Input
+  const Kbd: typeof import('./components/ui/kbd').Kbd
   const Label: typeof import('./components/ui/label').Label
-  const Link: typeof import('lucide-react').Link
-  const List: typeof import('lucide-react').List
-  const ListOrdered: typeof import('lucide-react').ListOrdered
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
-  const Menu: typeof import('lucide-react').Menu
-  const MoreHorizontal: typeof import('lucide-react').MoreHorizontal
-  const ONBOARD: typeof import('./lib/onboarding').ONBOARD
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
-  const ONBOARDING_STEPS: typeof import('./stores/useOnboardingGuide').ONBOARDING_STEPS
-  const Plus: typeof import('lucide-react').Plus
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
   const Portal: typeof import('./components/ui/portal').Portal
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
-  const Search: typeof import('lucide-react').Search
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
   const Separator: typeof import('./components/ui/separator').Separator
-  const Settings: typeof import('lucide-react').Settings
   const Sheet: typeof import('./components/ui/sheet').Sheet
   const SheetClose: typeof import('./components/ui/sheet').SheetClose
   const SheetContent: typeof import('./components/ui/sheet').SheetContent
@@ -131,14 +116,9 @@ declare global {
   const TooltipContent: typeof import('./components/ui/tooltip').TooltipContent
   const TooltipProvider: typeof import('./components/ui/tooltip').TooltipProvider
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
-  const Trash2: typeof import('lucide-react').Trash2
   const UTOOLS_WINDOW_HEIGHT_MAX: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MAX
   const UTOOLS_WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MIN
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
-  const WINDOW_HEIGHT_DEFAULT: typeof import('./stores/useSettings').WINDOW_HEIGHT_DEFAULT
-  const WINDOW_HEIGHT_MAX: typeof import('./stores/useSettings').WINDOW_HEIGHT_MAX
-  const WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').WINDOW_HEIGHT_MIN
-  const X: typeof import('lucide-react').X
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const buildAiContextBundle: typeof import('./lib/ai-write').buildAiContextBundle
@@ -165,6 +145,8 @@ declare global {
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write').createStickyTargetFromResolvedTarget
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
+  const ensureFirstTitleHeading: typeof import('./lib/blocknote-content').ensureFirstTitleHeading
+  const ensureToggleableHeadings: typeof import('./lib/blocknote-content').ensureToggleableHeadings
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport').exportPageToImage
   const exportSelectionToImage: typeof import('./lib/imageExport').exportSelectionToImage
@@ -196,6 +178,7 @@ declare global {
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableAIModelOptions: typeof import('./lib/ai-provider').getAvailableAIModelOptions
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
+  const getCardTheme: typeof import('./lib/imageExport').getCardTheme
   const getContentSignature: typeof import('./lib/blocknote-content').getContentSignature
   const getCustomAIApiKey: typeof import('./lib/ai-provider').getCustomAIApiKey
   const getCustomAIBaseURL: typeof import('./lib/ai-provider').getCustomAIBaseURL
@@ -203,7 +186,6 @@ declare global {
   const getDefaultCustomAIBaseURL: typeof import('./lib/ai-provider').getDefaultCustomAIBaseURL
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
-  const getFontFamiliesToLoad: typeof import('./lib/fontLoader').getFontFamiliesToLoad
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getNotebookAnalyticsContext: typeof import('./lib/analytics').getNotebookAnalyticsContext
@@ -212,11 +194,9 @@ declare global {
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
   const getRandomBlockAccentColor: typeof import('./lib/blockColorPresets').getRandomBlockAccentColor
-  const getRandomBlockBgColor: typeof import('./lib/blockColorPresets').getRandomBlockBgColor
   const getRandomBlockColorPair: typeof import('./lib/blockColorPresets').getRandomBlockColorPair
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getStoredAIModelOptions: typeof import('./lib/ai-provider').getStoredAIModelOptions
-  const iconButtonVariants: typeof import('./components/ui/icon-button').iconButtonVariants
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
@@ -250,7 +230,6 @@ declare global {
   const resolveAiTargetIntent: typeof import('./lib/ai-write').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write').resolveAiTargetSelection
-  const resolveEditorScrollBehavior: typeof import('./pages/workspace/components/editor/utils/scrollBehavior').resolveEditorScrollBehavior
   const resolvedTargetToSelection: typeof import('./lib/ai-write').resolvedTargetToSelection
   const runAIText: typeof import('./lib/ai-provider').runAIText
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
@@ -258,7 +237,6 @@ declare global {
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
   const saveBlobAndReveal: typeof import('./lib/export').saveBlobAndReveal
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
-  const selectableCardVariants: typeof import('./components/ui/selectable-card').selectableCardVariants
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write').stickyTargetToSelection
@@ -288,13 +266,11 @@ declare global {
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
-  const useOnboardingGuide: typeof import('./stores/useOnboardingGuide').useOnboardingGuide
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/usePages').usePages
   const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
-  const useScrollHide: typeof import('./hooks/useScrollHide').useScrollHide
   const useSettings: typeof import('./stores/useSettings').useSettings
   const useState: typeof import('react').useState
   const useStickyNote: typeof import('./stores/useStickyNote').useStickyNote
@@ -341,6 +317,9 @@ declare global {
   // @ts-ignore
   export type { ExportOptions, ImportResult } from './lib/export'
   import('./lib/export')
+  // @ts-ignore
+  export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport'
+  import('./lib/imageExport')
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
