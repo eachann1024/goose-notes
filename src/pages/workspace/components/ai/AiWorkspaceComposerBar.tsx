@@ -1,20 +1,15 @@
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
-  type MouseEvent,
   useState,
   type MutableRefObject,
-  type PointerEvent,
 } from "react";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,7 +21,6 @@ import {
 import {
   getAvailableAIModelOptions,
   type AIModelOption,
-  type AIReasoningLevel,
 } from "@/lib/ai-provider";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
@@ -44,38 +38,10 @@ interface AiWorkspaceComposerBarProps {
   draftContent: JSONContent | null;
   onSubmit: (params: {
     selectedModelId: string | null;
-    reasoningLevel: AIReasoningLevel;
   }) => void;
   onDraftChange: (content: JSONContent | null) => void;
   onReferenceAdded: (reference: AiFileReferenceAttrs) => void;
 }
-
-const REASONING_LEVEL_OPTIONS: Array<{
-  id: AIReasoningLevel;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "default",
-    label: "默认",
-    description: "不额外传思考长度，交给第三方模型自己决定。",
-  },
-  {
-    id: "low",
-    label: "低",
-    description: "优先更快返回，尽量少走深推理。",
-  },
-  {
-    id: "medium",
-    label: "中",
-    description: "平衡速度和推理深度。",
-  },
-  {
-    id: "high",
-    label: "高",
-    description: "尽量给更完整的推理空间。",
-  },
-];
 
 const AI_WORKSPACE_PLACEHOLDER_PRESETS = [
   "可以这样说：帮我写一篇关于新能源固态电池的抖音口播脚本",
@@ -114,57 +80,6 @@ const AI_WORKSPACE_PLACEHOLDER_PRESETS = [
   "可以这样说：生成一个能点击筛选的数据 Dashboard",
 ];
 
-const COMPOSER_MENU_VIEWPORT_PADDING = 16;
-const COMPOSER_MENU_TRIGGER_GAP = 10;
-const MODEL_MENU_MAX_HEIGHT = 416;
-const REASONING_MENU_MAX_HEIGHT = 320;
-const COMPOSER_MENU_MIN_PREFERRED_HEIGHT = 180;
-
-type ComposerMenuSide = "top" | "bottom";
-
-function getComposerMenuPlacement(
-  trigger: HTMLButtonElement | null,
-  preferredMaxHeight: number,
-) : { side: ComposerMenuSide; maxHeight: number } {
-  if (!trigger || typeof window === "undefined") {
-    return { side: "top", maxHeight: preferredMaxHeight };
-  }
-
-  const { top, bottom } = trigger.getBoundingClientRect();
-  const availableAbove = Math.max(
-    0,
-    Math.floor(top - COMPOSER_MENU_VIEWPORT_PADDING - COMPOSER_MENU_TRIGGER_GAP),
-  );
-  const availableBelow = Math.max(
-    0,
-    Math.floor(window.innerHeight - bottom - COMPOSER_MENU_VIEWPORT_PADDING - COMPOSER_MENU_TRIGGER_GAP),
-  );
-
-  const side: ComposerMenuSide = (
-    availableAbove >= COMPOSER_MENU_MIN_PREFERRED_HEIGHT
-    || availableAbove >= availableBelow
-  )
-    ? "top"
-    : "bottom";
-
-  const maxHeight = Math.min(
-    preferredMaxHeight,
-    side === "top" ? availableAbove : availableBelow,
-  );
-
-  return {
-    side,
-    maxHeight: Math.max(120, maxHeight),
-  };
-}
-
-function preventDropdownTriggerPointerDown(event: PointerEvent<HTMLButtonElement>) {
-  if (event.button !== 0 || event.ctrlKey) {
-    return;
-  }
-
-  event.preventDefault();
-}
 
 export function AiWorkspaceComposerBar({
   composerRef,
@@ -177,7 +92,6 @@ export function AiWorkspaceComposerBar({
 }: AiWorkspaceComposerBarProps) {
   const ai = useSettings((state) => state.ai);
   const setAIWorkspaceSelectedModelId = useSettings((state) => state.setAIWorkspaceSelectedModelId);
-  const setAIWorkspaceReasoningLevel = useSettings((state) => state.setAIWorkspaceReasoningLevel);
 
   const [modelOptions, setModelOptions] = useState<AIModelOption[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -185,13 +99,6 @@ export function AiWorkspaceComposerBar({
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isComposerEmpty, setIsComposerEmpty] = useState(true);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
-  const [reasoningMenuOpen, setReasoningMenuOpen] = useState(false);
-  const [modelMenuMaxHeight, setModelMenuMaxHeight] = useState(MODEL_MENU_MAX_HEIGHT);
-  const [reasoningMenuMaxHeight, setReasoningMenuMaxHeight] = useState(REASONING_MENU_MAX_HEIGHT);
-  const [modelMenuSide, setModelMenuSide] = useState<ComposerMenuSide>("top");
-  const [reasoningMenuSide, setReasoningMenuSide] = useState<ComposerMenuSide>("top");
-  const modelTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const reasoningTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -269,83 +176,23 @@ export function AiWorkspaceComposerBar({
   }, [ai.workspaceSelectedModelId, resolvedModelId, setAIWorkspaceSelectedModelId]);
 
   const currentModel = modelOptions.find((item) => item.id === resolvedModelId) ?? null;
-  const currentReasoning = REASONING_LEVEL_OPTIONS.find((item) => item.id === ai.workspaceReasoningLevel)
-    ?? REASONING_LEVEL_OPTIONS[0];
-  const supportsReasoningLevel = ai.useCustomProvider;
 
   const modelButtonDisabled = loadingModels || Boolean(modelLoadError) || !modelOptions.length;
   const modelButtonReason = loadingModels
     ? "模型列表读取中，请稍候"
     : modelLoadError || (!modelOptions.length ? "暂无可选模型" : null);
 
-  useLayoutEffect(() => {
-    if (!modelMenuOpen && !reasoningMenuOpen) {
-      return;
-    }
-
-    let rafId = 0;
-
-    const measure = () => {
-      if (modelMenuOpen) {
-        const placement = getComposerMenuPlacement(modelTriggerRef.current, MODEL_MENU_MAX_HEIGHT);
-        setModelMenuSide(placement.side);
-        setModelMenuMaxHeight(placement.maxHeight);
-      }
-      if (reasoningMenuOpen) {
-        const placement = getComposerMenuPlacement(reasoningTriggerRef.current, REASONING_MENU_MAX_HEIGHT);
-        setReasoningMenuSide(placement.side);
-        setReasoningMenuMaxHeight(placement.maxHeight);
-      }
-    };
-
-    const scheduleMeasure = () => {
-      window.cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(measure);
-    };
-
-    measure();
-    window.addEventListener("resize", scheduleMeasure);
-    window.addEventListener("scroll", scheduleMeasure, true);
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", scheduleMeasure);
-      window.removeEventListener("scroll", scheduleMeasure, true);
-    };
-  }, [modelMenuOpen, reasoningMenuOpen]);
-
   const handleSubmit = () => {
     onSubmit({
       selectedModelId: resolvedModelId,
-      reasoningLevel: ai.workspaceReasoningLevel,
     });
-  };
-
-  const toggleModelMenu = (_event: MouseEvent<HTMLButtonElement>) => {
-    setReasoningMenuOpen(false);
-    if (!modelMenuOpen) {
-      const placement = getComposerMenuPlacement(modelTriggerRef.current, MODEL_MENU_MAX_HEIGHT);
-      setModelMenuSide(placement.side);
-      setModelMenuMaxHeight(placement.maxHeight);
-    }
-    setModelMenuOpen((open) => !open);
-  };
-
-  const toggleReasoningMenu = (_event: MouseEvent<HTMLButtonElement>) => {
-    setModelMenuOpen(false);
-    if (!reasoningMenuOpen) {
-      const placement = getComposerMenuPlacement(reasoningTriggerRef.current, REASONING_MENU_MAX_HEIGHT);
-      setReasoningMenuSide(placement.side);
-      setReasoningMenuMaxHeight(placement.maxHeight);
-    }
-    setReasoningMenuOpen((open) => !open);
   };
 
   return (
     <div className="shrink-0 px-3 pb-3 pt-2">
       <div
         data-ai-workspace-composer="true"
-        className="rounded-3xl border border-border/70 bg-background/96 px-2 pb-2 pt-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur-[10px]"
+        className="rounded-3xl border border-border/70 dark:border-border bg-background/96 px-2 pb-2 pt-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur-[10px]"
       >
         <div className="px-2.5">
           <AiComposerInput
@@ -374,12 +221,9 @@ export function AiWorkspaceComposerBar({
                     <DropdownMenu open={modelMenuOpen} onOpenChange={setModelMenuOpen}>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          ref={modelTriggerRef}
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onPointerDown={preventDropdownTriggerPointerDown}
-                          onClick={toggleModelMenu}
                           disabled={modelButtonDisabled}
                           data-ai-workspace-model-trigger="true"
                           className={cn(
@@ -398,27 +242,27 @@ export function AiWorkspaceComposerBar({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="start"
-                        side={modelMenuSide}
-                        sideOffset={COMPOSER_MENU_TRIGGER_GAP}
-                        avoidCollisions={false}
-                        style={{ maxHeight: `${modelMenuMaxHeight}px` }}
-                        className="w-[320px]"
+                        alignOffset={-10}
+                        sideOffset={50}
+                        className="w-[220px] max-h-[320px] overflow-y-auto"
                       >
-                        <DropdownMenuRadioGroup
-                          value={resolvedModelId ?? ""}
-                          onValueChange={(value) => setAIWorkspaceSelectedModelId(value)}
-                        >
-                          {modelOptions.map((model) => (
-                            <DropdownMenuRadioItem key={model.id} value={model.id} className="items-start gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium text-foreground">{model.label}</div>
-                                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                  {model.description || model.id}
-                                </div>
+                        {modelOptions.map((model) => (
+                          <DropdownMenuItem
+                            key={model.id}
+                            onClick={() => setAIWorkspaceSelectedModelId(model.id)}
+                            className={cn(
+                              "items-start gap-2 my-0.5",
+                              resolvedModelId === model.id && "bg-[var(--goose-interactive-selected)]",
+                            )}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium text-foreground">{model.label}</div>
+                              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                {model.description || model.id}
                               </div>
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -428,53 +272,6 @@ export function AiWorkspaceComposerBar({
                 ) : null}
               </Tooltip>
             </TooltipProvider>
-
-            {supportsReasoningLevel ? (
-              <DropdownMenu open={reasoningMenuOpen} onOpenChange={setReasoningMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    ref={reasoningTriggerRef}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onPointerDown={preventDropdownTriggerPointerDown}
-                    onClick={toggleReasoningMenu}
-                    data-ai-workspace-reasoning-trigger="true"
-                    className="justify-between rounded-full border border-border/70 bg-muted/35 px-3 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <LucideIcons.Brain className="h-3.5 w-3.5 shrink-0" />
-                      <span>{currentReasoning.label}</span>
-                    </span>
-                    <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  side={reasoningMenuSide}
-                  sideOffset={COMPOSER_MENU_TRIGGER_GAP}
-                  avoidCollisions={false}
-                  style={{ maxHeight: `${reasoningMenuMaxHeight}px` }}
-                  className="w-[220px]"
-                >
-                  <DropdownMenuRadioGroup
-                    value={ai.workspaceReasoningLevel}
-                    onValueChange={(value) => setAIWorkspaceReasoningLevel(value as AIReasoningLevel)}
-                  >
-                    {REASONING_LEVEL_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem key={option.id} value={option.id} className="items-start gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-foreground">{option.label}</div>
-                          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                            {option.description}
-                          </div>
-                        </div>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
           </div>
 
           <TooltipProvider delayDuration={0}>

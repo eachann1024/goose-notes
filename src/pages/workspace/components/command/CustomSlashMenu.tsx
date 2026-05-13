@@ -1,4 +1,6 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useExtension } from "@blocknote/react";
+import { SuggestionMenu } from "@blocknote/core/extensions";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
@@ -17,6 +19,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     const [selectedIndex, setSelectedIndex] = useState(externalIndex ?? 0);
     const [showHint, setShowHint] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const suggestionMenu = useExtension(SuggestionMenu);
 
     const selectableIndexes = useMemo(
       () =>
@@ -38,6 +41,11 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     );
 
     useEffect(() => {
+      if (items.length === 0) {
+        // Notion-style: close menu immediately when no matches
+        const timer = setTimeout(() => suggestionMenu?.closeMenu(), 0);
+        return () => clearTimeout(timer);
+      }
       if (selectableIndexes.length === 0) {
         setSelectedIndex(0);
       } else if (externalIndex !== undefined && selectableIndexes.includes(externalIndex)) {
@@ -46,7 +54,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
         setSelectedIndex(selectableIndexes[0]);
       }
       setShowHint(false);
-    }, [items, selectableIndexes, externalIndex]);
+    }, [items, selectableIndexes, externalIndex, suggestionMenu]);
 
     useEffect(() => {
       const container = containerRef.current;
@@ -86,16 +94,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     }, [selectedIndex, selectItem, selectableIndexes]);
 
     if (items.length === 0) {
-      return (
-        <div className="workspace-shell bg-transparent rounded-[var(--radius-notion-slash)] overflow-hidden" data-notion-slash-root="true">
-          <div
-            data-notion-slash-surface="true"
-            className="z-50 w-[280px] rounded-[var(--radius-notion-slash)] border border-border/75 bg-popover p-2.5 text-sm text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
-          >
-            暂无匹配动作
-          </div>
-        </div>
-      );
+      return null;
     }
 
     return (

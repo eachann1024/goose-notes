@@ -18,7 +18,7 @@ export interface SlashMenuItem {
 export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any>): SlashMenuItem[] {
   const currentBlock = editor.getTextCursorPosition().block;
 
-  const insertOrUpdate = (block: any) => {
+  const insertOrUpdate = (block: any): any => {
     const content = currentBlock.content as any;
     const hasTrigger =
       Array.isArray(content) &&
@@ -30,7 +30,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       editor.updateBlock(currentBlock, { content: [] });
       const clearedBlock = editor.getTextCursorPosition().block;
       editor.updateBlock(clearedBlock, block);
-      return;
+      return clearedBlock;
     }
 
     const isEmpty =
@@ -39,9 +39,11 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       (typeof content === "string" && content.trim() === "");
     if (isEmpty) {
       editor.updateBlock(currentBlock, block);
+      return currentBlock;
     } else {
       const [inserted] = editor.insertBlocks([block], currentBlock, "after");
       editor.setTextCursorPosition(inserted);
+      return inserted;
     }
   };
 
@@ -232,12 +234,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       aliases: ["image", "photo", "tupian", "img"],
       badge: "img",
       onItemClick: () => {
-        const [inserted] = editor.insertBlocks(
-          [{ type: "image" }],
-          currentBlock,
-          "after",
-        );
-        editor.setTextCursorPosition(inserted);
+        const inserted = insertOrUpdate({ type: "image" });
         editor.getExtension(FilePanelExtension)?.showMenu(inserted.id);
       },
     },
@@ -248,12 +245,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       aliases: ["file", "attachment", "pdf", "wenjian", "fujian"],
       badge: "file",
       onItemClick: () => {
-        const [inserted] = editor.insertBlocks(
-          [{ type: "file" }],
-          currentBlock,
-          "after",
-        );
-        editor.setTextCursorPosition(inserted);
+        const inserted = insertOrUpdate({ type: "file" });
         editor.getExtension(FilePanelExtension)?.showMenu(inserted.id);
       },
     },
@@ -267,9 +259,13 @@ export function filterSlashMenuItems(
   query: string,
 ): SlashMenuItem[] {
   const q = query.trim().toLowerCase();
-  return items.filter((item) => {
-    if ((item as any).type === "divider") return true;
-    if (!q.length) return true;
+
+  // No query: return all items (dividers included for grouping)
+  if (!q.length) return items;
+
+  // With query: only return matching non-divider items
+  const matched = items.filter((item) => {
+    if ((item as any).type === "divider") return false;
     const haystacks = [
       item.title,
       item.description ?? "",
@@ -277,4 +273,6 @@ export function filterSlashMenuItems(
     ].map((v) => v.toLowerCase());
     return haystacks.some((v) => v.includes(q));
   });
+
+  return matched;
 }

@@ -15,7 +15,6 @@ import type {
 } from "@/agent/core/types";
 import { AgentArtifactView, StreamingDatavizText, textHasDataviz, artifactHasDataviz } from "@/agent/renderers/AgentArtifactView";
 import {
-  type AIReasoningLevel,
   type AIMessage,
   type AIStreamPhase,
 } from "@/lib/ai-provider";
@@ -282,7 +281,7 @@ export function AiWorkspacePage() {
   const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
   // Retry: store last submitted payload and model overrides
   const lastSubmitPayloadRef = useRef<import("../editor/ai-composer/referenceLookup").AiComposerPayload | null>(null);
-  const lastSubmitOverridesRef = useRef<{ selectedModelId: string | null; reasoningLevel: AIReasoningLevel } | null>(null);
+  const lastSubmitOverridesRef = useRef<{ selectedModelId: string | null } | null>(null);
 
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [messages, setMessages] = useState<AiConversationMessage[]>([]);
@@ -608,7 +607,6 @@ export function AiWorkspacePage() {
   const handleSubmit = async (
     requestOverrides: {
       selectedModelId: string | null;
-      reasoningLevel: AIReasoningLevel;
     },
     payloadOverride?: import("../editor/ai-composer/referenceLookup").AiComposerPayload,
   ) => {
@@ -762,7 +760,6 @@ export function AiWorkspacePage() {
         historyMessages,
         requestOverrides: {
           selectedModelId: requestOverrides.selectedModelId,
-          reasoningLevel: requestOverrides.reasoningLevel,
         },
         abortSignal: controller.signal,
         // RAF 节流：只更新内存累积值，每帧最多一次 setMessages，且不在 updater 内调用 Zustand
@@ -1025,7 +1022,12 @@ export function AiWorkspacePage() {
     latestMessagesRef.current = trimmed;
     setMessages(trimmed);
     syncActiveMessages(trimmed, latestStreamPhaseRef.current);
-    void handleSubmit(lastSubmitOverridesRef.current, lastSubmitPayloadRef.current);
+    // 使用当前用户选择的模型配置，而非上次提交时的旧配置
+    const currentSettings = useSettings.getState().ai;
+    const currentOverrides = {
+      selectedModelId: currentSettings.selectedModelId ?? lastSubmitOverridesRef.current.selectedModelId,
+    };
+    void handleSubmit(currentOverrides, lastSubmitPayloadRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStreaming, syncActiveMessages]);
 
@@ -1132,7 +1134,7 @@ export function AiWorkspacePage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col pb-10">
+          <div className="flex flex-col pb-20">
             {messages.map((message, index) => {
               const isLastMessage = index === messages.length - 1;
               const isRetryable =
@@ -1170,7 +1172,7 @@ export function AiWorkspacePage() {
                             ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
                             : message.error
                               ? "border-destructive/20 bg-destructive/5 text-destructive"
-                              : "border-border/70 bg-background/80 text-foreground",
+                              : "border-border/70 dark:border-border bg-background/80 text-foreground",
                         ),
                   )}
                 >
