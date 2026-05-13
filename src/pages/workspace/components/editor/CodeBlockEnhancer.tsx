@@ -16,13 +16,22 @@ type CodeBlockEntry = {
   element: HTMLElement;
 };
 
+function collectCodeBlocks(blocks: any[]): any[] {
+  return blocks.flatMap((block) => [
+    ...(block.type === "codeBlock" ? [block] : []),
+    ...(Array.isArray(block.children) ? collectCodeBlocks(block.children) : []),
+  ]);
+}
+
 type FloatingCodeToolbarProps = {
   entry: CodeBlockEntry;
   editor: any;
 };
 
 function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
-  const [wrap, setWrap] = useState(useSettings.getState().defaultCodeBlockWrap);
+  const [wrap, setWrap] = useState(
+    entry.block.props?.wrap ?? useSettings.getState().defaultCodeBlockWrap,
+  );
 
   const rect = entry.element.getBoundingClientRect();
   const codeEl = entry.element.querySelector("code") as HTMLElement | null;
@@ -111,9 +120,7 @@ export function CodeBlockEnhancer({ editor }: { editor: any }) {
         '.bn-block-content[data-content-type="codeBlock"]',
       ),
     );
-    const codeBlocks = (editor.document as any[]).filter(
-      (block) => block.type === "codeBlock",
-    );
+    const codeBlocks = collectCodeBlocks(editor.document as any[]);
     return elements.flatMap((element, index) => {
       const block = codeBlocks[index];
       if (!block) return [];

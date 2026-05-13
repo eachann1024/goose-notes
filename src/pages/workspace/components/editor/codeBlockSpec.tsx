@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
@@ -107,6 +107,29 @@ function CodeBlockComponent({
     [editor, block.id, block.content],
   );
 
+  const handleCodeKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLElement>) => {
+      if (e.nativeEvent.isComposing || e.key !== "Enter") return;
+
+      if (e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const [inserted] = editor.insertBlocks(
+          [{ type: "paragraph", content: "" }],
+          block,
+          "after",
+        );
+        if (inserted) editor.setTextCursorPosition(inserted);
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      document.execCommand("insertText", false, "\n");
+    },
+    [editor, block],
+  );
+
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
   const isMathOrMermaid = language === "math" || language === "mermaid";
@@ -123,10 +146,8 @@ function CodeBlockComponent({
 
   return (
     <div
-      className={cn(
-        "goose-code-block-node relative",
-        collapsed && "is-collapsed",
-      )}
+      className="goose-code-block-node relative"
+      data-collapsed={collapsed ? "true" : "false"}
     >
       {/* Toolbar row */}
       <div className="goose-code-toolbar-row" contentEditable={false}>
@@ -222,6 +243,7 @@ function CodeBlockComponent({
               wrap && "goose-code-pre-wrap",
               isMathOrMermaid && "goose-code-pre-source",
             )}
+            onKeyDown={handleCodeKeyDown}
           >
             <code
               ref={contentRef}

@@ -22,16 +22,32 @@
 }
 
 .workspace-editor-surface .bn-container {
+  flex: 1;
+  min-height: 0;
   background: transparent;
 }
 
 .workspace-editor-surface .bn-editor {
+  min-height: 100%;
   background: transparent;
   padding-inline: 0;
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {
   margin-top: 0;
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="heading"] .bn-toggle-button {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="heading"]:hover .bn-toggle-button,
+.workspace-editor-surface .bn-block-content[data-content-type="heading"]:focus-within .bn-toggle-button,
+.workspace-editor-surface .bn-block-content[data-content-type="heading"]:has(.bn-toggle-wrapper[data-show-children="false"]) .bn-toggle-button {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* BlockNote 块间距全局优化 */
@@ -69,6 +85,9 @@
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 0;
   overflow: visible;
 }
@@ -260,6 +279,92 @@
   backdrop-filter: blur(10px);
 }
 
+/* 自定义 codeBlockSpec 容器 */
+.goose-code-block-node {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  background-color: var(--code-bg, hsl(var(--muted) / 0.55));
+  color: var(--code-fg, hsl(var(--foreground)));
+  border: 1px solid var(--code-border, hsl(var(--border) / 0.5));
+  border-radius: var(--editor-code-block-radius, 8px);
+  overflow: hidden;
+}
+
+.goose-code-block-node[data-collapsed="true"] {
+  min-height: 42px;
+}
+
+.goose-code-toolbar-row {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.goose-code-toolbar-left,
+.goose-code-toolbar-actions {
+  pointer-events: auto;
+}
+
+.goose-code-toolbar-left {
+  max-width: min(56%, calc(100% - 180px));
+}
+
+.goose-code-toolbar-actions {
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.goose-code-toolbar-actions button,
+.goose-code-toolbar-actions .goose-code-lang-trigger {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.goose-code-content-wrapper {
+  position: relative;
+  padding-top: 36px;
+}
+
+.goose-code-pre {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85em;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.goose-code-content-wrapper:has(.goose-code-line-numbers) .goose-code-pre {
+  padding-left: 16px;
+}
+
+.goose-code-content {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
 /* 行号 */
 .goose-code-line-numbers {
   position: absolute;
@@ -272,6 +377,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   line-height: 1.7;
+  display: none;
   color: var(--code-line-number, hsl(var(--muted-foreground) / 0.4));
   user-select: none;
   pointer-events: none;

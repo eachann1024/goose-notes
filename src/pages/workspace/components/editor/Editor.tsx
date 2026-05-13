@@ -38,6 +38,7 @@ import {
   clonePageContent,
   getContentSignature,
   normalizePageContent,
+  organizeToggleHeadingSections,
   ensureFirstTitleHeading,
   extractBlockNoteTitle,
   type BlockNoteContent,
@@ -67,6 +68,88 @@ import {
 type EditorFilePanelProps = {
   blockId: string;
 };
+
+function forEachFoldableHeading(
+  blocks: BlockNoteContent,
+  callback: (block: any, ordinal: number) => void,
+  isDocumentRoot = true,
+  ordinalRef = { current: 0 },
+) {
+  blocks.forEach((block: any, index) => {
+    const isDocumentTitle = isDocumentRoot && index === 0;
+    if (
+      block?.type === "heading" &&
+      !isDocumentTitle &&
+      block.props?.isToggleable !== false
+    ) {
+      callback(block, ordinalRef.current);
+      ordinalRef.current += 1;
+    }
+    if (Array.isArray(block?.children) && block.children.length > 0) {
+      forEachFoldableHeading(
+        block.children as BlockNoteContent,
+        callback,
+        false,
+        ordinalRef,
+      );
+    }
+  });
+}
+
+function getBlockPlainText(block: any): string {
+  if (typeof block?.content === "string") return block.content;
+  if (Array.isArray(block?.content)) {
+    return block.content
+      .map((inline: any) =>
+        typeof inline === "string" ? inline : inline?.text ?? "",
+      )
+      .join("");
+  }
+  return "";
+}
+
+function getStableToggleKey(pageId: string | null | undefined, block: any, ordinal: number) {
+  if (!pageId) return null;
+  return `goose-heading-toggle:${pageId}:${ordinal}:${getBlockPlainText(block)}`;
+}
+
+function setHeadingToggleState(
+  pageId: string | null | undefined,
+  block: any,
+  ordinal: number,
+  value: "true" | "false",
+) {
+  if (typeof window === "undefined") return;
+  if (block.id) {
+    window.localStorage.setItem(`toggle-${block.id}`, value);
+  }
+  const stableKey = getStableToggleKey(pageId, block, ordinal);
+  if (stableKey) {
+    window.localStorage.setItem(stableKey, value);
+  }
+}
+
+function ensureDefaultOpenToggleState(
+  content: BlockNoteContent,
+  pageId?: string | null,
+) {
+  if (typeof window === "undefined") return;
+  forEachFoldableHeading(content, (block, ordinal) => {
+    const idKey = block.id ? `toggle-${block.id}` : null;
+    const stableKey = getStableToggleKey(pageId, block, ordinal);
+    const saved =
+      (stableKey ? window.localStorage.getItem(stableKey) : null) ??
+      (idKey ? window.localStorage.getItem(idKey) : null);
+    const value = saved === "false" ? "false" : "true";
+
+    if (idKey) {
+      window.localStorage.setItem(idKey, value);
+    }
+    if (stableKey) {
+      window.localStorage.setItem(stableKey, value);
+    }
+  });
+}
 
 function EditorFilePanel({ blockId }: EditorFilePanelProps) {
   const editor = useBlockNoteEditor<any, any, any>();
@@ -429,12 +512,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const pageIdForUpdateRef = useRef<string | null>(null);
   const syncedContentSignatureRef = useRef<string | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
-  const isRestoringTitleRef = useRef(false);
 
-  const initialContent = useMemo(
-    () => normalizePageContent(page?.content),
-    [page?.id],
-  );
+  const initialContent = useMemo(() => {
+    const content = normalizePageContent(page?.content);
+    ensureDefaultOpenToggleState(content, page?.id);
+    return content;
+  }, [page?.id]);
 
   const editor = useCreateBlockNote(
     {
@@ -491,34 +574,38 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     );
   }, [updatePage]);
 
-  const restoreFirstTitleHeading = useCallback(() => {
-    const [firstBlock] = editor.document as any[];
-    if (!firstBlock) return false;
+  const syncHeadingToggleDom = useCallback(() => {
+    const content = editor.document as BlockNoteContent;
+    const pageId = pageIdForUpdateRef.current ?? activePageId;
+    ensureDefaultOpenToggleState(content, pageId);
 
-    const level = Number((firstBlock as any).props?.level);
-    if (firstBlock.type === "heading" && level === 1) {
+    window.requestAnimationFrame(() => {
+      forEachFoldableHeading(content, (block, ordinal) => {
+        if (!block.id) return;
+        const stableKey = getStableToggleKey(pageId, block, ordinal);
+        const saved =
+          (stableKey ? window.localStorage.getItem(stableKey) : null) ??
+          window.localStorage.getItem(`toggle-${block.id}`);
+        const isOpen = saved !== "false";
+        const selector = `.bn-block[data-id="${CSS.escape(block.id)}"] > .bn-block-content .bn-toggle-wrapper`;
+        editorContainerRef.current
+          ?.querySelectorAll<HTMLElement>(selector)
+          .forEach((wrapper) => {
+            wrapper.setAttribute("data-show-children", isOpen ? "true" : "false");
+          });
+      });
+    });
+  }, [activePageId, editor]);
+
+  const restoreFirstTitleHeading = useCallback(() => {
+    const currentContent = editor.document as BlockNoteContent;
+    const firstBlock = currentContent[0];
+    if (firstBlock?.type === "heading" && Number((firstBlock as any).props?.level) === 1) {
       return false;
     }
 
-    const canConvertFirstBlock =
-      typeof firstBlock.content === "string" || Array.isArray(firstBlock.content);
-
-    if (firstBlock.type === "heading" || canConvertFirstBlock) {
-      editor.updateBlock(firstBlock, {
-        type: "heading",
-        props: {
-          ...(firstBlock as any).props,
-          level: 1,
-        },
-      } as any);
-      return true;
-    }
-
-    editor.insertBlocks(
-      [{ type: "heading", props: { level: 1 }, content: "" }],
-      firstBlock,
-      "before",
-    );
+    const nextContent = ensureFirstTitleHeading(clonePageContent(currentContent));
+    editor.replaceBlocks(editor.document, nextContent as any);
     return true;
   }, [editor]);
 
@@ -526,9 +613,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     (targetPageId?: string) => {
       const safePageId = targetPageId ?? pageIdForUpdateRef.current;
       if (!safePageId) return;
-      const nextContent = ensureFirstTitleHeading(
-        clonePageContent(editor.document as BlockNoteContent),
+      const nextContent = organizeToggleHeadingSections(
+        ensureFirstTitleHeading(
+          clonePageContent(editor.document as BlockNoteContent),
+        ),
       );
+      ensureDefaultOpenToggleState(nextContent, safePageId);
       debouncedUpdate.cancel();
       syncedContentSignatureRef.current = getContentSignature(nextContent);
       updatePage(safePageId, { content: nextContent });
@@ -544,6 +634,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const normalized = normalizePageContent(p.content);
     const normalizedSignature = getContentSignature(normalized);
     pageIdForUpdateRef.current = p.id;
+    ensureDefaultOpenToggleState(normalized, p.id);
     syncedContentSignatureRef.current = normalizedSignature;
 
     if (getContentSignature(p.content) !== normalizedSignature) {
@@ -551,6 +642,57 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId]);
+
+  useEffect(() => {
+    syncHeadingToggleDom();
+  }, [activePageId, syncHeadingToggleDom]);
+
+  useEffect(() => {
+    const root = editorContainerRef.current;
+    if (!root) return;
+
+    const handleToggleClick = (event: MouseEvent) => {
+      const button = (event.target as HTMLElement | null)?.closest(
+        ".bn-toggle-button",
+      );
+      if (!button || !root.contains(button)) return;
+
+      window.setTimeout(() => {
+        const blockElement = button.closest<HTMLElement>(".bn-block");
+        const blockId = blockElement?.dataset.id;
+        if (!blockId) return;
+
+        const content = editor.document as BlockNoteContent;
+        let matched:
+          | {
+              block: any;
+              ordinal: number;
+            }
+          | undefined;
+        forEachFoldableHeading(content, (block, ordinal) => {
+          if (block.id === blockId) {
+            matched = { block, ordinal };
+          }
+        });
+        if (!matched) return;
+
+        const wrapper = button.closest<HTMLElement>(".bn-toggle-wrapper");
+        const value =
+          wrapper?.getAttribute("data-show-children") === "false"
+            ? "false"
+            : "true";
+        setHeadingToggleState(
+          pageIdForUpdateRef.current ?? activePageId,
+          matched.block,
+          matched.ordinal,
+          value,
+        );
+      }, 0);
+    };
+
+    root.addEventListener("click", handleToggleClick);
+    return () => root.removeEventListener("click", handleToggleClick);
+  }, [activePageId, editor]);
 
   useEffect(() => {
     return () => {
@@ -661,7 +803,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         ref={editorContainerRef}
         data-font-family={page.fontFamily ?? "default"}
         className={cn(
-          "workspace-editor-surface mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2",
+          "workspace-editor-surface mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
           isEditorFullWidth ? "max-w-none" : "max-w-4xl",
         )}
       >
@@ -677,14 +819,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           onChange={() => {
             const safePageId = pageIdForUpdateRef.current;
             if (!safePageId) return;
-            if (!isRestoringTitleRef.current && restoreFirstTitleHeading()) {
-              isRestoringTitleRef.current = true;
-              return;
-            }
-            isRestoringTitleRef.current = false;
-            const nextContent = ensureFirstTitleHeading(
-              clonePageContent(editor.document as BlockNoteContent),
-            );
+            if (restoreFirstTitleHeading()) return;
+            const nextContent = clonePageContent(editor.document as BlockNoteContent);
+            ensureDefaultOpenToggleState(nextContent, safePageId);
             syncedContentSignatureRef.current = getContentSignature(nextContent);
             debouncedUpdate(safePageId, nextContent);
           }}

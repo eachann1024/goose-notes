@@ -140,7 +140,7 @@ export function CodeBlockToolbar({
                 align="end"
                 className="w-48 max-h-64 overflow-y-auto text-xs"
               >
-                <div className="p-2 border-b">
+                <div className="pb-2">
                   <Input
                     ref={inputRef}
                     placeholder="搜索语言..."
