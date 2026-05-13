@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/stores/useSettings";
+import { DatavizToolbar } from "./DatavizToolbar";
 
 const MIN_HEIGHT = 60;
 const DEFAULT_HEIGHT = 200;
+const UTOOLS_WEBVIEW_BOTTOM_RESERVE = 72;
 
 const HOST_FONTS_CSS = `
 @font-face {
@@ -39,7 +41,7 @@ const HTML_THEME = {
   light: {
     colorScheme: "light",
     bgPrimary: "#ffffff",
-    bgSecondary: "#f5f4ed",
+    bgSecondary: "rgba(31,30,29,0.04)",
     bgTertiary: "#faf9f5",
     bgInverse: "#141413",
     bgGhost: "rgba(255,255,255,0)",
@@ -118,9 +120,9 @@ const HTML_THEME = {
   },
   dark: {
     colorScheme: "dark",
-    bgPrimary: "#302e2e",
-    bgSecondary: "#262624",
-    bgTertiary: "#141413",
+    bgPrimary: "#2E2E2D",
+    bgSecondary: "rgba(250,249,245,0.04)",
+    bgTertiary: "#2E2E2D",
     bgInverse: "#faf9f5",
     bgGhost: "rgba(48,48,46,0)",
     bgDisabled: "rgba(48,48,46,0.5)",
@@ -310,7 +312,7 @@ html, body {
   overflow: hidden;
   scrollbar-width: none;
 }
-html { background: transparent !important; }
+html { background: ${t.bgPrimary} !important; }
 html::-webkit-scrollbar, body::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -319,7 +321,7 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.6;
-  background: transparent !important;
+  background: ${t.bgPrimary} !important;
   color: var(--color-text-primary);
   padding: 0;
   margin: 0;
@@ -404,7 +406,7 @@ input[type=range]::-moz-range-thumb {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 clamp(4px, 1vw, 10px);
+  padding: 16px clamp(4px, 1vw, 10px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -504,7 +506,7 @@ table {
   font-size: 13px;
 }
 thead th {
-  background: var(--color-background-secondary);
+  background: transparent;
   color: var(--color-text-secondary);
   font-weight: 500;
   font-size: 12px;
@@ -521,8 +523,6 @@ tbody td {
   font-size: 13px;
 }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:nth-child(even) td { background: var(--color-background-secondary); }
-tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.025)"}; }
 /* flex / grid 布局工具（AI 生成 HTML 可直接使用） */
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
@@ -574,7 +574,7 @@ tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,
 .min-w-0 { min-width: 0; }
 .min-h-0 { min-height: 0; }
 .h-full { height: 100%; }
-.min-h-screen { min-height: 100vh; }
+.min-h-screen { min-height: 100%; }
 /* typography */
 .text-sm { font-size: 12px; }
 .text-base { font-size: 14px; }
@@ -630,14 +630,14 @@ tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,
 .section-desc { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 16px; line-height: 1.6; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; align-items: stretch; }
 .card {
-  background: var(--color-background-secondary);
-  border: 0.5px solid var(--color-border-tertiary);
+  background: transparent;
+  border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-lg);
   padding: 1rem 1.125rem;
   overflow: visible;
   height: 100%;
 }
-.card:hover { border-color: var(--color-border-secondary); }
+.card:hover { border-color: var(--color-border-primary); }
 .card-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; letter-spacing: .02em; }
 .card-icon {
   font-size: 24px;
@@ -653,8 +653,8 @@ tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,
 .card-sub { font-size: 11px; color: var(--color-text-secondary); line-height: 1.4; margin: 0; }
 .metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(148px, 100%), 1fr)); gap: 12px; margin-bottom: 0; align-items: stretch; }
 .metric {
-  background: var(--color-background-secondary);
-  border: 0.5px solid var(--color-border-tertiary);
+  background: transparent;
+  border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-md);
   padding: 12px 16px;
   height: 100%;
@@ -694,8 +694,8 @@ tbody tr:hover td { background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,
 .tab-content.active { display: flex; flex-direction: column; gap: 12px; }
 .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; align-items: stretch; }
 .compare-card {
-  background: var(--color-background-secondary);
-  border: 0.5px solid var(--color-border-tertiary);
+  background: transparent;
+  border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-lg);
   padding: 16px;
   height: 100%;
@@ -1027,10 +1027,13 @@ const RESIZE_SCRIPT = `<script>
 
     const bodyTop = document.body.getBoundingClientRect().top;
     const directChildren = container ? Array.from(container.children) : [];
+    const containerPaddingBottom = container
+      ? Number.parseFloat(window.getComputedStyle(container).paddingBottom) || 0
+      : 0;
     const childrenBottom = directChildren.reduce((max, child) => {
       if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE') return max;
       const rect = child.getBoundingClientRect();
-      return Math.max(max, rect.bottom - bodyTop);
+      return Math.max(max, rect.bottom - bodyTop + containerPaddingBottom);
     }, 0);
     const nestedScrollBottom = container
       ? Array.from(container.querySelectorAll('*')).reduce((max, node) => {
@@ -1042,15 +1045,10 @@ const RESIZE_SCRIPT = `<script>
       : 0;
 
     return Math.ceil(Math.max(
-      document.scrollingElement ? document.scrollingElement.scrollHeight : 0,
-      document.documentElement.scrollHeight,
-      document.documentElement.offsetHeight,
-      document.body.scrollHeight,
-      document.body.offsetHeight,
       container ? container.scrollHeight : 0,
       childrenBottom,
       nestedScrollBottom
-    ));
+    )) + ${UTOOLS_WEBVIEW_BOTTOM_RESERVE};
   }
 
   function expandVerticalOverflowContainers() {
@@ -1172,8 +1170,70 @@ const RESIZE_SCRIPT = `<script>
 })();
 <\/script>`;
 
+const STORAGE_SHIM = `<script data-goose-storage-shim>
+(() => {
+  const createStorage = () => {
+    const data = Object.create(null);
+    return {
+      clear() { Object.keys(data).forEach(k => delete data[k]); },
+      getItem(k) { return k in data ? data[k] : null; },
+      setItem(k, v) { data[k] = String(v); },
+      removeItem(k) { delete data[k]; },
+      key(i) { return Object.keys(data)[i] ?? null; },
+      get length() { return Object.keys(data).length; },
+    };
+  };
+  try {
+    Object.defineProperty(window, 'localStorage', { value: createStorage() });
+    Object.defineProperty(window, 'sessionStorage', { value: createStorage() });
+  } catch (e) {}
+})();
+<\/script>`;
+
+const UPDATE_LISTENER_SCRIPT = `<script data-goose-update-listener>
+(() => {
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'update-html') {
+      const container = document.getElementById('vis-container');
+      if (container) {
+        container.innerHTML = event.data.html;
+        if (window.__gooseWidgetResize) window.__gooseWidgetResize();
+      }
+    }
+  });
+})();
+<\/script>`;
+
+const HTML_TO_IMAGE_CDN = `https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js`;
+
+const CAPTURE_SCRIPT = `<script data-goose-capture>
+(() => {
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'capture-screenshot') {
+      if (typeof htmlToImage === 'undefined') {
+        window.parent.postMessage({ type: 'screenshot-result', error: 'html-to-image not loaded' }, '*');
+        return;
+      }
+      const container = document.getElementById('vis-container');
+      if (!container) {
+        window.parent.postMessage({ type: 'screenshot-result', error: 'vis-container not found' }, '*');
+        return;
+      }
+      htmlToImage.toPng(container, { pixelRatio: 2, backgroundColor: 'transparent' })
+        .then((dataUrl) => {
+          window.parent.postMessage({ type: 'screenshot-result', dataUrl }, '*');
+        })
+        .catch((err) => {
+          window.parent.postMessage({ type: 'screenshot-result', error: err.message || 'capture failed' }, '*');
+        });
+    }
+  });
+})();
+<\/script>`;
+
 export interface HtmlWidgetBlockProps {
   html: string;
+  streaming?: boolean;
 }
 
 export const HtmlWidgetBlock = React.memo(
@@ -1185,24 +1245,26 @@ export const HtmlWidgetBlock = React.memo(
       const resetEditorFontSize = useSettings((state) => state.resetEditorFontSize);
       const [height, setHeight] = useState(DEFAULT_HEIGHT);
       const iframeRef = useRef<HTMLIFrameElement>(null);
+      const lastSentHtmlRef = useRef<string>("");
+      const postMessageRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+      const capturePromiseRef = useRef<
+        { resolve: (url: string) => void; reject: (err: Error) => void } | null
+      >(null);
 
       const isDark =
         theme === "dark" ||
         (theme === "system" &&
           window.matchMedia("(prefers-color-scheme: dark)").matches);
 
+      // iframeKey only changes on theme switch — NOT on every html change.
+      // This prevents the iframe from being destroyed & recreated on every render.
+      const iframeKey = `html-widget-${isDark ? "dark" : "light"}`;
+
+      // iframe shell is stable; streamed HTML is pushed by postMessage to avoid iframe reload flicker.
       const srcdoc = useMemo(() => {
         const colorSchemeMeta = `<meta name="color-scheme" content="${isDark ? "dark" : "light"}">`;
-        return `<!DOCTYPE html><html><head><meta charset="utf-8">${colorSchemeMeta}<style>${HOST_FONTS_CSS}</style><style>${buildDesignSystemCss(isDark)}</style></head><body><div id="vis-container">${html}</div>${RESIZE_SCRIPT}</body></html>`;
-      }, [html, isDark]);
-
-      const iframeKey = useMemo(() => {
-        let hash = 0;
-        for (let i = 0; i < html.length; i++) {
-          hash = ((hash << 5) - hash + html.charCodeAt(i)) | 0;
-        }
-        return `html-widget-${isDark ? "dark" : "light"}-${hash}`;
-      }, [html, isDark]);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8">${colorSchemeMeta}<style>${HOST_FONTS_CSS}</style><style>${buildDesignSystemCss(isDark)}</style><script src="${HTML_TO_IMAGE_CDN}"></script></head><body><div id="vis-container"></div>${STORAGE_SHIM}${UPDATE_LISTENER_SCRIPT}${CAPTURE_SCRIPT}${RESIZE_SCRIPT}</body></html>`;
+      }, [isDark]);
 
       const handleMessage = useCallback(
         (event: MessageEvent) => {
@@ -1251,6 +1313,18 @@ export const HtmlWidgetBlock = React.memo(
               resetEditorFontSize();
             }
           }
+
+          if (event.data.type === "screenshot-result") {
+            const promise = capturePromiseRef.current;
+            if (!promise) return;
+            capturePromiseRef.current = null;
+            if (typeof event.data.dataUrl === "string") {
+              promise.resolve(event.data.dataUrl);
+            } else {
+              promise.reject(new Error(event.data.error || "截图失败"));
+            }
+            return;
+          }
         },
         [decreaseEditorFontSize, increaseEditorFontSize, resetEditorFontSize],
       );
@@ -1264,21 +1338,79 @@ export const HtmlWidgetBlock = React.memo(
         setHeight(DEFAULT_HEIGHT);
       }, [iframeKey]);
 
+      useEffect(() => {
+        if (html === lastSentHtmlRef.current) return;
+
+        if (postMessageRafRef.current !== null) {
+          cancelAnimationFrame(postMessageRafRef.current);
+        }
+
+        postMessageRafRef.current = requestAnimationFrame(() => {
+          postMessageRafRef.current = null;
+          const iframe = iframeRef.current;
+          if (!iframe?.contentWindow) return;
+          lastSentHtmlRef.current = html;
+          iframe.contentWindow.postMessage({ type: "update-html", html }, "*");
+        });
+
+        return () => {
+          if (postMessageRafRef.current !== null) {
+            cancelAnimationFrame(postMessageRafRef.current);
+            postMessageRafRef.current = null;
+          }
+        };
+      }, [html]);
+
+      useEffect(() => {
+        const iframe = iframeRef.current;
+        if (!iframe) return;
+
+        const handleLoad = () => {
+          if (iframe.contentWindow) {
+            lastSentHtmlRef.current = "";
+            iframe.contentWindow.postMessage({ type: "update-html", html }, "*");
+          }
+        };
+
+        iframe.addEventListener("load", handleLoad);
+        return () => iframe.removeEventListener("load", handleLoad);
+      }, [iframeKey, html]);
+
+      const requestCapture = useCallback(() => {
+        return new Promise<string>((resolve, reject) => {
+          capturePromiseRef.current = { resolve, reject };
+          const iframe = iframeRef.current;
+          if (!iframe?.contentWindow) {
+            reject(new Error("iframe not ready"));
+            capturePromiseRef.current = null;
+            return;
+          }
+          iframe.contentWindow.postMessage({ type: "capture-screenshot" }, "*");
+          window.setTimeout(() => {
+            const promise = capturePromiseRef.current;
+            if (promise) {
+              capturePromiseRef.current = null;
+              promise.reject(new Error("截图超时"));
+            }
+          }, 5000);
+        });
+      }, []);
+
       return (
-        <div ref={ref}>
+        <div ref={ref} className="group relative">
+          <DatavizToolbar onCapture={requestCapture} />
           <iframe
             key={iframeKey}
             ref={iframeRef}
             srcDoc={srcdoc}
             sandbox="allow-scripts"
             scrolling="no"
-            allowTransparency={true}
             style={{
               border: "none",
               width: "100%",
               height: `${height}px`,
               display: "block",
-              background: "transparent",
+              background: isDark ? "#2E2E2D" : "#ffffff",
             }}
           />
         </div>

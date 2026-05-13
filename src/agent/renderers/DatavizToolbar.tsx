@@ -5,8 +5,10 @@ import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
 export interface DatavizToolbarProps {
-  targetRef: React.RefObject<HTMLDivElement | null>;
-  blockType: "echarts" | "html";
+  targetRef?: React.RefObject<HTMLDivElement | null>;
+  blockType?: "echarts" | "html";
+  /** 自定义截图函数，传入时优先使用，不再依赖 targetRef + blockType */
+  onCapture?: () => Promise<string>;
 }
 
 const isUToolsEnv = () =>
@@ -27,15 +29,21 @@ async function captureImage(
 }
 
 export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
-  ({ targetRef, blockType }) => {
+  ({ targetRef, blockType, onCapture }) => {
     const [copyLoading, setCopyLoading] = useState(false);
     const [downloadLoading, setDownloadLoading] = useState(false);
 
+    const capture = useCallback(async () => {
+      if (onCapture) return onCapture();
+      if (!targetRef?.current || !blockType) throw new Error("No capture method available");
+      return captureImage(targetRef.current, blockType);
+    }, [onCapture, targetRef, blockType]);
+
     const handleCopy = useCallback(async () => {
-      if (!targetRef.current) return;
+      if (!onCapture && !targetRef?.current) return;
       setCopyLoading(true);
       try {
-        const dataUrl = await captureImage(targetRef.current, blockType);
+        const dataUrl = await capture();
         if (isUToolsEnv() && typeof window.utools?.copyImage === "function") {
           window.utools.copyImage(dataUrl);
           toast.success("已复制到剪贴板");
@@ -53,13 +61,13 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       } finally {
         setCopyLoading(false);
       }
-    }, [targetRef, blockType]);
+    }, [capture, onCapture, targetRef]);
 
     const handleDownload = useCallback(async () => {
-      if (!targetRef.current) return;
+      if (!onCapture && !targetRef?.current) return;
       setDownloadLoading(true);
       try {
-        const dataUrl = await captureImage(targetRef.current, blockType);
+        const dataUrl = await capture();
         if (
           isUToolsEnv() &&
           typeof window.utools?.showSaveDialog === "function" &&
@@ -93,7 +101,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       } finally {
         setDownloadLoading(false);
       }
-    }, [targetRef, blockType]);
+    }, [capture, onCapture, targetRef]);
 
     return (
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[9999] pointer-events-none">

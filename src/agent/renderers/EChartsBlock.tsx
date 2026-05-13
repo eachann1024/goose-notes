@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
+import { DatavizToolbar } from "./DatavizToolbar";
 
 /* ── colour system (from dataviz skill) ─────────────────────────── */
 // Imagine 600 色阶 — 与 claude-visualize-widget 设计系统对齐
@@ -24,7 +25,7 @@ const TM = {
     gl: "rgba(31,30,29,.15)", // borderTertiary（轴线使用 tertiary 而非更淡的值）
   },
   dark: {
-    bg: "#302e2e",       // bgPrimary
+    bg: "#2E2E2D",       // bgPrimary — matches outer background
     tc: "#faf9f5",       // textPrimary
     sc: "#c2c0b6",       // textSecondary
     gl: "rgba(222,220,209,.15)", // borderTertiary
@@ -401,39 +402,46 @@ export const EChartsBlock = React.memo(
       const el = containerRef.current;
       if (!el) return;
 
-      if (!option) {
-        setError("无法解析图表配置");
-        if (chartRef.current) {
-          chartRef.current.dispose();
-          chartRef.current = null;
-        }
-        return;
-      }
-
-      setError(null);
-
-      if (chartRef.current) {
-        chartRef.current.dispose();
-        chartRef.current = null;
-      }
-
       try {
-        const instance = echarts.init(el, isDark ? "dark" : undefined, {
+        chartRef.current = echarts.init(el, isDark ? "dark" : undefined, {
           renderer: "canvas",
         });
-        instance.setOption(option, true);
-        chartRef.current = instance;
       } catch (e) {
         setError(e instanceof Error ? e.message : "图表渲染失败");
         chartRef.current = null;
       }
 
       return () => {
-        if (chartRef.current) {
-          chartRef.current.dispose();
-          chartRef.current = null;
-        }
+        chartRef.current?.dispose();
+        chartRef.current = null;
       };
+    }, [isDark]);
+
+    useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+
+      if (!option) {
+        setError("无法解析图表配置");
+        chartRef.current?.clear();
+        return;
+      }
+
+      try {
+        const instance =
+          chartRef.current ??
+          echarts.init(el, isDark ? "dark" : undefined, {
+            renderer: "canvas",
+          });
+        chartRef.current = instance;
+        instance.setOption(option, {
+          notMerge: true,
+          lazyUpdate: true,
+        });
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "图表渲染失败");
+      }
     }, [isDark, option]);
 
     useEffect(() => {
@@ -450,11 +458,13 @@ export const EChartsBlock = React.memo(
       return (
         <div
           ref={frameRef}
+          className="group relative"
           style={{
             width: "100%",
             padding: `${framePadding}px`,
           }}
         >
+          <DatavizToolbar targetRef={containerRef} blockType="echarts" />
           <div
             ref={setRefs}
             style={{
@@ -477,11 +487,13 @@ export const EChartsBlock = React.memo(
     return (
       <div
         ref={frameRef}
+        className="group relative"
         style={{
           width: "100%",
           padding: `${framePadding}px ${framePadding}px ${Math.max(framePadding, 12)}px`,
         }}
       >
+        <DatavizToolbar targetRef={containerRef} blockType="echarts" />
         <div
           ref={setRefs}
           style={{ width: "100%", height: chartHeight, background: "transparent" }}

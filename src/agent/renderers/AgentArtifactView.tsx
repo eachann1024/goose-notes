@@ -1,5 +1,5 @@
-import { useMemo, useRef, type ReactNode } from "react";
-import { LoaderCircle } from "lucide-react";
+import React, { useMemo, useRef, type ReactNode } from "react";
+import { Info, LoaderCircle } from "lucide-react";
 import MarkdownIt from "markdown-it";
 import { AiWritePreviewCard } from "@/pages/workspace/components/ai/AiWritePreviewCard";
 import type {
@@ -26,6 +26,8 @@ type Segment =
 
 const HTML_FRAGMENT_RE =
   /<(div|section|article|main|aside|header|footer|svg|canvas|table|style|script)\b/i;
+const STREAMING_HTML_START_RE =
+  /<(?:!DOCTYPE\s+html|html|body|div|section|article|main|aside|header|footer|svg|canvas|table|style)\b/i;
 const HTML_CONTROL_ATTR_RE =
   /\b(class|style|onclick|oninput|data-[\w-]+|id)=["'][^"']*["']/i;
 
@@ -61,6 +63,16 @@ function parseDatavizSegments(text: string): Segment[] {
     if (tail) segments.push({ type: "markdown", content: tail });
   }
 
+  if (segments.length === 1 && segments[0]?.type === "markdown") {
+    const mixedHtml = splitStreamingHtmlStart(segments[0].content);
+    if (mixedHtml) {
+      return [
+        ...(mixedHtml.before ? [{ type: "markdown" as const, content: mixedHtml.before }] : []),
+        { type: "html" as const, content: mixedHtml.html },
+      ];
+    }
+  }
+
   if (segments.length === 0 && looksLikeStandaloneHtml(text)) {
     return [{ type: "html", content: text.trim() }];
   }
@@ -76,8 +88,19 @@ function parseDatavizSegments(text: string): Segment[] {
   return segments;
 }
 
+function splitStreamingHtmlStart(text: string) {
+  const match = text.match(STREAMING_HTML_START_RE);
+  if (!match || match.index === undefined) return null;
+
+  const before = text.slice(0, match.index).trim();
+  const html = text.slice(match.index).trim();
+  if (!html) return null;
+
+  return { before, html };
+}
+
 /** 流式场景：额外检测尾部未闭合的 dataviz 围栏 */
-function parseStreamingSegments(text: string) {
+function parseStreamingSegments(text: string, streaming: boolean) {
   const segments: Segment[] = [];
   const fenceRe = /```(echarts|html|json-render)\s*\n([\s\S]*?)```/g;
   let lastIndex = 0;
@@ -88,7 +111,10 @@ function parseStreamingSegments(text: string) {
       const before = text.slice(lastIndex, match.index).trim();
       if (before) segments.push({ type: "markdown", content: before });
     }
-    segments.push({ type: match[1] as "echarts" | "html", content: match[2].trim() });
+    segments.push({
+      type: match[1] as "echarts" | "html" | "json-render",
+      content: match[2].trim(),
+    });
     lastIndex = match.index + match[0].length;
   }
 
@@ -103,22 +129,39 @@ function parseStreamingSegments(text: string) {
       segments,
       hasIncompleteBlock: true,
       incompleteBlockType: incompleteMatch[1] as "echarts" | "html" | "json-render",
+      incompleteContent: incompleteMatch[2],
     };
   }
 
-  if (remaining.trim()) {
-    segments.push({ type: "markdown", content: remaining.trim() });
+  const trimmedRemaining = remaining.trim();
+  const streamingHtml = streaming ? splitStreamingHtmlStart(trimmedRemaining) : null;
+  if (streamingHtml) {
+    if (streamingHtml.before) {
+      segments.push({ type: "markdown", content: streamingHtml.before });
+    }
+    return {
+      segments,
+      hasIncompleteBlock: true,
+      incompleteBlockType: "html" as const,
+      incompleteContent: streamingHtml.html,
+    };
   }
 
-  if (segments.length === 0 && looksLikeStandaloneHtml(text)) {
+  if (trimmedRemaining) {
+    segments.push({ type: "markdown", content: trimmedRemaining });
+  }
+
+  if (!streaming && segments.length === 0 && looksLikeStandaloneHtml(text)) {
     return {
       segments: [{ type: "html", content: text.trim() } satisfies Segment],
       hasIncompleteBlock: false,
       incompleteBlockType: undefined,
+      incompleteContent: undefined,
     };
   }
 
   if (
+    !streaming &&
     segments.length === 1 &&
     segments[0]?.type === "markdown" &&
     looksLikeStandaloneHtml(segments[0].content)
@@ -127,10 +170,11 @@ function parseStreamingSegments(text: string) {
       segments: [{ type: "html", content: segments[0].content.trim() } satisfies Segment],
       hasIncompleteBlock: false,
       incompleteBlockType: undefined,
+      incompleteContent: undefined,
     };
   }
 
-  return { segments, hasIncompleteBlock: false, incompleteBlockType: undefined };
+  return { segments, hasIncompleteBlock: false, incompleteBlockType: undefined, incompleteContent: undefined };
 }
 
 interface AgentArtifactViewProps {
@@ -147,7 +191,7 @@ function DatavizSurface({ children }: { children: ReactNode }) {
   );
 }
 
-function MarkdownSegmentModule({ content }: { content: string }) {
+const MarkdownSegmentModule = React.memo(function MarkdownSegmentModule({ content }: { content: string }) {
   return (
     <section
       className="ai-markdown break-words text-sm leading-7"
@@ -155,10 +199,10 @@ function MarkdownSegmentModule({ content }: { content: string }) {
       dangerouslySetInnerHTML={{ __html: md.render(content) }}
     />
   );
-}
+});
 
 /** 渲染单个 ECharts dataviz 块，带工具栏 */
-function EChartsSegment({ content }: { content: string }) {
+const EChartsSegment = React.memo(function EChartsSegment({ content }: { content: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const config = useMemo(() => {
     try {
@@ -181,19 +225,29 @@ function EChartsSegment({ content }: { content: string }) {
       <EChartsBlock ref={ref} config={config} />
     </section>
   );
-}
+});
 
-/** 渲染单个 HTML widget 块，带工具栏 */
-function HtmlWidgetSegment({ content }: { content: string }) {
+/** 渲染单个 HTML widget 块 */
+const HtmlWidgetSegment = React.memo(function HtmlWidgetSegment({ content }: { content: string }) {
   const ref = useRef<HTMLDivElement>(null);
   return (
     <section className="relative overflow-visible">
       <HtmlWidgetBlock ref={ref} html={content} />
     </section>
   );
-}
+});
 
-/** 图表/组件生成中的 loading 占位 */
+/** 流式 HTML widget 块，生成中保持可视化预览 */
+const StreamingHtmlWidgetSegment = React.memo(function StreamingHtmlWidgetSegment({ content }: { content: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <section className="relative overflow-visible">
+      <HtmlWidgetBlock ref={ref} html={content} streaming={true} />
+    </section>
+  );
+});
+
+/** 图表/组件生成中的 loading 占位 — sticky 固定在顶部不随内容移动 */
 function DatavizLoadingPlaceholder({ type }: { type: "echarts" | "html" | "json-render" }) {
   const label =
     type === "echarts"
@@ -202,7 +256,7 @@ function DatavizLoadingPlaceholder({ type }: { type: "echarts" | "html" | "json-
         ? "正在生成交互组件…"
         : "正在生成界面组件…";
   return (
-    <div className="flex items-center gap-2 px-1 py-2 text-sm text-muted-foreground">
+    <div className="sticky top-0 z-10 -mx-1 flex items-center gap-2 rounded-lg bg-background/90 px-3 py-2 text-sm text-muted-foreground backdrop-blur-sm">
       <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
       <span>{label}</span>
     </div>
@@ -210,7 +264,7 @@ function DatavizLoadingPlaceholder({ type }: { type: "echarts" | "html" | "json-
 }
 
 /** 渲染单个 json-render UI 块 */
-function JsonRenderSegment({ content }: { content: string }) {
+const JsonRenderSegment = React.memo(function JsonRenderSegment({ content }: { content: string }) {
   const spec = useMemo(() => {
     try {
       return JSON.parse(content) as import("@json-render/core").Spec;
@@ -234,10 +288,14 @@ function JsonRenderSegment({ content }: { content: string }) {
       </JSONUIProvider>
     </section>
   );
+});
+
+function segmentKey(seg: Segment, index: number): string {
+  return `${seg.type}-${index}`;
 }
 
 /** 渲染 dataviz 段落列表（复用于最终态和流式态） */
-function DatavizSegmentList({
+const DatavizSegmentList = React.memo(function DatavizSegmentList({
   segments,
   trailing,
 }: {
@@ -247,21 +305,22 @@ function DatavizSegmentList({
   return (
     <DatavizSurface>
       {segments.map((seg, i) => {
+        const key = segmentKey(seg, i);
         if (seg.type === "echarts") {
-          return <EChartsSegment key={`echarts-${i}`} content={seg.content} />;
+          return <EChartsSegment key={key} content={seg.content} />;
         }
         if (seg.type === "html") {
-          return <HtmlWidgetSegment key={`html-${i}`} content={seg.content} />;
+          return <HtmlWidgetSegment key={key} content={seg.content} />;
         }
         if (seg.type === "json-render") {
-          return <JsonRenderSegment key={`json-render-${i}`} content={seg.content} />;
+          return <JsonRenderSegment key={key} content={seg.content} />;
         }
-        return <MarkdownSegmentModule key={`md-${i}`} content={seg.content} />;
+        return <MarkdownSegmentModule key={key} content={seg.content} />;
       })}
       {trailing}
     </DatavizSurface>
   );
-}
+});
 
 /**
  * 流式输出阶段的 dataviz 感知渲染器。
@@ -276,9 +335,9 @@ export function StreamingDatavizText({
   streaming: boolean;
   streamPhaseLabel?: string;
 }) {
-  const { segments, hasIncompleteBlock, incompleteBlockType } = useMemo(
-    () => parseStreamingSegments(text),
-    [text],
+  const { segments, hasIncompleteBlock, incompleteBlockType, incompleteContent } = useMemo(
+    () => parseStreamingSegments(text, streaming),
+    [streaming, text],
   );
 
   const hasDataviz = segments.some((s) => s.type !== "markdown") || hasIncompleteBlock;
@@ -300,17 +359,46 @@ export function StreamingDatavizText({
     );
   }
 
+  const standaloneStreamingHtml =
+    streaming &&
+    !hasIncompleteBlock &&
+    segments.length === 1 &&
+    segments[0]?.type === "markdown" &&
+    looksLikeStandaloneHtml(segments[0].content);
+
+  if (standaloneStreamingHtml) {
+    return (
+      <div className="break-words text-sm leading-7">
+        <DatavizLoadingPlaceholder type="html" />
+        <DatavizSurface>
+          <StreamingHtmlWidgetSegment content={segments[0].content} />
+        </DatavizSurface>
+      </div>
+    );
+  }
+
+  const streamingHtmlTrailing =
+    hasIncompleteBlock && incompleteBlockType === "html" && incompleteContent ? (
+      <StreamingHtmlWidgetSegment content={incompleteContent} />
+    ) : undefined;
+
+  const activeDatavizType =
+    incompleteBlockType ??
+    [...segments].reverse().find((seg) => seg.type !== "markdown")?.type ??
+    "html";
+  const leading =
+    streaming && (hasIncompleteBlock || hasDataviz) ? (
+      <DatavizLoadingPlaceholder type={activeDatavizType} />
+    ) : undefined;
+
   return (
     <div className="break-words text-sm leading-7">
+      {leading}
       <DatavizSegmentList
         segments={segments}
-        trailing={
-          hasIncompleteBlock && incompleteBlockType ? (
-            <DatavizLoadingPlaceholder type={incompleteBlockType} />
-          ) : undefined
-        }
+        trailing={streamingHtmlTrailing}
       />
-      {streaming && !hasIncompleteBlock && (
+      {streaming && !leading && (
         <div className="mt-2.5 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
@@ -353,6 +441,23 @@ function MarkdownNoteRenderer({
   onOpenResult,
 }: AgentArtifactViewProps) {
   if (artifact.type !== "markdown_note") return null;
+
+  const hasDataviz = textHasDataviz(artifact.plan.outputMarkdown);
+  if (hasDataviz) {
+    const segments = parseDatavizSegments(artifact.plan.outputMarkdown);
+    return (
+      <div className="mt-3">
+        <div className="flex items-center gap-2 rounded-t-xl border border-b-0 border-border/60 dark:border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+          <Info size={14} />
+          <span>包含交互式图表/组件，仅支持在对话中查看</span>
+        </div>
+        <div className="rounded-b-xl border border-border/60 dark:border-border p-2">
+          <DatavizSegmentList segments={segments} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AiWritePreviewCard
       plan={artifact.plan}
