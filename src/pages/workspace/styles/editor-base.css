@@ -76,6 +76,11 @@
   background-color: hsl(var(--foreground) / 0.08);
 }
 
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td {
+  border-color: hsl(var(--border) / 0.55);
+}
+
 .workspace-editor-surface [data-content-type="divider"] hr {
   border-top-color: hsl(var(--border) / 0.55);
 }
@@ -134,7 +139,6 @@
 
 .goose-table-extend-button:hover,
 .goose-table-extend-button.is-editing {
-  background: #fff;
   color: hsl(var(--foreground));
 }
 
@@ -393,4 +397,71 @@
   padding: 8px 16px;
   border-top: 1px solid var(--code-border, hsl(var(--border) / 0.2));
   background: transparent;
+}
+
+/* ===== 自定义文件块（带下载/删除按钮） ===== */
+.goose-file-block-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background-color: hsl(var(--muted) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.4);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.goose-file-block-content:hover {
+  background-color: hsl(var(--muted) / 0.55);
+  border-color: hsl(var(--border) / 0.6);
+}
+
+.goose-file-block-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  color: hsl(var(--foreground));
+}
+
+.goose-file-block-info > svg {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+
+.goose-file-block-name {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(var(--foreground));
+}
+
+.goose-file-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.goose-file-block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.7);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.goose-file-block-action-btn:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }

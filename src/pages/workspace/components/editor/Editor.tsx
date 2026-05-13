@@ -49,8 +49,9 @@ import {
 } from "@/pages/workspace/components/command/blocknoteSlashItems";
 import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
 import { EditorFormattingToolbar } from "./EditorFormattingToolbar";
-import { CodeBlockEnhancer } from "./CodeBlockEnhancer";
 import { calloutBlock } from "./calloutBlock";
+import { customFileBlock } from "./customFileBlock";
+import { codeBlockSpec } from "./codeBlockSpec";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AiInlineInput } from "./AiInlineInput";
 import { EditorSideMenu } from "./EditorSideMenu";
+import { ImageLightbox } from "./ImageLightbox";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -155,6 +157,12 @@ function EditorFilePanel({ blockId }: EditorFilePanelProps) {
   const editor = useBlockNoteEditor<any, any, any>();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const block = editor.getBlock(blockId);
+  const accept =
+    block?.type === "image"
+      ? "image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff,image/avif,image/heic,image/heif"
+      : undefined;
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.click();
@@ -189,6 +197,7 @@ function EditorFilePanel({ blockId }: EditorFilePanelProps) {
       ref={inputRef}
       type="file"
       className="hidden"
+      accept={accept}
       onChange={handleFileChange}
       aria-hidden="true"
     />
@@ -491,6 +500,19 @@ function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) 
   );
 }
 
+const editorSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    heading: createHeadingBlockSpec({
+      levels: [1, 2, 3],
+      allowToggleHeadings: true,
+    }),
+    callout: calloutBlock,
+    file: customFileBlock,
+    codeBlock: codeBlockSpec,
+  },
+});
+
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;
 }
@@ -512,26 +534,19 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const pageIdForUpdateRef = useRef<string | null>(null);
   const syncedContentSignatureRef = useRef<string | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  const isSwappingContentRef = useRef(false);
+  const prevActivePageIdForSwapRef = useRef<string | null>(activePageId ?? null);
 
-  const initialContent = useMemo(() => {
+  const [creationContent] = useState(() => {
     const content = normalizePageContent(page?.content);
     ensureDefaultOpenToggleState(content, page?.id);
     return content;
-  }, [page?.id]);
+  });
 
   const editor = useCreateBlockNote(
     {
-      initialContent: initialContent as any,
-      schema: BlockNoteSchema.create({
-        blockSpecs: {
-          ...defaultBlockSpecs,
-          heading: createHeadingBlockSpec({
-            levels: [1, 2, 3],
-            allowToggleHeadings: true,
-          }),
-          callout: calloutBlock,
-        },
-      }),
+      initialContent: creationContent as any,
+      schema: editorSchema,
       dictionary: {
         ...zh,
         placeholders: {
@@ -551,8 +566,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         }
         return URL.createObjectURL(file);
       },
+      resolveFileUrl: async (url) => {
+        if (url.startsWith("att:")) {
+          const { imageStorage } = await import("@/lib/imageStorage");
+          const blob = await imageStorage.load(url);
+          if (blob) return URL.createObjectURL(blob);
+        }
+        return url;
+      },
     },
-    [page?.id],
+    [],
   );
 
   const getSlashItems = useCallback(
@@ -640,12 +663,23 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     if (getContentSignature(p.content) !== normalizedSignature) {
       updatePage(p.id, { content: normalized });
     }
+
+    // Swap editor content when switching pages (not on first mount)
+    const prevId = prevActivePageIdForSwapRef.current;
+    prevActivePageIdForSwapRef.current = activePageId;
+
+    if (prevId !== null && prevId !== activePageId) {
+      isSwappingContentRef.current = true;
+      editor.replaceBlocks(editor.document, normalized as any);
+      requestAnimationFrame(() => {
+        syncHeadingToggleDom();
+        isSwappingContentRef.current = false;
+      });
+    } else {
+      syncHeadingToggleDom();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId]);
-
-  useEffect(() => {
-    syncHeadingToggleDom();
-  }, [activePageId, syncHeadingToggleDom]);
 
   useEffect(() => {
     const root = editorContainerRef.current;
@@ -817,6 +851,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           tableHandles={false}
           filePanel={false}
           onChange={() => {
+            if (isSwappingContentRef.current) return;
             const safePageId = pageIdForUpdateRef.current;
             if (!safePageId) return;
             if (restoreFirstTitleHeading()) return;
@@ -871,7 +906,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           />
           <AiInlineInput />
         </BlockNoteView>
-        <CodeBlockEnhancer editor={editor} />
       </div>
       <ContextMenuContent className="w-[200px]">
         {selectedText.trim() && (
@@ -894,5 +928,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       onConfirm={handleSelectionThemeConfirm}
       mode="selection"
     />
+    <ImageLightbox editorContainerRef={editorContainerRef} />
   </>);
 });
