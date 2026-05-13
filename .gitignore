@@ -31,3 +31,4 @@ bun.lock
 output/playwright
 .claude/worktrees/
 CHANGELOG.md
+.gitnexus
