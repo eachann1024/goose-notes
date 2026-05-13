@@ -21,6 +21,10 @@ import { Kbd } from "@/components/ui/kbd";
 import { FormattingToolbarColorPicker } from "./FormattingToolbarColorPicker";
 import type { DefaultBlockSchema } from "@blocknote/core";
 
+const NON_FORMATTABLE_TYPES = new Set([
+  "image", "file", "audio", "video", "divider", "table",
+]);
+
 function ToolbarTooltip({
   label,
   shortcut,
@@ -83,12 +87,6 @@ export function EditorFormattingToolbar() {
     (firstBlock?.props as { textAlignment?: string } | undefined)
       ?.textAlignment ?? "left";
 
-  const isHeading = firstBlock?.type === "heading";
-  const isToggleable =
-    isHeading &&
-    (firstBlock?.props as { isToggleable?: boolean } | undefined)
-      ?.isToggleable;
-
   const linkUrl = editor.getSelectedLinkUrl();
   const isLinkActive = !!linkUrl;
 
@@ -121,6 +119,12 @@ export function EditorFormattingToolbar() {
   }, [editor, selectedBlocks]);
 
   const shouldHide = isScrolling || isContextMenuOpen;
+
+  if (firstBlock && NON_FORMATTABLE_TYPES.has(firstBlock.type)) return null;
+  if (
+    firstBlock?.type === "heading" &&
+    (firstBlock.props as { level?: number })?.level === 1
+  ) return null;
 
   return (
     <TooltipProvider
@@ -343,36 +347,6 @@ export function EditorFormattingToolbar() {
           </TooltipTrigger>
           <ToolbarTooltip label="右对齐" shortcut="Mod+Shift+R" />
         </Tooltip>
-
-        {isHeading && (
-          <>
-            <Separator orientation="vertical" className="h-5 opacity-70" />
-            <Tooltip {...bindTooltip("heading-toggle")}>
-              <TooltipTrigger asChild>
-                <Toggle
-                  size="sm"
-                  pressed={!!isToggleable}
-                  onPressedChange={() => {
-                    for (const block of selectedBlocks) {
-                      if (block.type === "heading") {
-                        editor.updateBlock(block, {
-                          props: {
-                            isToggleable: !isToggleable,
-                          },
-                        });
-                      }
-                    }
-                  }}
-                  aria-label="折叠子内容"
-                  className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
-                >
-                  <LucideIcons.ChevronRight className="h-[15px] w-[15px]" />
-                </Toggle>
-              </TooltipTrigger>
-              <ToolbarTooltip label="折叠子内容" />
-            </Tooltip>
-          </>
-        )}
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 

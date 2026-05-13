@@ -19,32 +19,103 @@ const TITLE_HEADING_LEVEL = 1;
 const titleHeadingBlock = (content = ""): PartialBlock =>
   ({
     type: "heading",
-    props: { level: TITLE_HEADING_LEVEL, isToggleable: true },
+    props: { level: TITLE_HEADING_LEVEL, isToggleable: false },
     content,
   }) as PartialBlock;
 
-function withToggleableHeadingProps(block: PartialBlock): PartialBlock {
+function withHeadingToggleProps(block: PartialBlock, isTitle = false): PartialBlock {
   if (block.type !== "heading") return block;
   return {
     ...block,
     props: {
       ...block.props,
-      isToggleable: true,
+      isToggleable: !isTitle,
     },
   } as PartialBlock;
 }
 
-export function ensureToggleableHeadings(content: BlockNoteContent): BlockNoteContent {
-  return content.map((block) => {
-    const nextBlock = withToggleableHeadingProps(block);
+export function ensureToggleableHeadings(
+  content: BlockNoteContent,
+  isDocumentRoot = true,
+): BlockNoteContent {
+  return content.map((block, index) => {
+    const nextBlock = withHeadingToggleProps(block, isDocumentRoot && index === 0);
     if (!Array.isArray(nextBlock.children) || nextBlock.children.length === 0) {
       return nextBlock;
     }
     return {
       ...nextBlock,
-      children: ensureToggleableHeadings(nextBlock.children as BlockNoteContent),
+      children: ensureToggleableHeadings(
+        nextBlock.children as BlockNoteContent,
+        false,
+      ),
     } as PartialBlock;
   });
+}
+
+function headingLevel(block: PartialBlock): number {
+  return Math.min(Math.max(Number((block.props as any)?.level) || 1, 1), 3);
+}
+
+function withoutChildren(block: PartialBlock): PartialBlock {
+  const { children: _children, ...rest } = block as PartialBlock & {
+    children?: PartialBlock[];
+  };
+  return rest as PartialBlock;
+}
+
+function flattenBlocks(blocks: BlockNoteContent): BlockNoteContent {
+  return blocks.flatMap((block) => {
+    const current = withoutChildren(block);
+    const children = Array.isArray(block.children)
+      ? flattenBlocks(block.children as BlockNoteContent)
+      : [];
+    return [current, ...children];
+  });
+}
+
+export function organizeToggleHeadingSections(content: BlockNoteContent): BlockNoteContent {
+  const [titleBlock, ...sectionBlocks] = ensureFirstTitleHeading(content);
+  const root: BlockNoteContent = [withHeadingToggleProps(titleBlock, true)];
+  const stack: Array<{ level: number; block: PartialBlock }> = [];
+
+  for (const rawBlock of flattenBlocks(sectionBlocks)) {
+    if (rawBlock.type !== "heading") {
+      const parent = stack[stack.length - 1]?.block;
+      if (parent) {
+        parent.children = [...(parent.children ?? []), rawBlock] as any;
+      } else {
+        root.push(rawBlock);
+      }
+      continue;
+    }
+
+    const level = headingLevel(rawBlock);
+    const nextHeading = withHeadingToggleProps(
+      {
+        ...withoutChildren(rawBlock),
+        props: {
+          ...rawBlock.props,
+          level,
+        },
+      } as PartialBlock,
+      false,
+    );
+
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+      stack.pop();
+    }
+
+    const parent = stack[stack.length - 1]?.block;
+    if (parent) {
+      parent.children = [...(parent.children ?? []), nextHeading] as any;
+    } else {
+      root.push(nextHeading);
+    }
+    stack.push({ level, block: nextHeading });
+  }
+
+  return root;
 }
 
 export function createEmptyBlockNoteContent(title = ""): BlockNoteContent {
@@ -116,7 +187,7 @@ function sanitizeBlock(block: any): PartialBlock | null {
   if (block.content !== undefined) sanitized.content = block.content;
   if (children?.length) sanitized.children = children;
 
-  return withToggleableHeadingProps(sanitized);
+  return withHeadingToggleProps(sanitized);
 }
 
 function canUseAsHeadingContent(block: PartialBlock): boolean {
@@ -137,7 +208,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
         props: {
           ...firstBlock.props,
           level: TITLE_HEADING_LEVEL,
-          isToggleable: true,
+          isToggleable: false,
         },
       } as PartialBlock,
       ...restBlocks,
@@ -156,7 +227,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
         props: {
           ...firstBlock.props,
           level: TITLE_HEADING_LEVEL,
-          isToggleable: true,
+          isToggleable: false,
         },
         content,
         children: firstBlock.children,
@@ -279,12 +350,12 @@ export function normalizePageContent(content: PageContent | null | undefined): B
   if (isBlockNoteContent(content)) {
     const sanitized = content.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
     return sanitized.length
-      ? ensureToggleableHeadings(ensureFirstTitleHeading(sanitized))
+      ? organizeToggleHeadingSections(sanitized)
       : createEmptyBlockNoteContent();
   }
   const blocks = childrenFromLegacy(content.content);
   return blocks.length
-    ? ensureToggleableHeadings(ensureFirstTitleHeading(blocks))
+    ? organizeToggleHeadingSections(blocks)
     : createEmptyBlockNoteContent();
 }
 
