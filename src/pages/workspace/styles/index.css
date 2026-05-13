@@ -1,5 +1,6 @@
 @import "./editor-base.css";
 @import "./sidebar-dnd.css";
+@import "./code-themes.css";
 
 .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.06);
