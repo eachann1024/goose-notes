@@ -14,11 +14,41 @@ export type PageContent = BlockNoteContent | LegacyPageContent;
 
 const emptyBlock = (): PartialBlock => ({ type: "paragraph", content: "" });
 
+const TITLE_HEADING_LEVEL = 1;
+
+const titleHeadingBlock = (content = ""): PartialBlock =>
+  ({
+    type: "heading",
+    props: { level: TITLE_HEADING_LEVEL, isToggleable: true },
+    content,
+  }) as PartialBlock;
+
+function withToggleableHeadingProps(block: PartialBlock): PartialBlock {
+  if (block.type !== "heading") return block;
+  return {
+    ...block,
+    props: {
+      ...block.props,
+      isToggleable: true,
+    },
+  } as PartialBlock;
+}
+
+export function ensureToggleableHeadings(content: BlockNoteContent): BlockNoteContent {
+  return content.map((block) => {
+    const nextBlock = withToggleableHeadingProps(block);
+    if (!Array.isArray(nextBlock.children) || nextBlock.children.length === 0) {
+      return nextBlock;
+    }
+    return {
+      ...nextBlock,
+      children: ensureToggleableHeadings(nextBlock.children as BlockNoteContent),
+    } as PartialBlock;
+  });
+}
+
 export function createEmptyBlockNoteContent(title = ""): BlockNoteContent {
-  return [
-    { type: "heading", props: { level: 1 }, content: title },
-    emptyBlock(),
-  ];
+  return [titleHeadingBlock(title), emptyBlock()];
 }
 
 export function isBlockNoteContent(content: unknown): content is BlockNoteContent {
@@ -41,6 +71,7 @@ const VALID_BLOCK_TYPES = new Set([
   "alert",
   "link",
   "embed",
+  "toggleListItem",
 ]);
 
 function simpleExtractText(block: any): string {
@@ -85,7 +116,56 @@ function sanitizeBlock(block: any): PartialBlock | null {
   if (block.content !== undefined) sanitized.content = block.content;
   if (children?.length) sanitized.children = children;
 
-  return sanitized;
+  return withToggleableHeadingProps(sanitized);
+}
+
+function canUseAsHeadingContent(block: PartialBlock): boolean {
+  return typeof block.content === "string" || Array.isArray(block.content);
+}
+
+export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteContent {
+  const [firstBlock, ...restBlocks] = content;
+
+  if (!firstBlock) {
+    return createEmptyBlockNoteContent();
+  }
+
+  if (firstBlock.type === "heading") {
+    return [
+      {
+        ...firstBlock,
+        props: {
+          ...firstBlock.props,
+          level: TITLE_HEADING_LEVEL,
+          isToggleable: true,
+        },
+      } as PartialBlock,
+      ...restBlocks,
+    ];
+  }
+
+  if (canUseAsHeadingContent(firstBlock)) {
+    const content =
+      typeof firstBlock.content === "string" || Array.isArray(firstBlock.content)
+        ? firstBlock.content
+        : "";
+
+    return [
+      {
+        type: "heading",
+        props: {
+          ...firstBlock.props,
+          level: TITLE_HEADING_LEVEL,
+          isToggleable: true,
+        },
+        content,
+        children: firstBlock.children,
+      } as PartialBlock,
+      ...restBlocks,
+    ];
+  }
+
+  return [titleHeadingBlock(), firstBlock, ...restBlocks];
 }
 
 function textFromLegacy(node: LegacyPageContent | undefined): string {
@@ -141,7 +221,10 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
       return [
         {
           type: "heading",
-          props: { level: Math.min(Math.max(Number(node.attrs?.level) || 1, 1), 3) },
+          props: {
+            level: Math.min(Math.max(Number(node.attrs?.level) || 1, 1), 3),
+            isToggleable: true,
+          },
           content: inlineFromLegacy(node),
         } as PartialBlock,
       ];
@@ -153,7 +236,12 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
       return [
         {
           type: "codeBlock",
-          props: { language: node.attrs?.language || "" },
+          props: {
+            language: node.attrs?.language || "",
+            ...(node.attrs?.summary ? { summary: node.attrs.summary } : {}),
+            ...(node.attrs?.collapsed ? { collapsed: node.attrs.collapsed } : {}),
+            ...(node.attrs?.wrap != null ? { wrap: node.attrs.wrap } : {}),
+          },
           content: textFromLegacy(node),
         } as PartialBlock,
       ];
@@ -190,10 +278,14 @@ export function normalizePageContent(content: PageContent | null | undefined): B
   if (!content) return createEmptyBlockNoteContent();
   if (isBlockNoteContent(content)) {
     const sanitized = content.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
-    return sanitized.length ? sanitized : createEmptyBlockNoteContent();
+    return sanitized.length
+      ? ensureToggleableHeadings(ensureFirstTitleHeading(sanitized))
+      : createEmptyBlockNoteContent();
   }
   const blocks = childrenFromLegacy(content.content);
-  return blocks.length ? blocks : createEmptyBlockNoteContent();
+  return blocks.length
+    ? ensureToggleableHeadings(ensureFirstTitleHeading(blocks))
+    : createEmptyBlockNoteContent();
 }
 
 export function clonePageContent<T extends PageContent>(content: T): T {

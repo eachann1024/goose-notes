@@ -4,67 +4,445 @@ import { extractTitleFromContent } from "./content-text-extractor";
 import { toPng } from "html-to-image";
 import { trackEvent } from "./analytics";
 
-// ── Design System ──────────────────────────────────────────────
-// 4 curated gradient presets for the share card
-const GRADIENT_PRESETS = {
-  light: {
-    background: "linear-gradient(155deg, #f5f0ff 0%, #e8f4fd 35%, #fff8f0 70%, #f0f7ff 100%)",
+// ── Card Theme System ──────────────────────────────────────────
+// 9 curated visual themes for the share card, designed for 2025-2026
+
+export interface CardTheme {
+  id: string;
+  name: string;
+  nameEn: string;
+  description: string;
+  tags: string[];
+
+  // Typography
+  titleFont: string;
+  bodyFont: string;
+  codeFont: string;
+  titleFontSize: number;
+  titleFontWeight: number;
+  titleLineHeight: number;
+  titleLetterSpacing: string;
+  titleAlign: "left" | "center" | "right";
+  bodyFontSize: number;
+  bodyLineHeight: number;
+  bodyLetterSpacing: string;
+
+  // Colors
+  background: string;
+  cardBg: string;
+  textColor: string;
+  secondaryText: string;
+  accent: string;
+  codeBg: string;
+  quoteBorder: string;
+  calloutBg: string;
+  tableBorder: string;
+  divider: string;
+  watermark: string;
+
+  // Layout & Decorations
+  containerPaddingX: number;
+  containerPaddingY: number;
+  cardPaddingX: number;
+  cardPaddingY: number;
+  cardRadius: number;
+  cardBorder: string;
+  cardShadow: string;
+  showDecorations: boolean;
+  decorationColor: string;
+  watermarkVisible: boolean;
+}
+
+export const CARD_THEMES: CardTheme[] = [
+  // ── 1. Notion ────────────────────────────────────────────────
+  {
+    id: "notion",
+    name: "Notion 白",
+    nameEn: "Notion",
+    description: "极简专业，文档感",
+    tags: ["极简", "文档"],
+    titleFont: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+    bodyFont: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+    codeFont: "'JetBrains Mono', 'SF Mono', monospace",
+    titleFontSize: 28,
+    titleFontWeight: 700,
+    titleLineHeight: 1.3,
+    titleLetterSpacing: "-0.02em",
+    titleAlign: "left",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.8,
+    bodyLetterSpacing: "0",
+    background: "#ffffff",
     cardBg: "#ffffff",
-    textColor: "#1a1a2e",
-    secondaryText: "#6b7280",
-    codeBg: "#f8f9fa",
+    textColor: "#37352f",
+    secondaryText: "#9ca3af",
+    accent: "#2d6cdf",
+    codeBg: "#f5f5f5",
     quoteBorder: "#e5e7eb",
-    calloutBg: "#fef9e7",
+    calloutBg: "#f9fafb",
     tableBorder: "#e5e7eb",
     divider: "#e5e7eb",
-    watermark: "#9ca3af",
-    accent: "#6366f1",
+    watermark: "#e0e0e0",
+    containerPaddingX: 56,
+    containerPaddingY: 56,
+    cardPaddingX: 40,
+    cardPaddingY: 36,
+    cardRadius: 16,
+    cardBorder: "1px solid #f0f0f0",
+    cardShadow: "0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: true,
   },
-  dark: {
-    background: "linear-gradient(155deg, #0f0c29 0%, #1a1a3e 35%, #16213e 70%, #0f3460 100%)",
-    cardBg: "#1a1a2e",
-    textColor: "#f3f4f6",
-    secondaryText: "#9ca3af",
-    codeBg: "#111827",
-    quoteBorder: "#374151",
-    calloutBg: "#1f2937",
-    tableBorder: "#374151",
-    divider: "#374151",
-    watermark: "#6b7280",
-    accent: "#818cf8",
+
+  // ── 2. Obsidian ──────────────────────────────────────────────
+  {
+    id: "obsidian",
+    name: "Obsidian 夜",
+    nameEn: "Obsidian",
+    description: "深色模式，代码感",
+    tags: ["深色", "技术"],
+    titleFont: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+    bodyFont: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+    codeFont: "'JetBrains Mono', 'SF Mono', monospace",
+    titleFontSize: 26,
+    titleFontWeight: 700,
+    titleLineHeight: 1.35,
+    titleLetterSpacing: "-0.01em",
+    titleAlign: "left",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.8,
+    bodyLetterSpacing: "0",
+    background: "linear-gradient(160deg, #0d1117 0%, #161b22 50%, #0d1117 100%)",
+    cardBg: "#161b22",
+    textColor: "#e6edf3",
+    secondaryText: "#7d8590",
+    accent: "#58a6ff",
+    codeBg: "#0d1117",
+    quoteBorder: "#30363d",
+    calloutBg: "#21262d",
+    tableBorder: "#30363d",
+    divider: "#30363d",
+    watermark: "#6e7681",
+    containerPaddingX: 56,
+    containerPaddingY: 56,
+    cardPaddingX: 40,
+    cardPaddingY: 36,
+    cardRadius: 16,
+    cardBorder: "1px solid #30363d",
+    cardShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03)",
+    showDecorations: true,
+    decorationColor: "rgba(88,166,255,0.06)",
+    watermarkVisible: true,
   },
-  warm: {
-    background: "linear-gradient(155deg, #fff5eb 0%, #ffecd2 35%, #fcb69f 70%, #ffecd2 100%)",
-    cardBg: "#fffaf5",
-    textColor: "#2d1b0e",
-    secondaryText: "#8b7355",
-    codeBg: "#fff5eb",
-    quoteBorder: "#e8d5c4",
-    calloutBg: "#fff8e7",
-    tableBorder: "#e8d5c4",
-    divider: "#e8d5c4",
-    watermark: "#a89080",
+
+  // ── 3. Medium ────────────────────────────────────────────────
+  {
+    id: "medium",
+    name: "Medium 杂志",
+    nameEn: "Medium",
+    description: "衬线大标题，阅读感",
+    tags: ["杂志", "阅读"],
+    titleFont: "'Noto Serif SC', 'Georgia', 'Times New Roman', serif",
+    bodyFont: "'Noto Serif SC', 'Georgia', 'Times New Roman', serif",
+    codeFont: "'JetBrains Mono', 'SF Mono', monospace",
+    titleFontSize: 34,
+    titleFontWeight: 400,
+    titleLineHeight: 1.2,
+    titleLetterSpacing: "-0.01em",
+    titleAlign: "center",
+    bodyFontSize: 16,
+    bodyLineHeight: 1.9,
+    bodyLetterSpacing: "0.01em",
+    background: "#faf9f6",
+    cardBg: "#ffffff",
+    textColor: "#292929",
+    secondaryText: "#757575",
+    accent: "#1a8917",
+    codeBg: "#f7f7f7",
+    quoteBorder: "#e5e5e5",
+    calloutBg: "#f9f9f9",
+    tableBorder: "#e5e5e5",
+    divider: "#e5e5e5",
+    watermark: "#d4d4d4",
+    containerPaddingX: 64,
+    containerPaddingY: 64,
+    cardPaddingX: 48,
+    cardPaddingY: 48,
+    cardRadius: 4,
+    cardBorder: "none",
+    cardShadow: "0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: true,
+  },
+
+  // ── 4. Kenya Hara ────────────────────────────────────────────
+  {
+    id: "kenya-hara",
+    name: "原研哉·白",
+    nameEn: "Kenya Hara",
+    description: "极致留白，东方禅意",
+    tags: ["极简", "设计"],
+    titleFont: "'Noto Sans SC', 'Helvetica Neue', sans-serif",
+    bodyFont: "'Noto Sans SC', 'Helvetica Neue', sans-serif",
+    codeFont: "'JetBrains Mono', monospace",
+    titleFontSize: 20,
+    titleFontWeight: 300,
+    titleLineHeight: 1.6,
+    titleLetterSpacing: "0.15em",
+    titleAlign: "left",
+    bodyFontSize: 14,
+    bodyLineHeight: 2.2,
+    bodyLetterSpacing: "0.05em",
+    background: "#fefefe",
+    cardBg: "transparent",
+    textColor: "#333333",
+    secondaryText: "#999999",
+    accent: "#888888",
+    codeBg: "#f8f8f8",
+    quoteBorder: "#dddddd",
+    calloutBg: "#fafafa",
+    tableBorder: "#eeeeee",
+    divider: "#eeeeee",
+    watermark: "#cccccc",
+    containerPaddingX: 80,
+    containerPaddingY: 80,
+    cardPaddingX: 0,
+    cardPaddingY: 0,
+    cardRadius: 0,
+    cardBorder: "none",
+    cardShadow: "none",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: false,
+  },
+
+  // ── 5. Typewriter ────────────────────────────────────────────
+  {
+    id: "typewriter",
+    name: "复古打字机",
+    nameEn: "Typewriter",
+    description: "米黄纸张，文学气息",
+    tags: ["复古", "文学"],
+    titleFont: "'Courier Prime', 'FangSong', 'STFangsong', serif",
+    bodyFont: "'Courier Prime', 'FangSong', 'STFangsong', serif",
+    codeFont: "'Courier Prime', monospace",
+    titleFontSize: 24,
+    titleFontWeight: 700,
+    titleLineHeight: 1.4,
+    titleLetterSpacing: "0.02em",
+    titleAlign: "left",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.85,
+    bodyLetterSpacing: "0.01em",
+    background: "#f5f0e6",
+    cardBg: "#faf6ed",
+    textColor: "#3d3225",
+    secondaryText: "#8a7e6b",
+    accent: "#8b4513",
+    codeBg: "#f0ebe0",
+    quoteBorder: "#d4c9b8",
+    calloutBg: "#f5f0e4",
+    tableBorder: "#d4c9b8",
+    divider: "#d4c9b8",
+    watermark: "#d8cfc4",
+    containerPaddingX: 56,
+    containerPaddingY: 56,
+    cardPaddingX: 40,
+    cardPaddingY: 40,
+    cardRadius: 2,
+    cardBorder: "1px solid #e8e0d0",
+    cardShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04), inset 0 0 60px rgba(139,69,19,0.02)",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: true,
+  },
+
+  // ── 6. Neon ──────────────────────────────────────────────────
+  {
+    id: "neon",
+    name: "霓虹渐变",
+    nameEn: "Neon",
+    description: "鲜艳渐变，视觉冲击",
+    tags: ["渐变", "社交"],
+    titleFont: "'Inter', 'Noto Sans SC', sans-serif",
+    bodyFont: "'Inter', 'Noto Sans SC', sans-serif",
+    codeFont: "'JetBrains Mono', monospace",
+    titleFontSize: 36,
+    titleFontWeight: 800,
+    titleLineHeight: 1.15,
+    titleLetterSpacing: "-0.02em",
+    titleAlign: "center",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.75,
+    bodyLetterSpacing: "0",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 30%, #f093fb 70%, #f5576c 100%)",
+    cardBg: "rgba(255,255,255,0.97)",
+    textColor: "#1a1a2e",
+    secondaryText: "#6b7280",
+    accent: "#7c3aed",
+    codeBg: "#f5f3ff",
+    quoteBorder: "#ddd6fe",
+    calloutBg: "#faf5ff",
+    tableBorder: "#e9d5ff",
+    divider: "#e9d5ff",
+    watermark: "#c4b5fd",
+    containerPaddingX: 56,
+    containerPaddingY: 56,
+    cardPaddingX: 44,
+    cardPaddingY: 40,
+    cardRadius: 24,
+    cardBorder: "1px solid rgba(255,255,255,0.5)",
+    cardShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.3)",
+    showDecorations: true,
+    decorationColor: "rgba(124,58,237,0.08)",
+    watermarkVisible: true,
+  },
+
+  // ── 7. Academic ──────────────────────────────────────────────
+  {
+    id: "academic",
+    name: "学术 LaTeX",
+    nameEn: "Academic",
+    description: "严谨排版，论文感",
+    tags: ["学术", "严肃"],
+    titleFont: "'Latin Modern Roman', 'Noto Serif SC', 'Times New Roman', serif",
+    bodyFont: "'Latin Modern Roman', 'Noto Serif SC', 'Times New Roman', serif",
+    codeFont: "'Latin Modern Mono', 'JetBrains Mono', monospace",
+    titleFontSize: 22,
+    titleFontWeight: 700,
+    titleLineHeight: 1.4,
+    titleLetterSpacing: "0",
+    titleAlign: "center",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.75,
+    bodyLetterSpacing: "0",
+    background: "#ffffff",
+    cardBg: "#ffffff",
+    textColor: "#000000",
+    secondaryText: "#555555",
+    accent: "#0066cc",
+    codeBg: "#f8f8f8",
+    quoteBorder: "#cccccc",
+    calloutBg: "#fafafa",
+    tableBorder: "#cccccc",
+    divider: "#cccccc",
+    watermark: "#bbbbbb",
+    containerPaddingX: 64,
+    containerPaddingY: 64,
+    cardPaddingX: 48,
+    cardPaddingY: 40,
+    cardRadius: 0,
+    cardBorder: "1px solid #e0e0e0",
+    cardShadow: "none",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: true,
+  },
+
+  // ── 8. Stationery ────────────────────────────────────────────
+  {
+    id: "stationery",
+    name: "手账便签",
+    nameEn: "Stationery",
+    description: "温暖手写，生活气息",
+    tags: ["手写", "温馨"],
+    titleFont: "'ZCOOL XiaoWei', 'Ma Shan Zheng', 'Noto Sans SC', cursive",
+    bodyFont: "'ZCOOL XiaoWei', 'Noto Sans SC', sans-serif",
+    codeFont: "'JetBrains Mono', monospace",
+    titleFontSize: 26,
+    titleFontWeight: 400,
+    titleLineHeight: 1.4,
+    titleLetterSpacing: "0.04em",
+    titleAlign: "left",
+    bodyFontSize: 15,
+    bodyLineHeight: 1.85,
+    bodyLetterSpacing: "0.02em",
+    background: "#fef9e7",
+    cardBg: "#fffef5",
+    textColor: "#4a4035",
+    secondaryText: "#9a8e7e",
     accent: "#d97706",
+    codeBg: "#faf5e6",
+    quoteBorder: "#e8dcc8",
+    calloutBg: "#fdf8ed",
+    tableBorder: "#e8dcc8",
+    divider: "#e8dcc8",
+    watermark: "#ddd5c8",
+    containerPaddingX: 52,
+    containerPaddingY: 52,
+    cardPaddingX: 36,
+    cardPaddingY: 36,
+    cardRadius: 12,
+    cardBorder: "1px solid #f0e8d0",
+    cardShadow: "0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.8)",
+    showDecorations: false,
+    decorationColor: "transparent",
+    watermarkVisible: true,
   },
-  cool: {
-    background: "linear-gradient(155deg, #e0f7fa 0%, #e8f5e9 35%, #f3e5f5 70%, #e3f2fd 100%)",
-    cardBg: "#f8fffe",
-    textColor: "#0d1b2a",
-    secondaryText: "#5c6b73",
-    codeBg: "#f0f7f4",
-    quoteBorder: "#c8d6e5",
-    calloutBg: "#f0f9ff",
-    tableBorder: "#c8d6e5",
-    divider: "#c8d6e5",
-    watermark: "#7a8b99",
-    accent: "#0891b2",
+
+  // ── 9. Poster ────────────────────────────────────────────────
+  {
+    id: "poster",
+    name: "海报大字报",
+    nameEn: "Poster",
+    description: "冲击力强，短内容",
+    tags: ["海报", "冲击"],
+    titleFont: "'Inter', 'Noto Sans SC', sans-serif",
+    bodyFont: "'Inter', 'Noto Sans SC', sans-serif",
+    codeFont: "'JetBrains Mono', monospace",
+    titleFontSize: 42,
+    titleFontWeight: 900,
+    titleLineHeight: 1.1,
+    titleLetterSpacing: "-0.03em",
+    titleAlign: "center",
+    bodyFontSize: 16,
+    bodyLineHeight: 1.7,
+    bodyLetterSpacing: "0",
+    background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%)",
+    cardBg: "transparent",
+    textColor: "#ffffff",
+    secondaryText: "rgba(255,255,255,0.7)",
+    accent: "#00d9ff",
+    codeBg: "rgba(255,255,255,0.08)",
+    quoteBorder: "rgba(255,255,255,0.2)",
+    calloutBg: "rgba(255,255,255,0.05)",
+    tableBorder: "rgba(255,255,255,0.15)",
+    divider: "rgba(255,255,255,0.15)",
+    watermark: "rgba(255,255,255,0.22)",
+    containerPaddingX: 56,
+    containerPaddingY: 56,
+    cardPaddingX: 40,
+    cardPaddingY: 40,
+    cardRadius: 0,
+    cardBorder: "none",
+    cardShadow: "none",
+    showDecorations: true,
+    decorationColor: "rgba(0,217,255,0.1)",
+    watermarkVisible: true,
   },
-};
+];
 
-type ThemeKey = keyof typeof GRADIENT_PRESETS;
+export type CardThemeId = (typeof CARD_THEMES)[number]["id"];
 
-interface ExportOptions {
-  theme?: ThemeKey | "auto";
+export function getCardTheme(themeId: CardThemeId): CardTheme {
+  return CARD_THEMES.find((t) => t.id === themeId) ?? CARD_THEMES[0];
+}
+
+// ── Google Fonts Loader ────────────────────────────────────────
+function getGoogleFontsUrl(): string {
+  const families = [
+    "Inter:wght@400;500;600;700;800;900",
+    "Noto+Sans+SC:wght@300;400;500;600;700",
+    "Noto+Serif+SC:wght@400;600;700",
+    "JetBrains+Mono:wght@400;500",
+    "Georgia",
+    "Courier+Prime:wght@400;700",
+    "ZCOOL+XiaoWei",
+    "Ma+Shan+Zheng",
+  ];
+  return `https://fonts.googleapis.com/css2?family=${families.join("&family=")}&display=swap`;
 }
 
 function escapeHtml(value: string): string {
@@ -75,30 +453,49 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function detectTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  const html = document.documentElement;
-  const className = html.className || "";
-  if (className.includes("dark")) return "dark";
-  return "light";
+export interface WatermarkConfig {
+  showWatermark: boolean;
+  showBrand: boolean;
+  showDate: boolean;
+  showTime: boolean;
 }
 
-function getTheme(theme: ThemeKey | "auto" | undefined): typeof GRADIENT_PRESETS.light {
-  if (theme && theme !== "auto" && theme in GRADIENT_PRESETS) {
-    return GRADIENT_PRESETS[theme];
+export const DEFAULT_WATERMARK_CONFIG: WatermarkConfig = {
+  showWatermark: true,
+  showBrand: true,
+  showDate: true,
+  showTime: false,
+};
+
+function getWatermarkHTML(
+  theme: CardTheme,
+  config: WatermarkConfig = DEFAULT_WATERMARK_CONFIG,
+): string {
+  if (!theme.watermarkVisible || !config.showWatermark) return "";
+
+  const brandHtml = config.showBrand
+    ? `<span class="gooseshot-watermark-brand">uTools - 鹅的笔记</span>`
+    : "";
+
+  let dateHtml = "";
+  if (config.showDate) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const timeStr = config.showTime
+      ? ` ${now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
+      : "";
+    dateHtml = `<div class="gooseshot-watermark-date">${dateStr}${timeStr}</div>`;
   }
-  const detected = detectTheme();
-  return GRADIENT_PRESETS[detected];
-}
 
-// ── Watermark SVG ──────────────────────────────────────────────
-function getWatermarkHTML(theme: typeof GRADIENT_PRESETS.light): string {
+  if (!brandHtml && !dateHtml) return "";
+
   return `<div class="gooseshot-watermark">
-    <div class="gooseshot-watermark-left">
-      <span class="gooseshot-watermark-icon">🪿</span>
-      <span class="gooseshot-watermark-brand">uTools - 鹅的笔记</span>
-    </div>
-    <div class="gooseshot-watermark-date">${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}</div>
+    <div class="gooseshot-watermark-left">${brandHtml}</div>
+    ${dateHtml}
   </div>`;
 }
 
@@ -106,112 +503,116 @@ function getWatermarkHTML(theme: typeof GRADIENT_PRESETS.light): string {
 function buildStyledHTML(params: {
   title: string;
   blocksHtml: string;
-  theme: typeof GRADIENT_PRESETS.light;
+  theme: CardTheme;
   isSelection?: boolean;
+  watermarkConfig?: WatermarkConfig;
 }): string {
-  const { title, blocksHtml, theme, isSelection } = params;
+  const { title, blocksHtml, theme, isSelection, watermarkConfig } = params;
+  const t = theme;
+
+  const decoStyle = t.showDecorations
+    ? `
+    .gooseshot-container::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -80px;
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, ${t.decorationColor} 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .gooseshot-container::after {
+      content: '';
+      position: absolute;
+      bottom: -100px; left: -60px;
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, ${t.decorationColor} 0%, transparent 70%);
+      border-radius: 50%;
+    }`
+    : "";
+
+  const titleStyle = `
+    font-family: ${t.titleFont};
+    font-size: ${t.titleFontSize}px;
+    font-weight: ${t.titleFontWeight};
+    line-height: ${t.titleLineHeight};
+    letter-spacing: ${t.titleLetterSpacing};
+    color: ${t.textColor};
+    text-align: ${t.titleAlign};
+  `;
+
+  const headerBorder = "margin-bottom: 24px; padding-bottom: 0; border-bottom: none;";
+
+  const bodyTextAlign = t.id === "academic" ? "text-align: justify;" : "";
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="stylesheet" href="${getGoogleFontsUrl()}">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: ${theme.textColor};
-  line-height: 1.85;
-  font-size: 16px;
+  font-family: ${t.bodyFont};
+  color: ${t.textColor};
+  line-height: ${t.bodyLineHeight};
+  font-size: ${t.bodyFontSize}px;
+  letter-spacing: ${t.bodyLetterSpacing};
+  ${bodyTextAlign}
 }
 .gooseshot-container {
-  background: ${theme.background};
-  padding: 64px 56px;
+  background: ${t.background};
+  padding: ${t.containerPaddingY}px ${t.containerPaddingX}px;
   min-width: 680px;
-  max-width: 840px;
+  max-width: 1200px;
   position: relative;
   overflow: hidden;
 }
-.gooseshot-container::before {
-  content: '';
-  position: absolute;
-  top: -120px;
-  right: -80px;
-  width: 360px;
-  height: 360px;
-  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
-  border-radius: 50%;
-}
-.gooseshot-container::after {
-  content: '';
-  position: absolute;
-  bottom: -100px;
-  left: -60px;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
-  border-radius: 50%;
-}
+${decoStyle}
 .gooseshot-card {
-  background: ${theme.cardBg};
-  border-radius: 20px;
-  padding: 40px 44px;
-  box-shadow:
-    0 1px 2px rgba(0,0,0,0.02),
-    0 4px 12px rgba(0,0,0,0.03),
-    0 8px 24px rgba(0,0,0,0.04),
-    0 16px 48px rgba(0,0,0,0.05),
-    0 32px 96px rgba(0,0,0,0.06);
+  background: ${t.cardBg};
+  border-radius: ${t.cardRadius}px;
+  padding: ${t.cardPaddingY}px ${t.cardPaddingX}px;
+  box-shadow: ${t.cardShadow};
   position: relative;
   z-index: 1;
-  border: 1px solid rgba(0,0,0,0.04);
+  border: ${t.cardBorder};
 }
 .gooseshot-header {
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid ${theme.divider};
+  ${headerBorder}
 }
 .gooseshot-title {
-  font-family: 'Noto Serif SC', Georgia, serif;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: ${theme.textColor};
-  letter-spacing: -0.02em;
-}
-.gooseshot-subtitle {
-  font-size: 13px;
-  color: ${theme.secondaryText};
-  margin-top: 8px;
-  font-weight: 400;
+  ${titleStyle}
 }
 .gooseshot-content > * { margin-bottom: 14px; }
 .gooseshot-content > *:last-child { margin-bottom: 0; }
 .gooseshot-content h1 {
-  font-size: 24px;
-  font-weight: 700;
+  font-family: ${t.titleFont};
+  font-size: ${Math.round(t.titleFontSize * 0.85)}px;
+  font-weight: ${t.titleFontWeight};
   margin-top: 28px;
   margin-bottom: 14px;
-  color: ${theme.textColor};
-  letter-spacing: -0.01em;
+  color: ${t.textColor};
+  line-height: 1.3;
 }
 .gooseshot-content h2 {
-  font-size: 20px;
-  font-weight: 600;
+  font-family: ${t.titleFont};
+  font-size: ${Math.round(t.titleFontSize * 0.7)}px;
+  font-weight: ${Math.max(t.titleFontWeight - 100, 400)};
   margin-top: 24px;
   margin-bottom: 12px;
-  color: ${theme.textColor};
+  color: ${t.textColor};
 }
 .gooseshot-content h3 {
-  font-size: 17px;
+  font-family: ${t.titleFont};
+  font-size: ${Math.round(t.titleFontSize * 0.6)}px;
   font-weight: 600;
   margin-top: 20px;
   margin-bottom: 10px;
-  color: ${theme.textColor};
+  color: ${t.textColor};
 }
 .gooseshot-content p {
   margin-bottom: 12px;
-  line-height: 1.85;
+  line-height: ${t.bodyLineHeight};
 }
 .gooseshot-content ul, .gooseshot-content ol {
   margin-bottom: 12px;
@@ -221,35 +622,35 @@ body {
   margin-bottom: 5px;
   line-height: 1.75;
 }
-.gooseshot-content ul li::marker { color: ${theme.secondaryText}; }
+.gooseshot-content ul li::marker { color: ${t.secondaryText}; }
 .gooseshot-content code {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-family: ${t.codeFont};
   font-size: 0.86em;
-  background: ${theme.codeBg};
+  background: ${t.codeBg};
   padding: 2px 6px;
   border-radius: 4px;
-  color: ${theme.textColor};
+  color: ${t.textColor};
 }
 .gooseshot-content pre {
-  background: ${theme.codeBg};
+  background: ${t.codeBg};
   border-radius: 10px;
   padding: 16px 18px;
   overflow-x: auto;
   margin: 16px 0;
-  border: 1px solid ${theme.tableBorder};
+  border: 1px solid ${t.tableBorder};
 }
 .gooseshot-content pre code {
   background: transparent;
   padding: 0;
   font-size: 13px;
   line-height: 1.7;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ${t.codeFont};
 }
 .gooseshot-content blockquote {
-  border-left: 3px solid ${theme.quoteBorder};
+  border-left: 3px solid ${t.quoteBorder};
   padding-left: 18px;
   margin: 16px 0;
-  color: ${theme.secondaryText};
+  color: ${t.secondaryText};
   font-style: italic;
 }
 .gooseshot-content img {
@@ -265,21 +666,21 @@ body {
   font-size: 14px;
 }
 .gooseshot-content th, .gooseshot-content td {
-  border: 1px solid ${theme.tableBorder};
+  border: 1px solid ${t.tableBorder};
   padding: 8px 12px;
   text-align: left;
 }
 .gooseshot-content th {
-  background: ${theme.codeBg};
+  background: ${t.codeBg};
   font-weight: 600;
 }
 .gooseshot-content hr {
   border: none;
-  border-top: 1px solid ${theme.divider};
+  border-top: 1px solid ${t.divider};
   margin: 20px 0;
 }
 .gooseshot-content .callout {
-  background: ${theme.calloutBg};
+  background: ${t.calloutBg};
   border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
@@ -299,7 +700,7 @@ body {
 .gooseshot-watermark {
   margin-top: 28px;
   padding-top: 18px;
-  border-top: 1px solid ${theme.divider};
+  border-top: 1px solid ${t.divider};
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -314,13 +715,13 @@ body {
   line-height: 1;
 }
 .gooseshot-watermark-brand {
-  color: ${theme.watermark};
+  color: ${t.watermark};
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
 }
 .gooseshot-watermark-date {
-  color: ${theme.watermark};
+  color: ${t.watermark};
   font-size: 11px;
   font-weight: 400;
 }
@@ -328,7 +729,7 @@ body {
 .gooseshot-content em { font-style: italic; }
 .gooseshot-content del { text-decoration: line-through; }
 .gooseshot-content a {
-  color: ${theme.accent};
+  color: ${t.accent};
   text-decoration: none;
 }
 .gooseshot-content a:hover { text-decoration: underline; }
@@ -341,7 +742,7 @@ body {
 .gooseshot-content .task-checkbox {
   width: 16px;
   height: 16px;
-  border: 2px solid ${theme.tableBorder};
+  border: 2px solid ${t.tableBorder};
   border-radius: 4px;
   flex-shrink: 0;
   margin-top: 3px;
@@ -350,8 +751,8 @@ body {
   justify-content: center;
 }
 .gooseshot-content .task-checkbox.checked {
-  background: ${theme.accent};
-  border-color: ${theme.accent};
+  background: ${t.accent};
+  border-color: ${t.accent};
 }
 .gooseshot-content .task-checkbox.checked::after {
   content: '✓';
@@ -360,8 +761,8 @@ body {
 }
 .gooseshot-selection-tag {
   display: inline-block;
-  background: ${theme.accent}15;
-  color: ${theme.accent};
+  background: ${t.accent}15;
+  color: ${t.accent};
   font-size: 11px;
   font-weight: 500;
   padding: 2px 8px;
@@ -376,12 +777,11 @@ body {
   <div class="gooseshot-card">
     <div class="gooseshot-header">
       <div class="gooseshot-title">${escapeHtml(title || "无标题")}</div>
-      ${isSelection ? '<div class="gooseshot-selection-tag">📌 选中内容</div>' : '<div class="gooseshot-subtitle">来自 鹅的笔记</div>'}
     </div>
     <div class="gooseshot-content">
       ${blocksHtml}
     </div>
-    ${getWatermarkHTML(theme)}
+    ${getWatermarkHTML(theme, watermarkConfig)}
   </div>
 </div>
 </body>
@@ -389,7 +789,7 @@ body {
 }
 
 // ── Block Renderer ─────────────────────────────────────────────
-function renderBlock(block: any, theme: typeof GRADIENT_PRESETS.light): string {
+function renderBlock(block: any, theme: CardTheme): string {
   if (!block || typeof block !== "object") return "";
 
   const inlineHtml = renderInline(block.content);
@@ -541,6 +941,22 @@ function renderInline(content: unknown): string {
     .join("");
 }
 
+function extractInlineText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((item: any) => {
+      if (typeof item === "string") return item;
+      if (!item || typeof item !== "object") return "";
+      if (item.type === "inlineMath" && item.attrs?.value) {
+        return item.attrs.value;
+      }
+      return item.text || "";
+    })
+    .join("");
+}
+
 function extractCellTextForHtml(cell: any): string {
   if (typeof cell === "string") return cell;
   if (Array.isArray(cell)) {
@@ -599,11 +1015,10 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
       waitForImages(element),
     ]);
 
-    // Yield to browser so the overlay paints
     await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
 
     const dataUrl = await toPng(element, {
-      pixelRatio: 2,
+      pixelRatio: 4,
       quality: 0.92,
       cacheBust: true,
       skipFonts: false,
@@ -616,9 +1031,11 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
 
     const { saveBlobAndReveal } = await import("./export");
     const saved = await saveBlobAndReveal(blob, filename);
+    const { toast } = await import("sonner");
     if (saved) {
-      const { toast } = await import("sonner");
-      toast.success("图片已保存");
+      toast.success("图片已保存到下载文件夹");
+    } else {
+      throw new Error("保存图片失败");
     }
   } catch (error) {
     const { toast } = await import("sonner");
@@ -650,8 +1067,12 @@ function sanitizeFileName(name: string): string {
 }
 
 // ── Public API: Full Page Export ───────────────────────────────
-export async function exportPageToImage(page: Page, options: ExportOptions = {}) {
-  const theme = getTheme(options.theme);
+export async function exportPageToImage(
+  page: Page,
+  themeId: CardThemeId = "notion",
+  watermarkConfig?: WatermarkConfig,
+) {
+  const theme = getCardTheme(themeId);
   const title = extractTitleFromContent(page.content);
   const content = page.content as BlockNoteContent;
 
@@ -663,25 +1084,41 @@ export async function exportPageToImage(page: Page, options: ExportOptions = {})
   document.body.appendChild(container);
 
   try {
-    const blocksHtml = content.map((block: any) => renderBlock(block, theme)).join("\n");
-    const html = buildStyledHTML({ title, blocksHtml, theme });
+    // 跳过第一个 heading，避免标题重复
+    const firstBlock = content[0];
+    const blocksToRender = firstBlock?.type === "heading" ? content.slice(1) : content;
+    const blocksHtml = blocksToRender.map((block: any) => renderBlock(block, theme)).join("\n");
+    const html = buildStyledHTML({ title, blocksHtml, theme, watermarkConfig });
     container.innerHTML = html;
 
     const cardElement = container.querySelector(".gooseshot-container") as HTMLElement;
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, `${sanitizeFileName(title || "untitled")}.png`);
-    trackEvent("share_image_full", { page_title_length: title?.length ?? 0 });
+    trackEvent("share_image_full", { page_title_length: title?.length ?? 0, theme: themeId });
   } finally {
     document.body.removeChild(container);
   }
 }
 
 // ── Public API: Selection Export ───────────────────────────────
-export async function exportSelectionToImage(selectionText: string, pageTitle?: string, options: ExportOptions = {}) {
+export async function exportSelectionToImage(
+  selectionText: string,
+  pageTitle?: string,
+  themeId: CardThemeId = "notion",
+  watermarkConfig?: WatermarkConfig,
+) {
   if (!selectionText.trim()) return;
 
-  const theme = getTheme(options.theme);
+  // 过滤掉图片标记如 [Image #1]
+  const cleanedText = selectionText
+    .replace(/\[Image\s*#\d+\]/gi, "")
+    .replace(/\n\s*\n/g, "\n")
+    .trim();
+
+  if (!cleanedText) return;
+
+  const theme = getCardTheme(themeId);
   const title = pageTitle || "选中内容";
 
   const container = document.createElement("div");
@@ -692,8 +1129,7 @@ export async function exportSelectionToImage(selectionText: string, pageTitle?: 
   document.body.appendChild(container);
 
   try {
-    // Convert plain text selection to styled paragraphs
-    const paragraphs = selectionText
+    const paragraphs = cleanedText
       .split("\n")
       .filter((line) => line.trim())
       .map((line) => `<p>${escapeHtml(line)}</p>`)
@@ -704,6 +1140,7 @@ export async function exportSelectionToImage(selectionText: string, pageTitle?: 
       blocksHtml: paragraphs,
       theme,
       isSelection: true,
+      watermarkConfig,
     });
     container.innerHTML = html;
 
@@ -711,13 +1148,13 @@ export async function exportSelectionToImage(selectionText: string, pageTitle?: 
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, `${sanitizeFileName(title)}_选中内容.png`);
-    trackEvent("share_image_selection", { selection_length: selectionText.length });
+    trackEvent("share_image_selection", { selection_length: cleanedText.length, theme: themeId });
   } finally {
     document.body.removeChild(container);
   }
 }
 
 // ── Legacy alias ───────────────────────────────────────────────
-export async function exportToImage(page: Page, options: ExportOptions = {}) {
-  return exportPageToImage(page, options);
+export async function exportToImage(page: Page, themeId: CardThemeId = "notion") {
+  return exportPageToImage(page, themeId);
 }

@@ -1,4 +1,5 @@
 import { Toaster as Sonner } from "sonner";
+import { X } from "lucide-react";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -9,8 +10,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-right"
       offset={14}
       mobileOffset={14}
+      closeButton
       className="toaster group z-[22000]"
       richColors
+      icons={{ close: <X className="h-3 w-3" /> }}
       toastOptions={{
         classNames: {
           toast:
@@ -23,6 +26,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-lg !px-3.5 !h-8 !text-xs !font-semibold !border !border-primary/20 transition-all duration-150",
           cancelButton:
             "!bg-muted !text-muted-foreground hover:!bg-muted/85 !rounded-lg !px-3 !h-8 !text-xs !font-medium",
+          closeButton:
+            "!absolute !left-auto !right-0 !top-0 !-translate-x-1/3 !translate-y-[-35%] !opacity-0 group-hover:!opacity-100 !transition-opacity !duration-200 !h-5 !w-5",
         },
       }}
       {...props}
