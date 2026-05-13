@@ -282,12 +282,21 @@ export function initAnalytics(options: AnalyticsInitOptions) {
   analyticsContext.platform = platform;
   analyticsContext.is_dev = options.isDev;
 
+  if (options.isDev) {
+    analyticsInitialized = false;
+    return {
+      installId,
+      sessionId,
+      distinctId: analyticsContext.distinct_id || installId,
+    };
+  }
+
   const shouldReinit = !analyticsInitialized || currentToken !== options.token;
   if (shouldReinit) {
     safeAnalyticsCall(() => {
       mixpanel.init(options.token, {
         persistence: "localStorage",
-        debug: options.isDev,
+        debug: false,
         autocapture: false,
         track_pageview: false,
         record_sessions_percent: options.enableReplay === false ? 0 : REPLAY_SAMPLE_RATE,

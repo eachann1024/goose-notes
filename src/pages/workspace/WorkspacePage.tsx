@@ -537,7 +537,7 @@ export function WorkspacePage() {
 
                 />
 
-                <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 overflow-hidden">
+                <div className="workspace-editor-surface relative ml-0 mr-2 mt-0 mb-2 flex-1 min-h-0 overflow-hidden">
                   {isAiPageOpen ? (
                     <AiWorkspacePage />
                   ) : (
@@ -555,11 +555,11 @@ export function WorkspacePage() {
                         return (
                           <div
                             className={cn(
-                              "min-h-screen",
+                              "flex min-h-full flex-col",
                               isEditorFullWidth
                                 ? "px-6 md:px-8 lg:px-10"
                                 : "px-8",
-                              page.icon ? "pb-12 pt-4" : "pt-0 pb-12",
+                              page.icon ? "pt-4" : "pt-0",
                             )}
                           >
                             <div
@@ -567,7 +567,7 @@ export function WorkspacePage() {
                                 page.icon ? "mb-3 mt-2" : "mt-1",
                                 isEditorFullWidth
                                   ? "max-w-full"
-                                  : "max-w-3xl mx-auto",
+                                  : "max-w-4xl mx-auto",
                               )}
                             >
                               {!isLocalFolderPage && (

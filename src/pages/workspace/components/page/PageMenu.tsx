@@ -1,4 +1,24 @@
 import { FontSelector } from "@/pages/workspace/components/shared/FontSelector";
+import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
+import { useState } from "react";
+import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
+import { exportSelectionToImage } from "@/lib/imageExport";
+import { extractBlockNoteTitle } from "@/lib/blocknote-content";
+
+function getEditorSelectedText(): string {
+  try {
+    const editor = (window as any).__gooseNoteEditor;
+    if (editor && typeof editor.getSelectedText === "function") {
+      const text = editor.getSelectedText();
+      if (text && text.trim()) return text.trim();
+    }
+  } catch { /* ignore */ }
+  try {
+    const sel = document.getSelection();
+    if (sel && sel.toString().trim()) return sel.toString().trim();
+  } catch { /* ignore */ }
+  return "";
+}
 
 export function PageMenu() {
   const {
@@ -13,6 +33,8 @@ export function PageMenu() {
   const { globalEditorFullWidth } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = page ? notebooks[page.workspaceId] : undefined;
+  const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
 
   const handleImport = async () => {
     const result = await importFile();
@@ -36,10 +58,27 @@ export function PageMenu() {
     }
   };
 
+  const handleThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
+    if (!page) return;
+    if (selectedText) {
+      exportSelectionToImage(selectedText, extractBlockNoteTitle(page.content) || "选中内容", themeId, watermarkConfig);
+    } else {
+      exportPageToImage(page, themeId, watermarkConfig);
+    }
+  };
+
   if (!page || !activePageId) return null;
 
   return (
-    <DropdownMenu>
+    <>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) {
+          const text = getEditorSelectedText();
+          setSelectedText(text);
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -100,29 +139,33 @@ export function PageMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
-        {/* Import/Export */}
+        {/* Import */}
         <DropdownMenuGroup>
           <DropdownMenuItem className="text-xs" onSelect={handleImport}>
             <LucideIcons.Upload className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
             <span>导入</span>
           </DropdownMenuItem>
+        </DropdownMenuGroup>
 
+        {/* Generate Image — standalone, before Export */}
+        <DropdownMenuItem
+          className="text-xs relative overflow-hidden group"
+          onSelect={() => setThemeSelectorOpen(true)}
+        >
+          <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-rose-50/80 to-amber-50/80 dark:from-rose-950/30 dark:to-amber-950/30 pointer-events-none" />
+          <LucideIcons.Image className="relative mr-2 h-3.5 w-3.5 text-rose-500" />
+          <span className="relative font-medium">{selectedText ? "生成选中图片" : "生成图片"}</span>
+          <span className="relative ml-auto text-[10px] text-rose-400/70 font-normal">{selectedText ? "选中" : "卡片"}</span>
+        </DropdownMenuItem>
+
+        {/* Export submenu */}
+        <DropdownMenuGroup>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="text-xs">
               <LucideIcons.Download className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
               <span>导出</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="min-w-[160px]">
-              <DropdownMenuItem
-                className="text-xs relative overflow-hidden group"
-                onSelect={() => exportPageToImage(page)}
-              >
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-rose-50/80 to-amber-50/80 dark:from-rose-950/30 dark:to-amber-950/30 pointer-events-none" />
-                <LucideIcons.Image className="relative mr-2 h-3.5 w-3.5 text-rose-500" />
-                <span className="relative font-medium">图片</span>
-                <span className="relative ml-auto text-[10px] text-rose-400/70 font-normal">卡片</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1 bg-border/50" />
               <DropdownMenuItem
                 className="text-xs"
                 onSelect={() => exportToJSON(page)}
@@ -163,5 +206,12 @@ export function PageMenu() {
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+
+    <ImageExportThemeSelector
+      open={themeSelectorOpen}
+      onOpenChange={setThemeSelectorOpen}
+      onConfirm={handleThemeConfirm}
+      mode={selectedText ? "selection" : "page"}
+    />
+  </>);
 }

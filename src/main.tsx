@@ -1,3 +1,14 @@
+// Polyfill for older Chromium (uTools built-in)
+if (!(Array.prototype as any).toReversed) {
+  Object.defineProperty(Array.prototype, "toReversed", {
+    value: function (this: unknown[]) {
+      return [...this].reverse();
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { toast } from "sonner";
@@ -373,17 +384,7 @@ const bootstrap = async () => {
     enableReplay: true,
   });
 
-  console.log("[analytics] bootstrap", {
-    hasToken: Boolean(MIXPANEL_TOKEN),
-    tokenPreview: MIXPANEL_TOKEN ? `${MIXPANEL_TOKEN.slice(0, 6)}...${MIXPANEL_TOKEN.slice(-4)}` : "",
-    initialized: Boolean(analyticsInitResult),
-    distinctId: analyticsInitResult?.distinctId ?? "",
-    installId: analyticsInitResult?.installId ?? "",
-    sessionId: analyticsInitResult?.sessionId ?? "",
-  });
-
   syncAnalyticsSnapshot();
-  console.log("[analytics] snapshot_synced");
 
   if (analyticsInitResult) {
     trackEvent("app_opened", {

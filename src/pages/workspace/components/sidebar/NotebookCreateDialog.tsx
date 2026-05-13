@@ -1,6 +1,7 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 import { BookOpen } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 
 interface NotebookCreateDialogProps {
   open: boolean;
@@ -121,7 +122,7 @@ export function NotebookCreateDialog({
 
         {/* 快捷键提示 */}
         <p className="text-center text-xs text-muted-foreground mt-4">
-          按 <kbd className="px-1.5 py-0.5 rounded-[10px] bg-muted text-muted-foreground text-xs">Enter</kbd> 快速创建
+          按 <Kbd shortcut="Enter" className="inline-flex rounded-[10px] text-xs" /> 快速创建
         </p>
       </div>
     </DialogShell>
