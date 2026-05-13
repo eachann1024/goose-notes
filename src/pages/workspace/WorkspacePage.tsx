@@ -567,7 +567,7 @@ export function WorkspacePage() {
                                 page.icon ? "mb-3 mt-2" : "mt-1",
                                 isEditorFullWidth
                                   ? "max-w-full"
-                                  : "max-w-4xl mx-auto",
+                                  : "max-w-4xl mx-auto w-full",
                               )}
                             >
                               {!isLocalFolderPage && (
@@ -591,8 +591,10 @@ export function WorkspacePage() {
                                       variant="ghost"
                                       size="icon"
                                       className={cn(
-                                        "ml-6 flex h-auto w-auto items-center justify-center p-0 transition-all duration-300",
-                                        page.icon && "[&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]",
+                                        "flex h-auto w-auto p-0 transition-all duration-300",
+                                        page.icon
+                                          ? "items-start justify-start ml-6 [&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]"
+                                          : "items-center justify-center",
                                         page.icon
                                           ? "opacity-100 scale-100"
                                           : page.trashedAt || page.isLocked

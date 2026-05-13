@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-10T12:00:00Z",
+  "title": "Design System: 鹅的笔记",
+  "extensions": {
+    "colorMeta": {
+      "shell-bg": {
+        "role": "neutral",
+        "displayName": "Warm Shell",
+        "canonical": "hsl(0 0% 97.25%)",
+        "darkCanonical": "hsl(0 0% 12.55%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "editor-bg": {
+        "role": "neutral",
+        "displayName": "Pure Paper",
+        "canonical": "hsl(0 0% 100%)",
+        "darkCanonical": "hsl(60 2.2% 18%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "selected-bg": {
+        "role": "neutral",
+        "displayName": "Selected Parchment",
+        "canonical": "hsl(60 6.67% 94.12%)",
+        "darkCanonical": "hsl(60 2.4% 16.1%)",
+        "tonalRamp": ["#282823", "#515147", "#7a7a6b", "#9f9f92", "#c3c3ba", "#dbdbd6", "#eeeeeb", "#f7f7f6"]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Neutral Graphite",
+        "canonical": "hsl(0 0% 49.8%)",
+        "darkCanonical": "hsl(0 0% 58%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "hsl(0 0% 12%)",
+        "darkCanonical": "hsl(0 0% 90%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Faded Ink",
+        "canonical": "hsl(0 0% 43%)",
+        "darkCanonical": "hsl(0 0% 66%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "hsl(0 0% 86%)",
+        "darkCanonical": "hsl(0 0% 24%)",
+        "tonalRamp": ["#262626", "#4c4c4c", "#727272", "#999999", "#bfbfbf", "#d8d8d8", "#ededed", "#f7f7f7"]
+      },
+      "destructive": {
+        "role": "semantic",
+        "displayName": "Alert Red",
+        "canonical": "hsl(0 84.2% 60.2%)",
+        "darkCanonical": "hsl(0 62.8% 30.6%)",
+        "tonalRamp": ["#460606", "#8c0c0c", "#d31212", "#ee4343", "#f48989", "#f8b8b8", "#fcdede", "#fdf0f0"]
+      },
+      "notion-blue": {
+        "role": "accent",
+        "displayName": "Notion Blue",
+        "canonical": "hsl(210 75% 51%)",
+        "tonalRamp": ["#082643", "#114c87", "#1a72cb", "#4a98e7", "#8ebff0", "#bbd8f6", "#dfedfa", "#f1f7fd"]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "对话框标题、设置页头部、AI 面板标题。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "编辑器正文、笔记内容、列表项。系统的核心层级。"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "按钮文字、小标签、辅助说明、时间戳。"
+      },
+      "serif": {
+        "displayName": "Serif Body",
+        "purpose": "用户选择衬线模式时的编辑器正文。"
+      },
+      "mono": {
+        "displayName": "Mono Body",
+        "purpose": "代码块、行内代码。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient",
+        "value": "0 8px 22px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04)",
+        "purpose": "卡片默认状态。极弱的分离感。"
+      },
+      {
+        "name": "lifted",
+        "value": "0 16px 36px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08)",
+        "purpose": "对话框、模态框。新空间层。"
+      },
+      {
+        "name": "button-press",
+        "value": "0 6px 14px rgba(15, 23, 42, 0.12)",
+        "purpose": "主按钮默认状态。暗示可点击性。"
+      },
+      {
+        "name": "workspace-frame",
+        "value": "0 0 0 1px rgba(15, 23, 42, 0.03), 0 0 8px rgba(15, 23, 42, 0.05)",
+        "purpose": "编辑器主工作区外框。hairline + 极微弱弥散。"
+      },
+      {
+        "name": "inset-border",
+        "value": "inset 0 0 0 1px rgba(219, 219, 219, 0.8)",
+        "purpose": "输入框的压痕边框。不用真 border。"
+      },
+      {
+        "name": "dark-workspace-frame",
+        "value": "0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 12px rgba(0, 0, 0, 0.32)",
+        "purpose": "暗色模式 workspace frame。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "默认状态过渡。"
+      },
+      {
+        "name": "duration-fast",
+        "value": "100ms",
+        "purpose": "快速反馈（hover、颜色变化）。"
+      },
+      {
+        "name": "duration-normal",
+        "value": "200ms",
+        "purpose": "标准过渡（对话框打开、开关）。"
+      },
+      {
+        "name": "ai-pan",
+        "value": "28s ease-in-out infinite",
+        "purpose": "AI 卡片背景渐变平移。"
+      },
+      {
+        "name": "ai-orb",
+        "value": "24s ease-in-out infinite",
+        "purpose": "AI 图标光晕浮动。"
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主操作按钮。石墨灰填充，白色文字，10px 圆角，轻微投影。",
+      "html": "<button class=\"ds-btn-primary\">保存</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; background-color: #7e7e7e; color: #ffffff; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 14px; font-weight: 500; line-height: 1; letter-spacing: 0.01em; border: none; border-radius: 10px; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12); cursor: pointer; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background-color: rgba(126, 126, 126, 0.9); box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "次级操作按钮。透明填充，inset shadow 模拟边框，hover 变暖灰。",
+      "html": "<button class=\"ds-btn-outline\">取消</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; background-color: transparent; color: #1e1e1e; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 14px; font-weight: 500; line-height: 1; letter-spacing: 0.01em; border: none; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.8); cursor: pointer; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-outline:hover { background-color: #f1f1ef; box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 1); } .ds-btn-outline:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "文本输入框。10px 圆角，壳色背景，inset shadow 压痕边框。",
+      "html": "<input class=\"ds-input\" placeholder=\"输入标题...\" />",
+      "css": ".ds-input { display: flex; width: 100%; height: 40px; padding: 8px 12px; background-color: #f7f7f7; color: #1e1e1e; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 14px; font-weight: 400; line-height: 1.5; letter-spacing: 0.01em; border: none; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.8); outline: none; transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #6d6d6d; } .ds-input:focus { box-shadow: inset 0 0 0 2px rgba(126, 126, 126, 0.6); background-color: #ffffff; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "内容卡片。14px 大圆角，纯白背景，ambient 投影，无边框。",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><h3 class=\"ds-card-title\">新建记事本</h3><p class=\"ds-card-desc\">创建一个新的笔记集合</p></div><div class=\"ds-card-body\">在此处输入内容...</div></div>",
+      "css": ".ds-card { background-color: #ffffff; color: #1e1e1e; border-radius: 14px; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04); overflow: hidden; font-family: var(--font-default, 'DM Sans', sans-serif); } .ds-card-header { padding: 24px 24px 0; } .ds-card-title { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; color: #1e1e1e; } .ds-card-desc { margin: 4px 0 0; font-size: 13px; font-weight: 400; line-height: 1.5; color: #6d6d6d; } .ds-card-body { padding: 16px 24px 24px; font-size: 14px; line-height: 1.6; color: #1e1e1e; }"
+    },
+    {
+      "name": "Dialog",
+      "kind": "custom",
+      "refersTo": "dialog",
+      "description": "模态对话框内容面板。14px 圆角，壳色背景，lifted 投影。",
+      "html": "<div class=\"ds-dialog-overlay\"><div class=\"ds-dialog\"><div class=\"ds-dialog-header\"><h2 class=\"ds-dialog-title\">设置</h2><button class=\"ds-dialog-close\" aria-label=\"关闭\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg></button></div><div class=\"ds-dialog-body\">对话框内容区域</div></div></div>",
+      "css": ".ds-dialog-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(1px); } .ds-dialog { position: relative; width: 100%; max-width: 480px; margin: 16px; background-color: #f7f7f7; color: #1e1e1e; border-radius: 14px; box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08); font-family: var(--font-default, 'DM Sans', sans-serif); overflow: hidden; animation: ds-dialog-in 200ms cubic-bezier(0.4, 0, 0.2, 1); } @keyframes ds-dialog-in { from { opacity: 0; transform: scale(0.95) translateY(-8px); } to { opacity: 1; transform: scale(1) translateY(0); } } .ds-dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; } .ds-dialog-title { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; color: #1e1e1e; } .ds-dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: none; border-radius: 6px; color: #6d6d6d; cursor: pointer; transition: color 150ms, background-color 150ms; } .ds-dialog-close:hover { color: #1e1e1e; background-color: #f1f1ef; } .ds-dialog-body { padding: 16px 24px 24px; font-size: 14px; line-height: 1.6; color: #1e1e1e; }"
+    },
+    {
+      "name": "Sidebar Item",
+      "kind": "nav",
+      "refersTo": "custom",
+      "description": "侧边栏导航项。无圆角，hover/selected 变暖灰，无左侧彩条指示器。",
+      "html": "<div class=\"ds-sidebar-item\"><svg class=\"ds-sidebar-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"></path><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"></path></svg><span class=\"ds-sidebar-label\">工作笔记</span></div>",
+      "css": ".ds-sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 0 8px; border-radius: 8px; color: #1e1e1e; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer; transition: background-color 100ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-sidebar-item:hover { background-color: #f1f1ef; } .ds-sidebar-item.ds-sidebar-active { background-color: #f1f1ef; } .ds-sidebar-icon { flex-shrink: 0; color: #6d6d6d; } .ds-sidebar-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }"
+    },
+    {
+      "name": "AI LingCai Card",
+      "kind": "custom",
+      "refersTo": "custom",
+      "description": "AI 签名卡片。彩色模糊渐变背景 + 毛玻璃覆盖层。系统中唯一的彩色区域。",
+      "html": "<div class=\"ds-ai-card\"><div class=\"ds-ai-icon\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"5\"></circle><line x1=\"12\" y1=\"1\" x2=\"12\" y2=\"3\"></line><line x1=\"12\" y1=\"21\" x2=\"12\" y2=\"23\"></line><line x1=\"4.22\" y1=\"4.22\" x2=\"5.64\" y2=\"5.64\"></line><line x1=\"18.36\" y1=\"18.36\" x2=\"19.78\" y2=\"19.78\"></line><line x1=\"1\" y1=\"12\" x2=\"3\" y2=\"12\"></line><line x1=\"21\" y1=\"12\" x2=\"23\" y2=\"12\"></line><line x1=\"4.22\" y1=\"19.78\" x2=\"5.64\" y2=\"18.36\"></line><line x1=\"18.36\" y1=\"5.64\" x2=\"19.78\" y2=\"4.22\"></line></svg></div><span class=\"ds-ai-text\">AI 助手</span></div>",
+      "css": ".ds-ai-card { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 14px; overflow: hidden; font-family: var(--font-default, 'DM Sans', sans-serif); } .ds-ai-card::before { content: ''; position: absolute; inset: -24%; z-index: -2; border-radius: inherit; background: linear-gradient(118deg, rgba(140, 242, 221, 0.28), rgba(104, 205, 255, 0.23), rgba(171, 140, 255, 0.2), rgba(255, 150, 197, 0.2), rgba(255, 203, 112, 0.18), rgba(119, 235, 229, 0.22)); background-size: 240% 240%; filter: blur(28px); opacity: 0.96; animation: ds-ai-pan 28s ease-in-out infinite; pointer-events: none; } .ds-ai-card::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(140deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.76)); backdrop-filter: blur(14px); pointer-events: none; } @keyframes ds-ai-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } .ds-ai-icon { position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #58d7b8, #9f86ff); color: #ffffff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 26px rgba(99, 215, 255, 0.16); z-index: 1; } .ds-ai-text { font-size: 14px; font-weight: 600; background-image: linear-gradient(90deg, #58d7b8 0%, #61b8ff 24%, #9f86ff 50%, #ff7ea9 74%, #ffb56a 100%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ds-ai-text-shift 20s ease-in-out infinite; z-index: 1; } @keyframes ds-ai-text-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "custom",
+      "description": "标签/筛选芯片。暖灰背景，小圆角，紧凑内边距。",
+      "html": "<span class=\"ds-chip\">标签</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 6px 12px; background-color: #f1f1ef; color: #1e1e1e; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 12px; font-weight: 500; line-height: 1.4; letter-spacing: 0.01em; border-radius: 10px; cursor: pointer; transition: background-color 100ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-chip:hover { background-color: #e8e8e5; } .ds-chip.ds-chip-active { background-color: #1e1e1e; color: #ffffff; }"
+    },
+    {
+      "name": "Callout Block",
+      "kind": "custom",
+      "refersTo": "custom",
+      "description": "BlockNote 提示块。淡灰背景 + 微弱边框 + emoji 图标，像贴在页边的便利贴。",
+      "html": "<div class=\"ds-callout\"><span class=\"ds-callout-icon\">💡</span><div class=\"ds-callout-content\">这是一个提示块，用于高亮重要信息。</div></div>",
+      "css": ".ds-callout { display: flex; align-items: flex-start; gap: 8px; padding: 12px 16px; background-color: rgba(241, 241, 239, 0.4); border: 1px solid rgba(219, 219, 219, 0.6); border-radius: 6px; font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 14px; line-height: 1.6; color: #1e1e1e; } .ds-callout-icon { margin-top: 2px; font-size: 16px; line-height: 1; user-select: none; flex-shrink: 0; } .ds-callout-content { min-width: 0; flex: 1; }"
+    },
+    {
+      "name": "Code Block",
+      "kind": "custom",
+      "refersTo": "custom",
+      "description": "BlockNote 代码块。深色背景容器 + 工具栏 + Monospace 字体。",
+      "html": "<div class=\"ds-code-block\"><div class=\"ds-code-toolbar\"><span class=\"ds-code-lang\">typescript</span><button class=\"ds-code-copy\">复制</button></div><pre class=\"ds-code-pre\"><code>const hello = 'world';</code></pre></div>",
+      "css": ".ds-code-block { background-color: #f7f7f7; border: 1px solid rgba(219, 219, 219, 0.4); border-radius: 8px; overflow: hidden; font-family: var(--font-mono, 'DM Mono', monospace); } .ds-code-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background-color: rgba(241, 241, 239, 0.6); border-bottom: 1px solid rgba(219, 219, 219, 0.4); } .ds-code-lang { font-size: 11px; font-weight: 500; color: #6d6d6d; text-transform: uppercase; letter-spacing: 0.05em; } .ds-code-copy { padding: 4px 10px; font-size: 11px; font-weight: 500; color: #6d6d6d; background: transparent; border: none; border-radius: 4px; cursor: pointer; transition: background-color 100ms; } .ds-code-copy:hover { background-color: #f1f1ef; color: #1e1e1e; } .ds-code-pre { margin: 0; padding: 12px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6; color: #1e1e1e; } .ds-code-pre code { font-family: inherit; }"
+    },
+    {
+      "name": "Inline Code",
+      "kind": "custom",
+      "refersTo": "custom",
+      "description": "行内代码片段。圆角小标签样式，hover 显示边框反馈。",
+      "html": "<p class=\"ds-inline-code-wrap\">使用 <code class=\"ds-inline-code\">console.log()</code> 输出调试信息。</p>",
+      "css": ".ds-inline-code-wrap { font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 16px; line-height: 1.7; color: #1e1e1e; } .ds-inline-code { display: inline; padding: 1px 4px; background-color: rgba(241, 241, 239, 0.3); border: 1px solid transparent; border-radius: 4px; font-family: var(--font-mono, 'DM Mono', monospace); font-size: 0.85em; color: #1e1e1e; transition: border-color 100ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-inline-code:hover { border-color: #dbdbdb; }"
+    },
+    {
+      "name": "Blockquote",
+      "kind": "custom",
+      "refersTo": "custom",
+      "description": "引用块。左侧 2px 竖线 + 缩进 + 弱化文字色。无斜体、无背景。",
+      "html": "<blockquote class=\"ds-blockquote\">设计不是装饰，而是解决问题的方式。</blockquote>",
+      "css": ".ds-blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid rgba(219, 219, 219, 0.6); font-family: var(--font-default, 'DM Sans', sans-serif); font-size: 16px; line-height: 1.7; color: #6d6d6d; font-style: normal; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Study",
+    "overview": "鹅的笔记的界面像一间空书房。大面积留白，没有装饰性元素干扰视线。用户坐下来，面前只有纸和笔——编辑器就是全部。侧边栏缩在边缘， barely 可见的分割线界定了空间，但不争夺注意力。暗色模式不是\"夜间主题\"的噱头，而是同一间书房在傍晚灯光下的自然延续：墙色深了，纸色暖了，但空间感不变。\\n\\n这种设计系统刻意回避 SaaS 工具常见的视觉噪音：没有品牌色 banner，没有渐变按钮，没有悬浮 action button。色彩被极度克制地使用，以至于当 AI 区域的彩虹渐变出现时，它的出现本身就成为一种信号——\"这里有别的东西\"。",
+    "keyCharacteristics": [
+      "暖调中性灰，不是冷白也不是工业灰。壳色略带 60° 暖色相，像宣纸的底色。",
+      "投影是\"耳语\"级的存在感，统一使用 slate 色系，从不抢戏。",
+      "圆角是软陶质感而非锐利切割，10–14px 的温和弧度让元素感觉可以被触摸。",
+      "中文书法字体（仓耳今楷）作为可选衬线，为长文阅读提供人文温度。",
+      "全局移除 focus ring，操作反馈靠颜色变化和微投影，而非边框闪烁。",
+      "编辑器选择高亮使用 Notion 蓝 (#2383e2)，是界面中唯一固定的彩色锚点。"
+    ],
+    "rules": [
+      { "name": "The One Color Rule", "body": "任何非 AI 区域，屏幕上同时出现的彩色像素应趋近于零。灰色是默认，白色是画布，黑色是文字。AI 区域的多彩是刻意打破规则的信号——它告诉用户\"这里发生了不同的事\"。", "section": "colors" },
+      { "name": "The Warmth-Not-Color Rule", "body": "层次由明度和极微的暖色 tint 区分，不是由色相。goose-selected-bg 比 shell-bg 暗 3%，暖 6°，这个差异几乎无法被有意识察觉，但手指能\"感觉\"到。", "section": "colors" },
+      { "name": "The Notion Blue Reservation Rule", "body": "#2383e2 仅用于编辑器文本选择高亮和 BlockNote 相关交互。禁止用于按钮、链接、图标或任何 UI chrome。", "section": "colors" },
+      { "name": "The Editor-First Rule", "body": "正文 (Body) 的样式是系统的锚点。所有其他层级的尺寸和字重选择都基于\"不干扰正文阅读\"这一原则。对话框标题再大也不超过 24px。", "section": "typography" },
+      { "name": "The No-Bold-Without-Reason Rule", "body": "加粗 (600+) 仅用于标题层级和极少数强调。正文不使用 bold 做强调——依靠字色对比和留白替代。", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "表面在静止时是平的。投影只作为响应出现：hover、elevation、focus。如果一个元素不需要用户操作，它就不应该有投影。", "section": "elevation" },
+      { "name": "The Slate-Only Rule", "body": "所有投影的颜色基准统一为 slate (rgba(15, 23, 42)) 或暗色反色 (rgba(255,255,255,0.05))。禁止彩色投影、暖色投影、或任何带色相的阴影。", "section": "elevation" }
+    ],
+    "dos": [
+      "保持大面积留白。侧边栏、编辑器、对话框之间留出呼吸空间。",
+      "使用暖调中性灰（带 60° hue tint）作为一切非内容区域的底色。",
+      "让编辑器区域始终是最白的表面，形成自然的阅读焦点。",
+      "在需要用户操作的元素上使用 10px 圆角和轻微投影。",
+      "用 inset shadow 替代 input 和 outline 按钮的真边框，保持表面的连续性。",
+      "为 AI 区域保留彩虹渐变的\"特权\"——它是系统中唯一允许多彩的地方。",
+      "使用 prefers-reduced-motion 为所有 AI 动画提供降级。",
+      "确保暗色模式不是\"反色\"，而是同一空间的傍晚版本。"
+    ],
+    "donts": [
+      "使用 border-left 或 border-right 大于 1px 的彩色条纹作为列表项、卡片或提示的 accent。",
+      "使用 gradient text 作为 UI 元素的装饰。唯一允许的 gradient text 是 AI 区域的 LingCai 品牌文字。",
+      "使用 glassmorphism 作为默认卡片样式。毛玻璃仅用于 AI 卡片。",
+      "使用 hero-metric 模板（大数字+小标签+支持数据+渐变 accent）。这不是仪表盘。",
+      "创建相同大小的 icon + heading + text 卡片网格并重复。笔记应用的内容区不是功能展示墙。",
+      "将模态框作为第一选择。优先使用 inline、渐进式的交互替代方案。",
+      "在按钮或 UI chrome 上使用 Notion Blue (#2383e2)。它是编辑器选择的专属颜色。",
+      "使用纯黑 (#000000) 或纯白 (#ffffff) 作为任何元素的颜色。",
+      "做 Notion 全功能克隆的视觉风格。学习 Notion 的克制和留白，但不复制它的具体色彩值和组件形状。",
+      "做 Web-first SaaS 布局。这是 uTools 插件，界面应感觉像原生桌面应用的一部分。"
+    ]
+  }
+}

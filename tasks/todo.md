@@ -1,10 +1,5 @@
 # Dataviz UI fix plan
 
-- [x] Fix shared dataviz container spacing, margins, and module framing
-- [x] Make ECharts sizing responsive and synced with editor zoom
-- [x] Improve HTML widget height measurement, tab switching, and scroll behavior
-- [x] Tighten dataviz generation prompt for multi-module layouts
-
 ## Review
 
 - Added a shared dataviz shell with per-module framing so markdown, charts, and widgets no longer stack edge-to-edge.
