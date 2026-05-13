@@ -1970,13 +1970,13 @@ const setupImageStorageResolver = async () => {
   const { imageStorage } = await import("@/lib/imageStorage");
   imageStorage.setLocalFolderAccessResolver(() => {
     const activePageId = usePages.getState().activePageId;
-    if (!activePageId) return false;
+    if (!activePageId) return null;
 
     const page = usePages.getState().pages[activePageId];
-    if (!page) return false;
+    if (!page) return null;
 
     const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-    return notebook?.source === "local-folder" && !!notebook.localPath;
+    return notebook?.source === "local-folder" ? notebook.localPath : null;
   });
 };
 

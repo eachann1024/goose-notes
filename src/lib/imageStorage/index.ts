@@ -5,8 +5,17 @@
 
 import type { IImageStorageStrategy } from './types'
 import { AttachmentStrategy } from './strategies/attachment'
+import { Base64Strategy } from './strategies/base64'
 import { FileSystemStrategy } from './strategies/file-system'
 import { InlinedStrategy } from './strategies/inlined'
+import { UToolsAdapter } from '../utools'
+
+type LocalFolderAccessState =
+  | boolean
+  | string
+  | null
+  | undefined
+  | Promise<boolean | string | null | undefined>
 
 /**
  * 图片存储管理器
@@ -15,7 +24,7 @@ export class ImageStorage {
   private strategy: IImageStorageStrategy | null = null
   private strategyPromise: Promise<IImageStorageStrategy> | null = null
   private inlinedStrategy: InlinedStrategy
-  private localFolderAccessResolver: (() => boolean | Promise<boolean>) | null =
+  private localFolderAccessResolver: (() => LocalFolderAccessState) | null =
     null
 
   constructor() {
@@ -31,13 +40,17 @@ export class ImageStorage {
     if (this.strategyPromise) return this.strategyPromise
 
     this.strategyPromise = (async () => {
-      const hasLocalFolder = await this.checkLocalFolderAccess()
+      const localFolderPath = await this.resolveLocalFolderPath()
 
-      if (hasLocalFolder) {
-        return new FileSystemStrategy()
+      if (localFolderPath) {
+        return new FileSystemStrategy(() => this.resolveLocalFolderPath())
       }
 
-      return new AttachmentStrategy()
+      if (UToolsAdapter.isUTools) {
+        return new AttachmentStrategy()
+      }
+
+      return new Base64Strategy()
     })()
 
     this.strategy = await this.strategyPromise
@@ -48,19 +61,22 @@ export class ImageStorage {
   /**
    * 检测是否有本地文件夹访问权限
    */
-  private async checkLocalFolderAccess(): Promise<boolean> {
-    if (!this.localFolderAccessResolver) return false
-    const resolved = this.localFolderAccessResolver()
-    return await Promise.resolve(resolved)
+  private async resolveLocalFolderPath(): Promise<string | null> {
+    if (!this.localFolderAccessResolver) return null
+
+    const resolved = await Promise.resolve(this.localFolderAccessResolver())
+    return typeof resolved === 'string' && resolved.length > 0 ? resolved : null
   }
 
   /**
    * 注入本地文件夹访问检测器（避免依赖 store 造成循环）
    */
   setLocalFolderAccessResolver(
-    resolver: () => boolean | Promise<boolean>,
+    resolver: () => LocalFolderAccessState,
   ): void {
     this.localFolderAccessResolver = resolver
+    this.strategy = null
+    this.strategyPromise = null
   }
 
   /**
@@ -95,7 +111,7 @@ export class ImageStorage {
     }
 
     // 尝试文件系统策略（兼容本地文件模式）
-    const fsStrategy = new FileSystemStrategy()
+    const fsStrategy = new FileSystemStrategy(() => this.resolveLocalFolderPath())
     if (fsStrategy.canHandle(ref)) {
       return fsStrategy.load(ref)
     }
@@ -123,7 +139,7 @@ export class ImageStorage {
     }
 
     // 尝试文件系统策略
-    const fsStrategy = new FileSystemStrategy()
+    const fsStrategy = new FileSystemStrategy(() => this.resolveLocalFolderPath())
     if (fsStrategy.canHandle(ref)) {
       return fsStrategy.delete(ref)
     }

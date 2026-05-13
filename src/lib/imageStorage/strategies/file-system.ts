@@ -5,8 +5,6 @@
 
 import type { IImageStorageStrategy } from '../types'
 import { blobToBase64 } from '../utils'
-import { useNotebooks } from '@/stores/useNotebooks'
-import { usePages } from '@/stores/usePages'
 
 // 声明 gooseFs 类型
 // declare global {
@@ -22,6 +20,14 @@ import { usePages } from '@/stores/usePages'
 // }
 
 export class FileSystemStrategy implements IImageStorageStrategy {
+  private readonly getNotebookPath?: () => string | null | Promise<string | null>
+
+  constructor(
+    getNotebookPath?: () => string | null | Promise<string | null>,
+  ) {
+    this.getNotebookPath = getNotebookPath
+  }
+
   /**
    * 保存图片到文件系统
    */
@@ -32,7 +38,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
     }
 
     // 获取当前笔记本路径
-    const notebookPath = this.getCurrentNotebookPath()
+    const notebookPath = await this.getCurrentNotebookPath()
     if (!notebookPath) {
       throw new Error('No notebook path found')
     }
@@ -75,7 +81,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
     if (!gooseFs) return
 
     const filename = ref.replace('./assets/', '')
-    const notebookPath = this.getCurrentNotebookPath()
+    const notebookPath = await this.getCurrentNotebookPath()
     if (!notebookPath) return
 
     const fullPath = `${notebookPath}/assets/${filename}`
@@ -92,15 +98,8 @@ export class FileSystemStrategy implements IImageStorageStrategy {
   /**
    * 获取当前笔记本路径
    */
-  private getCurrentNotebookPath(): string | null {
-    const activePageId = usePages.getState().activePageId
-    if (!activePageId) return null
-
-    const page = usePages.getState().pages[activePageId]
-    if (!page) return null
-
-    const notebook = useNotebooks.getState().notebooks[page.workspaceId]
-    return notebook?.localPath || null
+  private async getCurrentNotebookPath(): Promise<string | null> {
+    return (await Promise.resolve(this.getNotebookPath?.())) || null
   }
 
   /**
