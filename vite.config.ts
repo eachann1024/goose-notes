@@ -109,7 +109,13 @@ export default defineConfig({
       output: {
         manualChunks: resolveVendorChunk,
       },
+      onwarn(warning, warn) {
+        if (warning.code === "INEFFECTIVE_DYNAMIC_IMPORT") return;
+        warn(warning);
+      },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 3000,
+    reportCompressedSize: false,
   },
+  logLevel: "warn",
 });
