@@ -689,6 +689,17 @@ export function importFromMarkdown(
   }
 }
 
+export function importMarkdownFragment(markdown: string): BlockNoteContent | null {
+  try {
+    const parsed = markdownToJsonContent(markdown);
+    if (!Array.isArray(parsed)) return null;
+    const content = parsed as BlockNoteContent;
+    return content.length > 0 ? content : null;
+  } catch {
+    return null;
+  }
+}
+
 export function importFile(): Promise<ImportResult> {
   return new Promise((resolve) => {
     const input = document.createElement("input");

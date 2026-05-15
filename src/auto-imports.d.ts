@@ -200,6 +200,7 @@ declare global {
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
   const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
+  const importMarkdownFragment: typeof import('./lib/export').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
   const initAnalytics: typeof import('./lib/analytics').initAnalytics
   const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
