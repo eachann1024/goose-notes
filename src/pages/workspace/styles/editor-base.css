@@ -37,19 +37,6 @@
   margin-top: 0;
 }
 
-.workspace-editor-surface .bn-block-content[data-content-type="heading"] .bn-toggle-button {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease, background-color 120ms ease, transform 120ms ease;
-}
-
-.workspace-editor-surface .bn-block-content[data-content-type="heading"]:hover .bn-toggle-button,
-.workspace-editor-surface .bn-block-content[data-content-type="heading"]:focus-within .bn-toggle-button,
-.workspace-editor-surface .bn-block-content[data-content-type="heading"]:has(.bn-toggle-wrapper[data-show-children="false"]) .bn-toggle-button {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 /* BlockNote 块间距全局优化 */
 .workspace-editor-surface .bn-block-outer {
   margin-bottom: 0.35em;
@@ -210,6 +197,28 @@
 
 .workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="image"]) {
   margin-bottom: 0.5em;
+}
+
+/* ===== 行内代码样式（飞书风格） ===== */
+.workspace-editor-surface .bn-inline-content code {
+  background-color: hsl(220 9% 96%);
+  color: hsl(220 9% 16%);
+  padding: var(--editor-inline-code-padding-y, 2px) var(--editor-inline-code-padding-x, 4px);
+  border-radius: var(--editor-inline-code-radius, 3px);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.dark .workspace-editor-surface .bn-inline-content code {
+  background-color: hsl(220 6% 18%);
+  color: hsl(220 6% 88%);
+}
+
+/* ===== BlockNote children 缩进优化 ===== */
+/* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
+.workspace-editor-surface .bn-block:has(> .bn-block-content[data-content-type="heading"]) > .bn-block-children {
+  padding-left: 0.5em;
 }
 
 /* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
@@ -410,6 +419,7 @@
   background-color: hsl(var(--muted) / 0.4);
   border: 1px solid hsl(var(--border) / 0.4);
   transition: border-color 150ms ease, background-color 150ms ease;
+  margin-inline: 12px;
 }
 
 .goose-file-block-content:hover {

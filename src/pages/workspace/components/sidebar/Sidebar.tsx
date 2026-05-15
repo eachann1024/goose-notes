@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { EditorRef } from "../editor/Editor";
 import { OutlinePanel } from "../outline/OutlinePanel";
 import { useHeadings } from "../outline/useHeadings";
+import type { HeadingItem } from "../outline/useHeadings";
 import { useActiveHeading } from "../outline/useActiveHeading";
 
 const SIDEBAR_MIN_WIDTH = 180;
@@ -328,18 +329,60 @@ export function Sidebar({
     onSearch,
     onCreate,
     createTitle,
+    view,
+    onSwitchToPages,
+    onSwitchToOutline,
   }: {
     title: string;
     onSearch: () => void;
     onCreate: () => void;
     createTitle: string;
+    view: "pages" | "outline";
+    onSwitchToPages: () => void;
+    onSwitchToOutline: () => void;
   }) => {
     const searchShortcut = formatShortcut("Mod+K");
     const createShortcut = formatShortcut("Mod+N");
 
     return (
       <div className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
-        <span>{title}</span>
+        <div className="group/tab-switch inline-flex items-center gap-0.5 rounded-[8px] p-0.5">
+          <button
+            type="button"
+            onClick={onSwitchToPages}
+            className={cn(
+              "rounded-[7px] px-2 py-1 transition-colors",
+              view === "pages"
+                ? "bg-[var(--goose-interactive-selected)] text-foreground"
+                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+            )}
+            aria-pressed={view === "pages"}
+          >
+            {title}
+          </button>
+          <span
+            className={cn(
+              "px-0.5 text-muted-foreground/70 transition-colors",
+              "group-hover/tab-switch:text-foreground/80",
+            )}
+            aria-hidden="true"
+          >
+            /
+          </span>
+          <button
+            type="button"
+            onClick={onSwitchToOutline}
+            className={cn(
+              "rounded-[7px] px-2 py-1 transition-colors",
+              view === "outline"
+                ? "bg-[var(--goose-interactive-selected)] text-foreground"
+                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+            )}
+            aria-pressed={view === "outline"}
+          >
+            大纲
+          </button>
+        </div>
         <TooltipProvider delayDuration={0}>
           <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
             <Tooltip>
@@ -413,14 +456,11 @@ export function Sidebar({
           }}
         />
 
-        {currentView === "outline" ? (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <SidebarOutline
-              editorRef={editorRef}
-              scrollContainerRef={scrollContainerRef}
-            />
+        {currentView === "trash" ? (
+          <div className="flex-1 overflow-hidden">
+            <TrashList showHeader={false} itemHeight={trashItemHeight} />
           </div>
-        ) : currentView === "pages" ? (
+        ) : (
           <>
             <FavoritesSection
               width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
@@ -436,26 +476,35 @@ export function Sidebar({
                   onSearch={handleSearch}
                   onCreate={handleCreatePage}
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}
+                  view={currentView}
+                  onSwitchToPages={() => setCurrentView("pages")}
+                  onSwitchToOutline={() => setCurrentView("outline")}
                 />
               </div>
-              <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0">
-                <SidebarTree
-                  activeNotebookId={activeNotebookId}
-                  selectedPageId={selectedPageId}
-                  width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
-                  rowHeight={rowHeight}
-                  itemHeight={itemHeight}
-                  viewportHeight={scrollAreaHeight}
-                  onCreatePage={handleCreatePage}
-                  onDragGuideChange={setDragGuide}
-                />
-              </div>
+              {currentView === "pages" ? (
+                <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0">
+                  <SidebarTree
+                    activeNotebookId={activeNotebookId}
+                    selectedPageId={selectedPageId}
+                    width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
+                    rowHeight={rowHeight}
+                    itemHeight={itemHeight}
+                    viewportHeight={scrollAreaHeight}
+                    onCreatePage={handleCreatePage}
+                    onDragGuideChange={setDragGuide}
+                  />
+                </div>
+              ) : (
+                <div className="pl-0 pr-[9px] flex-1 min-h-0 overflow-hidden">
+                  <SidebarOutline
+                    editorRef={editorRef}
+                    scrollContainerRef={scrollContainerRef}
+                    pageId={activePageId}
+                  />
+                </div>
+              )}
             </div>
           </>
-        ) : (
-          <div className="flex-1 overflow-hidden">
-            <TrashList showHeader={false} itemHeight={trashItemHeight} />
-          </div>
         )}
       </div>
 
@@ -471,10 +520,6 @@ export function Sidebar({
           setCurrentView("trash");
           setShowSettings(false);
           setActivePage(null);
-        }}
-        onSwitchToOutline={() => {
-          setCurrentView("outline");
-          setShowSettings(false);
         }}
         onOpenSettings={() => {
           setShowSettings(true);
@@ -545,13 +590,27 @@ export function Sidebar({
 function SidebarOutline({
   editorRef,
   scrollContainerRef,
+  pageId,
 }: {
   editorRef?: React.RefObject<EditorRef | null>;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  pageId?: string | null;
 }) {
   const editor = editorRef?.current?.editor ?? null;
-  const headings = useHeadings(editor);
-  const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
+  const headings = useHeadings(editor, pageId);
+  const headingIds = useMemo(() => {
+    const ids: string[] = [];
+    const visit = (items: HeadingItem[]) => {
+      for (const item of items) {
+        ids.push(item.id);
+        if (item.children.length > 0) {
+          visit(item.children);
+        }
+      }
+    };
+    visit(headings);
+    return ids;
+  }, [headings]);
   const activeId = useActiveHeading(scrollContainerRef, headingIds);
 
   const handleHeadingClick = useCallback(

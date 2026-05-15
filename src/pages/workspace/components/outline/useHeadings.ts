@@ -5,6 +5,7 @@ export interface HeadingItem {
   id: string;
   level: number;
   text: string;
+  children: HeadingItem[];
 }
 
 function extractTextFromBlock(block: any): string {
@@ -23,18 +24,32 @@ function extractTextFromBlock(block: any): string {
 }
 
 function collectHeadings(doc: any[]): HeadingItem[] {
-  const headings: HeadingItem[] = [];
+  const roots: HeadingItem[] = [];
+  const stack: HeadingItem[] = [];
 
   const visit = (block: any) => {
     if (block.type === "heading" && block.props?.level) {
       const level = block.props.level;
-      // 只显示 h2 和 h3，h1 是页面标题
-      if (level >= 2 && level <= 3) {
-        headings.push({
+      // 仅记录 h1-h4
+      if (level >= 2 && level <= 4) {
+        const item: HeadingItem = {
           id: block.id,
           level,
           text: extractTextFromBlock(block) || "无标题",
-        });
+          children: [],
+        };
+
+        while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+          stack.pop();
+        }
+
+        const parent = stack[stack.length - 1];
+        if (parent) {
+          parent.children.push(item);
+        } else {
+          roots.push(item);
+        }
+        stack.push(item);
       }
     }
     if (block.children?.length) {
@@ -43,10 +58,13 @@ function collectHeadings(doc: any[]): HeadingItem[] {
   };
 
   for (const block of doc) visit(block);
-  return headings;
+  return roots;
 }
 
-export function useHeadings(editor: BlockNoteEditor | null) {
+export function useHeadings(
+  editor: BlockNoteEditor | null,
+  pageId?: string | null,
+) {
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
 
   const refresh = useCallback(() => {
@@ -60,7 +78,7 @@ export function useHeadings(editor: BlockNoteEditor | null) {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, pageId]);
 
   useEffect(() => {
     if (!editor) return;

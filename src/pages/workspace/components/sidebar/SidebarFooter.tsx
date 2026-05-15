@@ -3,7 +3,6 @@ interface SidebarFooterProps {
   isSettingsOpen: boolean;
   onSwitchToPages: () => void;
   onSwitchToTrash: () => void;
-  onSwitchToOutline: () => void;
   onOpenSettings: () => void;
 }
 
@@ -12,12 +11,10 @@ export function SidebarFooter({
   isSettingsOpen,
   onSwitchToPages,
   onSwitchToTrash,
-  onSwitchToOutline,
   onOpenSettings,
 }: SidebarFooterProps) {
   const tabButtonClass =
     "h-8 flex-1 rounded-full p-0 transition-all duration-200 inline-flex items-center justify-center";
-  const settingsShortcut = formatShortcut("Mod+,");
 
   return (
     <div className="pl-0 pr-[9px] pb-2 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))]">
@@ -67,25 +64,6 @@ export function SidebarFooter({
                 type="button"
                 className={cn(
                   tabButtonClass,
-                  !isSettingsOpen && currentView === "outline"
-                    ? "bg-[var(--goose-interactive-selected)] text-foreground"
-                    : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-                )}
-                aria-label="大纲"
-                onClick={onSwitchToOutline}
-              >
-                <LucideIcons.List className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">大纲</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  tabButtonClass,
                   isSettingsOpen
                     ? "bg-[var(--goose-interactive-selected)] text-foreground"
                     : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
@@ -96,14 +74,7 @@ export function SidebarFooter({
                 <LucideIcons.Settings className="h-4 w-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">
-              <div className="flex items-center gap-2">
-                <span>设置</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {settingsShortcut}
-                </span>
-              </div>
-            </TooltipContent>
+            <TooltipContent side="top">设置</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
