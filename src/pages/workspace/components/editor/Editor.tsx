@@ -38,11 +38,11 @@ import {
   clonePageContent,
   getContentSignature,
   normalizePageContent,
-  organizeToggleHeadingSections,
   ensureFirstTitleHeading,
   extractBlockNoteTitle,
   type BlockNoteContent,
 } from "@/lib/blocknote-content";
+import { importMarkdownFragment } from "@/lib/export";
 import {
   getBlockNoteSlashMenuItems,
   filterSlashMenuItems,
@@ -61,6 +61,7 @@ import {
 import { AiInlineInput } from "./AiInlineInput";
 import { EditorSideMenu } from "./EditorSideMenu";
 import { ImageLightbox } from "./ImageLightbox";
+import { gooseSelectAllExtension } from "./selectAllExtension";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -71,31 +72,34 @@ type EditorFilePanelProps = {
   blockId: string;
 };
 
-function forEachFoldableHeading(
-  blocks: BlockNoteContent,
-  callback: (block: any, ordinal: number) => void,
-  isDocumentRoot = true,
-  ordinalRef = { current: 0 },
-) {
-  blocks.forEach((block: any, index) => {
-    const isDocumentTitle = isDocumentRoot && index === 0;
-    if (
-      block?.type === "heading" &&
-      !isDocumentTitle &&
-      block.props?.isToggleable !== false
-    ) {
-      callback(block, ordinalRef.current);
-      ordinalRef.current += 1;
-    }
-    if (Array.isArray(block?.children) && block.children.length > 0) {
-      forEachFoldableHeading(
-        block.children as BlockNoteContent,
-        callback,
-        false,
-        ordinalRef,
-      );
-    }
-  });
+type ImageAlignment = "left" | "center" | "right";
+
+type ImageToolbarState = {
+  blockId: string;
+  alignment: ImageAlignment;
+  top: number;
+  left: number;
+};
+
+const IMAGE_BLOCK_SELECTOR =
+  '.bn-block-content[data-content-type="image"], .bn-block-content[data-content-type="imageResize"]';
+
+const IMAGE_TOOLBAR_WIDTH = 140;
+
+function getImageToolbarAnchor(blockElement: HTMLElement) {
+  return blockElement.closest<HTMLElement>(".bn-block-outer") ?? blockElement;
+}
+
+function getImageToolbarPosition(container: HTMLElement, target: HTMLElement) {
+  const containerRect = container.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  return {
+    top: Math.max(8, rect.top - containerRect.top + container.scrollTop + 12),
+    left: Math.min(
+      Math.max(8, rect.left - containerRect.left + container.scrollLeft + 12),
+      Math.max(8, container.scrollWidth - IMAGE_TOOLBAR_WIDTH - 8),
+    ),
+  };
 }
 
 function getBlockPlainText(block: any): string {
@@ -110,47 +114,15 @@ function getBlockPlainText(block: any): string {
   return "";
 }
 
-function getStableToggleKey(pageId: string | null | undefined, block: any, ordinal: number) {
-  if (!pageId) return null;
-  return `goose-heading-toggle:${pageId}:${ordinal}:${getBlockPlainText(block)}`;
-}
-
-function setHeadingToggleState(
-  pageId: string | null | undefined,
-  block: any,
-  ordinal: number,
-  value: "true" | "false",
-) {
-  if (typeof window === "undefined") return;
-  if (block.id) {
-    window.localStorage.setItem(`toggle-${block.id}`, value);
-  }
-  const stableKey = getStableToggleKey(pageId, block, ordinal);
-  if (stableKey) {
-    window.localStorage.setItem(stableKey, value);
-  }
-}
-
-function ensureDefaultOpenToggleState(
-  content: BlockNoteContent,
-  pageId?: string | null,
-) {
-  if (typeof window === "undefined") return;
-  forEachFoldableHeading(content, (block, ordinal) => {
-    const idKey = block.id ? `toggle-${block.id}` : null;
-    const stableKey = getStableToggleKey(pageId, block, ordinal);
-    const saved =
-      (stableKey ? window.localStorage.getItem(stableKey) : null) ??
-      (idKey ? window.localStorage.getItem(idKey) : null);
-    const value = saved === "false" ? "false" : "true";
-
-    if (idKey) {
-      window.localStorage.setItem(idKey, value);
-    }
-    if (stableKey) {
-      window.localStorage.setItem(stableKey, value);
-    }
-  });
+function looksLikeMarkdownFragment(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+  return (
+    /^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|\s*[-*+]\s\[[ xX]\]\s)/m.test(value) ||
+    /```/.test(value) ||
+    /\|.+\|/.test(value) ||
+    /(\*\*|__|~~|`[^`]+`)/.test(value)
+  );
 }
 
 function EditorFilePanel({ blockId }: EditorFilePanelProps) {
@@ -358,7 +330,6 @@ function GooseTableExtendButton({
         editingState && "is-editing",
       )}
       aria-label={isColumnHandle ? "添加列" : "添加行"}
-      title={isColumnHandle ? "点击添加列，拖动快速增减列" : "点击添加行，拖动快速增减行"}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
     >
@@ -505,7 +476,7 @@ const editorSchema = BlockNoteSchema.create({
     ...defaultBlockSpecs,
     heading: createHeadingBlockSpec({
       levels: [1, 2, 3],
-      allowToggleHeadings: true,
+      allowToggleHeadings: false,
     }),
     callout: calloutBlock,
     file: customFileBlock,
@@ -534,19 +505,19 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const pageIdForUpdateRef = useRef<string | null>(null);
   const syncedContentSignatureRef = useRef<string | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  const shiftPressedRef = useRef(false);
   const isSwappingContentRef = useRef(false);
   const prevActivePageIdForSwapRef = useRef<string | null>(activePageId ?? null);
 
   const [creationContent] = useState(() => {
-    const content = normalizePageContent(page?.content);
-    ensureDefaultOpenToggleState(content, page?.id);
-    return content;
+    return normalizePageContent(page?.content);
   });
 
   const editor = useCreateBlockNote(
     {
       initialContent: creationContent as any,
       schema: editorSchema,
+      extensions: [gooseSelectAllExtension],
       dictionary: {
         ...zh,
         placeholders: {
@@ -597,29 +568,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     );
   }, [updatePage]);
 
-  const syncHeadingToggleDom = useCallback(() => {
-    const content = editor.document as BlockNoteContent;
-    const pageId = pageIdForUpdateRef.current ?? activePageId;
-    ensureDefaultOpenToggleState(content, pageId);
-
-    window.requestAnimationFrame(() => {
-      forEachFoldableHeading(content, (block, ordinal) => {
-        if (!block.id) return;
-        const stableKey = getStableToggleKey(pageId, block, ordinal);
-        const saved =
-          (stableKey ? window.localStorage.getItem(stableKey) : null) ??
-          window.localStorage.getItem(`toggle-${block.id}`);
-        const isOpen = saved !== "false";
-        const selector = `.bn-block[data-id="${CSS.escape(block.id)}"] > .bn-block-content .bn-toggle-wrapper`;
-        editorContainerRef.current
-          ?.querySelectorAll<HTMLElement>(selector)
-          .forEach((wrapper) => {
-            wrapper.setAttribute("data-show-children", isOpen ? "true" : "false");
-          });
-      });
-    });
-  }, [activePageId, editor]);
-
   const restoreFirstTitleHeading = useCallback(() => {
     const currentContent = editor.document as BlockNoteContent;
     const firstBlock = currentContent[0];
@@ -632,16 +580,67 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     return true;
   }, [editor]);
 
+  const handleEditorPasteCapture = useCallback(
+    (event: React.ClipboardEvent<HTMLDivElement>) => {
+      if (!editable) return;
+      if (event.defaultPrevented) return;
+      if (shiftPressedRef.current) return;
+      if ((event.target as HTMLElement | null)?.closest(".goose-code-block-node")) return;
+
+      const clipboard = event.clipboardData;
+      const plainText = clipboard.getData("text/plain");
+      if (!plainText || !looksLikeMarkdownFragment(plainText)) return;
+
+      const htmlText = clipboard.getData("text/html");
+      if (htmlText && htmlText.trim()) return;
+
+      const parsedBlocks = importMarkdownFragment(plainText);
+      if (!parsedBlocks?.length) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const cursor = editor.getTextCursorPosition();
+      const [inserted] = editor.insertBlocks(parsedBlocks as any, cursor.block, "before");
+      if (inserted) {
+        editor.setTextCursorPosition(inserted);
+      }
+    },
+    [editable, editor],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        shiftPressedRef.current = true;
+      }
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        shiftPressedRef.current = false;
+      }
+    };
+    const handleWindowBlur = () => {
+      shiftPressedRef.current = false;
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
+    window.addEventListener("blur", handleWindowBlur, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
+      window.removeEventListener("blur", handleWindowBlur, true);
+    };
+  }, []);
+
   const commitEditorContent = useCallback(
     (targetPageId?: string) => {
       const safePageId = targetPageId ?? pageIdForUpdateRef.current;
       if (!safePageId) return;
-      const nextContent = organizeToggleHeadingSections(
-        ensureFirstTitleHeading(
-          clonePageContent(editor.document as BlockNoteContent),
-        ),
+      const nextContent = ensureFirstTitleHeading(
+        clonePageContent(editor.document as BlockNoteContent),
       );
-      ensureDefaultOpenToggleState(nextContent, safePageId);
       debouncedUpdate.cancel();
       syncedContentSignatureRef.current = getContentSignature(nextContent);
       updatePage(safePageId, { content: nextContent });
@@ -657,7 +656,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const normalized = normalizePageContent(p.content);
     const normalizedSignature = getContentSignature(normalized);
     pageIdForUpdateRef.current = p.id;
-    ensureDefaultOpenToggleState(normalized, p.id);
     syncedContentSignatureRef.current = normalizedSignature;
 
     if (getContentSignature(p.content) !== normalizedSignature) {
@@ -672,61 +670,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       isSwappingContentRef.current = true;
       editor.replaceBlocks(editor.document, normalized as any);
       requestAnimationFrame(() => {
-        syncHeadingToggleDom();
         isSwappingContentRef.current = false;
       });
-    } else {
-      syncHeadingToggleDom();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId]);
-
-  useEffect(() => {
-    const root = editorContainerRef.current;
-    if (!root) return;
-
-    const handleToggleClick = (event: MouseEvent) => {
-      const button = (event.target as HTMLElement | null)?.closest(
-        ".bn-toggle-button",
-      );
-      if (!button || !root.contains(button)) return;
-
-      window.setTimeout(() => {
-        const blockElement = button.closest<HTMLElement>(".bn-block");
-        const blockId = blockElement?.dataset.id;
-        if (!blockId) return;
-
-        const content = editor.document as BlockNoteContent;
-        let matched:
-          | {
-              block: any;
-              ordinal: number;
-            }
-          | undefined;
-        forEachFoldableHeading(content, (block, ordinal) => {
-          if (block.id === blockId) {
-            matched = { block, ordinal };
-          }
-        });
-        if (!matched) return;
-
-        const wrapper = button.closest<HTMLElement>(".bn-toggle-wrapper");
-        const value =
-          wrapper?.getAttribute("data-show-children") === "false"
-            ? "false"
-            : "true";
-        setHeadingToggleState(
-          pageIdForUpdateRef.current ?? activePageId,
-          matched.block,
-          matched.ordinal,
-          value,
-        );
-      }, 0);
-    };
-
-    root.addEventListener("click", handleToggleClick);
-    return () => root.removeEventListener("click", handleToggleClick);
-  }, [activePageId, editor]);
 
   useEffect(() => {
     return () => {
@@ -803,6 +751,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const [selectedText, setSelectedText] = useState("");
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedTextRef = useRef("");
+  const imageToolbarRef = useRef<HTMLDivElement | null>(null);
+  const [imageToolbar, setImageToolbar] = useState<ImageToolbarState | null>(null);
 
   const handleContextMenuOpen = () => {
     let text = "";
@@ -821,6 +771,112 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     selectedTextRef.current = trimmed;
   };
 
+  const syncImageToolbarPosition = useCallback(
+    (blockId: string, nextAlignment?: ImageAlignment) => {
+      const container = editorContainerRef.current;
+      if (!container) return;
+
+      const blockElement = container.querySelector<HTMLElement>(
+        `[data-id="${blockId}"]`,
+      );
+      if (!blockElement) return;
+      const anchorElement = getImageToolbarAnchor(blockElement);
+
+      const block = editor.getBlock(blockId);
+      const alignment =
+        nextAlignment ??
+        (((block?.props as { textAlignment?: string } | undefined)
+          ?.textAlignment ?? "left") as ImageAlignment);
+
+      setImageToolbar({
+        blockId,
+        alignment,
+        ...getImageToolbarPosition(container, anchorElement),
+      });
+    },
+    [editor],
+  );
+
+  const updateImageAlignment = useCallback(
+    (blockId: string, alignment: ImageAlignment) => {
+      editor.updateBlock(blockId, {
+        props: { textAlignment: alignment },
+      } as any);
+      requestAnimationFrame(() => {
+        syncImageToolbarPosition(blockId, alignment);
+      });
+    },
+    [editor, syncImageToolbarPosition],
+  );
+
+  const handleEditorContextMenuCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement | null;
+      const imageBlock = target?.closest<HTMLElement>(IMAGE_BLOCK_SELECTOR);
+      if (!imageBlock) {
+        setImageToolbar(null);
+        return;
+      }
+
+      const blockId = imageBlock.closest<HTMLElement>("[data-id]")?.dataset.id;
+      if (!blockId) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation?.();
+
+      const block = editor.getBlock(blockId);
+      const alignment =
+        ((block?.props as { textAlignment?: string } | undefined)
+          ?.textAlignment ?? "left") as ImageAlignment;
+
+      const container = editorContainerRef.current;
+      if (!container) return;
+      const blockElement = imageBlock.closest<HTMLElement>("[data-id]");
+      if (!blockElement) return;
+      const anchorElement = getImageToolbarAnchor(blockElement);
+
+      setImageToolbar({
+        blockId,
+        alignment,
+        ...getImageToolbarPosition(container, anchorElement),
+      });
+    },
+    [editor],
+  );
+
+  useEffect(() => {
+    if (!imageToolbar) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (imageToolbarRef.current?.contains(target)) return;
+      setImageToolbar(null);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setImageToolbar(null);
+      }
+    };
+
+    const handleViewportChange = () => {
+      syncImageToolbarPosition(imageToolbar.blockId, imageToolbar.alignment);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleEscape, true);
+    window.addEventListener("scroll", handleViewportChange, true);
+    window.addEventListener("resize", handleViewportChange, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleEscape, true);
+      window.removeEventListener("scroll", handleViewportChange, true);
+      window.removeEventListener("resize", handleViewportChange, true);
+    };
+  }, [imageToolbar, syncImageToolbarPosition]);
+
   const handleSelectionThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
     const text = selectedTextRef.current;
     if (!text.trim()) return;
@@ -835,9 +891,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     <ContextMenu onOpenChange={(open) => { if (open) handleContextMenuOpen(); }}>
       <div
         ref={editorContainerRef}
+        onContextMenuCapture={handleEditorContextMenuCapture}
+        onPasteCapture={handleEditorPasteCapture}
         data-font-family={page.fontFamily ?? "default"}
         className={cn(
-          "workspace-editor-surface mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
+          "workspace-editor-surface relative mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
           isEditorFullWidth ? "max-w-none" : "max-w-4xl",
         )}
       >
@@ -856,7 +914,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
             if (!safePageId) return;
             if (restoreFirstTitleHeading()) return;
             const nextContent = clonePageContent(editor.document as BlockNoteContent);
-            ensureDefaultOpenToggleState(nextContent, safePageId);
             syncedContentSignatureRef.current = getContentSignature(nextContent);
             debouncedUpdate(safePageId, nextContent);
           }}
@@ -906,6 +963,52 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           />
           <AiInlineInput />
         </BlockNoteView>
+        {imageToolbar ? (
+          <div
+            ref={imageToolbarRef}
+            onMouseDown={(event) => event.preventDefault()}
+            onContextMenu={(event) => event.preventDefault()}
+            className="absolute z-[20010] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+            style={{
+              top: imageToolbar.top,
+              left: imageToolbar.left,
+            }}
+          >
+            <button
+              type="button"
+              aria-label="左对齐"
+              onClick={() => updateImageAlignment(imageToolbar.blockId, "left")}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
+                imageToolbar.alignment === "left" && "bg-accent text-foreground",
+              )}
+            >
+              <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
+            </button>
+            <button
+              type="button"
+              aria-label="居中对齐"
+              onClick={() => updateImageAlignment(imageToolbar.blockId, "center")}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
+                imageToolbar.alignment === "center" && "bg-accent text-foreground",
+              )}
+            >
+              <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
+            </button>
+            <button
+              type="button"
+              aria-label="右对齐"
+              onClick={() => updateImageAlignment(imageToolbar.blockId, "right")}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
+                imageToolbar.alignment === "right" && "bg-accent text-foreground",
+              )}
+            >
+              <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
+            </button>
+          </div>
+        ) : null}
       </div>
       <ContextMenuContent className="w-[200px]">
         {selectedText.trim() && (
@@ -928,6 +1031,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       onConfirm={handleSelectionThemeConfirm}
       mode="selection"
     />
-    <ImageLightbox editorContainerRef={editorContainerRef} />
+    <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
   </>);
 });
