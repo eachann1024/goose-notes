@@ -63,6 +63,8 @@ export function EditorSideMenu() {
 
   if (!state?.show || !state.referencePos) return null;
 
+  if (block && block.id === editor.document[0]?.id) return null;
+
   const sideMenuWidth = 52;
   const top =
     state.referencePos.top + state.referencePos.height / 2 - 12;
@@ -81,7 +83,6 @@ export function EditorSideMenu() {
           "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/50",
           "transition-colors hover:bg-muted hover:text-foreground",
         )}
-        title="添加块"
       >
         <Plus className="h-3.5 w-3.5" />
       </button>
@@ -94,7 +95,6 @@ export function EditorSideMenu() {
           "flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground/40",
           "transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing",
         )}
-        title="拖拽排序"
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>

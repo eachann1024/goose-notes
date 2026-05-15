@@ -63,7 +63,6 @@ function CustomFileBlockContent({
           type="button"
           className="goose-file-block-action-btn"
           onClick={handleDownload}
-          title="下载"
         >
           <LucideIcons.Download size={16} />
         </button>
@@ -71,7 +70,6 @@ function CustomFileBlockContent({
           type="button"
           className="goose-file-block-action-btn"
           onClick={handleDelete}
-          title="删除"
         >
           <LucideIcons.Trash2 size={16} />
         </button>

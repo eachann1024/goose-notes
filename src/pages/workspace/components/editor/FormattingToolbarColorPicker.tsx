@@ -143,6 +143,7 @@ export function FormattingToolbarColorPicker() {
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
       )}
+      onMouseDown={(e) => e.preventDefault()}
       style={{
         top: position.top,
         left: position.left,

@@ -1052,7 +1052,6 @@ export function AiWorkspacePage() {
         {/* 新建会话 */}
         <button
           type="button"
-          title="新建会话"
           onClick={handleNewSession}
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
@@ -1067,7 +1066,6 @@ export function AiWorkspacePage() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              title="历史会话"
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
                 historyOpen
@@ -1239,7 +1237,6 @@ export function AiWorkspacePage() {
                 {isRetryable && (
                   <button
                     type="button"
-                    title="重新发送"
                     onClick={handleRetry}
                     className="flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >

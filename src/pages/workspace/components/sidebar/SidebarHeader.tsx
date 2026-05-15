@@ -345,7 +345,6 @@ export function SidebarHeader({
                         <button
                           ref={isActive ? activePinnedRef : null}
                           type="button"
-                          title={title}
                           className={cn(
                             "h-8 w-8 shrink-0 rounded-full inline-flex items-center justify-center transition-all duration-200",
                             "animate-in fade-in-0 zoom-in-95",

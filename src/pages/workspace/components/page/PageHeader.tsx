@@ -132,7 +132,6 @@ export function PageHeader({
                         ? "bg-[var(--goose-interactive-selected)] text-foreground"
                         : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                     )}
-                    title={getPageTitle(tabPage)}
                   >
                     <span className="min-w-0 flex-1 truncate">{getPageTitle(tabPage)}</span>
                     <TooltipProvider delayDuration={0}>
