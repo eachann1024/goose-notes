@@ -99,7 +99,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 1, isToggleable: true },
+          props: { level: 1 },
         }),
     },
     {
@@ -111,7 +111,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 2, isToggleable: true },
+          props: { level: 2 },
         }),
     },
     {
@@ -123,7 +123,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 3, isToggleable: true },
+          props: { level: 3 },
         }),
     },
     { type: "divider" } as any,
