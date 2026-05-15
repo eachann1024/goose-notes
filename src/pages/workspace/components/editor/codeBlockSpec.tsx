@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
@@ -107,8 +107,21 @@ function CodeBlockComponent({
     [editor, block.id, block.content],
   );
 
+  const insertTextAtCursor = useCallback((text: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }, []);
+
   const handleCodeKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLElement>) => {
+    (e: ReactKeyboardEvent<HTMLElement>) => {
       if (e.nativeEvent.isComposing || e.key !== "Enter") return;
 
       if (e.shiftKey) {
@@ -125,9 +138,44 @@ function CodeBlockComponent({
 
       e.preventDefault();
       e.stopPropagation();
-      document.execCommand("insertText", false, "\n");
+      insertTextAtCursor("\n");
     },
-    [editor, block],
+    [editor, block, insertTextAtCursor],
+  );
+
+  const handleNativeCodeKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.isComposing || event.key !== "Enter") return;
+
+      if (event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        const [inserted] = editor.insertBlocks(
+          [{ type: "paragraph", content: "" }],
+          block,
+          "after",
+        );
+        if (inserted) editor.setTextCursorPosition(inserted);
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      insertTextAtCursor("\n");
+    },
+    [editor, block, insertTextAtCursor],
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLPreElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = e.clipboardData.getData("text/plain");
+      if (text) {
+        insertTextAtCursor(text.replace(/\r\n/g, "\n"));
+      }
+    },
+    [insertTextAtCursor],
   );
 
   const textContent = getCodeContent();
@@ -143,6 +191,15 @@ function CodeBlockComponent({
     }, 0);
     return () => clearTimeout(timer);
   }, [isEditingSummary]);
+
+  useEffect(() => {
+    const codeEl = contentRef.current as HTMLElement | null;
+    if (!codeEl) return;
+    codeEl.addEventListener("keydown", handleNativeCodeKeyDown, true);
+    return () => {
+      codeEl.removeEventListener("keydown", handleNativeCodeKeyDown, true);
+    };
+  }, [contentRef, handleNativeCodeKeyDown]);
 
   return (
     <div
@@ -244,6 +301,7 @@ function CodeBlockComponent({
               isMathOrMermaid && "goose-code-pre-source",
             )}
             onKeyDown={handleCodeKeyDown}
+            onPaste={handlePaste}
           >
             <code
               ref={contentRef}
