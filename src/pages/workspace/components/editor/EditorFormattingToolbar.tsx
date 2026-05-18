@@ -14,6 +14,12 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { useSettings } from "@/stores/useSettings";
 import { useContextMenu } from "@/stores/useContextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
@@ -39,6 +45,127 @@ function ToolbarTooltip({
         {shortcut ? <Kbd shortcut={shortcut} /> : null}
       </div>
     </TooltipContent>
+  );
+}
+
+function LinkPopoverButton({
+  isLinkActive,
+  linkUrl,
+  bindTooltip,
+}: {
+  isLinkActive: boolean;
+  linkUrl: string | undefined;
+  bindTooltip: (id: string) => {
+    delayDuration: number;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  };
+}) {
+  const editor = useBlockNoteEditor();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setUrl(linkUrl || "");
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open, linkUrl]);
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = url.trim();
+    if (trimmed) {
+      editor.createLink(trimmed);
+    }
+    setOpen(false);
+    setUrl("");
+  }, [url, editor]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSubmit();
+      }
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    },
+    [handleSubmit]
+  );
+
+  if (isLinkActive) {
+    return (
+      <Tooltip {...bindTooltip("link")}>
+        <TooltipTrigger asChild>
+          <Toggle
+            size="sm"
+            pressed={true}
+            onPressedChange={() => editor.deleteLink()}
+            aria-label="移除链接"
+            className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
+          >
+            <LucideIcons.Link className="h-[15px] w-[15px]" />
+          </Toggle>
+        </TooltipTrigger>
+        <ToolbarTooltip label="移除链接" />
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip {...bindTooltip("link")}>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Toggle
+              size="sm"
+              pressed={false}
+              aria-label="添加链接"
+              className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
+            >
+              <LucideIcons.Link className="h-[15px] w-[15px]" />
+            </Toggle>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <ToolbarTooltip label="添加链接" shortcut="Mod+K" />
+      </Tooltip>
+      <PopoverContent
+        align="center"
+        side="top"
+        className="w-72 p-2"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="flex flex-col gap-2">
+          <Input
+            ref={inputRef}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="https://..."
+            className="h-8 text-sm"
+          />
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleSubmit}
+            >
+              确认
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -278,29 +405,11 @@ export function EditorFormattingToolbar() {
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
-        <Tooltip {...bindTooltip("link")}>
-          <TooltipTrigger asChild>
-            <Toggle
-              size="sm"
-              pressed={isLinkActive}
-              onPressedChange={() => {
-                if (isLinkActive) {
-                  editor.deleteLink();
-                } else {
-                  const url = window.prompt("输入链接地址:");
-                  if (url) {
-                    editor.createLink(url);
-                  }
-                }
-              }}
-              aria-label="链接"
-              className="h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground"
-            >
-              <LucideIcons.Link className="h-[15px] w-[15px]" />
-            </Toggle>
-          </TooltipTrigger>
-          <ToolbarTooltip label={isLinkActive ? "移除链接" : "添加链接"} />
-        </Tooltip>
+        <LinkPopoverButton
+          isLinkActive={isLinkActive}
+          linkUrl={linkUrl}
+          bindTooltip={bindTooltip}
+        />
 
         <Separator orientation="vertical" className="h-5 opacity-70" />
 
