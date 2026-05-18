@@ -5,6 +5,7 @@ import { extractTitleFromContent } from "./content-text-extractor";
 import { blobToBase64 } from "./imageStorage/utils";
 import {
   isBlockNoteContent,
+  normalizeBlockContent,
   normalizePageContent,
   createEmptyBlockNoteContent,
 } from "./blocknote-content";
@@ -381,6 +382,25 @@ async function trySaveToDownloads(
   return true;
 }
 
+function triggerBrowserDownload(blob: Blob, filename: string): boolean {
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    requestAnimationFrame(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function saveBlobViaDialog(
   blob: Blob,
   filename: string,
@@ -401,12 +421,12 @@ async function saveBlobViaDialog(
   const utools = hostWindow.utools;
   const gooseFs = hostWindow.gooseFs;
   if (!utools || typeof utools.showSaveDialog !== "function" || !gooseFs) {
-    return false;
+    return triggerBrowserDownload(blob, filename);
   }
 
   const saveResult = await Promise.resolve(
     utools.showSaveDialog({
-      title: "保存图片",
+      title: "保存文件",
       defaultPath: filename,
       buttonLabel: "保存",
     }),
@@ -479,11 +499,13 @@ async function downloadBlob(
   try {
     const saved = await saveBlobAndReveal(blob, filename);
     if (saved) return;
-    throw new Error("当前版本仅支持 uTools 导出");
   } catch (error) {
-    console.error("[export] 导出后自动打开文件夹失败:", error);
-    throw error;
+    console.error("[export] saveBlobAndReveal 失败，尝试浏览器下载:", error);
   }
+
+  if (triggerBrowserDownload(blob, filename)) return;
+
+  throw new Error("导出失败：无法保存文件");
 }
 
 export async function importNotebooksFromZip(
@@ -692,8 +714,7 @@ export function importFromMarkdown(
 export function importMarkdownFragment(markdown: string): BlockNoteContent | null {
   try {
     const parsed = markdownToJsonContent(markdown);
-    if (!Array.isArray(parsed)) return null;
-    const content = parsed as BlockNoteContent;
+    const content = normalizeBlockContent(parsed);
     return content.length > 0 ? content : null;
   } catch {
     return null;

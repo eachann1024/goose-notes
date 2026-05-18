@@ -213,6 +213,7 @@ declare global {
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider').mapUToolsAiModelsToOptions
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
+  const normalizeBlockContent: typeof import('./lib/blocknote-content').normalizeBlockContent
   const normalizePageContent: typeof import('./lib/blocknote-content').normalizePageContent
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent

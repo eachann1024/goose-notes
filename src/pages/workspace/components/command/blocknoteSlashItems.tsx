@@ -131,7 +131,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       title: "待办事项",
       description: "带有复选框的任务列表",
       icon: <LucideIcons.CheckSquare size={18} />,
-      aliases: ["todo", "task", "daiban", "renwu"],
+      aliases: ["todo", "task", "daiban", "renwu", "提醒", "提醒事项", "tixing"],
       badge: "[]",
       onItemClick: () => insertOrUpdate({ type: "checkListItem" }),
     },

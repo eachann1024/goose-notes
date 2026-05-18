@@ -235,6 +235,11 @@
   color: hsl(220 6% 88%);
 }
 
+/* ===== CheckListItem 文字垂直居中 ===== */
+.workspace-editor-surface .bn-block-content[data-content-type="checkListItem"] {
+  align-items: center;
+}
+
 /* ===== BlockNote children 缩进优化 ===== */
 /* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
 .workspace-editor-surface .bn-block:has(> .bn-block-content[data-content-type="heading"]) > .bn-block-children {

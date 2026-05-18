@@ -67,6 +67,12 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
 
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
+        if (!containerRef.current || !containerRef.current.isConnected) return;
+        const target = e.target as HTMLElement | null;
+        const inEditorScope = !!target?.closest(
+          '.bn-editor, [data-content-type="blockNote"]',
+        );
+        if (!inEditorScope) return;
         if (!selectableIndexes.length) return;
         if (e.key === "ArrowUp") {
           e.preventDefault();

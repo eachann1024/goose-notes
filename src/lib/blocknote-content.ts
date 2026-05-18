@@ -50,6 +50,20 @@ const VALID_BLOCK_TYPES = new Set([
   "toggleListItem",
 ]);
 
+const LEGACY_BLOCK_TYPES = new Set([
+  "blockquote",
+  "paragraph",
+  "heading",
+  "codeBlock",
+  "bulletList",
+  "orderedList",
+  "taskList",
+  "table",
+  "image",
+  "imageResize",
+  "horizontalRule",
+]);
+
 function simpleExtractText(block: any): string {
   if (!block || typeof block !== "object") return "";
   if (typeof block.content === "string") return block.content;
@@ -73,26 +87,111 @@ function simpleExtractText(block: any): string {
   return "";
 }
 
-function sanitizeBlock(block: any): PartialBlock | null {
-  if (!block || typeof block !== "object") return null;
+function isStructuredBlockLike(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const candidateType = (node as { type?: unknown }).type;
+  return (
+    typeof candidateType === "string" &&
+    (VALID_BLOCK_TYPES.has(candidateType) || LEGACY_BLOCK_TYPES.has(candidateType))
+  );
+}
 
-  const type = block.type;
-  if (!type || !VALID_BLOCK_TYPES.has(type)) {
-    const text = simpleExtractText(block).trim();
-    if (text) return { type: "paragraph", content: text };
-    return null;
+function hasStructuredBlocks(value: unknown): value is any[] {
+  return Array.isArray(value) && value.some((item) => isStructuredBlockLike(item));
+}
+
+function normalizeInlineContent(content: unknown): PartialBlock["content"] {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content) && !hasStructuredBlocks(content)) {
+    return content;
+  }
+  const text = simpleExtractText({ content });
+  return text || "";
+}
+
+function createParagraphFromInlineContent(
+  content: PartialBlock["content"] | undefined,
+): PartialBlock | null {
+  if (typeof content === "string") {
+    return content.trim() ? ({ type: "paragraph", content } as PartialBlock) : null;
+  }
+  if (Array.isArray(content)) {
+    const text = simpleExtractText({ content }).trim();
+    return text ? ({ type: "paragraph", content } as PartialBlock) : null;
+  }
+  return null;
+}
+
+function normalizeBlocks(blocks: any[] | undefined): PartialBlock[] {
+  return (blocks ?? []).flatMap((block) => normalizeBlock(block));
+}
+
+function normalizeQuoteBlock(block: any): PartialBlock[] {
+  const contentChildren = hasStructuredBlocks(block.content) ? block.content : [];
+  const childBlocks = Array.isArray(block.children) ? block.children : [];
+  const nestedBlocks = normalizeBlocks([...contentChildren, ...childBlocks]);
+
+  if (
+    nestedBlocks.length === 1 &&
+    nestedBlocks[0]?.type === "paragraph" &&
+    !(nestedBlocks[0] as any).children?.length
+  ) {
+    return [
+      {
+        type: "quote",
+        content: normalizeInlineContent(nestedBlocks[0].content),
+      } as PartialBlock,
+    ];
   }
 
-  const children = Array.isArray(block.children)
-    ? (block.children.map(sanitizeBlock).filter(Boolean) as PartialBlock[])
-    : undefined;
+  if (nestedBlocks.length > 0) {
+    const leadingParagraph = hasStructuredBlocks(block.content)
+      ? null
+      : createParagraphFromInlineContent(normalizeInlineContent(block.content));
+    return leadingParagraph ? [leadingParagraph, ...nestedBlocks] : nestedBlocks;
+  }
+
+  return [
+    {
+      type: "quote",
+      content: normalizeInlineContent(block.content),
+    } as PartialBlock,
+  ];
+}
+
+function normalizeBlock(block: any): PartialBlock[] {
+  if (!block || typeof block !== "object") return [];
+
+  const type = block.type;
+  if (type === "quote" || type === "blockquote") {
+    return normalizeQuoteBlock(block);
+  }
+
+  if (!type || !VALID_BLOCK_TYPES.has(type)) {
+    const nestedBlocks = [
+      ...(hasStructuredBlocks(block.content) ? block.content : []),
+      ...(Array.isArray(block.children) ? block.children : []),
+    ];
+    if (nestedBlocks.length > 0) {
+      return normalizeBlocks(nestedBlocks);
+    }
+    const text = simpleExtractText(block).trim();
+    if (text) return [{ type: "paragraph", content: text }];
+    return [];
+  }
+
+  const children = normalizeBlocks(block.children);
 
   const sanitized: PartialBlock = { type };
-  if (block.props) sanitized.props = block.props;
-  if (block.content !== undefined) sanitized.content = block.content;
+  if (block.props || block.attrs) sanitized.props = block.props ?? block.attrs;
+  if (block.content !== undefined) {
+    sanitized.content = type === "codeBlock" ? simpleExtractText(block) : block.content;
+  }
   if (children?.length) sanitized.children = children;
 
-  return sanitized;
+  return [sanitized];
 }
 
 function canUseAsHeadingContent(block: PartialBlock): boolean {
@@ -107,19 +206,26 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
   }
 
   if (firstBlock.type === "heading") {
+    const nestedChildren = Array.isArray(firstBlock.children) ? firstBlock.children : [];
+    const { children: headingChildren, ...titleBase } = firstBlock as PartialBlock;
+    void headingChildren;
+    const normalizedTitle = {
+      ...titleBase,
+      props: {
+        ...firstBlock.props,
+        level: TITLE_HEADING_LEVEL,
+      },
+    } as PartialBlock;
+
     return [
-      {
-        ...firstBlock,
-        props: {
-          ...firstBlock.props,
-          level: TITLE_HEADING_LEVEL,
-        },
-      } as PartialBlock,
+      normalizedTitle,
+      ...nestedChildren,
       ...restBlocks,
     ];
   }
 
   if (canUseAsHeadingContent(firstBlock)) {
+    const nestedChildren = Array.isArray(firstBlock.children) ? firstBlock.children : [];
     const content =
       typeof firstBlock.content === "string" || Array.isArray(firstBlock.content)
         ? firstBlock.content
@@ -133,13 +239,18 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
           level: TITLE_HEADING_LEVEL,
         },
         content,
-        children: firstBlock.children,
       } as PartialBlock,
+      ...nestedChildren,
       ...restBlocks,
     ];
   }
 
   return [titleHeadingBlock(), firstBlock, ...restBlocks];
+}
+
+export function normalizeBlockContent(content: unknown): BlockNoteContent {
+  if (!Array.isArray(content)) return [];
+  return normalizeBlocks(content);
 }
 
 function textFromLegacy(node: LegacyPageContent | undefined): string {
@@ -250,12 +361,12 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
 export function normalizePageContent(content: PageContent | null | undefined): BlockNoteContent {
   if (!content) return createEmptyBlockNoteContent();
   if (isBlockNoteContent(content)) {
-    const sanitized = content.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
+    const sanitized = normalizeBlockContent(content);
     return sanitized.length
       ? ensureFirstTitleHeading(sanitized)
       : createEmptyBlockNoteContent();
   }
-  const blocks = childrenFromLegacy(content.content);
+  const blocks = normalizeBlockContent(childrenFromLegacy(content.content));
   return blocks.length
     ? ensureFirstTitleHeading(blocks)
     : createEmptyBlockNoteContent();

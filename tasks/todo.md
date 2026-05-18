@@ -1,10 +1,14 @@
-# Dataviz UI fix plan
+# Todo
 
-## Review
+## 2026-05-18
+### [引用块纠偏]
+- [x] 修复引用块错误包裹后续模块，读取旧数据时自动去掉错误引用并保留原模块
+- [x] 统一 Markdown 片段导入的内容规范化，避免继续产生错误引用结构
 
-- Added a shared dataviz shell with per-module framing so markdown, charts, and widgets no longer stack edge-to-edge.
-- Tuned ECharts sizing to be more content-aware, reduced extra padding, and kept chart redraws synced with editor zoom.
-- Reworked iframe widget sizing to re-measure on tab changes, expose a host resize hook, preserve scrollbar fallback, and forward Cmd/Ctrl zoom shortcuts back to the host.
-- Removed iframe-side default scrollbars again, expanded overflow containers back to natural height, and added host-level spacing between stacked module blocks inside tab panels.
+### [提醒事项引用误触发与标题光标修复]
+- [x] 修复 Slash 菜单中待办事项与 Tab 键误触发引用的问题
+- [x] 修复标题块携带子节点导致 Enter 光标跳到末尾的问题
+- [x] 修复编辑时每输入一个字自动跳到下一行的问题（避免 onChange 全量 replaceBlocks）
 
-- Fixed zoom hotkeys so Cmd/Ctrl +/-/0 still work when focus stays inside AI chat inputs or iframe widgets; the AI workspace scale now updates in those focus states too.
+### [历史标题脏结构一次性修复]
+- [x] 增加启动时一次性迁移：仅修复首标题挂 children 的历史脏数据并回写存储

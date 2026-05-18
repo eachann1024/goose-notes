@@ -28,6 +28,7 @@ import {
   saveLocalPageMeta,
   savePagesMeta,
 } from "@/lib/storage/pageRepository";
+import { getDbStorageItem, setDbStorageItem } from "@/lib/storage/utoolsDbStorage";
 
 // 本地文件采用近实时后台保存，尽量缩短独立窗口关闭前的未落盘窗口。
 const LOCAL_SAVE_DEBOUNCE_MS = 180;
@@ -56,6 +57,9 @@ type LocalPageMetadata = {
   isPinned?: boolean;
   pinnedAt?: number;
 };
+
+const LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY =
+  "goose-note:content-repair:title-children:v1";
 
 // 辅助函数：生成本地页面ID（基于相对路径的hash）
 function generateLocalPageId(notebookId: string, filePath: string): string {
@@ -462,6 +466,70 @@ function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent
   ];
 }
 
+function flattenLegacyTitleHeadingChildren(
+  content: JSONContent,
+): { content: JSONContent; repaired: boolean } {
+  if (!Array.isArray(content) || content.length === 0) {
+    return { content, repaired: false };
+  }
+
+  const firstBlock = content[0] as Record<string, unknown> | undefined;
+  if (!firstBlock || firstBlock.type !== "heading") {
+    return { content, repaired: false };
+  }
+
+  const nestedChildren = Array.isArray(firstBlock.children) ? firstBlock.children : [];
+  if (nestedChildren.length === 0) {
+    return { content, repaired: false };
+  }
+
+  const { children: _ignoredChildren, ...titleWithoutChildren } = firstBlock;
+  const normalizedTitle = {
+    ...titleWithoutChildren,
+    props: {
+      ...(typeof firstBlock.props === "object" && firstBlock.props
+        ? (firstBlock.props as Record<string, unknown>)
+        : {}),
+      level: 1,
+    },
+  };
+
+  return {
+    content: [
+      normalizedTitle as JSONContent[number],
+      ...nestedChildren,
+      ...content.slice(1),
+    ] as JSONContent,
+    repaired: true,
+  };
+}
+
+function repairLegacyTitleChildrenInPages(
+  pages: Record<string, Page>,
+): { pages: Record<string, Page>; repairedPageIds: string[] } {
+  let nextPages = pages;
+  const repairedPageIds: string[] = [];
+
+  Object.entries(pages).forEach(([pageId, page]) => {
+    const repairResult = flattenLegacyTitleHeadingChildren(page.content);
+    if (!repairResult.repaired) {
+      return;
+    }
+
+    if (nextPages === pages) {
+      nextPages = { ...pages };
+    }
+
+    nextPages[pageId] = {
+      ...page,
+      content: repairResult.content,
+    };
+    repairedPageIds.push(pageId);
+  });
+
+  return { pages: nextPages, repairedPageIds };
+}
+
 export const flushEditorContent = (immediate = false) => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(
@@ -489,9 +557,29 @@ export const usePages = create<PagesState>()((set, get) => ({
       hydrateFromStorage: async () => {
         const { pages, localPageMetas, onboardingCompleted } =
           loadPagesFromStorage();
+        const hasRepairedLegacyTitleChildren =
+          getDbStorageItem(LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY) === "1";
+        const { pages: repairedPages, repairedPageIds } = hasRepairedLegacyTitleChildren
+          ? { pages, repairedPageIds: [] as string[] }
+          : repairLegacyTitleChildrenInPages(pages);
+
+        if (!hasRepairedLegacyTitleChildren) {
+          if (repairedPageIds.length > 0) {
+            repairedPageIds.forEach((pageId) => {
+              const repairedPage = repairedPages[pageId];
+              if (!repairedPage || repairedPage.localFilePath) return;
+              saveInternalPage(repairedPage);
+            });
+            console.info(
+              `[usePages] repaired legacy title-children structure in ${repairedPageIds.length} page(s).`,
+            );
+          }
+          setDbStorageItem(LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY, "1");
+        }
+
         seedLocalPageMetadataCache(localPageMetas);
         set({
-          pages,
+          pages: repairedPages,
           activePageId: null,
           pendingNavigatePageId: null,
           expandPageId: null,

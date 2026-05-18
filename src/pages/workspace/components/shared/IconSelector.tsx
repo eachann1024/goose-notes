@@ -251,7 +251,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                 placeholder="搜索表情"
                 className="z-10 mx-3 mt-2 appearance-none rounded-md bg-muted/50 px-3 py-2 text-sm border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <EmojiPicker.Viewport className="relative flex-1 outline-hidden">
+              <EmojiPicker.Viewport className="relative flex-1 outline-hidden" style={{ scrollbarGutter: "auto" }}>
                 <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                   加载中…
                 </EmojiPicker.Loading>
@@ -259,7 +259,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   未找到表情
                 </EmojiPicker.Empty>
                 <EmojiPicker.List
-                  className="select-none pb-2"
+                  className="select-none px-3 pb-2"
                   components={{
                     Emoji: ({ emoji, ...props }) => (
                       <button

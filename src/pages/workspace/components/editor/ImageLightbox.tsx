@@ -2,22 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
-import { AlignCenter, AlignLeft, AlignRight, Copy, Download, X } from "lucide-react";
+import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { imageStorage } from "@/lib/imageStorage";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { saveBlobAndReveal } from "@/lib/export";
 
 interface ImageLightboxProps {
-  editor: any;
   editorContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-type ImageAlignment = "left" | "center" | "right";
-
 interface SlideInfo {
-  blockId: string;
-  alignment: ImageAlignment;
   src: string;
   alt?: string;
 }
@@ -26,12 +21,10 @@ const isUToolsEnv = () =>
   typeof window !== "undefined" && typeof window.utools !== "undefined";
 
 async function resolveImageSrc(src: string): Promise<string> {
-  // 已经是 http(s) 或 data URL，直接返回
   if (src.startsWith("http") || src.startsWith("data:")) {
     return src;
   }
 
-  // 尝试用 imageStorage 加载本地存储的图片
   if (src.startsWith("att:") || src.startsWith("uuid:")) {
     try {
       const blob = await imageStorage.load(src);
@@ -43,7 +36,6 @@ async function resolveImageSrc(src: string): Promise<string> {
     }
   }
 
-  // 其他情况原样返回（可能是相对路径等）
   return src;
 }
 
@@ -53,7 +45,7 @@ function getImageElements(container: HTMLElement): HTMLImageElement[] {
   ));
 }
 
-export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps) {
+export function ImageLightbox({ editorContainerRef }: ImageLightboxProps) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [slides, setSlides] = useState<SlideInfo[]>([]);
@@ -81,16 +73,9 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     for (const img of images) {
       const src = img.src || img.getAttribute("src") || "";
       const alt = img.alt || img.getAttribute("alt") || "";
-      const blockId = img.closest<HTMLElement>("[data-id]")?.dataset.id;
 
-      if (!src || !blockId) continue;
+      if (!src) continue;
 
-      const block = editor.getBlock(blockId);
-      const alignment =
-        ((block?.props as { textAlignment?: string } | undefined)
-          ?.textAlignment ?? "left") as ImageAlignment;
-
-      // 检查是否已解析过
       let resolved = resolvedUrlsRef.current.get(src);
       if (!resolved) {
         resolved = await resolveImageSrc(src);
@@ -100,13 +85,13 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
         }
       }
 
-      slides.push({ src: resolved, alt, blockId, alignment });
+      slides.push({ src: resolved, alt });
     }
 
     return slides;
-  }, [editor]);
+  }, []);
 
-  const handleImageClick = useCallback(async (event: MouseEvent) => {
+  const handleImageDoubleClick = useCallback(async (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     const img = target.closest<HTMLImageElement>(
       '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img'
@@ -116,7 +101,6 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     const container = editorContainerRef.current;
     if (!container) return;
 
-    // 阻止编辑器内部的默认行为（如选中文字）
     event.preventDefault();
     event.stopPropagation();
 
@@ -136,28 +120,13 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     const container = editorContainerRef.current;
     if (!container) return;
 
-    container.addEventListener("click", handleImageClick);
+    container.addEventListener("dblclick", handleImageDoubleClick);
     return () => {
-      container.removeEventListener("click", handleImageClick);
+      container.removeEventListener("dblclick", handleImageDoubleClick);
     };
-  }, [editorContainerRef, handleImageClick]);
+  }, [editorContainerRef, handleImageDoubleClick]);
 
   const currentSlide = slides[index];
-
-  const handleAlignmentChange = useCallback(
-    (alignment: ImageAlignment) => {
-      if (!currentSlide) return;
-      editor.updateBlock(currentSlide.blockId, {
-        props: { textAlignment: alignment },
-      } as any);
-      setSlides((prev) =>
-        prev.map((slide, slideIndex) =>
-          slideIndex === index ? { ...slide, alignment } : slide,
-        ),
-      );
-    },
-    [currentSlide, editor, index],
-  );
 
   const handleDownload = useCallback(async () => {
     if (!currentSlide) return;
@@ -174,7 +143,6 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       if (saved) {
         toast.success("图片已保存");
       } else {
-        // fallback: 浏览器原生下载
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -225,53 +193,9 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       toolbar={{
         buttons: [
           <button
-            key="align-left"
-            type="button"
-            onClick={() => handleAlignmentChange("left")}
-            className="yarl__button"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: currentSlide?.alignment === "left" ? "rgba(255,255,255,0.16)" : "transparent",
-            }}
-            aria-label="左对齐"
-          >
-            <AlignLeft size={20} />
-          </button>,
-          <button
-            key="align-center"
-            type="button"
-            onClick={() => handleAlignmentChange("center")}
-            className="yarl__button"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: currentSlide?.alignment === "center" ? "rgba(255,255,255,0.16)" : "transparent",
-            }}
-            aria-label="居中对齐"
-          >
-            <AlignCenter size={20} />
-          </button>,
-          <button
-            key="align-right"
-            type="button"
-            onClick={() => handleAlignmentChange("right")}
-            className="yarl__button"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: currentSlide?.alignment === "right" ? "rgba(255,255,255,0.16)" : "transparent",
-            }}
-            aria-label="右对齐"
-          >
-            <AlignRight size={20} />
-          </button>,
-          <button
             key="download"
             type="button"
+            title="下载图片"
             onClick={handleDownload}
             className="yarl__button"
             style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -281,6 +205,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
           <button
             key="copy"
             type="button"
+            title="复制图片"
             onClick={handleCopy}
             className="yarl__button"
             style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -294,6 +219,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
         buttonClose: () => (
           <button
             type="button"
+            title="关闭"
             className="yarl__button"
             style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
           >

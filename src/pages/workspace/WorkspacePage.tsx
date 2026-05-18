@@ -367,6 +367,45 @@ export function WorkspacePage() {
   }, [openTabs, setActiveTab]);
 
   useEffect(() => {
+    let lastHandledButton = -1;
+    let lastHandledAt = 0;
+
+    const handleMouseSideButton = (event: MouseEvent) => {
+      const isBack = event.button === 3;
+      const isForward = event.button === 4;
+      if (!isBack && !isForward) return;
+
+      const now = Date.now();
+      if (event.button === lastHandledButton && now - lastHandledAt < 120) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      lastHandledButton = event.button;
+      lastHandledAt = now;
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (isBack) {
+        useTabs.getState().goBackTabHistory();
+        return;
+      }
+
+      useTabs.getState().goForwardTabHistory();
+    };
+
+    window.addEventListener("mousedown", handleMouseSideButton, true);
+    window.addEventListener("mouseup", handleMouseSideButton, true);
+    window.addEventListener("auxclick", handleMouseSideButton, true);
+    return () => {
+      window.removeEventListener("mousedown", handleMouseSideButton, true);
+      window.removeEventListener("mouseup", handleMouseSideButton, true);
+      window.removeEventListener("auxclick", handleMouseSideButton, true);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleOpenAiWorkspace = (event: Event) => {
       const customEvent = event as CustomEvent<OpenAiWorkspaceDetail>;
       if (!useSettings.getState().ai.enabled) {

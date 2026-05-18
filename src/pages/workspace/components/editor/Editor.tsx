@@ -68,41 +68,13 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
 type EditorFilePanelProps = {
   blockId: string;
 };
 
-type ImageAlignment = "left" | "center" | "right";
-
-type ImageToolbarState = {
-  blockId: string;
-  alignment: ImageAlignment;
-  top: number;
-  left: number;
-};
-
-const IMAGE_BLOCK_SELECTOR =
-  '.bn-block-content[data-content-type="image"], .bn-block-content[data-content-type="imageResize"]';
-
-const IMAGE_TOOLBAR_WIDTH = 140;
-
-function getImageToolbarAnchor(blockElement: HTMLElement) {
-  return blockElement.closest<HTMLElement>(".bn-block-outer") ?? blockElement;
-}
-
-function getImageToolbarPosition(container: HTMLElement, target: HTMLElement) {
-  const containerRect = container.getBoundingClientRect();
-  const rect = target.getBoundingClientRect();
-  return {
-    top: Math.max(8, rect.top - containerRect.top + container.scrollTop + 12),
-    left: Math.min(
-      Math.max(8, rect.left - containerRect.left + container.scrollLeft + 12),
-      Math.max(8, container.scrollWidth - IMAGE_TOOLBAR_WIDTH - 8),
-    ),
-  };
-}
 
 function getBlockPlainText(block: any): string {
   if (typeof block?.content === "string") return block.content;
@@ -718,7 +690,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     (targetPageId?: string) => {
       const safePageId = targetPageId ?? pageIdForUpdateRef.current;
       if (!safePageId) return;
-      const nextContent = ensureFirstTitleHeading(
+      const nextContent = normalizePageContent(
         clonePageContent(editor.document as BlockNoteContent),
       );
       debouncedUpdate.cancel();
@@ -828,11 +800,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     }
   }, [theme]);
 
-  const [selectedText, setSelectedText] = useState("");
+  const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
-  const selectedTextRef = useRef("");
-  const imageToolbarRef = useRef<HTMLDivElement | null>(null);
-  const [imageToolbar, setImageToolbar] = useState<ImageToolbarState | null>(null);
+  const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -882,133 +852,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   }, [linkPopoverUrl, editor]);
 
   const handleContextMenuOpen = () => {
-    let text = "";
+    let blocks: BlockNoteContent = [];
     try {
-      text = editor.getSelectedText() || "";
+      const selection = editor.getSelection();
+      if (Array.isArray(selection?.blocks)) {
+        blocks = selection.blocks as BlockNoteContent;
+      }
     } catch { /* ignore */ }
-    // Fallback: 浏览器原生选区（右键时更可靠）
-    if (!text.trim()) {
-      try {
-        const sel = document.getSelection();
-        text = sel?.toString() || "";
-      } catch { /* ignore */ }
-    }
-    const trimmed = text.trim();
-    setSelectedText(trimmed);
-    selectedTextRef.current = trimmed;
+    setSelectedBlocks(blocks);
+    selectedBlocksRef.current = blocks;
   };
 
-  const syncImageToolbarPosition = useCallback(
-    (blockId: string, nextAlignment?: ImageAlignment) => {
-      const container = editorContainerRef.current;
-      if (!container) return;
-
-      const blockElement = container.querySelector<HTMLElement>(
-        `[data-id="${blockId}"]`,
-      );
-      if (!blockElement) return;
-      const anchorElement = getImageToolbarAnchor(blockElement);
-
-      const block = editor.getBlock(blockId);
-      const alignment =
-        nextAlignment ??
-        (((block?.props as { textAlignment?: string } | undefined)
-          ?.textAlignment ?? "left") as ImageAlignment);
-
-      setImageToolbar({
-        blockId,
-        alignment,
-        ...getImageToolbarPosition(container, anchorElement),
-      });
-    },
-    [editor],
-  );
-
-  const updateImageAlignment = useCallback(
-    (blockId: string, alignment: ImageAlignment) => {
-      editor.updateBlock(blockId, {
-        props: { textAlignment: alignment },
-      } as any);
-      requestAnimationFrame(() => {
-        syncImageToolbarPosition(blockId, alignment);
-      });
-    },
-    [editor, syncImageToolbarPosition],
-  );
-
-  const handleEditorContextMenuCapture = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement | null;
-      const imageBlock = target?.closest<HTMLElement>(IMAGE_BLOCK_SELECTOR);
-      if (!imageBlock) {
-        setImageToolbar(null);
-        return;
-      }
-
-      const blockId = imageBlock.closest<HTMLElement>("[data-id]")?.dataset.id;
-      if (!blockId) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      event.nativeEvent.stopImmediatePropagation?.();
-
-      const block = editor.getBlock(blockId);
-      const alignment =
-        ((block?.props as { textAlignment?: string } | undefined)
-          ?.textAlignment ?? "left") as ImageAlignment;
-
-      const container = editorContainerRef.current;
-      if (!container) return;
-      const blockElement = imageBlock.closest<HTMLElement>("[data-id]");
-      if (!blockElement) return;
-      const anchorElement = getImageToolbarAnchor(blockElement);
-
-      setImageToolbar({
-        blockId,
-        alignment,
-        ...getImageToolbarPosition(container, anchorElement),
-      });
-    },
-    [editor],
-  );
-
-  useEffect(() => {
-    if (!imageToolbar) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      if (imageToolbarRef.current?.contains(target)) return;
-      setImageToolbar(null);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setImageToolbar(null);
-      }
-    };
-
-    const handleViewportChange = () => {
-      syncImageToolbarPosition(imageToolbar.blockId, imageToolbar.alignment);
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleEscape, true);
-    window.addEventListener("scroll", handleViewportChange, true);
-    window.addEventListener("resize", handleViewportChange, true);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleEscape, true);
-      window.removeEventListener("scroll", handleViewportChange, true);
-      window.removeEventListener("resize", handleViewportChange, true);
-    };
-  }, [imageToolbar, syncImageToolbarPosition]);
-
   const handleSelectionThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
-    const text = selectedTextRef.current;
-    if (!text.trim()) return;
+    const blocks = selectedBlocksRef.current;
+    if (!Array.isArray(blocks) || blocks.length === 0) return;
     const title = extractBlockNoteTitle(page?.content) || "选中内容";
-    exportSelectionToImage(text, title, themeId, watermarkConfig);
+    exportSelectionToImage(blocks, title, themeId, watermarkConfig);
   };
 
   if (!page) return null;
@@ -1016,16 +875,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   return (
     <>
     <ContextMenu onOpenChange={(open) => { if (open) handleContextMenuOpen(); }}>
-      <div
-        ref={editorContainerRef}
-        onContextMenuCapture={handleEditorContextMenuCapture}
-        onPasteCapture={handleEditorPasteCapture}
-        data-font-family={page.fontFamily ?? "default"}
-        className={cn(
-          "workspace-editor-surface relative mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
-          isEditorFullWidth ? "max-w-none" : "max-w-4xl",
-        )}
-      >
+      <ContextMenuTrigger asChild className="contents">
+        <div
+          ref={editorContainerRef}
+          onPasteCapture={handleEditorPasteCapture}
+          data-font-family={page.fontFamily ?? "default"}
+          className={cn(
+            "workspace-editor-surface relative mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
+            isEditorFullWidth ? "max-w-none" : "max-w-4xl",
+          )}
+        >
         <BlockNoteView
           editor={editor}
           editable={editable}
@@ -1040,7 +899,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
             const safePageId = pageIdForUpdateRef.current;
             if (!safePageId) return;
             if (restoreFirstTitleHeading()) return;
-            const nextContent = clonePageContent(editor.document as BlockNoteContent);
+            const nextContent = normalizePageContent(
+              clonePageContent(editor.document as BlockNoteContent),
+            );
             syncedContentSignatureRef.current = getContentSignature(nextContent);
             debouncedUpdate(safePageId, nextContent);
           }}
@@ -1122,58 +983,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
             </button>
           </div>
         )}
-        {imageToolbar ? (
-          <div
-            ref={imageToolbarRef}
-            onMouseDown={(event) => event.preventDefault()}
-            onContextMenu={(event) => event.preventDefault()}
-            className="absolute z-[20010] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
-            style={{
-              top: imageToolbar.top,
-              left: imageToolbar.left,
-            }}
-          >
-            <button
-              type="button"
-              aria-label="左对齐"
-              onClick={() => updateImageAlignment(imageToolbar.blockId, "left")}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
-                imageToolbar.alignment === "left" && "bg-accent text-foreground",
-              )}
-            >
-              <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
-            </button>
-            <button
-              type="button"
-              aria-label="居中对齐"
-              onClick={() => updateImageAlignment(imageToolbar.blockId, "center")}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
-                imageToolbar.alignment === "center" && "bg-accent text-foreground",
-              )}
-            >
-              <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
-            </button>
-            <button
-              type="button"
-              aria-label="右对齐"
-              onClick={() => updateImageAlignment(imageToolbar.blockId, "right")}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 hover:bg-muted",
-                imageToolbar.alignment === "right" && "bg-accent text-foreground",
-              )}
-            >
-              <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
-            </button>
-          </div>
-        ) : null}
       </div>
+      </ContextMenuTrigger>
       <ContextMenuContent className="w-[200px]">
-        {selectedText.trim() && (
+        {selectedBlocks.length > 0 && (
           <ContextMenuItem
             onSelect={() => {
-              selectedTextRef.current = selectedText;
+              selectedBlocksRef.current = selectedBlocks;
               setThemeSelectorOpen(true);
             }}
           >
@@ -1190,6 +1006,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       onConfirm={handleSelectionThemeConfirm}
       mode="selection"
     />
-    <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
+    <ImageLightbox editorContainerRef={editorContainerRef} />
   </>);
 });

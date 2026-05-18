@@ -1103,20 +1103,12 @@ export async function exportPageToImage(
 
 // ── Public API: Selection Export ───────────────────────────────
 export async function exportSelectionToImage(
-  selectionText: string,
+  selectionBlocks: BlockNoteContent,
   pageTitle?: string,
   themeId: CardThemeId = "notion",
   watermarkConfig?: WatermarkConfig,
 ) {
-  if (!selectionText.trim()) return;
-
-  // 过滤掉图片标记如 [Image #1]
-  const cleanedText = selectionText
-    .replace(/\[Image\s*#\d+\]/gi, "")
-    .replace(/\n\s*\n/g, "\n")
-    .trim();
-
-  if (!cleanedText) return;
+  if (!Array.isArray(selectionBlocks) || selectionBlocks.length === 0) return;
 
   const theme = getCardTheme(themeId);
   const title = pageTitle || "选中内容";
@@ -1129,15 +1121,13 @@ export async function exportSelectionToImage(
   document.body.appendChild(container);
 
   try {
-    const paragraphs = cleanedText
-      .split("\n")
-      .filter((line) => line.trim())
-      .map((line) => `<p>${escapeHtml(line)}</p>`)
+    const blocksHtml = selectionBlocks
+      .map((block: any) => renderBlock(block, theme))
       .join("\n");
 
     const html = buildStyledHTML({
       title,
-      blocksHtml: paragraphs,
+      blocksHtml,
       theme,
       isSelection: true,
       watermarkConfig,
@@ -1148,7 +1138,10 @@ export async function exportSelectionToImage(
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, `${sanitizeFileName(title)}_选中内容.png`);
-    trackEvent("share_image_selection", { selection_length: cleanedText.length, theme: themeId });
+    const selectionLength = selectionBlocks
+      .map((block: any) => extractInlineText(block.content))
+      .join("\n").length;
+    trackEvent("share_image_selection", { selection_length: selectionLength, theme: themeId });
   } finally {
     document.body.removeChild(container);
   }
