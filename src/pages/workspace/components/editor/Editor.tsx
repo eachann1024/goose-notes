@@ -19,6 +19,7 @@ import {
   BlockNoteViewRaw as BlockNoteView,
   FilePanelController,
   FormattingToolbarController,
+  LinkToolbarController,
   SuggestionMenuController,
   TableHandlesController,
   useCreateBlockNote,
@@ -62,6 +63,7 @@ import { AiInlineInput } from "./AiInlineInput";
 import { EditorSideMenu } from "./EditorSideMenu";
 import { ImageLightbox } from "./ImageLightbox";
 import { gooseSelectAllExtension } from "./selectAllExtension";
+import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -121,8 +123,26 @@ function looksLikeMarkdownFragment(text: string): boolean {
     /^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|\s*[-*+]\s\[[ xX]\]\s)/m.test(value) ||
     /```/.test(value) ||
     /\|.+\|/.test(value) ||
-    /(\*\*|__|~~|`[^`]+`)/.test(value)
+    /(\*\*|__|~~|`[^`]+`)/.test(value) ||
+    /\[([^\]]+)\]\(([^)]+)\)/.test(value)
   );
+}
+
+function parseMarkdownLink(text: string): { text: string; url: string } | null {
+  const match = text.trim().match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+  if (!match) return null;
+  return { text: match[1], url: match[2] };
+}
+
+function isValidUrl(text: string): boolean {
+  if (!text) return false;
+  // 协议 URL
+  if (/^[a-z][a-z0-9+.-]*:\/\/\S+/i.test(text)) return true;
+  // www. 开头的 URL
+  if (/^www\.\S+\.\S{2,}/i.test(text)) return true;
+  // 域名格式的 URL (example.com/path)
+  if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+\.[a-z]{2,}(\/\S*)?$/i.test(text)) return true;
+  return false;
 }
 
 function EditorFilePanel({ blockId }: EditorFilePanelProps) {
@@ -517,7 +537,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     {
       initialContent: creationContent as any,
       schema: editorSchema,
-      extensions: [gooseSelectAllExtension],
+      extensions: [gooseSelectAllExtension, gooseLinkKeyboardExtension],
       dictionary: {
         ...zh,
         placeholders: {
@@ -544,6 +564,26 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           if (blob) return URL.createObjectURL(blob);
         }
         return url;
+      },
+      links: {
+        onClick: (event) => {
+          // 编辑优先：直接点击不跳转，只将光标放入链接
+          if (!event.metaKey && !event.ctrlKey) {
+            return false;
+          }
+          // Cmd/Ctrl + 点击：跳转链接
+          const target = event.target as HTMLElement | null;
+          const link = target?.closest<HTMLAnchorElement>(
+            'a[data-inline-content-type="link"]',
+          );
+          if (link) {
+            const href = link.getAttribute("href");
+            if (href) {
+              window.open(href, "_blank");
+            }
+          }
+          return true;
+        },
       },
     },
     [],
@@ -589,7 +629,47 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
       const clipboard = event.clipboardData;
       const plainText = clipboard.getData("text/plain");
-      if (!plainText || !looksLikeMarkdownFragment(plainText)) return;
+      if (!plainText) return;
+
+      const trimmedText = plainText.trim();
+
+      // 1. 粘贴 Markdown 链接 [text](url) → 直接转为链接
+      const mdLink = parseMarkdownLink(trimmedText);
+      if (mdLink) {
+        event.preventDefault();
+        event.stopPropagation();
+        editor.createLink(mdLink.url, mdLink.text);
+        return;
+      }
+
+      // 2. 粘贴纯 URL → 根据是否有选中文本决定行为
+      if (isValidUrl(trimmedText)) {
+        // 先尝试 BlockNote 的选中文本 API，fallback 到原生选区
+        let selectedText = editor.getSelectedText();
+        if (!selectedText?.trim()) {
+          try {
+            const sel = document.getSelection();
+            selectedText = sel?.toString() || "";
+          } catch { /* ignore */ }
+        }
+
+        if (selectedText?.trim()) {
+          // 选中文本 + 粘贴 URL → 将选中文本转为链接
+          event.preventDefault();
+          event.stopPropagation();
+          editor.createLink(trimmedText, selectedText);
+          return;
+        }
+
+        // 无选中文本 + 粘贴纯 URL → 将 URL 作为链接文本插入
+        event.preventDefault();
+        event.stopPropagation();
+        editor.createLink(trimmedText, trimmedText);
+        return;
+      }
+
+      // 3. 其他 Markdown 内容
+      if (!looksLikeMarkdownFragment(plainText)) return;
 
       const htmlText = clipboard.getData("text/html");
       if (htmlText && htmlText.trim()) return;
@@ -753,6 +833,53 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const selectedTextRef = useRef("");
   const imageToolbarRef = useRef<HTMLDivElement | null>(null);
   const [imageToolbar, setImageToolbar] = useState<ImageToolbarState | null>(null);
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
+  const linkPopoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOpen = () => {
+      setLinkPopoverUrl("");
+      setLinkPopoverOpen(true);
+    };
+    const handleClose = () => setLinkPopoverOpen(false);
+    document.addEventListener("goose-open-link-popover", handleOpen);
+    document.addEventListener("goose-close-link-popover", handleClose);
+    return () => {
+      document.removeEventListener("goose-open-link-popover", handleOpen);
+      document.removeEventListener("goose-close-link-popover", handleClose);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!linkPopoverOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (linkPopoverRef.current?.contains(target)) return;
+      setLinkPopoverOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLinkPopoverOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleEscape, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [linkPopoverOpen]);
+
+  const handleLinkPopoverSubmit = useCallback(() => {
+    const trimmed = linkPopoverUrl.trim();
+    if (trimmed) {
+      editor.createLink(trimmed);
+    }
+    setLinkPopoverOpen(false);
+    setLinkPopoverUrl("");
+  }, [linkPopoverUrl, editor]);
 
   const handleContextMenuOpen = () => {
     let text = "";
@@ -926,6 +1053,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           <FormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
           />
+          <LinkToolbarController />
           <FilePanelController filePanel={EditorFilePanel} />
           <SuggestionMenuController
             triggerCharacter="/"
@@ -963,6 +1091,37 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           />
           <AiInlineInput />
         </BlockNoteView>
+        {linkPopoverOpen && (
+          <div
+            ref={linkPopoverRef}
+            className="absolute z-[20020] flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+            style={{ top: 8, left: "50%", transform: "translateX(-50%)" }}
+          >
+            <input
+              value={linkPopoverUrl}
+              onChange={(e) => setLinkPopoverUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleLinkPopoverSubmit();
+                }
+                if (e.key === "Escape") {
+                  setLinkPopoverOpen(false);
+                }
+              }}
+              placeholder="https://..."
+              autoFocus
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm shadow-[inset_0_0_0_1px_hsl(var(--input)/0.8)] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            />
+            <button
+              type="button"
+              onClick={handleLinkPopoverSubmit}
+              className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              确认
+            </button>
+          </div>
+        )}
         {imageToolbar ? (
           <div
             ref={imageToolbarRef}

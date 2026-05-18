@@ -76,6 +76,26 @@
   border-top-color: hsl(var(--border) / 0.75);
 }
 
+/* ===== 链接样式 ===== */
+.workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: text;
+}
+
+.workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"]:hover {
+  color: #1d4ed8;
+}
+
+.dark .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
+  color: #60a5fa;
+}
+
+.dark .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"]:hover {
+  color: #93c5fd;
+}
+
 .workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
   width: 100%;
   max-width: 100%;
