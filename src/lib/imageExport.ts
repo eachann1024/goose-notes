@@ -793,31 +793,38 @@ function renderBlock(block: any, theme: CardTheme): string {
   if (!block || typeof block !== "object") return "";
 
   const inlineHtml = renderInline(block.content);
+  const alignStyle = block.props?.textAlignment === "center"
+    ? ' style="text-align:center"'
+    : block.props?.textAlignment === "right"
+      ? ' style="text-align:right"'
+      : block.props?.textAlignment === "justify"
+        ? ' style="text-align:justify"'
+        : "";
 
   switch (block.type) {
     case "heading": {
       const level = Math.min(Math.max(block.props?.level || 1, 1), 3);
-      return `<h${level}>${inlineHtml}</h${level}>`;
+      return `<h${level}${alignStyle}>${inlineHtml}</h${level}>`;
     }
 
     case "bulletListItem": {
       const children = block.children?.length
         ? `<ul>${block.children.map((c: any) => renderBlock(c, theme)).join("")}</ul>`
         : "";
-      return `<li>${inlineHtml}${children}</li>`;
+      return `<li${alignStyle}>${inlineHtml}${children}</li>`;
     }
 
     case "numberedListItem": {
       const children = block.children?.length
         ? `<ol>${block.children.map((c: any) => renderBlock(c, theme)).join("")}</ol>`
         : "";
-      return `<li>${inlineHtml}${children}</li>`;
+      return `<li${alignStyle}>${inlineHtml}${children}</li>`;
     }
 
     case "checkListItem": {
       const checked = block.props?.checked;
       const checkboxClass = checked ? "task-checkbox checked" : "task-checkbox";
-      return `<div class="task-item"><div class="${checkboxClass}"></div><span>${inlineHtml}</span></div>`;
+      return `<div class="task-item"${alignStyle}><div class="${checkboxClass}"></div><span>${inlineHtml}</span></div>`;
     }
 
     case "codeBlock": {
@@ -832,19 +839,24 @@ function renderBlock(block: any, theme: CardTheme): string {
     }
 
     case "quote": {
-      return `<blockquote>${inlineHtml}</blockquote>`;
+      return `<blockquote${alignStyle}>${inlineHtml}</blockquote>`;
     }
 
     case "paragraph": {
-      return inlineHtml ? `<p>${inlineHtml}</p>` : "<p></p>";
+      return inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : `<p${alignStyle}></p>`;
     }
 
     case "image":
-    case "imageResize": {
+    case "imageResize":
+    case "file": {
       const src = block.props?.url || block.props?.src || "";
-      const alt = block.props?.caption || block.props?.alt || "";
+      const alt = block.props?.caption || block.props?.alt || block.props?.name || "";
       if (!src) return "";
-      return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" />`;
+      const alignment = block.props?.textAlignment || block.props?.alignment;
+      const alignStyle = alignment === "center" ? "display:block;margin-left:auto;margin-right:auto;"
+        : alignment === "right" ? "display:block;margin-left:auto;"
+        : "";
+      return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="${alignStyle}" />`;
     }
 
     case "table": {
@@ -881,7 +893,7 @@ function renderBlock(block: any, theme: CardTheme): string {
     }
 
     default: {
-      return inlineHtml ? `<p>${inlineHtml}</p>` : "";
+      return inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : "";
     }
   }
 }
@@ -895,6 +907,13 @@ function renderInline(content: unknown): string {
       if (typeof item === "string") return escapeHtml(item).replace(/\n/g, "<br>");
       if (!item || typeof item !== "object") return "";
 
+      // Handle inline image nodes (e.g. pasted/dragged images within text)
+      if (item.type === "image" && item.attrs?.src) {
+        const src = item.attrs.src;
+        const alt = item.attrs.alt || "";
+        return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:8px;display:inline-block;vertical-align:middle;" />`;
+      }
+
       let text = escapeHtml(item.text || "").replace(/\n/g, "<br>");
       const styles = item.styles || {};
       const marks = item.marks || [];
@@ -906,6 +925,9 @@ function renderInline(content: unknown): string {
       }
       if (styles.italic || marks.some((m: any) => m?.type === "italic")) {
         wrapper = `<em>${wrapper}</em>`;
+      }
+      if (styles.underline || marks.some((m: any) => m?.type === "underline")) {
+        wrapper = `<u>${wrapper}</u>`;
       }
       if (styles.strike || marks.some((m: any) => m?.type === "strike")) {
         wrapper = `<del>${wrapper}</del>`;
@@ -923,13 +945,21 @@ function renderInline(content: unknown): string {
         wrapper = `<a href="${escapeHtml(linkMark.attrs.href)}">${wrapper}</a>`;
       }
 
-      const color = styles.color || marks.find((m: any) => m?.type === "textStyle")?.attrs?.color;
-      if (color) {
-        wrapper = `<span style="color:${escapeHtml(color)}">${wrapper}</span>`;
+      const textColor =
+        styles.textColor ||
+        marks.find((m: any) => m?.type === "textColor")?.attrs?.color ||
+        marks.find((m: any) => m?.type === "textStyle")?.attrs?.color ||
+        styles.color;
+      if (textColor) {
+        wrapper = `<span style="color:${escapeHtml(textColor)}">${wrapper}</span>`;
       }
 
-      if (styles.backgroundColor || marks.some((m: any) => m?.type === "highlight")) {
-        wrapper = `<mark>${wrapper}</mark>`;
+      const bgColor =
+        styles.backgroundColor ||
+        marks.find((m: any) => m?.type === "backgroundColor")?.attrs?.color ||
+        marks.find((m: any) => m?.type === "highlight")?.attrs?.color;
+      if (bgColor) {
+        wrapper = `<span style="background-color:${escapeHtml(bgColor)};border-radius:2px;padding:0 2px;">${wrapper}</span>`;
       }
 
       if (item.type === "inlineMath" && item.attrs?.value) {
@@ -1102,6 +1132,40 @@ export async function exportPageToImage(
 }
 
 // ── Public API: Selection Export ───────────────────────────────
+async function resolveImageUrls(blocks: any[]): Promise<void> {
+  for (const block of blocks) {
+    if ((block.type === "image" || block.type === "imageResize" || block.type === "file") && block.props?.url) {
+      const url = block.props.url;
+      if (url.startsWith("att:")) {
+        try {
+          const { imageStorage } = await import("./imageStorage");
+          const blob = await imageStorage.load(url);
+          if (blob) {
+            block.props.url = URL.createObjectURL(blob);
+          }
+        } catch { /* use original url */ }
+      }
+    }
+    // Also resolve inline images
+    if (Array.isArray(block.content)) {
+      for (const item of block.content) {
+        if (item?.type === "image" && item.attrs?.src?.startsWith("att:")) {
+          try {
+            const { imageStorage } = await import("./imageStorage");
+            const blob = await imageStorage.load(item.attrs.src);
+            if (blob) {
+              item.attrs.src = URL.createObjectURL(blob);
+            }
+          } catch { /* use original url */ }
+        }
+      }
+    }
+    if (Array.isArray(block.children)) {
+      await resolveImageUrls(block.children);
+    }
+  }
+}
+
 export async function exportSelectionToImage(
   selectionBlocks: BlockNoteContent,
   pageTitle?: string,
@@ -1113,6 +1177,10 @@ export async function exportSelectionToImage(
   const theme = getCardTheme(themeId);
   const title = pageTitle || "选中内容";
 
+  // Deep clone to avoid mutating the original blocks
+  const clonedBlocks = JSON.parse(JSON.stringify(selectionBlocks)) as any[];
+  await resolveImageUrls(clonedBlocks);
+
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.left = "-99999px";
@@ -1121,7 +1189,7 @@ export async function exportSelectionToImage(
   document.body.appendChild(container);
 
   try {
-    const blocksHtml = selectionBlocks
+    const blocksHtml = clonedBlocks
       .map((block: any) => renderBlock(block, theme))
       .join("\n");
 
