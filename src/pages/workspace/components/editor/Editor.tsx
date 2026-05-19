@@ -65,6 +65,8 @@ import { ImageLightbox } from "./ImageLightbox";
 import { gooseSelectAllExtension } from "./selectAllExtension";
 import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
+import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
+import { EditorLinkToolbar } from "./EditorLinkToolbar";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -510,7 +512,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     {
       initialContent: creationContent as any,
       schema: editorSchema,
-      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension],
+      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension, gooseCodeBlockKeyboardExtension],
       dictionary: {
         ...zh,
         placeholders: {
@@ -915,7 +917,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           <FormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
           />
-          <LinkToolbarController />
+          <LinkToolbarController linkToolbar={EditorLinkToolbar} />
           <FilePanelController filePanel={EditorFilePanel} />
           <SuggestionMenuController
             triggerCharacter="/"

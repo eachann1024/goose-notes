@@ -5,7 +5,8 @@
       "Bash(pnpm tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(echo \"EXIT_CODE=$?\")"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
@@ -120,50 +120,6 @@ function CodeBlockComponent({
     selection.addRange(range);
   }, []);
 
-  const handleCodeKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLElement>) => {
-      if (e.nativeEvent.isComposing || e.key !== "Enter") return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (e.shiftKey) {
-        const [inserted] = editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          block,
-          "after",
-        );
-        if (inserted) editor.setTextCursorPosition(inserted);
-        return;
-      }
-
-      insertTextAtCursor("\n");
-    },
-    [editor, block, insertTextAtCursor],
-  );
-
-  const handleNativeCodeKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.isComposing || event.key !== "Enter") return;
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      if (event.shiftKey) {
-        const [inserted] = editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          block,
-          "after",
-        );
-        if (inserted) editor.setTextCursorPosition(inserted);
-        return;
-      }
-
-      insertTextAtCursor("\n");
-    },
-    [editor, block, insertTextAtCursor],
-  );
-
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
       e.preventDefault();
@@ -189,15 +145,6 @@ function CodeBlockComponent({
     }, 0);
     return () => clearTimeout(timer);
   }, [isEditingSummary]);
-
-  useEffect(() => {
-    const codeEl = contentRef.current as HTMLElement | null;
-    if (!codeEl) return;
-    codeEl.addEventListener("keydown", handleNativeCodeKeyDown, true);
-    return () => {
-      codeEl.removeEventListener("keydown", handleNativeCodeKeyDown, true);
-    };
-  }, [contentRef, handleNativeCodeKeyDown]);
 
   return (
     <div
@@ -298,7 +245,6 @@ function CodeBlockComponent({
               wrap && "goose-code-pre-wrap",
               isMathOrMermaid && "goose-code-pre-source",
             )}
-            onKeyDown={handleCodeKeyDown}
             onPaste={handlePaste}
           >
             <code

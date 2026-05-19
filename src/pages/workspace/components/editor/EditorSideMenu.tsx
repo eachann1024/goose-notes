@@ -39,7 +39,7 @@ export function EditorSideMenu() {
       const [inserted] = editor.insertBlocks(
         [{ type: "paragraph" }],
         block,
-        "after",
+        "before",
       );
       editor.setTextCursorPosition(inserted);
       suggestionMenu?.openSuggestionMenu("/");
