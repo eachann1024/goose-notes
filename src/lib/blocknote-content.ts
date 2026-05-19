@@ -69,9 +69,13 @@ function simpleExtractText(block: any): string {
   if (typeof block.content === "string") return block.content;
   if (Array.isArray(block.content)) {
     return block.content
-      .map((inline: any) =>
-        typeof inline === "string" ? inline : inline?.text ?? "",
-      )
+      .map((inline: any) => {
+        if (typeof inline === "string") return inline;
+        if (inline?.type === "link" && Array.isArray(inline.content)) {
+          return inline.content.map((c: any) => c?.text ?? "").join("");
+        }
+        return inline?.text ?? "";
+      })
       .join("");
   }
   if (block.content?.rows) {
@@ -166,7 +170,14 @@ function normalizeBlock(block: any): PartialBlock[] {
 
   const type = block.type;
   if (type === "quote" || type === "blockquote") {
-    return normalizeQuoteBlock(block);
+    const flattened = normalizeQuoteBlock(block);
+    // 引用块不允许有 children，剥离并展平
+    return flattened.flatMap((b) => {
+      const children = (b as any).children;
+      if (!children?.length) return [b];
+      const { children: _, ...withoutChildren } = b as any;
+      return [withoutChildren as PartialBlock, ...normalizeBlocks(children)];
+    });
   }
 
   if (!type || !VALID_BLOCK_TYPES.has(type)) {
@@ -394,6 +405,9 @@ export function extractPlainText(content: PageContent | undefined): string {
     else if (Array.isArray(block.content)) {
       for (const inline of block.content) {
         if (typeof inline === "string") parts.push(inline);
+        else if (inline?.type === "link" && Array.isArray(inline.content)) {
+          parts.push(...inline.content.map((c: any) => c?.text ?? ""));
+        }
         else if (inline?.text) parts.push(inline.text);
       }
     } else if (block.content?.rows) {

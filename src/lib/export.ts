@@ -714,7 +714,9 @@ export function importFromMarkdown(
 export function importMarkdownFragment(markdown: string): BlockNoteContent | null {
   try {
     const parsed = markdownToJsonContent(markdown);
-    const content = normalizeBlockContent(parsed);
+    const content = normalizeBlockContent(
+      Array.isArray(parsed) ? parsed : parsed?.content,
+    );
     return content.length > 0 ? content : null;
   } catch {
     return null;
@@ -786,19 +788,39 @@ export function jsonContentToMarkdown(
   return "";
 }
 
+function extractLinkText(linkContent: any): string {
+  if (typeof linkContent === "string") return linkContent;
+  if (!Array.isArray(linkContent)) return "";
+  return linkContent
+    .map((child: any) => {
+      if (typeof child === "string") return child;
+      let text = child?.text || "";
+      const styles = child?.styles || {};
+      if (styles.bold) text = `**${text}**`;
+      if (styles.italic) text = `*${text}*`;
+      if (styles.strike) text = `~~${text}~~`;
+      if (styles.code) text = `\`${text}\``;
+      return text;
+    })
+    .join("");
+}
+
 function blockNoteInlineToText(content: any): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content
     .map((item: any) => {
       if (typeof item === "string") return item;
+      if (item?.type === "link") {
+        const linkText = extractLinkText(item.content);
+        return `[${linkText}](${item.href || ""})`;
+      }
       let text = item?.text || "";
       const styles = item?.styles || {};
       if (styles.bold) text = `**${text}**`;
       if (styles.italic) text = `*${text}*`;
       if (styles.strike) text = `~~${text}~~`;
       if (styles.code) text = `\`${text}\``;
-      if (item?.type === "link") text = `[${text}](${item.href || ""})`;
       return text;
     })
     .join("");
@@ -1365,7 +1387,7 @@ function parseInlineMarkdown(text: string): any[] {
       result.push({
         type: "link",
         href: match[11],
-        content: match[10],
+        content: [{ type: "text", text: match[10], styles: {} }],
       });
     }
 
