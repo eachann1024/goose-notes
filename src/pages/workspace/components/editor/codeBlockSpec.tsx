@@ -124,9 +124,10 @@ function CodeBlockComponent({
     (e: ReactKeyboardEvent<HTMLElement>) => {
       if (e.nativeEvent.isComposing || e.key !== "Enter") return;
 
+      e.preventDefault();
+      e.stopPropagation();
+
       if (e.shiftKey) {
-        e.preventDefault();
-        e.stopPropagation();
         const [inserted] = editor.insertBlocks(
           [{ type: "paragraph", content: "" }],
           block,
@@ -136,8 +137,6 @@ function CodeBlockComponent({
         return;
       }
 
-      e.preventDefault();
-      e.stopPropagation();
       insertTextAtCursor("\n");
     },
     [editor, block, insertTextAtCursor],
@@ -147,9 +146,10 @@ function CodeBlockComponent({
     (event: KeyboardEvent) => {
       if (event.isComposing || event.key !== "Enter") return;
 
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
       if (event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
         const [inserted] = editor.insertBlocks(
           [{ type: "paragraph", content: "" }],
           block,
@@ -159,8 +159,6 @@ function CodeBlockComponent({
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
       insertTextAtCursor("\n");
     },
     [editor, block, insertTextAtCursor],
