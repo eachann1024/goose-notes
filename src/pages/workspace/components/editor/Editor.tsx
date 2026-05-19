@@ -64,6 +64,7 @@ import { EditorSideMenu } from "./EditorSideMenu";
 import { ImageLightbox } from "./ImageLightbox";
 import { gooseSelectAllExtension } from "./selectAllExtension";
 import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
+import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -509,7 +510,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     {
       initialContent: creationContent as any,
       schema: editorSchema,
-      extensions: [gooseSelectAllExtension, gooseLinkKeyboardExtension],
+      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension],
       dictionary: {
         ...zh,
         placeholders: {
@@ -875,7 +876,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   return (
     <>
     <ContextMenu onOpenChange={(open) => { if (open) handleContextMenuOpen(); }}>
-      <ContextMenuTrigger asChild className="contents">
+      <ContextMenuTrigger asChild>
         <div
           ref={editorContainerRef}
           onPasteCapture={handleEditorPasteCapture}
