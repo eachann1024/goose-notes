@@ -968,10 +968,10 @@ function applyCodeStyle(codeStyle: CodeStyle) {
             finalClass = isDark ? 'tokyo-night' : 'github-light-mod' // 'github-light-mod' was mapped to tokyo-day-ish in old map
             break
         case 'nord':
-            finalClass = 'nord'
+            finalClass = isDark ? 'nord' : 'nord-light'
             break
         case 'nord-light':
-            finalClass = 'nord-light'
+            finalClass = isDark ? 'nord' : 'nord-light'
             break
         default:
             finalClass = isDark ? 'github-dark' : 'github-light'

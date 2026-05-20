@@ -884,8 +884,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           onPasteCapture={handleEditorPasteCapture}
           data-font-family={page.fontFamily ?? "default"}
           className={cn(
-            "workspace-editor-surface relative mx-auto flex min-h-0 flex-1 flex-col w-full px-6 pt-2 pb-8",
-            isEditorFullWidth ? "max-w-none" : "max-w-4xl",
+            "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
+            isEditorFullWidth ? "max-w-none" : "max-w-full",
           )}
         >
         <BlockNoteView

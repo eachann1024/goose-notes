@@ -9,7 +9,6 @@ if (!(Array.prototype as any).toReversed) {
   });
 }
 
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { toast } from "sonner";
 import "./index.css";
@@ -401,11 +400,7 @@ const bootstrap = async () => {
     syncAnalyticsContext(getNotebookAnalyticsContext(state.notebooks));
   });
 
-  createRoot(rootElement).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
+  createRoot(rootElement).render(<App />);
 };
 
 void bootstrap();
