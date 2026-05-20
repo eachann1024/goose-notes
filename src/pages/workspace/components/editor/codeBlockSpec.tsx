@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
-import { defaultProps } from "@blocknote/core";
+import { createExtension, defaultProps } from "@blocknote/core";
+import { createHighlightPlugin, type Parser } from "prosemirror-highlight";
+import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
+import { Decoration } from "prosemirror-view";
+import { all, createLowlight } from "lowlight";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +13,99 @@ import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "./MathView";
 import { MermaidView } from "./MermaidView";
 import { useSettings } from "@/stores/useSettings";
+
+const lowlight = createLowlight(all);
+const lowlightParser = createLowlightParser(lowlight);
+
+const LANGUAGE_ALIASES: Record<string, string> = {
+  docker: "dockerfile",
+  math: "latex",
+  objectc: "objectivec",
+};
+
+const SKIP_HIGHLIGHT_LANGUAGES = new Set([
+  "none",
+]);
+
+const AUTO_HIGHLIGHT_LANGUAGES = new Set([
+  "plain",
+  "plaintext",
+  "text",
+  "txt",
+]);
+
+function normalizeHighlightLanguage(language: string | undefined) {
+  const normalized = (language || "text").trim().toLowerCase();
+  return LANGUAGE_ALIASES[normalized] ?? normalized;
+}
+
+function createRegexDecorations(
+  content: string,
+  pos: number,
+  patterns: Array<{ regex: RegExp; className: string }>,
+) {
+  const decorations: Decoration[] = [];
+
+  patterns.forEach(({ regex, className }) => {
+    for (const match of content.matchAll(regex)) {
+      if (match.index === undefined || !match[0]) continue;
+      decorations.push(
+        Decoration.inline(pos + 1 + match.index, pos + 1 + match.index + match[0].length, {
+          class: className,
+        }),
+      );
+    }
+  });
+
+  return decorations;
+}
+
+const mermaidParser: Parser = ({ content, pos }) =>
+  createRegexDecorations(content, pos, [
+    {
+      regex: /\b(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|subgraph|end|participant|actor|as|loop|alt|else|opt|par|and|rect|note|over|title|section)\b/g,
+      className: "hljs-keyword",
+    },
+    {
+      regex: /(-->|---|--x|--o|==>|-.->|-\.-|:::|\|[^|\n]+\|)/g,
+      className: "hljs-operator",
+    },
+    {
+      regex: /(\[[^\]\n]+\]|\{[^}\n]+\}|\([^)\n]+\))/g,
+      className: "hljs-string",
+    },
+  ]);
+
+const codeBlockHighlightParser: Parser = (options) => {
+  const language = normalizeHighlightLanguage(options.language);
+
+  if (SKIP_HIGHLIGHT_LANGUAGES.has(language)) return [];
+  if (language === "mermaid") return mermaidParser(options);
+
+  try {
+    const loadedLanguages = lowlight.listLanguages();
+    return lowlightParser({
+      ...options,
+      language:
+        !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguages.includes(language)
+          ? language
+          : undefined,
+    });
+  } catch {
+    return lowlightParser({ ...options, language: undefined });
+  }
+};
+
+const codeBlockHighlightExtension = createExtension({
+  key: "goose-code-block-highlighter",
+  prosemirrorPlugins: [
+    createHighlightPlugin({
+      parser: codeBlockHighlightParser,
+      nodeTypes: ["codeBlock"],
+      languageExtractor: (node) => normalizeHighlightLanguage(node.attrs.language),
+    }),
+  ],
+});
 
 const LATEX_SNIPPETS = [
   { label: "分数", code: "\\frac{a}{b}" },
@@ -337,4 +434,5 @@ export const codeBlockSpec = createReactBlockSpec(
       </pre>
     ),
   },
+  [codeBlockHighlightExtension],
 )();

@@ -21,16 +21,25 @@
   color: inherit;
 }
 
-.workspace-editor-surface .bn-container {
-  flex: 1;
-  min-height: 0;
+.workspace-editor-surface .bn-container,
+.workspace-editor-surface .bn-root {
+  flex: 1 1 100% !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   background: transparent;
+}
+
+.workspace-editor-surface .tiptap {
+  width: 100% !important;
 }
 
 .workspace-editor-surface .bn-editor {
   min-height: 100%;
   background: transparent;
   padding-inline: 0;
+  width: 100%;
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {
@@ -297,6 +306,7 @@
   padding: 2px 8px;
   border-bottom: 1px solid var(--code-border, hsl(var(--border) / 0.3));
   background: var(--code-bg, hsl(var(--muted) / 0.3));
+  color: var(--code-fg, hsl(var(--foreground)));
   opacity: 0;
   transition: opacity 150ms ease;
 }
@@ -346,6 +356,7 @@
   justify-content: space-between;
   gap: 12px;
   pointer-events: none;
+  color: var(--code-fg, hsl(var(--foreground)));
 }
 
 .goose-code-toolbar-left,
@@ -369,8 +380,33 @@
 
 .goose-code-toolbar-actions button,
 .goose-code-toolbar-actions .goose-code-lang-trigger {
-  border: 0 !important;
+  border-color: transparent !important;
+  background: var(--code-toolbar-chip-bg, hsl(var(--muted) / 0.55)) !important;
+  color: var(--code-toolbar-chip-fg, hsl(var(--muted-foreground))) !important;
   box-shadow: none !important;
+}
+
+.goose-code-toolbar-actions button:hover,
+.goose-code-toolbar-actions .goose-code-lang-trigger:hover {
+  background: var(--code-toolbar-chip-hover-bg, hsl(var(--accent) / 0.72)) !important;
+  color: var(--code-toolbar-chip-active-fg, hsl(var(--foreground))) !important;
+}
+
+.goose-code-toolbar-actions button:disabled {
+  opacity: 0.55;
+}
+
+.goose-code-toolbar-left input {
+  background: var(--code-toolbar-chip-bg, transparent) !important;
+  color: var(--code-fg, hsl(var(--foreground))) !important;
+}
+
+.goose-code-toolbar-left input::placeholder {
+  color: var(--code-toolbar-chip-fg, hsl(var(--muted-foreground))) !important;
+}
+
+.goose-code-toolbar-left input:focus {
+  background: var(--code-toolbar-chip-active-bg, hsl(var(--accent) / 0.72)) !important;
 }
 
 .goose-code-content-wrapper {
