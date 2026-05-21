@@ -9,6 +9,9 @@ if (!(Array.prototype as any).toReversed) {
   });
 }
 
+import { applyRolldownPolyfills } from "@/lib/rolldown-polyfill";
+applyRolldownPolyfills();
+
 import { createRoot } from "react-dom/client";
 import { toast } from "sonner";
 import "./index.css";
@@ -193,6 +196,9 @@ const setupMarkdownOpenWriteGuard = () => {
       content: string,
       encoding?: string,
     ) => {
+      if (encoding === "base64" || encoding === "binary") {
+        return writeFileAsync(filePath, content, encoding);
+      }
       const diskContent = decodeUnsupportedMarkdownForDisk(content);
       if (shouldBlockWrite(filePath, diskContent)) {
         console.warn("[Markdown Guard] Blocked auto write after open:", filePath);
@@ -204,6 +210,9 @@ const setupMarkdownOpenWriteGuard = () => {
 
   const writeFile = gooseFs.writeFile.bind(gooseFs);
   gooseFs.writeFile = (filePath: string, content: string, encoding?: string) => {
+    if (encoding === "base64" || encoding === "binary") {
+      return writeFile(filePath, content, encoding);
+    }
     const diskContent = decodeUnsupportedMarkdownForDisk(content);
     if (shouldBlockWrite(filePath, diskContent)) {
       console.warn("[Markdown Guard] Blocked auto write after open:", filePath);

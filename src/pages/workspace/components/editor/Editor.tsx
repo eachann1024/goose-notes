@@ -11,7 +11,6 @@ import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
 import {
   CellSelection,
-  deleteColumn,
   deleteRow,
   selectedRect,
 } from "prosemirror-tables";
@@ -67,6 +66,7 @@ import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
 import { EditorLinkToolbar } from "./EditorLinkToolbar";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -107,6 +107,70 @@ function parseMarkdownLink(text: string): { text: string; url: string } | null {
   const match = text.trim().match(/^\[([^\]]+)\]\(([^)]+)\)$/);
   if (!match) return null;
   return { text: match[1], url: match[2] };
+}
+
+function normalizeClipboardLineEndings(value: string): string {
+  return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function getElementFromNode(node: Node | null): HTMLElement | null {
+  if (!node) return null;
+  if (node instanceof HTMLElement) return node;
+  return node.parentElement;
+}
+
+function getSelectedPlainTextContext(container: HTMLElement): {
+  selectedText: string;
+  withinCodeBlock: boolean;
+} | null {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+
+  const range = selection.getRangeAt(0);
+  const commonAncestor =
+    range.commonAncestorContainer instanceof HTMLElement
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+
+  if (!commonAncestor || !container.contains(commonAncestor)) return null;
+
+  const selectedText = normalizeClipboardLineEndings(selection.toString());
+  if (!selectedText) return null;
+
+  const startElement = getElementFromNode(range.startContainer);
+  const endElement = getElementFromNode(range.endContainer);
+  const withinCodeBlock =
+    !!startElement?.closest(".goose-code-block-node") &&
+    !!endElement?.closest(".goose-code-block-node");
+
+  return {
+    selectedText,
+    withinCodeBlock,
+  };
+}
+
+function stripMarkdownHardBreakArtifacts(value: string): string {
+  return normalizeClipboardLineEndings(value)
+    .replace(/\\\n/g, "\n")
+    .replace(/ {2,}\n/g, "\n");
+}
+
+function unwrapMarkdownAutolink(value: string): string | null {
+  const normalized = normalizeClipboardLineEndings(value).trim();
+  const match = normalized.match(/^<([^<>\s]+)>$/);
+  return match?.[1] ?? null;
+}
+
+function shouldPreferVisibleSelectionText(
+  clipboardText: string,
+  selectedText: string,
+  withinCodeBlock: boolean,
+): boolean {
+  if (!selectedText) return false;
+  if (withinCodeBlock) return true;
+  if (unwrapMarkdownAutolink(clipboardText) === selectedText.trim()) return true;
+  if (!clipboardText.includes("\\\n") && !clipboardText.match(/ {2,}\n/)) return false;
+  return stripMarkdownHardBreakArtifacts(clipboardText) === selectedText;
 }
 
 function isValidUrl(text: string): boolean {
@@ -338,14 +402,82 @@ type TableHandleProps = {
   hideOtherElements: (hide: boolean) => void;
 };
 
+function cloneTableCell(cell: unknown) {
+  if (typeof globalThis.structuredClone === "function") {
+    return globalThis.structuredClone(cell);
+  }
+
+  return JSON.parse(JSON.stringify(cell));
+}
+
+function getTableColumnCount(content: PartialTableContent<any, any>) {
+  return Math.max(0, ...content.rows.map((row) => row.cells.length));
+}
+
+function getInsertedColumnRows(
+  tableHandles: ReturnType<typeof useExtension<typeof TableHandlesExtension>>,
+  block: any,
+  insertIndex: number,
+) {
+  const rowsWithTrailingColumn = tableHandles.addRowsOrColumns(block, "columns", 1);
+
+  return block.content.rows.map((row: { cells: unknown[] }, rowIndex: number) => {
+    const cells = [...row.cells];
+    const blankCell = rowsWithTrailingColumn[rowIndex]?.cells.at(-1) ?? "";
+    cells.splice(insertIndex, 0, cloneTableCell(blankCell));
+    return {
+      ...row,
+      cells,
+    };
+  });
+}
+
+function getDeletedColumnRows(
+  content: PartialTableContent<any, any>,
+  fromIndex: number,
+  toIndex = fromIndex + 1,
+) {
+  return content.rows.map((row) => ({
+    ...row,
+    cells: row.cells.filter((_, cellIndex) => cellIndex < fromIndex || cellIndex >= toIndex),
+  }));
+}
+
+function getUpdatedColumnWidths(
+  columnWidths: unknown[] | undefined,
+  action:
+    | { type: "insert"; index: number }
+    | { type: "delete"; fromIndex: number; toIndex: number },
+) {
+  if (!Array.isArray(columnWidths)) return columnWidths;
+
+  const nextColumnWidths = [...columnWidths];
+  if (action.type === "insert") {
+    nextColumnWidths.splice(action.index, 0, columnWidths[action.index] ?? columnWidths.at(-1));
+  } else {
+    nextColumnWidths.splice(action.fromIndex, action.toIndex - action.fromIndex);
+  }
+  return nextColumnWidths;
+}
+
 function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) {
   const editor = useBlockNoteEditor<any, any, any>();
   const tableHandles = useExtension(TableHandlesExtension);
   const state = useExtensionState(TableHandlesExtension);
+  const [open, setOpen] = useState(false);
 
   const index = state
     ? orientation === "column" ? state.colIndex : state.rowIndex
     : undefined;
+  const isRow = orientation === "row";
+  const isHeaderRow = Boolean(state?.block.content.headerRows);
+
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    tableHandles?.unfreezeHandles();
+    hideOtherElements(false);
+    editor.focus();
+  }, [editor, hideOtherElements, tableHandles]);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
@@ -366,9 +498,39 @@ function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) 
     hideOtherElements(false);
   }, [tableHandles, hideOtherElements]);
 
-  if (!state || index === undefined) return null;
+  const updateTableColumns = useCallback(
+    (action: "add-left" | "add-right" | "delete") => {
+      if (!state?.block || !tableHandles || index === undefined || isRow) return;
 
-  const isRow = orientation === "row";
+      const block = state.block;
+      const content = block.content as PartialTableContent<any, any>;
+      const columnCount = getTableColumnCount(content);
+      const insertIndex = action === "add-left" ? index : index + 1;
+      const rows =
+        action === "delete"
+          ? getDeletedColumnRows(content, index)
+          : getInsertedColumnRows(tableHandles, block, insertIndex);
+      const columnWidths = getUpdatedColumnWidths(
+        content.columnWidths,
+        action === "delete"
+          ? { type: "delete", fromIndex: index, toIndex: index + 1 }
+          : { type: "insert", index: insertIndex },
+      );
+
+      if (action === "delete" && columnCount <= 1) return;
+
+      editor.updateBlock(block, {
+        type: "table",
+        content: {
+          ...content,
+          columnWidths,
+          rows,
+        } as any,
+      });
+      editor.setTextCursorPosition(block);
+    },
+    [editor, index, isRow, state?.block, tableHandles],
+  );
 
   const handleDelete = useCallback(() => {
     const selection = editor.prosemirrorState.selection;
@@ -383,18 +545,38 @@ function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) 
       }
 
       if (!isRow && selectedColumns > 1) {
-        editor.exec((state, dispatch) => deleteColumn(state, dispatch));
+        if (state?.block) {
+          const content = state.block.content as PartialTableContent<any, any>;
+          const columnCount = getTableColumnCount(content);
+          if (selectedColumns < columnCount) {
+            editor.updateBlock(state.block, {
+              type: "table",
+              content: {
+                ...content,
+                columnWidths: getUpdatedColumnWidths(content.columnWidths, {
+                  type: "delete",
+                  fromIndex: rect.left,
+                  toIndex: rect.right,
+                }),
+                rows: getDeletedColumnRows(content, rect.left, rect.right),
+              } as any,
+            });
+            editor.setTextCursorPosition(state.block);
+          }
+        }
         return;
       }
     }
 
-    tableHandles?.removeRowOrColumn(index!, orientation);
-  }, [editor, index, isRow, orientation, tableHandles]);
-
-  const isHeaderRow = Boolean(state.block.content.headerRows);
+    if (isRow) {
+      tableHandles?.removeRowOrColumn(index!, orientation);
+    } else {
+      updateTableColumns("delete");
+    }
+  }, [editor, index, isRow, orientation, state?.block, tableHandles, updateTableColumns]);
 
   const handleToggleHeaderRow = useCallback(() => {
-    if (!state.block || !isRow || index !== 0) return;
+    if (!state?.block || !isRow || index !== 0) return;
     editor.updateBlock(state.block, {
       ...state.block,
       content: {
@@ -402,11 +584,23 @@ function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) 
         headerRows: isHeaderRow ? undefined : 1,
       } as any,
     });
-  }, [editor, index, isHeaderRow, isRow, state.block]);
+  }, [editor, index, isHeaderRow, isRow, state?.block]);
+
+  const runMenuAction = useCallback(
+    (action: () => void) => {
+      closeMenu();
+      action();
+    },
+    [closeMenu],
+  );
+
+  if (!state || index === undefined) return null;
 
   return (
     <DropdownMenu
+      open={open}
       onOpenChange={(open) => {
+        setOpen(open);
         if (open) {
           tableHandles?.freezeHandles();
           hideOtherElements(true);
@@ -450,13 +644,13 @@ function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) 
           </>
         ) : (
           <>
-            <DropdownMenuItem onClick={() => tableHandles?.addRowOrColumn(index!, { orientation: "column", side: "left" })}>
+            <DropdownMenuItem onClick={() => runMenuAction(() => updateTableColumns("add-left"))}>
               <LucideIcons.ArrowLeft className="mr-2 h-4 w-4" /> 左侧添加列
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => tableHandles?.addRowOrColumn(index!, { orientation: "column", side: "right" })}>
+            <DropdownMenuItem onClick={() => runMenuAction(() => updateTableColumns("add-right"))}>
               <LucideIcons.ArrowRight className="mr-2 h-4 w-4" /> 右侧添加列
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDelete}>
+            <DropdownMenuItem onClick={() => runMenuAction(handleDelete)}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除列
             </DropdownMenuItem>
           </>
@@ -554,7 +748,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           if (link) {
             const href = link.getAttribute("href");
             if (href) {
-              window.open(href, "_blank");
+              openExternalUrl(href);
             }
           }
           return true;
@@ -686,6 +880,42 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       window.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("keyup", handleKeyUp, true);
       window.removeEventListener("blur", handleWindowBlur, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const patchClipboardPlainText = (event: ClipboardEvent) => {
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) return;
+
+      const selectionContext = getSelectedPlainTextContext(container);
+      if (!selectionContext) return;
+
+      const clipboardText = normalizeClipboardLineEndings(
+        clipboardData.getData("text/plain"),
+      );
+      if (
+        !shouldPreferVisibleSelectionText(
+          clipboardText,
+          selectionContext.selectedText,
+          selectionContext.withinCodeBlock,
+        )
+      ) {
+        return;
+      }
+
+      clipboardData.setData("text/plain", selectionContext.selectedText);
+    };
+
+    container.addEventListener("copy", patchClipboardPlainText);
+    container.addEventListener("cut", patchClipboardPlainText);
+
+    return () => {
+      container.removeEventListener("copy", patchClipboardPlainText);
+      container.removeEventListener("cut", patchClipboardPlainText);
     };
   }, []);
 

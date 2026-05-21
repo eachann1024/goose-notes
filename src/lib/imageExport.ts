@@ -453,6 +453,38 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const BLOCKNOTE_TEXT_COLORS: Record<string, string> = {
+  gray: "#9b9a97",
+  brown: "#64473a",
+  red: "#e03e3e",
+  orange: "#d9730d",
+  yellow: "#dfab01",
+  green: "#4d6461",
+  blue: "#0b6e99",
+  purple: "#6940a5",
+  pink: "#ad1a72",
+};
+
+const BLOCKNOTE_BACKGROUND_COLORS: Record<string, string> = {
+  gray: "#ebeced",
+  brown: "#e9e5e3",
+  red: "#fbe4e4",
+  orange: "#f6e9d9",
+  yellow: "#fbf3db",
+  green: "#ddedea",
+  blue: "#ddebf1",
+  purple: "#eae4f2",
+  pink: "#f4dfeb",
+};
+
+function resolveExportColor(
+  value: unknown,
+  palette: Record<string, string>,
+): string | null {
+  if (typeof value !== "string" || value === "" || value === "default") return null;
+  return palette[value] || value;
+}
+
 export interface WatermarkConfig {
   showWatermark: boolean;
   showBrand: boolean;
@@ -950,16 +982,18 @@ function renderInline(content: unknown): string {
         marks.find((m: any) => m?.type === "textColor")?.attrs?.color ||
         marks.find((m: any) => m?.type === "textStyle")?.attrs?.color ||
         styles.color;
-      if (textColor) {
-        wrapper = `<span style="color:${escapeHtml(textColor)}">${wrapper}</span>`;
+      const resolvedTextColor = resolveExportColor(textColor, BLOCKNOTE_TEXT_COLORS);
+      if (resolvedTextColor) {
+        wrapper = `<span style="color:${escapeHtml(resolvedTextColor)}">${wrapper}</span>`;
       }
 
       const bgColor =
         styles.backgroundColor ||
         marks.find((m: any) => m?.type === "backgroundColor")?.attrs?.color ||
         marks.find((m: any) => m?.type === "highlight")?.attrs?.color;
-      if (bgColor) {
-        wrapper = `<span style="background-color:${escapeHtml(bgColor)};border-radius:2px;padding:0 2px;">${wrapper}</span>`;
+      const resolvedBgColor = resolveExportColor(bgColor, BLOCKNOTE_BACKGROUND_COLORS);
+      if (resolvedBgColor) {
+        wrapper = `<span style="background-color:${escapeHtml(resolvedBgColor)};border-radius:2px;padding:0 2px;">${wrapper}</span>`;
       }
 
       if (item.type === "inlineMath" && item.attrs?.value) {
@@ -1085,7 +1119,7 @@ function waitForImages(container: HTMLElement): Promise<void> {
       if (img.complete) { resolve(); return; }
       img.onload = () => resolve();
       img.onerror = () => resolve();
-      setTimeout(() => resolve(), 500);
+      setTimeout(() => resolve(), 3000);
     });
   });
 
@@ -1104,7 +1138,8 @@ export async function exportPageToImage(
 ) {
   const theme = getCardTheme(themeId);
   const title = extractTitleFromContent(page.content);
-  const content = page.content as BlockNoteContent;
+  const content = JSON.parse(JSON.stringify(page.content)) as BlockNoteContent;
+  await resolveImageUrls(content as any[]);
 
   const container = document.createElement("div");
   container.style.position = "fixed";
@@ -1134,14 +1169,17 @@ export async function exportPageToImage(
 // ── Public API: Selection Export ───────────────────────────────
 async function resolveImageUrls(blocks: any[]): Promise<void> {
   for (const block of blocks) {
-    if ((block.type === "image" || block.type === "imageResize" || block.type === "file") && block.props?.url) {
-      const url = block.props.url;
-      if (url.startsWith("att:")) {
+    if (block.type === "image" || block.type === "imageResize" || block.type === "file") {
+      const url = block.props?.url || block.props?.src;
+      if (typeof url === "string" && (url.startsWith("att:") || url.startsWith("uuid:"))) {
         try {
           const { imageStorage } = await import("./imageStorage");
           const blob = await imageStorage.load(url);
           if (blob) {
-            block.props.url = URL.createObjectURL(blob);
+            block.props = {
+              ...block.props,
+              url: URL.createObjectURL(blob),
+            };
           }
         } catch { /* use original url */ }
       }
@@ -1149,12 +1187,20 @@ async function resolveImageUrls(blocks: any[]): Promise<void> {
     // Also resolve inline images
     if (Array.isArray(block.content)) {
       for (const item of block.content) {
-        if (item?.type === "image" && item.attrs?.src?.startsWith("att:")) {
+        const inlineSrc = item?.attrs?.src || item?.props?.url || item?.props?.src;
+        if (
+          item?.type === "image" &&
+          typeof inlineSrc === "string" &&
+          (inlineSrc.startsWith("att:") || inlineSrc.startsWith("uuid:"))
+        ) {
           try {
             const { imageStorage } = await import("./imageStorage");
-            const blob = await imageStorage.load(item.attrs.src);
+            const blob = await imageStorage.load(inlineSrc);
             if (blob) {
-              item.attrs.src = URL.createObjectURL(blob);
+              item.attrs = {
+                ...item.attrs,
+                src: URL.createObjectURL(blob),
+              };
             }
           } catch { /* use original url */ }
         }

@@ -128,6 +128,25 @@ function createParagraphFromInlineContent(
   return null;
 }
 
+function hasInlineText(content: unknown): boolean {
+  return simpleExtractText({ content }).trim().length > 0;
+}
+
+function isEmptyWrapperBlock(type: string, block: any): boolean {
+  if (
+    ![
+      "paragraph",
+      "heading",
+      "bulletListItem",
+      "numberedListItem",
+      "checkListItem",
+    ].includes(type)
+  ) {
+    return false;
+  }
+  return !hasInlineText(block.content);
+}
+
 function normalizeBlocks(blocks: any[] | undefined): PartialBlock[] {
   return (blocks ?? []).flatMap((block) => normalizeBlock(block));
 }
@@ -194,6 +213,20 @@ function normalizeBlock(block: any): PartialBlock[] {
   }
 
   const children = normalizeBlocks(block.children);
+
+  if (children.length > 0 && type === "heading") {
+    if (!hasInlineText(block.content)) {
+      return children;
+    }
+    const headingBlock: PartialBlock = { type };
+    if (block.props || block.attrs) headingBlock.props = block.props ?? block.attrs;
+    if (block.content !== undefined) headingBlock.content = block.content;
+    return [headingBlock, ...children];
+  }
+
+  if (children.length > 0 && isEmptyWrapperBlock(type, block)) {
+    return children;
+  }
 
   const sanitized: PartialBlock = { type };
   if (block.props || block.attrs) sanitized.props = block.props ?? block.attrs;

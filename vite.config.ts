@@ -17,7 +17,17 @@ const vendorChunkGroups: Array<[string, string[]]> = [
       "lucide-react",
     ],
   ],
-  ["vendor-blocknote", ["@blocknote/core", "@blocknote/react"]],
+  [
+    "vendor-blocknote",
+    [
+      "@blocknote/core",
+      "@blocknote/react",
+      "prosemirror-transform",
+      "prosemirror-state",
+      "prosemirror-view",
+      "prosemirror-model",
+    ],
+  ],
 ];
 
 function resolveVendorChunk(id: string) {

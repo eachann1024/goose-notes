@@ -120,6 +120,7 @@ declare global {
   const UTOOLS_WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MIN
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
+  const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const buildAiContextBundle: typeof import('./lib/ai-write').buildAiContextBundle
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write').buildAiWorkspaceUserPrompt
@@ -214,10 +215,12 @@ declare global {
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const normalizeBlockContent: typeof import('./lib/blocknote-content').normalizeBlockContent
+  const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizePageContent: typeof import('./lib/blocknote-content').normalizePageContent
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
+  const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const organizeToggleHeadingSections: typeof import('./lib/blocknote-content').organizeToggleHeadingSections
   const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml

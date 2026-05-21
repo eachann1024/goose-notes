@@ -1,4 +1,5 @@
 import { createExtension } from "@blocknote/core";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 export const gooseLinkKeyboardExtension = createExtension({
   key: "goose-link-keyboard",
@@ -19,7 +20,7 @@ export const gooseLinkKeyboardExtension = createExtension({
     "Alt-Enter": ({ editor }) => {
       const url = editor.getSelectedLinkUrl();
       if (url) {
-        window.open(url, "_blank");
+        openExternalUrl(url);
         return true;
       }
       return false;

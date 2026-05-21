@@ -216,6 +216,7 @@ export async function exportNotebooks(
       depth: number,
     ) => {
       const pageClone = JSON.parse(JSON.stringify(page)) as Page;
+      pageClone.content = normalizeExportContent(pageClone.content);
 
       await extractImagesFromContent(
         pageClone.content,
@@ -282,12 +283,33 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
 }
 
+function normalizeExportContent(content: Page["content"]): BlockNoteContent {
+  try {
+    return normalizePageContent(content);
+  } catch (error) {
+    console.warn("[export] normalize page content failed:", error);
+    return createEmptyBlockNoteContent();
+  }
+}
+
+function getSuggestedSavePath(filename: string): string {
+  const downloadsDir = getDownloadsPath();
+  if (!downloadsDir) return filename;
+  const separator = downloadsDir.includes("\\") ? "\\" : "/";
+  return `${downloadsDir.replace(/[\\/]+$/, "")}${separator}${filename}`;
+}
+
 function getDownloadsPath(): string | null {
   const w = window as any;
   const gooseFs = w.gooseFs;
   const exists = (p: string) => {
     try { return gooseFs?.exists?.(p); } catch { return false; }
   };
+
+  try {
+    const dir = w.utools?.getPath?.("downloads");
+    if (typeof dir === "string" && dir.trim().length > 0) return dir;
+  } catch { /* ignore */ }
 
   // 方式1: Node.js require
   try {
@@ -427,7 +449,7 @@ async function saveBlobViaDialog(
   const saveResult = await Promise.resolve(
     utools.showSaveDialog({
       title: "保存文件",
-      defaultPath: filename,
+      defaultPath: getSuggestedSavePath(filename),
       buttonLabel: "保存",
     }),
   );

@@ -135,6 +135,30 @@ export function FormattingToolbarColorPicker() {
   const isBgColorActive =
     currentBgColor && currentBgColor !== "default";
 
+  const applyTextColor = (color: string) => {
+    if (color === "default") {
+      editor.removeStyles({ textColor: true } as any);
+    } else {
+      editor.addStyles({ textColor: color });
+    }
+  };
+
+  const applyBackgroundColor = (color: string) => {
+    if (color === "default") {
+      editor.removeStyles({ backgroundColor: true } as any);
+    } else {
+      editor.addStyles({ backgroundColor: color });
+    }
+  };
+
+  const applyColorPair = (index: number) => {
+    const textColor = TEXT_COLORS[index]?.color;
+    const backgroundColor = HIGHLIGHT_COLORS[index]?.color;
+    if (!textColor || !backgroundColor) return;
+    applyTextColor(textColor);
+    applyBackgroundColor(backgroundColor);
+  };
+
   const panelContent = isMounted ? (
     <div
       className={cn(
@@ -157,13 +181,17 @@ export function FormattingToolbarColorPicker() {
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <div className="flex flex-col gap-1">
         <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
           文本颜色
         </div>
         <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1">
-          {TEXT_COLORS.map((item) => (
+          {TEXT_COLORS.map((item, index) => (
             <Button
               key={item.color}
               type="button"
@@ -176,11 +204,12 @@ export function FormattingToolbarColorPicker() {
                   : ""
               )}
               onClick={() => {
-                if (item.color === "default") {
-                  editor.removeStyles({ textColor: true } as any);
-                } else {
-                  editor.addStyles({ textColor: item.color });
-                }
+                applyTextColor(item.color);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyColorPair(index);
               }}
             >
               <div
@@ -204,7 +233,7 @@ export function FormattingToolbarColorPicker() {
           背景颜色
         </div>
         <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1 pb-0.5">
-          {HIGHLIGHT_COLORS.map((item) => (
+          {HIGHLIGHT_COLORS.map((item, index) => (
             <Button
               key={item.color}
               type="button"
@@ -217,11 +246,12 @@ export function FormattingToolbarColorPicker() {
                   : ""
               )}
               onClick={() => {
-                if (item.color === "default") {
-                  editor.removeStyles({ backgroundColor: true } as any);
-                } else {
-                  editor.addStyles({ backgroundColor: item.color });
-                }
+                applyBackgroundColor(item.color);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyColorPair(index);
               }}
             >
               <div

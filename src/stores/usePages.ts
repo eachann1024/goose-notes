@@ -60,6 +60,8 @@ type LocalPageMetadata = {
 
 const LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY =
   "goose-note:content-repair:title-children:v1";
+const NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY =
+  "goose-note:content-repair:nested-empty-wrapper:v1";
 
 // 辅助函数：生成本地页面ID（基于相对路径的hash）
 function generateLocalPageId(notebookId: string, filePath: string): string {
@@ -530,6 +532,32 @@ function repairLegacyTitleChildrenInPages(
   return { pages: nextPages, repairedPageIds };
 }
 
+function repairNormalizedContentInPages(
+  pages: Record<string, Page>,
+): { pages: Record<string, Page>; repairedPageIds: string[] } {
+  let nextPages = pages;
+  const repairedPageIds: string[] = [];
+
+  Object.entries(pages).forEach(([pageId, page]) => {
+    const normalizedContent = normalizePageContent(page.content);
+    if (JSON.stringify(page.content) === JSON.stringify(normalizedContent)) {
+      return;
+    }
+
+    if (nextPages === pages) {
+      nextPages = { ...pages };
+    }
+
+    nextPages[pageId] = {
+      ...page,
+      content: normalizedContent,
+    };
+    repairedPageIds.push(pageId);
+  });
+
+  return { pages: nextPages, repairedPageIds };
+}
+
 export const flushEditorContent = (immediate = false) => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(
@@ -562,11 +590,19 @@ export const usePages = create<PagesState>()((set, get) => ({
         const { pages: repairedPages, repairedPageIds } = hasRepairedLegacyTitleChildren
           ? { pages, repairedPageIds: [] as string[] }
           : repairLegacyTitleChildrenInPages(pages);
+        const hasRepairedNestedEmptyWrappers =
+          getDbStorageItem(NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY) === "1";
+        const {
+          pages: contentRepairedPages,
+          repairedPageIds: contentRepairedPageIds,
+        } = hasRepairedNestedEmptyWrappers
+          ? { pages: repairedPages, repairedPageIds: [] as string[] }
+          : repairNormalizedContentInPages(repairedPages);
 
         if (!hasRepairedLegacyTitleChildren) {
           if (repairedPageIds.length > 0) {
             repairedPageIds.forEach((pageId) => {
-              const repairedPage = repairedPages[pageId];
+              const repairedPage = contentRepairedPages[pageId];
               if (!repairedPage || repairedPage.localFilePath) return;
               saveInternalPage(repairedPage);
             });
@@ -577,9 +613,23 @@ export const usePages = create<PagesState>()((set, get) => ({
           setDbStorageItem(LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY, "1");
         }
 
+        if (!hasRepairedNestedEmptyWrappers) {
+          if (contentRepairedPageIds.length > 0) {
+            contentRepairedPageIds.forEach((pageId) => {
+              const repairedPage = contentRepairedPages[pageId];
+              if (!repairedPage || isLocalFolderPage(repairedPage)) return;
+              saveInternalPage(repairedPage);
+            });
+            console.info(
+              `[usePages] repaired nested empty wrapper content in ${contentRepairedPageIds.length} page(s).`,
+            );
+          }
+          setDbStorageItem(NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY, "1");
+        }
+
         seedLocalPageMetadataCache(localPageMetas);
         set({
-          pages: repairedPages,
+          pages: contentRepairedPages,
           activePageId: null,
           pendingNavigatePageId: null,
           expandPageId: null,

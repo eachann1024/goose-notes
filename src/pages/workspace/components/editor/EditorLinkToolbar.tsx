@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 export function EditorLinkToolbar({
   url,
@@ -44,7 +45,7 @@ export function EditorLinkToolbar({
   }, [editor, range, setToolbarOpen]);
 
   const handleOpen = useCallback(() => {
-    window.open(url, "_blank", "noopener,noreferrer");
+    openExternalUrl(url);
   }, [url]);
 
   const startEditing = useCallback(() => {
@@ -64,6 +65,10 @@ export function EditorLinkToolbar({
       <div
         className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
         onMouseDown={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         <div className="flex flex-col gap-1.5">
           <Input
@@ -126,6 +131,10 @@ export function EditorLinkToolbar({
     <div
       className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
       onMouseDown={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <button
         type="button"
@@ -137,7 +146,18 @@ export function EditorLinkToolbar({
       </button>
       <button
         type="button"
-        onClick={handleOpen}
+        onMouseDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleOpen();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleOpen();
+        }}
         className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-foreground/90 hover:bg-muted"
       >
         <LucideIcons.ExternalLink className="h-3.5 w-3.5" />
