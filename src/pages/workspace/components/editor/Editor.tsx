@@ -1029,8 +1029,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       editor.focus();
     };
 
+    const handlePluginEnter = () => {
+      window.setTimeout(() => {
+        editor.focus();
+      }, 0);
+    };
+
     window.addEventListener("goose-note:flush-editor", handleFlush);
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
+    window.addEventListener("goose-note:plugin-enter", handlePluginEnter);
 
     return () => {
       window.removeEventListener("goose-note:flush-editor", handleFlush);
@@ -1038,6 +1045,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         "goose-note:focus-editor-start",
         handleFocusStart,
       );
+      window.removeEventListener("goose-note:plugin-enter", handlePluginEnter);
     };
   }, [commitEditorContent, editor]);
 
