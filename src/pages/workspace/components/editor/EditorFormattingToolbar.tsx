@@ -2,6 +2,7 @@ import {
   useBlockNoteEditor,
   useActiveStyles,
   useSelectedBlocks,
+  useEditorState,
 } from "@blocknote/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
@@ -173,6 +174,45 @@ export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   const activeStyles = useActiveStyles();
   const selectedBlocks = useSelectedBlocks();
+  const selectionState = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const { selection, doc } = editor.prosemirrorState;
+      let blocks: Array<{ type?: string; props?: Record<string, unknown> }> = [];
+
+      try {
+        const selected = editor.getSelection();
+        if (Array.isArray(selected?.blocks)) {
+          blocks = selected.blocks;
+        }
+      } catch {
+        blocks = [];
+      }
+
+      if (blocks.length === 0) {
+        try {
+          blocks = [editor.getTextCursorPosition().block];
+        } catch {
+          blocks = [];
+        }
+      }
+
+      const selectedText = doc
+        .textBetween(selection.from, selection.to, "\n", "\n")
+        .trim();
+      const firstBlock = blocks[0];
+
+      return {
+        hasTextSelection: !selection.empty && selectedText.length > 0,
+        hasNonFormattableBlock: blocks.some(
+          (block) => !!block.type && NON_FORMATTABLE_TYPES.has(block.type),
+        ),
+        isTitleHeading:
+          firstBlock?.type === "heading" &&
+          (firstBlock.props as { level?: number } | undefined)?.level === 1,
+      };
+    },
+  });
   const aiEnabled = useSettings((state) => state.ai.enabled);
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
@@ -247,10 +287,10 @@ export function EditorFormattingToolbar() {
 
   const shouldHide = isScrolling || isContextMenuOpen;
 
-  if (firstBlock && NON_FORMATTABLE_TYPES.has(firstBlock.type)) return null;
   if (
-    firstBlock?.type === "heading" &&
-    (firstBlock.props as { level?: number })?.level === 1
+    !selectionState.hasTextSelection ||
+    selectionState.hasNonFormattableBlock ||
+    selectionState.isTitleHeading
   ) return null;
 
   return (
