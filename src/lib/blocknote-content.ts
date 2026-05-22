@@ -147,8 +147,56 @@ function isEmptyWrapperBlock(type: string, block: any): boolean {
   return !hasInlineText(block.content);
 }
 
+function getPlainBlockText(block: PartialBlock | undefined): string {
+  if (!block) return "";
+  return simpleExtractText(block).trim();
+}
+
+function getDetachedListMarkerType(
+  block: PartialBlock | undefined,
+): "bulletListItem" | "numberedListItem" | null {
+  if (!block || block.type !== "paragraph") return null;
+  if ((block as any).children?.length) return null;
+
+  const text = getPlainBlockText(block);
+  if (/^(?:[•·.]|-|\*)$/.test(text)) return "bulletListItem";
+  if (/^\d+\.$/.test(text)) return "numberedListItem";
+  return null;
+}
+
+function repairDetachedListMarkers(blocks: PartialBlock[]): PartialBlock[] {
+  const repaired: PartialBlock[] = [];
+
+  for (let index = 0; index < blocks.length; index += 1) {
+    const markerType = getDetachedListMarkerType(blocks[index]);
+    const nextBlock = blocks[index + 1];
+
+    if (
+      markerType &&
+      nextBlock?.type === "paragraph" &&
+      getPlainBlockText(nextBlock)
+    ) {
+      repaired.push({
+        type: markerType,
+        content: nextBlock.content,
+        ...((nextBlock as any).children?.length
+          ? { children: (nextBlock as any).children }
+          : {}),
+      } as PartialBlock);
+      index += 1;
+      continue;
+    }
+
+    repaired.push(blocks[index]);
+  }
+
+  return repaired;
+}
+
 function normalizeBlocks(blocks: any[] | undefined): PartialBlock[] {
-  return (blocks ?? []).flatMap((block) => normalizeBlock(block));
+  return repairDetachedListMarkers(
+    (blocks ?? []).flatMap((block) => normalizeBlock(block)),
+  );
 }
 
 function normalizeQuoteBlock(block: any): PartialBlock[] {

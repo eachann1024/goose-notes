@@ -55,6 +55,18 @@
   margin-bottom: 0;
 }
 
+.workspace-editor-surface .bn-block-group {
+  counter-reset: goose-numbered-list;
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="numberedListItem"])
+  > .bn-block
+  > .bn-block-content[data-content-type="numberedListItem"]::before {
+  counter-increment: goose-numbered-list;
+  content: counter(goose-numbered-list) "." !important;
+}
+
 .workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
   margin-bottom: 0.6em;
 }
