@@ -19,8 +19,9 @@ import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { usePages } from "@/stores/usePages";
-import { useNotebooks } from "@/stores/useNotebooks";
+import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
+import { importFromMarkdown } from "@/lib/export";
 
 function normalizeShortcutToken(raw: string) {
   const token = raw.trim().toLowerCase();
@@ -95,6 +96,40 @@ const DEFAULT_RANDOM_PAGE_EMOJIS = [
   "✨",
 ];
 
+type WorkspaceDragIntent = "folder" | "text-file" | "file";
+
+function getFileExtension(name: string) {
+  return name.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isSupportedTextImportFile(file: File) {
+  const ext = getFileExtension(file.name);
+  return ext === "md" || ext === "markdown" || ext === "txt";
+}
+
+function getWorkspaceDragIntent(dataTransfer: DataTransfer): WorkspaceDragIntent {
+  const items = Array.from(dataTransfer.items || []);
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry?.isDirectory) return "folder";
+  }
+
+  const files = Array.from(dataTransfer.files || []);
+  if (files.some(isSupportedTextImportFile)) return "text-file";
+
+  if (
+    items.some(
+      (item) =>
+        item.kind === "file" &&
+        (item.type === "text/markdown" || item.type === "text/plain"),
+    )
+  ) {
+    return "text-file";
+  }
+
+  return items.some((item) => item.kind === "file") ? "text-file" : "file";
+}
+
 export function WorkspacePage() {
   const { activePageId, updatePage, getPage, setActivePage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
@@ -113,6 +148,7 @@ export function WorkspacePage() {
   const lastActivePageRef = useRef<string | null>(null);
   const lastViewedPageIdRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragIntent, setDragIntent] = useState<WorkspaceDragIntent>("file");
   const [isAiPageOpen, setIsAiPageOpen] = useState(false);
   const dragCounter = useRef(0);
   const editorRef = useRef<EditorRef>(null);
@@ -257,6 +293,7 @@ export function WorkspacePage() {
     e.preventDefault();
     if (!isExternalFileDrag(e)) return;
     dragCounter.current++;
+    setDragIntent(getWorkspaceDragIntent(e.dataTransfer));
     setIsDragging(true);
   };
 
@@ -272,6 +309,7 @@ export function WorkspacePage() {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (!isExternalFileDrag(e)) return;
+    setDragIntent(getWorkspaceDragIntent(e.dataTransfer));
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -303,6 +341,58 @@ export function WorkspacePage() {
       toast.success("文件夹已打开");
       return;
     }
+
+    const files = Array.from(e.dataTransfer.files).filter(isSupportedTextImportFile);
+    if (files.length === 0) {
+      toast.error("暂不支持这种文件", {
+        description: "可以拖入 .md、.markdown 或 .txt 文本文件。",
+      });
+      return;
+    }
+
+    const currentNotebookId = useNotebooks.getState().activeNotebookId;
+    const currentNotebook = currentNotebookId
+      ? useNotebooks.getState().notebooks[currentNotebookId]
+      : null;
+    const targetNotebookId =
+      currentNotebookId && currentNotebook?.source !== "local-folder"
+        ? currentNotebookId
+        : DEFAULT_NOTEBOOK;
+    const createdPageIds: string[] = [];
+
+    for (const file of files) {
+      const text = await file.text();
+      const filename = file.name.replace(/\.[^/.]+$/, "");
+      const result = importFromMarkdown(text, filename);
+      if (!result.success) continue;
+
+      const pageId = usePages.getState().createPage(undefined, targetNotebookId);
+      usePages.getState().updatePage(pageId, {
+        content: [
+          { type: "heading", props: { level: 1 }, content: result.title },
+          ...result.content,
+        ] as any,
+      });
+      createdPageIds.push(pageId);
+    }
+
+    const firstPageId = createdPageIds[0];
+    if (!firstPageId) {
+      toast.error("导入失败", {
+        description: "文件内容无法解析为笔记。",
+      });
+      return;
+    }
+
+    useNotebooks.getState().setActiveNotebook(targetNotebookId);
+    useTabs.getState().openTab(firstPageId);
+    await usePages.getState().setActivePage(firstPageId);
+    toast.success("文本文件已导入", {
+      description:
+        createdPageIds.length === 1
+          ? files[0].name
+          : `已导入 ${createdPageIds.length} 个文件`,
+    });
   };
 
   const closeCurrentTab = useCallback(() => {
@@ -489,14 +579,26 @@ export function WorkspacePage() {
         onDrop={handleDrop}
       >
         {isDragging && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-[1px] animate-in fade-in duration-300">
-            <div className="text-center">
-              <LucideIcons.FolderOpen className="h-20 w-20 mx-auto mb-4 text-muted-foreground/80" />
-              <p className="text-lg text-muted-foreground font-medium">
-                拖放文件夹以打开
+          <div className="fixed inset-0 z-[25000] flex items-center justify-center bg-[hsl(var(--goose-editor-bg)/0.96)] animate-in fade-in duration-150">
+            <div className="flex min-h-[188px] min-w-[312px] flex-col items-center justify-center rounded-[14px] border border-border/70 bg-[hsl(var(--goose-shell-bg)/0.98)] px-10 py-8 text-center shadow-[0_18px_42px_rgba(15,23,42,0.12),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
+              {dragIntent === "folder" ? (
+                <LucideIcons.FolderOpen className="mb-4 h-12 w-12 text-muted-foreground/80" />
+              ) : dragIntent === "text-file" ? (
+                <LucideIcons.FileText className="mb-4 h-12 w-12 text-muted-foreground/80" />
+              ) : (
+                <LucideIcons.FileQuestion className="mb-4 h-12 w-12 text-muted-foreground/70" />
+              )}
+              <p className="text-base font-medium text-foreground">
+                {dragIntent === "folder"
+                  ? "松手打开文件夹"
+                  : dragIntent === "text-file"
+                    ? "松手导入文本文件"
+                    : "松手后检查文件"}
               </p>
-              <p className="text-sm text-muted-foreground/60 mt-2">
-                支持 .md / .markdown 文件
+              <p className="mt-2 text-sm text-muted-foreground">
+                {dragIntent === "folder"
+                  ? "会作为本地文件夹记事本载入"
+                  : "支持 .md、.markdown、.txt"}
               </p>
             </div>
           </div>
@@ -713,4 +815,3 @@ export function WorkspacePage() {
     </>
   );
 }
-
