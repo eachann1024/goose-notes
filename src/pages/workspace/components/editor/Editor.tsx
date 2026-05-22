@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
+import * as LucideIcons from "lucide-react";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
+import { exportSelectionToImage } from "@/lib/imageExport";
 import {
   EMPTY_CELL_HEIGHT,
   EMPTY_CELL_WIDTH,
@@ -42,7 +44,6 @@ import {
   extractBlockNoteTitle,
   type BlockNoteContent,
 } from "@/lib/blocknote-content";
-import { importMarkdownFragment } from "@/lib/export";
 import {
   getBlockNoteSlashMenuItems,
   filterSlashMenuItems,
@@ -67,10 +68,15 @@ import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
 import { EditorLinkToolbar } from "./EditorLinkToolbar";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { UToolsAdapter } from "@/lib/utools";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
@@ -95,11 +101,18 @@ function looksLikeMarkdownFragment(text: string): boolean {
   const value = text.trim();
   if (!value) return false;
   return (
-    /^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|\s*[-*+]\s\[[ xX]\]\s)/m.test(value) ||
+    /^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|\s*[-*+]\s\[[ xX]\]\s|\s*[•·]\s|\s*\.\s)/m.test(value) ||
     /```/.test(value) ||
     /\|.+\|/.test(value) ||
     /(\*\*|__|~~|`[^`]+`)/.test(value) ||
     /\[([^\]]+)\]\(([^)]+)\)/.test(value)
+  );
+}
+
+function normalizeMarkdownPasteText(text: string): string {
+  return normalizeClipboardLineEndings(text).replace(
+    /^(\s*)(?:[•·]|\.)\s+/gm,
+    "$1- ",
   );
 }
 
@@ -728,7 +741,14 @@ interface EditorProps {
 export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true }, ref) {
   const { activePageId, getPage, updatePage } = usePages();
   const { notebooks } = useNotebooks();
-  const { globalEditorFullWidth, customFonts, theme } = useSettings();
+  const {
+    globalEditorFullWidth,
+    customFonts,
+    theme,
+    searchProviders,
+    utools,
+    customActions,
+  } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = page ? notebooks[page.workspaceId] : undefined;
   const isEditorFullWidth = Boolean(
@@ -836,7 +856,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       if ((event.target as HTMLElement | null)?.closest(".goose-code-block-node")) return;
 
       const clipboard = event.clipboardData;
-      const plainText = clipboard.getData("text/plain");
+      const plainText = normalizeMarkdownPasteText(clipboard.getData("text/plain"));
       if (!plainText) return;
 
       const trimmedText = plainText.trim();
@@ -882,17 +902,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       const htmlText = clipboard.getData("text/html");
       if (htmlText && htmlText.trim()) return;
 
-      const parsedBlocks = importMarkdownFragment(plainText);
-      if (!parsedBlocks?.length) return;
-
       event.preventDefault();
       event.stopPropagation();
-
-      const cursor = editor.getTextCursorPosition();
-      const [inserted] = editor.insertBlocks(parsedBlocks as any, cursor.block, "before");
-      if (inserted) {
-        editor.setTextCursorPosition(inserted);
-      }
+      editor.pasteMarkdown(plainText);
     },
     [editable, editor],
   );
@@ -1090,8 +1102,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   }, [theme]);
 
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
+  const [selectedText, setSelectedText] = useState("");
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
+  const selectedTextRef = useRef("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -1140,17 +1154,74 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     setLinkPopoverUrl("");
   }, [linkPopoverUrl, editor]);
 
+  const activeSearchProviders = useMemo(
+    () => searchProviders.filter((provider) => provider.isEnabled),
+    [searchProviders],
+  );
+  const enabledCustomActions = useMemo(
+    () => customActions.filter((action) => action.isEnabled && action.name.trim() && action.command.trim()),
+    [customActions],
+  );
+
   const handleContextMenuOpen = () => {
-    let blocks: BlockNoteContent = [];
+    let text = "";
     try {
-      const selection = editor.getSelection();
-      if (Array.isArray(selection?.blocks)) {
-        blocks = selection.blocks as BlockNoteContent;
-      }
+      text = editor.getSelectedText() || "";
     } catch { /* ignore */ }
+    if (!text.trim()) {
+      try {
+        text = document.getSelection()?.toString() || "";
+      } catch { /* ignore */ }
+    }
+    const trimmedText = text.trim();
+    setSelectedText(trimmedText);
+    selectedTextRef.current = trimmedText;
+
+    let blocks: BlockNoteContent = [];
+    if (!trimmedText) {
+      try {
+        const selection = editor.getSelection();
+        if (Array.isArray(selection?.blocks)) {
+          blocks = selection.blocks as BlockNoteContent;
+        }
+      } catch { /* ignore */ }
+      if (blocks.length <= 1) {
+        blocks = [];
+      }
+    }
     setSelectedBlocks(blocks);
     selectedBlocksRef.current = blocks;
   };
+
+  const handleContextPaste = useCallback(async () => {
+    if (!editable) return;
+    try {
+      const text = normalizeMarkdownPasteText(await navigator.clipboard.readText());
+      if (!text) return;
+      if (looksLikeMarkdownFragment(text)) {
+        editor.pasteMarkdown(text);
+      } else {
+        editor.insertInlineContent(text);
+      }
+    } catch (error) {
+      console.error("Failed to read clipboard contents: ", error);
+    }
+  }, [editable, editor]);
+
+  const handleCopySelection = useCallback(() => {
+    const text = selectedTextRef.current || editor.getSelectedText() || "";
+    UToolsAdapter.copyToClipboard(text);
+  }, [editor]);
+
+  const handleCutSelection = useCallback(() => {
+    if (!editable) return;
+    const text = selectedTextRef.current || editor.getSelectedText() || "";
+    UToolsAdapter.copyToClipboard(text);
+    editor.exec((state, dispatch) => {
+      dispatch?.(state.tr.deleteSelection());
+      return true;
+    });
+  }, [editable, editor]);
 
   const handleSelectionThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
     const blocks = selectedBlocksRef.current;
@@ -1275,7 +1346,81 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         )}
       </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-[200px]">
+      <ContextMenuContent className="w-[180px]">
+        {selectedText && activeSearchProviders.length > 0 && (
+          <>
+            <ContextMenuItem disabled className="max-w-[168px] truncate text-xs text-muted-foreground">
+              {selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            {activeSearchProviders.map((provider) => (
+              <ContextMenuItem
+                key={provider.id}
+                onSelect={() => {
+                  const url = provider.urlTemplate.replace(
+                    "%s",
+                    encodeURIComponent(selectedText),
+                  );
+                  UToolsAdapter.openUrl(url, utools.openSearchInUtools);
+                }}
+              >
+                <LucideIcons.Search className="mr-2 h-4 w-4" />
+                用 {provider.name} 搜索
+              </ContextMenuItem>
+            ))}
+            <ContextMenuSeparator />
+          </>
+        )}
+        {selectedText && enabledCustomActions.length > 0 && (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <LucideIcons.Zap className="mr-2 h-4 w-4" />
+                快捷动作
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {enabledCustomActions.map((action) => (
+                  <ContextMenuItem
+                    key={action.id}
+                    onSelect={() => {
+                      const label = action.pluginName
+                        ? [action.pluginName, action.command] as [string, string]
+                        : action.command;
+                      UToolsAdapter.redirect(label, selectedText);
+                    }}
+                  >
+                    {action.name}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSeparator />
+          </>
+        )}
+        <ContextMenuItem
+          disabled={!editable || !selectedText}
+          onSelect={handleCutSelection}
+        >
+          <LucideIcons.Scissors className="mr-2 h-4 w-4" />
+          剪切
+          <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘X</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!selectedText}
+          onSelect={handleCopySelection}
+        >
+          <LucideIcons.Copy className="mr-2 h-4 w-4" />
+          拷贝
+          <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘C</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!editable}
+          onSelect={handleContextPaste}
+        >
+          <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
+          粘贴
+          <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘V</span>
+        </ContextMenuItem>
         {selectedBlocks.length > 0 && (
           <ContextMenuItem
             onSelect={() => {
