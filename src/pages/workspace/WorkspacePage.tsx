@@ -606,7 +606,7 @@ export function WorkspacePage() {
                                 page.icon ? "mb-3 mt-2" : "mt-1",
                                 isEditorFullWidth
                                   ? "max-w-full"
-                                  : "max-w-full w-full",
+                                  : "w-full max-w-4xl mx-auto",
                               )}
                             >
                               {!isLocalFolderPage && (
@@ -713,5 +713,4 @@ export function WorkspacePage() {
     </>
   );
 }
-
 

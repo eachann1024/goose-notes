@@ -119,6 +119,50 @@ function getElementFromNode(node: Node | null): HTMLElement | null {
   return node.parentElement;
 }
 
+function isInteractiveEditorTarget(target: HTMLElement): boolean {
+  return Boolean(
+    target.closest(
+      [
+        "button",
+        "input",
+        "textarea",
+        "select",
+        "a",
+        "[role='button']",
+        "[contenteditable='false']",
+        "[data-radix-popper-content-wrapper]",
+        "[data-notion-slash-root='true']",
+        ".bn-side-menu",
+        ".bn-formatting-toolbar",
+        ".bn-table-handle",
+        ".goose-table-extend-button",
+        ".goose-code-toolbar-host",
+      ].join(","),
+    ),
+  );
+}
+
+function isBottomEditorBlankClick(
+  event: React.MouseEvent<HTMLDivElement>,
+  container: HTMLElement,
+): boolean {
+  const target = event.target as HTMLElement | null;
+  if (!target || !container.contains(target)) return false;
+  if (isInteractiveEditorTarget(target)) return false;
+  if (target.closest(".bn-block-outer, .bn-block-content")) return false;
+
+  const editorSurface = target.closest(
+    ".workspace-editor-surface, .bn-container, .bn-root, .bn-editor, .tiptap",
+  );
+  if (!editorSurface || !container.contains(editorSurface)) return false;
+
+  const blocks = container.querySelectorAll<HTMLElement>(".bn-block-outer");
+  const lastBlock = blocks[blocks.length - 1];
+  if (!lastBlock) return true;
+
+  return event.clientY >= lastBlock.getBoundingClientRect().bottom;
+}
+
 function getSelectedPlainTextContext(container: HTMLElement): {
   selectedText: string;
   withinCodeBlock: boolean;
@@ -695,16 +739,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const syncedContentSignatureRef = useRef<string | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const shiftPressedRef = useRef(false);
-  const isSwappingContentRef = useRef(false);
-  const prevActivePageIdForSwapRef = useRef<string | null>(activePageId ?? null);
-
-  const [creationContent] = useState(() => {
-    return normalizePageContent(page?.content);
-  });
+  pageIdForUpdateRef.current = page?.id ?? null;
 
   const editor = useCreateBlockNote(
     {
-      initialContent: creationContent as any,
+      initialContent: normalizePageContent(page?.content) as any,
       schema: editorSchema,
       extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension, gooseCodeBlockKeyboardExtension],
       dictionary: {
@@ -755,7 +794,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         },
       },
     },
-    [],
+    [activePageId],
   );
 
   const getSlashItems = useCallback(
@@ -858,6 +897,26 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     [editable, editor],
   );
 
+  const focusEditorEnd = useCallback(() => {
+    const lastBlock = editor.document.at(-1);
+    if (lastBlock) {
+      editor.setTextCursorPosition(lastBlock, "end");
+    }
+    editor.focus();
+  }, [editor]);
+
+  const handleEditorBlankMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!editable || event.button !== 0) return;
+      const container = editorContainerRef.current;
+      if (!container || !isBottomEditorBlankClick(event, container)) return;
+
+      event.preventDefault();
+      focusEditorEnd();
+    },
+    [editable, focusEditorEnd],
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Shift") {
@@ -947,17 +1006,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       updatePage(p.id, { content: normalized });
     }
 
-    // Swap editor content when switching pages (not on first mount)
-    const prevId = prevActivePageIdForSwapRef.current;
-    prevActivePageIdForSwapRef.current = activePageId;
-
-    if (prevId !== null && prevId !== activePageId) {
-      isSwappingContentRef.current = true;
-      editor.replaceBlocks(editor.document, normalized as any);
-      requestAnimationFrame(() => {
-        isSwappingContentRef.current = false;
-      });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId]);
 
@@ -1111,14 +1159,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       <ContextMenuTrigger asChild>
         <div
           ref={editorContainerRef}
+          onMouseDown={handleEditorBlankMouseDown}
           onPasteCapture={handleEditorPasteCapture}
           data-font-family={page.fontFamily ?? "default"}
           className={cn(
             "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
-            isEditorFullWidth ? "max-w-none" : "max-w-full",
+            isEditorFullWidth ? "max-w-none" : "max-w-4xl mx-auto",
           )}
         >
         <BlockNoteView
+          key={activePageId ?? "empty"}
           editor={editor}
           editable={editable}
           theme={effectiveTheme}
@@ -1128,7 +1178,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           tableHandles={false}
           filePanel={false}
           onChange={() => {
-            if (isSwappingContentRef.current) return;
             const safePageId = pageIdForUpdateRef.current;
             if (!safePageId) return;
             if (restoreFirstTitleHeading()) return;
@@ -1239,6 +1288,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       onConfirm={handleSelectionThemeConfirm}
       mode="selection"
     />
-    <ImageLightbox editorContainerRef={editorContainerRef} />
+    <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
   </>);
 });

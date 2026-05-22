@@ -300,7 +300,8 @@ export function normalizeBlockContent(content: unknown): BlockNoteContent {
 function textFromLegacy(node: LegacyPageContent | undefined): string {
   if (!node) return "";
   if (typeof node.text === "string") return node.text;
-  return (node.content ?? []).map(textFromLegacy).join("");
+  if (!Array.isArray(node.content)) return "";
+  return node.content.map(textFromLegacy).join("");
 }
 
 function inlineFromLegacy(node: LegacyPageContent | undefined): any[] | string {
@@ -430,7 +431,12 @@ export function getContentSignature(content: unknown): string {
 
 export function extractPlainText(content: PageContent | undefined): string {
   if (!content) return "";
-  if (!isBlockNoteContent(content)) return textFromLegacy(content).trim();
+  if (!isBlockNoteContent(content)) {
+    if (typeof content === "object" && (content as any).type !== "doc") {
+      return simpleExtractText(content as any).trim();
+    }
+    return textFromLegacy(content).trim();
+  }
 
   const parts: string[] = [];
   const visit = (block: any) => {

@@ -108,17 +108,31 @@ export default defineConfig({
     },
   ],
   resolve: {
+    dedupe: [
+      "prosemirror-model",
+      "prosemirror-state",
+      "prosemirror-transform",
+      "prosemirror-view",
+      "prosemirror-tables",
+    ],
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@host-runtime": path.resolve(__dirname, "./src/lib/host/runtime.utools.ts"),
     },
   },
+  server: {
+    sourcemapIgnoreList: false,
+  },
 
   build: {
-    sourcemap: false,
+    sourcemap: "hidden",
     rollupOptions: {
       output: {
         manualChunks: resolveVendorChunk,
+        sourcemapIgnoreList: false,
+        chunkFileNames: "chunks/[name].js",
+        entryFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
       },
       onwarn(warning, warn) {
         if (warning.code === "INEFFECTIVE_DYNAMIC_IMPORT") return;

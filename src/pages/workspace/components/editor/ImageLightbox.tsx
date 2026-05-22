@@ -4,13 +4,14 @@ import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
 import { AlignCenter, AlignLeft, AlignRight, Copy, Download, Maximize2, X } from "lucide-react";
 import { toast } from "sonner";
-import { useBlockNoteEditor } from "@blocknote/react";
+import type { BlockNoteEditor } from "@blocknote/core";
 import { imageStorage } from "@/lib/imageStorage";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { saveBlobAndReveal } from "@/lib/export";
 import { cn } from "@/lib/utils";
 
 interface ImageLightboxProps {
+  editor: BlockNoteEditor<any, any, any>;
   editorContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -128,8 +129,7 @@ function getImageExtension(blob: Blob): string {
   return "png";
 }
 
-export function ImageLightbox({ editorContainerRef }: ImageLightboxProps) {
-  const editor = useBlockNoteEditor<any, any, any>();
+export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [slides, setSlides] = useState<SlideInfo[]>([]);

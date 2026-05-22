@@ -37,6 +37,18 @@ try {
     console.error('未找到 plugin.json');
     process.exit(1);
   }
+
+  function removeMapFiles(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        removeMapFiles(full);
+      } else if (entry.name.endsWith('.map')) {
+        fs.unlinkSync(full);
+      }
+    }
+  }
+  removeMapFiles(distDir);
 } catch (e) {
   console.error(e);
   process.exit(1);
