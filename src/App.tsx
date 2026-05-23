@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
+import { fs } from "@/lib/utools/fs";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { useNotebooks } from "./stores/useNotebooks";
@@ -254,8 +255,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !(window as any).gooseFs) return;
-    const gooseFs = (window as any).gooseFs as GooseFs;
+    if (!fs.isAvailable()) return;
     const notebooksStore = useNotebooks.getState();
     const pagesStore = usePages.getState();
     const notebooks = Object.values(notebooksStore.notebooks).sort(
@@ -272,9 +272,7 @@ function App() {
         const exists =
           typeof localPath === "string" &&
           localPath.length > 0 &&
-          (gooseFs.existsAsync
-            ? await gooseFs.existsAsync(localPath)
-            : gooseFs.exists(localPath));
+          (await fs.existsAsync(localPath));
 
         if (exists) {
           if (notebook.localPathMissing) {

@@ -1,6 +1,7 @@
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { UToolsAdapter } from "@/lib/utools";
+import { fs } from "@/lib/utools/fs";
 import type { FileAttachmentAttrs } from "@/types";
 
 export const MAX_FILE_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -85,7 +86,7 @@ async function ensureTempCleanup(): Promise<void> {
 
   tempCleanupPromise = (async () => {
     try {
-      await window.gooseFs?.cleanupTempFiles?.(TEMP_ATTACHMENT_PREFIX, 24 * 60 * 60 * 1000);
+      await fs.cleanupTempFiles(TEMP_ATTACHMENT_PREFIX, 24 * 60 * 60 * 1000);
     } catch (error) {
       console.error("[fileStorage] cleanup temp files failed", error);
     }
@@ -139,7 +140,7 @@ export const fileStorage = {
     storageRef: string,
     meta: { fileName: string; size: number },
   ): Promise<{ ok: boolean; error?: string }> {
-    if (!window.gooseFs?.writeTempFile) {
+    if (!fs.isAvailable()) {
       return { ok: false, error: "uTools 文件桥接未就绪，无法打开附件" };
     }
 
@@ -153,7 +154,7 @@ export const fileStorage = {
     const attachmentId = getAttachmentId(storageRef).replace(/[\\/]/g, "_");
     const safeFileName = sanitizeFileName(meta.fileName);
     const base64 = arrayBufferToBase64(await blob.arrayBuffer());
-    const tempFilePath = await window.gooseFs.writeTempFile(
+    const tempFilePath = await fs.writeTempFile(
       `${TEMP_ATTACHMENT_PREFIX}/${attachmentId}/${safeFileName}`,
       base64,
     );
