@@ -27,7 +27,6 @@ interface WorkspaceLayoutProps {
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => Promise<void>;
   isAiPageOpen: boolean;
-  hasOpenedAiPage: boolean;
   setIsAiPageOpen: (value: boolean | ((prev: boolean) => boolean)) => void;
   editorRef: RefObject<EditorRef | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
@@ -41,7 +40,6 @@ export function WorkspaceLayout({
   onDragLeave,
   onDrop,
   isAiPageOpen,
-  hasOpenedAiPage,
   setIsAiPageOpen,
   editorRef,
   scrollContainerRef,
@@ -175,8 +173,8 @@ export function WorkspaceLayout({
                 />
 
                 <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
-                  {hasOpenedAiPage && (
-                    <div className={cn("h-full", !isAiPageOpen && "hidden")}>
+                  {isAiPageOpen && (
+                    <div className="h-full">
                       <AiWorkspacePage />
                     </div>
                   )}

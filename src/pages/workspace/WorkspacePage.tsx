@@ -1,5 +1,5 @@
 import "./styles/index.css";
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { type EditorRef } from "./components/editor/Editor";
@@ -19,11 +19,6 @@ export function WorkspacePage() {
 
   const editorRef = useRef<EditorRef>(null);
   const [isAiPageOpen, setIsAiPageOpen] = useState(false);
-  const [hasOpenedAiPage, setHasOpenedAiPage] = useState(false);
-
-  useEffect(() => {
-    if (isAiPageOpen) setHasOpenedAiPage(true);
-  }, [isAiPageOpen]);
 
   useEffect(() => {
     document.documentElement.classList.add("is-utools");
@@ -53,7 +48,6 @@ export function WorkspacePage() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       isAiPageOpen={isAiPageOpen}
-      hasOpenedAiPage={hasOpenedAiPage}
       setIsAiPageOpen={setIsAiPageOpen}
       editorRef={editorRef}
       scrollContainerRef={scrollContainerRef}
