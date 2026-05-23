@@ -138,7 +138,7 @@ declare global {
   const cacheSignal: typeof import('react').cacheSignal
   const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
   const clearBlockSourceMap: typeof import('./lib/local-block-diff').clearBlockSourceMap
-  const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
+  const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clonePageContent: typeof import('./lib/blocknote-content/index').clonePageContent
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
@@ -156,19 +156,21 @@ declare global {
   const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
   const emptyBlock: typeof import('./lib/blocknote-content/index').emptyBlock
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
+  const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
   const ensureFirstTitleHeading: typeof import('./lib/blocknote-content/index').ensureFirstTitleHeading
   const ensureToggleableHeadings: typeof import('./lib/blocknote-content').ensureToggleableHeadings
-  const exportNotebooks: typeof import('./lib/export').exportNotebooks
+  const exportNotebooks: typeof import('./lib/export/index').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport/index').exportPageToImage
   const exportSelectionToImage: typeof import('./lib/imageExport/index').exportSelectionToImage
-  const exportToHTML: typeof import('./lib/export').exportToHTML
+  const exportToHTML: typeof import('./lib/export/index').exportToHTML
   const exportToImage: typeof import('./lib/imageExport/index').exportToImage
-  const exportToJSON: typeof import('./lib/export').exportToJSON
-  const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
+  const exportToJSON: typeof import('./lib/export/index').exportToJSON
+  const exportToMarkdown: typeof import('./lib/export/index').exportToMarkdown
   const exportToWord: typeof import('./lib/docxExport/index').exportToWord
   const extractBlockNoteTitle: typeof import('./lib/blocknote-content/index').extractBlockNoteTitle
   const extractBlocksInRange: typeof import('./lib/ai-block-scope').extractBlocksInRange
   const extractCellText: typeof import('./lib/docxExport/docxBlocks').extractCellText
+  const extractFirstHeadingText: typeof import('./lib/local-title-binding').extractFirstHeadingText
   const extractFrontmatter: typeof import('./lib/markdown-raw-guard').extractFrontmatter
   const extractInlineItems: typeof import('./lib/docxExport/docxStyles').extractInlineItems
   const extractPlainText: typeof import('./lib/blocknote-content/index').extractPlainText
@@ -177,7 +179,7 @@ declare global {
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
   const fetchCustomAIModels: typeof import('./lib/ai-provider/index').fetchCustomAIModels
   const fileStorage: typeof import('./lib/fileStorage').fileStorage
-  const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
+  const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
@@ -215,11 +217,11 @@ declare global {
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const hasStructuredBlocks: typeof import('./lib/blocknote-content/index').hasStructuredBlocks
   const hashBlock: typeof import('./lib/local-block-diff').hashBlock
-  const importFile: typeof import('./lib/export').importFile
-  const importFromJSON: typeof import('./lib/export').importFromJSON
-  const importFromMarkdown: typeof import('./lib/export').importFromMarkdown
-  const importMarkdownFragment: typeof import('./lib/export').importMarkdownFragment
-  const importNotebooksFromZip: typeof import('./lib/export').importNotebooksFromZip
+  const importFile: typeof import('./lib/export/index').importFile
+  const importFromJSON: typeof import('./lib/export/index').importFromJSON
+  const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
+  const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
+  const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
   const initAnalytics: typeof import('./lib/analytics').initAnalytics
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
@@ -227,7 +229,7 @@ declare global {
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
-  const jsonContentToMarkdown: typeof import('./lib/export').jsonContentToMarkdown
+  const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const memo: typeof import('react').memo
@@ -266,13 +268,15 @@ declare global {
   const runAITextStream: typeof import('./lib/ai-provider/index').runAITextStream
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
-  const saveBlobAndReveal: typeof import('./lib/export').saveBlobAndReveal
+  const sanitizeFilenameSegment: typeof import('./lib/local-title-binding').sanitizeFilenameSegment
+  const saveBlobAndReveal: typeof import('./lib/export/index').saveBlobAndReveal
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const serializeWithBlockDiff: typeof import('./lib/local-block-diff').serializeWithBlockDiff
   const setBlockSourceMap: typeof import('./lib/local-block-diff').setBlockSourceMap
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setFrontmatterForPath: typeof import('./lib/local-frontmatter-store').setFrontmatterForPath
   const simpleExtractText: typeof import('./lib/blocknote-content/index').simpleExtractText
+  const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
   const splitMarkdownIntoBlocks: typeof import('./lib/local-block-diff').splitMarkdownIntoBlocks
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
@@ -306,7 +310,7 @@ declare global {
   const useMemo: typeof import('react').useMemo
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
   const useOptimistic: typeof import('react').useOptimistic
-  const usePages: typeof import('./stores/usePages').usePages
+  const usePages: typeof import('./stores/pages/index').usePages
   const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
@@ -324,7 +328,7 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { AiSessionMessage, AiSession } from './stores/useAiSessions'
+  export type { AiSessionMessageVersion, AiSessionMessage, AiSession } from './stores/useAiSessions'
   import('./stores/useAiSessions')
   // @ts-ignore
   export type { AiActivityPhase } from './stores/useAiStatus'
@@ -362,9 +366,6 @@ declare global {
   // @ts-ignore
   export type { ImageBufferResult } from './lib/docxExport/docxImages'
   import('./lib/docxExport/docxImages')
-  // @ts-ignore
-  export type { ExportOptions, ImportResult } from './lib/export'
-  import('./lib/export')
   // @ts-ignore
   export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')

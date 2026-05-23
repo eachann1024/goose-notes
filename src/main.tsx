@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import "./index.css";
 import "./fonts.css";
 import App from "./App.tsx";
-import { applyFontVariables, preloadFonts } from "./lib/fontLoader";
+import { applyFontVariables } from "./lib/fontLoader";
 import {
   migrateCodeStyleTo2026,
   runCodeStyleMigration2026,
@@ -360,6 +360,16 @@ const setupSaveGuards = () => {
 
 const initHostFs = async () => {
   await UToolsAdapter.ensureGooseFs();
+  // uTools 没接上时（浏览器 / bun dev / web 部署），用 File System Access API
+  // 作为兜底实现，让 scanner / saveLocalPageContent 走同一套 gooseFs 接口。
+  if (typeof window !== "undefined" && !window.gooseFs) {
+    try {
+      const { installWebGooseFs } = await import("@/lib/web-fs");
+      installWebGooseFs();
+    } catch (err) {
+      console.warn("[bootstrap] web-fs 加载失败", err);
+    }
+  }
 };
 
 const bootstrap = async () => {
@@ -415,7 +425,6 @@ const bootstrap = async () => {
 
   const settings = useSettings.getState();
   applyFontVariables(settings.customFonts);
-  preloadFonts();
 
   const analyticsInitResult = initAnalytics({
     token: MIXPANEL_TOKEN,

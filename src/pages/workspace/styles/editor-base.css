@@ -377,48 +377,50 @@
 }
 
 .goose-code-toolbar-left {
-  max-width: min(56%, calc(100% - 180px));
+  flex: 1;
+  min-width: 0;
 }
 
 .goose-code-toolbar-actions {
-  margin-left: auto;
   border: 0;
   border-radius: 8px;
   background: transparent;
   padding: 0;
   box-shadow: none;
   backdrop-filter: none;
+  flex-shrink: 0;
 }
 
 .goose-code-toolbar-actions button,
 .goose-code-toolbar-actions .goose-code-lang-trigger {
   border-color: transparent !important;
-  background: var(--code-toolbar-chip-bg, hsl(var(--muted) / 0.55)) !important;
-  color: var(--code-toolbar-chip-fg, hsl(var(--muted-foreground))) !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground) / 0.7) !important;
   box-shadow: none !important;
 }
 
 .goose-code-toolbar-actions button:hover,
 .goose-code-toolbar-actions .goose-code-lang-trigger:hover {
-  background: var(--code-toolbar-chip-hover-bg, hsl(var(--accent) / 0.72)) !important;
-  color: var(--code-toolbar-chip-active-fg, hsl(var(--foreground))) !important;
+  background: hsl(var(--muted) / 0.5) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .goose-code-toolbar-actions button:disabled {
-  opacity: 0.55;
+  opacity: 0.4;
 }
 
 .goose-code-toolbar-left input {
-  background: var(--code-toolbar-chip-bg, transparent) !important;
+  background: transparent !important;
   color: var(--code-fg, hsl(var(--foreground))) !important;
+  width: 100%;
 }
 
 .goose-code-toolbar-left input::placeholder {
-  color: var(--code-toolbar-chip-fg, hsl(var(--muted-foreground))) !important;
+  color: hsl(var(--muted-foreground) / 0.45) !important;
 }
 
 .goose-code-toolbar-left input:focus {
-  background: var(--code-toolbar-chip-active-bg, hsl(var(--accent) / 0.72)) !important;
+  background: hsl(var(--muted) / 0.28) !important;
 }
 
 .goose-code-content-wrapper {
