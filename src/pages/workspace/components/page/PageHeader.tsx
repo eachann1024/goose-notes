@@ -35,6 +35,9 @@ export function PageHeader({
   const aiDoneToken = useAiStatus((state) => state.doneToken);
   const isLocalItem = !!page.localFilePath;
   const { lastSavedAt, getPage } = usePages();
+  const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
+  const isTabDirty = (tabPageId: string) =>
+    Boolean(dirtyLocalPageIds?.[tabPageId]);
   const {
     openTabs,
     activeTabId,
@@ -155,7 +158,20 @@ export function PageHeader({
                         : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                     )}
                   >
-                    <span className="min-w-0 flex-1 truncate">{getPageTitle(tabPage)}</span>
+                    {isTabDirty(tab.pageId) && (
+                      <span
+                        aria-label="未保存"
+                        className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate",
+                        isTabDirty(tab.pageId) && "font-medium italic",
+                      )}
+                    >
+                      {getPageTitle(tabPage)}
+                    </span>
                     <TooltipProvider delayDuration={0}>
                       <Tooltip>
                         <TooltipTrigger asChild>
