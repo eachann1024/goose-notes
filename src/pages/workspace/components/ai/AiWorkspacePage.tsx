@@ -31,6 +31,7 @@ import {
 } from "@/stores/useSettings";
 import { useAiSessions, type AiSession, type AiSessionMessage } from "@/stores/useAiSessions";
 import { useAiStatus } from "@/stores/useAiStatus";
+import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
@@ -63,6 +64,87 @@ const STREAM_PHASE_LABEL: Record<AIStreamPhase, string> = {
   generating: "正在生成回答",
   finishing: "正在整理结果",
 };
+
+function MessageReferenceChip({ reference }: { reference: AiFileReferenceAttrs }) {
+  const page = usePages((state) => state.getPage(reference.pageId));
+  const { openTab } = useTabs();
+  const title = page ? getPageTitle(page) : reference.titleSnapshot;
+  const icon = page?.icon;
+  const isAvailable = !!page && !page.trashedAt;
+
+  const handleOpen = (event: React.MouseEvent | React.KeyboardEvent) => {
+    if (!isAvailable) return;
+    event.stopPropagation();
+    if ("key" in event && event.key !== "Enter" && event.key !== " ") return;
+    openTab(reference.pageId);
+  };
+
+  return (
+    <span
+      role={isAvailable ? "button" : undefined}
+      tabIndex={isAvailable ? 0 : undefined}
+      onClick={isAvailable ? handleOpen : undefined}
+      onKeyDown={isAvailable ? handleOpen : undefined}
+      className={cn(
+        "ai-message-ref inline-flex items-center gap-1 align-baseline rounded-md px-1.5 py-[1px] text-[12.5px] leading-snug mx-[1px]",
+        "bg-background/70 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.55)]",
+        isAvailable &&
+          "cursor-pointer transition-colors hover:bg-background hover:shadow-[inset_0_0_0_1px_hsl(var(--border))]",
+        !isAvailable && "italic text-muted-foreground/85",
+      )}
+    >
+      {icon ? (
+        <span className="text-[12px] leading-none">{icon}</span>
+      ) : (
+        <LucideIcons.FileText className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+      )}
+      <span className="max-w-[200px] truncate">{title}</span>
+    </span>
+  );
+}
+
+function renderMessageWithReferences(
+  text: string,
+  references: AiFileReferenceAttrs[] | undefined,
+): React.ReactNode {
+  if (!text) return null;
+  if (!references || references.length === 0) return text;
+
+  const sorted = [...references].sort(
+    (a, b) => b.titleSnapshot.length - a.titleSnapshot.length,
+  );
+
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  let key = 0;
+
+  while (cursor < text.length) {
+    let best: { idx: number; ref: AiFileReferenceAttrs; len: number } | null = null;
+    for (const ref of sorted) {
+      if (!ref.titleSnapshot) continue;
+      const needle = `@${ref.titleSnapshot}`;
+      const idx = text.indexOf(needle, cursor);
+      if (idx !== -1 && (best === null || idx < best.idx)) {
+        best = { idx, ref, len: needle.length };
+      }
+    }
+
+    if (!best) {
+      nodes.push(<span key={`t-${key++}`}>{text.slice(cursor)}</span>);
+      break;
+    }
+
+    if (best.idx > cursor) {
+      nodes.push(<span key={`t-${key++}`}>{text.slice(cursor, best.idx)}</span>);
+    }
+    nodes.push(
+      <MessageReferenceChip key={`r-${key++}-${best.ref.pageId}`} reference={best.ref} />,
+    );
+    cursor = best.idx + best.len;
+  }
+
+  return nodes;
+}
 
 /** 生成新会话 ID */
 function genSessionId() {
@@ -1158,32 +1240,73 @@ export function AiWorkspacePage() {
 
               const isUserMsg = message.role === "user";
 
+              if (isDataviz) {
+                return (
+                  <div key={message.id} className="flex flex-col gap-1.5 px-4 py-2">
+                    <div className="select-text w-full text-foreground">
+                      {message.artifact ? (
+                        <AgentArtifactView
+                          artifact={message.artifact}
+                          applying={applyingMessageId === message.id}
+                          onConfirmMarkdownNote={(artifact) => {
+                            void handleConfirmWrite(message.id, artifact);
+                          }}
+                          onCancelMarkdownNote={(artifact) => {
+                            handleCancelWrite(message.id, artifact);
+                          }}
+                          onOpenResult={handleOpenResultPage}
+                        />
+                      ) : (
+                        <StreamingDatavizText
+                          text={message.text}
+                          streaming={!!message.streaming}
+                          streamPhaseLabel={STREAM_PHASE_LABEL[streamPhase]}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isUserMsg) {
+                return (
+                  <div key={message.id} className="flex flex-col items-end px-4 py-2">
+                    <div
+                      className={cn(
+                        "ai-message-user select-text max-w-[88%]",
+                        "rounded-[14px] px-3.5 py-2.5",
+                        "bg-[hsl(var(--goose-selected-bg))] text-foreground",
+                        "shadow-[inset_0_0_0_1px_hsl(var(--border)/0.55)]",
+                      )}
+                    >
+                      <div className="whitespace-pre-wrap break-words text-sm leading-[1.55]">
+                        {renderMessageWithReferences(message.text, message.references)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
-              <div key={message.id} className={cn(
-                "flex flex-col gap-1.5",
-                isDataviz
-                  ? "px-4 py-2"
-                  : isUserMsg
-                    ? "items-end px-4 py-1"
-                    : "px-4 py-1"
-              )}>
-                <div
-                  className={cn(
-                    "select-text",
-                    isDataviz
-                      ? "text-foreground w-full"
-                      : cn(
-                          "rounded-2xl border px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)]",
-                          message.role === "user"
-                            ? "self-end max-w-[85%] border-transparent bg-foreground text-background"
-                            : message.error
-                              ? "border-destructive/20 bg-destructive/5 text-destructive"
-                              : "border-border/70 dark:border-border bg-background/80 text-foreground",
-                        ),
-                  )}
-                >
-                  {message.role === "assistant" && !message.error ? (
-                    message.artifact ? (
+                <div key={message.id} className="flex gap-2.5 px-4 py-2">
+                  <div
+                    className={cn(
+                      "shrink-0 pt-[3px]",
+                      message.error && "text-destructive",
+                    )}
+                  >
+                    {message.error ? (
+                      <LucideIcons.AlertCircle className="h-3.5 w-3.5" />
+                    ) : (
+                      <AiGradientIcon className="h-3.5 w-3.5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 select-text">
+                    {message.error ? (
+                      <div className="text-sm leading-6 text-destructive whitespace-pre-wrap break-words">
+                        {message.text || "请求失败，请重试"}
+                      </div>
+                    ) : message.artifact ? (
                       <AgentArtifactView
                         artifact={message.artifact}
                         applying={applyingMessageId === message.id}
@@ -1202,57 +1325,23 @@ export function AiWorkspacePage() {
                         streamPhaseLabel={STREAM_PHASE_LABEL[streamPhase]}
                       />
                     ) : (
-                      <div className="flex items-center gap-2 text-sm leading-6 text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm leading-6 text-muted-foreground/85">
                         {message.streaming ? (
                           <>
-                            <LucideIcons.LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                            <span className="inline-block h-[7px] w-[7px] rounded-full bg-foreground/45 animate-pulse" />
                             <span>{STREAM_PHASE_LABEL[streamPhase]}</span>
                           </>
                         ) : (
                           <span className="text-destructive">未收到响应，请重试</span>
                         )}
                       </div>
-                    )
-                  ) : message.role === "assistant" && message.error ? (
-                    <div className="flex items-center gap-2 text-sm leading-6">
-                      <LucideIcons.AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                      <span className="whitespace-pre-wrap break-words">{message.text || "请求失败，请重试"}</span>
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap break-words text-sm leading-6">
-                      {message.text}
-                    </div>
-                  )}
-                  {message.references && message.references.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {message.references.map((reference) => (
-                        <span
-                          key={`${message.id}-${reference.pageId}`}
-                          className={cn(
-                            "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium",
-                            message.role === "user"
-                              ? "bg-white/15 text-white/90"
-                              : "border border-border/70 bg-muted/60 text-muted-foreground",
-                          )}
-                        >
-                          @{reference.titleSnapshot}
-                        </span>
-                      ))}
-                    </div>
+                    )}
+                  </div>
+                  {/* 重试按钮：仅错误消息 & 最后一条 & composer 为空时显示 */}
+                  {isRetryable && (
+                    <RetryButton onClick={handleRetry} />
                   )}
                 </div>
-                {/* 重试按钮：仅错误消息 & 最后一条 & composer 为空时显示 */}
-                {isRetryable && (
-                  <button
-                    type="button"
-                    onClick={handleRetry}
-                    className="flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <LucideIcons.RotateCcw className="h-3 w-3" />
-                    重试
-                  </button>
-                )}
-              </div>
               );
             })}
             <div ref={messagesEndRef} />
@@ -1274,5 +1363,18 @@ export function AiWorkspacePage() {
         onReferenceAdded={handleReferenceAdded}
       />
     </div>
+  );
+}
+
+function RetryButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-fit shrink-0 items-center gap-1.5 self-start rounded-lg px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      <LucideIcons.RotateCcw className="h-3 w-3" />
+      重试
+    </button>
   );
 }

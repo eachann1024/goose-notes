@@ -150,6 +150,10 @@ export function WorkspacePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragIntent, setDragIntent] = useState<WorkspaceDragIntent>("file");
   const [isAiPageOpen, setIsAiPageOpen] = useState(false);
+  const [hasOpenedAiPage, setHasOpenedAiPage] = useState(false);
+  useEffect(() => {
+    if (isAiPageOpen) setHasOpenedAiPage(true);
+  }, [isAiPageOpen]);
   const dragCounter = useRef(0);
   const editorRef = useRef<EditorRef>(null);
 
@@ -679,13 +683,18 @@ export function WorkspacePage() {
                 />
 
                 <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
-                  {isAiPageOpen ? (
-                    <AiWorkspacePage />
-                  ) : (
-                    <div
-                      ref={scrollContainerRef}
-                      className="h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]"
-                    >
+                  {hasOpenedAiPage && (
+                    <div className={cn("h-full", !isAiPageOpen && "hidden")}>
+                      <AiWorkspacePage />
+                    </div>
+                  )}
+                  <div
+                    ref={scrollContainerRef}
+                    className={cn(
+                      "h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
+                      isAiPageOpen && "hidden",
+                    )}
+                  >
                       {(() => {
                         // 判断是否是新页面（创建时间等于更新时间且内容为空）
                         const isNewPage =
@@ -800,8 +809,7 @@ export function WorkspacePage() {
                           </div>
                         );
                       })()}
-                    </div>
-                  )}
+                  </div>
                 </div>
 
 
