@@ -36,6 +36,7 @@ export interface PagesState {
   hydrated: boolean;
   lastSavedAt: number | null;
   onboardingCompleted: boolean;
+  dirtyLocalPageIds: Record<string, boolean>;
   hydrateFromStorage: () => Promise<void>;
 
   createOnboardingPages: () => void;
@@ -101,6 +102,8 @@ export interface PagesState {
   ) => Promise<boolean>;
   flushPendingLocalSaves: () => Promise<void>;
   flushPendingLocalSaveByPageId: (pageId: string) => Promise<void>;
+  isLocalPageDirty: (pageId: string) => boolean;
+  saveDirtyLocalPage: (pageId: string) => Promise<boolean>;
   getLocalFilePath: (pageId: string) => string | null;
   createLocalPage: (
     parentId?: string,

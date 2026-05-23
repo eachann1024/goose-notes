@@ -50,6 +50,7 @@ import {
   queueLocalPageSave,
   flushPendingLocalSaveByPageIdInternal,
   flushAllPendingLocalSavesInternal,
+  pendingLocalSaveContents,
   cloneJSONContent,
 } from "./folderSync";
 
@@ -180,6 +181,7 @@ export const usePages = create<PagesState>()((set, get) => ({
   hydrated: false,
   lastSavedAt: null,
   onboardingCompleted: false,
+  dirtyLocalPageIds: {},
 
   hydrateFromStorage: async () => {
     const { pages, localPageMetas, onboardingCompleted } =
@@ -562,6 +564,7 @@ export const usePages = create<PagesState>()((set, get) => ({
           "local-folder"
       ) {
         queueLocalPageSave(id, updates.content, get);
+        set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true } }));
       }
 
       return {
@@ -1699,10 +1702,24 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   flushPendingLocalSaveByPageId: async (pageId) => {
     await flushPendingLocalSaveByPageIdInternal(pageId, get);
+    set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false } }));
   },
 
   flushPendingLocalSaves: async () => {
     await flushAllPendingLocalSavesInternal(get);
+  },
+
+  isLocalPageDirty: (pageId) => pendingLocalSaveContents.has(pageId),
+
+  saveDirtyLocalPage: async (pageId) => {
+    if (!pendingLocalSaveContents.has(pageId)) return false;
+    try {
+      await flushPendingLocalSaveByPageIdInternal(pageId, get);
+      set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false } }));
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   getLocalFilePath: (pageId) => {
