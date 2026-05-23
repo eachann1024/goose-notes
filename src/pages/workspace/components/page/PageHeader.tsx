@@ -1,5 +1,6 @@
 import type { Page } from "@/types";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
+import { useAiStatus } from "@/stores/useAiStatus";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/lib/page-title";
 
@@ -30,6 +31,8 @@ export function PageHeader({
 
 }: PageHeaderProps) {
   const aiEnabled = useSettings((state) => state.ai.enabled);
+  const aiPhase = useAiStatus((state) => state.phase);
+  const aiDoneToken = useAiStatus((state) => state.doneToken);
   const isLocalItem = !!page.localFilePath;
   const { lastSavedAt, getPage } = usePages();
   const {
@@ -80,15 +83,34 @@ export function PageHeader({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-8 w-8 shrink-0 rounded-[8px] border transition-colors",
+                    "ai-icon-button h-8 w-8 shrink-0 rounded-[8px] border transition-colors",
                     isAiPageOpen
                       ? "border-foreground/10 bg-[var(--goose-interactive-selected)]"
                       : "border-transparent hover:bg-[var(--goose-interactive-hover)]",
                   )}
+                  data-ai-state={aiPhase}
                   onClick={onToggleAiPage}
-                  aria-label="打开 AI 页面"
+                  aria-label={
+                    aiPhase === "streaming"
+                      ? "AI 正在生成"
+                      : "打开 AI 页面"
+                  }
                 >
-                  <AiGradientIcon className="h-4 w-4" />
+                  <AiGradientIcon
+                    key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
+                    className="h-4 w-4"
+                    state={aiPhase}
+                  />
+                  {aiPhase === "done" && (
+                    <span
+                      key={`rings-${aiDoneToken}`}
+                      className="ai-icon-rings"
+                      aria-hidden="true"
+                    >
+                      <span className="ai-icon-ring" />
+                      <span className="ai-icon-ring ai-icon-ring--delayed" />
+                    </span>
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">AI 页面</TooltipContent>

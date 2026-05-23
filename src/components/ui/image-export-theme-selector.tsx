@@ -24,6 +24,19 @@ interface ImageExportThemeSelectorProps {
   mode: "page" | "selection";
 }
 
+const PINNED_FIRST: Record<"light" | "dark", string> = {
+  light: "github-light",
+  dark: "github-dark",
+};
+
+function orderThemesForGroup(themes: CardTheme[]): CardTheme[] {
+  const pinId = themes.length > 0 ? PINNED_FIRST[themes[0].mode] : undefined;
+  if (!pinId) return themes;
+  const pinned = themes.find((t) => t.id === pinId);
+  if (!pinned) return themes;
+  return [pinned, ...themes.filter((t) => t.id !== pinId)];
+}
+
 export function ImageExportThemeSelector({
   open,
   onOpenChange,
@@ -49,31 +62,47 @@ export function ImageExportThemeSelector({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[720px] p-0 overflow-hidden gap-0">
-        <div className="p-6 pb-4">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="text-base font-semibold">选择卡片主题</DialogTitle>
+      <DialogContent className="max-w-[760px] p-0 overflow-hidden gap-0">
+        <div className="px-6 pt-6 pb-4">
+          <DialogHeader className="space-y-1.5">
+            <DialogTitle className="text-[15px] font-semibold tracking-tight">选择卡片主题</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               为「{modeText}」选择一种视觉风格，共 {CARD_THEMES.length} 种主题可选
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="px-6 pb-2 max-h-[380px] overflow-y-auto [scrollbar-width:thin]">
-          <div className="grid grid-cols-3 gap-3">
-            {CARD_THEMES.map((theme) => (
-              <ThemePreviewCard
-                key={theme.id}
-                theme={theme}
-                selected={selectedId === theme.id}
-                onClick={() => setSelectedId(theme.id)}
-              />
-            ))}
-          </div>
+        <div className="px-6 pb-3 max-h-[480px] overflow-y-auto [scrollbar-width:thin]">
+          {(["light", "dark"] as const).map((mode) => {
+            const themes = orderThemesForGroup(CARD_THEMES.filter((t) => t.mode === mode));
+            if (themes.length === 0) return null;
+            return (
+              <section key={mode} className="mb-5 last:mb-1">
+                <header className="flex items-center gap-2 mb-2.5 px-0.5">
+                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${mode === "light" ? "bg-foreground/40" : "bg-foreground"}`} />
+                  <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
+                    {mode === "light" ? "浅色" : "深色"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">{themes.length}</span>
+                  <span className="ml-1 flex-1 h-px bg-border/70" />
+                </header>
+                <div className="grid grid-cols-3 gap-4">
+                  {themes.map((theme) => (
+                    <ThemePreviewCard
+                      key={theme.id}
+                      theme={theme}
+                      selected={selectedId === theme.id}
+                      onClick={() => setSelectedId(theme.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
         {/* Watermark Config Panel */}
-        <div className="px-6 py-3 border-t border-b bg-muted/20">
+        <div className="px-6 py-3 border-t bg-muted/20">
           <button
             type="button"
             onClick={() => setConfigOpen((v) => !v)}
@@ -140,7 +169,7 @@ export function ImageExportThemeSelector({
           <Button
             size="sm"
             onClick={handleConfirm}
-            className="h-8 text-xs bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white border-0"
+            className="h-8 text-xs"
           >
             <LucideIcons.Image className="mr-1.5 h-3.5 w-3.5" />
             生成图片
@@ -164,21 +193,18 @@ function ThemePreviewCard({
   const previewBody = "好的排版让阅读成为一种享受，每个细节都藏着设计师的用心。";
 
   const cardStyle: React.CSSProperties = {
-    background: theme.background.includes("gradient")
-      ? theme.background
-      : theme.background,
-    borderRadius: 8,
-    padding: 10,
+    background: theme.background,
+    borderRadius: 10,
+    padding: 14,
     position: "relative",
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    border: selected
-      ? "2px solid hsl(var(--primary))"
-      : "2px solid transparent",
+    transition: "transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1)",
     boxShadow: selected
-      ? "0 0 0 3px hsl(var(--primary) / 0.12), 0 4px 12px rgba(0,0,0,0.08)"
-      : "0 1px 3px rgba(0,0,0,0.06)",
-    transform: selected ? "scale(1.02)" : "scale(1)",
+      ? "0 0 0 2px hsl(var(--primary)), 0 10px 22px rgba(15,23,42,0.12)"
+      : "0 1px 2px rgba(15,23,42,0.04), inset 0 0 0 1px rgba(15,23,42,0.06)",
+    minHeight: 152,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
   };
 
   const innerCardStyle: React.CSSProperties = {
@@ -187,11 +213,10 @@ function ThemePreviewCard({
       : theme.cardBg === "transparent"
         ? "transparent"
         : theme.cardBg,
-    borderRadius: Math.max(theme.cardRadius * 0.35, 3),
-    padding: `${Math.max(theme.cardPaddingY * 0.25, 6)}px ${Math.max(theme.cardPaddingX * 0.25, 8)}px`,
+    borderRadius: Math.max(theme.cardRadius * 0.35, 4),
+    padding: `${Math.max(theme.cardPaddingY * 0.28, 10)}px ${Math.max(theme.cardPaddingX * 0.28, 12)}px`,
     border: theme.cardBorder === "none" ? "none" : "1px solid rgba(0,0,0,0.06)",
     boxShadow: theme.cardShadow.includes("none") ? "none" : "0 1px 4px rgba(0,0,0,0.04)",
-    minHeight: 72,
   };
 
   const titleStyle: React.CSSProperties = {
@@ -221,26 +246,30 @@ function ThemePreviewCard({
   };
 
   return (
-    <div onClick={onClick} style={cardStyle} className="group">
-      <div style={innerCardStyle}>
-        <div style={titleStyle}>{previewTitle}</div>
-        <div style={bodyStyle}>{previewBody}</div>
-      </div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-foreground leading-tight">
-            {theme.name}
-          </span>
-          <span className="text-[9px] text-muted-foreground leading-tight">
-            {theme.nameEn}
-          </span>
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex flex-col gap-2.5 text-left outline-none focus-visible:outline-none"
+    >
+      <div style={cardStyle} className="cursor-pointer group-hover:-translate-y-0.5">
+        <div style={innerCardStyle}>
+          <div style={titleStyle}>{previewTitle}</div>
+          <div style={bodyStyle}>{previewBody}</div>
         </div>
         {selected && (
-          <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary shrink-0">
-            <LucideIcons.Check className="h-2.5 w-2.5 text-primary-foreground" />
+          <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-[0_2px_6px_rgba(15,23,42,0.18)]">
+            <LucideIcons.Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />
           </div>
         )}
       </div>
-    </div>
+      <div className="flex items-baseline gap-2 px-0.5">
+        <span className={`text-[12px] font-medium leading-tight ${selected ? "text-foreground" : "text-foreground/85"}`}>
+          {theme.name}
+        </span>
+        <span className="text-[10px] text-muted-foreground/80 leading-tight tracking-wide">
+          {theme.nameEn}
+        </span>
+      </div>
+    </button>
   );
 }

@@ -1,5 +1,6 @@
-import { useBlockNoteEditor, useActiveStyles } from "@blocknote/react";
+import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
 import { useEffect, useRef, useState } from "react";
+import type { BlockNoteEditor } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
 import {
   Tooltip,
@@ -68,9 +69,67 @@ const BG_PREVIEW: Record<string, string> = {
   pink: "#f4dfeb",
 };
 
+const MIXED = "__mixed__";
+
+/**
+ * Walks the current selection and returns the textColor / backgroundColor
+ * marks across it. Returns `MIXED` if the selection spans more than one value.
+ * BlockNote's useActiveStyles() only reads marks at selection.$to, so it
+ * can't detect heterogeneous color selections — we scan the range ourselves.
+ */
+function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
+  return useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const { selection, doc } = editor.prosemirrorState;
+      const textColors = new Set<string>();
+      const bgColors = new Set<string>();
+      const from = selection.from;
+      const to = selection.to;
+
+      if (from === to) {
+        const marks = selection.$to.marks();
+        const tc = marks.find((m: any) => m.type.name === "textColor");
+        const bc = marks.find((m: any) => m.type.name === "backgroundColor");
+        return {
+          textColor: (tc?.attrs.stringValue as string | undefined) ?? "default",
+          backgroundColor:
+            (bc?.attrs.stringValue as string | undefined) ?? "default",
+        };
+      }
+
+      doc.nodesBetween(from, to, (node: any) => {
+        if (!node.isText) return true;
+        const tc = node.marks.find((m: any) => m.type.name === "textColor");
+        const bc = node.marks.find(
+          (m: any) => m.type.name === "backgroundColor",
+        );
+        textColors.add((tc?.attrs.stringValue as string | undefined) ?? "default");
+        bgColors.add((bc?.attrs.stringValue as string | undefined) ?? "default");
+        return false;
+      });
+
+      return {
+        textColor:
+          textColors.size === 0
+            ? "default"
+            : textColors.size === 1
+              ? [...textColors][0]
+              : MIXED,
+        backgroundColor:
+          bgColors.size === 0
+            ? "default"
+            : bgColors.size === 1
+              ? [...bgColors][0]
+              : MIXED,
+      };
+    },
+  });
+}
+
 export function FormattingToolbarColorPicker() {
   const editor = useBlockNoteEditor();
-  const activeStyles = useActiveStyles();
+  const selectionColors = useSelectionColorState(editor);
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [position, setPosition] = useState<PositionState>({
@@ -128,12 +187,31 @@ export function FormattingToolbarColorPicker() {
     }, 180);
   }, [isOpen]);
 
-  const currentTextColor = activeStyles.textColor;
-  const currentBgColor = activeStyles.backgroundColor;
+  const currentTextColor = selectionColors.textColor;
+  const currentBgColor = selectionColors.backgroundColor;
+  const isTextMixed = currentTextColor === MIXED;
+  const isBgMixed = currentBgColor === MIXED;
 
-  const isTextColorActive = currentTextColor && currentTextColor !== "default";
+  const isTextColorActive =
+    !isTextMixed && currentTextColor && currentTextColor !== "default";
   const isBgColorActive =
-    currentBgColor && currentBgColor !== "default";
+    !isBgMixed && currentBgColor && currentBgColor !== "default";
+
+  const previewTextColor = isTextMixed
+    ? undefined
+    : currentTextColor && currentTextColor !== "default"
+      ? COLOR_PREVIEW[currentTextColor]
+      : undefined;
+  const previewBgColor = isBgMixed
+    ? undefined
+    : currentBgColor && currentBgColor !== "default"
+      ? BG_PREVIEW[currentBgColor]
+      : undefined;
+
+  const mixedDotGradient =
+    "conic-gradient(#e03e3e 0deg 90deg, #dfab01 90deg 180deg, #0b6e99 180deg 270deg, #6940a5 270deg 360deg)";
+  const mixedBarGradient =
+    "repeating-linear-gradient(45deg, hsl(var(--foreground) / 0.45) 0 2px, transparent 2px 4px)";
 
   const applyTextColor = (color: string) => {
     if (color === "default") {
@@ -279,14 +357,47 @@ export function FormattingToolbarColorPicker() {
           <button
             type="button"
             ref={buttonRef}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted"
+            aria-pressed={
+              isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
+            }
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted",
+              "aria-pressed:bg-accent aria-pressed:text-foreground"
+            )}
             aria-label="颜色选择"
           >
-            <LucideIcons.Palette className="h-[15px] w-[15px]" />
+            <span className="relative inline-flex h-[18px] w-[14px] items-center justify-center">
+              {isTextMixed ? (
+                <span
+                  className="block h-[12px] w-[12px] rounded-full"
+                  style={{ background: mixedDotGradient }}
+                />
+              ) : (
+                <span
+                  className="font-serif text-[15px] font-semibold leading-none"
+                  style={{ color: previewTextColor }}
+                >
+                  A
+                </span>
+              )}
+              <span
+                className="absolute -bottom-[1px] left-1/2 h-[2.5px] w-3 -translate-x-1/2 rounded-full"
+                style={{
+                  background: isBgMixed
+                    ? mixedBarGradient
+                    : previewBgColor ?? "transparent",
+                  border: isBgColorActive
+                    ? "1px solid hsl(var(--foreground) / 0.08)"
+                    : undefined,
+                }}
+              />
+            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={8}>
-          <div className="text-[12px] font-medium leading-none">颜色</div>
+          <div className="text-[12px] font-medium leading-none">
+            {isTextMixed || isBgMixed ? "颜色（混合）" : "颜色"}
+          </div>
         </TooltipContent>
       </Tooltip>
       <Portal>{panelContent}</Portal>
