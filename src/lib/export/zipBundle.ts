@@ -11,10 +11,10 @@ import { jsonContentToMarkdown } from "./markdown/serialize";
 import { importFromMarkdown } from "./markdown/parse";
 import type { ImportResult } from "./markdown/parse";
 import { saveBlobAndReveal } from "./fileSave";
-import { fs } from "@/lib/utools/fs";
 import {
   isLocalFilePath,
   resolveToAbsolute,
+  readLocalFileAsBase64,
 } from "@/lib/imageStorage/strategies/file-system";
 
 function escapeHtml(value: string): string {
@@ -64,7 +64,9 @@ function parseBase64Image(
 }
 
 function getRelativeAssetPath(filename: string, depth: number): string {
-  const prefix = "../".repeat(depth);
+  // depth 0 = 笔记本根目录，assets 在同级 → ./assets/
+  // depth 1 = 子文件夹内页面 → ../assets/
+  const prefix = depth > 0 ? "../".repeat(depth) : "./";
   return `${prefix}assets/${filename}`;
 }
 
@@ -76,34 +78,34 @@ function guessExtFromPath(filePath: string): string {
 }
 
 /**
- * 读取本地图片为 base64
- * 支持绝对路径和相对路径（相对于 notebookPath）
+ * 将图片路径解析为绝对路径后，通过 Node.js fs 读取为 base64
+ * 优先基于页面文件目录解析（相对路径语义正确），兜底用笔记本根目录
  */
-async function readLocalImageAsBase64(
+function resolveAndReadBase64(
   notebookPath: string | undefined,
   src: string,
-): Promise<string | null> {
-  if (!fs.isAvailable()) return null;
-  const gfs = (window as any).gooseFs;
-  if (!gfs) return null;
-
-  let fullPath: string;
-
+  pageFilePath?: string,
+): string | null {
+  // 绝对路径直接读取
   if (src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src)) {
-    fullPath = src;
-  } else if (notebookPath) {
-    fullPath = resolveToAbsolute(notebookPath, src);
-  } else {
-    return null;
+    return readLocalFileAsBase64(src);
   }
 
-  try {
-    if (!gfs.exists(fullPath)) return null;
-    const data: string | null = gfs.readFile(fullPath, "base64");
-    return data || null;
-  } catch {
-    return null;
+  // 优先相对于页面文件目录解析
+  if (pageFilePath) {
+    const pageDir = pageFilePath.replace(/[\\/][^\\/]+$/, '');
+    const fullPath = resolveToAbsolute(pageDir, src);
+    const result = readLocalFileAsBase64(fullPath);
+    if (result) return result;
   }
+
+  // 兜底：相对于笔记本根目录
+  if (notebookPath) {
+    const fullPath = resolveToAbsolute(notebookPath, src);
+    return readLocalFileAsBase64(fullPath);
+  }
+
+  return null;
 }
 
 async function extractImagesFromContent(
@@ -112,6 +114,7 @@ async function extractImagesFromContent(
   imageMap: Map<string, string>,
   depth: number,
   notebookPath?: string,
+  pageFilePath?: string,
 ) {
   const fallbackBase64 =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2NkYGD4DwABBAEAf6S4JwAAAABJRU5ErkJggg==";
@@ -140,7 +143,7 @@ async function extractImagesFromContent(
           block.props.url = getRelativeAssetPath(imageMap.get(src)!, depth);
           continue;
         }
-        const base64Data = await readLocalImageAsBase64(notebookPath, src);
+        const base64Data = resolveAndReadBase64(notebookPath, src, pageFilePath);
         if (base64Data) {
           const ext = guessExtFromPath(src);
           // 用原始文件名，避免重名加随机后缀
@@ -175,7 +178,7 @@ async function extractImagesFromContent(
     }
 
     if (block.children?.length) {
-      await extractImagesFromContent(block.children, assetsFolder, imageMap, depth, notebookPath);
+      await extractImagesFromContent(block.children, assetsFolder, imageMap, depth, notebookPath, pageFilePath);
     }
   }
 }
@@ -205,10 +208,6 @@ export async function exportNotebooks(
 ) {
   const zip = new JSZip();
   const { format, notebookIds } = options;
-  const assetsFolder = zip.folder("assets");
-  const imageMap = new Map<string, string>();
-
-  if (!assetsFolder) return;
 
   for (const notebookId of notebookIds) {
     const notebook = notebooksMap[notebookId];
@@ -217,6 +216,13 @@ export async function exportNotebooks(
     const notebookFolderName = sanitizeFileName(notebook.name);
     const notebookFolder = zip.folder(notebookFolderName);
     if (!notebookFolder) continue;
+
+    // assets 放在每个笔记本文件夹内部，而非 zip 根目录
+    const assetsFolder = notebookFolder.folder("assets");
+    if (!assetsFolder) continue;
+
+    // 每个笔记本独立的 imageMap，避免跨笔记本冲突
+    const imageMap = new Map<string, string>();
 
     const notebookPages = allPages.filter(
       (p) => p.workspaceId === notebookId && !p.trashedAt,
@@ -241,6 +247,7 @@ export async function exportNotebooks(
         imageMap,
         depth,
         notebookPath,
+        page.localFilePath,
       );
 
       let content = "";
@@ -286,7 +293,7 @@ export async function exportNotebooks(
     );
 
     for (const p of rootPages) {
-      await processPage(p, notebookFolder, 1);
+      await processPage(p, notebookFolder, 0);
     }
   }
 
@@ -339,25 +346,29 @@ export async function importNotebooksFromZip(
   ) => string,
 ) {
   const zip = await JSZip.loadAsync(zipBlob);
-  const assetMap = new Map<string, string>();
 
-  const assetsFolder = zip.folder("assets");
-  if (assetsFolder) {
-    const assetFiles: string[] = [];
-    assetsFolder.forEach((relativePath) => assetFiles.push(relativePath));
-
-    for (const path of assetFiles) {
-      const file = assetsFolder.file(path);
+  // 收集所有 assets：既查根级 assets/（旧格式），也查各笔记本内 xxx/assets/（新格式）
+  const loadAssetsFromFolder = async (folder: JSZip | null): Promise<Map<string, string>> => {
+    const map = new Map<string, string>();
+    if (!folder) return map;
+    const files: string[] = [];
+    folder.forEach((relativePath) => files.push(relativePath));
+    for (const p of files) {
+      const file = folder.file(p);
       if (file) {
         const base64 = await file.async("base64");
-        const ext = path.split(".").pop()?.toLowerCase() || "png";
+        const ext = p.split(".").pop()?.toLowerCase() || "png";
         const mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
-        assetMap.set(path, `data:${mimeType};base64,${base64}`);
+        map.set(p, `data:${mimeType};base64,${base64}`);
       }
     }
-  }
+    return map;
+  };
 
-  const restoreImages = (blocks: any[]) => {
+  // 根级 assets（旧导出格式兼容）
+  const rootAssetMap = await loadAssetsFromFolder(zip.folder("assets"));
+
+  const restoreImages = (blocks: any[], notebookAssetMap: Map<string, string>) => {
     for (const block of blocks) {
       if (!block || typeof block !== "object") continue;
       if (
@@ -367,12 +378,16 @@ export async function importNotebooksFromZip(
         const src = block.props.url as string;
         if (src.includes("assets/")) {
           const filename = src.split("assets/").pop();
-          if (filename && assetMap.has(filename)) {
-            block.props.url = assetMap.get(filename);
+          if (filename) {
+            // 优先从笔记本内 assets 查找，再从根级 assets 查找
+            const dataUrl = notebookAssetMap.get(filename) || rootAssetMap.get(filename);
+            if (dataUrl) {
+              block.props.url = dataUrl;
+            }
           }
         }
       }
-      if (block.children?.length) restoreImages(block.children);
+      if (block.children?.length) restoreImages(block.children, notebookAssetMap);
     }
   };
 
@@ -389,10 +404,17 @@ export async function importNotebooksFromZip(
     const notebookPathPrefix = `${notebookName}/`;
     const pathIdMap = new Map<string, string>();
 
+    // 加载笔记本内的 assets（新格式）
+    const notebookAssetMap = await loadAssetsFromFolder(
+      zip.folder(`${notebookName}/assets`),
+    );
+
     const files: { path: string; depth: number }[] = [];
     zip.forEach((path, entry) => {
       if (!entry.dir && path.startsWith(notebookPathPrefix)) {
         const relativePath = path.slice(notebookPathPrefix.length);
+        // 跳过 assets 目录下的文件（图片，不是页面）
+        if (relativePath.startsWith("assets/")) return;
         files.push({
           path: relativePath,
           depth: relativePath.split("/").length,
@@ -426,7 +448,7 @@ export async function importNotebooksFromZip(
           delete (pageData as any).id;
           delete (pageData as any).workspaceId;
           delete (pageData as any).parentId;
-          if (pageData.content) restoreImages(pageData.content);
+          if (pageData.content) restoreImages(pageData.content, notebookAssetMap);
         } catch (e) {
           console.error("Failed to parse JSON page", e);
         }
@@ -450,7 +472,7 @@ export async function importNotebooksFromZip(
         } else {
           pageData = { content };
         }
-        if (pageData.content) restoreImages(pageData.content);
+        if (pageData.content) restoreImages(pageData.content, notebookAssetMap);
       }
 
       const newId = onCreatePage(pageData, workspaceId, parentId);

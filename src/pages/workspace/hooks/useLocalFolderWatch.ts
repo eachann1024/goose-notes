@@ -88,22 +88,35 @@ export function useLocalFolderWatch({
 
   // Start/stop local folder watcher
   useEffect(() => {
+    const gfs = (window as any).gooseFs as GooseFs | undefined;
     if (
       notebook?.source === "local-folder" &&
       notebook.localPath &&
-      (window as any).gooseFs
+      gfs
     ) {
-      (window as any).gooseFs.watch(
-        notebook.localPath,
-        (_eventType: string, _filename: string) => {
-          // Handled via the goose-note:file-changed event above
-        },
-      );
+      // 先检查目录是否存在，避免 ENOENT
+      const dirExists = gfs.exists(notebook.localPath);
+      if (dirExists) {
+        try {
+          gfs.watch(
+            notebook.localPath,
+            (_eventType: string, _filename: string) => {
+              // Handled via the goose-note:file-changed event above
+            },
+          );
+        } catch {
+          // 目录不存在或无权访问，忽略
+        }
+      }
     }
 
     return () => {
       if (notebook?.localPath && (window as any).gooseFs) {
-        (window as any).gooseFs.unwatch(notebook.localPath);
+        try {
+          ((window as any).gooseFs as GooseFs).unwatch(notebook.localPath!);
+        } catch {
+          // ignore
+        }
       }
     };
   }, [notebook?.id]);

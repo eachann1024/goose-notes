@@ -15,6 +15,66 @@ import { fs } from '@/lib/utools/fs'
 
 const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|svg|bmp|ico|tiff?)$/i
 
+const MIME_MAP: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  bmp: 'image/bmp', ico: 'image/x-icon', tif: 'image/tiff', tiff: 'image/tiff',
+}
+
+function guessMime(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
+  return MIME_MAP[ext] || 'image/png'
+}
+
+/**
+ * 通过 gooseFs.readFileBase64 读取本地二进制文件为 Blob
+ * gooseFs.readFile 只支持 UTF-8 文本，无法读取二进制图片。
+ * preload 新增的 readFileBase64 用 Node fs 读取并返回 base64 字符串。
+ */
+export function readLocalFileAsBlob(fullPath: string): Blob | null {
+  try {
+    const gfs = (window as any).gooseFs
+    if (!gfs) return null
+
+    // 优先用 readFileBase64（二进制安全）
+    if (typeof gfs.readFileBase64 === 'function') {
+      const base64 = gfs.readFileBase64(fullPath) as string | null
+      if (!base64) return null
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      return new Blob([bytes], { type: guessMime(fullPath) })
+    }
+
+    // 兜底：readFile 只能读 UTF-8 文本，仅对 SVG 有效
+    if (!gfs.exists(fullPath)) return null
+    const text = gfs.readFile(fullPath)
+    if (!text) return null
+    if (fullPath.toLowerCase().endsWith('.svg')) {
+      return new Blob([text], { type: 'image/svg+xml' })
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 读取本地文件为 base64 字符串（供导出打包用）
+ */
+export function readLocalFileAsBase64(fullPath: string): string | null {
+  try {
+    const gfs = (window as any).gooseFs
+    if (!gfs) return null
+    if (typeof gfs.readFileBase64 === 'function') {
+      return gfs.readFileBase64(fullPath) as string | null
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /**
  * 判断 ref 是否为本地文件路径（非网络 / 非 data: / 非内部引用）
  */
@@ -102,13 +162,9 @@ export class FileSystemStrategy implements IImageStorageStrategy {
 
   /**
    * 加载本地文件为 Blob
-   * 将相对/绝对路径解析后从文件系统读取
+   * 将相对/绝对路径解析后，通过 Node.js fs 读取二进制内容
    */
   async load(ref: string): Promise<Blob | null> {
-    if (!fs.isAvailable()) return null
-    const gfs = (window as any).gooseFs
-    if (!gfs) return null
-
     const notebookPath = await this.getCurrentNotebookPath()
     let fullPath: string
 
@@ -120,25 +176,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
       return null
     }
 
-    try {
-      if (!gfs.exists(fullPath)) return null
-      const base64Data: string | null = gfs.readFile(fullPath, 'base64')
-      if (!base64Data) return null
-      // 猜 mime
-      const ext = fullPath.split('.').pop()?.toLowerCase() || 'png'
-      const mimeMap: Record<string, string> = {
-        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-        gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
-        bmp: 'image/bmp', ico: 'image/x-icon', tif: 'image/tiff', tiff: 'image/tiff',
-      }
-      const mime = mimeMap[ext] || 'image/png'
-      const binary = atob(base64Data)
-      const bytes = new Uint8Array(binary.length)
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-      return new Blob([bytes], { type: mime })
-    } catch {
-      return null
-    }
+    return readLocalFileAsBlob(fullPath)
   }
 
   /**

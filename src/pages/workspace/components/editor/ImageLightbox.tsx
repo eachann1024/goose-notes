@@ -6,10 +6,12 @@ import { AlignCenter, AlignLeft, AlignRight, Copy, Download, Maximize2, X } from
 import { toast } from "sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { imageStorage } from "@/lib/imageStorage";
+import { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } from "@/lib/imageStorage/strategies/file-system";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { saveBlobAndReveal } from "@/lib/export";
 import { cn } from "@/lib/utils";
 import { shell } from "@/lib/utools/shell";
+import { usePages } from "@/stores/usePages";
 
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;
@@ -37,7 +39,23 @@ async function resolveImageSrc(src: string): Promise<string> {
     return src;
   }
 
-  // att: / uuid: 内部引用或本地文件路径，统一走 imageStorage.load
+  // 本地文件路径：优先相对于页面文件目录解析
+  if (isLocalFilePath(src)) {
+    try {
+      const activePageId = usePages.getState().activePageId;
+      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+      if (activePage?.localFilePath) {
+        const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, '');
+        const fullPath = resolveToAbsolute(pageDir, src);
+        const blob = readLocalFileAsBlob(fullPath);
+        if (blob) return URL.createObjectURL(blob);
+      }
+    } catch {
+      // fallthrough to imageStorage
+    }
+  }
+
+  // att: / uuid: 内部引用或本地文件路径兜底，走 imageStorage.load
   try {
     const blob = await imageStorage.load(src);
     if (blob) {

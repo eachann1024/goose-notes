@@ -75,20 +75,34 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         return URL.createObjectURL(file);
       },
       resolveFileUrl: async (url) => {
-        if (url.startsWith("att:") || url.startsWith("uuid:")) {
-          const { imageStorage } = await import("@/lib/imageStorage");
-          const blob = await imageStorage.load(url);
-          if (blob) return URL.createObjectURL(blob);
+        // 网络 URL / data: / blob: 直接用
+        if (
+          url.startsWith("http://") ||
+          url.startsWith("https://") ||
+          url.startsWith("data:") ||
+          url.startsWith("blob:")
+        ) {
+          return url;
         }
-        // 本地文件路径（相对/绝对）→ 从文件系统读取为 blob URL
-        const { isLocalFilePath } = await import(
-          "@/lib/imageStorage/strategies/file-system"
-        );
+
+        // 本地文件路径：优先相对于页面文件目录解析（./assets/ 等相对路径）
+        const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } = await import("@/lib/imageStorage/strategies/file-system");
         if (isLocalFilePath(url)) {
-          const { imageStorage } = await import("@/lib/imageStorage");
-          const blob = await imageStorage.load(url);
-          if (blob) return URL.createObjectURL(blob);
+          const activePageId = usePages.getState().activePageId;
+          const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+          if (activePage?.localFilePath) {
+            // 取页面文件所在目录
+            const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, '');
+            const fullPath = resolveToAbsolute(pageDir, url);
+            const blob = readLocalFileAsBlob(fullPath);
+            if (blob) return URL.createObjectURL(blob);
+          }
         }
+
+        // att: / uuid: / 兜底 → 走 imageStorage.load()（使用笔记本根目录）
+        const { imageStorage } = await import("@/lib/imageStorage");
+        const blob = await imageStorage.load(url);
+        if (blob) return URL.createObjectURL(blob);
         return url;
       },
       links: {

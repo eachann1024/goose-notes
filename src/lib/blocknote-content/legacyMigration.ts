@@ -26,6 +26,14 @@ function textFromLegacy(
 }
 
 function inlineFromLegacy(node: LegacyPageContent | undefined): any[] | string {
+  if (!node) return "";
+  if (Array.isArray(node.content) && node.content.length > 0) {
+    const hasRichInline = node.content.some(
+      (child: any) =>
+        (typeof child === "object" && child !== null && (child.styles || child.type === "link")),
+    );
+    if (hasRichInline) return node.content;
+  }
   const text = textFromLegacy(node);
   return text || "";
 }
