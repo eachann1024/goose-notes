@@ -11,6 +11,11 @@ import { jsonContentToMarkdown } from "./markdown/serialize";
 import { importFromMarkdown } from "./markdown/parse";
 import type { ImportResult } from "./markdown/parse";
 import { saveBlobAndReveal } from "./fileSave";
+import { fs } from "@/lib/utools/fs";
+import {
+  isLocalFilePath,
+  resolveToAbsolute,
+} from "@/lib/imageStorage/strategies/file-system";
 
 function escapeHtml(value: string): string {
   return value
@@ -63,11 +68,50 @@ function getRelativeAssetPath(filename: string, depth: number): string {
   return `${prefix}assets/${filename}`;
 }
 
+function guessExtFromPath(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  if (ext && ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext))
+    return ext === "jpeg" ? "jpg" : ext;
+  return "png";
+}
+
+/**
+ * 读取本地图片为 base64
+ * 支持绝对路径和相对路径（相对于 notebookPath）
+ */
+async function readLocalImageAsBase64(
+  notebookPath: string | undefined,
+  src: string,
+): Promise<string | null> {
+  if (!fs.isAvailable()) return null;
+  const gfs = (window as any).gooseFs;
+  if (!gfs) return null;
+
+  let fullPath: string;
+
+  if (src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src)) {
+    fullPath = src;
+  } else if (notebookPath) {
+    fullPath = resolveToAbsolute(notebookPath, src);
+  } else {
+    return null;
+  }
+
+  try {
+    if (!gfs.exists(fullPath)) return null;
+    const data: string | null = gfs.readFile(fullPath, "base64");
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
 async function extractImagesFromContent(
   content: any[],
   assetsFolder: JSZip,
   imageMap: Map<string, string>,
   depth: number,
+  notebookPath?: string,
 ) {
   const fallbackBase64 =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2NkYGD4DwABBAEAf6S4JwAAAABJRU5ErkJggg==";
@@ -79,6 +123,7 @@ async function extractImagesFromContent(
       const src = block.props.url;
       let finalSrc = src;
 
+      // 1) 内部存储引用（uuid: / att:）→ 加载为 blob → base64
       if (src.startsWith("uuid:") || src.startsWith("att:")) {
         const { imageStorage } = await getImageStorage();
         const blob = await imageStorage.load(src);
@@ -89,11 +134,34 @@ async function extractImagesFromContent(
         }
       }
 
+      // 2) 本地文件路径（相对/绝对）→ 从文件系统读取
+      if (isLocalFilePath(src)) {
+        if (imageMap.has(src)) {
+          block.props.url = getRelativeAssetPath(imageMap.get(src)!, depth);
+          continue;
+        }
+        const base64Data = await readLocalImageAsBase64(notebookPath, src);
+        if (base64Data) {
+          const ext = guessExtFromPath(src);
+          // 用原始文件名，避免重名加随机后缀
+          const rawName = src.split(/[\\/]/).pop() || `img_${Date.now()}.${ext}`;
+          const uniqueName = imageMap.has(rawName)
+            ? `${rawName.replace(/\.([^.]+)$/, "")}_${Math.random().toString(36).slice(2, 6)}.${ext}`
+            : rawName;
+          assetsFolder.file(uniqueName, base64Data, { base64: true });
+          imageMap.set(src, uniqueName);
+          block.props.url = getRelativeAssetPath(uniqueName, depth);
+        }
+        continue;
+      }
+
+      // 3) 去重：同一个 base64 源只存一次
       if (imageMap.has(finalSrc)) {
         block.props.url = getRelativeAssetPath(imageMap.get(finalSrc)!, depth);
         continue;
       }
 
+      // 4) base64 内联图 → 解析并存入 assets
       if (finalSrc.startsWith("data:image")) {
         const parsed = parseBase64Image(finalSrc);
         if (parsed) {
@@ -107,7 +175,7 @@ async function extractImagesFromContent(
     }
 
     if (block.children?.length) {
-      await extractImagesFromContent(block.children, assetsFolder, imageMap, depth);
+      await extractImagesFromContent(block.children, assetsFolder, imageMap, depth, notebookPath);
     }
   }
 }
@@ -132,7 +200,7 @@ export interface ExportOptions {
 
 export async function exportNotebooks(
   options: ExportOptions,
-  notebooksMap: Record<string, { name: string }>,
+  notebooksMap: Record<string, { name: string; localPath?: string }>,
   allPages: Page[],
 ) {
   const zip = new JSZip();
@@ -157,6 +225,8 @@ export async function exportNotebooks(
     const pageMap = new Map<string, Page>();
     notebookPages.forEach((p) => pageMap.set(p.id, p));
 
+    const notebookPath = notebook.localPath;
+
     const processPage = async (
       page: Page,
       parentFolder: JSZip,
@@ -170,6 +240,7 @@ export async function exportNotebooks(
         assetsFolder,
         imageMap,
         depth,
+        notebookPath,
       );
 
       let content = "";

@@ -3,6 +3,7 @@ import {
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
 } from "@/lib/markdown-raw-guard";
+import { ensureFilenameAsTitle } from "@/lib/local-title-binding";
 import type { JSONContent, Page } from "@/types";
 
 const IGNORED_FOLDERS = new Set([
@@ -182,11 +183,14 @@ function buildMarkdownPage(
 
   // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
   // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
-  // 3) 不再用 ensureLocalFileTitle 强塞文件名作为 H1：文件名走 tab/侧栏，文档内容保持原貌
+  // 3) Notion 风格的「文件名 ↔ H1 绑定」：scanner 把首块 H1 文字覆盖为文件名
+  //    （没有 H1 就前置一个）。保存时若用户改了 H1 文字会触发本地文件 rename。
   const { frontmatter, body } = extractFrontmatter(markdownContent);
   const encodedBody = encodeUnsupportedMarkdownForEditor(body);
   const imported = importFromMarkdown(encodedBody, fallbackTitle);
-  const jsonContent = imported.content || { type: "doc", content: [] };
+  const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
+  const boundBlocks = ensureFilenameAsTitle(importedBlocks, fallbackTitle);
+  const jsonContent: JSONContent = boundBlocks as unknown as JSONContent;
 
   return {
     id: fileId,

@@ -13,8 +13,13 @@ export interface LegacyPageContent {
 
 export type PageContent = BlockNoteContent | LegacyPageContent;
 
-function textFromLegacy(node: LegacyPageContent | undefined): string {
-  if (!node) return "";
+function textFromLegacy(
+  node: LegacyPageContent | string | undefined,
+): string {
+  if (node == null) return "";
+  // parseInlineMarkdown 对未匹配 mark 的纯文本直接 push 字符串，所以 content
+  // 数组里可能混入裸字符串。如果不在这里处理，纯文本标题（# 中文）会被当成空内容。
+  if (typeof node === "string") return node;
   if (typeof node.text === "string") return node.text;
   if (!Array.isArray(node.content)) return "";
   return node.content.map(textFromLegacy).join("");
@@ -119,16 +124,47 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
   }
 }
 
+function inlineTextLength(value: unknown): number {
+  if (typeof value === "string") return value.trim().length;
+  if (!Array.isArray(value)) return 0;
+  return value.reduce<number>((sum, item) => {
+    if (typeof item === "string") return sum + item.trim().length;
+    if (!item || typeof item !== "object") return sum;
+    const node = item as { text?: unknown; content?: unknown };
+    if (typeof node.text === "string") return sum + node.text.trim().length;
+    if (Array.isArray(node.content)) return sum + inlineTextLength(node.content);
+    return sum;
+  }, 0);
+}
+
+/**
+ * BlockNote 的 zh locale 把空 heading 块渲染为 「标题」 灰字占位。首块作为页面
+ * 标题槽必须保留（用户可以在这里点击输入标题），但**后续**的空 heading
+ * 没有任何意义，只会让编辑器看起来像有一个个空标题，所以这里统一剥掉。
+ *
+ * 只在顶层应用——避免误伤 quote / details 等嵌套内容中的子 heading。
+ */
+function stripRedundantEmptyHeadings(blocks: BlockNoteContent): BlockNoteContent {
+  return blocks.filter((block, index) => {
+    if (index === 0) return true;
+    if (!block || block.type !== "heading") return true;
+    if (inlineTextLength(block.content) > 0) return true;
+    if (Array.isArray((block as { children?: unknown[] }).children) &&
+        ((block as { children: unknown[] }).children.length > 0)) {
+      return true;
+    }
+    return false;
+  });
+}
+
 export function normalizePageContent(content: PageContent | null | undefined): BlockNoteContent {
   if (!content) return createEmptyBlockNoteContent();
   if (isBlockNoteContent(content)) {
     const sanitized = normalizeBlockContent(content);
-    return sanitized.length
-      ? ensureFirstTitleHeading(sanitized)
-      : createEmptyBlockNoteContent();
+    if (!sanitized.length) return createEmptyBlockNoteContent();
+    return stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized));
   }
   const blocks = normalizeBlockContent(childrenFromLegacy(content.content));
-  return blocks.length
-    ? ensureFirstTitleHeading(blocks)
-    : createEmptyBlockNoteContent();
+  if (!blocks.length) return createEmptyBlockNoteContent();
+  return stripRedundantEmptyHeadings(ensureFirstTitleHeading(blocks));
 }

@@ -42,6 +42,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { WelcomeShortcutsCard } from "./WelcomeShortcutsCard";
+import * as Copy from "./welcomeCopy";
 
 export function WelcomePage() {
   const navigate = useNavigate();
@@ -56,8 +58,8 @@ export function WelcomePage() {
   const [selectedTab, setSelectedTab] = useState("account");
 
   const handleButtonClick = () => {
-    toast.success("按钮点击成功！", {
-      description: "这是一个成功提示消息",
+    toast.success(Copy.TOAST_BUTTON_SUCCESS, {
+      description: Copy.TOAST_BUTTON_SUCCESS_DESC,
     });
   };
 
@@ -71,7 +73,7 @@ export function WelcomePage() {
 
   const handleSwitchChange = (key: string, checked: boolean) => {
     setSwitchStates((prev) => ({ ...prev, [key]: checked }));
-    toast.info(`${key} 已${checked ? "开启" : "关闭"}`);
+    toast.info(Copy.TOAST_SWITCH_TOGGLED(key, checked));
   };
 
   const navigateToSubPage = () => {
@@ -88,19 +90,19 @@ export function WelcomePage() {
               <LucideIcons.Sparkles className="h-16 w-16 text-white" />
             </div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              欢迎使用 Goose Note
+              {Copy.APP_TITLE}
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              这是一个功能强大的笔记应用，让我们通过以下控件展示来了解它的功能
+              {Copy.APP_DESCRIPTION}
             </p>
             <div className="flex gap-4 justify-center pt-4">
               <Button size="lg" onClick={navigateToSubPage} className="shadow-lg">
                 <LucideIcons.ArrowRight className="mr-2 h-5 w-5" />
-                前往子页面
+                {Copy.BTN_GO_SUBPAGE}
               </Button>
               <Button size="lg" variant="outline" onClick={handleButtonClick}>
                 <LucideIcons.Heart className="mr-2 h-5 w-5" />
-                点个赞
+                {Copy.BTN_LIKE}
               </Button>
             </div>
           </div>
@@ -112,9 +114,9 @@ export function WelcomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LucideIcons.MousePointer2 className="h-5 w-5 text-blue-500" />
-                按钮组件
+                {Copy.BUTTON_CARD_TITLE}
               </CardTitle>
-              <CardDescription>各种样式的按钮展示</CardDescription>
+              <CardDescription>{Copy.BUTTON_CARD_DESC}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-3">
@@ -149,57 +151,21 @@ export function WelcomePage() {
 
           {/* 输入组件展示 */}
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="shadow-lg border-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LucideIcons.Keyboard className="h-5 w-5 text-green-500" />
-                  输入控件
-                </CardTitle>
-                <CardDescription>文本输入和文本域</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">用户名</Label>
-                  <Input
-                    id="username"
-                    placeholder="请输入用户名"
-                    value={inputValue}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">邮箱</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="example@email.com"
-                    disabled
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="message">留言</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="请输入您的留言..."
-                    value={textareaValue}
-                    onChange={handleTextareaChange}
-                    rows={4}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  输入长度: {inputValue.length} | 留言长度: {textareaValue.length}
-                </div>
-              </CardContent>
-            </Card>
+            <WelcomeShortcutsCard
+              inputValue={inputValue}
+              textareaValue={textareaValue}
+              onInputChange={handleInputChange}
+              onTextareaChange={handleTextareaChange}
+            />
 
             {/* 开关和切换组件展示 */}
             <Card className="shadow-lg border-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <LucideIcons.ToggleLeft className="h-5 w-5 text-purple-500" />
-                  开关和切换
+                  {Copy.TOGGLE_CARD_TITLE}
                 </CardTitle>
-                <CardDescription>各种状态切换控件</CardDescription>
+                <CardDescription>{Copy.TOGGLE_CARD_DESC}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -260,9 +226,9 @@ export function WelcomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LucideIcons.LayoutGrid className="h-5 w-5 text-orange-500" />
-                选项卡组件
+                {Copy.TABS_CARD_TITLE}
               </CardTitle>
-              <CardDescription>选项卡切换示例</CardDescription>
+              <CardDescription>{Copy.TABS_CARD_DESC}</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
@@ -296,11 +262,11 @@ export function WelcomePage() {
                 </TabsContent>
                 <TabsContent value="about" className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Goose Note 是一个现代化的笔记应用，提供强大的编辑和协作功能。
+                    {Copy.TAB_ABOUT_DESC}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
                     <LucideIcons.Info className="h-4 w-4" />
-                    <span>版本: 1.0.0</span>
+                    <span>版本: {Copy.VERSION}</span>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -313,9 +279,9 @@ export function WelcomePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <LucideIcons.MessageSquare className="h-5 w-5 text-red-500" />
-                  对话框组件
+                  {Copy.DIALOG_CARD_TITLE}
                 </CardTitle>
-                <CardDescription>模态对话框和侧边栏</CardDescription>
+                <CardDescription>{Copy.DIALOG_CARD_DESC}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Dialog>
@@ -327,14 +293,14 @@ export function WelcomePage() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>确认操作</DialogTitle>
+                      <DialogTitle>{Copy.DIALOG_CONFIRM_TITLE}</DialogTitle>
                       <DialogDescription>
-                        这是一个对话框示例。您可以在这里放置重要的表单或信息。
+                        {Copy.DIALOG_CONFIRM_DESC}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                       <p className="text-sm text-muted-foreground">
-                        对话框内容区域，可以包含表单、文本或其他组件。
+                        {Copy.DIALOG_CONFIRM_BODY}
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -353,14 +319,14 @@ export function WelcomePage() {
                   </SheetTrigger>
                   <SheetContent>
                     <SheetHeader>
-                      <SheetTitle>侧边栏</SheetTitle>
+                      <SheetTitle>{Copy.SHEET_TITLE}</SheetTitle>
                       <SheetDescription>
-                        这是一个从右侧滑出的面板
+                        {Copy.SHEET_DESC}
                       </SheetDescription>
                     </SheetHeader>
                     <div className="py-4 space-y-4">
                       <p className="text-sm text-muted-foreground">
-                        侧边栏常用于显示设置、表单或详细信息。
+                        {Copy.SHEET_BODY}
                       </p>
                       <Separator />
                       <div className="space-y-2">
@@ -381,9 +347,9 @@ export function WelcomePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <LucideIcons.Layers className="h-5 w-5 text-cyan-500" />
-                  弹出和下拉菜单
+                  {Copy.POPOVER_CARD_TITLE}
                 </CardTitle>
-                <CardDescription>弹出框和下拉菜单组件</CardDescription>
+                <CardDescription>{Copy.POPOVER_CARD_DESC}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Popover>
@@ -397,7 +363,7 @@ export function WelcomePage() {
                     <div className="grid gap-4">
                       <h4 className="font-medium">弹出框内容</h4>
                       <p className="text-sm text-muted-foreground">
-                        这是一个弹出框，可以显示丰富的内容和交互元素。
+                        {Copy.POPOVER_BODY}
                       </p>
                       <div className="space-y-2">
                         <Label>快速输入</Label>
@@ -449,7 +415,7 @@ export function WelcomePage() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>这是一个工具提示，悬停查看详情</p>
+                      <p>{Copy.TOOLTIP_TEXT}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -462,9 +428,9 @@ export function WelcomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LucideIcons.LayoutGrid className="h-5 w-5 text-pink-500" />
-                功能展示
+                {Copy.FEATURE_CARD_TITLE}
               </CardTitle>
-              <CardDescription>应用的主要功能概览</CardDescription>
+              <CardDescription>{Copy.FEATURE_CARD_DESC}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4">
@@ -473,11 +439,11 @@ export function WelcomePage() {
                     <div className="h-12 w-12 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-2">
                       <LucideIcons.FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <CardTitle className="text-lg">富文本编辑</CardTitle>
+                    <CardTitle className="text-lg">{Copy.FEATURE_EDIT_TITLE}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      支持Markdown、代码块、图片等多种格式的强大编辑器
+                      {Copy.FEATURE_EDIT_DESC}
                     </p>
                   </CardContent>
                 </Card>
@@ -487,11 +453,11 @@ export function WelcomePage() {
                     <div className="h-12 w-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center mb-2">
                       <LucideIcons.FolderOpen className="h-6 w-6 text-green-600 dark:text-green-400" />
                     </div>
-                    <CardTitle className="text-lg">文件夹管理</CardTitle>
+                    <CardTitle className="text-lg">{Copy.FEATURE_FOLDER_TITLE}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      支持本地文件夹同步，方便管理和组织您的笔记
+                      {Copy.FEATURE_FOLDER_DESC}
                     </p>
                   </CardContent>
                 </Card>
@@ -501,11 +467,11 @@ export function WelcomePage() {
                     <div className="h-12 w-12 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center mb-2">
                       <LucideIcons.Palette className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                     </div>
-                    <CardTitle className="text-lg">主题定制</CardTitle>
+                    <CardTitle className="text-lg">{Copy.FEATURE_THEME_TITLE}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      支持深色模式、自定义字体大小等多种个性化设置
+                      {Copy.FEATURE_THEME_DESC}
                     </p>
                   </CardContent>
                 </Card>
@@ -516,7 +482,7 @@ export function WelcomePage() {
           {/* 底部提示 */}
           <div className="text-center py-8 text-muted-foreground">
             <p className="text-sm">
-              🎉 您已经了解了所有主要控件！点击上方按钮前往子页面继续探索
+              {Copy.FOOTER_TEXT}
             </p>
           </div>
         </div>
