@@ -10,6 +10,7 @@ import {
   type AiResolvedTarget,
   type AiTargetSelection,
 } from "@/lib/ai-write";
+import { resolveBlockScope } from "@/lib/ai-block-scope";
 import { getJsonRenderPromptFragment } from "@/agent/renderers/json-render-catalog";
 import {
   buildIntentRouterContext,
@@ -128,10 +129,10 @@ const NOTE_SEARCH_TOOLS_PROMPT = [
 ].join("\n");
 
 const WORKSPACE_NOTE_SYSTEM_PROMPT =
-  `你是 Goose Note 内置 AI 助手。结合用户 @ 引用的内容工作。若当前任务确定需要写入页面，输出可落文的最终 Markdown，不要解释，不要自我介绍；否则直接回答用户问题。\n\n${NOTE_SEARCH_TOOLS_PROMPT}\n\n${DATAVIZ_SYSTEM_PROMPT}\n\n${JSON_RENDER_PROMPT_FRAGMENT}`;
+  `你是鹅的书签内置助手，帮用户处理 @ 引用的内容。需要写入页面时输出可落文的 Markdown，不要解释；否则直接回答。\n\n${NOTE_SEARCH_TOOLS_PROMPT}\n\n${DATAVIZ_SYSTEM_PROMPT}\n\n${JSON_RENDER_PROMPT_FRAGMENT}`;
 
 const INLINE_NOTE_SYSTEM_PROMPT =
-  "你是 Goose Note 内置写作助手。输出必须直接可落文，不要解释，不要加前后缀，不要使用 Markdown 代码围栏。只输出最终文本。";
+  "你是鹅的书签内置写作助手。只输出最终文本，不要解释、不要前后缀、不要 Markdown 代码围栏。";
 
 function buildInlinePrompt(params: {
   context: AgentInputContext;
@@ -229,7 +230,11 @@ function validateWorkspaceWriteTarget(parsed: AgentParsedInput) {
     }
   }
 
-  if (resolvedTarget.action === "replace_page" || resolvedTarget.action === "append_page") {
+  if (
+    resolvedTarget.action === "replace_page" ||
+    resolvedTarget.action === "append_page" ||
+    resolvedTarget.action === "replace_block_range"
+  ) {
     const page = getTargetPage(resolvedTarget);
     if (!page) {
       return createTargetErrorArtifact("目标页不存在或尚未加载，暂时没法写入。");
@@ -239,6 +244,23 @@ function validateWorkspaceWriteTarget(parsed: AgentParsedInput) {
     }
     if (page.isLocked) {
       return createTargetErrorArtifact("目标页已锁定，暂时不能改写。");
+    }
+
+    if (resolvedTarget.action === "replace_block_range" && resolvedTarget.range) {
+      const blocks = Array.isArray(page.content)
+        ? (page.content as any[])
+        : Array.isArray((page.content as any)?.content)
+          ? ((page.content as any).content as any[])
+          : [];
+      const startOk = blocks.some(
+        (b: any) => b?.id === resolvedTarget.range?.startBlockId,
+      );
+      const endOk = blocks.some(
+        (b: any) => b?.id === resolvedTarget.range?.endBlockId,
+      );
+      if (!startOk || !endOk) {
+        return createTargetErrorArtifact("目标范围已变化，无法定位旧的块，请重新生成。");
+      }
     }
   }
 
@@ -315,7 +337,7 @@ export async function parseNoteAgentInput(
     }
   }
 
-  const resolvedTarget =
+  let resolvedTarget =
     context.surface === "workspace" && selection
       ? resolveAiTargetIntent({
           payload: context.payload,
@@ -324,6 +346,34 @@ export async function parseNoteAgentInput(
           originNotebookId: context.originNotebookId,
         })
       : createAiChatOnlyTarget();
+
+  // 当 action 为 replace_page 且目标就是当前页时，尝试将范围收窄到选区/章节/前后 N 块。
+  if (
+    context.surface === "workspace" &&
+    resolvedTarget.action === "replace_page" &&
+    resolvedTarget.pageId &&
+    resolvedTarget.pageId === context.originPageId
+  ) {
+    const page = usePages.getState().pages[resolvedTarget.pageId];
+    const scope = await resolveBlockScope({
+      prompt: context.payload.freeformText || context.payload.promptText,
+      page,
+      settings: routerDeps?.settings ?? null,
+    });
+    if (scope?.kind === "range") {
+      resolvedTarget = {
+        ...resolvedTarget,
+        action: "replace_block_range",
+        range: {
+          startBlockId: scope.startBlockId,
+          endBlockId: scope.endBlockId,
+          rangeLabel: scope.rangeLabel,
+          blockCount: scope.blockCount,
+        },
+        targetLabel: `重写「${scope.rangeLabel}」`,
+      };
+    }
+  }
 
   const tokens = context.payload.tokens.map((token, index) => {
     if (token.type !== "reference") {
@@ -518,12 +568,16 @@ export const noteReplaceCapability: AgentCapabilityManifest = {
   surfaces: ["workspace"],
   outputArtifactTypes: ["markdown_note"],
   match: (_context, parsed) =>
-    parsed.resolvedTarget.action === "replace_page"
+    parsed.resolvedTarget.action === "replace_page" ||
+    parsed.resolvedTarget.action === "replace_block_range"
       ? {
           capabilityId: "note.replace",
           artifactType: "markdown_note",
           targetType: parsed.resolvedTarget.mode,
-          reason: "workspace_replace",
+          reason:
+            parsed.resolvedTarget.action === "replace_block_range"
+              ? "workspace_replace_range"
+              : "workspace_replace",
         }
       : null,
   buildPlan: buildWorkspacePlan,

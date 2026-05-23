@@ -30,6 +30,7 @@ import {
   useSettings,
 } from "@/stores/useSettings";
 import { useAiSessions, type AiSession, type AiSessionMessage } from "@/stores/useAiSessions";
+import { useAiStatus } from "@/stores/useAiStatus";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
@@ -124,7 +125,8 @@ function legacyWritePlanToAgentPlan(writePlan: AiWritePlan | null | undefined): 
   const capabilityId =
     writePlan.action === "append_page"
       ? "note.append"
-      : writePlan.action === "replace_page"
+      : writePlan.action === "replace_page" ||
+          writePlan.action === "replace_block_range"
         ? "note.replace"
         : "note.create";
   return {
@@ -525,6 +527,7 @@ export function AiWorkspacePage() {
     streamAbortRef.current = null;
     setIsStreaming(false);
     setStreamPhase("connecting");
+    useAiStatus.getState().finishStreaming({ celebrate: false });
   }, []);
 
   // ── 加载历史会话
@@ -629,6 +632,8 @@ export function AiWorkspacePage() {
 
     setIsStreaming(true);
     setStreamPhase("connecting");
+    useAiStatus.getState().beginStreaming();
+    let streamSucceeded = false;
     // 新消息发出时重置上滚标记，强制滚到底部
     userScrolledUpRef.current = false;
 
@@ -749,6 +754,7 @@ export function AiWorkspacePage() {
         setIsStreaming(false);
         setStreamPhase("connecting");
         streamAbortRef.current = null;
+        streamSucceeded = true;
         return;
       }
 
@@ -825,6 +831,7 @@ export function AiWorkspacePage() {
       if (result.artifact.type === "markdown_note") {
         setActiveLastWritePlan(result.artifact.plan);
       }
+      streamSucceeded = true;
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
@@ -862,6 +869,7 @@ export function AiWorkspacePage() {
         setIsStreaming(false);
         setStreamPhase("connecting");
         streamAbortRef.current = null;
+        useAiStatus.getState().finishStreaming({ celebrate: streamSucceeded });
       }
     }
   };

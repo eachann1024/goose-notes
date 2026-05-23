@@ -28,16 +28,21 @@ function getBlockLevel(block: any): number | undefined {
  * - 段落标题列表（h2/h3）
  * - 前几段的开头摘要（各截取 summaryMaxChars 字）
  * - 总字数
+ *
+ * 当 includeBlockIds 为 true 时，每一行前会带上块 id 前缀，例如
+ * `[blk_xxx] ## 二级标题`，供 AI 在结构化定位时引用。
  */
 export function extractStructureSummary(
   content: JSONContent,
   options?: {
     summaryMaxChars?: number;
     maxSummaryParagraphs?: number;
+    includeBlockIds?: boolean;
   },
 ): string {
   const summaryMaxChars = options?.summaryMaxChars ?? 120;
   const maxSummaryParagraphs = options?.maxSummaryParagraphs ?? 3;
+  const includeBlockIds = options?.includeBlockIds ?? false;
 
   const blocks = getTopLevelBlocks(content);
   if (!blocks.length) return "（空白页面）";
@@ -47,13 +52,19 @@ export function extractStructureSummary(
   let summaryCount = 0;
   let wordCount = 0;
 
+  const formatLine = (block: any, body: string) => {
+    if (!includeBlockIds) return body;
+    const id = typeof block?.id === "string" ? block.id : "";
+    return id ? `[${id}] ${body}` : body;
+  };
+
   for (const block of blocks) {
     const level = getBlockLevel(block);
 
     if (block.type === "heading" && level) {
       const headingText = extractTextFromContent(block).trim();
       if (headingText) {
-        headings.push(`${"#".repeat(level)} ${headingText}`);
+        headings.push(formatLine(block, `${"#".repeat(level)} ${headingText}`));
       }
       continue;
     }
@@ -70,7 +81,7 @@ export function extractStructureSummary(
           text.length > summaryMaxChars
             ? `${text.slice(0, summaryMaxChars)}...`
             : text;
-        summaries.push(snippet);
+        summaries.push(formatLine(block, snippet));
         summaryCount += 1;
         continue;
       }

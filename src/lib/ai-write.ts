@@ -1,6 +1,7 @@
 import type { JSONContent, Page } from "@/types";
+import { extractBlocksInRange } from "@/lib/ai-block-scope";
 import { extractStructureSummary, extractTextFromContent, extractTitleFromContent } from "@/lib/content-text-extractor";
-import { importFromMarkdown } from "@/lib/export";
+import { importFromMarkdown, importMarkdownFragment, jsonContentToMarkdown } from "@/lib/export";
 import { getPageTitle } from "@/lib/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -17,8 +18,16 @@ export type AiWriteAction =
   | "chat_only"
   | "replace_page"
   | "append_page"
+  | "replace_block_range"
   | "create_root_page"
   | "create_child_page";
+
+export interface AiBlockRange {
+  startBlockId: string;
+  endBlockId: string;
+  rangeLabel: string;
+  blockCount: number;
+}
 
 export type AiTargetMode =
   | "chat_only"
@@ -66,6 +75,7 @@ export interface AiResolvedTarget {
   notebookName?: string;
   isLocalFolder?: boolean;
   isFolder?: boolean;
+  range?: AiBlockRange;
 }
 
 export interface AiWritePlan {
@@ -583,6 +593,8 @@ function getWriteInstruction(resolvedTarget: AiResolvedTarget) {
       return `写入目标：替换页面「${resolvedTarget.pageTitle || "当前页面"}」的全部内容。请输出完整 Markdown 页面内容，第一行必须是一级标题。不要解释，不要使用代码围栏。`;
     case "append_page":
       return `写入目标：把内容追加到页面「${resolvedTarget.pageTitle || "当前页面"}」末尾。请输出用于追加的 Markdown 片段，不要以一级标题开头。不要解释，不要使用代码围栏。`;
+    case "replace_block_range":
+      return `写入目标：仅替换页面「${resolvedTarget.pageTitle || "当前页面"}」中「${resolvedTarget.range?.rangeLabel ?? "指定范围"}」对应的 ${resolvedTarget.range?.blockCount ?? "若干"} 个块。只输出替换后的 Markdown 片段，不要包含一级标题，不要解释，不要使用代码围栏。可以根据需要把内容调整为段落、有序/无序列表、二级及以下标题等结构。`;
     case "create_root_page":
       return `写入目标：在笔记本「${resolvedTarget.notebookName || "当前笔记本"}」根目录创建新页面。请输出完整 Markdown 页面，第一行必须是一级标题作为页面标题。不要解释，不要使用代码围栏。`;
     case "create_child_page":
@@ -590,6 +602,27 @@ function getWriteInstruction(resolvedTarget: AiResolvedTarget) {
     default:
       return "";
   }
+}
+
+function getRangeContextBlock(resolvedTarget: AiResolvedTarget): string {
+  if (resolvedTarget.action !== "replace_block_range") return "";
+  if (!resolvedTarget.pageId || !resolvedTarget.range) return "";
+  const page = usePages.getState().pages[resolvedTarget.pageId];
+  if (!page) return "";
+  const blocks = Array.isArray(page.content)
+    ? (page.content as any[])
+    : Array.isArray((page.content as any)?.content)
+      ? ((page.content as any).content as any[])
+      : [];
+  const slice = extractBlocksInRange(
+    blocks,
+    resolvedTarget.range.startBlockId,
+    resolvedTarget.range.endBlockId,
+  );
+  if (!slice?.length) return "";
+  const markdown = jsonContentToMarkdown(slice as any).trim();
+  if (!markdown) return "";
+  return `以下是要重写的区段（${resolvedTarget.range.rangeLabel} · 共 ${resolvedTarget.range.blockCount} 块）：\n${markdown}`;
 }
 
 export function buildAiWorkspaceUserPrompt(params: {
@@ -614,6 +647,7 @@ export function buildAiWorkspaceUserPrompt(params: {
     "用户需求：",
     params.promptText,
     getWriteInstruction(params.resolvedTarget),
+    getRangeContextBlock(params.resolvedTarget),
     params.contextBundle.originContextBlock,
     params.contextBundle.targetContextBlock,
     params.contextBundle.referenceContextBlock
@@ -630,6 +664,28 @@ export function buildAiWritePlan(params: {
   resolvedTarget: AiResolvedTarget;
 }) {
   if (params.resolvedTarget.action === "chat_only") return null;
+
+  if (params.resolvedTarget.action === "replace_block_range") {
+    const fragment = importMarkdownFragment(params.markdown);
+    const fragmentContent: JSONContent | null =
+      fragment && fragment.length ? (cloneContent(fragment) as JSONContent) : null;
+    const fallbackContent =
+      fragmentContent ?? createPlainTextDoc(params.markdown);
+    const previewTitle =
+      params.resolvedTarget.range?.rangeLabel
+        ? `重写：${params.resolvedTarget.range.rangeLabel}`
+        : "重写选中范围";
+
+    return {
+      action: params.resolvedTarget.action,
+      target: params.resolvedTarget,
+      promptText: params.promptText,
+      outputMarkdown: params.markdown.trim(),
+      previewTitle,
+      content: fallbackContent,
+      status: "pending",
+    } satisfies AiWritePlan;
+  }
 
   const imported = importFromMarkdown(params.markdown);
   let content =
@@ -677,6 +733,27 @@ export async function commitAiWritePlan(plan: AiWritePlan) {
   if (plan.action === "append_page") {
     if (!plan.target.pageId) return null;
     const ok = await pagesStore.appendPageContent(plan.target.pageId, plan.content);
+    if (!ok) return null;
+    return {
+      pageId: plan.target.pageId,
+      workspaceId: plan.target.workspaceId,
+    };
+  }
+
+  if (plan.action === "replace_block_range") {
+    if (!plan.target.pageId || !plan.target.range) return null;
+    const fragment = Array.isArray(plan.content)
+      ? (plan.content as any[])
+      : Array.isArray((plan.content as any)?.content)
+        ? ((plan.content as any).content as any[])
+        : [];
+    if (!fragment.length) return null;
+    const ok = await pagesStore.replaceBlockRange(
+      plan.target.pageId,
+      plan.target.range.startBlockId,
+      plan.target.range.endBlockId,
+      fragment as any,
+    );
     if (!ok) return null;
     return {
       pageId: plan.target.pageId,

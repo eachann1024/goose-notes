@@ -71,7 +71,24 @@ export function AiWritePreviewCard({
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-[12px] text-muted-foreground">
         <span>{plan.target.targetLabel}</span>
         <span className="text-border">·</span>
-        <span>{plan.action === "append_page" ? "追加内容" : plan.action === "replace_page" ? "覆盖页面" : "新建页面"}</span>
+        <span>
+          {plan.action === "append_page"
+            ? "追加内容"
+            : plan.action === "replace_page"
+              ? "覆盖页面"
+              : plan.action === "replace_block_range"
+                ? "替换选段"
+                : "新建页面"}
+        </span>
+        {plan.action === "replace_block_range" && plan.target.range ? (
+          <>
+            <span className="text-border">·</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/8 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+              <LucideIcons.Scissors className="h-3 w-3" />
+              {plan.target.range.rangeLabel} · {plan.target.range.blockCount} 块
+            </span>
+          </>
+        ) : null}
       </div>
 
       <div className="max-h-[320px] overflow-y-auto border-y border-border/60 px-4 py-4">
