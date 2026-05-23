@@ -33,19 +33,18 @@ interface SelectedImageState {
 }
 
 async function resolveImageSrc(src: string): Promise<string> {
-  if (src.startsWith("http") || src.startsWith("data:")) {
+  if (src.startsWith("http") || src.startsWith("data:") || src.startsWith("blob:")) {
     return src;
   }
 
-  if (src.startsWith("att:") || src.startsWith("uuid:")) {
-    try {
-      const blob = await imageStorage.load(src);
-      if (blob) {
-        return URL.createObjectURL(blob);
-      }
-    } catch {
-      // fallthrough
+  // att: / uuid: 内部引用或本地文件路径，统一走 imageStorage.load
+  try {
+    const blob = await imageStorage.load(src);
+    if (blob) {
+      return URL.createObjectURL(blob);
     }
+  } catch {
+    // fallthrough
   }
 
   return src;
