@@ -10,6 +10,7 @@ import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { OPEN_AI_WORKSPACE_EVENT } from "../ai/events";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
+import { dialogs } from "@/lib/utools/dialogs";
 
 const tips = [
   "使用 / 或 、 命令快速插入内容块",
@@ -192,7 +193,7 @@ export function PageEmptyState() {
     }
 
     try {
-      const path = await window.gooseFs?.selectDirectory?.();
+      const path = await dialogs.selectDirectory();
       if (path) {
         const folderName = path.split(/[\\/]/).pop() || "Unknown";
         const notebookId = createLocalFolderNotebook(folderName, path);

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { getNotebookAnalyticsContext, trackEvent } from "@/lib/analytics";
 import { uToolsStorage } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
+import { fs } from "@/lib/utools/fs";
 
 export interface Notebook {
   id: string;
@@ -282,14 +283,10 @@ export const useNotebooks = create<NotebooksState>()(
           notebook?.source === "local-folder" &&
           notebook.localPath &&
           typeof window !== "undefined" &&
-          (window as any).gooseFs
+          fs.isAvailable()
         ) {
-          const gooseFs = (window as any).gooseFs as GooseFs;
-
           void (async () => {
-            const exists = gooseFs.existsAsync
-              ? await gooseFs.existsAsync(notebook.localPath!)
-              : gooseFs.exists(notebook.localPath!);
+            const exists = await fs.existsAsync(notebook.localPath!);
 
             if (get().activeNotebookId !== id) return;
 
@@ -323,7 +320,7 @@ export const useNotebooks = create<NotebooksState>()(
               notebook?.source === "local-folder" &&
               notebook.localPath &&
               typeof window !== "undefined" &&
-              (window as any).gooseFs;
+              fs.isAvailable();
 
             if (!isLoadingLocal) {
               pagesStore.setPendingNavigatePageId(null);
