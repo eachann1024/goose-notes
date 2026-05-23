@@ -1,3 +1,5 @@
+import { shell } from "@/lib/utools/shell";
+
 export function normalizeExternalUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return "";
@@ -9,9 +11,8 @@ export function openExternalUrl(url: string): void {
   const targetUrl = normalizeExternalUrl(url);
   if (!targetUrl) return;
 
-  const utools = typeof window !== "undefined" ? window.utools : null;
-  if (typeof utools?.shellOpenExternal === "function") {
-    utools.shellOpenExternal(targetUrl);
+  if (typeof window !== "undefined" && window.utools) {
+    shell.openUrl(targetUrl, false);
     return;
   }
 

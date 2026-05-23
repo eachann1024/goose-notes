@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { DEFAULT_CLAUDE_BASE_URL, DEFAULT_OPENAI_BASE_URL, type AIModelOption, type AIReasoningLevel, type CustomAIProtocol } from '@/lib/ai-provider'
 import { getAIAnalyticsContext, trackEvent } from '@/lib/analytics'
 import { uToolsStorage } from '@/lib/storage'
+import { wnd } from '@/lib/utools/window'
 
 export interface SearchProvider {
     id: string
@@ -816,12 +817,7 @@ export const useSettings = create<SettingsState>()(
                     // So we can use it.
                     // Delaying slightly can safeguard against race conditions in uTools init
                     try {
-                         const hostWindow = window as Window & {
-                            utools?: {
-                                setExpendHeight?: (height: number) => void
-                            }
-                         }
-                         hostWindow.utools?.setExpendHeight?.(normalizedUTools.windowHeight)
+                        wnd.setExpendHeight(normalizedUTools.windowHeight)
                     } catch (e) {
                         console.error("Failed to apply window height on rehydrate", e)
                     }
