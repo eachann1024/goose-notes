@@ -7,6 +7,12 @@ import type { AiFileReferenceAttrs } from "@/pages/workspace/components/editor/a
 import type { JSONContent } from "@/types";
 
 // ── 持久化的消息结构（去掉 streaming / error 等瞬态字段）
+export interface AiSessionMessageVersion {
+  text: string;
+  artifact?: AgentArtifact | null;
+  agentPlan?: AgentPlan | null;
+}
+
 export interface AiSessionMessage {
   id: string;
   role: "user" | "assistant";
@@ -16,6 +22,10 @@ export interface AiSessionMessage {
   agentPlan?: AgentPlan | null;
   artifact?: AgentArtifact | null;
   writePlan?: AiWritePlan | null;
+  /** 重生成的历史版本快照 */
+  versions?: AiSessionMessageVersion[];
+  /** 当前显示版本索引（0-based） */
+  activeVersionIndex?: number;
 }
 
 // ── 一条历史会话
