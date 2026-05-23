@@ -4,7 +4,7 @@ export const renderNotebookIcon = (iconStr: string, className?: string) => {
     return <IconComp className={cn("h-4 w-4 stroke-[1.6]", className)} />;
   }
   return (
-    <span className={cn("text-base leading-none", className)}>
+    <span className={cn("flex items-center justify-center text-base leading-none", className)}>
       {iconStr || "📓"}
     </span>
   );

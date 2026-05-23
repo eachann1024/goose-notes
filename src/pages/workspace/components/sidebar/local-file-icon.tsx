@@ -69,7 +69,7 @@ export function LocalFileIcon({
     return (
       <Icon
         className={cn(
-          "h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55",
+          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
         )}
       />
@@ -81,14 +81,14 @@ export function LocalFileIcon({
   }
 
   if (iconName) {
-    return <span className={cn("text-sm", className)}>{iconName}</span>;
+    return <span className={cn("text-sm leading-none flex items-center justify-center", className)}>{iconName}</span>;
   }
 
   if (page.isFolder) {
     return (
       <LucideIcons.Folder
         className={cn(
-          "h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55",
+          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
         )}
       />
@@ -98,7 +98,7 @@ export function LocalFileIcon({
   return (
     <DefaultPageIcon
       className={cn(
-        "h-4 w-4 text-muted-foreground/70 dark:text-muted-foreground/55",
+        "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
         className,
       )}
     />

@@ -199,6 +199,10 @@ export function Sidebar({
           setShowSettings(false);
           setActivePage(null);
         }}
+        onSwitchToOutline={() => {
+          setCurrentView("outline");
+          setShowSettings(false);
+        }}
         onOpenSettings={() => setShowSettings(true)}
       />
 

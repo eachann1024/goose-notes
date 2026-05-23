@@ -12,7 +12,7 @@ export function SidebarResizeEdge({
   return (
     <div
       className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
-      style={{ right: "-8px", width: "16px" }}
+      style={{ right: "-18px", width: "16px" }}
       onMouseDown={onMouseDown}
       onPointerDown={onPointerDown}
       role="separator"

@@ -116,7 +116,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { visible: appsBannerVisible, dismiss: dismissAppsBanner } =
     usePersistentDismissState(SETTINGS_APPS_BANNER_ID);
 
-  const notebookList = Object.values(notebooks);
+  const notebookList = Object.values(notebooks).filter(
+    (n) => n.source !== "local-folder",
+  );
   const { createNotebook } = useNotebooks();
   const { createPage, updatePage } = usePages();
   const resetPhrase = "我已知晓风险";

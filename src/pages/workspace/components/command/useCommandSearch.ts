@@ -1,9 +1,18 @@
+import { useCallback, useMemo, useState } from "react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/lib/page-title";
+import { extractTextFromContent } from "@/lib/content-text-extractor";
+import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 
 export interface SearchResultPage extends Page {
   contentSnippet?: string;
   snippetMatchIndex?: number;
+}
+
+export interface SearchResults {
+  recent: SearchResultPage[];
+  all: SearchResultPage[];
+  hasQuery: boolean;
 }
 
 /**
@@ -49,17 +58,29 @@ interface CommandSearchState {
   pages: Record<string, Page>;
   activeNotebookId: string | null;
   searchAllNotebooks: boolean;
-  searchQuery: string;
-  removedRecentIds: string[];
 }
 
 export function useCommandSearch({
   pages,
   activeNotebookId,
   searchAllNotebooks,
-  searchQuery,
-  removedRecentIds,
 }: CommandSearchState) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("goose-recent-excludes");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const removeRecent = useCallback((id: string) => {
+    const newIds = [...removedRecentIds, id];
+    setRemovedRecentIds(newIds);
+    localStorage.setItem("goose-recent-excludes", JSON.stringify(newIds));
+  }, [removedRecentIds]);
+
   const filteredPages = useMemo(() => {
     const allPagesArray = Object.values(pages).filter((p) => {
       if (p.trashedAt) return false;
@@ -100,7 +121,7 @@ export function useCommandSearch({
     [pages],
   );
 
-  const searchResults = useMemo(() => {
+  const searchResults: SearchResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
     if (!query) {
@@ -163,5 +184,12 @@ export function useCommandSearch({
     return { recent, all, hasQuery: true };
   }, [filteredPages, searchQuery, removedRecentIds]);
 
-  return { filteredPages, searchResults, getPageBreadcrumb };
+  return {
+    filteredPages,
+    searchResults,
+    getPageBreadcrumb,
+    searchQuery,
+    setSearchQuery,
+    removeRecent,
+  };
 }

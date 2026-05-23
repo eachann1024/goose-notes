@@ -272,7 +272,7 @@ export function SortablePageRow({
               aria-label={item.isOpen ? "折叠子页面" : "展开子页面"}
               aria-expanded={item.isOpen}
               className={cn(
-                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 mr-1 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
+                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                 showArrow
                   ? "hover:bg-muted-foreground/10 cursor-pointer"
                   : "opacity-0 pointer-events-none"
@@ -282,14 +282,14 @@ export function SortablePageRow({
             >
               <LucideIcons.ChevronRight
                 className={cn(
-                  "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-200",
+                  "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
                   item.isOpen && "rotate-90"
                 )}
               />
             </button>
 
             <div
-              className="flex items-center justify-center w-5 h-5 shrink-0 mr-1.5 select-none"
+              className="flex items-center justify-center w-5 h-5 shrink-0 mr-0.5 select-none"
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}

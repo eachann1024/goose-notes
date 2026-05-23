@@ -1,9 +1,13 @@
 import { useId, useRef, useEffect, useState, useCallback } from "react";
 import { Command } from "cmdk";
+import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
 import { trackEvent } from "@/lib/analytics";
+import { UToolsAdapter } from "@/lib/utools";
+import { isMacPlatform } from "@/lib/utils";
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
-import { getPageTitle } from "@/lib/page-title";
+import { PaletteResultGroup } from "./PaletteResultGroup";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
@@ -72,62 +76,11 @@ function matchShortcut(event: KeyboardEvent, shortcut: string) {
   return !isModifierToken(eventKey) && eventKey === keyToken;
 }
 
-function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: string }) {
-  if (parts.length === 0) {
-    if (!fallback) return null;
-    return <span className="shrink-0 text-xs text-muted-foreground/45">{fallback}</span>;
-  }
-  return (
-    <div className="flex items-center gap-0.5 shrink-0 max-w-[42%] overflow-hidden">
-      {parts.map((part, i) => (
-        <span key={i} className="flex items-center gap-0.5 min-w-0">
-          {i > 0 && <span className="text-muted-foreground/25 text-[10px] shrink-0">›</span>}
-          <span
-            className={`truncate text-xs ${
-              i === 0
-                ? "text-muted-foreground/75 font-medium"
-                : "text-muted-foreground/50"
-            }`}
-          >
-            {part}
-          </span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function HighlightText({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  const regex = new RegExp(
-    `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-    "gi",
-  );
-  const parts = text.split(regex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark
-            key={i}
-            className="rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground"
-          >
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </>
-  );
-}
-
 export function CommandPalette() {
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const openInNewTabRef = useRef(false);
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const { openTab, openInCurrentTab } = useTabs();
   const {
     pages,
@@ -144,6 +97,17 @@ export function CommandPalette() {
     setShowRecentInSearch,
     searchPanelCloseShortcut,
   } = useSettings();
+  const {
+    searchResults,
+    getPageBreadcrumb,
+    searchQuery,
+    setSearchQuery,
+    removeRecent,
+  } = useCommandSearch({
+    pages,
+    activeNotebookId,
+    searchAllNotebooks,
+  });
   const trackSearchOpened = useCallback((openSource: "utools_input" | "shortcut" | "programmatic") => {
     trackEvent("search_opened", {
       feature: "search",
@@ -155,30 +119,12 @@ export function CommandPalette() {
       open_in_new_tab: openInNewTabRef.current,
     });
   }, [searchAllNotebooks]);
-  const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem("goose-recent-excludes");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const { searchResults, getPageBreadcrumb } = useCommandSearch({
-    pages,
-    activeNotebookId,
-    searchAllNotebooks,
-    searchQuery,
-    removedRecentIds,
-  });
   const lastTrackedQueryRef = useRef("");
 
-  const handleRemoveRecent = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const newIds = [...removedRecentIds, id];
-    setRemovedRecentIds(newIds);
-    localStorage.setItem("goose-recent-excludes", JSON.stringify(newIds));
-  };
+  const handleHideRecent = useCallback(() => {
+    setShowRecentInSearch(false);
+    toast("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
+  }, [setShowRecentInSearch]);
 
   useEffect(() => {
     const handleUToolsInput = (event: Event) => {
@@ -198,7 +144,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     // 只有在 uTools 环境下才同步搜索词
-    if (typeof window !== "undefined" && (window as any).utools) {
+    if (UToolsAdapter.isUTools) {
       if (document.activeElement === inputRef.current) return;
       window.dispatchEvent(
         new CustomEvent(UTOOLS_SYNC_EVENT, { detail: { text: searchQuery } }),
@@ -403,111 +349,15 @@ export function CommandPalette() {
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
         </Command.Empty>
 
-        {!searchQuery.trim() &&
-          showRecentInSearch &&
-          searchResults.recent.length > 0 && (
-          <Command.Group heading={
-            <div className="flex items-center justify-between">
-              <span>最近访问</span>
-              <div
-                role="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRecentInSearch(false);
-                  toast("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
-                }}
-                className="p-0.5 rounded hover:bg-foreground/10 cursor-pointer transition-colors"
-              >
-                <LucideIcons.X className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground" />
-              </div>
-            </div>
-          }>
-            {searchResults.recent.map((page: Page) => {
-              const breadcrumb = getPageBreadcrumb(page);
-              return (
-                <Command.Item
-                  key={`recent-${page.id}`}
-                  value={`recent-${page.id}-${getPageTitle(page)}`}
-                  onSelect={() => {
-                    openPageInTab(page, null);
-                  }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
-                >
-                  <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
-                    <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
-                    <div
-                      role="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemoveRecent(e, page.id);
-                      }}
-                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 hover:bg-[var(--goose-interactive-selected)]"
-                    >
-                      <LucideIcons.X className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                  </div>
-                  <span className="truncate flex-1 mr-3">
-                    <HighlightText
-                      text={getPageTitle(page)}
-                      query={searchQuery}
-                    />
-                  </span>
-                  <BreadcrumbPath
-                    parts={breadcrumb.slice(0, -1)}
-                    fallback={new Date(page.updatedAt).toLocaleDateString()}
-                  />
-                </Command.Item>
-              );
-            })}
-          </Command.Group>
-        )}
-
-        {searchResults.all.length > 0 && (
-          <Command.Group
-            heading={searchResults.hasQuery ? "搜索结果" : "所有页面"}
-          >
-            {searchResults.all.map((page: SearchResultPage) => {
-              const breadcrumb = getPageBreadcrumb(page);
-              return (
-                <Command.Item
-                  key={`all-${page.id}`}
-                  value={`all-${page.id}-${getPageTitle(page)}`}
-                  onSelect={() => {
-                    const highlightQuery = searchQuery.trim() || null;
-                    openPageInTab(page, highlightQuery);
-                  }}
-                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
-                >
-                  <LucideIcons.FileText className="mr-2 h-4 w-4 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate font-medium">
-                        <HighlightText
-                          text={getPageTitle(page)}
-                          query={searchQuery}
-                        />
-                      </span>
-                      <BreadcrumbPath parts={breadcrumb.slice(0, -1)} />
-                    </div>
-                    {searchResults.hasQuery && page.contentSnippet && (
-                      <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">
-                        <HighlightText
-                          text={page.contentSnippet}
-                          query={searchQuery}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </Command.Item>
-              );
-            })}
-          </Command.Group>
-        )}
+        <PaletteResultGroup
+          searchQuery={searchQuery}
+          showRecentInSearch={showRecentInSearch}
+          searchResults={searchResults}
+          getPageBreadcrumb={getPageBreadcrumb}
+          onOpenPage={openPageInTab}
+          onRemoveRecent={removeRecent}
+          onHideRecent={handleHideRecent}
+        />
       </Command.List>
     </Command.Dialog>
   );
