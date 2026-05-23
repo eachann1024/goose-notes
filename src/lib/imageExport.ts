@@ -35,6 +35,7 @@ export interface CardTheme {
   secondaryText: string;
   accent: string;
   codeBg: string;
+  codeTextColor?: string;
   quoteBorder: string;
   calloutBg: string;
   tableBorder: string;
@@ -836,6 +837,7 @@ export const CARD_THEMES: CardTheme[] = [
     secondaryText: "#525252",
     accent: "#ff5500",
     codeBg: "#0a0a0a",
+    codeTextColor: "#fafafa",
     quoteBorder: "#0a0a0a",
     calloutBg: "#ffe4d6",
     tableBorder: "#0a0a0a",
@@ -968,13 +970,15 @@ export interface WatermarkConfig {
   showBrand: boolean;
   showDate: boolean;
   showTime: boolean;
+  showTitle: boolean;
 }
 
 export const DEFAULT_WATERMARK_CONFIG: WatermarkConfig = {
   showWatermark: true,
   showBrand: true,
   showDate: true,
-  showTime: false,
+  showTime: true,
+  showTitle: true,
 };
 
 function getWatermarkHTML(
@@ -983,25 +987,22 @@ function getWatermarkHTML(
 ): string {
   if (!theme.watermarkVisible || !config.showWatermark) return "";
 
-  const brandHtml = config.showBrand
-    ? `<span class="gooseshot-watermark-brand">uTools - 鹅的笔记</span>`
+  const brandParts: string[] = [];
+  if (config.showBrand) brandParts.push("鹅的笔记");
+  const brandHtml = brandParts.length > 0
+    ? `<span class="gooseshot-watermark-brand">${brandParts.join(" · ")}</span>`
     : "";
 
   let dateHtml = "";
   if (config.showDate) {
     const now = new Date();
-    const dateStr = now.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日`;
     const timeStr = config.showTime
-      ? ` ${now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
+      ? ` ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
       : "";
     dateHtml = `<div class="gooseshot-watermark-date">${dateStr}${timeStr}</div>`;
   }
-
-  if (!brandHtml && !dateHtml) return "";
 
   return `<div class="gooseshot-watermark">
     <div class="gooseshot-watermark-left">${brandHtml}</div>
@@ -1139,7 +1140,7 @@ ${decoStyle}
   background: ${t.codeBg};
   padding: 2px 6px;
   border-radius: 4px;
-  color: ${t.textColor};
+  color: ${t.codeTextColor ?? t.textColor};
 }
 .gooseshot-content pre {
   background: ${t.codeBg};
@@ -1148,6 +1149,7 @@ ${decoStyle}
   overflow-x: auto;
   margin: 16px 0;
   border: 1px solid ${t.tableBorder};
+  color: ${t.codeTextColor ?? t.textColor};
 }
 .gooseshot-content pre code {
   background: transparent;
@@ -1155,6 +1157,7 @@ ${decoStyle}
   font-size: 13px;
   line-height: 1.7;
   font-family: ${t.codeFont};
+  color: inherit;
 }
 .gooseshot-content blockquote {
   border-left: 3px solid ${t.quoteBorder};
@@ -1285,9 +1288,9 @@ ${decoStyle}
 <body>
 <div class="gooseshot-container">
   <div class="gooseshot-card">
-    <div class="gooseshot-header">
+    ${(watermarkConfig?.showTitle ?? true) ? `<div class="gooseshot-header">
       <div class="gooseshot-title">${escapeHtml(title || "无标题")}</div>
-    </div>
+    </div>` : ""}
     <div class="gooseshot-content">
       ${blocksHtml}
     </div>
@@ -1608,6 +1611,15 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
 }
 
+function buildFileName(title: string, theme: CardTheme, suffix?: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const parts = [sanitizeFileName(title || "untitled"), sanitizeFileName(theme.nameEn), ts];
+  if (suffix) parts.splice(1, 0, suffix);
+  return `${parts.join("_")}.png`;
+}
+
 // ── Public API: Full Page Export ───────────────────────────────
 export async function exportPageToImage(
   page: Page,
@@ -1637,7 +1649,7 @@ export async function exportPageToImage(
     const cardElement = container.querySelector(".gooseshot-container") as HTMLElement;
     if (!cardElement) throw new Error("Failed to create preview element");
 
-    await captureElementToPng(cardElement, `${sanitizeFileName(title || "untitled")}.png`);
+    await captureElementToPng(cardElement, buildFileName(title, theme));
     trackEvent("share_image_full", { page_title_length: title?.length ?? 0, theme: themeId });
   } finally {
     document.body.removeChild(container);
@@ -1645,42 +1657,69 @@ export async function exportPageToImage(
 }
 
 // ── Public API: Selection Export ───────────────────────────────
+async function resolveSingleUrl(url: string): Promise<string | null> {
+  if (url.startsWith("att:") || url.startsWith("uuid:")) {
+    try {
+      const { imageStorage } = await import("./imageStorage");
+      const blob = await imageStorage.load(url);
+      if (blob) return URL.createObjectURL(blob);
+    } catch { /* fallthrough */ }
+    return null;
+  }
+  // Remote images: pre-fetch to avoid canvas taint during html-to-image export.
+  // Without this, cross-origin <img> renders fine in the DOM but canvas can't read
+  // its pixels, so the export silently falls back to the placeholder SVG.
+  if (url.startsWith("http:") || url.startsWith("https:")) {
+    // Prefer the uTools Node bridge — it ignores browser CORS entirely.
+    const bridge = (window as any).gooseFs?.fetchRemoteImage;
+    if (typeof bridge === "function") {
+      try {
+        const dataUrl = await bridge(url, 8000);
+        if (typeof dataUrl === "string" && dataUrl.startsWith("data:")) {
+          return dataUrl;
+        }
+      } catch { /* fallthrough to renderer fetch */ }
+    }
+    // Web/dev fallback: renderer fetch with timeout.
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(url, {
+        mode: "cors",
+        credentials: "omit",
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (res.ok) {
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+      }
+    } catch { /* give up */ }
+    return null;
+  }
+  return null;
+}
+
 async function resolveImageUrls(blocks: any[]): Promise<void> {
   for (const block of blocks) {
     if (block.type === "image" || block.type === "imageResize" || block.type === "file") {
       const url = block.props?.url || block.props?.src;
-      if (typeof url === "string" && (url.startsWith("att:") || url.startsWith("uuid:"))) {
-        try {
-          const { imageStorage } = await import("./imageStorage");
-          const blob = await imageStorage.load(url);
-          if (blob) {
-            block.props = {
-              ...block.props,
-              url: URL.createObjectURL(blob),
-            };
-          }
-        } catch { /* use original url */ }
+      if (typeof url === "string") {
+        const resolved = await resolveSingleUrl(url);
+        if (resolved) {
+          block.props = { ...block.props, url: resolved };
+        }
       }
     }
     // Also resolve inline images
     if (Array.isArray(block.content)) {
       for (const item of block.content) {
         const inlineSrc = item?.attrs?.src || item?.props?.url || item?.props?.src;
-        if (
-          item?.type === "image" &&
-          typeof inlineSrc === "string" &&
-          (inlineSrc.startsWith("att:") || inlineSrc.startsWith("uuid:"))
-        ) {
-          try {
-            const { imageStorage } = await import("./imageStorage");
-            const blob = await imageStorage.load(inlineSrc);
-            if (blob) {
-              item.attrs = {
-                ...item.attrs,
-                src: URL.createObjectURL(blob),
-              };
-            }
-          } catch { /* use original url */ }
+        if (item?.type === "image" && typeof inlineSrc === "string") {
+          const resolved = await resolveSingleUrl(inlineSrc);
+          if (resolved) {
+            item.attrs = { ...item.attrs, src: resolved };
+          }
         }
       }
     }
@@ -1729,7 +1768,7 @@ export async function exportSelectionToImage(
     const cardElement = container.querySelector(".gooseshot-container") as HTMLElement;
     if (!cardElement) throw new Error("Failed to create preview element");
 
-    await captureElementToPng(cardElement, `${sanitizeFileName(title)}_选中内容.png`);
+    await captureElementToPng(cardElement, buildFileName(title, theme, "选中"));
     const selectionLength = selectionBlocks
       .map((block: any) => extractInlineText(block.content))
       .join("\n").length;

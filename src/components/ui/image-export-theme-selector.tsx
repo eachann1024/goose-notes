@@ -119,6 +119,14 @@ export function ImageExportThemeSelector({
           {configOpen && (
             <div className="mt-3 space-y-2.5">
               <div className="flex items-center justify-between">
+                <span className="text-xs text-foreground/80">显示标题</span>
+                <Switch
+                  checked={watermarkConfig.showTitle}
+                  onCheckedChange={() => toggleConfig("showTitle")}
+                  className="scale-75 origin-right"
+                />
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-xs text-foreground/80">显示底部信息栏</span>
                 <Switch
                   checked={watermarkConfig.showWatermark}

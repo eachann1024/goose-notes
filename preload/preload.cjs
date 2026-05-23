@@ -2,6 +2,9 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const http = require("http");
+const https = require("https");
+const { URL: NodeURL } = require("url");
 const {
   buildLocalPageId,
   createSnippet,
@@ -712,8 +715,106 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     });
   };
 
+  // Node 端下载远程图片，绕开渲染端 CORS。用于图片导出场景。
+  // 返回 data URL（带 mime），失败返回 null。
+  const fetchRemoteImage = (url, timeoutMs = 8000) => {
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const MAX_REDIRECTS = 5;
+
+    return new Promise((resolve) => {
+      if (typeof url !== "string" || !/^https?:\/\//i.test(url)) {
+        resolve(null);
+        return;
+      }
+
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+
+      const visit = (currentUrl, redirectsLeft) => {
+        let parsed;
+        try {
+          parsed = new NodeURL(currentUrl);
+        } catch {
+          finish(null);
+          return;
+        }
+        const lib = parsed.protocol === "http:" ? http : https;
+        const req = lib.get(
+          currentUrl,
+          {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (GooseNote)",
+              Accept: "image/*,*/*;q=0.8",
+            },
+          },
+          (res) => {
+            const status = res.statusCode || 0;
+            if (status >= 300 && status < 400 && res.headers.location) {
+              if (redirectsLeft <= 0) {
+                res.resume();
+                finish(null);
+                return;
+              }
+              let next;
+              try {
+                next = new NodeURL(res.headers.location, currentUrl).toString();
+              } catch {
+                res.resume();
+                finish(null);
+                return;
+              }
+              res.resume();
+              visit(next, redirectsLeft - 1);
+              return;
+            }
+            if (status < 200 || status >= 400) {
+              res.resume();
+              finish(null);
+              return;
+            }
+
+            const chunks = [];
+            let total = 0;
+            res.on("data", (chunk) => {
+              total += chunk.length;
+              if (total > MAX_BYTES) {
+                req.destroy();
+                finish(null);
+                return;
+              }
+              chunks.push(chunk);
+            });
+            res.on("end", () => {
+              try {
+                const buf = Buffer.concat(chunks);
+                const rawType = res.headers["content-type"] || "image/png";
+                const mime = String(rawType).split(";")[0].trim() || "image/png";
+                finish(`data:${mime};base64,${buf.toString("base64")}`);
+              } catch {
+                finish(null);
+              }
+            });
+            res.on("error", () => finish(null));
+          },
+        );
+        req.setTimeout(timeoutMs, () => {
+          req.destroy();
+          finish(null);
+        });
+        req.on("error", () => finish(null));
+      };
+
+      visit(url, MAX_REDIRECTS);
+    });
+  };
+
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）
   window.gooseFs = {
+    fetchRemoteImage,
     readDir: (dir) => {
       try {
         return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => ({
