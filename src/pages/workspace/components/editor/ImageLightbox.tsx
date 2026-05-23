@@ -9,6 +9,7 @@ import { imageStorage } from "@/lib/imageStorage";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { saveBlobAndReveal } from "@/lib/export";
 import { cn } from "@/lib/utils";
+import { shell } from "@/lib/utools/shell";
 
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;
@@ -30,9 +31,6 @@ interface SelectedImageState {
   rect: DOMRect;
   alignment: ImageAlignment;
 }
-
-const isUToolsEnv = () =>
-  typeof window !== "undefined" && typeof window.utools !== "undefined";
 
 async function resolveImageSrc(src: string): Promise<string> {
   if (src.startsWith("http") || src.startsWith("data:")) {
@@ -328,9 +326,9 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       const response = await fetch(currentSlide.src);
       const blob = await response.blob();
 
-      if (isUToolsEnv() && typeof window.utools?.copyImage === "function") {
-        const base64 = await blobToBase64(blob);
-        window.utools.copyImage(base64);
+      const base64 = await blobToBase64(blob);
+      const copied = shell.copyImage(base64);
+      if (copied) {
         toast.success("已复制到剪贴板");
         return;
       }

@@ -3,6 +3,9 @@ import { Copy, Download, Loader2 } from "lucide-react";
 import * as echarts from "echarts";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
+import { shell } from "@/lib/utools/shell";
+import { dialogs } from "@/lib/utools/dialogs";
+import { fs } from "@/lib/utools/fs";
 
 export interface DatavizToolbarProps {
   targetRef?: React.RefObject<HTMLDivElement | null>;
@@ -10,9 +13,6 @@ export interface DatavizToolbarProps {
   /** 自定义截图函数，传入时优先使用，不再依赖 targetRef + blockType */
   onCapture?: () => Promise<string>;
 }
-
-const isUToolsEnv = () =>
-  typeof window !== "undefined" && typeof window.utools !== "undefined";
 
 /** 优先用 ECharts 原生 getDataURL，HTML 组件回退到 html-to-image */
 async function captureImage(
@@ -44,8 +44,8 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       setCopyLoading(true);
       try {
         const dataUrl = await capture();
-        if (isUToolsEnv() && typeof window.utools?.copyImage === "function") {
-          window.utools.copyImage(dataUrl);
+        const copied = shell.copyImage(dataUrl);
+        if (copied) {
           toast.success("已复制到剪贴板");
         } else {
           const blob = await (await fetch(dataUrl)).blob();
@@ -68,26 +68,25 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       setDownloadLoading(true);
       try {
         const dataUrl = await capture();
-        if (
-          isUToolsEnv() &&
-          typeof window.utools?.showSaveDialog === "function" &&
-          window.gooseFs?.writeFile
-        ) {
-          const savePath: string | null = window.utools.showSaveDialog({
-            title: "保存图片",
-            defaultPath: `chart-${Date.now()}.png`,
-            filters: [{ name: "PNG 图片", extensions: ["png"] }],
-          });
+        const savePath = await dialogs.showSaveDialog({
+          title: "保存图片",
+          defaultPath: `chart-${Date.now()}.png`,
+          filters: [{ name: "PNG 图片", extensions: ["png"] }],
+        });
+        if (savePath !== null) {
+          // uTools 环境：通过对话框保存
           if (savePath) {
             const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
-            const ok = window.gooseFs.writeFile(savePath, base64, "base64");
+            const ok = fs.writeFile(savePath, base64, "base64");
             if (ok) {
               toast.success("已保存");
             } else {
               toast.error("保存失败");
             }
           }
+          // savePath 为空字符串表示用户取消，不提示
         } else {
+          // 非 uTools 环境：浏览器下载
           const link = document.createElement("a");
           link.download = `chart-${Date.now()}.png`;
           link.href = dataUrl;
