@@ -95,3 +95,52 @@ export class LeftButtonPointerSensor extends PointerSensor {
     },
   ];
 }
+
+// ─── Drop kind resolver ──────────────────────��────────────────────────────
+/** 根据拖拽位置确定 drop 意图类型（before / after / nest） */
+export function resolveDropKind(
+  activeIndex: number,
+  overIndex: number,
+  overRect: { top: number; height: number },
+  pointerY: number | null,
+  previousKind: DropIntentKind | null,
+  isNestLocked: boolean
+): DropIntentKind {
+  if (isNestLocked) {
+    return "nest";
+  }
+
+  if (activeIndex < overIndex) {
+    return "after";
+  }
+  if (activeIndex > overIndex) {
+    return "before";
+  }
+
+  let ratio = 0.5;
+  if (pointerY !== null) {
+    const overHeight = Math.max(overRect.height, 1);
+    ratio = (pointerY - overRect.top) / overHeight;
+  }
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+  if (previousKind === "before" && clampedRatio <= SAME_ROW_AFTER_RATIO + 0.06) {
+    return "before";
+  }
+
+  if (previousKind === "after" && clampedRatio >= SAME_ROW_BEFORE_RATIO - 0.06) {
+    return "after";
+  }
+
+  if (clampedRatio < SAME_ROW_BEFORE_RATIO) {
+    return "before";
+  }
+  if (clampedRatio > SAME_ROW_AFTER_RATIO) {
+    return "after";
+  }
+
+  if (previousKind === "before" || previousKind === "after") {
+    return previousKind;
+  }
+  return activeIndex <= overIndex ? "before" : "after";
+}
