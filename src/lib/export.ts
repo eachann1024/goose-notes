@@ -9,6 +9,9 @@ import {
   normalizePageContent,
   createEmptyBlockNoteContent,
 } from "./blocknote-content";
+import { shell } from "./utools/shell";
+import { dialogs } from "./utools/dialogs";
+import { fs } from "./utools/fs";
 
 function escapeHtml(value: string): string {
   return value
@@ -300,60 +303,7 @@ function getSuggestedSavePath(filename: string): string {
 }
 
 function getDownloadsPath(): string | null {
-  const w = window as any;
-  const gooseFs = w.gooseFs;
-  const exists = (p: string) => {
-    try { return gooseFs?.exists?.(p); } catch { return false; }
-  };
-
-  try {
-    const dir = w.utools?.getPath?.("downloads");
-    if (typeof dir === "string" && dir.trim().length > 0) return dir;
-  } catch { /* ignore */ }
-
-  // 方式1: Node.js require
-  try {
-    const os = w.require?.("os");
-    const path = w.require?.("path");
-    if (os?.homedir && path?.join) {
-      const dir = path.join(os.homedir(), "Downloads");
-      if (exists(dir)) return dir;
-    }
-  } catch { /* ignore */ }
-
-  // 方式2: process.env (Electron renderer)
-  try {
-    const env = w.process?.env;
-    if (env) {
-      const home = env.HOME || env.USERPROFILE;
-      if (home) {
-        const path = w.require?.("path");
-        const dir = path?.join ? path.join(home, "Downloads") : `${home}/Downloads`;
-        if (exists(dir)) return dir;
-      }
-    }
-  } catch { /* ignore */ }
-
-  // 方式3: macOS 通过用户名推断
-  try {
-    const env = w.process?.env;
-    if (env?.USER) {
-      const dir = `/Users/${env.USER}/Downloads`;
-      if (exists(dir)) return dir;
-    }
-  } catch { /* ignore */ }
-
-  // 方式4: Windows 通过用户名推断
-  try {
-    const env = w.process?.env;
-    if (env?.USERNAME) {
-      const sysDrive = env.SystemDrive || "C:";
-      const dir = `${sysDrive}\\Users\\${env.USERNAME}\\Downloads`;
-      if (exists(dir)) return dir;
-    }
-  } catch { /* ignore */ }
-
-  return null;
+  return shell.getDownloadsPath();
 }
 
 async function trySaveToDownloads(
@@ -361,23 +311,13 @@ async function trySaveToDownloads(
   filename: string,
 ): Promise<boolean> {
   if (typeof window === "undefined") return false;
-
-  const hostWindow = window as Window & {
-    utools?: {
-      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-    gooseFs?: GooseFs & {
-      revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-  };
-
-  const gooseFs = hostWindow.gooseFs;
-  if (!gooseFs) return false;
+  if (!fs.isAvailable()) return false;
 
   const downloadsDir = getDownloadsPath();
   if (!downloadsDir) return false;
 
-  if (!gooseFs.exists(downloadsDir)) {
+  const gooseFs = (window as any).gooseFs as GooseFs | undefined;
+  if (gooseFs && !gooseFs.exists(downloadsDir)) {
     try { gooseFs.mkdir(downloadsDir); } catch { /* ignore */ }
   }
 
@@ -389,17 +329,11 @@ async function trySaveToDownloads(
 
   const base64 = await blobToBase64(blob);
   const payload = base64.replace(/^data:.*;base64,/, "");
-  const saved = gooseFs.writeFileAsync
-    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
-    : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
+  const saved = await fs.writeFileAsync(targetPath, payload, "base64");
 
   if (!saved) return false;
 
-  if (typeof gooseFs.revealItemInFolder === "function") {
-    try { await gooseFs.revealItemInFolder(targetPath); } catch { /* ignore */ }
-  } else if (hostWindow.utools?.shellShowItemInFolder) {
-    try { await Promise.resolve(hostWindow.utools.shellShowItemInFolder(targetPath)); } catch { /* ignore */ }
-  }
+  await shell.showItemInFolder(targetPath);
 
   return true;
 }
@@ -429,70 +363,32 @@ async function saveBlobViaDialog(
 ): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
-  const hostWindow = window as Window & {
-    utools?: {
-      showSaveDialog?: (options?: Record<string, unknown>) => unknown;
-      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-      shellOpenPath?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-    gooseFs?: GooseFs & {
-      revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-  };
-
-  const utools = hostWindow.utools;
-  const gooseFs = hostWindow.gooseFs;
-  if (!utools || typeof utools.showSaveDialog !== "function" || !gooseFs) {
+  if (!fs.isAvailable()) {
     return triggerBrowserDownload(blob, filename);
   }
 
-  const saveResult = await Promise.resolve(
-    utools.showSaveDialog({
-      title: "保存文件",
-      defaultPath: getSuggestedSavePath(filename),
-      buttonLabel: "保存",
-    }),
-  );
+  const targetPath = await dialogs.showSaveDialog({
+    title: "保存文件",
+    defaultPath: getSuggestedSavePath(filename),
+    buttonLabel: "保存",
+  });
 
-  const normalizeSavePath = (value: unknown): string | null => {
-    if (typeof value === "string" && value.trim().length > 0) return value;
-    if (Array.isArray(value)) {
-      const first = value.find((item) => typeof item === "string");
-      return typeof first === "string" && first.trim().length > 0 ? first : null;
-    }
-    if (value && typeof value === "object") {
-      const filePath =
-        "filePath" in value && typeof (value as { filePath?: unknown }).filePath === "string"
-          ? (value as { filePath: string }).filePath
-          : null;
-      const canceled = "canceled" in value && Boolean((value as { canceled?: unknown }).canceled);
-      if (canceled) return null;
-      if (filePath && filePath.trim().length > 0) return filePath;
-    }
-    return null;
-  };
-
-  const targetPath = normalizeSavePath(saveResult);
-  if (!targetPath) return true; // 用户取消
+  if (targetPath === null) {
+    // dialogs 不可用时降级浏览器下载
+    return triggerBrowserDownload(blob, filename);
+  }
+  if (!targetPath) return true; // 用户取消（空字符串）
 
   const base64 = await blobToBase64(blob);
   const payload = base64.replace(/^data:.*;base64,/, "");
-  const saved = gooseFs.writeFileAsync
-    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
-    : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
+  const saved = await fs.writeFileAsync(targetPath, payload, "base64");
 
   if (!saved) throw new Error("uTools 写入文件失败");
 
-  let revealed = false;
-  if (typeof gooseFs.revealItemInFolder === "function") {
-    revealed = Boolean(await gooseFs.revealItemInFolder(targetPath));
-  }
-  if (!revealed && utools?.shellShowItemInFolder) {
-    revealed = Boolean(await Promise.resolve(utools.shellShowItemInFolder(targetPath)));
-  }
-  if (!revealed && utools?.shellOpenPath) {
+  const revealed = await shell.showItemInFolder(targetPath);
+  if (!revealed) {
     const folderPath = targetPath.replace(/[/\\][^/\\]*$/, "");
-    revealed = Boolean(await Promise.resolve(utools.shellOpenPath(folderPath)));
+    await shell.openPath(folderPath);
   }
 
   return true;
