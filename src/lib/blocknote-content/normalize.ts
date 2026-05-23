@@ -262,6 +262,10 @@ function normalizeBlock(block: any): PartialBlock[] {
 }
 
 function canUseAsHeadingContent(block: PartialBlock): boolean {
+  // 只把 paragraph 提升为标题。codeBlock / table / image / list 等结构化块保持原样，
+  // 否则会被撕掉外壳变成 heading 丢数据（例如：本地文件首块若是 codeBlock 包住的
+  // frontmatter，原实现会把它强转成 H1 露出 raw-block marker 文本）。
+  if (block.type !== "paragraph") return false;
   return typeof block.content === "string" || Array.isArray(block.content);
 }
 
@@ -312,7 +316,8 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
     ];
   }
 
-  return [titleHeadingBlock(), firstBlock, ...restBlocks];
+  // 首块是结构化块：保持原样，不前置空标题，避免在编辑器顶部塞无关 H1。
+  return content;
 }
 
 export function normalizeBlockContent(content: unknown): BlockNoteContent {

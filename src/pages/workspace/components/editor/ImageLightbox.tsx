@@ -327,15 +327,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       const blob = await response.blob();
 
       const base64 = await blobToBase64(blob);
-      const copied = shell.copyImage(base64);
-      if (copied) {
-        toast.success("已复制到剪贴板");
-        return;
-      }
-
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
+      shell.copyImage(base64);
       toast.success("已复制到剪贴板");
     } catch (err) {
       toast.error(`复制失败: ${err instanceof Error ? err.message : "未知错误"}`);

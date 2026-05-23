@@ -77,6 +77,7 @@ declare global {
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
   const Input: typeof import('./components/ui/input').Input
   const Kbd: typeof import('./components/ui/kbd').Kbd
+  const LEGACY_BLOCK_TYPES: typeof import('./lib/blocknote-content/index').LEGACY_BLOCK_TYPES
   const Label: typeof import('./components/ui/label').Label
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
@@ -105,6 +106,7 @@ declare global {
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
   const TIPS: typeof import('./lib/tips').TIPS
+  const TITLE_HEADING_LEVEL: typeof import('./lib/blocknote-content/index').TITLE_HEADING_LEVEL
   const Tabs: typeof import('./components/ui/tabs').Tabs
   const TabsContent: typeof import('./components/ui/tabs').TabsContent
   const TabsList: typeof import('./components/ui/tabs').TabsList
@@ -121,6 +123,7 @@ declare global {
   const UTOOLS_WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MIN
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const UnderlineType: typeof import('./lib/docxExport/docxStyles').UnderlineType
+  const VALID_BLOCK_TYPES: typeof import('./lib/blocknote-content/index').VALID_BLOCK_TYPES
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
@@ -136,7 +139,7 @@ declare global {
   const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
   const clearBlockSourceMap: typeof import('./lib/local-block-diff').clearBlockSourceMap
   const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
-  const clonePageContent: typeof import('./lib/blocknote-content').clonePageContent
+  const clonePageContent: typeof import('./lib/blocknote-content/index').clonePageContent
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const commitAiWritePlan: typeof import('./lib/ai-write/index').commitAiWritePlan
@@ -146,13 +149,14 @@ declare global {
   const countWords: typeof import('./lib/content-text-extractor').countWords
   const createAiChatOnlyTarget: typeof import('./lib/ai-write/index').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
-  const createEmptyBlockNoteContent: typeof import('./lib/blocknote-content').createEmptyBlockNoteContent
+  const createEmptyBlockNoteContent: typeof import('./lib/blocknote-content/index').createEmptyBlockNoteContent
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write/index').createStickyTargetFromResolvedTarget
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
+  const emptyBlock: typeof import('./lib/blocknote-content/index').emptyBlock
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
-  const ensureFirstTitleHeading: typeof import('./lib/blocknote-content').ensureFirstTitleHeading
+  const ensureFirstTitleHeading: typeof import('./lib/blocknote-content/index').ensureFirstTitleHeading
   const ensureToggleableHeadings: typeof import('./lib/blocknote-content').ensureToggleableHeadings
   const exportNotebooks: typeof import('./lib/export').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport/index').exportPageToImage
@@ -162,12 +166,12 @@ declare global {
   const exportToJSON: typeof import('./lib/export').exportToJSON
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const exportToWord: typeof import('./lib/docxExport/index').exportToWord
-  const extractBlockNoteTitle: typeof import('./lib/blocknote-content').extractBlockNoteTitle
+  const extractBlockNoteTitle: typeof import('./lib/blocknote-content/index').extractBlockNoteTitle
   const extractBlocksInRange: typeof import('./lib/ai-block-scope').extractBlocksInRange
   const extractCellText: typeof import('./lib/docxExport/docxBlocks').extractCellText
   const extractFrontmatter: typeof import('./lib/markdown-raw-guard').extractFrontmatter
   const extractInlineItems: typeof import('./lib/docxExport/docxStyles').extractInlineItems
-  const extractPlainText: typeof import('./lib/blocknote-content').extractPlainText
+  const extractPlainText: typeof import('./lib/blocknote-content/index').extractPlainText
   const extractStructureSummary: typeof import('./lib/content-text-extractor').extractStructureSummary
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
@@ -190,7 +194,7 @@ declare global {
   const getAvailableAIModelOptions: typeof import('./lib/ai-provider').getAvailableAIModelOptions
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getCardTheme: typeof import('./lib/imageExport/index').getCardTheme
-  const getContentSignature: typeof import('./lib/blocknote-content').getContentSignature
+  const getContentSignature: typeof import('./lib/blocknote-content/index').getContentSignature
   const getCustomAIApiKey: typeof import('./lib/ai-provider').getCustomAIApiKey
   const getCustomAIBaseURL: typeof import('./lib/ai-provider').getCustomAIBaseURL
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
@@ -209,6 +213,7 @@ declare global {
   const getRandomBlockColorPair: typeof import('./lib/blockColorPresets').getRandomBlockColorPair
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getStoredAIModelOptions: typeof import('./lib/ai-provider').getStoredAIModelOptions
+  const hasStructuredBlocks: typeof import('./lib/blocknote-content/index').hasStructuredBlocks
   const hashBlock: typeof import('./lib/local-block-diff').hashBlock
   const importFile: typeof import('./lib/export').importFile
   const importFromJSON: typeof import('./lib/export').importFromJSON
@@ -218,7 +223,7 @@ declare global {
   const initAnalytics: typeof import('./lib/analytics').initAnalytics
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
-  const isBlockNoteContent: typeof import('./lib/blocknote-content').isBlockNoteContent
+  const isBlockNoteContent: typeof import('./lib/blocknote-content/index').isBlockNoteContent
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -228,9 +233,10 @@ declare global {
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const mimeToImageType: typeof import('./lib/docxExport/docxImages').mimeToImageType
-  const normalizeBlockContent: typeof import('./lib/blocknote-content').normalizeBlockContent
+  const normalizeBlockContent: typeof import('./lib/blocknote-content/index').normalizeBlockContent
+  const normalizeBlocks: typeof import('./lib/blocknote-content/index').normalizeBlocks
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
-  const normalizePageContent: typeof import('./lib/blocknote-content').normalizePageContent
+  const normalizePageContent: typeof import('./lib/blocknote-content/index').normalizePageContent
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
@@ -266,6 +272,7 @@ declare global {
   const setBlockSourceMap: typeof import('./lib/local-block-diff').setBlockSourceMap
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setFrontmatterForPath: typeof import('./lib/local-frontmatter-store').setFrontmatterForPath
+  const simpleExtractText: typeof import('./lib/blocknote-content/index').simpleExtractText
   const splitMarkdownIntoBlocks: typeof import('./lib/local-block-diff').splitMarkdownIntoBlocks
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
@@ -273,6 +280,7 @@ declare global {
   const syncAIAnalyticsContext: typeof import('./lib/analytics').syncAIAnalyticsContext
   const syncAnalyticsContext: typeof import('./lib/analytics').syncAnalyticsContext
   const syncNotebookAnalyticsContext: typeof import('./lib/analytics').syncNotebookAnalyticsContext
+  const titleHeadingBlock: typeof import('./lib/blocknote-content/index').titleHeadingBlock
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const trackEvent: typeof import('./lib/analytics').trackEvent
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
@@ -346,8 +354,8 @@ declare global {
   export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'
   import('./lib/analytics')
   // @ts-ignore
-  export type { BlockNoteContent, LegacyPageContent, PageContent } from './lib/blocknote-content'
-  import('./lib/blocknote-content')
+  export type { BlockNoteContent, LegacyPageContent, PageContent } from './lib/blocknote-content/index'
+  import('./lib/blocknote-content/index')
   // @ts-ignore
   export type { InlineItem } from './lib/docxExport/docxStyles'
   import('./lib/docxExport/docxStyles')

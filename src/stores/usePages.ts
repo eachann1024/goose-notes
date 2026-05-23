@@ -4,6 +4,7 @@ import type { Page, JSONContent } from "@/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "./useNotebooks";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
+import { consumeFrontmatterForPath } from "@/lib/local-frontmatter-store";
 import { getPageTitle } from "@/lib/page-title";
 import {
   buildLocalPageId,
@@ -262,6 +263,11 @@ interface PagesState {
   hydrated: boolean;
   lastSavedAt: number | null;
   onboardingCompleted: boolean;
+  // 本地文件夹 page 的"未保存"状态：内容更新只标 dirty，Cmd/Ctrl+S 才落盘。
+  dirtyLocalPageIds: Record<string, true>;
+  markLocalPageDirty: (id: string, dirty?: boolean) => void;
+  isLocalPageDirty: (id: string) => boolean;
+  saveDirtyLocalPage: (id: string) => Promise<boolean>;
   hydrateFromStorage: () => Promise<void>;
 
   createOnboardingPages: () => void;
@@ -589,6 +595,7 @@ export const usePages = create<PagesState>()((set, get) => ({
       hydrated: false,
       lastSavedAt: null,
       onboardingCompleted: false,
+      dirtyLocalPageIds: {},
       hydrateFromStorage: async () => {
         const { pages, localPageMetas, onboardingCompleted } =
           loadPagesFromStorage();
@@ -957,13 +964,18 @@ export const usePages = create<PagesState>()((set, get) => ({
             updatedAt: now,
           };
 
-          // 如果是本地文件夹页面且内容有更新，触发防抖保存
+          // 本地文件夹 page：内容更新只标 dirty，不自动写盘。等用户 Cmd/Ctrl+S。
+          // localReadState === "error" 的页不参与（避免覆盖原文）。
+          let nextDirtyMap: Record<string, true> | undefined;
           if (
             updates.content &&
             useNotebooks.getState().notebooks[page.workspaceId]?.source ===
-              "local-folder"
+              "local-folder" &&
+            page.localReadState !== "error"
           ) {
-            queueLocalPageSave(id, updates.content, get);
+            if (!state.dirtyLocalPageIds[id]) {
+              nextDirtyMap = { ...state.dirtyLocalPageIds, [id]: true };
+            }
           }
 
           return {
@@ -971,6 +983,7 @@ export const usePages = create<PagesState>()((set, get) => ({
               ...state.pages,
               [id]: updatedPage,
             },
+            ...(nextDirtyMap ? { dirtyLocalPageIds: nextDirtyMap } : {}),
           };
         });
 
@@ -1599,16 +1612,24 @@ export const usePages = create<PagesState>()((set, get) => ({
         const notebook = useNotebooks.getState().notebooks[page.workspaceId];
 
         // 本地文件页面：切换时重新从磁盘读取内容
+        // - 若已 dirty（有未保存改动）：保留内存内容，避免覆盖用户工作
+        // - 若解析失败：跳过重读，避免再次覆盖
+        let nextFrontmatter: string | null | undefined = undefined;
+        const isDirty = Boolean(get().dirtyLocalPageIds[id]);
         if (
           notebook?.source === "local-folder" &&
           page.localFilePath &&
           !page.isFolder &&
+          !isDirty &&
+          page.localReadState !== "error" &&
           fs.isAvailable()
         ) {
           try {
             let markdownContent = "";
             markdownContent =
               (await fs.readFileAsync(page.localFilePath)) || "";
+            // main.tsx 的 read 包装器已抽出 frontmatter 存入旁路 Map，这里消费并写回 page
+            nextFrontmatter = consumeFrontmatterForPath(page.localFilePath);
             const imported = importFromMarkdown(markdownContent);
             if (imported.content) {
               newContent = imported.content;
@@ -1629,6 +1650,9 @@ export const usePages = create<PagesState>()((set, get) => ({
               [id]: {
                 ...currentPage,
                 content: newContent,
+                ...(nextFrontmatter !== undefined
+                  ? { localFrontmatter: nextFrontmatter || undefined }
+                  : {}),
               },
             },
           };
@@ -2081,14 +2105,19 @@ export const usePages = create<PagesState>()((set, get) => ({
             await Promise.all(writePromises);
         }
 
-        const markdownContent = jsonContentToMarkdown(processedContent);
+        const bodyMarkdown = jsonContentToMarkdown(processedContent);
+        // 保存时把 frontmatter prepend 回去（page.localFrontmatter 由 scanner / setActivePage 填充）。
+        const frontmatter = page.localFrontmatter;
+        const markdownContent = frontmatter
+          ? `${frontmatter}\n\n${bodyMarkdown}`
+          : bodyMarkdown;
 
         // 数据完整性保护
         // Note: Async read for integrity check?
         // Browsers might not support sync read.
         // For now, in browser, we skip this integrity check or rely on async read.
         // Let's implement async read check.
-        if (!markdownContent.trim()) {
+        if (!bodyMarkdown.trim()) {
             let exists = false;
             try { exists = fs.exists(filePath); } catch {}
 
@@ -2117,6 +2146,44 @@ export const usePages = create<PagesState>()((set, get) => ({
 
       flushPendingLocalSaves: async () => {
         await flushAllPendingLocalSavesInternal(get);
+      },
+
+      markLocalPageDirty: (id, dirty = true) => {
+        set((state) => {
+          const isDirty = Boolean(state.dirtyLocalPageIds[id]);
+          if (dirty && !isDirty) {
+            return {
+              dirtyLocalPageIds: { ...state.dirtyLocalPageIds, [id]: true },
+            };
+          }
+          if (!dirty && isDirty) {
+            const { [id]: _removed, ...rest } = state.dirtyLocalPageIds;
+            return { dirtyLocalPageIds: rest };
+          }
+          return state;
+        });
+      },
+
+      isLocalPageDirty: (id) => Boolean(get().dirtyLocalPageIds[id]),
+
+      saveDirtyLocalPage: async (id) => {
+        if (typeof window !== "undefined") {
+          // 让编辑器把待提交内容同步进 store
+          window.dispatchEvent(
+            new CustomEvent("goose-note:flush-editor", {
+              detail: { immediate: true },
+            }),
+          );
+        }
+        const page = get().pages[id];
+        if (!page || !page.localFilePath) return false;
+        if (page.localReadState === "error") return false;
+        const ok = await get().saveLocalPageContent(
+          id,
+          cloneJSONContent(page.content),
+        );
+        if (ok) get().markLocalPageDirty(id, false);
+        return ok;
       },
 
       getLocalFilePath: (pageId) => {

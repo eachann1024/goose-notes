@@ -297,6 +297,32 @@ const setupSaveGuards = () => {
 
     event.preventDefault();
     event.stopImmediatePropagation();
+
+    // 本地文件夹来源：显式调 saveDirtyLocalPage 写盘；其它来源沿用自动保存 flush。
+    const pagesState = usePages.getState();
+    const activePageId = pagesState.activePageId;
+    const activePage = activePageId ? pagesState.pages[activePageId] : null;
+    const isLocalFile =
+      Boolean(activePage?.localFilePath) &&
+      useNotebooks.getState().notebooks[activePage?.workspaceId ?? ""]
+        ?.source === "local-folder";
+
+    if (isLocalFile && activePageId) {
+      if (activePage?.localReadState === "error") {
+        toast.error("此文件无法解析，已禁用保存", { duration: 1800 });
+        return;
+      }
+      if (!pagesState.isLocalPageDirty(activePageId)) {
+        toast("无需保存：没有未保存的更改", { duration: 1200 });
+        return;
+      }
+      void pagesState.saveDirtyLocalPage(activePageId).then((ok) => {
+        if (ok) toast.success("已保存", { duration: 1200 });
+        else toast.error("保存失败", { duration: 2000 });
+      });
+      return;
+    }
+
     void runFlushOnce().then(() => {
       toast("内容会自动保存，请放心", { duration: 1500 });
     });

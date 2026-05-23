@@ -232,7 +232,7 @@ export function WorkspacePage() {
       // 启动监听
       fs.watch(
         notebook.localPath,
-        (_eventType: string, _filename: string) => {
+        () => {
           // 监听逻辑已在上面的 useEffect 中处理
         },
       );

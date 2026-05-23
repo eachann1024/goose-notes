@@ -44,16 +44,8 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       setCopyLoading(true);
       try {
         const dataUrl = await capture();
-        const copied = shell.copyImage(dataUrl);
-        if (copied) {
-          toast.success("已复制到剪贴板");
-        } else {
-          const blob = await (await fetch(dataUrl)).blob();
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob }),
-          ]);
-          toast.success("已复制到剪贴板");
-        }
+        shell.copyImage(dataUrl);
+        toast.success("已复制到剪贴板");
       } catch (err) {
         toast.error(
           `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,

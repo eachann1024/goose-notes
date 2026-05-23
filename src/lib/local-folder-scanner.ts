@@ -1,4 +1,8 @@
 import { importFromMarkdown } from "@/lib/export";
+import {
+  encodeUnsupportedMarkdownForEditor,
+  extractFrontmatter,
+} from "@/lib/markdown-raw-guard";
 import type { JSONContent, Page } from "@/types";
 
 const IGNORED_FOLDERS = new Set([
@@ -176,12 +180,13 @@ function buildMarkdownPage(
     };
   }
 
-  const imported = importFromMarkdown(markdownContent, fallbackTitle);
-  let jsonContent = imported.content || { type: "doc", content: [] };
-
-  if (!imported.title || imported.title === "无标题") {
-    jsonContent = ensureLocalFileTitle(jsonContent, fallbackTitle);
-  }
+  // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
+  // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
+  // 3) 不再用 ensureLocalFileTitle 强塞文件名作为 H1：文件名走 tab/侧栏，文档内容保持原貌
+  const { frontmatter, body } = extractFrontmatter(markdownContent);
+  const encodedBody = encodeUnsupportedMarkdownForEditor(body);
+  const imported = importFromMarkdown(encodedBody, fallbackTitle);
+  const jsonContent = imported.content || { type: "doc", content: [] };
 
   return {
     id: fileId,
@@ -193,6 +198,7 @@ function buildMarkdownPage(
     fontSize: "default",
     fontFamily: "default",
     localFilePath: entry.path,
+    localFrontmatter: frontmatter || undefined,
     localReadState: imported.success ? "ready" : "error",
     localReadError: imported.success ? undefined : imported.error || "Markdown 解析失败",
     createdAt: now,
