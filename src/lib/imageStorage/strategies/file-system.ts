@@ -5,6 +5,7 @@
 
 import type { IImageStorageStrategy } from '../types'
 import { blobToBase64 } from '../utils'
+import { fs } from '@/lib/utools/fs'
 
 // 声明 gooseFs 类型
 // declare global {
@@ -32,8 +33,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
    * 保存图片到文件系统
    */
   async save(blob: Blob, mimeType: string): Promise<string> {
-    const gooseFs = window.gooseFs
-    if (!gooseFs) {
+    if (!fs.isAvailable()) {
       throw new Error('gooseFs not available')
     }
 
@@ -45,8 +45,8 @@ export class FileSystemStrategy implements IImageStorageStrategy {
 
     // 创建 assets 文件夹
     const assetsDir = `${notebookPath}/assets`
-    if (!gooseFs.exists(assetsDir)) {
-      gooseFs.mkdir(assetsDir)
+    if (!fs.exists(assetsDir)) {
+      await fs.mkdir(assetsDir)
     }
 
     // 生成文件名
@@ -60,7 +60,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
     const base64Data = base64.split(',')[1]
     const fullPath = `${assetsDir}/${filename}`
 
-    gooseFs.writeFile(fullPath, base64Data, 'base64')
+    fs.writeFile(fullPath, base64Data, 'base64')
 
     return `./assets/${filename}`
   }
@@ -77,15 +77,14 @@ export class FileSystemStrategy implements IImageStorageStrategy {
    * 删除文件
    */
   async delete(ref: string): Promise<void> {
-    const gooseFs = window.gooseFs
-    if (!gooseFs) return
+    if (!fs.isAvailable()) return
 
     const filename = ref.replace('./assets/', '')
     const notebookPath = await this.getCurrentNotebookPath()
     if (!notebookPath) return
 
     const fullPath = `${notebookPath}/assets/${filename}`
-    await gooseFs.deleteFile(fullPath)
+    await fs.deleteFile(fullPath)
   }
 
   /**

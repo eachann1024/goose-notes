@@ -1,6 +1,7 @@
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { renderNotebookIcon } from "./notebookUtils";
+import { dialogs } from "@/lib/utools/dialogs";
 
 export function NotebookSwitcher() {
   const {
@@ -109,7 +110,7 @@ export function NotebookSwitcher() {
           setActivePage(null);
         }
       } else {
-        const path = await window.gooseFs?.selectDirectory?.();
+        const path = await dialogs.selectDirectory();
         if (path) {
           const folderName = path.split(/[\\/]/).pop() || "Unknown";
           const notebookId = createLocalFolderNotebook(folderName, path);

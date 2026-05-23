@@ -22,6 +22,7 @@ import { usePages } from "@/stores/usePages";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { importFromMarkdown } from "@/lib/export";
+import { fs } from "@/lib/utools/fs";
 
 function normalizeShortcutToken(raw: string) {
   const token = raw.trim().toLowerCase();
@@ -173,16 +174,13 @@ export function WorkspacePage() {
         notebook?.source === "local-folder" &&
         notebook.localPath === dirPath
       ) {
-        const gooseFs = (window as any).gooseFs as GooseFs | undefined;
-        if (!gooseFs) return;
+        if (!fs.isAvailable()) return;
         const filePath = `${dirPath}/${filename}`;
 
         // 处理文件/文件夹删除或移动
         if (eventType === "rename") {
           void (async () => {
-            const exists = gooseFs.existsAsync
-              ? await gooseFs.existsAsync(filePath)
-              : gooseFs.exists(filePath);
+            const exists = await fs.existsAsync(filePath);
 
             // 如果路径不再存在，说明是删除或移出
             if (!exists) {
@@ -229,10 +227,10 @@ export function WorkspacePage() {
     if (
       notebook?.source === "local-folder" &&
       notebook.localPath &&
-      (window as any).gooseFs
+      fs.isAvailable()
     ) {
       // 启动监听
-      (window as any).gooseFs.watch(
+      fs.watch(
         notebook.localPath,
         (_eventType: string, _filename: string) => {
           // 监听逻辑已在上面的 useEffect 中处理
@@ -242,8 +240,8 @@ export function WorkspacePage() {
 
     return () => {
       // 清理监听
-      if (notebook?.localPath && (window as any).gooseFs) {
-        (window as any).gooseFs.unwatch(notebook.localPath);
+      if (notebook?.localPath && fs.isAvailable()) {
+        fs.unwatch(notebook.localPath);
       }
     };
   }, [notebook?.id]);

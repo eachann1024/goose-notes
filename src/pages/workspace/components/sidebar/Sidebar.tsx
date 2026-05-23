@@ -12,6 +12,7 @@ import { OutlinePanel } from "../outline/OutlinePanel";
 import { useHeadings } from "../outline/useHeadings";
 import type { HeadingItem } from "../outline/useHeadings";
 import { useActiveHeading } from "../outline/useActiveHeading";
+import { fs } from "@/lib/utools/fs";
 
 const SIDEBAR_MIN_WIDTH = 150;
 const SIDEBAR_SIDE_GAP_LEFT = 0;
@@ -283,8 +284,7 @@ export function Sidebar({
 
     const notebook = useNotebooks.getState().notebooks[page.workspaceId];
     const isLocalFolder = notebook?.source === "local-folder";
-    if (isLocalFolder && page.localFilePath && (window as any).gooseFs) {
-      const gooseFs = (window as any).gooseFs as GooseFs;
+    if (isLocalFolder && page.localFilePath && fs.isAvailable()) {
       const dir = page.localFilePath.replace(/[^\/\\]+$/, "");
       const extMatch = page.localFilePath.match(/\.(md|markdown)$/i);
       const ext = extMatch ? extMatch[0] : ".md";
@@ -292,19 +292,13 @@ export function Sidebar({
       const safeTitle = rawTitle.replace(/\.(md|markdown)$/i, "");
       const newPath = `${dir}${safeTitle}${ext}`;
 
-      const exists = gooseFs.existsAsync
-        ? await gooseFs.existsAsync(newPath)
-        : gooseFs.exists(newPath);
+      const exists = await fs.existsAsync(newPath);
       if (exists) {
         toast.error("重命名失败：目标文件已存在");
         return;
       }
       if (newPath !== page.localFilePath) {
-        const renamedResult = gooseFs.rename(page.localFilePath, newPath);
-        const renamed =
-          renamedResult instanceof Promise
-            ? await renamedResult
-            : renamedResult;
+        const renamed = await fs.rename(page.localFilePath, newPath);
         if (!renamed) {
           toast.error("重命名失败：文件系统错误");
           return;
