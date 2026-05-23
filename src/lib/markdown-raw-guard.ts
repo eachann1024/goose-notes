@@ -17,6 +17,33 @@ function normalizeMarkdownLineBreaks(markdown: string): string {
   return markdown.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
+// 抽出文件顶部的 YAML frontmatter（含起止 --- 行）。返回剩余 markdown body
+// （跳过 frontmatter 之后的多余空行）。frontmatter 不入编辑器，保存时 prepend 回去。
+export function extractFrontmatter(markdown: string): {
+  frontmatter: string | null;
+  body: string;
+} {
+  const normalized = normalizeMarkdownLineBreaks(markdown);
+  const lines = normalized.split("\n");
+  if (lines.length === 0 || lines[0].trim() !== "---") {
+    return { frontmatter: null, body: normalized };
+  }
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1) return { frontmatter: null, body: normalized };
+  const frontmatter = lines.slice(0, endIdx + 1).join("\n");
+  let bodyStart = endIdx + 1;
+  while (bodyStart < lines.length && lines[bodyStart].trim() === "") {
+    bodyStart += 1;
+  }
+  return { frontmatter, body: lines.slice(bodyStart).join("\n") };
+}
+
 function isHtmlCommentLine(trimmedLine: string): boolean {
   return trimmedLine.startsWith("<!--") && trimmedLine.endsWith("-->");
 }

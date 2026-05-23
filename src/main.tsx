@@ -25,7 +25,9 @@ import {
 import {
   decodeUnsupportedMarkdownForDisk,
   encodeUnsupportedMarkdownForEditor,
+  extractFrontmatter,
 } from "./lib/markdown-raw-guard";
+import { setFrontmatterForPath } from "./lib/local-frontmatter-store";
 import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import {
@@ -171,13 +173,20 @@ const setupMarkdownOpenWriteGuard = () => {
     return true;
   };
 
+  const splitFrontmatterAndEncode = (filePath: string, rawContent: string) => {
+    if (!isMarkdownPath(filePath)) return encodeUnsupportedMarkdownForEditor(rawContent);
+    const { frontmatter, body } = extractFrontmatter(rawContent);
+    setFrontmatterForPath(filePath, frontmatter);
+    return encodeUnsupportedMarkdownForEditor(body);
+  };
+
   const readFileAsync = gooseFs.readFileAsync?.bind(gooseFs);
   if (readFileAsync) {
     gooseFs.readFileAsync = async (filePath: string) => {
       const rawContent = await readFileAsync(filePath);
       captureMarkdownRead(filePath, rawContent);
       if (typeof rawContent !== "string") return rawContent;
-      return encodeUnsupportedMarkdownForEditor(rawContent);
+      return splitFrontmatterAndEncode(filePath, rawContent);
     };
   }
 
@@ -186,7 +195,7 @@ const setupMarkdownOpenWriteGuard = () => {
     const rawContent = readFile(filePath);
     captureMarkdownRead(filePath, rawContent);
     if (typeof rawContent !== "string") return rawContent;
-    return encodeUnsupportedMarkdownForEditor(rawContent);
+    return splitFrontmatterAndEncode(filePath, rawContent);
   };
 
   const writeFileAsync = gooseFs.writeFileAsync?.bind(gooseFs);

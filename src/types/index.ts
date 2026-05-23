@@ -63,6 +63,8 @@ export interface Page {
   localFilePath?: string;
   localReadState?: LocalFileReadState;
   localReadError?: string;
+  // 文件顶部 YAML frontmatter 原文（含起止 --- 行，不入编辑器，保存时 prepend 回去）。
+  localFrontmatter?: string;
 
   // Linking (for future bidirectional links)
   outgoingLinks?: string[];
