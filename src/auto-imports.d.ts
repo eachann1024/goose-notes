@@ -8,7 +8,6 @@ export {}
 declare global {
   const Activity: typeof import('react').Activity
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
-  const BLOCK_BG_COLORS: typeof import('./lib/blockColorPresets').BLOCK_BG_COLORS
   const Button: typeof import('./components/ui/button').Button
   const CARD_THEMES: typeof import('./lib/imageExport/index').CARD_THEMES
   const Card: typeof import('./components/ui/card').Card
@@ -158,7 +157,6 @@ declare global {
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
   const ensureFirstTitleHeading: typeof import('./lib/blocknote-content/index').ensureFirstTitleHeading
-  const ensureToggleableHeadings: typeof import('./lib/blocknote-content').ensureToggleableHeadings
   const exportNotebooks: typeof import('./lib/export/index').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport/index').exportPageToImage
   const exportSelectionToImage: typeof import('./lib/imageExport/index').exportSelectionToImage
@@ -211,8 +209,6 @@ declare global {
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
-  const getRandomBlockAccentColor: typeof import('./lib/blockColorPresets').getRandomBlockAccentColor
-  const getRandomBlockColorPair: typeof import('./lib/blockColorPresets').getRandomBlockColorPair
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const hasStructuredBlocks: typeof import('./lib/blocknote-content/index').hasStructuredBlocks
@@ -243,7 +239,6 @@ declare global {
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
-  const organizeToggleHeadingSections: typeof import('./lib/blocknote-content').organizeToggleHeadingSections
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
   const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml

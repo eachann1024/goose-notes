@@ -838,6 +838,15 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
+    readFileBase64: (filePath) => {
+      try {
+        return fs.readFileSync(filePath).toString("base64");
+      } catch (err) {
+        console.error("[gooseFs] readFileBase64 failed:", err);
+        return null;
+      }
+    },
+
     writeFile: (filePath, content, encoding = "utf-8") => {
       try {
         fs.writeFileSync(filePath, content, resolveWriteEncoding(encoding));

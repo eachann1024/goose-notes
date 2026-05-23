@@ -16,6 +16,7 @@ declare global {
     readDirAsync?: (dir: string) => Promise<any[]>;
     readFile: (path: string) => string | null;
     readFileAsync?: (path: string) => Promise<string | null>;
+    readFileBase64?: (path: string) => string | null;
     readFileStat?: (
       path: string,
     ) => { ok: boolean; error?: string | null; content?: string | null };
