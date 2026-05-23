@@ -48,7 +48,21 @@ export function AiComposerMentionPopover({
     const list = listRef.current;
     if (!list) return;
     const activeEl = list.querySelector<HTMLElement>(`[data-mention-index="${activeIndex}"]`);
-    activeEl?.scrollIntoView({ block: "nearest" });
+    if (!activeEl) return;
+
+    // Manual scroll with breathing room — scrollIntoView({ block: "nearest" })
+    // glues the active item flush to the edge, which looks cramped.
+    const padding = 8;
+    const itemTop = activeEl.offsetTop;
+    const itemBottom = itemTop + activeEl.offsetHeight;
+    const viewTop = list.scrollTop;
+    const viewBottom = viewTop + list.clientHeight;
+
+    if (itemTop < viewTop + padding) {
+      list.scrollTop = Math.max(0, itemTop - padding);
+    } else if (itemBottom > viewBottom - padding) {
+      list.scrollTop = itemBottom - list.clientHeight + padding;
+    }
   }, [activeIndex, items.length]);
 
   const popover = (

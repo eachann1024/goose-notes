@@ -99,6 +99,32 @@ export function AiPanel({
     return () => document.removeEventListener("keydown", handler);
   }, [phase]);
 
+  useEffect(() => {
+    // 必须用 pointerdown + capture：BlockNote 的 FormattingToolbarExtension
+    // 在 editor DOM 上注册了冒泡阶段的 pointerdown 监听，会立即
+    // setState(false) 把整个 formatting toolbar 卸载（连带 AiPanel）。
+    // 只有在 capture 阶段拦截 pointerdown 并 stopPropagation，才能
+    // 阻止它生效；preventDefault 同时阻止后续 mousedown 派发。
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest("[data-ai-inline-input]")) return;
+      if (target.closest("[data-formatting-toolbar]")) return;
+
+      const shouldBlock = phase === "processing" || query.trim().length > 0;
+      if (shouldBlock) {
+        e.preventDefault();
+        e.stopPropagation();
+        requestAnimationFrame(() => textareaRef.current?.focus());
+        return;
+      }
+      closeRef.current();
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [phase, query]);
+
   useLayoutEffect(() => {
     if (phase !== "processing") return;
     const el = outputScrollRef.current;
@@ -261,11 +287,18 @@ export function AiPanel({
       }
       onClose();
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
+      }
+
+      // 用户主动取消：回到输入态，保留 query，允许再次点击发送。
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setPhase("input");
+        setStreamText("");
+        setReasoningText("");
+        setStreamPhase("connecting");
+        return;
       }
 
       const errMsg = err instanceof Error ? err.message : "请求失败，请重试";
@@ -296,6 +329,11 @@ export function AiPanel({
   const handleRetry = useCallback(() => {
     void handleSubmit();
   }, [handleSubmit]);
+
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
 
   const placeholder =
     initialAction === "polish"
@@ -361,18 +399,26 @@ export function AiPanel({
             </button>
             <button
               type="button"
-              onClick={() => void handleSubmit()}
-              disabled={!canSubmit}
-              aria-label="发送"
+              onClick={() => {
+                if (isProcessing) {
+                  handleCancel();
+                } else {
+                  void handleSubmit();
+                }
+              }}
+              disabled={!isProcessing && !canSubmit}
+              aria-label={isProcessing ? "取消" : "发送"}
               className={cn(
                 "pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full transition-colors",
-                canSubmit
+                isProcessing
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                  : "bg-muted/70 text-muted-foreground/60",
+                  : canSubmit
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                    : "bg-muted/70 text-muted-foreground/60",
               )}
             >
               {isProcessing ? (
-                <LucideIcons.LoaderCircle className="h-3 w-3 animate-spin" />
+                <LucideIcons.Square className="h-2.5 w-2.5 fill-current" />
               ) : (
                 <LucideIcons.ArrowUp className="h-3 w-3" />
               )}

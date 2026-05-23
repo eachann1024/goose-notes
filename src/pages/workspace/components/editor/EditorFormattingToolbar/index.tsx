@@ -4,6 +4,7 @@ import {
   useEditorState,
 } from "@blocknote/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TextSelection } from "prosemirror-state";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -176,6 +177,7 @@ export function EditorFormattingToolbar() {
   }, [editor, setAiActive]);
 
   const handleAiClose = useCallback(() => {
+    const savedSel = savedSelectionRef.current;
     try {
       setFakeSelection(editor, null);
     } catch {
@@ -184,6 +186,32 @@ export function EditorFormattingToolbar() {
     savedSelectionRef.current = null;
     setAiContext(null);
     setAiActive(false);
+
+    // 把 ProseMirror 选区恢复到原始范围并把焦点交还给 editor。
+    // 否则点击空白后 editor 失焦：1) 选区高亮消失；2) Mod-z 快捷键
+    // 进不到 ProseMirror，导致撤销整体失灵。
+    if (savedSel) {
+      requestAnimationFrame(() => {
+        try {
+          const view = (editor as any).prosemirrorView;
+          if (!view) return;
+          const { state } = view;
+          const docSize = state.doc.content.size;
+          const from = Math.min(savedSel.from, docSize);
+          const to = Math.min(savedSel.to, docSize);
+          if (from !== to) {
+            const tr = state.tr.setSelection(
+              TextSelection.create(state.doc, from, to),
+            );
+            tr.setMeta("addToHistory", false);
+            view.dispatch(tr);
+          }
+          view.focus();
+        } catch {
+          /* ignore */
+        }
+      });
+    }
   }, [editor, setAiActive]);
 
   const isBold = markStates.bold;
@@ -250,6 +278,7 @@ export function EditorFormattingToolbar() {
     >
       <div
         ref={menuRef}
+        data-formatting-toolbar
         onMouseDown={(e) => {
           // Allow native focus on the AI textarea; everything else uses onClick.
           const target = e.target as HTMLElement | null;

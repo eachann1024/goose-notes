@@ -72,6 +72,31 @@ function matchShortcut(event: KeyboardEvent, shortcut: string) {
   return !isModifierToken(eventKey) && eventKey === keyToken;
 }
 
+function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: string }) {
+  if (parts.length === 0) {
+    if (!fallback) return null;
+    return <span className="shrink-0 text-xs text-muted-foreground/45">{fallback}</span>;
+  }
+  return (
+    <div className="flex items-center gap-0.5 shrink-0 max-w-[42%] overflow-hidden">
+      {parts.map((part, i) => (
+        <span key={i} className="flex items-center gap-0.5 min-w-0">
+          {i > 0 && <span className="text-muted-foreground/25 text-[10px] shrink-0">›</span>}
+          <span
+            className={`truncate text-xs ${
+              i === 0
+                ? "text-muted-foreground/75 font-medium"
+                : "text-muted-foreground/50"
+            }`}
+          >
+            {part}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const regex = new RegExp(
@@ -341,8 +366,8 @@ export function CommandPalette() {
       <DialogDescription id={descriptionId} className="sr-only">
         搜索和快速访问页面
       </DialogDescription>
-      <div className="flex items-center px-4 shadow-[inset_0_-1px_0_hsl(var(--foreground)/0.08)]" cmdk-input-wrapper="">
-        <LucideIcons.Search className="mr-2 h-5 w-5 shrink-0 opacity-50" />
+      <div className="flex items-center h-14 px-4 shadow-[inset_0_-1px_0_hsl(var(--foreground)/0.07)]" cmdk-input-wrapper="">
+        <LucideIcons.Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />
         <Command.Input
           ref={inputRef}
           value={searchQuery}
@@ -352,30 +377,28 @@ export function CommandPalette() {
               ? "搜索所有记事本..."
               : `搜索 "${currentNotebookName}"...`
           }
-          className="flex h-12 w-full rounded-md bg-transparent py-3 text-lg outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-14 w-full rounded-md bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <div
           className="flex items-center gap-2 ml-3 shrink-0"
           onMouseDown={(e) => e.preventDefault()}
         >
-          <Switch
-            id="search-all"
-            checked={searchAllNotebooks}
-            onCheckedChange={setSearchAllNotebooks}
-            className="scale-75"
-          />
-          <Label
-            htmlFor="search-all"
-            className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
+          <button
+            type="button"
+            onClick={() => setSearchAllNotebooks(!searchAllNotebooks)}
+            className={`px-2.5 py-1 rounded-[8px] text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              searchAllNotebooks
+                ? "bg-foreground/8 text-foreground/80"
+                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-foreground/5"
+            }`}
           >
-            {searchAllNotebooks ? "所有记事本" : "当前记事本"}
-          </Label>
+            {searchAllNotebooks ? "所有记事本" : currentNotebookName}
+          </button>
         </div>
-        <div className="w-px h-4 bg-border mx-2" />
-        <Kbd shortcut="Tab" className="rounded-[10px] border-transparent shadow-[inset_0_0_0_1px_hsl(var(--input)/0.7)]" />
+        <Kbd shortcut="Tab" className="ml-1 rounded-[8px] border-transparent shadow-[inset_0_0_0_1px_hsl(var(--input)/0.6)] text-muted-foreground/50" />
       </div>
 
-      <Command.List className="max-h-[300px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-foreground/90">
+      <Command.List className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50">
         <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
         </Command.Empty>
@@ -408,7 +431,7 @@ export function CommandPalette() {
                   onSelect={() => {
                     openPageInTab(page, null);
                   }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
                     <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
@@ -428,17 +451,16 @@ export function CommandPalette() {
                       <LucideIcons.X className="h-3 w-3 text-muted-foreground" />
                     </div>
                   </div>
-                  <span className="truncate flex-1">
+                  <span className="truncate flex-1 mr-3">
                     <HighlightText
                       text={getPageTitle(page)}
                       query={searchQuery}
                     />
                   </span>
-                  <span className="ml-auto text-xs text-muted-foreground/50">
-                    {breadcrumb.length > 0
-                      ? breadcrumb.join(" > ")
-                      : new Date(page.updatedAt).toLocaleDateString()}
-                  </span>
+                  <BreadcrumbPath
+                    parts={breadcrumb.slice(0, -1)}
+                    fallback={new Date(page.updatedAt).toLocaleDateString()}
+                  />
                 </Command.Item>
               );
             })}
@@ -459,23 +481,21 @@ export function CommandPalette() {
                     const highlightQuery = searchQuery.trim() || null;
                     openPageInTab(page, highlightQuery);
                   }}
-                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2 py-1.5 text-sm text-foreground/92 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
-                  <LucideIcons.FileText className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
+                  <LucideIcons.FileText className="mr-2 h-4 w-4 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-3">
                       <span className="truncate font-medium">
                         <HighlightText
                           text={getPageTitle(page)}
                           query={searchQuery}
                         />
                       </span>
-                      <span className="text-xs text-muted-foreground/50 truncate shrink-0">
-                        {breadcrumb.length > 0 ? breadcrumb.join(" / ") : ""}
-                      </span>
+                      <BreadcrumbPath parts={breadcrumb.slice(0, -1)} />
                     </div>
                     {searchResults.hasQuery && page.contentSnippet && (
-                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">
                         <HighlightText
                           text={page.contentSnippet}
                           query={searchQuery}
