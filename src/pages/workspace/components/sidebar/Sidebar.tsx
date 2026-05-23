@@ -482,7 +482,7 @@ export function Sidebar({
                 />
               </div>
               {currentView === "pages" ? (
-                <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0">
+                <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0 flex flex-col">
                   <SidebarTree
                     activeNotebookId={activeNotebookId}
                     selectedPageId={selectedPageId}

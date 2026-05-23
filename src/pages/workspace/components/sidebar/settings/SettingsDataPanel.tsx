@@ -2,6 +2,7 @@ import { Download, FileText, Globe, Upload } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
+import { renderNotebookIcon } from "../notebookUtils";
 
 interface NotebookOption {
   id: string;
@@ -102,7 +103,9 @@ export function SettingsDataPanel({
                       : DATA_UNSELECTED_CARD_CLASS,
                   )}
                 >
-                  <span className="shrink-0 text-lg">{notebook.icon || "📓"}</span>
+                  <span className="shrink-0 inline-flex items-center justify-center w-5 h-5">
+                    {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4 stroke-[1.6]")}
+                  </span>
                   <span className="truncate text-sm">{notebook.name}</span>
                 </button>
               );

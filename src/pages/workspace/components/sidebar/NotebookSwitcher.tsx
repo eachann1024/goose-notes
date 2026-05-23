@@ -48,7 +48,7 @@ export function NotebookSwitcher() {
   const [createDialog, setCreateDialog] = useState({
     open: false,
     name: "",
-    icon: "📓",
+    icon: "BookOpen",
     error: "",
   });
 
@@ -59,7 +59,7 @@ export function NotebookSwitcher() {
   const canDeleteNotebook = Object.keys(notebooks).length > 1;
 
   const handleCreate = () => {
-    setCreateDialog({ open: true, name: "", icon: "📓", error: "" });
+    setCreateDialog({ open: true, name: "", icon: "BookOpen", error: "" });
     setIsOpen(false);
   };
 
@@ -79,7 +79,7 @@ export function NotebookSwitcher() {
 
     createNotebook(createDialog.name.trim(), createDialog.icon);
     setActivePage(null);
-    setCreateDialog({ open: false, name: "", icon: "📓", error: "" });
+    setCreateDialog({ open: false, name: "", icon: "BookOpen", error: "" });
   };
 
   const handleOpenLocalFolder = async () => {
@@ -138,7 +138,7 @@ export function NotebookSwitcher() {
       id,
       name: notebook.name,
       confirmName: notebook.name,
-      icon: notebook.icon || "📓",
+      icon: notebook.icon || "BookOpen",
       openDeleteConfirm: false,
     });
   };
@@ -178,16 +178,19 @@ export function NotebookSwitcher() {
           >
             <Button
               variant="ghost"
-              className="w-full justify-between px-1.5 h-10 py-0 font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[var(--goose-interactive-hover)] hover:text-foreground transition-colors"
+              className="w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] transition-colors"
             >
-              <div className="flex items-center gap-2 truncate">
-                {activeNotebook &&
-                  renderNotebookIcon(activeNotebook.icon || "📓", "h-4 w-4")}
-                <span className="truncate text-sm">
+              <div className="flex items-center gap-2 truncate min-w-0">
+                {activeNotebook && (
+                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-foreground/70 text-[16px] leading-none">
+                    {renderNotebookIcon(activeNotebook.icon || "BookOpen", "h-[18px] w-[18px] leading-none")}
+                  </span>
+                )}
+                <span className="truncate text-[13px] tracking-[0.01em] leading-none">
                   {activeNotebook?.name || "选择记事本"}
                 </span>
               </div>
-              <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+              <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-foreground/40" />
             </Button>
           </div>
         </DropdownMenuTrigger>
@@ -240,8 +243,10 @@ export function NotebookSwitcher() {
               }}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                {renderNotebookIcon(notebook.icon || "📓")}
-                <span className="truncate text-sm font-medium">{notebook.name}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-interactive-hover)]">
+                  {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
+                </span>
+                <span className="truncate text-sm font-medium leading-none">{notebook.name}</span>
                 {notebook.localPathMissing && (
                   <span className="text-xs text-destructive">路径失效</span>
                 )}

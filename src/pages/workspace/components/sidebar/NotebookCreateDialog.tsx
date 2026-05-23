@@ -1,6 +1,5 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
-import { BookOpen } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 
 interface NotebookCreateDialogProps {
@@ -38,11 +37,8 @@ export function NotebookCreateDialog({
     >
       {/* 内容卡片 */}
       <div ref={createDialogContentRef} className="relative mx-auto w-full max-w-md py-6">
-        {/* Logo 和标题 */}
+        {/* 标题 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[14px] bg-[hsl(var(--goose-selected-bg))] mb-4 shadow-[0_10px_22px_rgba(15,23,42,0.1)]">
-            <BookOpen className="w-8 h-8 text-foreground/80" />
-          </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">新建记事本</h1>
           <p className="text-muted-foreground">创建一个新的记事本</p>
         </div>
@@ -61,15 +57,15 @@ export function NotebookCreateDialog({
               <Suspense fallback={<Button variant="outline" className="h-24 w-24 text-4xl">...</Button>}>
                 <IconSelector
                   value={icon}
-                  onChange={(val) => onIconChange(val || "📓")}
+                  onChange={(val) => onIconChange(val || "BookOpen")}
                   portalContainerRef={createDialogContentRef}
                   scope="general"
                 >
                   <Button
                     variant="outline"
-                    className="h-24 w-24 p-0 hover:bg-[var(--goose-interactive-hover)] transition-all duration-200"
+                    className="inline-flex h-24 w-24 items-center justify-center p-0 rounded-[20px] bg-[hsl(var(--goose-selected-bg)/0.6)] hover:bg-[var(--goose-interactive-hover)] transition-all duration-200 [&>span]:flex [&>span]:items-center [&>span]:justify-center"
                   >
-                    {renderNotebookIcon(icon, "h-14 w-14 text-5xl")}
+                    {renderNotebookIcon(icon, "!h-14 !w-14 stroke-[1.4] text-[3.25rem]")}
                   </Button>
                 </IconSelector>
               </Suspense>

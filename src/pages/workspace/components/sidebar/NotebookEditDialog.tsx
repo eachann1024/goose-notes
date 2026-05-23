@@ -1,6 +1,6 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
-import { BookOpen, AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle, Save } from "lucide-react";
 
 interface NotebookEditDialogProps {
   open: boolean;
@@ -58,22 +58,13 @@ export function NotebookEditDialog({
     >
       {/* 内容卡片 */}
       <div ref={editDialogContentRef} className="relative mx-auto w-full max-w-md py-6">
-        {/* Logo 和标题 */}
+        {/* 标题 */}
         <div className="text-center mb-8">
-          <div
-            className={cn(
-              "inline-flex items-center justify-center w-16 h-16 rounded-[14px] mb-4 shadow-[0_10px_22px_rgba(15,23,42,0.1)]",
-              showDeleteConfirm
-                ? "bg-destructive/15"
-                : "bg-[hsl(var(--goose-selected-bg))]",
-            )}
-          >
-            {showDeleteConfirm ? (
-              <AlertTriangle className="w-8 h-8 text-destructive" />
-            ) : (
-              <BookOpen className="w-8 h-8 text-foreground/80" />
-            )}
-          </div>
+          {showDeleteConfirm && (
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-destructive/15">
+              <AlertTriangle className="w-7 h-7 text-destructive" />
+            </div>
+          )}
           <h1 className="text-2xl font-bold text-foreground mb-2">
             {showDeleteConfirm ? "永久删除记事本" : "编辑记事本"}
           </h1>
@@ -151,15 +142,15 @@ export function NotebookEditDialog({
                 >
                   <IconSelector
                     value={icon}
-                    onChange={(val) => onIconChange(val || "📓")}
+                    onChange={(val) => onIconChange(val || "BookOpen")}
                     portalContainerRef={editDialogContentRef}
                     scope="general"
                   >
                     <Button
                       variant="outline"
-                      className="h-16 w-16 p-0 text-3xl hover:bg-[var(--goose-interactive-hover)] transition-all duration-200"
+                      className="inline-flex h-20 w-20 items-center justify-center p-0 rounded-[16px] bg-[hsl(var(--goose-selected-bg)/0.6)] hover:bg-[var(--goose-interactive-hover)] transition-all duration-200 [&>span]:flex [&>span]:items-center [&>span]:justify-center"
                     >
-                      {renderNotebookIcon(icon)}
+                      {renderNotebookIcon(icon, "!h-11 !w-11 stroke-[1.5] text-[2.75rem]")}
                     </Button>
                   </IconSelector>
                 </Suspense>

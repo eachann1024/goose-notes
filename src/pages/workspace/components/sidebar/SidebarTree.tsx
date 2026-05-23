@@ -1256,7 +1256,9 @@ export function SidebarTree({
     const EmptyIcon = isLocalNotebook ? LucideIcons.FolderOpen : LucideIcons.Files;
     const isCompactEmptyState = width <= 172;
     return (
-      <div className={cn("py-10 text-center", isCompactEmptyState ? "px-2" : "px-4")}>
+      <div
+        className={cn("flex flex-col flex-1 items-center justify-center", isCompactEmptyState ? "px-2" : "px-4")}
+      >
         <div className="flex flex-col items-center gap-2.5">
           <EmptyIcon className="h-7 w-7 text-foreground/45 stroke-[1.75]" />
           <p

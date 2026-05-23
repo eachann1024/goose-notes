@@ -227,7 +227,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     const defaultNotebook = {
       id: DEFAULT_NOTEBOOK,
       name: "Note",
-      icon: "📓",
+      icon: "BookOpen",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -275,24 +275,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           tabs={SETTINGS_TABS}
-          feedbackBanner={
-            <div className="rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
-              <p className="text-xs font-medium text-foreground">快速反馈</p>
-              <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-                问题反馈与建议收集入口
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleOpenAppUrl(FEEDBACK_URL)}
-                className="mt-2 h-8 w-full justify-between rounded-[10px] px-2 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
-              >
-                <span>立即反馈</span>
-                <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
-              </Button>
-            </div>
-          }
+          feedbackBanner={null}
           appsBanner={
             appsBannerVisible ? (
               <div className="relative rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
