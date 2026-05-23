@@ -10,12 +10,16 @@ import {
   type PartialTableContent,
 } from "@blocknote/core";
 import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
-import { TableHandlesExtension } from "@blocknote/core/extensions";
+import {
+  FormattingToolbarExtension,
+  TableHandlesExtension,
+} from "@blocknote/core/extensions";
 import {
   CellSelection,
   deleteRow,
   selectedRect,
 } from "prosemirror-tables";
+import { EditorState } from "@tiptap/pm/state";
 import {
   BlockNoteViewRaw as BlockNoteView,
   FilePanelController,
@@ -26,6 +30,7 @@ import {
   useCreateBlockNote,
   useBlockNoteEditor,
   useExtension,
+  useEditorState,
   useExtensionState,
 } from "@blocknote/react";
 import { zh } from "@blocknote/core/locales";
@@ -49,7 +54,10 @@ import {
   filterSlashMenuItems,
 } from "@/pages/workspace/components/command/blocknoteSlashItems";
 import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
-import { EditorFormattingToolbar } from "./EditorFormattingToolbar";
+import {
+  EditorFormattingToolbar,
+  shouldRenderFormattingToolbar,
+} from "./EditorFormattingToolbar";
 import { calloutBlock } from "./calloutBlock";
 import { customFileBlock } from "./customFileBlock";
 import { codeBlockSpec } from "./codeBlockSpec";
@@ -60,12 +68,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AiInlineInput } from "./AiInlineInput";
+import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
 import { EditorSideMenu } from "./EditorSideMenu";
 import { ImageLightbox } from "./ImageLightbox";
 import { gooseSelectAllExtension } from "./selectAllExtension";
 import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
+import { gooseFakeSelectionExtension } from "./fakeSelectionExtension";
 import { EditorLinkToolbar } from "./EditorLinkToolbar";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { UToolsAdapter } from "@/lib/utools";
@@ -761,11 +771,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
 
+  const initialContentRef = useRef(normalizePageContent(page?.content));
   const editor = useCreateBlockNote(
     {
-      initialContent: normalizePageContent(page?.content) as any,
+      initialContent: initialContentRef.current as any,
       schema: editorSchema,
-      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension, gooseCodeBlockKeyboardExtension],
+      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension, gooseCodeBlockKeyboardExtension, gooseFakeSelectionExtension],
       dictionary: {
         ...zh,
         placeholders: {
@@ -795,11 +806,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       },
       links: {
         onClick: (event) => {
-          // 编辑优先：直接点击不跳转，只将光标放入链接
           if (!event.metaKey && !event.ctrlKey) {
             return false;
           }
-          // Cmd/Ctrl + 点击：跳转链接
           const target = event.target as HTMLElement | null;
           const link = target?.closest<HTMLAnchorElement>(
             'a[data-inline-content-type="link"]',
@@ -814,15 +823,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         },
       },
     },
-    [activePageId],
-  );
-
-  const getSlashItems = useCallback(
-    async (query: string) => {
-      const items = getBlockNoteSlashMenuItems(editor);
-      return filterSlashMenuItems(items, query);
-    },
-    [editor],
+    [],
   );
 
   const debouncedUpdate = useMemo(() => {
@@ -835,6 +836,45 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       { maxWait: 3000 },
     );
   }, [updatePage]);
+
+  const prevPageIdRef = useRef<string | null>(activePageId);
+  useEffect(() => {
+    if (activePageId === prevPageIdRef.current) return;
+    prevPageIdRef.current = activePageId;
+
+    debouncedUpdate.cancel();
+
+    const p = activePageId ? getPage(activePageId) : undefined;
+    const nextContent = normalizePageContent(p?.content);
+    const sig = getContentSignature(nextContent);
+
+    pageIdForUpdateRef.current = p?.id ?? null;
+    syncedContentSignatureRef.current = sig;
+
+    editor.replaceBlocks(editor.document, nextContent as any);
+
+    // Reset undo history so edits from the previous page don't leak
+    const view = editor.prosemirrorView;
+    if (view) {
+      const newState = EditorState.create({
+        doc: view.state.doc,
+        plugins: view.state.plugins,
+      });
+      view.updateState(newState);
+    }
+
+    if (p && getContentSignature(p.content) !== sig) {
+      updatePage(p.id, { content: nextContent });
+    }
+  }, [activePageId, debouncedUpdate, editor, getPage, updatePage]);
+
+  const getSlashItems = useCallback(
+    async (query: string) => {
+      const items = getBlockNoteSlashMenuItems(editor);
+      return filterSlashMenuItems(items, query);
+    },
+    [editor],
+  );
 
   const restoreFirstTitleHeading = useCallback(() => {
     const currentContent = editor.document as BlockNoteContent;
@@ -1005,23 +1045,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   );
 
   useEffect(() => {
-    if (!activePageId) return;
-    const p = getPage(activePageId);
-    if (!p) return;
-
-    const normalized = normalizePageContent(p.content);
-    const normalizedSignature = getContentSignature(normalized);
-    pageIdForUpdateRef.current = p.id;
-    syncedContentSignatureRef.current = normalizedSignature;
-
-    if (getContentSignature(p.content) !== normalizedSignature) {
-      updatePage(p.id, { content: normalized });
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId]);
-
-  useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
     };
@@ -1180,9 +1203,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     let blocks: BlockNoteContent = [];
     if (!trimmedText) {
       try {
-        const selection = editor.getSelection();
-        if (Array.isArray(selection?.blocks)) {
-          blocks = selection.blocks as BlockNoteContent;
+        const pmSel = editor.prosemirrorState.selection;
+        const $from = pmSel.$from;
+        let inBlock = false;
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === "blockContainer") { inBlock = true; break; }
+        }
+        if (inBlock) {
+          const selected = editor.getSelection();
+          if (Array.isArray(selected?.blocks)) {
+            blocks = selected.blocks as BlockNoteContent;
+          }
         }
       } catch { /* ignore */ }
       if (blocks.length <= 1) {
@@ -1230,6 +1261,28 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     exportSelectionToImage(blocks, title, themeId, watermarkConfig);
   };
 
+  const formattingToolbarStoreOpen = useExtensionState(FormattingToolbarExtension, { editor });
+  const formattingToolbarSelectionAllowed = useEditorState({
+    editor,
+    on: "selection",
+    selector: ({ editor }) => shouldRenderFormattingToolbar(editor),
+  });
+  const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
+  const formattingToolbarFloatingOptions = useMemo(
+    () => ({
+      useFloatingOptions: {
+        open:
+          formattingToolbarAiActive ||
+          (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed),
+      },
+    }),
+    [
+      formattingToolbarAiActive,
+      formattingToolbarSelectionAllowed,
+      formattingToolbarStoreOpen,
+    ],
+  );
+
   if (!page) return null;
 
   return (
@@ -1247,7 +1300,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           )}
         >
         <BlockNoteView
-          key={activePageId ?? "empty"}
           editor={editor}
           editable={editable}
           theme={effectiveTheme}
@@ -1274,6 +1326,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           />
           <FormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
+            floatingUIOptions={formattingToolbarFloatingOptions}
           />
           <LinkToolbarController linkToolbar={EditorLinkToolbar} />
           <FilePanelController filePanel={EditorFilePanel} />
