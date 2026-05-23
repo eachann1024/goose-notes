@@ -1,5 +1,21 @@
 import { EmojiPicker } from "frimousse";
-import { useEffect, useRef } from "react";
+import * as LucideIcons from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   value?: string;
@@ -245,7 +261,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                 onChange(emoji);
                 setOpen(false);
               }}
-              columns={8}
+              columns={9}
             >
               <EmojiPicker.Search
                 placeholder="搜索表情"
@@ -259,11 +275,11 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                   未找到表情
                 </EmojiPicker.Empty>
                 <EmojiPicker.List
-                  className="select-none px-3 pb-2"
+                  className="select-none px-3 pb-2 [&_[frimousse-row]]:justify-between"
                   components={{
                     Emoji: ({ emoji, ...props }) => (
                       <button
-                        className="flex size-8 items-center justify-center rounded-md text-xl hover:bg-accent data-[active]:bg-accent transition-colors"
+                        className="flex size-8 items-center justify-center rounded-md text-xl transition-colors hover:bg-accent data-[active]:bg-accent"
                         {...props}
                       >
                         {emoji.emoji}

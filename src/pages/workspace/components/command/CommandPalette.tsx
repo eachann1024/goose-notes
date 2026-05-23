@@ -9,6 +9,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
+import { toast } from "sonner";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -115,6 +116,7 @@ export function CommandPalette() {
     searchAllNotebooks,
     setSearchAllNotebooks,
     showRecentInSearch,
+    setShowRecentInSearch,
     searchPanelCloseShortcut,
   } = useSettings();
   const trackSearchOpened = useCallback((openSource: "utools_input" | "shortcut" | "programmatic") => {
@@ -332,7 +334,7 @@ export function CommandPalette() {
       onOpenChange={setOpen}
       label="Global Search"
       filter={() => 1}
-      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 bg-[hsl(var(--goose-shell-bg))] shadow-none"
+      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.97] data-[state=open]:slide-in-from-top-3 data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.97] data-[state=closed]:slide-out-to-top-3 data-[state=closed]:duration-150 bg-[hsl(var(--goose-shell-bg))] shadow-none"
       aria-describedby={descriptionId}
     >
       <DialogTitle className="sr-only">搜索</DialogTitle>
@@ -381,7 +383,22 @@ export function CommandPalette() {
         {!searchQuery.trim() &&
           showRecentInSearch &&
           searchResults.recent.length > 0 && (
-          <Command.Group heading="最近访问">
+          <Command.Group heading={
+            <div className="flex items-center justify-between">
+              <span>最近访问</span>
+              <div
+                role="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRecentInSearch(false);
+                  toast("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
+                }}
+                className="p-0.5 rounded hover:bg-foreground/10 cursor-pointer transition-colors"
+              >
+                <LucideIcons.X className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground" />
+              </div>
+            </div>
+          }>
             {searchResults.recent.map((page: Page) => {
               const breadcrumb = getPageBreadcrumb(page);
               return (

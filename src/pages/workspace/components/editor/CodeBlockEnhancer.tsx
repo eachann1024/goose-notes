@@ -80,12 +80,13 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
 
   return createPortal(
     <div
-      className="goose-code-floating-toolbar fixed z-[45]"
+      className="goose-code-floating-toolbar fixed z-[45] transition-[opacity,transform] duration-150 ease-out"
       contentEditable={false}
       style={{
         top: Math.max(8, rect.top + 6),
         left: Math.max(8, rect.right - 8),
         transform: "translateX(-100%)",
+        animation: "fade-scale-in 150ms ease-out",
       }}
     >
       <CodeBlockToolbar

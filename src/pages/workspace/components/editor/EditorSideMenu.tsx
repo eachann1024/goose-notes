@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   useBlockNoteEditor,
@@ -13,6 +13,7 @@ export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
   const suggestionMenu = useExtension(SuggestionMenu);
   const sideMenu = useExtension(SideMenuExtension);
+  const lastPosRef = useRef({ top: 0, left: 0 });
 
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>
@@ -26,6 +27,10 @@ export function EditorSideMenu() {
   });
 
   const block = state?.block;
+  const isVisible =
+    !!state?.show &&
+    !!state.referencePos &&
+    !(block && block.id === editor.document[0]?.id);
 
   const handleAdd = useCallback(() => {
     if (!block) return;
@@ -61,26 +66,47 @@ export function EditorSideMenu() {
     sideMenu?.blockDragEnd?.();
   }, [sideMenu]);
 
-  if (!state?.show || !state.referencePos) return null;
+  if (state?.referencePos) {
+    const sideMenuWidth = 40;
+    lastPosRef.current = {
+      top: state.referencePos.top + state.referencePos.height / 2,
+      left: Math.max(4, state.referencePos.left - sideMenuWidth),
+    };
+  }
 
-  if (block && block.id === editor.document[0]?.id) return null;
-
-  const sideMenuWidth = 52;
-  const top =
-    state.referencePos.top + state.referencePos.height / 2 - 12;
-  const left = Math.max(4, state.referencePos.left - sideMenuWidth - 4);
+  const { top, left } = lastPosRef.current;
 
   return createPortal(
     <div
-      className="fixed z-[30] flex items-center gap-0.5 rounded-lg px-1 py-0.5"
-      style={{ top, left }}
+      className="fixed z-[60] flex items-center rounded-lg p-1 transition-[opacity,transform] duration-150 ease-out"
+      style={{
+        top,
+        left,
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible
+          ? "translateY(-50%) scale(1)"
+          : "translateY(-50%) scale(0.92)",
+        pointerEvents: isVisible ? "auto" : "none",
+      }}
       onMouseDown={(e) => e.stopPropagation()}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <button
         type="button"
         onClick={handleAdd}
         className={cn(
-          "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/50",
+          "flex h-6 w-5 items-center justify-center rounded-md text-muted-foreground/50",
           "transition-colors hover:bg-muted hover:text-foreground",
         )}
       >
@@ -92,7 +118,7 @@ export function EditorSideMenu() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         className={cn(
-          "flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground/40",
+          "flex h-6 w-5 cursor-grab items-center justify-center rounded-md text-muted-foreground/40",
           "transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing",
         )}
       >

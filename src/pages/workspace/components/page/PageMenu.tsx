@@ -10,8 +10,14 @@ function getEditorSelectedBlocks(): BlockNoteContent {
   try {
     const editor = (window as any).__gooseNoteEditor;
     if (editor && typeof editor.getSelection === "function") {
-      const selection = editor.getSelection();
-      if (Array.isArray(selection?.blocks)) return selection.blocks as BlockNoteContent;
+      const $from = editor.prosemirrorState.selection.$from;
+      for (let d = $from.depth; d > 0; d--) {
+        if ($from.node(d).type.name === "blockContainer") {
+          const sel = editor.getSelection();
+          if (Array.isArray(sel?.blocks)) return sel.blocks as BlockNoteContent;
+          break;
+        }
+      }
     }
   } catch { /* ignore */ }
   return [];

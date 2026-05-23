@@ -13,7 +13,7 @@ import { useHeadings } from "../outline/useHeadings";
 import type { HeadingItem } from "../outline/useHeadings";
 import { useActiveHeading } from "../outline/useActiveHeading";
 
-const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MIN_WIDTH = 150;
 const SIDEBAR_SIDE_GAP_LEFT = 0;
 const SIDEBAR_SIDE_GAP_RIGHT = 9;
 const SIDEBAR_CONTENT_WIDTH_OFFSET = SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;

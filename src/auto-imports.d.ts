@@ -145,6 +145,7 @@ declare global {
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write').createStickyTargetFromResolvedTarget
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
+  const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const ensureFirstTitleHeading: typeof import('./lib/blocknote-content').ensureFirstTitleHeading
   const ensureToggleableHeadings: typeof import('./lib/blocknote-content').ensureToggleableHeadings
@@ -157,6 +158,7 @@ declare global {
   const exportToMarkdown: typeof import('./lib/export').exportToMarkdown
   const exportToWord: typeof import('./lib/docxExport').exportToWord
   const extractBlockNoteTitle: typeof import('./lib/blocknote-content').extractBlockNoteTitle
+  const extractBlocksInRange: typeof import('./lib/ai-block-scope').extractBlocksInRange
   const extractPlainText: typeof import('./lib/blocknote-content').extractPlainText
   const extractStructureSummary: typeof import('./lib/content-text-extractor').extractStructureSummary
   const extractTextFromContent: typeof import('./lib/content-text-extractor').extractTextFromContent
@@ -236,6 +238,7 @@ declare global {
   const resolveAiTargetIntent: typeof import('./lib/ai-write').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write').resolveAiTargetSelection
+  const resolveBlockScope: typeof import('./lib/ai-block-scope').resolveBlockScope
   const resolvedTargetToSelection: typeof import('./lib/ai-write').resolvedTargetToSelection
   const runAIText: typeof import('./lib/ai-provider').runAIText
   const runAITextStream: typeof import('./lib/ai-provider').runAITextStream
@@ -256,6 +259,7 @@ declare global {
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
   const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
+  const useAiStatus: typeof import('./stores/useAiStatus').useAiStatus
   const useCallback: typeof import('react').useCallback
   const useContext: typeof import('react').useContext
   const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
@@ -265,6 +269,7 @@ declare global {
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./hooks/useFormatCode').useFormatCode
+  const useFormattingToolbarAi: typeof import('./stores/useFormattingToolbarAi').useFormattingToolbarAi
   const useGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').useGlobalScrollActivity
   const useId: typeof import('react').useId
   const useImperativeHandle: typeof import('react').useImperativeHandle
@@ -294,6 +299,9 @@ declare global {
   export type { AiSessionMessage, AiSession } from './stores/useAiSessions'
   import('./stores/useAiSessions')
   // @ts-ignore
+  export type { AiActivityPhase } from './stores/useAiStatus'
+  import('./stores/useAiStatus')
+  // @ts-ignore
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
@@ -303,13 +311,16 @@ declare global {
   export type { TabItem } from './stores/useTabs'
   import('./stores/useTabs')
   // @ts-ignore
+  export type { AiBlockScopeKind, AiBlockScopeRange, AiBlockScope } from './lib/ai-block-scope'
+  import('./lib/ai-block-scope')
+  // @ts-ignore
   export type { IntentVerdict, IntentRouterContext, IntentRouterResult } from './lib/ai-intent-router'
   import('./lib/ai-intent-router')
   // @ts-ignore
   export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider'
   import('./lib/ai-provider')
   // @ts-ignore
-  export type { AiWriteAction, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write'
+  export type { AiWriteAction, AiBlockRange, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write'
   import('./lib/ai-write')
   // @ts-ignore
   export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'
