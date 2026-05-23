@@ -173,6 +173,14 @@ export function StreamingDatavizText({
 
   // 无 dataviz 内容时保持原始纯文本渲染
   if (!hasDataviz) {
+    if (!streaming && text) {
+      return (
+        <div
+          className="ai-markdown break-words text-sm leading-7"
+          dangerouslySetInnerHTML={{ __html: md.render(text) }}
+        />
+      );
+    }
     return (
       <>
         <div className="whitespace-pre-wrap break-words text-sm leading-7">{text}</div>

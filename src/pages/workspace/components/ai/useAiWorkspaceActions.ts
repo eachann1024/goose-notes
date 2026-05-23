@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import { useCallback, useRef, useState, type MutableRefObject } from "react";
 import { toast } from "sonner";
 import {
   buildAgentPlan,
@@ -8,146 +7,92 @@ import {
 } from "@/agent/core/runtime";
 import { buildWorkspaceIntentRouterDeps } from "@/agent/core/routerDeps";
 import type { AgentArtifact, MarkdownNoteArtifact } from "@/agent/core/types";
-import type { AiSessionMessageVersion } from "@/stores/useAiSessions";
-import type { AIMessage } from "@/lib/ai-provider";
+import type { AIMessage, AIStreamPhase } from "@/lib/ai-provider";
 import { getAIErrorType, trackEvent } from "@/lib/analytics";
 import {
   createStickyTargetFromResolvedTarget,
   resolvedTargetToSelection,
 } from "@/lib/ai-write";
-import { cn } from "@/lib/utils";
-import {
-  EDITOR_FONT_SIZE_DEFAULT,
-  useSettings,
-} from "@/stores/useSettings";
+import { useSettings } from "@/stores/useSettings";
 import { useAiStatus } from "@/stores/useAiStatus";
-import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
-import { useTabs } from "@/stores/useTabs";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import type { AiComposerInputHandle } from "../editor/ai-composer/AiComposerInput";
 import {
   getAiReferenceStats,
-  serializeAiComposerDoc,
+  type AiComposerPayload,
   type AiFileReferenceAttrs,
 } from "../editor/ai-composer/referenceLookup";
-import { AiPromptComposer } from "./AiPromptComposer";
-import { AiSessionHistoryPanel } from "./AiSessionHistoryPanel";
-import { AiWorkspaceMessages } from "./AiWorkspaceMessages";
 import { CLOSE_AI_WORKSPACE_EVENT } from "./events";
 import {
   getLastAgentPlan,
   getLastArtifact,
   normalizeConversationMessage,
   type AiConversationMessage,
-  useAiSessionHistory,
 } from "./useAiSessionHistory";
 
-export function AiWorkspacePage() {
-  const composerRef = useRef<AiComposerInputHandle | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
-  const userScrolledUpRef = useRef(false);
-  const activeRequestIdRef = useRef(0);
-  const streamAbortRef = useRef<AbortController | null>(null);
-  const streamingAccRef = useRef<{ text: string; phase: import("@/lib/ai-provider").AIStreamPhase }>({ text: "", phase: "connecting" });
-  const streamingRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
-  const lastSubmitPayloadRef = useRef<import("../editor/ai-composer/referenceLookup").AiComposerPayload | null>(null);
-  const lastSubmitOverridesRef = useRef<{ selectedModelId: string | null } | null>(null);
-  const cancelActiveRequestRef = useRef<() => void>(() => {});
+interface UseAiWorkspaceActionsParams {
+  activeNotebookId: string | null | undefined;
+  activeLastWritePlan: NonNullable<ReturnType<typeof useSettings.getState>["ai"]> extends never ? never : import("@/lib/ai-write").AiWritePlan | null;
+  originPageId: string | null | undefined;
+  originNotebookId: string | null | undefined;
+  composerRef: MutableRefObject<AiComposerInputHandle | null>;
+  activeRequestIdRef: MutableRefObject<number>;
+  streamAbortRef: MutableRefObject<AbortController | null>;
+  streamingAccRef: MutableRefObject<{ text: string; phase: AIStreamPhase }>;
+  streamingRafRef: MutableRefObject<ReturnType<typeof requestAnimationFrame> | null>;
+  userScrolledUpRef: MutableRefObject<boolean>;
+  latestMessagesRef: MutableRefObject<AiConversationMessage[]>;
+  latestStreamPhaseRef: MutableRefObject<AIStreamPhase>;
+  activeLastArtifactRef: MutableRefObject<AgentArtifact | null>;
+  isStreaming: boolean;
+  setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>;
+  setStreamPhase: React.Dispatch<React.SetStateAction<AIStreamPhase>>;
+  setMessages: React.Dispatch<React.SetStateAction<AiConversationMessage[]>>;
+  setComposerFocusToken: React.Dispatch<React.SetStateAction<number>>;
+  setDraftContent: (content: import("@/types").JSONContent | null) => void;
+  syncActiveMessages: (messages: AiConversationMessage[], phase?: AIStreamPhase) => void;
+  persistSessionSnapshot: (
+    messages: AiConversationMessage[],
+    options?: { plan?: import("@/agent/core/types").AgentPlan | null; artifact?: AgentArtifact | null },
+  ) => void;
+  ensureCurrentSessionId: () => void;
+  setActiveLastWritePlan: (plan: import("@/lib/ai-write").AiWritePlan | null) => void;
+  setActiveLastAgentPlan: (plan: import("@/agent/core/types").AgentPlan | null) => void;
+  setActiveLastArtifact: (artifact: AgentArtifact | null) => void;
+  openTab: (pageId: string) => void;
+}
 
+export function useAiWorkspaceActions({
+  activeNotebookId,
+  activeLastWritePlan,
+  originPageId,
+  originNotebookId,
+  composerRef,
+  activeRequestIdRef,
+  streamAbortRef,
+  streamingAccRef,
+  streamingRafRef,
+  userScrolledUpRef,
+  latestMessagesRef,
+  latestStreamPhaseRef,
+  activeLastArtifactRef,
+  isStreaming,
+  setIsStreaming,
+  setStreamPhase,
+  setMessages,
+  setComposerFocusToken,
+  setDraftContent,
+  syncActiveMessages,
+  persistSessionSnapshot,
+  ensureCurrentSessionId,
+  setActiveLastWritePlan,
+  setActiveLastAgentPlan,
+  setActiveLastArtifact,
+  openTab,
+}: UseAiWorkspaceActionsParams) {
   const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
-  const [composerFocusToken, setComposerFocusToken] = useState(0);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const { activePageId } = usePages();
-  const { activeNotebookId } = useNotebooks();
-  const { openTab } = useTabs();
-  const editorFontSize = useSettings((s) => s.editorFontSize);
-  const aiWorkspaceScale = editorFontSize / EDITOR_FONT_SIZE_DEFAULT;
-
-  const cancelActiveRequest = useCallback(() => {
-    cancelActiveRequestRef.current();
-  }, []);
-
-  const {
-    sessions,
-    activeSessionId,
-    draftContent,
-    activeLastWritePlan,
-    originPageId,
-    originNotebookId,
-    messages,
-    setMessages,
-    streamPhase,
-    setStreamPhase,
-    currentSessionIdRef,
-    latestMessagesRef,
-    latestStreamPhaseRef,
-    activeLastArtifactRef,
-    syncActiveMessages,
-    persistSessionSnapshot,
-    switchMessageVersion,
-    handleSelectSession,
-    handleNewSession,
-    ensureCurrentSessionId,
-    setDraftContent,
-    setActiveLastWritePlan,
-    setActiveLastAgentPlan,
-    setActiveLastArtifact,
-    deleteSession,
-  } = useAiSessionHistory({
-    activePageId,
-    activeNotebookId,
-    composerRef,
-    cancelActiveRequest,
-    isStreaming,
-    setComposerFocusToken,
-    setHistoryOpen,
-    streamAbortRef,
-  });
-
-  cancelActiveRequestRef.current = () => {
-    activeRequestIdRef.current += 1;
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
-    setIsStreaming(false);
-    setStreamPhase("connecting");
-    useAiStatus.getState().finishStreaming({ celebrate: false });
-  };
-
-  const draftPayload = useMemo(
-    () => serializeAiComposerDoc(draftContent),
-    [draftContent],
-  );
-
-  const isAutoScrollingRef = useRef(false);
-
-  useEffect(() => {
-    const container = messagesScrollRef.current;
-    if (!container) return;
-    const handleScroll = () => {
-      if (isAutoScrollingRef.current) return;
-      const nearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
-      userScrolledUpRef.current = !nearBottom;
-    };
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!userScrolledUpRef.current) {
-      isAutoScrollingRef.current = true;
-      messagesEndRef.current?.scrollIntoView({ block: "end" });
-      requestAnimationFrame(() => {
-        isAutoScrollingRef.current = false;
-      });
-    }
-  }, [messages, isStreaming]);
+  const lastSubmitPayloadRef = useRef<AiComposerPayload | null>(null);
+  const lastSubmitOverridesRef = useRef<{ selectedModelId: string | null } | null>(null);
 
   const handleReferenceAdded = (reference: AiFileReferenceAttrs) => {
     trackEvent("ai_reference_added", {
@@ -161,11 +106,8 @@ export function AiWorkspacePage() {
   };
 
   const handleSubmit = async (
-    requestOverrides: {
-      selectedModelId: string | null;
-    },
-    payloadOverride?: import("../editor/ai-composer/referenceLookup").AiComposerPayload,
-    priorVersions?: AiSessionMessageVersion[],
+    requestOverrides: { selectedModelId: string | null },
+    payloadOverride?: AiComposerPayload,
   ) => {
     if (isStreaming) return;
 
@@ -197,15 +139,13 @@ export function AiWorkspacePage() {
     activeRequestIdRef.current = requestId;
     ensureCurrentSessionId();
 
+    const userMessageId = `user-${requestId}`;
     const assistantMessageId = `assistant-${requestId}`;
     const previousMessages = latestMessagesRef.current;
-    const isRegenerate = !!payloadOverride;
     const initMessages: AiConversationMessage[] = [
       ...latestMessagesRef.current,
-      ...(isRegenerate
-        ? []
-        : [{ id: `user-${requestId}`, role: "user" as const, text: promptText, references: payload.references }]),
-      { id: assistantMessageId, role: "assistant" as const, text: "", streaming: true, error: false, agentPlan: null, artifact: null, writePlan: null, versions: priorVersions },
+      { id: userMessageId, role: "user" as const, text: promptText, references: payload.references },
+      { id: assistantMessageId, role: "assistant" as const, text: "", streaming: true, error: false, agentPlan: null, artifact: null, writePlan: null },
     ];
     latestMessagesRef.current = initMessages;
     setMessages(initMessages);
@@ -357,19 +297,12 @@ export function AiWorkspacePage() {
       const idxSuccess = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
       if (idxSuccess !== -1) {
         const nextMsgsSuccess = [...latestMessagesRef.current];
-        const prevMsg = nextMsgsSuccess[idxSuccess];
-        const completedVersions: AiSessionMessageVersion[] = [
-          ...(prevMsg.versions ?? []),
-          { text: finalText, artifact: result.artifact, agentPlan: result.plan },
-        ];
         nextMsgsSuccess[idxSuccess] = {
-          ...prevMsg,
+          ...nextMsgsSuccess[idxSuccess],
           text: finalText,
           streaming: false,
           artifact: result.artifact,
           agentPlan: result.plan,
-          versions: completedVersions,
-          activeVersionIndex: completedVersions.length - 1,
         };
         latestMessagesRef.current = nextMsgsSuccess;
         setMessages(nextMsgsSuccess);
@@ -444,6 +377,8 @@ export function AiWorkspacePage() {
       persistSessionSnapshot(nextMessages, { plan: latestPlan, artifact: latestArtifact });
     },
     [
+      latestMessagesRef,
+      latestStreamPhaseRef,
       persistSessionSnapshot,
       setActiveLastAgentPlan,
       setActiveLastArtifact,
@@ -565,40 +500,6 @@ export function AiWorkspacePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStreaming, setMessages, syncActiveMessages]);
 
-  const handleRegenerate = useCallback(
-    (messageIndex: number) => {
-      if (isStreaming) return;
-      const currentMsgs = latestMessagesRef.current;
-      const targetMsg = currentMsgs[messageIndex];
-      if (!targetMsg || targetMsg.role !== "assistant") return;
-      const userMsg = currentMsgs[messageIndex - 1];
-      if (!userMsg || userMsg.role !== "user") return;
-
-      const existingVersions: AiSessionMessageVersion[] = targetMsg.versions ?? [
-        { text: targetMsg.text, artifact: targetMsg.artifact, agentPlan: targetMsg.agentPlan },
-      ];
-
-      const trimmed = currentMsgs.slice(0, messageIndex);
-      latestMessagesRef.current = trimmed;
-      setMessages(trimmed);
-      syncActiveMessages(trimmed, latestStreamPhaseRef.current);
-
-      const payload: import("../editor/ai-composer/referenceLookup").AiComposerPayload = {
-        promptText: userMsg.text,
-        freeformText: "",
-        references: userMsg.references ?? [],
-        tokens: [],
-      };
-      const currentSettings = useSettings.getState().ai;
-      const currentOverrides = {
-        selectedModelId: currentSettings.selectedModelId ?? null,
-      };
-      void handleSubmit(currentOverrides, payload, existingVersions);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isStreaming, setMessages, syncActiveMessages],
-  );
-
   const handleOpenResultPage = useCallback(
     (pageId: string) => {
       window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
@@ -608,93 +509,14 @@ export function AiWorkspacePage() {
     [openTab],
   );
 
-  return (
-    <div
-      data-ai-workspace-root="true"
-      className="flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]"
-      style={{ zoom: aiWorkspaceScale }}
-    >
-      <div className="flex shrink-0 items-center justify-end gap-1 px-4 pt-3 pb-1">
-        <button
-          type="button"
-          onClick={handleNewSession}
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
-            "text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          <LucideIcons.SquarePen className="h-4 w-4" />
-        </button>
-
-        <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
-                historyOpen
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <LucideIcons.History className="h-4 w-4" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            side="bottom"
-            sideOffset={6}
-            className="w-[300px] rounded-[16px] border border-border/75 bg-popover p-2 shadow-[0_14px_34px_rgba(15,23,42,0.16)]"
-          >
-            <div className="mb-1.5 flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold text-foreground/80">历史会话</span>
-              {sessions.length > 0 && (
-                <span className="text-[10px] text-muted-foreground">{sessions.length} 条</span>
-              )}
-            </div>
-            <div className="max-h-[340px] overflow-y-auto scrollbar-hide">
-              <AiSessionHistoryPanel
-                sessions={sessions}
-                activeSessionId={activeSessionId}
-                onSelectSession={handleSelectSession}
-                onDeleteSession={deleteSession}
-                onClose={() => setHistoryOpen(false)}
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div ref={messagesScrollRef} className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[760px] py-2">
-          <AiWorkspaceMessages
-            messages={messages}
-            isStreaming={isStreaming}
-            streamPhase={streamPhase}
-            applyingMessageId={applyingMessageId}
-            messagesEndRef={messagesEndRef}
-            onRegenerate={handleRegenerate}
-            onSwitchVersion={switchMessageVersion}
-            onConfirmWrite={(messageId, artifact) => {
-              void handleConfirmWrite(messageId, artifact);
-            }}
-            onCancelWrite={handleCancelWrite}
-            onOpenResultPage={handleOpenResultPage}
-          />
-        </div>
-      </div>
-
-      <AiPromptComposer
-        composerRef={composerRef}
-        composerFocusToken={composerFocusToken}
-        isStreaming={isStreaming}
-        draftContent={draftContent}
-        onSubmit={(params) => {
-          void handleSubmit(params);
-        }}
-        onDraftChange={setDraftContent}
-        onReferenceAdded={handleReferenceAdded}
-      />
-    </div>
-  );
+  return {
+    applyingMessageId,
+    hasRetryPayload: !!lastSubmitPayloadRef.current,
+    handleReferenceAdded,
+    handleSubmit,
+    handleRetry,
+    handleConfirmWrite,
+    handleCancelWrite,
+    handleOpenResultPage,
+  };
 }
