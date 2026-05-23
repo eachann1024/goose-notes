@@ -4,17 +4,16 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
-import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
 import { useTabs } from "@/stores/useTabs";
-import { toast } from "sonner";
 import type { EditorRef } from "../editor/Editor";
-import { OutlinePanel } from "../outline/OutlinePanel";
-import { useHeadings } from "../outline/useHeadings";
-import type { HeadingItem } from "../outline/useHeadings";
-import { useActiveHeading } from "../outline/useActiveHeading";
-import { fs } from "@/lib/utools/fs";
+import { useSidebarResize } from "./hooks/useSidebarResize";
+import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
+import { useSidebarEffects } from "./hooks/useSidebarEffects";
+import { SidebarResizeEdge } from "./SidebarResizeEdge";
+import { SidebarSectionHeader } from "./SidebarSectionHeader";
+import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
+import { SidebarOutline } from "./SidebarOutline";
 
-const SIDEBAR_MIN_WIDTH = 150;
 const SIDEBAR_SIDE_GAP_LEFT = 0;
 const SIDEBAR_SIDE_GAP_RIGHT = 9;
 const SIDEBAR_CONTENT_WIDTH_OFFSET = SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;
@@ -36,17 +35,6 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isAiPageOpen?: boolean;
 }
 
-const useItemHeight = () => {
-  const { uiFontSize } = useSettings();
-
-  return useMemo(() => {
-    const rootFontSize = parseFloat(
-      getComputedStyle(document.documentElement).fontSize,
-    );
-    return Math.round(rootFontSize * 2);
-  }, [uiFontSize]);
-};
-
 export function Sidebar({
   className,
   disableResize = false,
@@ -55,99 +43,42 @@ export function Sidebar({
   scrollContainerRef,
   isAiPageOpen = false,
 }: SidebarProps) {
-  const {
-    pages,
-    activePageId,
-    setActivePage,
-    updatePage,
-    createPage,
-    createLocalPage,
-  } = usePages();
+  const { activePageId, setActivePage, createPage, createLocalPage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
-  const { uiFontSize: _ignored } = useSettings();
   const { openInCurrentTab } = useTabs();
-  const { deletePageWithUndo } = useDeletePageWithUndo();
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
-  const itemHeight = useItemHeight();
+  const itemHeight = useSidebarItemHeight();
   const rowHeight = itemHeight + 1;
   const trashItemHeight = Math.max(itemHeight + 20, 48);
 
-  const DEFAULT_SIDEBAR_WIDTH = 180;
-  const [width, setWidth] = useState(() => {
-    const saved = localStorage.getItem("sidebar-width");
-    return saved
-      ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, Number(saved)))
-      : DEFAULT_SIDEBAR_WIDTH;
-  });
-  const [isResizing, setIsResizing] = useState(false);
+  const { width, isResizing, handleResizeMouseDown, handleResizePointerDown } =
+    useSidebarResize({ disableResize });
+
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
-  const [renamePageId, setRenamePageId] = useState<string | null>(null);
+  const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
-  const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(null);
 
-  const handleDeleteShortcut = useCallback(
-    (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
-        const target = e.target as HTMLElement;
-        const isInEditor =
-          target.closest(".bn-editor") ||
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA";
+  const {
+    renameDialogOpen,
+    setRenameDialogOpen,
+    renameValue,
+    setRenameValue,
+    renamePageId,
+    confirmRename,
+  } = useRenameDialog();
 
-        if (activePageId && !isInEditor && currentView === "pages") {
-          e.preventDefault();
-          void deletePageWithUndo(activePageId);
-        }
-      }
-    },
-    [activePageId, currentView, deletePageWithUndo],
-  );
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleDeleteShortcut);
-    return () => {
-      document.removeEventListener("keydown", handleDeleteShortcut);
-    };
-  }, [handleDeleteShortcut]);
-
-  useEffect(() => {
-    if (isAiPageOpen && currentView === "outline") {
-      setCurrentView("pages");
-    }
-  }, [isAiPageOpen, currentView]);
-
-  useEffect(() => {
-    const handleOpenSettings = (event: Event) => {
-      const customEvent = event as CustomEvent<{ tab?: "general" | "appearance" | "ai" | "data" }>;
-      setShowSettings(true);
-      if (customEvent.detail?.tab) {
-        window.dispatchEvent(
-          new CustomEvent("goose-note:settings-tab-change", {
-            detail: { tab: customEvent.detail.tab },
-          }),
-        );
-      }
-    };
-
-    window.addEventListener("goose-note:open-settings", handleOpenSettings);
-    return () => {
-      window.removeEventListener("goose-note:open-settings", handleOpenSettings);
-    };
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      localStorage.setItem("sidebar-width", String(width));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [width]);
+  useSidebarEffects({
+    activePageId,
+    currentView,
+    isAiPageOpen,
+    onAiPageOpenWithOutline: () => setCurrentView("pages"),
+    onOpenSettings: () => setShowSettings(true),
+  });
 
   useEffect(() => {
     if (!scrollAreaRef.current) return;
@@ -172,261 +103,8 @@ export function Sidebar({
     window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
   };
 
-  const startResizing = (startX: number) => {
-    if (disableResize) return;
-    setIsResizing(true);
-
-    const startWidth = width;
-
-    const updateWidth = (nextClientX: number) => {
-      const newWidth = startWidth + nextClientX - startX;
-      setWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, newWidth)));
-    };
-
-    const onMouseMove = (event: MouseEvent) => {
-      updateWidth(event.clientX);
-    };
-
-    const onPointerMove = (event: PointerEvent) => {
-      updateWidth(event.clientX);
-    };
-
-    const stopResizing = () => {
-      setIsResizing(false);
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", stopResizing);
-      document.removeEventListener("pointermove", onPointerMove);
-      document.removeEventListener("pointerup", stopResizing);
-      document.removeEventListener("pointercancel", stopResizing);
-      document.body.style.cursor = "";
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", stopResizing);
-    document.addEventListener("pointermove", onPointerMove);
-    document.addEventListener("pointerup", stopResizing);
-    document.addEventListener("pointercancel", stopResizing);
-    document.body.style.cursor = "col-resize";
-  };
-
-  const handleResizeMouseDown = (event: React.MouseEvent) => {
-    if (disableResize) return;
-    event.preventDefault();
-    startResizing(event.clientX);
-  };
-
-  const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (disableResize || event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    startResizing(event.clientX);
-  };
-
-  const renderResizeEdge = () =>
-    disableResize ? null : (
-      <div
-        className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
-        style={{ right: "-8px", width: "16px" }}
-        onMouseDown={handleResizeMouseDown}
-        onPointerDown={handleResizePointerDown}
-        role="separator"
-      >
-        <div
-          className={cn(
-            "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150",
-            isResizing ? "opacity-100" : "opacity-0 group-hover/resize:opacity-100",
-          )}
-          style={{
-            width: "2px",
-            height: "100%",
-            marginLeft: "-1px",
-            borderRadius: 0,
-            background: isResizing
-              ? "var(--workspace-resize-line-active)"
-              : "var(--workspace-resize-line)",
-          }}
-        />
-      </div>
-    );
-
   const handleSearch = () => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
-  };
-
-  const confirmRename = useCallback(async () => {
-    if (!renamePageId) return;
-    const page = pages[renamePageId];
-    const nextTitle = renameValue.trim();
-    if (!page || nextTitle === "") return;
-
-    const newContent = JSON.parse(JSON.stringify(page.content));
-    if (!newContent || newContent.type !== "doc") {
-      newContent.type = "doc";
-      newContent.content = [];
-    }
-    if (
-      newContent.content?.[0]?.type === "heading" &&
-      newContent.content[0].attrs?.level === 1
-    ) {
-      newContent.content[0].content = nextTitle
-        ? [{ type: "text", text: nextTitle }]
-        : undefined;
-    } else {
-      newContent.content = [
-        {
-          type: "heading",
-          attrs: { level: 1 },
-          content: [{ type: "text", text: nextTitle }],
-        },
-        ...(newContent.content || []),
-      ];
-    }
-
-    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-    const isLocalFolder = notebook?.source === "local-folder";
-    if (isLocalFolder && page.localFilePath && fs.isAvailable()) {
-      const dir = page.localFilePath.replace(/[^\/\\]+$/, "");
-      const extMatch = page.localFilePath.match(/\.(md|markdown)$/i);
-      const ext = extMatch ? extMatch[0] : ".md";
-      const rawTitle = nextTitle.replace(/[\/\\]/g, "-").trim();
-      const safeTitle = rawTitle.replace(/\.(md|markdown)$/i, "");
-      const newPath = `${dir}${safeTitle}${ext}`;
-
-      const exists = await fs.existsAsync(newPath);
-      if (exists) {
-        toast.error("重命名失败：目标文件已存在");
-        return;
-      }
-      if (newPath !== page.localFilePath) {
-        const renamed = await fs.rename(page.localFilePath, newPath);
-        if (!renamed) {
-          toast.error("重命名失败：文件系统错误");
-          return;
-        }
-        updatePage(renamePageId, {
-          content: newContent,
-          localFilePath: newPath,
-        });
-      } else {
-        updatePage(renamePageId, { content: newContent });
-      }
-    } else {
-      updatePage(renamePageId, { content: newContent });
-    }
-
-    setRenameDialogOpen(false);
-    setRenamePageId(null);
-  }, [pages, renamePageId, renameValue, updatePage]);
-
-  const SectionHeader = ({
-    title,
-    onSearch,
-    onCreate,
-    createTitle,
-    view,
-    onSwitchToPages,
-    onSwitchToOutline,
-  }: {
-    title: string;
-    onSearch: () => void;
-    onCreate: () => void;
-    createTitle: string;
-    view: "pages" | "outline";
-    onSwitchToPages: () => void;
-    onSwitchToOutline: () => void;
-  }) => {
-    const searchShortcut = formatShortcut("Mod+K");
-    const createShortcut = formatShortcut("Mod+N");
-
-    return (
-      <div className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
-        <div className="group/tab-switch inline-flex items-center gap-0.5 rounded-[8px] p-0.5">
-          <button
-            type="button"
-            onClick={onSwitchToPages}
-            className={cn(
-              "rounded-[7px] px-2 py-1 transition-colors",
-              view === "pages"
-                ? "bg-[var(--goose-interactive-selected)] text-foreground"
-                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-            )}
-            aria-pressed={view === "pages"}
-          >
-            {title}
-          </button>
-          <span
-            className={cn(
-              "px-0.5 text-muted-foreground/70 transition-colors",
-              "group-hover/tab-switch:text-foreground/80",
-            )}
-            aria-hidden="true"
-          >
-            /
-          </span>
-          <button
-            type="button"
-            onClick={onSwitchToOutline}
-            className={cn(
-              "rounded-[7px] px-2 py-1 transition-colors",
-              view === "outline"
-                ? "bg-[var(--goose-interactive-selected)] text-foreground"
-                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-            )}
-            aria-pressed={view === "outline"}
-          >
-            大纲
-          </button>
-        </div>
-        <TooltipProvider delayDuration={0}>
-          <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label="搜索"
-                  onClick={onSearch}
-                >
-                  <LucideIcons.Search className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <div className="flex items-center gap-2">
-                  <span>搜索</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {searchShortcut}
-                  </span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label={createTitle}
-                  onClick={onCreate}
-                >
-                  <LucideIcons.Plus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <div className="flex items-center gap-2">
-                  <span>{createTitle}</span>
-                  {createShortcut && (
-                    <span className="text-[11px] text-muted-foreground">
-                      {createShortcut}
-                    </span>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
-      </div>
-    );
   };
 
   return (
@@ -438,7 +116,13 @@ export function Sidebar({
       )}
       style={{ width, overflow: "visible" }}
     >
-      {renderResizeEdge()}
+      {!disableResize && (
+        <SidebarResizeEdge
+          isResizing={isResizing}
+          onMouseDown={handleResizeMouseDown}
+          onPointerDown={handleResizePointerDown}
+        />
+      )}
 
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
@@ -465,7 +149,7 @@ export function Sidebar({
 
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="mt-1 shrink-0">
-                <SectionHeader
+                <SidebarSectionHeader
                   title={isLocalFolder ? "本地文件夹" : "页面"}
                   onSearch={handleSearch}
                   onCreate={handleCreatePage}
@@ -515,117 +199,22 @@ export function Sidebar({
           setShowSettings(false);
           setActivePage(null);
         }}
-        onOpenSettings={() => {
-          setShowSettings(true);
-        }}
+        onOpenSettings={() => setShowSettings(true)}
       />
 
-      <Dialog
+      <SidebarRenameDialog
         open={renameDialogOpen}
         onOpenChange={(open) => {
           setRenameDialogOpen(open);
-          if (!open) {
-            setRenamePageId(null);
-          }
         }}
-      >
-        <DialogContent className="sm:max-w-[400px] z-[100]">
-          <DialogHeader>
-            <DialogTitle>
-              {isLocalFolder ? "重命名文件" : "重命名页面"}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              {isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-6">
-            <div className="grid gap-2">
-              <Label htmlFor="rename-input">新名称</Label>
-              <Input
-                id="rename-input"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    void confirmRename();
-                  } else if (e.key === "Escape") {
-                    setRenameDialogOpen(false);
-                  }
-                }}
-                autoFocus
-                placeholder={isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRenameDialogOpen(false)}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={() => {
-                void confirmRename();
-              }}
-              disabled={!renamePageId || renameValue.trim() === ""}
-            >
-              确认
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        renamePageId={renamePageId}
+        renameValue={renameValue}
+        onRenameValueChange={setRenameValue}
+        isLocalFolder={isLocalFolder}
+        onConfirm={() => { void confirmRename(); }}
+      />
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
-  );
-}
-
-function SidebarOutline({
-  editorRef,
-  scrollContainerRef,
-  pageId,
-}: {
-  editorRef?: React.RefObject<EditorRef | null>;
-  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
-  pageId?: string | null;
-}) {
-  const editor = editorRef?.current?.editor ?? null;
-  const headings = useHeadings(editor, pageId);
-  const headingIds = useMemo(() => {
-    const ids: string[] = [];
-    const visit = (items: HeadingItem[]) => {
-      for (const item of items) {
-        ids.push(item.id);
-        if (item.children.length > 0) {
-          visit(item.children);
-        }
-      }
-    };
-    visit(headings);
-    return ids;
-  }, [headings]);
-  const activeId = useActiveHeading(scrollContainerRef, headingIds);
-
-  const handleHeadingClick = useCallback(
-    (blockId: string) => {
-      const container = scrollContainerRef?.current;
-      if (!container) return;
-      const el = container.querySelector(`[data-id="${blockId}"]`) as HTMLElement | null;
-      if (!el) return;
-      const containerRect = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      const targetScroll = container.scrollTop + elRect.top - containerRect.top - 24;
-      container.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
-    },
-    [scrollContainerRef],
-  );
-
-  return (
-    <OutlinePanel
-      headings={headings}
-      activeId={activeId}
-      onHeadingClick={handleHeadingClick}
-    />
   );
 }
