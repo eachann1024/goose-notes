@@ -14,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       swipeDirections={["left", "right", "top"]}
       className="toaster group z-[22000]"
       richColors
-      icons={{ close: <X className="h-3 w-3" /> }}
+      icons={{ close: <X className="pointer-events-none h-3 w-3" /> }}
       toastOptions={{
         duration: 4000,
         classNames: {
@@ -29,7 +29,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           cancelButton:
             "!bg-muted !text-muted-foreground hover:!bg-muted/85 !rounded-lg !px-3 !h-8 !text-xs !font-medium",
           closeButton:
-            "!absolute !left-auto !right-1.5 !top-1.5 !translate-x-0 !translate-y-0 !opacity-60 hover:!opacity-100 !transition-opacity !duration-150 !h-5 !w-5 !bg-transparent !border-0 !text-muted-foreground hover:!text-foreground",
+            "!absolute !left-auto !right-1.5 !top-1.5 !translate-x-0 !translate-y-0 !opacity-60 hover:!opacity-100 !transition-all !duration-150 !h-5 !w-5 !bg-transparent hover:!bg-foreground/10 !border-0 !text-muted-foreground hover:!text-foreground !cursor-pointer",
         },
       }}
       {...props}

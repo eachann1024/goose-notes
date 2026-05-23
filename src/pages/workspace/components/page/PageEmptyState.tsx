@@ -303,14 +303,14 @@ export function PageEmptyState() {
                   className={cn(
                     "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:bg-[hsl(var(--goose-selected-bg)/0.8)] hover:border-[hsl(var(--foreground)/0.12)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--foreground)/0.03)] dark:hover:bg-[hsl(var(--foreground)/0.1)] dark:hover:border-[hsl(var(--foreground)/0.24)] dark:hover:shadow-[0_12px_28px_rgba(2,6,23,0.45)]",
                     action.variant === "ai" &&
-                      "ai-lingcai-card border-[hsl(var(--foreground)/0.08)] bg-transparent hover:bg-transparent hover:border-[hsl(var(--foreground)/0.14)] hover:shadow-[0_16px_38px_rgba(99,215,255,0.18)] dark:bg-transparent dark:hover:bg-transparent dark:hover:border-[hsl(var(--foreground)/0.18)] dark:hover:shadow-[0_16px_42px_rgba(0,0,0,0.28)]",
+                      "ai-lingcai-card border-[hsl(var(--foreground)/0.08)] bg-transparent hover:bg-transparent hover:border-[hsl(var(--foreground)/0.14)] hover:shadow-[0_16px_38px_rgba(99,215,255,0.18)] dark:bg-transparent dark:border-[hsl(var(--foreground)/0.18)] dark:shadow-[0_16px_42px_rgba(0,0,0,0.28)] dark:hover:bg-transparent dark:hover:border-[hsl(var(--foreground)/0.26)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.38)]",
                   )}
                 >
                   <div
                     className={cn(
                       "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-all dark:bg-[hsl(var(--foreground)/0.06)] dark:group-hover:bg-[hsl(var(--foreground)/0.16)]",
                       action.variant === "ai" &&
-                        "ai-lingcai-icon bg-white/80 dark:bg-white/8 dark:group-hover:bg-white/10",
+                        "ai-lingcai-icon bg-white/80 dark:bg-white/[0.14] dark:group-hover:bg-white/[0.18]",
                     )}
                   >
                     {action.renderIcon ? (
