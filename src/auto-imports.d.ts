@@ -132,7 +132,7 @@ declare global {
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
-  const clearLocalPageMetadataCache: typeof import('./stores/usePages').clearLocalPageMetadataCache
+  const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clonePageContent: typeof import('./lib/blocknote-content').clonePageContent
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
@@ -166,7 +166,7 @@ declare global {
   const extractTitleFromContent: typeof import('./lib/content-text-extractor').extractTitleFromContent
   const fetchCustomAIModels: typeof import('./lib/ai-provider').fetchCustomAIModels
   const fileStorage: typeof import('./lib/fileStorage').fileStorage
-  const flushEditorContent: typeof import('./stores/usePages').flushEditorContent
+  const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatShortcut: typeof import('./lib/utils').formatShortcut
@@ -279,7 +279,7 @@ declare global {
   const useMemo: typeof import('react').useMemo
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
   const useOptimistic: typeof import('react').useOptimistic
-  const usePages: typeof import('./stores/usePages').usePages
+  const usePages: typeof import('./stores/pages/index').usePages
   const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
