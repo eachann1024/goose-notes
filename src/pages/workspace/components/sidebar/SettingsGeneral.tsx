@@ -347,7 +347,11 @@ export function SettingsGeneral({
           max={UTOOLS_WINDOW_HEIGHT_MAX}
           step={10}
           onValueChange={([val]) => {
+            // 拖动过程仅更新本地显示值，避免高频调用 uTools API 导致卡死
             setWindowHeight(val);
+          }}
+          onValueCommit={([val]) => {
+            // 释放后再实际调整窗口高度
             UToolsAdapter.setExpendHeight(val);
           }}
           className="py-2"

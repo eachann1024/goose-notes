@@ -94,11 +94,12 @@ function App() {
   const { hydrated, onboardingCompleted, activePageId } = usePages();
   const { active: stickyNoteActive, open: openStickyNote } = useStickyNote();
 
+  // 仅首次挂载时应用一次窗口高度；后续 Slider 释放时会显式调用 setExpendHeight，
+  // 避免 store 变化驱动 useEffect 在用户拖动过程中持续触发 uTools API（曾导致卡死）。
   useEffect(() => {
-    if (utools.windowHeight) {
-      applyUToolsWindowHeight();
-    }
-  }, [utools.windowHeight]);
+    applyUToolsWindowHeight();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

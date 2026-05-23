@@ -67,7 +67,7 @@ export const useNotebooks = create<NotebooksState>()(
         [DEFAULT_NOTEBOOK_ID]: {
           id: DEFAULT_NOTEBOOK_ID,
           name: "Note",
-          icon: "📓",
+          icon: "BookOpen",
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },
@@ -76,7 +76,7 @@ export const useNotebooks = create<NotebooksState>()(
       lastActivePageByNotebook: {},
       localFolderLoadStates: {},
 
-      createNotebook: (name = "Note", icon = "📓") => {
+      createNotebook: (name = "Note", icon = "BookOpen") => {
         // 检查是否存在同名笔记本，生成唯一名称
         const existingNames = new Set(
           Object.values(get().notebooks).map((n) => n.name),
@@ -367,6 +367,7 @@ export const useNotebooks = create<NotebooksState>()(
     }),
     {
       name: "goose-note-notebooks",
+      version: 1,
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
@@ -397,6 +398,10 @@ export const useNotebooks = create<NotebooksState>()(
                 shouldPromoteFalseToUnset && notebook.editorFullWidth === false
                   ? undefined
                   : notebook.editorFullWidth,
+              icon:
+                id === DEFAULT_NOTEBOOK_ID && notebook.icon === "📓"
+                  ? "BookOpen"
+                  : notebook.icon,
             },
           ]),
         );

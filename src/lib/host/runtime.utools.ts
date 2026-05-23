@@ -212,10 +212,15 @@ export const hostRuntime: HostRuntime = {
   setExpendHeight: (height: number) => {
     const utools = getUTools();
     if (!utools) return false;
-    if (typeof utools?.setExpendHeight === "function") {
-      return utools.setExpendHeight(height);
+    if (typeof utools?.setExpendHeight !== "function") return false;
+    try {
+      // uTools 在窗口被移动到屏幕顶部附近时，若请求高度超出可用范围
+      // 可能挂起调用线程；这里加保护，异常静默处理，避免 UI 卡死。
+      return Boolean(utools.setExpendHeight(height));
+    } catch (err) {
+      console.warn("uTools setExpendHeight failed:", err);
+      return false;
     }
-    return false;
   },
   redirect: (label, payload) => {
     const utools = getUTools();

@@ -98,6 +98,7 @@ export const DEFAULT_CLOSE_TAB_SHORTCUT = "Alt+W"
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = ""
 export const UTOOLS_WINDOW_HEIGHT_MIN = 600
 export const UTOOLS_WINDOW_HEIGHT_MAX = 1200
+export const UTOOLS_WINDOW_HEIGHT_DEFAULT = 800
 const DEFAULT_UI_FONT_SIZE: UIFontSize = 'small'
 const LEGACY_DEFAULT_CUSTOM_ACTION_ID = 'default-translate'
 
@@ -430,7 +431,7 @@ export const useSettings = create<SettingsState>()(
                 globalSearchEnabled: false,
                 openSearchInUtools: true,
 
-                windowHeight: UTOOLS_WINDOW_HEIGHT_MIN,
+                windowHeight: UTOOLS_WINDOW_HEIGHT_DEFAULT,
             },
             ai: {
                 enabled: false,
@@ -773,7 +774,7 @@ export const useSettings = create<SettingsState>()(
                     UTOOLS_WINDOW_HEIGHT_MAX,
                     Math.max(
                         UTOOLS_WINDOW_HEIGHT_MIN,
-                        state?.utools?.windowHeight ?? UTOOLS_WINDOW_HEIGHT_MIN,
+                        state?.utools?.windowHeight ?? UTOOLS_WINDOW_HEIGHT_DEFAULT,
                     ),
                 )
                 if (

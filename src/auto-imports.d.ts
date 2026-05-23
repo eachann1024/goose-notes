@@ -116,6 +116,7 @@ declare global {
   const TooltipContent: typeof import('./components/ui/tooltip').TooltipContent
   const TooltipProvider: typeof import('./components/ui/tooltip').TooltipProvider
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
+  const UTOOLS_WINDOW_HEIGHT_DEFAULT: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_DEFAULT
   const UTOOLS_WINDOW_HEIGHT_MAX: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MAX
   const UTOOLS_WINDOW_HEIGHT_MIN: typeof import('./stores/useSettings').UTOOLS_WINDOW_HEIGHT_MIN
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter

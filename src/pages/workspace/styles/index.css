@@ -81,8 +81,8 @@
   display: flex;
   height: 100%;
   width: 100%;
-  gap: 0;
-  padding: 10px 0 12px 10px;
+  gap: 8px;
+  padding: 10px 10px 12px 10px;
 }
 
 .workspace-shell .workspace-sidebar-pane {
@@ -96,9 +96,10 @@
 .workspace-shell .workspace-main-sheet {
   background: var(--workspace-main-surface);
   border: 0;
-  border-radius: 0;
+  border-radius: 12px;
   box-shadow: none;
   margin-left: 0;
+  overflow: hidden;
 }
 
 .workspace-shell .workspace-editor-surface {
@@ -242,6 +243,11 @@
 }
 
 @media (max-width: 768px) {
+  .workspace-shell .workspace-stage {
+    padding: 0;
+    gap: 0;
+  }
+
   .workspace-shell .workspace-main-sheet {
     border-radius: 0;
     margin-left: 0;
