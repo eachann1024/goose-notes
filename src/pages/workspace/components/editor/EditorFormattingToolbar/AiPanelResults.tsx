@@ -75,7 +75,7 @@ export function AiPanelResults({
       {phase === "processing" && (
         <div
           ref={outputScrollRef}
-          className="max-h-[240px] overflow-y-auto px-3 pb-2"
+          className="max-h-[120px] overflow-y-auto px-3 pb-2"
         >
           {reasoningText && (
             <div

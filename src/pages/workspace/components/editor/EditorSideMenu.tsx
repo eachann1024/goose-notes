@@ -68,8 +68,11 @@ export function EditorSideMenu() {
 
   if (state?.referencePos) {
     const sideMenuWidth = 40;
+    // BlockNote 为 heading 设置了 padding-top:18px，底部仅 3px，
+    // 导致几何中心比文字视觉中心偏高 (18-3)/2 = 7.5px，需补偿。
+    const headingOffset = block?.type === "heading" ? 7.5 : 0;
     lastPosRef.current = {
-      top: state.referencePos.top + state.referencePos.height / 2,
+      top: state.referencePos.top + state.referencePos.height / 2 + headingOffset,
       left: Math.max(4, state.referencePos.left - sideMenuWidth),
     };
   }
