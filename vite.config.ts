@@ -10,11 +10,22 @@ const vendorChunkGroups: Array<[string, string[]]> = [
   [
     "vendor-ui",
     [
+      "@radix-ui/react-context-menu",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-label",
       "@radix-ui/react-popover",
+      "@radix-ui/react-scroll-area",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-slider",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-toggle",
       "@radix-ui/react-tooltip",
       "lucide-react",
+      "cmdk",
+      "sonner",
     ],
   ],
   [
@@ -28,6 +39,20 @@ const vendorChunkGroups: Array<[string, string[]]> = [
       "prosemirror-model",
     ],
   ],
+  // AI SDK — 较大，单独隔离方便缓存
+  ["vendor-ai", ["ai", "@ai-sdk/anthropic", "@ai-sdk/openai-compatible"]],
+  // 可视化
+  ["vendor-echarts", ["echarts"]],
+  // 动画
+  ["vendor-motion", ["framer-motion"]],
+  // 文档导出（docx / pptx / zip）
+  ["vendor-export", ["docx", "pptxgenjs", "jszip"]],
+  // 拖拽
+  ["vendor-dnd", ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"]],
+  // 路由
+  ["vendor-router", ["react-router-dom"]],
+  // JSON 渲染
+  ["vendor-json-render", ["@json-render/core", "@json-render/react"]],
 ];
 
 function resolveVendorChunk(id: string) {
