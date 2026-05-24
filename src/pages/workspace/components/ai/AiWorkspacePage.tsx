@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -30,6 +30,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { AiComposerInputHandle } from "../editor/ai-composer/AiComposerInput";
+import type { EditorRef } from "../editor/Editor";
 import {
   getAiReferenceStats,
   serializeAiComposerDoc,
@@ -47,7 +48,11 @@ import {
   useAiSessionHistory,
 } from "./useAiSessionHistory";
 
-export function AiWorkspacePage() {
+interface AiWorkspacePageProps {
+  editorRef?: RefObject<EditorRef | null>;
+}
+
+export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
   const composerRef = useRef<AiComposerInputHandle | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesScrollRef = useRef<HTMLDivElement | null>(null);
@@ -476,6 +481,64 @@ export function AiWorkspacePage() {
       });
 
       try {
+        // 当目标是当前活跃页面且编辑器可用时，用 BlockNote 原生 API 写入，格式更可靠
+        const editor = editorRef?.current?.editor;
+        const canUseEditor =
+          editor &&
+          (artifact.plan.action === "replace_page" || artifact.plan.action === "append_page") &&
+          artifact.plan.target.pageId === activePageId &&
+          artifact.plan.outputMarkdown;
+
+        if (canUseEditor) {
+          const newBlocks = await editor.tryParseMarkdownToBlocks(artifact.plan.outputMarkdown);
+
+          if (artifact.plan.action === "replace_page") {
+            const allBlocks = editor.document;
+            const titleBlock = allBlocks[0];
+            const blocksToRemove = allBlocks.slice(1);
+            // AI 输出可能以 H1 开头（标题），跳过它，只保留正文
+            const contentBlocks =
+              newBlocks[0]?.type === "heading" && (newBlocks[0] as any)?.props?.level === 1
+                ? newBlocks.slice(1)
+                : newBlocks;
+            if (blocksToRemove.length) editor.removeBlocks(blocksToRemove);
+            if (contentBlocks.length && titleBlock) {
+              editor.insertBlocks(contentBlocks, titleBlock, "after");
+            }
+          } else {
+            // append_page：追加到末尾
+            const allBlocks = editor.document;
+            const lastBlock = allBlocks[allBlocks.length - 1];
+            if (lastBlock) editor.insertBlocks(newBlocks, lastBlock, "after");
+          }
+
+          updateMessageArtifact(messageId, (currentArtifact) => ({
+            ...currentArtifact,
+            plan: {
+              ...currentArtifact.plan,
+              status: "committed",
+              committedPageId: artifact.plan.target.pageId!,
+            },
+          }));
+          trackEvent("agent_commit_succeeded", {
+            feature: "agent_runtime",
+            capability_id: "note.commit",
+            artifact_type: artifact.type,
+            target_type: artifact.plan.target.mode,
+          });
+          trackEvent("ai_write_committed", {
+            feature: "ai_write",
+            action: "commit",
+            result: "success",
+            write_action: artifact.plan.action,
+            target_type: artifact.plan.target.mode,
+            is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
+            cross_notebook: false,
+          });
+          toast.success("已写入目标页面");
+          return;
+        }
+
         const result = await commitAgentArtifact(artifact);
         if (!result?.pageId) throw new Error("写入失败，请稍后再试");
         updateMessageArtifact(messageId, (currentArtifact) => ({

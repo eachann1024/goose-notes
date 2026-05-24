@@ -130,11 +130,56 @@ export const NOTE_SEARCH_TOOLS_PROMPT = [
   "- 如果用户没有提到其他笔记，不要主动搜索",
 ].join("\n");
 
+/** 全量提示词（保留为调试/回滚兜底，不在正常链路中使用） */
 export const WORKSPACE_NOTE_SYSTEM_PROMPT =
   `你是鹅的书签内置助手，帮用户处理 @ 引用的内容。需要写入页面时输出可落文的 Markdown，不要解释；否则直接回答。\n\n${NOTE_SEARCH_TOOLS_PROMPT}\n\n${DATAVIZ_SYSTEM_PROMPT}\n\n${JSON_RENDER_PROMPT_FRAGMENT}`;
 
 export const INLINE_NOTE_SYSTEM_PROMPT =
   "你是鹅的书签内置写作助手。只输出最终文本，不要解释、不要前后缀、不要 Markdown 代码围栏。";
+
+// ─── Dynamic System Prompt Builder ───────────────────────────────────────────
+
+/** 所有场景公共的最小基础 prompt */
+const BASE_NOTE_PROMPT =
+  "你是鹅的书签内置助手，帮用户处理 @ 引用的内容。需要写入页面时输出可落文的 Markdown，不要解释；否则直接回答。\n如果用户要求的能力（如绘图、检索其他笔记）超出当前范围，直接说明并请用户用更具体的描述重试。";
+
+const DATAVIZ_KEYWORDS =
+  /图|表|可视化|对比|趋势|占比|流程图|仪表盘|echarts|svg|统计|分析|数据|chart|viz/i;
+
+const SEARCH_KEYWORDS =
+  /其他笔记|别的笔记|之前写过|我的笔记里|搜索|查一下|找一下|检索|另一个笔记本|其它笔记/i;
+
+export interface SystemPromptSignals {
+  verdict?: "edit_current" | "create_new" | "chat_only";
+  promptText: string;
+  hasReference: boolean;
+}
+
+function needsSearchTools(signals: SystemPromptSignals): boolean {
+  return SEARCH_KEYWORDS.test(signals.promptText);
+}
+
+function needsDataviz(signals: SystemPromptSignals): boolean {
+  if (DATAVIZ_KEYWORDS.test(signals.promptText)) return true;
+  // 新建笔记 + 含数据类关键词 → 可能要求图表
+  if (signals.verdict === "create_new" && /数据|数值|统计|分析/.test(signals.promptText))
+    return true;
+  return false;
+}
+
+/**
+ * 按当前输入信号动态组装系统提示词，只装载相关能力 fragment，减少无关噪音。
+ * 零额外 LLM 调用；用关键词 + intent verdict 做确定性判断。
+ */
+export function buildWorkspaceSystemPrompt(signals: SystemPromptSignals): string {
+  const parts: string[] = [BASE_NOTE_PROMPT];
+  if (needsSearchTools(signals)) parts.push(NOTE_SEARCH_TOOLS_PROMPT);
+  if (needsDataviz(signals)) {
+    parts.push(DATAVIZ_SYSTEM_PROMPT);
+    parts.push(JSON_RENDER_PROMPT_FRAGMENT);
+  }
+  return parts.join("\n\n");
+}
 
 // ─── Utility Functions ────────────────────────────────────────────────────────
 
@@ -308,7 +353,11 @@ export function buildWorkspacePlan(
       context,
       parsed,
       promptText,
-      systemPrompt: WORKSPACE_NOTE_SYSTEM_PROMPT,
+      systemPrompt: buildWorkspaceSystemPrompt({
+        verdict: parsed.intentClassification?.verdict,
+        promptText,
+        hasReference: parsed.payload.tokens.some((t) => t.type === "reference"),
+      }),
       userPrompt,
       targetType: parsed.resolvedTarget.mode,
     }),

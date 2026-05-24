@@ -11,6 +11,7 @@ import {
   useDatavizSegments,
   useStreamingSegments,
 } from "./useArtifactRender";
+import { stripMarkdownHardBreaks } from "@/pages/workspace/components/editor/EditorFindBar";
 
 export const md = new MarkdownIt({ html: false, linkify: true, typographer: false }).enable("table");
 
@@ -173,17 +174,18 @@ export function StreamingDatavizText({
 
   // 无 dataviz 内容时保持原始纯文本渲染
   if (!hasDataviz) {
-    if (!streaming && text) {
+    const cleanedText = stripMarkdownHardBreaks(text);
+    if (!streaming && cleanedText) {
       return (
         <div
           className="ai-markdown break-words text-sm leading-7"
-          dangerouslySetInnerHTML={{ __html: md.render(text) }}
+          dangerouslySetInnerHTML={{ __html: md.render(cleanedText) }}
         />
       );
     }
     return (
       <>
-        <div className="whitespace-pre-wrap break-words text-sm leading-7">{text}</div>
+        <div className="whitespace-pre-wrap break-words text-sm leading-7">{cleanedText}</div>
         {streaming && (
           <div className="mt-2.5 flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />

@@ -100,8 +100,15 @@ export function looksLikeMarkdownFragment(text: string): boolean {
   );
 }
 
+export function stripMarkdownHardBreaks(text: string): string {
+  return normalizeClipboardLineEndings(text)
+    .replace(/\\\n/g, "\n")
+    .replace(/ {2,}\n/g, "\n")
+    .replace(/\\$/g, "");
+}
+
 export function normalizeMarkdownPasteText(text: string): string {
-  return normalizeClipboardLineEndings(text).replace(
+  return stripMarkdownHardBreaks(text).replace(
     /^(\s*)(?:[•·]|\.)\s+/gm,
     "$1- ",
   );

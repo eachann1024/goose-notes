@@ -2,6 +2,7 @@ import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { cn } from "@/lib/utils";
+import { stripMarkdownHardBreaks } from "@/pages/workspace/components/editor/EditorFindBar";
 import type { AiConversationMessage } from "./useAiSessionHistory";
 
 interface AssistantMessageActionsProps {
@@ -50,11 +51,11 @@ export function AssistantMessageActions({
   const activeIndex = message.activeVersionIndex ?? 0;
 
   const handleCopy = () => {
-    const textToCopy =
+    const rawText =
       message.artifact?.type === "text_response"
         ? (message.artifact as { text: string }).text
         : message.text;
-    UToolsAdapter.copyToClipboard(textToCopy);
+    UToolsAdapter.copyToClipboard(stripMarkdownHardBreaks(rawText));
     toast.success("已复制");
   };
 
