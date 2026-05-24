@@ -17,11 +17,6 @@ import type { BlockNoteEditor } from "@blocknote/core";
 
 export type AiPanelPhase = "input" | "processing" | "error";
 
-export const TEXTAREA_LINE_HEIGHT = 22;
-export const TEXTAREA_MIN_ROWS = 3;
-export const TEXTAREA_MAX_ROWS = 8;
-export const TEXTAREA_MIN_HEIGHT = TEXTAREA_LINE_HEIGHT * TEXTAREA_MIN_ROWS;
-export const TEXTAREA_MAX_HEIGHT = TEXTAREA_LINE_HEIGHT * TEXTAREA_MAX_ROWS;
 
 interface UseAiPanelStateParams {
   editor: BlockNoteEditor<any, any, any>;
@@ -41,7 +36,6 @@ export function useAiPanelState({
   onClose,
 }: UseAiPanelStateParams) {
   const [phase, setPhase] = useState<AiPanelPhase>("input");
-  const [query, setQuery] = useState("");
   const [streamPhase, setStreamPhase] =
     useState<AIStreamPhase>("connecting");
   const [streamText, setStreamText] = useState("");
@@ -49,6 +43,7 @@ export function useAiPanelState({
   const [errorMessage, setErrorMessage] = useState("");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingAccRef = useRef<{
     text: string;
@@ -65,20 +60,7 @@ export function useAiPanelState({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  useLayoutEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    const next = Math.min(
-      Math.max(ta.scrollHeight, TEXTAREA_MIN_HEIGHT),
-      TEXTAREA_MAX_HEIGHT,
-    );
-    ta.style.height = `${next}px`;
-    ta.style.overflowY =
-      ta.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
-  }, [query]);
-
-  useEffect(() => {
+useEffect(() => {
     if (phase !== "processing") return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -91,18 +73,36 @@ export function useAiPanelState({
   }, [phase]);
 
   useEffect(() => {
+    // 追踪 IME 合成状态，合成期间不拦截 pointerdown（避免干扰候选词选择）
+    const ta = textareaRef.current;
+    const onCompositionStart = () => { isComposingRef.current = true; };
+    const onCompositionEnd = () => { isComposingRef.current = false; };
+    ta?.addEventListener("compositionstart", onCompositionStart);
+    ta?.addEventListener("compositionend", onCompositionEnd);
+    return () => {
+      ta?.removeEventListener("compositionstart", onCompositionStart);
+      ta?.removeEventListener("compositionend", onCompositionEnd);
+    };
+  }, []);
+
+  useEffect(() => {
     // 必须用 pointerdown + capture：BlockNote 的 FormattingToolbarExtension
     // 在 editor DOM 上注册了冒泡阶段的 pointerdown 监听，会立即
     // setState(false) 把整个 formatting toolbar 卸载（连带 AiPanel）。
     // 只有在 capture 阶段拦截 pointerdown 并 stopPropagation，才能
     // 阻止它生效；preventDefault 同时阻止后续 mousedown 派发。
+    //
+    // 注意：用 queryRef 读取最新 query 值，避免把 query 放入依赖导致
+    // 每次打字都 teardown/re-attach 全局 capture 监听（IME 高频输入时会卡死）。
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
       if (target.closest("[data-ai-inline-input]")) return;
       if (target.closest("[data-formatting-toolbar]")) return;
+      // IME 合成期间不拦截，让候选词选择正常工作
+      if (isComposingRef.current) return;
 
-      const shouldBlock = phase === "processing" || query.trim().length > 0;
+      const shouldBlock = phase === "processing" || (textareaRef.current?.value.trim().length ?? 0) > 0;
       if (shouldBlock) {
         e.preventDefault();
         e.stopPropagation();
@@ -114,7 +114,7 @@ export function useAiPanelState({
     document.addEventListener("pointerdown", handlePointerDown, true);
     return () =>
       document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [phase, query]);
+  }, [phase]);
 
   useLayoutEffect(() => {
     if (phase !== "processing") return;
@@ -149,7 +149,7 @@ export function useAiPanelState({
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    const text = query.trim();
+    const text = (textareaRef.current?.value ?? "").trim();
     if (!text && !selectedText) {
       onClose();
       return;
@@ -308,7 +308,6 @@ export function useAiPanelState({
       setErrorMessage(errMsg);
     }
   }, [
-    query,
     selectedText,
     blockText,
     initialAction,
@@ -328,8 +327,6 @@ export function useAiPanelState({
 
   return {
     phase,
-    query,
-    setQuery,
     streamPhase,
     streamText,
     reasoningText,
@@ -351,14 +348,24 @@ function applyReplacement(
     const view = (editor as any)._tiptapEditor?.view;
     if (!view) return;
     const { state } = view;
+
     if (savedSel) {
       const from = Math.min(savedSel.from, state.doc.content.size);
       const to = Math.min(savedSel.to, state.doc.content.size);
-      view.dispatch(state.tr.insertText(text, from, to));
-    } else {
-      const { from } = state.selection;
-      view.dispatch(state.tr.insertText(text, from, from));
+      view.dispatch(state.tr.delete(from, to));
     }
+
+    view.focus();
+
+    const dt = new DataTransfer();
+    dt.setData("text/plain", text);
+    view.dom.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: dt,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   } catch {
     /* editor may be unmounted */
   }

@@ -1,18 +1,13 @@
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { memo } from "react";
+import type { RefObject } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
-import {
-  TEXTAREA_MAX_HEIGHT,
-  TEXTAREA_MIN_HEIGHT,
-  TEXTAREA_MIN_ROWS,
-  type AiPanelPhase,
-} from "./useAiPanelState";
+import { Textarea } from "@/components/ui/textarea";
+import type { AiPanelPhase } from "./useAiPanelState";
 
 interface AiPanelInputProps {
   phase: AiPanelPhase;
-  query: string;
-  setQuery: Dispatch<SetStateAction<string>>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   initialAction: "polish" | "rewrite" | "generate";
   onClose: () => void;
@@ -20,10 +15,8 @@ interface AiPanelInputProps {
   handleCancel: () => void;
 }
 
-export function AiPanelInput({
+export const AiPanelInput = memo(function AiPanelInput({
   phase,
-  query,
-  setQuery,
   textareaRef,
   initialAction,
   onClose,
@@ -37,7 +30,6 @@ export function AiPanelInput({
         ? "告诉 AI 怎么改写，或直接按回车..."
         : "让 AI 帮你写点什么...";
 
-  const canSubmit = phase === "input" && query.trim().length > 0;
   const isProcessing = phase === "processing";
 
   return (
@@ -51,32 +43,15 @@ export function AiPanelInput({
       </div>
 
       <div className="relative min-w-0 flex-1">
-        <textarea
+        <Textarea
           ref={textareaRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
           disabled={isProcessing}
           placeholder={placeholder}
-          rows={TEXTAREA_MIN_ROWS}
           className={cn(
-            "block w-full resize-none rounded-md bg-transparent px-2 pt-1.5 pb-9 text-[13px] leading-[22px] text-foreground outline-none placeholder:text-muted-foreground/55",
-            "disabled:opacity-60",
+            "min-h-[66px] resize-none rounded-md border-none bg-transparent px-2 pt-1.5 pb-9 text-[13px] leading-[22px] text-foreground outline-none placeholder:text-muted-foreground/55",
+            "focus-visible:ring-0 focus-visible:ring-offset-0",
+            "disabled:cursor-default disabled:opacity-60",
           )}
-          style={{
-            minHeight: TEXTAREA_MIN_HEIGHT,
-            maxHeight: TEXTAREA_MAX_HEIGHT,
-          }}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return;
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (!isProcessing) void handleSubmit();
-            }
-            if (e.key === "Escape") {
-              e.preventDefault();
-              onClose();
-            }
-          }}
         />
         <div className="pointer-events-none absolute bottom-1.5 right-1.5 flex items-center gap-1">
           <button
@@ -96,15 +71,12 @@ export function AiPanelInput({
                 void handleSubmit();
               }
             }}
-            disabled={!isProcessing && !canSubmit}
             aria-label={isProcessing ? "取消" : "发送"}
             className={cn(
               "pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full transition-colors",
               isProcessing
                 ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                : canSubmit
-                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                  : "bg-muted/70 text-muted-foreground/60",
+                : "bg-emerald-500 text-white hover:bg-emerald-600",
             )}
           >
             {isProcessing ? (
@@ -117,4 +89,4 @@ export function AiPanelInput({
       </div>
     </div>
   );
-}
+});
