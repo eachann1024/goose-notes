@@ -78,6 +78,7 @@ export const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
   yaml: "YAML",
   xml: "XML",
   markdown: "Markdown",
+  md: "Markdown",
   sql: "SQL",
   bash: "Bash",
   shell: "Shell",

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
-import { createHighlightPlugin, type Parser } from "prosemirror-highlight";
+import { createHighlightPlugin, type Parser } from "./highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
 import { all, createLowlight } from "lowlight";
@@ -21,6 +21,15 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   docker: "dockerfile",
   math: "latex",
   objectc: "objectivec",
+  md: "markdown",
+  mkdown: "markdown",
+  mkd: "markdown",
+  js: "javascript",
+  jsx: "javascript",
+  ts: "typescript",
+  tsx: "typescript",
+  py: "python",
+  yml: "yaml",
 };
 
 const SKIP_HIGHLIGHT_LANGUAGES = new Set([
@@ -84,15 +93,29 @@ const codeBlockHighlightParser: Parser = (options) => {
 
   try {
     const loadedLanguages = lowlight.listLanguages();
-    return lowlightParser({
+    const useLanguage =
+      !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguages.includes(language)
+        ? language
+        : undefined;
+
+    const decos = lowlightParser({
       ...options,
-      language:
-        !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguages.includes(language)
-          ? language
-          : undefined,
+      language: useLanguage,
     });
-  } catch {
-    return lowlightParser({ ...options, language: undefined });
+
+    console.log("[CodeBlockHighlight] Parser parsing", {
+      inputLanguage: options.language,
+      normalizedLanguage: language,
+      useLanguage,
+      decosCount: Array.isArray(decos) ? decos.length : "promise",
+      textLength: options.content.length,
+      contentStr: JSON.stringify(options.content),
+    });
+
+    return decos as any;
+  } catch (err) {
+    console.error("[CodeBlockHighlight] Parser error", err);
+    return lowlightParser({ ...options, language: undefined }) as any;
   }
 };
 
@@ -102,7 +125,14 @@ const codeBlockHighlightExtension = createExtension({
     createHighlightPlugin({
       parser: codeBlockHighlightParser,
       nodeTypes: ["codeBlock"],
-      languageExtractor: (node) => normalizeHighlightLanguage(node.attrs.language),
+      languageExtractor: (node) => {
+        const lang = node.attrs.language || node.attrs.props?.language;
+        console.log("[CodeBlockHighlight] languageExtractor", {
+          nodeAttrs: node.attrs,
+          extracted: lang,
+        });
+        return normalizeHighlightLanguage(lang);
+      },
     }),
   ],
 });
