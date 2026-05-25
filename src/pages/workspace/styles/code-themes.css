@@ -304,3 +304,13 @@
 .goose-code-block-node .hljs-strong {
   font-weight: 600;
 }
+
+.goose-code-block-node .hljs-code {
+  color: var(--code-token-string);
+}
+
+.goose-code-block-node .hljs-link {
+  color: var(--code-token-function);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
