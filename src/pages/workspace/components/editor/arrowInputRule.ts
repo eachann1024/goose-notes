@@ -1,9 +1,4 @@
-/**
- * 输入规则：`->` 自动替换为 `→`（类似 Notion）
- * 通过 tiptap Extension 挂载 ProseMirror InputRule
- */
-// @ts-ignore
-import { Extension } from "@tiptap/core";
+import { createExtension } from "@blocknote/core";
 // @ts-ignore
 import { InputRule, inputRules } from "@handlewithcare/prosemirror-inputrules";
 
@@ -18,16 +13,35 @@ function arrowInputRulePlugin() {
         (state: any, _match: any, start: number, end: number) => {
           return state.tr.insertText("\u2192", start, end);
         },
-        { inCode: false },
+        { inCode: false, undoable: false },
+      ),
+      new InputRule(
+        /-》$/,
+        (state: any, _match: any, start: number, end: number) => {
+          return state.tr.insertText("\u2192", start, end);
+        },
+        { inCode: false, undoable: false },
+      ),
+      new InputRule(
+        /=>$/,
+        (state: any, _match: any, start: number, end: number) => {
+          return state.tr.insertText("\u21D2", start, end);
+        },
+        { inCode: false, undoable: false },
+      ),
+      new InputRule(
+        /<-$/,
+        (state: any, _match: any, start: number, end: number) => {
+          return state.tr.insertText("\u2190", start, end);
+        },
+        { inCode: false, undoable: false },
       ),
     ],
   });
 }
 
-export const ArrowInputRuleExtension = Extension.create({
-  name: "arrowInputRule",
+export const ArrowInputRuleExtension = createExtension({
+  key: "arrowInputRule",
 
-  addProseMirrorPlugins() {
-    return [arrowInputRulePlugin()];
-  },
+  prosemirrorPlugins: [arrowInputRulePlugin()],
 });

@@ -14,6 +14,7 @@ import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
 import { gooseFakeSelectionExtension } from "./fakeSelectionExtension";
+import { ArrowInputRuleExtension } from "./arrowInputRule";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText } from "./EditorFindBar";
 import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
@@ -54,7 +55,14 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     {
       initialContent: initialContentRef.current as any,
       schema: editorSchema,
-      extensions: [gooseTabBehaviorExtension, gooseSelectAllExtension, gooseLinkKeyboardExtension, gooseCodeBlockKeyboardExtension, gooseFakeSelectionExtension],
+      extensions: [
+        gooseTabBehaviorExtension,
+        gooseSelectAllExtension,
+        gooseLinkKeyboardExtension,
+        gooseCodeBlockKeyboardExtension,
+        gooseFakeSelectionExtension,
+        ArrowInputRuleExtension,
+      ],
       dictionary: {
         ...zh,
         placeholders: {
