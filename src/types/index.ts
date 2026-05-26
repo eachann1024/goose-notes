@@ -69,4 +69,8 @@ export interface Page {
   // Linking (for future bidirectional links)
   outgoingLinks?: string[];
   incomingLinks?: string[];
+
+  // 标签：嵌套用斜杠（如 "work/ai"），前端切分渲染不存 parent 关系。
+  // 本地文件夹模式下会双向同步到 markdown frontmatter 的 tags 字段。
+  tags?: string[];
 }

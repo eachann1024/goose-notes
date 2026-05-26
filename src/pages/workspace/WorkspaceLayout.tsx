@@ -8,6 +8,7 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
 import { IconSelector } from "./components/shared/IconSelector";
+import { TagInput } from "./components/tag/TagInput";
 import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
@@ -234,6 +235,10 @@ export function WorkspaceLayout({
                                 : "w-full max-w-[720px] mx-auto",
                             )}
                           >
+                            <TagInput
+                              page={page}
+                              disabled={Boolean(page.trashedAt || page.isLocked)}
+                            />
                             {!isLocalFolderPage && (
                               <div
                                 className={cn(

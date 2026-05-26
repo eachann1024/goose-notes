@@ -44,6 +44,116 @@ export function extractFrontmatter(markdown: string): {
   return { frontmatter, body: lines.slice(bodyStart).join("\n") };
 }
 
+// 极简 YAML tags 解析：支持 flow `tags: [a, b]` 和 block `tags:\n  - a\n  - b`
+export function parseFrontmatterTags(frontmatter: string | undefined | null): string[] {
+  if (!frontmatter) return [];
+  const lines = frontmatter.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^tags\s*:\s*(.*)$/);
+    if (!m) continue;
+
+    const inline = m[1].trim();
+
+    if (inline.startsWith("[") && inline.endsWith("]")) {
+      const inner = inline.slice(1, -1).trim();
+      if (!inner) return [];
+      return inner
+        .split(",")
+        .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+        .filter(Boolean);
+    }
+
+    if (!inline) {
+      const tags: string[] = [];
+      for (let j = i + 1; j < lines.length; j++) {
+        const child = lines[j];
+        const cm = child.match(/^\s+-\s+(.*)$/);
+        if (cm) {
+          tags.push(cm[1].trim().replace(/^["']|["']$/g, ""));
+          continue;
+        }
+        if (child.trim() === "") continue;
+        if (!/^\s/.test(child)) break; // 下一个 top-level 字段或 ---
+      }
+      return tags;
+    }
+
+    return [inline.replace(/^["']|["']$/g, "")];
+  }
+
+  return [];
+}
+
+function serializeTag(tag: string): string {
+  if (/[,\[\]"':#\s]/.test(tag)) return JSON.stringify(tag);
+  return tag;
+}
+
+// 更新或插入 frontmatter 里的 tags 字段，输出统一 flow 格式。frontmatter 含 --- 边界。
+// frontmatter 为空 + tags 为空 → 返回 undefined（不需要 frontmatter）
+// frontmatter 为空 + tags 非空 → 创建完整 frontmatter 块
+// frontmatter 存在 + tags 非空 → 替换或插入 tags 行
+// frontmatter 存在 + tags 为空 → 移除 tags 行（保留其他字段）
+export function setFrontmatterTags(
+  frontmatter: string | undefined | null,
+  tags: string[],
+): string | undefined {
+  const normalized = tags.map((t) => t.trim()).filter(Boolean);
+
+  if (!frontmatter) {
+    if (!normalized.length) return undefined;
+    return `---\ntags: [${normalized.map(serializeTag).join(", ")}]\n---`;
+  }
+
+  const lines = frontmatter.split("\n");
+  let tagsLineIdx = -1;
+  let blockEndIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/^tags\s*:/)) {
+      tagsLineIdx = i;
+      const inline = lines[i].replace(/^tags\s*:\s*/, "").trim();
+      if (!inline || inline === "[]") {
+        for (let j = i + 1; j < lines.length; j++) {
+          if (/^\s+-/.test(lines[j]) || lines[j].trim() === "") {
+            blockEndIdx = j;
+          } else {
+            break;
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  const newLine = normalized.length
+    ? `tags: [${normalized.map(serializeTag).join(", ")}]`
+    : null;
+
+  if (tagsLineIdx >= 0) {
+    const start = tagsLineIdx;
+    const end = blockEndIdx >= 0 ? blockEndIdx : tagsLineIdx;
+    const head = lines.slice(0, start);
+    const tail = lines.slice(end + 1);
+    const out = newLine ? [...head, newLine, ...tail] : [...head, ...tail];
+    return out.join("\n");
+  }
+
+  if (!newLine) return frontmatter;
+
+  let closeIdx = -1;
+  for (let i = lines.length - 1; i >= 1; i--) {
+    if (lines[i].trim() === "---") {
+      closeIdx = i;
+      break;
+    }
+  }
+  if (closeIdx < 0) return frontmatter;
+
+  return [...lines.slice(0, closeIdx), newLine, ...lines.slice(closeIdx)].join("\n");
+}
+
 function isHtmlCommentLine(trimmedLine: string): boolean {
   return trimmedLine.startsWith("<!--") && trimmedLine.endsWith("-->");
 }
