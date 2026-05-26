@@ -51,24 +51,31 @@ export function useAiWriteActions({
           artifact.plan.outputMarkdown;
 
         if (canUseEditor) {
-          const newBlocks = await editor.tryParseMarkdownToBlocks(artifact.plan.outputMarkdown);
-
           if (artifact.plan.action === "replace_page") {
+            // 保留标题块，删除其余内容
             const allBlocks = editor.document;
             const titleBlock = allBlocks[0];
             const blocksToRemove = allBlocks.slice(1);
-            const contentBlocks =
-              newBlocks[0]?.type === "heading" && (newBlocks[0] as any)?.props?.level === 1
-                ? newBlocks.slice(1)
-                : newBlocks;
             if (blocksToRemove.length) editor.removeBlocks(blocksToRemove);
-            if (contentBlocks.length && titleBlock) {
-              editor.insertBlocks(contentBlocks, titleBlock, "after");
+            // 光标定位到标题块末尾，pasteMarkdown 在光标处插入
+            if (titleBlock) {
+              editor.setTextCursorPosition(titleBlock, "end");
             }
+            // 如果 AI 输出以 H1 开头，去掉它（标题块已保留）
+            let md = artifact.plan.outputMarkdown;
+            const h1Match = md.match(/^#\s+.+\n?/);
+            if (h1Match) {
+              md = md.slice(h1Match[0].length);
+            }
+            editor.pasteMarkdown(md);
           } else {
+            // append: 光标定位到末尾
             const allBlocks = editor.document;
             const lastBlock = allBlocks[allBlocks.length - 1];
-            if (lastBlock) editor.insertBlocks(newBlocks, lastBlock, "after");
+            if (lastBlock) {
+              editor.setTextCursorPosition(lastBlock, "end");
+            }
+            editor.pasteMarkdown(artifact.plan.outputMarkdown);
           }
 
           updateMessageArtifact(messageId, (currentArtifact) => ({

@@ -20,9 +20,13 @@ export function useSidebarEffects({
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
+        if (isAiPageOpen) return;
+
         const target = e.target as HTMLElement;
         const isInEditor =
+          target.isContentEditable ||
           target.closest(".bn-editor") ||
+          target.closest("[data-ai-composer-editor]") ||
           target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA";
 
@@ -32,7 +36,7 @@ export function useSidebarEffects({
         }
       }
     },
-    [activePageId, currentView, deletePageWithUndo],
+    [activePageId, currentView, deletePageWithUndo, isAiPageOpen],
   );
 
   useEffect(() => {

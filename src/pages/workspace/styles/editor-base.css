@@ -97,26 +97,26 @@
   border-top-color: hsl(var(--border) / 0.4);
 }
 
-/* ===== 链接样式（Notion 风格：与正文同色 + 灰色下划线） ===== */
-.workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
-  color: inherit;
+/* ===== 链接样式：始终蓝色 + 下划线（含表格单元格内） ===== */
+.workspace-editor-surface a[data-inline-content-type="link"] {
+  color: #2563eb;
   text-decoration: underline;
-  text-decoration-color: hsl(var(--muted-foreground) / 0.55);
+  text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   cursor: text;
-  transition: text-decoration-color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
-.workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"]:hover {
-  text-decoration-color: hsl(var(--foreground) / 0.85);
+.workspace-editor-surface a[data-inline-content-type="link"]:hover {
+  color: #1d4ed8;
 }
 
-.dark .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
+.dark .workspace-editor-surface a[data-inline-content-type="link"] {
   color: #60a5fa;
 }
 
-.dark .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"]:hover {
+.dark .workspace-editor-surface a[data-inline-content-type="link"]:hover {
   color: #93c5fd;
 }
 

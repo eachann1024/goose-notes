@@ -34,11 +34,11 @@ export const AiPanelInput = memo(function AiPanelInput({
 
   return (
     <div className="flex items-start gap-2 px-2 py-1.5">
-      <div className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center">
+      <div className="mt-[5px] flex h-6 w-6 shrink-0 items-center justify-center">
         {isProcessing ? (
-          <AiGradientIcon className="h-3.5 w-3.5" />
+          <AiGradientIcon className="h-5 w-5" />
         ) : (
-          <LucideIcons.Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+          <LucideIcons.Sparkles className="h-5 w-5 text-emerald-500" />
         )}
       </div>
 

@@ -347,25 +347,16 @@ function applyReplacement(
   try {
     const view = (editor as any)._tiptapEditor?.view;
     if (!view) return;
-    const { state } = view;
 
     if (savedSel) {
+      const { state } = view;
       const from = Math.min(savedSel.from, state.doc.content.size);
       const to = Math.min(savedSel.to, state.doc.content.size);
       view.dispatch(state.tr.delete(from, to));
     }
 
     view.focus();
-
-    const dt = new DataTransfer();
-    dt.setData("text/plain", text);
-    view.dom.dispatchEvent(
-      new ClipboardEvent("paste", {
-        clipboardData: dt,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
+    editor.pasteMarkdown(text);
   } catch {
     /* editor may be unmounted */
   }

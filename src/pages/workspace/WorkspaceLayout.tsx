@@ -256,7 +256,7 @@ export function WorkspaceLayout({
                                     className={cn(
                                       "flex h-auto w-auto p-0 transition-all duration-300",
                                       page.icon
-                                        ? "items-start justify-start ml-6 [&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]"
+                                        ? "items-start justify-start [&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]"
                                         : "items-center justify-center",
                                       page.icon
                                         ? "opacity-100 scale-100"

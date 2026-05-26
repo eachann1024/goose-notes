@@ -232,14 +232,15 @@ export function AiWorkspaceMessages({
           <div key={message.id} className="flex gap-2.5 px-4 py-2">
             <div
               className={cn(
-                "shrink-0 pt-[3px]",
+                "shrink-0",
+                isThinking ? "pt-3" : "pt-0.5",
                 message.error && "text-destructive",
               )}
             >
               {message.error ? (
-                <LucideIcons.AlertCircle className="h-3.5 w-3.5" />
+                <LucideIcons.AlertCircle className="h-5 w-5" />
               ) : (
-                <AiGradientIcon className="h-3.5 w-3.5" />
+                <AiGradientIcon className="h-5 w-5" />
               )}
             </div>
             <div

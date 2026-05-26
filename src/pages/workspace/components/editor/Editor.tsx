@@ -18,6 +18,7 @@ import { gooseCalloutKeyboardExtension } from "./calloutKeyboardExtension";
 import { gooseQuoteInputRuleExtension } from "./quoteInputRule";
 import { gooseFakeSelectionExtension } from "./fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "./arrowInputRule";
+import { gooseInlineCodeEscapeExtension } from "./inlineCodeEscapeExtension";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText } from "./EditorFindBar";
 import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
@@ -72,6 +73,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseQuoteInputRuleExtension,
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
+        gooseInlineCodeEscapeExtension,
       ],
       dictionary: {
         ...zh,
