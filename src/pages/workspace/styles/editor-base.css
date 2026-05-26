@@ -48,7 +48,7 @@
 
 /* BlockNote 块间距全局优化 */
 .workspace-editor-surface .bn-block-outer {
-  margin-bottom: 0.35em;
+  margin-bottom: 0.5em;
 }
 
 .workspace-editor-surface .bn-block-outer:last-child {
@@ -94,19 +94,22 @@
 }
 
 .dark .workspace-editor-surface [data-content-type="divider"] hr {
-  border-top-color: hsl(var(--border) / 0.75);
+  border-top-color: hsl(var(--border) / 0.4);
 }
 
-/* ===== 链接样式 ===== */
+/* ===== 链接样式（Notion 风格：与正文同色 + 灰色下划线） ===== */
 .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
-  color: #2563eb;
+  color: inherit;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-color: hsl(var(--muted-foreground) / 0.55);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
   cursor: text;
+  transition: text-decoration-color 0.15s ease;
 }
 
 .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"]:hover {
-  color: #1d4ed8;
+  text-decoration-color: hsl(var(--foreground) / 0.85);
 }
 
 .dark .workspace-editor-surface .bn-inline-content a[data-inline-content-type="link"] {
@@ -240,28 +243,24 @@
   margin-bottom: 0.5em;
 }
 
-/* ===== 行内代码样式（飞书风格） ===== */
+/* ===== 行内代码样式（Notion 风格：红字 + 浅灰底） ===== */
 .workspace-editor-surface .bn-inline-content code {
-  background-color: hsl(220 9% 96%);
-  color: hsl(220 9% 16%);
-  padding: var(--editor-inline-code-padding-y, 2px) var(--editor-inline-code-padding-x, 4px);
-  border-radius: var(--editor-inline-code-radius, 3px);
-  font-family: var(--font-mono, monospace);
-  font-size: 0.85em;
-  line-height: 1;
+  background-color: rgba(135, 131, 120, 0.15);
+  color: #eb5757;
+  padding: var(--editor-inline-code-padding-y, 0.15em) var(--editor-inline-code-padding-x, 0.4em);
+  border-radius: var(--editor-inline-code-radius, 4px);
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
+  font-size: 0.92em;
+  line-height: inherit;
+  vertical-align: baseline;
 }
 
 .dark .workspace-editor-surface .bn-inline-content code {
-  background-color: hsl(220 6% 18%);
-  color: hsl(220 6% 88%);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ff7b7b;
 }
 
-/* ===== CheckListItem 文字垂直居中 ===== */
-.workspace-editor-surface .bn-block-content[data-content-type="checkListItem"] {
-  align-items: center;
-}
-
-/* 勾选后用灰色文字代替中划线 */
+/* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
   .bn-inline-content {
@@ -312,7 +311,7 @@
   background: transparent;
   color: inherit;
   padding: 12px 16px;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
   font-size: 0.85em;
   line-height: 1.7;
   position: relative;
@@ -445,7 +444,7 @@
   background: transparent;
   color: inherit;
   padding: 12px 16px;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
   font-size: 0.85em;
   line-height: 1.7;
   overflow-x: auto;
@@ -470,7 +469,7 @@
   width: 40px;
   padding: 12px 8px 12px 0;
   text-align: right;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
   font-size: 11px;
   line-height: 1.7;
   display: none;

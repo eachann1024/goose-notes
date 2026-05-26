@@ -266,13 +266,20 @@
 }
 
 .details-wrapper summary::before {
-  content: "▶";
-  @apply text-[10px] text-muted-foreground transition-transform duration-200;
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  background-color: hsl(var(--muted-foreground));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>") no-repeat center / 14px 14px;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>") no-repeat center / 14px 14px;
+  transition: transform 0.2s ease;
 }
 
 .details-wrapper[open] summary::before,
 .details-wrapper.is-open summary::before {
-  @apply rotate-90;
+  transform: rotate(90deg);
 }
 
 .details-wrapper div[data-type="detailsContent"],
@@ -863,4 +870,9 @@
   .ai-thinking-flow::after {
     animation: none;
   }
+}
+
+/* Lucide 图标全局描边统一为 1.75（贴近 Notion 视觉） */
+svg.lucide {
+  stroke-width: 1.75;
 }

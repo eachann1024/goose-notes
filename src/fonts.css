@@ -7,20 +7,20 @@
   src: url("./assets/fonts/Inter-Variable.woff2") format("woff2");
 }
 
-/* DM Mono Font Family */
+/* DM Mono Font Family
+ * 使用 swap 而非 optional，避免「首次进入页面 DM Mono 永久失效」与
+ * 「二次进入因缓存命中、加上 unicode-range 不含 CJK 导致字符回退到非等宽字体」
+ * 的行为差异。unicode-range 已移除，让浏览器对所有字符尝试 DM Mono，
+ * CJK 字符在 DM Mono 中无字形时会自然走到 monospace generic 的系统兜底。 */
 @font-face {
   font-family: "DM Mono";
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src:
     local("DM Mono"),
     url("https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.1.0/files/dm-mono-latin-400-normal.woff2")
       format("woff2");
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
-    U+FFFD;
 }
 
 @font-face {
