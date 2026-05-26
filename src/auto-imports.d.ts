@@ -231,6 +231,7 @@ declare global {
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
+  const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const mimeToImageType: typeof import('./lib/docxExport/docxImages').mimeToImageType

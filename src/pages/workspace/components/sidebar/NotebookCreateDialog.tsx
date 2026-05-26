@@ -59,7 +59,6 @@ export function NotebookCreateDialog({
                   value={icon}
                   onChange={(val) => onIconChange(val || "BookOpen")}
                   portalContainerRef={createDialogContentRef}
-                  scope="general"
                 >
                   <Button
                     variant="outline"

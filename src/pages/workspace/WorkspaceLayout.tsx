@@ -20,10 +20,6 @@ import { useHistoryView } from "@/stores/useHistoryView";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
-const DEFAULT_RANDOM_PAGE_EMOJIS = [
-  "📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "🔖", "📚", "✨",
-];
-
 interface WorkspaceLayoutProps {
   isDragging: boolean;
   dragIntent: "folder" | "text-file" | "file";
@@ -252,7 +248,6 @@ export function WorkspaceLayout({
                                     !page.isLocked &&
                                     updatePage(activePageId, { icon })
                                   }
-                                  scope="file"
                                 >
                                   <Button
                                     type="button"
@@ -271,27 +266,6 @@ export function WorkspaceLayout({
                                             ? "opacity-100 animate-slow-pulse hover:scale-105"
                                             : "opacity-0 group-hover:opacity-100 hover:scale-105",
                                     )}
-                                    onClick={() => {
-                                      if (
-                                        !isNewPage ||
-                                        page.icon ||
-                                        page.trashedAt ||
-                                        page.isLocked
-                                      ) {
-                                        return;
-                                      }
-
-                                      const randomEmoji =
-                                        DEFAULT_RANDOM_PAGE_EMOJIS[
-                                          Math.floor(
-                                            Math.random() *
-                                              DEFAULT_RANDOM_PAGE_EMOJIS.length,
-                                          )
-                                        ];
-                                      updatePage(activePageId, {
-                                        icon: randomEmoji,
-                                      });
-                                    }}
                                   >
                                     {page.icon ? (
                                       <div className="flex items-center justify-center h-24 w-24 text-8xl">

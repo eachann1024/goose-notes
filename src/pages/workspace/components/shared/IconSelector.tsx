@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -22,6 +23,8 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   children: React.ReactNode;
   portalContainerRef?: React.RefObject<T | null>;
   onFirstOpen?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const CURATED_ICONS: string[] = [
@@ -59,8 +62,16 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   children,
   portalContainerRef,
   onFirstOpen,
+  open: controlledOpen,
+  onOpenChange,
 }: IconSelectorProps<T>) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const portalContainer = portalContainerRef?.current ?? undefined;
   const hasOpenedRef = useRef(false);
 
@@ -83,7 +94,11 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      {isControlled ? (
+        <PopoverAnchor asChild>{children}</PopoverAnchor>
+      ) : (
+        <PopoverTrigger asChild>{children}</PopoverTrigger>
+      )}
       <PopoverContent
         className="w-[300px] p-0 rounded-[14px] shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)] overflow-hidden bg-popover text-foreground border border-border/40"
         align="start"

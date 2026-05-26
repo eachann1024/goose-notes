@@ -1,4 +1,11 @@
-import type { HTMLProps, ReactNode } from "react";
+import {
+  useState,
+  type DragEvent,
+  type HTMLProps,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import type {
   DraggingPosition,
   TreeInformation,
@@ -25,14 +32,17 @@ function TreeRowIcon({
   isLocalFolder: boolean;
   isRenaming: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const iconName = page?.icon;
 
   const stopBubble = {
-    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
-    onClick: (e: React.MouseEvent) => e.stopPropagation(),
-    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
-    onDragStart: (e: React.DragEvent) => {
+    onPointerDown: (e: PointerEvent) => {
+      e.stopPropagation();
+      setOpen(true);
+    },
+    onMouseDown: (e: MouseEvent) => e.stopPropagation(),
+    onDoubleClick: (e: MouseEvent) => e.stopPropagation(),
+    onDragStart: (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
     },
@@ -65,19 +75,24 @@ function TreeRowIcon({
       onChange={(newIcon) =>
         usePages.getState().updatePage(page.id, { icon: newIcon })
       }
+      open={open}
+      onOpenChange={setOpen}
     >
-      <div
-        role="button"
-        tabIndex={-1}
+      <button
+        type="button"
         title="点击更换图标"
         className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
         draggable={false}
         {...stopBubble}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
       >
         <div className="flex h-4 w-4 items-center justify-center">
           <LocalFileIcon page={page} iconName={iconName} isLocalFolder={false} />
         </div>
-      </div>
+      </button>
     </IconSelector>
   );
 }
@@ -103,7 +118,7 @@ export function renderItem({
   if (item.index === "root") {
     return <>{children}</>;
   }
-  const isActive = context.isSelected || context.isFocused;
+  const isActive = context.isSelected;
   const isOver = context.isDraggingOver;
   const interactive = context.interactiveElementProps as HTMLProps<HTMLDivElement>;
   const withChildren = context.itemContainerWithChildrenProps as HTMLProps<HTMLLIElement>;
@@ -126,7 +141,6 @@ export function renderItem({
   const row = (
     <div
       {...withoutChildren}
-      {...interactive}
       className={cn(
         "main-tree-row group/main-row relative z-10 flex min-h-[28px] items-center gap-0.5 rounded-[8px] py-[4px] pl-0 pr-1.5",
         "text-[13px] font-medium leading-none cursor-pointer select-none",
@@ -143,7 +157,12 @@ export function renderItem({
     >
       {arrow}
       {iconNode}
-      <span className="truncate flex-1 min-w-0">{title}</span>
+      <div
+        {...interactive}
+        className="flex min-w-0 flex-1 items-center self-stretch outline-none"
+      >
+        <span className="truncate flex-1 min-w-0">{title}</span>
+      </div>
     </div>
   );
 
