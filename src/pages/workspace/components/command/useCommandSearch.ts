@@ -140,39 +140,8 @@ export function useCommandSearch({
     }
 
     const matched: SearchResultPage[] = [];
-
+    
     const notebooks = useNotebooks.getState().notebooks;
-
-    // #tag 过滤模式：query 以 # 开头 → 仅显示打了对应标签的页面
-    // 「#」单独 → 所有有标签的页面；「#work」→ tag 以 work 开头或包含
-    if (query.startsWith("#")) {
-      const tagQuery = query.slice(1).trim();
-      const tagMatched: SearchResultPage[] = [];
-      for (const page of filteredPages) {
-        if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) continue;
-        const tags = Array.isArray(page.tags) ? page.tags : [];
-        if (!tags.length) continue;
-        if (!tagQuery) {
-          tagMatched.push({ ...page });
-          continue;
-        }
-        const hit = tags.some((t) => {
-          const lower = t.toLowerCase();
-          return lower.startsWith(tagQuery) || lower.includes("/" + tagQuery) || lower === tagQuery;
-        });
-        if (hit) tagMatched.push({ ...page });
-      }
-      const recentTag = tagMatched
-        .filter((p) => !removedRecentIds.includes(p.id))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, 5);
-      const allTag = [...tagMatched].sort((a, b) => {
-        const titleA = getPageTitle(a);
-        const titleB = getPageTitle(b);
-        return titleA.localeCompare(titleB, "zh-CN");
-      });
-      return { recent: recentTag, all: allTag, hasQuery: true };
-    }
 
     for (const page of filteredPages) {
       // 如果是本地文件夹，排除文件夹本身（isFolder=true），只搜索文件
