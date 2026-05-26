@@ -5,13 +5,12 @@ import {
   useExtension,
   useExtensionState,
 } from "@blocknote/react";
-import { SideMenuExtension, SuggestionMenu } from "@blocknote/core/extensions";
+import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
-  const suggestionMenu = useExtension(SuggestionMenu);
   const sideMenu = useExtension(SideMenuExtension);
   const lastPosRef = useRef({ top: 0, left: 0 });
 
@@ -32,24 +31,28 @@ export function EditorSideMenu() {
     !!state.referencePos &&
     !(block && block.id === editor.document[0]?.id);
 
-  const handleAdd = useCallback(() => {
-    if (!block) return;
-    const content = block.content;
-    const isEmpty =
-      content !== undefined && Array.isArray(content) && content.length === 0;
-    if (isEmpty) {
-      editor.setTextCursorPosition(block);
-      suggestionMenu?.openSuggestionMenu("/");
-    } else {
-      const [inserted] = editor.insertBlocks(
-        [{ type: "paragraph" }],
-        block,
-        "before",
-      );
-      editor.setTextCursorPosition(inserted);
-      suggestionMenu?.openSuggestionMenu("/");
-    }
-  }, [block, editor, suggestionMenu]);
+  const handleAdd = useCallback(
+    (e: React.MouseEvent) => {
+      if (!block) return;
+      const placement: "before" | "after" =
+        e.altKey || e.ctrlKey || e.metaKey ? "before" : "after";
+      const content = block.content;
+      const isEmpty =
+        content !== undefined && Array.isArray(content) && content.length === 0;
+      if (isEmpty && placement === "after") {
+        editor.setTextCursorPosition(block);
+      } else {
+        const [inserted] = editor.insertBlocks(
+          [{ type: "paragraph" }],
+          block,
+          placement,
+        );
+        editor.setTextCursorPosition(inserted);
+      }
+      editor.focus();
+    },
+    [block, editor],
+  );
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {

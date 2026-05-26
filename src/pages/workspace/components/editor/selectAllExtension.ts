@@ -112,7 +112,49 @@ export const gooseSelectAllExtension = createExtension({
           selection.from <= blockStart && selection.to >= blockEnd;
       }
 
+      const blockGroup = state.doc.firstChild;
+      const titleBlock = blockGroup?.firstChild;
+      const titleContent = titleBlock?.firstChild;
+      const hasTitleHeading =
+        blockGroup?.type.name === "blockGroup" &&
+        !!titleBlock &&
+        titleContent?.type.name === "heading" &&
+        Number((titleContent as any).attrs?.level) === 1;
+
+      const startedInTitle =
+        hasTitleHeading && $from.before(blockContainerDepth) === 1;
+
+      let bodyRange: { from: number; to: number } | null = null;
+      if (hasTitleHeading && titleBlock && blockGroup) {
+        const afterTitle = 1 + titleBlock.nodeSize;
+        const blockGroupEnd = state.doc.content.size - 1;
+        if (afterTitle < blockGroupEnd) {
+          bodyRange = { from: afterTitle, to: blockGroupEnd };
+        }
+      }
+
+      const isBodyRangeSelected =
+        !!bodyRange &&
+        selection instanceof TextSelection &&
+        selection.from <= bodyRange.from + 1 &&
+        selection.to >= bodyRange.to - 1;
+
       if (isBlockFullySelected) {
+        if (bodyRange && !startedInTitle && !isBodyRangeSelected) {
+          const bodySel = TextSelection.create(
+            state.doc,
+            bodyRange.from,
+            bodyRange.to,
+          );
+          editor.prosemirrorView.dispatch(state.tr.setSelection(bodySel));
+          return true;
+        }
+        const allSel = new AllSelection(state.doc);
+        editor.prosemirrorView.dispatch(state.tr.setSelection(allSel));
+        return true;
+      }
+
+      if (isBodyRangeSelected) {
         const allSel = new AllSelection(state.doc);
         editor.prosemirrorView.dispatch(state.tr.setSelection(allSel));
         return true;
