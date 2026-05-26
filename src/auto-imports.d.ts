@@ -290,6 +290,7 @@ declare global {
   const useActionState: typeof import('react').useActionState
   const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
   const useAiStatus: typeof import('./stores/useAiStatus').useAiStatus
+  const useAppHotkeys: typeof import('./hooks/useAppHotkeys').useAppHotkeys
   const useCallback: typeof import('react').useCallback
   const useCompactViewport: typeof import('./hooks/useCompactViewport').useCompactViewport
   const useContext: typeof import('react').useContext
@@ -313,6 +314,7 @@ declare global {
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/pages/index').usePages
   const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
+  const usePluginEvents: typeof import('./hooks/usePluginEvents').usePluginEvents
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
   const useSettings: typeof import('./stores/settings/index').useSettings
