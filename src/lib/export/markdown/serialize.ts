@@ -56,17 +56,31 @@ function extractLinkText(linkContent: any): string {
 }
 
 function blockNoteInlineToText(content: any): string {
+  if (content == null) return "";
   if (typeof content === "string") return content;
+  // BlockNote 0.50 TableCell 对象形态: { type: "tableCell", content: InlineContent[] | [Paragraph] }
+  if (
+    typeof content === "object" &&
+    !Array.isArray(content) &&
+    Array.isArray(content.content)
+  ) {
+    return blockNoteInlineToText(content.content);
+  }
   if (!Array.isArray(content)) return "";
   return content
     .map((item: any) => {
       if (typeof item === "string") return item;
-      if (item?.type === "link") {
+      if (item == null) return "";
+      // 嵌套 paragraph（markdown 导入时表格 cell 会包一层 paragraph）
+      if (item.type === "paragraph" && Array.isArray(item.content)) {
+        return blockNoteInlineToText(item.content);
+      }
+      if (item.type === "link") {
         const linkText = extractLinkText(item.content);
         return `[${linkText}](${item.href || ""})`;
       }
-      let text = item?.text || "";
-      const styles = item?.styles || {};
+      let text = item.text || "";
+      const styles = item.styles || {};
       if (styles.bold) text = `**${text}**`;
       if (styles.italic) text = `*${text}*`;
       if (styles.strike) text = `~~${text}~~`;
@@ -74,6 +88,11 @@ function blockNoteInlineToText(content: any): string {
       return text;
     })
     .join("");
+}
+
+function escapePipeInCell(value: string): string {
+  // GFM 表格 cell 里的 | 必须转义，否则会被解析成列分隔符
+  return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 function blockNoteBlockToMarkdown(block: any): string {
@@ -95,20 +114,37 @@ function blockNoteBlockToMarkdown(block: any): string {
     case "quote":
       result = `> ${text}`;
       break;
-    case "codeBlock":
-      result = `\`\`\`${serializeCodeFenceInfo(block.props?.language || "", block.props)}\n${text}\n\`\`\``;
+    case "codeBlock": {
+      const lang = (block.props?.language || "").trim();
+      // 数学公式走 $$...$$，让 remark-math/KaTeX 渲染；其他用 fenced code
+      if (lang === "math" || lang === "latex") {
+        result = `$$\n${text}\n$$`;
+      } else {
+        result = `\`\`\`${serializeCodeFenceInfo(lang, block.props)}\n${text}\n\`\`\``;
+      }
       break;
+    }
     case "image":
       result = `![${block.props?.caption || ""}](${block.props?.url || ""})`;
       break;
     case "table": {
       const rows = block.content?.rows || [];
       if (!rows.length) return "";
-      const tableRows = rows.map((row: any) => row.cells || []);
-      const header = tableRows[0].map((cell: any) => blockNoteInlineToText(cell)).join(" | ");
-      const separator = tableRows[0].map(() => "---").join(" | ");
-      const body = tableRows.slice(1).map((row: any[]) => row.map((cell: any) => blockNoteInlineToText(cell)).join(" | "));
-      result = [`| ${header} |`, `| ${separator} |`, ...body.map((row: string) => `| ${row} |`)].join("\n");
+      const tableRows = rows.map((row: any) => (Array.isArray(row?.cells) ? row.cells : []));
+      const colCount = Math.max(...tableRows.map((r: any[]) => r.length), 1);
+      const padRow = (cells: any[]) => {
+        const out = cells.map((cell) => escapePipeInCell(blockNoteInlineToText(cell)));
+        while (out.length < colCount) out.push("");
+        return out;
+      };
+      const header = padRow(tableRows[0]);
+      const separator = new Array(colCount).fill("---");
+      const body = tableRows.slice(1).map(padRow);
+      result = [
+        `| ${header.join(" | ")} |`,
+        `| ${separator.join(" | ")} |`,
+        ...body.map((row: string[]) => `| ${row.join(" | ")} |`),
+      ].join("\n");
       break;
     }
     case "callout":
@@ -146,7 +182,10 @@ export function jsonContentToMarkdown(
     if (skipFirstH1 && blocks[0]?.type === "heading") {
       blocks = blocks.slice(1);
     }
-    return blocks.map(blockNoteBlockToMarkdown).join("\n");
+    return blocks
+      .map(blockNoteBlockToMarkdown)
+      .filter((s) => s !== "")
+      .join("\n\n");
   }
 
   return "";

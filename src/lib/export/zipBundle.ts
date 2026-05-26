@@ -7,7 +7,8 @@ import {
   normalizePageContent,
   createEmptyBlockNoteContent,
 } from "@/lib/blocknote-content";
-import { jsonContentToMarkdown } from "./markdown/serialize";
+import { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
+import { renderExportHtml } from "./index";
 import { importFromMarkdown } from "./markdown/parse";
 import type { ImportResult } from "./markdown/parse";
 import { saveBlobAndReveal } from "./fileSave";
@@ -17,27 +18,11 @@ import {
   readLocalFileAsBase64,
 } from "@/lib/imageStorage/strategies/file-system";
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function contentToHTML(content: BlockNoteContent): string {
-  return jsonContentToMarkdown(content, true)
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      if (block.startsWith("# ")) return `<h1>${escapeHtml(block.slice(2))}</h1>`;
-      if (block.startsWith("## ")) return `<h2>${escapeHtml(block.slice(3))}</h2>`;
-      if (block.startsWith("### ")) return `<h3>${escapeHtml(block.slice(4))}</h3>`;
-      if (block.startsWith("```")) return `<pre><code>${escapeHtml(block.replace(/^```[^\n]*\n?/, "").replace(/```$/, ""))}</code></pre>`;
-      return `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`;
-    })
-    .join("\n");
+function stripFirstH1(blocks: any[]): any[] {
+  if (blocks[0]?.type === "heading" && blocks[0]?.props?.level === 1) {
+    return blocks.slice(1);
+  }
+  return blocks;
 }
 
 let imageStoragePromise: Promise<{
@@ -256,16 +241,20 @@ export async function exportNotebooks(
       switch (format) {
         case "md": {
           const title = extractTitleFromContent(pageClone.content);
-          content = `# ${title}\n\n${jsonContentToMarkdown(pageClone.content, true)}`;
+          const blocks = stripFirstH1(pageClone.content as any[]);
+          const md = await blocksToMarkdown(blocks as any);
+          content = `# ${title}\n\n${md}`;
           extension = ".md";
           break;
         }
-        case "html":
-          const html = contentToHTML(pageClone.content);
+        case "html": {
           const titleForHtml = extractTitleFromContent(pageClone.content);
-          content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleForHtml}</title><style>img { max-width: 100%; }</style></head><body><h1>${titleForHtml}</h1>${html}</body></html>`;
+          const blocks = stripFirstH1(pageClone.content as any[]);
+          const html = await blocksToHTML(blocks as any);
+          content = renderExportHtml(titleForHtml, html);
           extension = ".html";
           break;
+        }
       }
 
       const fileName =

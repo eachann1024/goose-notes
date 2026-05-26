@@ -80,10 +80,8 @@ export function LocalFileIcon({
     return <SelectedIcon className={cn("h-4 w-4", className)} />;
   }
 
-  if (iconName) {
-    return <span className={cn("text-sm leading-none flex items-center justify-center", className)}>{iconName}</span>;
-  }
-
+  // 已设置 iconName 但 lucide 中不存在该 key（升级/改名导致）：
+  // fallback 到默认图标，避免把英文字符串直接渲染到侧栏。
   if (page.isFolder) {
     return (
       <LucideIcons.Folder

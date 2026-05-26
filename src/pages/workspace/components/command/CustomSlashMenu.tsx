@@ -20,6 +20,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     const [showHint, setShowHint] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const suggestionMenu = useExtension(SuggestionMenu);
+    const wrapScrollRef = useRef<null | "top" | "bottom">(null);
 
     const selectableIndexes = useMemo(
       () =>
@@ -59,6 +60,17 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     useEffect(() => {
       const container = containerRef.current;
       if (!container) return;
+      // 循环跳转：直接把菜单拉到顶/底，让用户看到完整边界
+      if (wrapScrollRef.current === "bottom") {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        wrapScrollRef.current = null;
+        return;
+      }
+      if (wrapScrollRef.current === "top") {
+        container.scrollTo({ top: 0, behavior: "smooth" });
+        wrapScrollRef.current = null;
+        return;
+      }
       const selectedEl = container.querySelector(
         `[data-index="${selectedIndex}"]`,
       ) as HTMLElement | null;
@@ -78,14 +90,24 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
           e.preventDefault();
           e.stopPropagation();
           const pos = Math.max(selectableIndexes.indexOf(selectedIndex), 0);
-          const next = Math.max(0, pos - 1);
-          setSelectedIndex(selectableIndexes[next]);
+          if (pos === 0) {
+            // 循环到末尾，并把容器滚到底
+            wrapScrollRef.current = "bottom";
+            setSelectedIndex(selectableIndexes[selectableIndexes.length - 1]);
+          } else {
+            setSelectedIndex(selectableIndexes[pos - 1]);
+          }
         } else if (e.key === "ArrowDown") {
           e.preventDefault();
           e.stopPropagation();
           const pos = Math.max(selectableIndexes.indexOf(selectedIndex), 0);
-          const next = Math.min(selectableIndexes.length - 1, pos + 1);
-          setSelectedIndex(selectableIndexes[next]);
+          if (pos === selectableIndexes.length - 1) {
+            // 循环到开头，并把容器滚到顶
+            wrapScrollRef.current = "top";
+            setSelectedIndex(selectableIndexes[0]);
+          } else {
+            setSelectedIndex(selectableIndexes[pos + 1]);
+          }
         } else if (e.key === "Enter") {
           e.preventDefault();
           e.stopPropagation();
@@ -126,7 +148,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       data-index={index}
                       className={cn(
                         "relative flex h-auto min-h-[40px] w-full items-center justify-start rounded-[var(--radius-notion-slash-item)] px-2.5 py-2 text-left outline-none transition-colors whitespace-normal",
-                        index === selectedIndex ? "bg-accent/50" : "bg-transparent",
+                        index === selectedIndex ? "bg-accent" : "bg-transparent",
                       )}
                       onMouseEnter={() => setSelectedIndex(index)}
                       onClick={() => selectItem(index)}

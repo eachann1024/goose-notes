@@ -87,7 +87,7 @@ export const calloutBlock = createReactBlockSpec(
 
       return (
         <div
-          className="callout-block group flex w-full items-start gap-2.5 rounded-lg bg-muted/50 px-3.5 py-2.5"
+          className="callout-block group flex w-full items-start gap-2.5 rounded-r-lg border-l-[3px] border-l-primary/60 bg-muted/40 px-3.5 py-2.5"
           data-callout="true"
         >
           <CalloutIconPicker icon={icon} onPick={handleIconPick} />
@@ -101,7 +101,7 @@ export const calloutBlock = createReactBlockSpec(
     toExternalHTML: ({ block, contentRef }) => {
       return (
         <div
-          className="flex items-start gap-2 rounded-md bg-muted/40 px-4 py-3"
+          className="flex items-start gap-2 rounded-r-md border-l-[3px] border-l-primary/60 bg-muted/40 px-4 py-3"
           data-callout="true"
         >
           <span className="mt-0.5 select-none text-base leading-none">

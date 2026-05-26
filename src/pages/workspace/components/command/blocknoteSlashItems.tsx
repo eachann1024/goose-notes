@@ -18,6 +18,21 @@ export interface SlashMenuItem {
 export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any>): SlashMenuItem[] {
   const currentBlock = editor.getTextCursorPosition().block;
 
+  // 插入完成后：把光标移到新块、把视图滚动到新块、把焦点交回编辑器
+  const focusAndScrollTo = (block: { id: string }) => {
+    try {
+      editor.setTextCursorPosition(block, "end");
+    } catch { /* block 可能已被 BlockNote 内部刷新；忽略 */ }
+    editor.focus();
+    // 等 DOM 更新一帧后再滚动，确保新块已渲染
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-id="${block.id}"]`,
+      ) as HTMLElement | null;
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
+
   const insertOrUpdate = (block: any): any => {
     const content = currentBlock.content as any;
     const hasTrigger =
@@ -26,25 +41,27 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
       content[0]?.type === "text" &&
       ((content[0].text || "").startsWith("/") || (content[0].text || "").startsWith("、"));
 
+    let target: any;
     if (hasTrigger) {
       editor.updateBlock(currentBlock, { content: [] });
       const clearedBlock = editor.getTextCursorPosition().block;
       editor.updateBlock(clearedBlock, block);
-      return clearedBlock;
-    }
-
-    const isEmpty =
-      !content ||
-      (Array.isArray(content) && content.length === 0) ||
-      (typeof content === "string" && content.trim() === "");
-    if (isEmpty) {
-      editor.updateBlock(currentBlock, block);
-      return currentBlock;
+      target = clearedBlock;
     } else {
-      const [inserted] = editor.insertBlocks([block], currentBlock, "after");
-      editor.setTextCursorPosition(inserted);
-      return inserted;
+      const isEmpty =
+        !content ||
+        (Array.isArray(content) && content.length === 0) ||
+        (typeof content === "string" && content.trim() === "");
+      if (isEmpty) {
+        editor.updateBlock(currentBlock, block);
+        target = currentBlock;
+      } else {
+        const [inserted] = editor.insertBlocks([block], currentBlock, "after");
+        target = inserted;
+      }
     }
+    if (target?.id) focusAndScrollTo(target);
+    return target;
   };
 
   const items: SlashMenuItem[] = [];

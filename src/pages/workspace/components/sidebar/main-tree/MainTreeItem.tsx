@@ -16,6 +16,72 @@ import { getPageTitle } from "./treeAdapter";
 const INDENT = 18;
 const ROW_PADDING_LEFT = 6;
 
+function TreeRowIcon({
+  page,
+  isLocalFolder,
+  isRenaming,
+}: {
+  page: Page;
+  isLocalFolder: boolean;
+  isRenaming: boolean;
+}) {
+  const iconName = page?.icon;
+
+  const stopBubble = {
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onDragStart: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+  };
+
+  if (isLocalFolder) {
+    return (
+      <div className="flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
+        <LocalFileIcon page={page} iconName={iconName} isLocalFolder />
+      </div>
+    );
+  }
+
+  if (isRenaming) {
+    return (
+      <div
+        className="flex h-6 w-6 items-center justify-center rounded-[6px] shrink-0 mr-0.5 pointer-events-none"
+        aria-disabled="true"
+      >
+        <div className="flex h-4 w-4 items-center justify-center">
+          <LocalFileIcon page={page} iconName={iconName} isLocalFolder={false} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <IconSelector
+      value={iconName}
+      onChange={(newIcon) =>
+        usePages.getState().updatePage(page.id, { icon: newIcon })
+      }
+    >
+      <div
+        role="button"
+        tabIndex={-1}
+        title="点击更换图标"
+        className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
+        draggable={false}
+        {...stopBubble}
+      >
+        <div className="flex h-4 w-4 items-center justify-center">
+          <LocalFileIcon page={page} iconName={iconName} isLocalFolder={false} />
+        </div>
+      </div>
+    </IconSelector>
+  );
+}
+
 interface RenderItemArgs {
   item: TreeItem<Page>;
   depth: number;
@@ -48,56 +114,13 @@ export function renderItem({
     ? useNotebooks.getState().notebooks[page.workspaceId]
     : undefined;
   const isLocalFolder = notebook?.source === "local-folder";
-  const iconName = page?.icon;
 
-  // 阻断行的原生 drag —— 关键：mousedown 时 preventDefault，浏览器才不会启动 drag，
-  // 否则用户轻微鼠标移动就触发 drag，click 事件永远不会到达 Radix Popover Trigger。
-  const blockRowDrag = {
-    draggable: false as const,
-    onMouseDown: (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    onDragStart: (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    onClick: (e: React.MouseEvent) => e.stopPropagation(),
-    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
-  };
-
-  const iconNode = isLocalFolder ? (
-    <div
-      className="flex items-center justify-center h-5 w-5 shrink-0 mr-0.5"
-      {...blockRowDrag}
-    >
-      <LocalFileIcon
-        page={page}
-        iconName={iconName}
-        isLocalFolder={isLocalFolder}
-      />
-    </div>
-  ) : (
-    <IconSelector
-      value={iconName}
-      onChange={(newIcon) =>
-        usePages.getState().updatePage(page.id, { icon: newIcon as string })
-      }
-      scope="file"
-    >
-      <div
-        className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
-        {...blockRowDrag}
-      >
-        <div className="flex h-4 w-4 items-center justify-center">
-          <LocalFileIcon
-            page={page}
-            iconName={iconName}
-            isLocalFolder={false}
-          />
-        </div>
-      </div>
-    </IconSelector>
+  const iconNode = (
+    <TreeRowIcon
+      page={page}
+      isLocalFolder={isLocalFolder}
+      isRenaming={!!context.isRenaming}
+    />
   );
 
   const row = (

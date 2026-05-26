@@ -22,11 +22,8 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   children: React.ReactNode;
   portalContainerRef?: React.RefObject<T | null>;
   onFirstOpen?: () => void;
-  scope?: "file" | "general";
 }
 
-// 精选 24 个线性图标，按语义分四组排布
-// 书 / 文件 / 标记 / 时间与生活
 const CURATED_ICONS: string[] = [
   "BookOpen",
   "Book",

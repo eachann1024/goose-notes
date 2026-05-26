@@ -458,11 +458,14 @@ export const codeBlockSpec = createReactBlockSpec(
     render: ({ block, contentRef, editor }) => (
       <CodeBlockComponent block={block} contentRef={contentRef} editor={editor} />
     ),
-    toExternalHTML: ({ block, contentRef }) => (
-      <pre>
-        <code ref={contentRef} />
-      </pre>
-    ),
+    toExternalHTML: ({ block, contentRef }) => {
+      const lang = (block.props?.language || "text").trim();
+      return (
+        <pre>
+          <code ref={contentRef} className={lang ? `language-${lang}` : undefined} />
+        </pre>
+      );
+    },
   },
   [codeBlockHighlightExtension],
 )();

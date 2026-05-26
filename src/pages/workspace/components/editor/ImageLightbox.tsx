@@ -316,6 +316,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
                 key="close"
                 type="button"
                 title="关闭"
+                onClick={() => setOpen(false)}
                 className="yarl__button"
                 style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >

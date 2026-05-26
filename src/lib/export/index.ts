@@ -5,11 +5,18 @@ import {
   normalizePageContent,
   createEmptyBlockNoteContent,
 } from "@/lib/blocknote-content";
-import { jsonContentToMarkdown } from "./markdown/serialize";
+import {
+  blocksToMarkdown,
+  blocksToHTML,
+  EXPORT_HTML_HEAD_ASSETS,
+  EXPORT_HTML_BODY_SCRIPTS,
+} from "./blocknoteSerializer";
+import { inlineImagesAsBase64 } from "./inlineImagesBase64";
 import { importFromMarkdown, type ImportResult } from "./markdown/parse";
 import { saveBlobAndReveal, triggerBrowserDownload } from "./fileSave";
 
 export { jsonContentToMarkdown } from "./markdown/serialize";
+export { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
 export {
   importFromMarkdown,
   importMarkdownFragment,
@@ -22,27 +29,15 @@ export {
 } from "./zipBundle";
 export { saveBlobAndReveal } from "./fileSave";
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function cloneContent(content: BlockNoteContent): any[] {
+  return JSON.parse(JSON.stringify(content ?? [])) as any[];
 }
 
-function contentToHTML(content: BlockNoteContent): string {
-  return jsonContentToMarkdown(content, true)
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      if (block.startsWith("# ")) return `<h1>${escapeHtml(block.slice(2))}</h1>`;
-      if (block.startsWith("## ")) return `<h2>${escapeHtml(block.slice(3))}</h2>`;
-      if (block.startsWith("### ")) return `<h3>${escapeHtml(block.slice(4))}</h3>`;
-      if (block.startsWith("```")) return `<pre><code>${escapeHtml(block.replace(/^```[^\n]*\n?/, "").replace(/```$/, ""))}</code></pre>`;
-      return `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`;
-    })
-    .join("\n");
+function stripFirstH1(blocks: any[]): any[] {
+  if (blocks[0]?.type === "heading" && blocks[0]?.props?.level === 1) {
+    return blocks.slice(1);
+  }
+  return blocks;
 }
 
 async function downloadBlob(blob: Blob, filename: string) {
@@ -74,38 +69,64 @@ export function exportToJSON(page: Page) {
   downloadFile(data, `${title || "untitled"}.json`, "application/json");
 }
 
-export function exportToMarkdown(page: Page) {
-  const content = page.content as BlockNoteContent;
-  const markdown = jsonContentToMarkdown(content, true);
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function exportToMarkdown(page: Page) {
+  const blocks = stripFirstH1(cloneContent(page.content));
+  await inlineImagesAsBase64(blocks);
+  const markdown = await blocksToMarkdown(blocks);
   const title = extractTitleFromContent(page.content);
   const fullMarkdown = `# ${title}\n\n${markdown}`;
   downloadFile(fullMarkdown, `${title || "untitled"}.md`, "text/markdown");
 }
 
-export function exportToHTML(page: Page) {
-  const html = contentToHTML(page.content);
+export async function exportToHTML(page: Page) {
+  const blocks = stripFirstH1(cloneContent(page.content));
+  await inlineImagesAsBase64(blocks);
+  const bodyHtml = await blocksToHTML(blocks);
   const title = extractTitleFromContent(page.content);
-  const fullHtml = `
-<!DOCTYPE html>
+  const fullHtml = renderExportHtml(title, bodyHtml);
+  downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
+}
+
+export function renderExportHtml(title: string, bodyHtml: string): string {
+  return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>${title}</title>
+<title>${escapeHtmlText(title)}</title>
+${EXPORT_HTML_HEAD_ASSETS}
 <style>
-body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.65; color: #1f2329; }
 img { max-width: 100%; height: auto; }
-blockquote { border-left: 3px solid #ccc; padding-left: 1rem; color: #666; }
-code { background: #F2F3F5; color: #1F2329; padding: 1px 4px; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; }
-pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; }
+blockquote { border-left: 3px solid #d0d7de; padding: 0 1rem; color: #57606a; margin: 1rem 0; }
+code { background: #f2f3f5; color: #1f2329; padding: 1px 4px; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; }
+pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; }
+pre code { background: transparent; padding: 0; }
+pre.mermaid { background: transparent; padding: 0; text-align: center; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+table th, table td { border: 1px solid #d0d7de; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+table th { background: #f6f8fa; font-weight: 600; }
+hr { border: 0; border-top: 1px solid #d0d7de; margin: 1.5rem 0; }
+ul, ol { padding-left: 1.5rem; }
+a { color: #0969da; }
+h1, h2, h3, h4 { line-height: 1.3; margin-top: 1.5em; }
+.katex-display { overflow-x: auto; overflow-y: hidden; }
+input[type="checkbox"] { margin-right: 0.4em; }
 </style>
 </head>
 <body>
-<h1>${title}</h1>
-${html}
+<h1>${escapeHtmlText(title)}</h1>
+${bodyHtml}
+${EXPORT_HTML_BODY_SCRIPTS}
 </body>
 </html>`;
-
-  downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
 }
 
 export function importFromJSON(
