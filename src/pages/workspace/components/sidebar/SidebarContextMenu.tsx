@@ -1,5 +1,6 @@
 import type { Page } from "@/types";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { formatShortcut } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
@@ -111,6 +112,9 @@ export function SidebarContextMenu({
           >
             <LucideIcons.PanelTopOpen className="h-4 w-4" />
             <span>在新标签页打开</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {formatShortcut("Mod")}+点击
+            </span>
           </ContextMenuItem>
           {!isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={toggleFavorite}>
@@ -208,7 +212,7 @@ export function SidebarContextMenu({
             >
               <LucideIcons.Trash2 className="h-4 w-4" />
               <span>移至垃圾箱</span>
-              <span className="ml-auto text-xs text-muted-foreground">⌘⌫</span>
+              <span className="ml-auto text-xs text-muted-foreground">{formatShortcut("Mod+Backspace")}</span>
             </ContextMenuItem>
           )}
         </ContextMenuContent>

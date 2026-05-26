@@ -16,7 +16,7 @@ import { exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle, type BlockNoteContent } from "@/lib/blocknote-content";
 import { UToolsAdapter } from "@/lib/utools";
 import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "../utils/clipboard";
-import { cn } from "@/lib/utils";
+import { cn, formatShortcut } from "@/lib/utils";
 
 interface EditorContextMenuProps {
   editor: any;
@@ -210,7 +210,7 @@ export function EditorContextMenu({
           >
             <LucideIcons.Scissors className="mr-2 h-4 w-4" />
             剪切
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘X</span>
+            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+X")}</span>
           </ContextMenuItem>
           <ContextMenuItem
             disabled={!selectedText}
@@ -218,7 +218,7 @@ export function EditorContextMenu({
           >
             <LucideIcons.Copy className="mr-2 h-4 w-4" />
             拷贝
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘C</span>
+            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+C")}</span>
           </ContextMenuItem>
           <ContextMenuItem
             disabled={!editable}
@@ -226,7 +226,7 @@ export function EditorContextMenu({
           >
             <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
             粘贴
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">⌘V</span>
+            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+V")}</span>
           </ContextMenuItem>
           {selectedBlocks.length > 0 && (
             <ContextMenuItem
