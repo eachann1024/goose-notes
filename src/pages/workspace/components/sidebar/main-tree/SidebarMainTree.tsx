@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
   ControlledTreeEnvironment,
+  InteractionMode,
   Tree,
   type DraggingPosition,
   type TreeItem,
@@ -111,6 +112,7 @@ export function SidebarMainTree({
   };
 
   const treeRef = useRef<TreeRef>(null);
+  const lastClickModRef = useRef({ meta: false, ctrl: false });
 
   const viewState = useMemo(() => {
     const highlightSelection =
@@ -226,6 +228,23 @@ export function SidebarMainTree({
     <div
       className="flex-1 min-h-0 overflow-auto"
       style={{ width, height: viewportHeight || undefined }}
+      onMouseDown={(e) => {
+        lastClickModRef.current = { meta: e.metaKey, ctrl: e.ctrlKey };
+      }}
+      onAuxClick={(e) => {
+        if (e.button !== 1) return;
+        const target = e.target as HTMLElement;
+        const row = target.closest("[data-rct-item-id]");
+        if (!row) return;
+        const pageId = row.getAttribute("data-rct-item-id");
+        if (!pageId || pageId === "root") return;
+        const page = pages[pageId];
+        if (!page || (isLocalFolder && page.isFolder)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
+        useTabs.getState().openTab(pageId);
+      }}
     >
       <ControlledTreeEnvironment<Page>
         items={items}
@@ -233,6 +252,7 @@ export function SidebarMainTree({
           item.index === "root" ? "" : getPageTitle(item.data)
         }
         viewState={viewState}
+        defaultInteractionMode={InteractionMode.ClickArrowToExpand}
         canDragAndDrop={!isLocalFolder}
         canReorderItems={!isLocalFolder}
         canDropOnFolder={!isLocalFolder}
@@ -270,12 +290,16 @@ export function SidebarMainTree({
           if (!last || last === "root") return;
           const page = pages[last];
           if (!page) return;
-          // 本地文件夹：单击文件夹仅选中，不切换；非文件夹切换
           if (isLocalFolder && page.isFolder) return;
-          if (activePageId === last) return;
           window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
-          useTabs.getState().openInCurrentTab(last);
-          setActivePage(last);
+          const { meta, ctrl } = lastClickModRef.current;
+          if (meta || ctrl) {
+            useTabs.getState().openTab(last);
+          } else {
+            if (activePageId === last) return;
+            useTabs.getState().openInCurrentTab(last);
+            setActivePage(last);
+          }
         }}
         onPrimaryAction={(item) => {
           const id = String(item.index);

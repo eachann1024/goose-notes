@@ -256,11 +256,23 @@ export function SortablePageRow({
           onClick={(e) => {
             e.stopPropagation();
             if (isLocalFolder && page.isFolder) {
-              onToggleOpen(page.id);
               return;
             }
             window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
-            openInCurrentTab(page.id);
+            if (e.metaKey || e.ctrlKey) {
+              useTabs.getState().openTab(page.id);
+            } else {
+              openInCurrentTab(page.id);
+            }
+          }}
+          onAuxClick={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isLocalFolder && page.isFolder) return;
+              window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
+              useTabs.getState().openTab(page.id);
+            }
           }}
         >
           <div
@@ -306,7 +318,6 @@ export function SortablePageRow({
                 <IconSelector
                   value={iconName}
                   onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
-                  scope="file"
                 >
                   <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer">
                     <div className="h-4 w-4 flex items-center justify-center">

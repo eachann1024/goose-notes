@@ -14,6 +14,7 @@ interface TabsState {
   tabHistory: string[];
   tabHistoryIndex: number;
   isHistoryNavigating: boolean;
+  recentlyClosedPageIds: string[];
   syncNotebookForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
   openInCurrentTab: (pageId: string) => void;
@@ -28,6 +29,7 @@ interface TabsState {
   canGoForwardTabHistory: () => boolean;
   reorderTabs: (from: number, to: number) => void;
   removeDeletedPage: (pageId: string) => void;
+  reopenLastClosedTab: () => void;
 }
 
 const createTabId = (pageId: string) =>
@@ -93,6 +95,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     tabHistory: [],
     tabHistoryIndex: -1,
     isHistoryNavigating: false,
+    recentlyClosedPageIds: [],
 
     syncNotebookForPage: (pageId: string | null) => {
       if (!pageId) return;
@@ -158,9 +161,13 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     closeTab: (tabId: string) => {
-      const { openTabs, activeTabId } = get();
+      const { openTabs, activeTabId, recentlyClosedPageIds } = get();
       const index = openTabs.findIndex((tab) => tab.id === tabId);
       if (index === -1) return;
+
+      const closedPageId = openTabs[index].pageId;
+      const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
+      set({ recentlyClosedPageIds: nextClosed });
 
       const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
       let nextActiveId: string | null = null;
@@ -329,6 +336,19 @@ export const useTabs = create<TabsState>()((set, get) => {
       const [moved] = nextTabs.splice(from, 1);
       nextTabs.splice(to, 0, moved);
       set({ openTabs: nextTabs });
+    },
+
+    reopenLastClosedTab: () => {
+      const { recentlyClosedPageIds, openTabs } = get();
+      const openPageIds = new Set(openTabs.map((tab) => tab.pageId));
+      const candidate = recentlyClosedPageIds.find((id) => {
+        if (openPageIds.has(id)) return false;
+        const page = usePages.getState().getPage(id);
+        return page && !page.trashedAt;
+      });
+      if (!candidate) return;
+      set({ recentlyClosedPageIds: recentlyClosedPageIds.filter((id) => id !== candidate) });
+      get().openTab(candidate);
     },
 
     removeDeletedPage: (pageId: string) => {

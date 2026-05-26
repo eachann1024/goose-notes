@@ -144,6 +144,13 @@ export function PageHeader({
                       onExitAiPage?.();
                       setActiveTab(tab.id);
                     }}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeTab(tab.id);
+                      }
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
@@ -194,13 +201,14 @@ export function PageHeader({
                             <LucideIcons.X className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
-                        {/*<TooltipContent side="bottom">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">
-                          {closeTabShortcutLabel}
-                        </span>
-                      </div>
-                    </TooltipContent>*/}
+                        <TooltipContent side="bottom">
+                          <div className="flex items-center gap-2">
+                            <span>关闭标签页</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {closeTabShortcutLabel}
+                            </span>
+                          </div>
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
@@ -208,6 +216,9 @@ export function PageHeader({
                 <ContextMenuContent className="w-[200px]">
                   <ContextMenuItem onSelect={() => closeTab(tab.id)}>
                     关闭
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {closeTabShortcutLabel}
+                    </span>
                   </ContextMenuItem>
                   <ContextMenuItem
                     onSelect={() => closeOtherTabs(tab.id)}
