@@ -4,7 +4,6 @@ import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
 import { trackEvent } from "@/lib/analytics";
 import { UToolsAdapter } from "@/lib/utools";
-import { isMacPlatform } from "@/lib/utils";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
 import { PaletteResultGroup } from "./PaletteResultGroup";
@@ -13,68 +12,11 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
+import { matchShortcut } from "@/lib/shortcut-match";
 import { toast } from "sonner";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
-
-function normalizeShortcutToken(raw: string) {
-  const token = raw.trim().toLowerCase();
-  if (!token) return "";
-  if (
-    token === "mod" ||
-    token === "cmdorctrl" ||
-    token === "cmdorcontrol" ||
-    token === "commandorcontrol"
-  ) {
-    return isMacPlatform() ? "meta" : "ctrl";
-  }
-  if (token === "control" || token === "ctrl") return "ctrl";
-  if (token === "meta" || token === "command" || token === "cmd") return "meta";
-  if (token === "alt" || token === "option") return "alt";
-  if (token === "shift") return "shift";
-  if (token === "escape" || token === "esc") return "escape";
-  if (token.length === 1) return token;
-  return token;
-}
-
-function isModifierToken(token: string) {
-  return token === "ctrl" || token === "meta" || token === "alt" || token === "shift";
-}
-
-function matchShortcut(event: KeyboardEvent, shortcut: string) {
-  const trimmed = shortcut.trim();
-  if (!trimmed) return false;
-
-  const parts = trimmed
-    .split("+")
-    .map(normalizeShortcutToken)
-    .filter(Boolean);
-  if (parts.length === 0) return false;
-
-  const expectedModifiers = {
-    ctrl: parts.includes("ctrl"),
-    meta: parts.includes("meta"),
-    alt: parts.includes("alt"),
-    shift: parts.includes("shift"),
-  };
-
-  if (
-    event.ctrlKey !== expectedModifiers.ctrl ||
-    event.metaKey !== expectedModifiers.meta ||
-    event.altKey !== expectedModifiers.alt ||
-    event.shiftKey !== expectedModifiers.shift
-  ) {
-    return false;
-  }
-
-  const keyToken = parts.find((part) => !isModifierToken(part));
-  const eventKey = normalizeShortcutToken(event.key);
-  if (!keyToken) {
-    return isModifierToken(eventKey) && expectedModifiers[eventKey as keyof typeof expectedModifiers];
-  }
-  return !isModifierToken(eventKey) && eventKey === keyToken;
-}
 
 export function CommandPalette() {
   const descriptionId = useId();
