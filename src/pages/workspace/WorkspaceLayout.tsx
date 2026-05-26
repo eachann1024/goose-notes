@@ -235,7 +235,7 @@ export function WorkspaceLayout({
                               page.icon ? "mb-3 mt-2" : "mt-1",
                               isEditorFullWidth
                                 ? "max-w-full"
-                                : "w-full max-w-4xl mx-auto",
+                                : "w-full max-w-[720px] mx-auto",
                             )}
                           >
                             {!isLocalFolderPage && (

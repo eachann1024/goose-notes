@@ -1,5 +1,5 @@
 import type { JSONContent } from "@/types";
-import { jsonContentToMarkdown } from "@/lib/export";
+import { blocksToMarkdown } from "@/lib/export";
 import { normalizePageContent } from "@/lib/blocknote-content";
 import { isLocalFolderPage } from "../../persistence";
 import {
@@ -194,7 +194,7 @@ export const saveLocalPageContentAction = async (
     await Promise.all(writePromises);
   }
 
-  const markdownContent = jsonContentToMarkdown(processedContent);
+  const markdownContent = await blocksToMarkdown(processedContent as any);
 
   if (!markdownContent.trim()) {
     let exists = false;

@@ -6,6 +6,7 @@ import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import { useTabs } from "@/stores/useTabs";
+import { useSidebarView } from "@/stores/useSidebarView";
 import type { EditorRef } from "../editor/Editor";
 import { useSidebarResize } from "./hooks/useSidebarResize";
 import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
@@ -49,6 +50,7 @@ export function Sidebar({
   const { activePageId, setActivePage, createPage, createLocalPage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openInCurrentTab } = useTabs();
+  const setExpanded = useSidebarView((s) => s.setExpanded);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
@@ -168,7 +170,13 @@ export function Sidebar({
                   onCreate={handleCreatePage}
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                   view={currentView}
-                  onSwitchToPages={() => setCurrentView("pages")}
+                  onSwitchToPages={() => {
+                    if (currentView === "pages" && activeNotebookId) {
+                      setExpanded(activeNotebookId, []);
+                    } else {
+                      setCurrentView("pages");
+                    }
+                  }}
                   onSwitchToOutline={() => setCurrentView("outline")}
                 />
               </div>

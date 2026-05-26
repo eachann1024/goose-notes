@@ -178,13 +178,21 @@ export function PageMenu() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-xs"
-                onSelect={() => exportToMarkdown(page)}
+                onSelect={() => {
+                  void exportToMarkdown(page).catch((e) => {
+                    console.error("[export] Markdown 失败:", e);
+                  });
+                }}
               >
                 <LucideIcons.FileCode className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Markdown
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-xs"
-                onSelect={() => exportToHTML(page)}
+                onSelect={() => {
+                  void exportToHTML(page).catch((e) => {
+                    console.error("[export] HTML 失败:", e);
+                  });
+                }}
               >
                 <LucideIcons.FileType className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> HTML
               </DropdownMenuItem>
