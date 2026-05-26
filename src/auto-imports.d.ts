@@ -349,7 +349,7 @@ declare global {
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize, ClipperMode, ClipperSettings } from './stores/settings/index'
+  export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
   export type { TabItem } from './stores/useTabs'
