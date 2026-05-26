@@ -1056,33 +1056,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   const UTOOLS_STICKY_HEIGHT = 480;
 
-  const readCurrentBrowserUrlSafe = async () => {
-    try {
-      if (typeof utools?.readCurrentBrowserUrl === "function") {
-        const url = await Promise.resolve(utools.readCurrentBrowserUrl());
-        if (typeof url === "string" && url.trim().length > 0) return url.trim();
-      }
-    } catch (err) {
-      console.error("[goose-note] readCurrentBrowserUrl failed:", err);
-    }
-    return undefined;
-  };
-
-  const enrichClipOptional = async (code, baseOptional) => {
-    if (typeof code !== "string" || !code.startsWith("clip_")) {
-      return baseOptional;
-    }
-    const sourceUrl = await readCurrentBrowserUrlSafe();
-    const enriched = {
-      ...(baseOptional && typeof baseOptional === "object" ? baseOptional : {}),
-      capturedAt: Date.now(),
-    };
-    if (sourceUrl) enriched.sourceUrl = sourceUrl;
-    return enriched;
-  };
-
-  utools.onPluginEnter((enterPayload) => {
-    const { code, type, payload, optional, from } = enterPayload || {};
+  utools.onPluginEnter(({ code, type, payload, optional }) => {
     // 确保每次进入插件都重新设置 subInput
     if (typeof utools.setSubInput === "function") {
       const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
@@ -1105,22 +1079,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       );
     }
 
-    if (typeof code === "string" && code.startsWith("clip_")) {
-      // 异步补充浏览器来源 URL；不阻塞其他分支
-      void (async () => {
-        const enrichedOptional = await enrichClipOptional(code, optional);
-        window.dispatchEvent(
-          new CustomEvent("goose-note:plugin-enter", {
-            detail: { code, type, payload, optional: enrichedOptional, from },
-          }),
-        );
-      })();
-      return;
-    }
-
     window.dispatchEvent(
       new CustomEvent("goose-note:plugin-enter", {
-        detail: { code, type, payload, optional, from },
+        detail: { code, type, payload, optional },
       }),
     );
 

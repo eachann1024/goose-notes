@@ -1,21 +1,10 @@
 import { getUToolsApi } from "./env";
 import { EVENTS } from "./events";
 
-export type PluginEnterFrom = "main" | "panel" | "redirect" | "hotkey";
-
-export interface PluginEnterOptional {
-  sourceUrl?: string;
-  capturedAt?: number;
-  sourceApp?: string;
-  [key: string]: unknown;
-}
-
-export type PluginEnterPayload = {
+type PluginEnterPayload = {
   code: string;
   type: string;
   payload?: unknown;
-  optional?: PluginEnterOptional;
-  from?: PluginEnterFrom;
 };
 
 export const lifecycle = {

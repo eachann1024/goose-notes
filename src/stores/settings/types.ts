@@ -52,44 +52,6 @@ export interface PrivacySettings {
     autoOpenLastNote: boolean
 }
 
-export type ClipperMode = 'append' | 'newPage' | 'ask'
-
-export interface ClipperSettings {
-    inboxNotebookId: string | null
-    inboxPageId: string | null
-    mode: ClipperMode
-    insertSourceMeta: boolean
-}
-
-export const DEFAULT_CLIPPER_SETTINGS: ClipperSettings = {
-    inboxNotebookId: null,
-    inboxPageId: null,
-    mode: 'append',
-    insertSourceMeta: true,
-}
-
-export function normalizeClipperSettings(
-    settings: Partial<ClipperSettings> | undefined,
-): ClipperSettings {
-    if (!settings || typeof settings !== 'object') {
-        return { ...DEFAULT_CLIPPER_SETTINGS }
-    }
-    const mode: ClipperMode =
-        settings.mode === 'newPage' || settings.mode === 'ask' ? settings.mode : 'append'
-    return {
-        inboxNotebookId:
-            typeof settings.inboxNotebookId === 'string' && settings.inboxNotebookId.trim()
-                ? settings.inboxNotebookId.trim()
-                : null,
-        inboxPageId:
-            typeof settings.inboxPageId === 'string' && settings.inboxPageId.trim()
-                ? settings.inboxPageId.trim()
-                : null,
-        mode,
-        insertSourceMeta: settings.insertSourceMeta !== false,
-    }
-}
-
 export interface FontConfig {
     label: string | null
     font: string | null

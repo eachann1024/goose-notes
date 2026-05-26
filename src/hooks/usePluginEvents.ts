@@ -6,15 +6,12 @@ import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { useStickyNote } from "@/stores/useStickyNote";
 import { fs } from "@/lib/utools/fs";
-import { handleClip } from "@/lib/clipper/handleClip";
-import type { PluginEnterOptional } from "@/lib/utools/lifecycle";
 
 type UToolsPluginEnterDetail = {
   code?: string;
   type?: string;
   payload?: unknown;
-  optional?: PluginEnterOptional;
-  from?: string;
+  optional?: boolean;
 };
 
 const applyUToolsWindowHeight = () => {
@@ -84,27 +81,7 @@ export function usePluginEvents() {
 
     const handlePluginEnter = (event: Event) => {
       const customEvent = event as CustomEvent<UToolsPluginEnterDetail>;
-      const detail = customEvent.detail || {};
-      const { code } = detail;
-
-      // 剪藏入口直接交给 clipper，跳过自动恢复笔记，避免抢路由
-      if (typeof code === "string" && code.startsWith("clip_")) {
-        if (!usePages.getState().hydrated) return;
-        void handleClip({
-          code,
-          type: detail.type ?? "",
-          payload: detail.payload,
-          optional: detail.optional,
-          from:
-            detail.from === "main" ||
-            detail.from === "panel" ||
-            detail.from === "redirect" ||
-            detail.from === "hotkey"
-              ? detail.from
-              : undefined,
-        });
-        return;
-      }
+      const { code } = customEvent.detail || {};
 
       applyUToolsWindowHeight();
 
