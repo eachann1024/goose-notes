@@ -15,8 +15,9 @@ export function FavoritesSection({
   itemHeight,
   onCreatePage,
 }: FavoritesSectionProps) {
-  const { pages, reorderFavorites } = usePages();
-  const { activeNotebookId } = useNotebooks();
+  const pages = usePages((state) => state.pages);
+  const reorderFavorites = usePages((state) => state.reorderFavorites);
+  const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const [favoritesCollapsed, setFavoritesCollapsed] = useState(false);
 
   const favorites = useMemo(

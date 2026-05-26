@@ -10,6 +10,7 @@ import {
 import type { Page } from "@/types";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
+import { CLOSE_AI_WORKSPACE_EVENT } from "../../ai/events";
 import {
   useSidebarView,
   selectExpandedIds,
@@ -26,6 +27,7 @@ import {
   renderTreeContainer,
   renderDragBetweenLine,
 } from "./MainTreeItem";
+import "./main-tree.css";
 
 interface SidebarMainTreeProps {
   activeNotebookId: string | null;
@@ -265,6 +267,15 @@ export function SidebarMainTree({
           if (!activeNotebookId) return;
           const last = selected.length > 0 ? String(selected[selected.length - 1]) : null;
           setSelectedView(activeNotebookId, last);
+          if (!last || last === "root") return;
+          const page = pages[last];
+          if (!page) return;
+          // 本地文件夹：单击文件夹仅选中，不切换；非文件夹切换
+          if (isLocalFolder && page.isFolder) return;
+          if (activePageId === last) return;
+          window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
+          useTabs.getState().openInCurrentTab(last);
+          setActivePage(last);
         }}
         onPrimaryAction={(item) => {
           const id = String(item.index);
@@ -279,6 +290,7 @@ export function SidebarMainTree({
             }
             return;
           }
+          window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
           useTabs.getState().openInCurrentTab(id);
           setActivePage(id);
         }}

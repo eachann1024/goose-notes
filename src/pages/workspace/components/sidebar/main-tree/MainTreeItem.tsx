@@ -7,6 +7,10 @@ import type {
 } from "react-complex-tree";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "../SidebarContextMenu";
+import { IconSelector } from "../../shared/IconSelector";
+import { LocalFileIcon } from "../local-file-icon";
+import { usePages } from "@/stores/usePages";
+import { useNotebooks } from "@/stores/useNotebooks";
 import { getPageTitle } from "./treeAdapter";
 
 const INDENT = 18;
@@ -40,33 +44,80 @@ export function renderItem({
   const withoutChildren = context.itemContainerWithoutChildrenProps as HTMLProps<HTMLDivElement>;
 
   const title = getPageTitle(page);
-  const isPageFolder = !!page?.isFolder;
-  const Icon = isPageFolder ? LucideIcons.Folder : LucideIcons.FileText;
+  const notebook = page?.workspaceId
+    ? useNotebooks.getState().notebooks[page.workspaceId]
+    : undefined;
+  const isLocalFolder = notebook?.source === "local-folder";
+  const iconName = page?.icon;
+
+  // 阻断行的原生 drag / rct 拖拽 / 选中，让点击专门进入 IconSelector
+  const blockRowDrag = {
+    draggable: false as const,
+    onDragStart: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onPointerDownCapture: (e: React.PointerEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
+
+  const iconNode = isLocalFolder ? (
+    <div
+      className="flex items-center justify-center h-5 w-5 shrink-0 mr-0.5"
+      {...blockRowDrag}
+    >
+      <LocalFileIcon
+        page={page}
+        iconName={iconName}
+        isLocalFolder={isLocalFolder}
+      />
+    </div>
+  ) : (
+    <IconSelector
+      value={iconName}
+      onChange={(newIcon) =>
+        usePages.getState().updatePage(page.id, { icon: newIcon as string })
+      }
+      scope="file"
+    >
+      <div
+        className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
+        {...blockRowDrag}
+      >
+        <div className="flex h-4 w-4 items-center justify-center">
+          <LocalFileIcon
+            page={page}
+            iconName={iconName}
+            isLocalFolder={false}
+          />
+        </div>
+      </div>
+    </IconSelector>
+  );
 
   const row = (
     <div
       {...withoutChildren}
       {...interactive}
       className={cn(
-        "group/main-row relative flex h-7 items-center gap-1 rounded-[8px] pr-1.5",
-        "text-[13px] leading-none cursor-pointer select-none transition-colors",
-        "outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--primary)/0.55)]",
+        "main-tree-row group/main-row relative z-10 flex min-h-[28px] items-center gap-0.5 rounded-[8px] py-[4px] pl-0 pr-1.5",
+        "text-[13px] font-medium leading-none cursor-pointer select-none",
+        "transition-colors duration-150",
+        "outline-none",
         isActive
           ? "bg-[var(--goose-interactive-selected)] text-foreground"
-          : "bg-transparent text-foreground/90 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+          : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
+        // drop 高亮：使用 workspace-drag-line token 调性，更克制
         isOver &&
-          "bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] ring-inset",
+          "bg-[hsl(var(--primary)/0.10)] ring-1 ring-[hsl(var(--primary)/0.38)] ring-inset",
       )}
       style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
     >
       {arrow}
-      <Icon
-        className={cn(
-          "h-3.5 w-3.5 shrink-0",
-          isActive ? "text-foreground/80" : "text-foreground/55",
-        )}
-        aria-hidden="true"
-      />
+      {iconNode}
       <span className="truncate flex-1 min-w-0">{title}</span>
     </div>
   );
@@ -86,19 +137,20 @@ interface RenderArrowArgs {
 }
 
 export function renderItemArrow({ item, context }: RenderArrowArgs) {
-  if (!item.isFolder) {
-    return <span className="w-5 h-5 shrink-0" aria-hidden="true" />;
+  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+  if (!item.isFolder || !hasChildren) {
+    return <span className="ml-1.5 w-5 h-5 shrink-0" aria-hidden="true" />;
   }
   const arrowProps = context.arrowProps as HTMLProps<HTMLSpanElement>;
   return (
     <span
       {...arrowProps}
-      className="inline-flex w-5 h-5 shrink-0 items-center justify-center rounded text-foreground/55 hover:text-foreground/90 transition-colors"
+      className="ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-muted-foreground/10 cursor-pointer"
       aria-hidden="true"
     >
       <LucideIcons.ChevronRight
         className={cn(
-          "h-3.5 w-3.5 transition-transform duration-150",
+          "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
           context.isExpanded && "rotate-90",
         )}
       />
@@ -116,7 +168,7 @@ export function renderItemsContainer({
   containerProps,
 }: RenderItemsContainerArgs) {
   return (
-    <ul {...containerProps} className="list-none p-0 m-0">
+    <ul {...containerProps} className="list-none p-0 m-0 mt-0.5 space-y-0.5">
       {children}
     </ul>
   );
@@ -132,7 +184,7 @@ export function renderTreeContainer({
   containerProps,
 }: RenderTreeContainerArgs) {
   return (
-    <div {...containerProps} className="rct-main-tree outline-none space-y-px">
+    <div {...containerProps} className="rct-main-tree outline-none space-y-0.5">
       {children}
     </div>
   );

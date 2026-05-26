@@ -1,0 +1,47 @@
+/* ──────────────────────────────────────────────────────────────────────────
+ * main-tree.css
+ * react-complex-tree 主树视觉覆盖：抹掉默认 outline / focus 边框，
+ * 让拖拽快照贴合行轮廓，避免出现"白边"。
+ * 该文件被 SidebarMainTree.tsx 直接 import。
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* 1) 容器：rct 默认会注入 outline / focus 边框，统一抹平 */
+.rct-main-tree,
+.rct-main-tree *:focus,
+.rct-main-tree *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 2) <li> / 行容器：rct 自带类可能带 border/bg，全部去掉，由内部 row 自己管理 */
+.rct-main-tree .rct-tree-item-li,
+.rct-main-tree .rct-tree-item-title-container {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* 3) 拖拽源：被按住即将拖走的那一刻，浏览器把这个 DOM 节点截图当作 drag image。
+ *    为了避免圆角外的"白边"，给被按住的行加一个与背景同色的实心 bg，
+ *    并把圆角压低、收紧 padding，让快照轮廓干净。
+ *    使用 :active + draggable=true 双重选择子，确保只命中拖拽源。 */
+.rct-main-tree [draggable="true"]:active .main-tree-row {
+  background-color: var(--goose-interactive-selected) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.08) !important;
+}
+
+/* 4) drop 高亮态由 React 内联类控制；这里只兜底清掉 rct 默认的 dragging-over 颜色 */
+.rct-main-tree .rct-tree-item-li-dragging-over,
+.rct-main-tree .rct-tree-item-title-container-dragging-over,
+.rct-main-tree .rct-tree-item-button-dragging-over {
+  background: transparent !important;
+}
+
+/* 5) rct 在 :focus-visible 上注入的 2px outline 在某些浏览器里仍然漏出，
+ *    再用属性选择子兜底一次。 */
+.rct-main-tree [data-rct-item-interactive],
+.rct-main-tree [data-rct-item-focus="true"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
