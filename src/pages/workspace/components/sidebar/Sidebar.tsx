@@ -2,6 +2,7 @@ import { FavoritesSection } from "./FavoritesSection";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarTree } from "./SidebarTree";
+import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import { useTabs } from "@/stores/useTabs";
@@ -13,6 +14,8 @@ import { SidebarResizeEdge } from "./SidebarResizeEdge";
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
 import { SidebarOutline } from "./SidebarOutline";
+import { HistoryVersionList } from "../history/HistoryView";
+import { useHistoryView } from "@/stores/useHistoryView";
 
 const SIDEBAR_SIDE_GAP_LEFT = 0;
 const SIDEBAR_SIDE_GAP_RIGHT = 9;
@@ -59,6 +62,14 @@ export function Sidebar({
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
   const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(null);
+
+  // 历史模式：临时整体替换 Sidebar 中段（页面树/大纲），但 Header/Footer 与
+  // currentView/scrollAreaRef 等 state 保持，退出后页面树原状回到上次的滚动与选中。
+  const historyActivePageId = useHistoryView((s) => s.active);
+  const exitHistoryView = useHistoryView((s) => s.exit);
+  const inHistoryMode =
+    !!historyActivePageId && historyActivePageId === activePageId;
+
   const sidebarRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
@@ -134,7 +145,9 @@ export function Sidebar({
           }}
         />
 
-        {currentView === "trash" ? (
+        {inHistoryMode ? (
+          <HistoryVersionList />
+        ) : currentView === "trash" ? (
           <div className="flex-1 overflow-hidden">
             <TrashList showHeader={false} itemHeight={trashItemHeight} />
           </div>
@@ -161,7 +174,7 @@ export function Sidebar({
               </div>
               {currentView === "pages" ? (
                 <div ref={scrollAreaRef} className="pl-0 pr-[9px] flex-1 min-h-0 flex flex-col">
-                  <SidebarTree
+                  <SidebarMainTree
                     activeNotebookId={activeNotebookId}
                     selectedPageId={selectedPageId}
                     width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
@@ -169,7 +182,6 @@ export function Sidebar({
                     itemHeight={itemHeight}
                     viewportHeight={scrollAreaHeight}
                     onCreatePage={handleCreatePage}
-                    onDragGuideChange={setDragGuide}
                   />
                 </div>
               ) : (
@@ -190,20 +202,26 @@ export function Sidebar({
         currentView={currentView}
         isSettingsOpen={showSettings}
         onSwitchToPages={() => {
+          if (inHistoryMode) exitHistoryView();
           setCurrentView("pages");
           setShowSettings(false);
           setActivePage(null);
         }}
         onSwitchToTrash={() => {
+          if (inHistoryMode) exitHistoryView();
           setCurrentView("trash");
           setShowSettings(false);
           setActivePage(null);
         }}
         onSwitchToOutline={() => {
+          if (inHistoryMode) exitHistoryView();
           setCurrentView("outline");
           setShowSettings(false);
         }}
-        onOpenSettings={() => setShowSettings(true)}
+        onOpenSettings={() => {
+          if (inHistoryMode) exitHistoryView();
+          setShowSettings(true);
+        }}
       />
 
       <SidebarRenameDialog

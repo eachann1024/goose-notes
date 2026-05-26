@@ -46,7 +46,11 @@ export interface PagesState {
     parentId?: string;
     content?: JSONContent;
   }) => string;
-  updatePage: (id: string, updates: Partial<Page>) => void;
+  updatePage: (
+    id: string,
+    updates: Partial<Page>,
+    options?: { silent?: boolean },
+  ) => void;
   deletePage: (id: string) => Promise<boolean>;
   restorePage: (id: string) => {
     ok: boolean;

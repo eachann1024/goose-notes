@@ -51,6 +51,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   pageIdForUpdateRef.current = page?.id ?? null;
 
   const initialContentRef = useRef(normalizePageContent(page?.content));
+  // 初次 mount 时给 syncedContentSignatureRef 设置基线，
+  // 否则切走时 flush 会把"只读打开"误判成编辑、刷新 updatedAt。
+  if (syncedContentSignatureRef.current === null) {
+    syncedContentSignatureRef.current = getContentSignature(initialContentRef.current);
+  }
   const editor = useCreateBlockNote(
     {
       initialContent: initialContentRef.current as any,
@@ -171,7 +176,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     }
 
     if (p && getContentSignature(p.content) !== sig) {
-      updatePage(p.id, { content: nextContent });
+      updatePage(p.id, { content: nextContent }, { silent: true });
     }
   }, [activePageId, debouncedUpdate, editor, getPage, updatePage]);
 
@@ -325,7 +330,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         clonePageContent(editor.document as BlockNoteContent),
       );
       debouncedUpdate.cancel();
-      syncedContentSignatureRef.current = getContentSignature(nextContent);
+      const nextSig = getContentSignature(nextContent);
+      if (nextSig === syncedContentSignatureRef.current) return;
+      syncedContentSignatureRef.current = nextSig;
       updatePage(safePageId, { content: nextContent });
     },
     [debouncedUpdate, editor, updatePage],

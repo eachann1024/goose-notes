@@ -34,7 +34,16 @@ export function clonePageContent<T extends PageContent>(content: T): T {
 
 export function getContentSignature(content: unknown): string {
   try {
-    return JSON.stringify(content ?? null);
+    // 用于"内容是否变更"的判断：剥除 BlockNote 注入的瞬时字段
+    // （每次 replaceBlocks 会重新生成 id，空 children:[] 也只是占位），
+    // 否则切页同步会被误判为编辑，污染 updatedAt。
+    return JSON.stringify(content ?? null, (key, value) => {
+      if (key === "id") return undefined;
+      if (key === "children" && Array.isArray(value) && value.length === 0) {
+        return undefined;
+      }
+      return value;
+    });
   } catch {
     return "__goose-note-unserializable-content__";
   }

@@ -72,10 +72,11 @@ export const usePages = create<PagesState>()((set, get) => ({
   createLocalPageRecord: (options) =>
     createLocalPageRecordAction(set, get, options),
 
-  updatePage: (id, updates) => {
+  updatePage: (id, updates, options) => {
     const page = get().pages[id];
     const shouldPersistLocalMeta =
       isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
+    const silent = options?.silent === true;
 
     set((state) => {
       const page = state.pages[id];
@@ -105,12 +106,15 @@ export const usePages = create<PagesState>()((set, get) => ({
         pinnedAt = undefined;
       }
 
+      // 只有真正的内容编辑才刷新 updatedAt：必须显式传入 content 字段，
+      // 且没有标记为 silent（silent 用于切页/normalize 这类被动同步）。
+      const isContentEdit = "content" in updates && !silent;
       const updatedPage = {
         ...page,
         ...updates,
         ...(favoriteOrder !== undefined ? { favoriteOrder } : {}),
         pinnedAt,
-        updatedAt: now,
+        updatedAt: isContentEdit ? now : page.updatedAt,
       };
 
       if (
@@ -163,7 +167,6 @@ export const usePages = create<PagesState>()((set, get) => ({
             ...newPages[id],
             parentId: parentId,
             order: index,
-            updatedAt: Date.now(),
           };
         }
       });
@@ -176,14 +179,12 @@ export const usePages = create<PagesState>()((set, get) => ({
   reorderFavorites: (ids) => {
     set((state) => {
       const newPages = { ...state.pages };
-      const now = Date.now();
 
       ids.forEach((id, index) => {
         if (!newPages[id]) return;
         newPages[id] = {
           ...newPages[id],
           favoriteOrder: index,
-          updatedAt: now,
         };
       });
 

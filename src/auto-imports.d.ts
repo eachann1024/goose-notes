@@ -266,6 +266,9 @@ declare global {
   const sanitizeFilenameSegment: typeof import('./lib/local-title-binding').sanitizeFilenameSegment
   const saveBlobAndReveal: typeof import('./lib/export/index').saveBlobAndReveal
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
+  const selectExpandedIds: typeof import('./stores/useSidebarView').selectExpandedIds
+  const selectFocusedId: typeof import('./stores/useSidebarView').selectFocusedId
+  const selectSelectedId: typeof import('./stores/useSidebarView').selectSelectedId
   const serializeWithBlockDiff: typeof import('./lib/local-block-diff').serializeWithBlockDiff
   const setBlockSourceMap: typeof import('./lib/local-block-diff').setBlockSourceMap
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
@@ -288,6 +291,7 @@ declare global {
   const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
   const useAiStatus: typeof import('./stores/useAiStatus').useAiStatus
   const useCallback: typeof import('react').useCallback
+  const useCompactViewport: typeof import('./hooks/useCompactViewport').useCompactViewport
   const useContext: typeof import('react').useContext
   const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
@@ -298,6 +302,8 @@ declare global {
   const useFormatCode: typeof import('./hooks/useFormatCode').useFormatCode
   const useFormattingToolbarAi: typeof import('./stores/useFormattingToolbarAi').useFormattingToolbarAi
   const useGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').useGlobalScrollActivity
+  const useHistoryRecorder: typeof import('./hooks/useHistoryRecorder').useHistoryRecorder
+  const useHistoryView: typeof import('./stores/useHistoryView').useHistoryView
   const useId: typeof import('react').useId
   const useImperativeHandle: typeof import('react').useImperativeHandle
   const useInsertionEffect: typeof import('react').useInsertionEffect
@@ -310,6 +316,7 @@ declare global {
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
   const useSettings: typeof import('./stores/settings/index').useSettings
+  const useSidebarView: typeof import('./stores/useSidebarView').useSidebarView
   const useState: typeof import('react').useState
   const useStickyNote: typeof import('./stores/useStickyNote').useStickyNote
   const useSyncExternalStore: typeof import('react').useSyncExternalStore

@@ -576,7 +576,6 @@ export const movePageTreeToNotebookAction = (
         workspaceId: targetNotebookId,
         parentId: id === pageId ? undefined : current.parentId,
         order: id === pageId ? rootOrder : current.order,
-        updatedAt: now,
       };
     });
 

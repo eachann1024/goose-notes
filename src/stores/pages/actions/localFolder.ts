@@ -456,7 +456,6 @@ function renameLocalPageInStore(
       ...page,
       id: newPageId,
       localFilePath: nextFilePath,
-      updatedAt: Date.now(),
     };
 
     const nextDirty = { ...state.dirtyLocalPageIds };

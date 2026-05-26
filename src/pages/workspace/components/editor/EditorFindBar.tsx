@@ -954,7 +954,11 @@ export function EditorFindBar({
             const nextContent = normalizePageContent(
               clonePageContent(editor.document as BlockNoteContent),
             );
-            syncedContentSignatureRef.current = getContentSignature(nextContent);
+            const nextSig = getContentSignature(nextContent);
+            // 内容与基线签名一致（如切页 replaceBlocks 触发的回调）就不要写 store，
+            // 否则会把"只是打开页面"也当成编辑，刷新 updatedAt。
+            if (nextSig === syncedContentSignatureRef.current) return;
+            syncedContentSignatureRef.current = nextSig;
             debouncedUpdate(safePageId, nextContent);
           }}
         >
