@@ -2,16 +2,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
-import { AlignCenter, AlignLeft, AlignRight, Copy, Download, Maximize2, X } from "lucide-react";
+import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
-import { imageStorage } from "@/lib/imageStorage";
-import { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } from "@/lib/imageStorage/strategies/file-system";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { saveBlobAndReveal } from "@/lib/export";
-import { cn } from "@/lib/utils";
 import { shell } from "@/lib/utools/shell";
-import { usePages } from "@/stores/usePages";
+import {
+  resolveImageSrc,
+  getImageElements,
+  getImageBlockElement,
+  getBlockIdFromImage,
+  getImageSrc,
+  getImageBlockIdByIndex,
+  getImageAlignmentFromBlock,
+  getImageExtension,
+  type ImageAlignment,
+} from "./lightbox/utils";
+import { ImageToolbar, type SelectedImageState } from "./lightbox/ImageToolbar";
 
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;
@@ -21,127 +29,6 @@ interface ImageLightboxProps {
 interface SlideInfo {
   src: string;
   alt?: string;
-}
-
-type ImageAlignment = "left" | "center" | "right";
-
-interface SelectedImageState {
-  blockId: string | null;
-  src: string;
-  alt?: string;
-  index: number;
-  rect: DOMRect;
-  alignment: ImageAlignment;
-}
-
-async function resolveImageSrc(src: string): Promise<string> {
-  if (src.startsWith("http") || src.startsWith("data:") || src.startsWith("blob:")) {
-    return src;
-  }
-
-  // 本地文件路径：优先相对于页面文件目录解析
-  if (isLocalFilePath(src)) {
-    try {
-      const activePageId = usePages.getState().activePageId;
-      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-      if (activePage?.localFilePath) {
-        const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, '');
-        const fullPath = resolveToAbsolute(pageDir, src);
-        const blob = readLocalFileAsBlob(fullPath);
-        if (blob) return URL.createObjectURL(blob);
-      }
-    } catch {
-      // fallthrough to imageStorage
-    }
-  }
-
-  // att: / uuid: 内部引用或本地文件路径兜底，走 imageStorage.load
-  try {
-    const blob = await imageStorage.load(src);
-    if (blob) {
-      return URL.createObjectURL(blob);
-    }
-  } catch {
-    // fallthrough
-  }
-
-  return src;
-}
-
-function getImageElements(container: HTMLElement): HTMLImageElement[] {
-  return Array.from(container.querySelectorAll<HTMLImageElement>(
-    '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img'
-  ));
-}
-
-function getImageBlockElement(img: HTMLImageElement, container: HTMLElement): HTMLElement | null {
-  let element: HTMLElement | null = img;
-  while (element && element !== container) {
-    if (element.classList.contains("bn-block-outer")) return element;
-    element = element.parentElement;
-  }
-  return img.closest<HTMLElement>(".bn-block-outer");
-}
-
-function getBlockIdFromImage(img: HTMLImageElement, container: HTMLElement): string | null {
-  const candidates: HTMLElement[] = [];
-  let element: HTMLElement | null = img;
-  while (element && element !== container) {
-    candidates.push(element);
-    element = element.parentElement;
-  }
-
-  for (const candidate of candidates) {
-    const id =
-      candidate.dataset.id ||
-      candidate.dataset.blockId ||
-      candidate.getAttribute("data-id") ||
-      candidate.getAttribute("data-block-id");
-    if (id) return id;
-  }
-
-  return null;
-}
-
-function getImageSrc(img: HTMLImageElement): string {
-  return img.currentSrc || img.src || img.getAttribute("src") || "";
-}
-
-function getImageBlockIdByIndex(blocks: any[], imageIndex: number): string | null {
-  let currentIndex = -1;
-  let result: string | null = null;
-
-  const visit = (items: any[]) => {
-    for (const item of items) {
-      if (!item || typeof item !== "object") continue;
-      if (item.type === "image" || item.type === "imageResize") {
-        currentIndex += 1;
-        if (currentIndex === imageIndex) {
-          result = item.id ?? null;
-          return;
-        }
-      }
-      if (Array.isArray(item.children)) visit(item.children);
-      if (result) return;
-    }
-  };
-
-  visit(blocks);
-  return result;
-}
-
-function getImageAlignmentFromBlock(block: any): ImageAlignment {
-  const value = block?.props?.textAlignment || block?.props?.alignment;
-  return value === "center" || value === "right" ? value : "left";
-}
-
-function getImageExtension(blob: Blob): string {
-  if (blob.type === "image/png") return "png";
-  if (blob.type === "image/jpeg" || blob.type === "image/jpg") return "jpg";
-  if (blob.type === "image/gif") return "gif";
-  if (blob.type === "image/webp") return "webp";
-  if (blob.type === "image/svg+xml") return "svg";
-  return "png";
 }
 
 export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps) {
@@ -378,67 +265,16 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     await downloadImage(selectedImage.src);
   }, [downloadImage, selectedImage]);
 
-  const toolbar = selectedImage && !open ? (
-    <div
-      data-goose-image-toolbar
-      className="fixed z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]"
-      style={{
-        top: Math.max(8, selectedImage.rect.top - 42),
-        left: selectedImage.rect.left + selectedImage.rect.width / 2,
-        transform: "translateX(-50%)",
-      }}
-      onMouseDown={(e) => e.preventDefault()}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-    >
-      {([
-        ["left", "左对齐", AlignLeft],
-        ["center", "居中对齐", AlignCenter],
-        ["right", "右对齐", AlignRight],
-      ] as const).map(([alignment, label, Icon]) => (
-        <button
-          key={alignment}
-          type="button"
-          title={label}
-          aria-label={label}
-          onClick={() => applyImageAlignment(alignment)}
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted",
-            selectedImage.alignment === alignment && "bg-accent text-foreground",
-          )}
-        >
-          <Icon className="h-[15px] w-[15px]" />
-        </button>
-      ))}
-
-      <div className="mx-0.5 h-5 w-px bg-border/70" />
-
-      <button
-        type="button"
-        title="放大图片"
-        aria-label="放大图片"
-        onClick={handleSelectedImageZoom}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
-      >
-        <Maximize2 className="h-[15px] w-[15px]" />
-      </button>
-      <button
-        type="button"
-        title="下载图片"
-        aria-label="下载图片"
-        onClick={handleSelectedImageDownload}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
-      >
-        <Download className="h-[15px] w-[15px]" />
-      </button>
-    </div>
-  ) : null;
-
   return (
     <>
-      {toolbar}
+      {selectedImage && !open && (
+        <ImageToolbar
+          selectedImage={selectedImage}
+          applyImageAlignment={applyImageAlignment}
+          handleSelectedImageZoom={handleSelectedImageZoom}
+          handleSelectedImageDownload={handleSelectedImageDownload}
+        />
+      )}
       {slides.length > 0 && (
         <Lightbox
           open={open}
