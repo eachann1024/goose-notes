@@ -2,7 +2,9 @@ import {
   useBlockNoteEditor,
   useSelectedBlocks,
   useEditorState,
+  useExtension,
 } from "@blocknote/react";
+import { AIExtension } from "@blocknote/xl-ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TextSelection } from "prosemirror-state";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,6 +34,7 @@ export { shouldRenderFormattingToolbar };
 
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
+  const aiExtension = useExtension(AIExtension);
   const markStates = useSelectionMarkStates(editor);
   const selectedBlocks = useSelectedBlocks();
 
@@ -140,6 +143,8 @@ export function EditorFormattingToolbar() {
     };
   }, [editor, setAiActive]);
 
+  // xl-ai 接管：旧自家 AiPanel 不再触发，AI 按钮改为打开 xl-ai 的 AIMenu。
+  // 保留 selection 保存逻辑（用于聚焦/退出还原），但跳过 setAiActive。
   const handleAiActivate = useCallback(() => {
     try {
       const { selection } = editor.prosemirrorState;
@@ -148,33 +153,13 @@ export function EditorFormattingToolbar() {
       savedSelectionRef.current = saved;
       setFakeSelection(editor, saved);
 
-      let selText = "";
-      try {
-        selText = editor.getSelectedText() || "";
-      } catch {
-        /* ignore */
-      }
-
-      let blkText = "";
-      try {
-        const block = editor.getTextCursorPosition().block;
-        const blockEl = document.querySelector(`[data-id="${block.id}"]`);
-        blkText = blockEl?.textContent ?? "";
-      } catch {
-        /* ignore */
-      }
-
-      setAiContext({
-        selectedText: selText,
-        blockText: blkText,
-        savedSelection: saved,
-      });
+      const blockId = editor.getTextCursorPosition().block.id;
       setActiveTooltip(null);
-      setAiActive(true);
+      aiExtension?.openAIMenuAtBlock(blockId);
     } catch {
       /* ignore */
     }
-  }, [editor, setAiActive]);
+  }, [editor, aiExtension]);
 
   const handleAiClose = useCallback(() => {
     const savedSel = savedSelectionRef.current;

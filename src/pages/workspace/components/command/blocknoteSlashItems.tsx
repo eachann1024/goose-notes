@@ -1,5 +1,6 @@
 import type { BlockNoteEditor } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
+import { AIExtension } from "@blocknote/xl-ai";
 import * as LucideIcons from "lucide-react";
 import { useSettings } from "@/stores/useSettings";
 
@@ -97,11 +98,13 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
           });
         }
 
-        document.dispatchEvent(
-          new CustomEvent("open-ai-input-popover", {
-            detail: { editor },
-          }),
-        );
+        // xl-ai 接管：打开 BlockNote 官方 AI 菜单（uTools 模型暂不支持，
+        // 需在 设置 → AI 助手 中切到自定义 OpenAI/Claude）
+        const ai = editor.getExtension(AIExtension);
+        const blockId = editor.getTextCursorPosition().block.id;
+        if (ai && blockId) {
+          ai.openAIMenuAtBlock(blockId);
+        }
       },
     });
   }

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImper
 import { EditorState } from "@tiptap/pm/state";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { useCreateBlockNote } from "@blocknote/react";
+import { AIExtension } from "@blocknote/xl-ai";
+import "@blocknote/xl-ai/style.css";
+import { createGooseAITransport } from "@/lib/ai-provider/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import debounce from "lodash.debounce";
@@ -74,6 +77,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseInlineCodeEscapeExtension,
+        AIExtension({
+          transport: createGooseAITransport({
+            getSettings: () => useSettings.getState().ai,
+            getModelId: () =>
+              useSettings.getState().ai.selectedModelId || "gpt-4o-mini",
+          }),
+        }),
       ],
       dictionary: {
         ...zh,
