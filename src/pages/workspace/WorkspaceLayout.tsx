@@ -12,6 +12,11 @@ import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "./components/editor/Editor";
+import {
+  HistoryToolbar,
+  HistoryReader,
+} from "./components/history/HistoryView";
+import { useHistoryView } from "@/stores/useHistoryView";
 import { useTabs } from "@/stores/useTabs";
 import { toast } from "sonner";
 
@@ -47,6 +52,9 @@ export function WorkspaceLayout({
   const { activePageId, updatePage, getPage } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { globalEditorFullWidth } = useSettings();
+  const historyActivePageId = useHistoryView((s) => s.active);
+  const inHistoryMode =
+    !!historyActivePageId && historyActivePageId === activePageId;
 
   const page = activePageId ? getPage(activePageId) : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
@@ -110,8 +118,29 @@ export function WorkspaceLayout({
             isAiPageOpen={isAiPageOpen}
           />
 
+
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
-            {activePageId && page ? (
+            {activePageId && page && inHistoryMode ? (
+              <>
+                <HistoryToolbar />
+                <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex min-h-full flex-col pt-0",
+                        isEditorFullWidth ? "px-6 md:px-8 lg:px-10" : "px-8",
+                      )}
+                    >
+                      <HistoryReader />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : activePageId && page ? (
               <>
                 <PageHeader
                   page={page}

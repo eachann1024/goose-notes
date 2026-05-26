@@ -5,6 +5,7 @@ import type { BlockNoteContent } from "@/lib/blocknote-content";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle } from "@/lib/blocknote-content";
+import { useHistoryView } from "@/stores/useHistoryView";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -105,8 +106,8 @@ export function PageMenu() {
         <DropdownMenuGroup>
           <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
             <div className="flex items-center gap-2">
-              <LucideIcons.Lock className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="ml-2.5">锁定页面</span>
+              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span>锁定页面</span>
             </div>
             <Switch
               checked={page.isLocked}
@@ -121,8 +122,8 @@ export function PageMenu() {
         <DropdownMenuGroup>
           <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
             <div className="flex items-center gap-2">
-              <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="ml-2.5">全宽显示（当前记事本）</span>
+              <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span>全宽显示（当前记事本）</span>
             </div>
             <Switch
               checked={Boolean(notebook?.editorFullWidth ?? globalEditorFullWidth)}
@@ -189,6 +190,21 @@ export function PageMenu() {
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+
+          <DropdownMenuItem
+            className="text-xs"
+            onSelect={() => {
+              const pid = activePageId;
+              // 进入历史模式前 flush，避免 200ms debounce 内的最新编辑丢失
+              try { flushEditorContent(true); } catch { /* ignore */ }
+              setTimeout(() => {
+                useHistoryView.getState().enter(pid);
+              }, 80);
+            }}
+          >
+            <LucideIcons.History className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+            <span>页面历史</span>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
 
         <div className="px-2 py-1.5 text-xs text-muted-foreground">
