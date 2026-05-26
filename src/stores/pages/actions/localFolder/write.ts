@@ -1,7 +1,7 @@
 import type { JSONContent } from "@/types";
 import { blocksToMarkdown } from "@/lib/export";
 import { normalizePageContent } from "@/lib/blocknote-content";
-import { extractFrontmatter, setFrontmatterTags } from "@/lib/markdown-raw-guard";
+import { extractFrontmatter } from "@/lib/markdown-raw-guard";
 import { isLocalFolderPage } from "../../persistence";
 import {
   flushPendingLocalSaveByPageIdInternal,
@@ -199,13 +199,8 @@ export const saveLocalPageContentAction = async (
 
   // scanner 抽出 frontmatter 后不入编辑器，保存时由这里 prepend 回去
   // （否则首次保存就把 frontmatter 丢了）
-  // 同时把 page.tags 同步写入 frontmatter 的 tags 字段（双向同步）
-  const updatedFrontmatter = setFrontmatterTags(
-    page.localFrontmatter,
-    Array.isArray(page.tags) ? page.tags : [],
-  );
-  const finalContent = updatedFrontmatter
-    ? `${updatedFrontmatter}\n\n${markdownContent}`
+  const finalContent = page.localFrontmatter
+    ? `${page.localFrontmatter}\n\n${markdownContent}`
     : markdownContent;
 
   if (!markdownContent.trim()) {

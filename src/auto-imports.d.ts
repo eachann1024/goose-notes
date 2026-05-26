@@ -167,6 +167,7 @@ declare global {
   const exportToImage: typeof import('./lib/imageExport/index').exportToImage
   const exportToJSON: typeof import('./lib/export/index').exportToJSON
   const exportToMarkdown: typeof import('./lib/export/index').exportToMarkdown
+  const exportToPDF: typeof import('./lib/export/index').exportToPDF
   const exportToWord: typeof import('./lib/docxExport/index').exportToWord
   const extractBlockNoteTitle: typeof import('./lib/blocknote-content/index').extractBlockNoteTitle
   const extractBlocksInRange: typeof import('./lib/ai-block-scope').extractBlocksInRange
@@ -244,6 +245,7 @@ declare global {
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
+  const parseFrontmatterTags: typeof import('./lib/markdown-raw-guard').parseFrontmatterTags
   const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
@@ -278,6 +280,7 @@ declare global {
   const setBlockSourceMap: typeof import('./lib/local-block-diff').setBlockSourceMap
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setFrontmatterForPath: typeof import('./lib/local-frontmatter-store').setFrontmatterForPath
+  const setFrontmatterTags: typeof import('./lib/markdown-raw-guard').setFrontmatterTags
   const simpleExtractText: typeof import('./lib/blocknote-content/index').simpleExtractText
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
   const splitMarkdownIntoBlocks: typeof import('./lib/local-block-diff').splitMarkdownIntoBlocks
@@ -346,7 +349,7 @@ declare global {
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
+  export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize, ClipperMode, ClipperSettings } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
   export type { TabItem } from './stores/useTabs'

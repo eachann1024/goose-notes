@@ -2,7 +2,6 @@ import { importFromMarkdown } from "@/lib/export";
 import {
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
-  parseFrontmatterTags,
 } from "@/lib/markdown-raw-guard";
 import { ensureFilenameAsTitle } from "@/lib/local-title-binding";
 import type { JSONContent, Page } from "@/types";
@@ -192,7 +191,6 @@ function buildMarkdownPage(
   const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
   const boundBlocks = ensureFilenameAsTitle(importedBlocks, fallbackTitle);
   const jsonContent: JSONContent = boundBlocks as unknown as JSONContent;
-  const tags = parseFrontmatterTags(frontmatter);
 
   return {
     id: fileId,
@@ -205,7 +203,6 @@ function buildMarkdownPage(
     fontFamily: "default",
     localFilePath: entry.path,
     localFrontmatter: frontmatter || undefined,
-    tags: tags.length ? tags : undefined,
     localReadState: imported.success ? "ready" : "error",
     localReadError: imported.success ? undefined : imported.error || "Markdown 解析失败",
     createdAt: now,
