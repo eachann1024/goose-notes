@@ -36,6 +36,7 @@ import {
   serializeAiComposerDoc,
   type AiFileReferenceAttrs,
 } from "../editor/ai-composer/referenceLookup";
+import { useCompactViewport } from "@/hooks/useCompactViewport";
 import { AiPromptComposer } from "./AiPromptComposer";
 import { AiSessionHistoryPanel } from "./AiSessionHistoryPanel";
 import { AiWorkspaceMessages } from "./AiWorkspaceMessages";
@@ -74,6 +75,9 @@ export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
   const { openTab } = useTabs();
   const editorFontSize = useSettings((s) => s.editorFontSize);
   const aiWorkspaceScale = editorFontSize / EDITOR_FONT_SIZE_DEFAULT;
+  // utools 吸附模式窗口高度受限，composer 会被压出可视区。
+  // 视口高度低于 520 时切换成"贴底"布局，保证发送区始终可见。
+  const compactViewport = useCompactViewport(520);
 
   const cancelActiveRequest = useCallback(() => {
     cancelActiveRequestRef.current();
@@ -674,7 +678,7 @@ export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
   return (
     <div
       data-ai-workspace-root="true"
-      className="flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]"
+      className="relative flex h-full flex-col bg-[hsl(var(--goose-editor-bg))]"
       style={{ zoom: aiWorkspaceScale }}
     >
       <div className="flex shrink-0 items-center justify-end gap-1 px-4 pt-3 pb-1">
@@ -728,7 +732,11 @@ export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
         </Popover>
       </div>
 
-      <div ref={messagesScrollRef} className="flex-1 overflow-y-auto">
+      <div
+        ref={messagesScrollRef}
+        className="flex-1 overflow-y-auto"
+        style={compactViewport ? { paddingBottom: 132 } : undefined}
+      >
         <div className="mx-auto w-full max-w-[760px] py-2">
           <AiWorkspaceMessages
             messages={messages}
@@ -747,17 +755,25 @@ export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
         </div>
       </div>
 
-      <AiPromptComposer
-        composerRef={composerRef}
-        composerFocusToken={composerFocusToken}
-        isStreaming={isStreaming}
-        draftContent={draftContent}
-        onSubmit={(params) => {
-          void handleSubmit(params);
-        }}
-        onDraftChange={setDraftContent}
-        onReferenceAdded={handleReferenceAdded}
-      />
+      <div
+        className={
+          compactViewport
+            ? "absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-[hsl(var(--goose-editor-bg))] via-[hsl(var(--goose-editor-bg))]/95 to-transparent pt-4"
+            : undefined
+        }
+      >
+        <AiPromptComposer
+          composerRef={composerRef}
+          composerFocusToken={composerFocusToken}
+          isStreaming={isStreaming}
+          draftContent={draftContent}
+          onSubmit={(params) => {
+            void handleSubmit(params);
+          }}
+          onDraftChange={setDraftContent}
+          onReferenceAdded={handleReferenceAdded}
+        />
+      </div>
     </div>
   );
 }

@@ -272,6 +272,16 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
 
         if (handleMentionKeyDown(event)) return;
 
+        // 平台习惯：Mac ⌘+Enter / Win·Linux Ctrl+Enter 发送
+        if (
+          event.key === "Enter" &&
+          (event.metaKey || event.ctrlKey)
+        ) {
+          event.preventDefault();
+          onSubmit();
+          return;
+        }
+
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           onSubmit();

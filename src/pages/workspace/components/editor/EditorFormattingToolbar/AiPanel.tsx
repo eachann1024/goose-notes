@@ -70,8 +70,17 @@ export const AiPanel = memo(function AiPanel({
     onClose,
   });
 
+  const isProcessing = aiPanelState.phase === "processing";
+
   return (
-    <div ref={wrapperRef} data-ai-inline-input className="flex w-full flex-col">
+    <div
+      ref={wrapperRef}
+      data-ai-inline-input
+      className={
+        "flex w-full flex-col rounded-xl" +
+        (isProcessing ? " ai-thinking-flow" : "")
+      }
+    >
       <AiPanelInput
         phase={aiPanelState.phase}
         textareaRef={aiPanelState.textareaRef}

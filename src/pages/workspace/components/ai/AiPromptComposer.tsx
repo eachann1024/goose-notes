@@ -22,7 +22,7 @@ import {
   getAvailableAIModelOptions,
   type AIModelOption,
 } from "@/lib/ai-provider";
-import { cn } from "@/lib/utils";
+import { cn, formatShortcut } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
 import {
   AiComposerInput,
@@ -298,7 +298,18 @@ export function AiPromptComposer({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                {isStreaming ? "生成中…" : isComposerEmpty ? "请先输入内容" : "发送"}
+                {isStreaming ? (
+                  "生成中…"
+                ) : isComposerEmpty ? (
+                  "请先输入内容"
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>发送</span>
+                    <kbd className="rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {formatShortcut("mod+enter")}
+                    </kbd>
+                  </span>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

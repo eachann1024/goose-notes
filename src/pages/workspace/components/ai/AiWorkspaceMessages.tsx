@@ -227,6 +227,7 @@ export function AiWorkspaceMessages({
         }
 
         // assistant message (non-dataviz)
+        const isThinking = !!message.streaming && !message.error;
         return (
           <div key={message.id} className="flex gap-2.5 px-4 py-2">
             <div
@@ -241,7 +242,13 @@ export function AiWorkspaceMessages({
                 <AiGradientIcon className="h-3.5 w-3.5" />
               )}
             </div>
-            <div className="min-w-0 flex-1 select-text">
+            <div
+              className={cn(
+                "min-w-0 flex-1 select-text",
+                isThinking &&
+                  "ai-thinking-flow rounded-[14px] bg-[hsl(var(--goose-editor-bg))] px-3 py-2.5",
+              )}
+            >
               {message.error ? (
                 <div className="text-sm leading-6 text-destructive whitespace-pre-wrap break-words">
                   {message.text || "请求失败，请重试"}

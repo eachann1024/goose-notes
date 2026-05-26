@@ -47,6 +47,24 @@ export const AiPanelInput = memo(function AiPanelInput({
           ref={textareaRef}
           disabled={isProcessing}
           placeholder={placeholder}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            // 平台习惯：Mac ⌘+Enter / Win·Linux Ctrl+Enter 发送
+            if (
+              event.key === "Enter" &&
+              (event.metaKey || event.ctrlKey) &&
+              !isProcessing
+            ) {
+              event.preventDefault();
+              void handleSubmit();
+              return;
+            }
+            // 兼容：纯 Enter 也发送（保留原行为），Shift+Enter 换行
+            if (event.key === "Enter" && !event.shiftKey && !isProcessing) {
+              event.preventDefault();
+              void handleSubmit();
+            }
+          }}
           className={cn(
             "min-h-[66px] resize-none rounded-md border-none bg-transparent px-2 pt-1.5 pb-9 text-[13px] leading-[22px] text-foreground outline-none placeholder:text-muted-foreground/55",
             "focus-visible:ring-0 focus-visible:ring-offset-0",

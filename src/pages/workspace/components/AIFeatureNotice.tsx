@@ -18,7 +18,7 @@ function openAISettings() {
 function createNoticeContent(handleClose: () => void) {
   return (
     <FeatureToastCard
-      icon={<LucideIcons.Sparkles className="h-4.5 w-4.5" />}
+      icon={<LucideIcons.Sparkles className="h-5 w-5" />}
       title="✨ AI 写作助手已上线"
       actions={[
         {
