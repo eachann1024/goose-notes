@@ -64,7 +64,6 @@
     "mermaid": "^11.12.2",
     "mixpanel-browser": "^2.71.1",
     "playwright": "^1.57.0",
-    "pptxgenjs": "^4.0.1",
     "prettier": "^3.7.4",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",

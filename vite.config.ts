@@ -45,8 +45,11 @@ const vendorChunkGroups: Array<[string, string[]]> = [
   ["vendor-echarts", ["echarts"]],
   // 动画
   ["vendor-motion", ["framer-motion"]],
-  // 文档导出（docx / pptx / zip）
-  ["vendor-export", ["docx", "pptxgenjs", "jszip"]],
+  // 文档导出（docx / pdf / zip）
+  [
+    "vendor-export",
+    ["docx", "jszip", "@blocknote/xl-pdf-exporter", "@react-pdf/renderer"],
+  ],
   // 拖拽
   ["vendor-dnd", ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"]],
   // 路由

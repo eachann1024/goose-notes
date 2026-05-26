@@ -196,6 +196,16 @@ export function PageMenu() {
               >
                 <LucideIcons.FileType className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> HTML
               </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs"
+                onSelect={() => {
+                  void exportToPDF(page).catch((e) => {
+                    console.error("[export] PDF 失败:", e);
+                  });
+                }}
+              >
+                <LucideIcons.FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> PDF
+              </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
