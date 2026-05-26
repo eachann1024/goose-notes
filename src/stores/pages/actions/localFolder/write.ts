@@ -1,6 +1,7 @@
 import type { JSONContent } from "@/types";
 import { blocksToMarkdown } from "@/lib/export";
 import { normalizePageContent } from "@/lib/blocknote-content";
+import { extractFrontmatter } from "@/lib/markdown-raw-guard";
 import { isLocalFolderPage } from "../../persistence";
 import {
   flushPendingLocalSaveByPageIdInternal,
@@ -196,6 +197,12 @@ export const saveLocalPageContentAction = async (
 
   const markdownContent = await blocksToMarkdown(processedContent as any);
 
+  // scanner 抽出 frontmatter 后不入编辑器，保存时由这里 prepend 回去
+  // （否则首次保存就把 frontmatter 丢了）
+  const finalContent = page.localFrontmatter
+    ? `${page.localFrontmatter}\n\n${markdownContent}`
+    : markdownContent;
+
   if (!markdownContent.trim()) {
     let exists = false;
     try { exists = window.gooseFs?.exists(filePath) ?? false; } catch {}
@@ -208,7 +215,9 @@ export const saveLocalPageContentAction = async (
         oldContent = window.gooseFs?.readFile(filePath) || "";
       }
 
-      if (oldContent && oldContent.trim().length > 10) {
+      // 判断旧文件是否还有实质 body（去掉 frontmatter 后），避免误判 frontmatter 自身为有效内容
+      const { body: oldBody } = extractFrontmatter(oldContent);
+      if (oldBody && oldBody.trim().length > 10) {
         console.error("[Data Integrity] Refusing to save empty content.");
         return false;
       }
@@ -217,9 +226,9 @@ export const saveLocalPageContentAction = async (
 
   let result: boolean;
   if (window.gooseFs?.writeFileAsync) {
-    result = await window.gooseFs.writeFileAsync(filePath, markdownContent);
+    result = await window.gooseFs.writeFileAsync(filePath, finalContent);
   } else {
-    result = window.gooseFs?.writeFile(filePath, markdownContent) ?? false;
+    result = window.gooseFs?.writeFile(filePath, finalContent) ?? false;
   }
 
   if (result) {
