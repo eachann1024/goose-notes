@@ -9,19 +9,6 @@ interface FavoritesSectionProps {
   onCreatePage: () => void;
 }
 
-function hasFavoriteAncestor(page: Page, pages: Record<string, Page>) {
-  let parentId = page.parentId;
-  while (parentId) {
-    const parent = pages[parentId];
-    if (!parent || parent.trashedAt || parent.workspaceId !== page.workspaceId) {
-      return false;
-    }
-    if (parent.isFavorite) return true;
-    parentId = parent.parentId;
-  }
-  return false;
-}
-
 export function FavoritesSection({
   width,
   rowHeight,
@@ -50,11 +37,8 @@ export function FavoritesSection({
   );
 
   const favoriteRootIds = useMemo(
-    () =>
-      favorites
-        .filter((page) => !hasFavoriteAncestor(page, pages))
-        .map((page) => page.id),
-    [favorites, pages],
+    () => favorites.map((page) => page.id),
+    [favorites],
   );
 
   const resolveFavoriteSiblings = useCallback(
@@ -103,6 +87,7 @@ export function FavoritesSection({
             viewportHeight={0}
             onCreatePage={onCreatePage}
             rootPageIds={favoriteRootIds}
+            flatRoots
             fitContent
             showEmptyState={false}
             allowNest={false}

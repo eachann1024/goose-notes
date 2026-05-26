@@ -33,3 +33,5 @@ CHANGELOG.md
 .gitnexus
 .serena/
 playwright*/
+tasks/
+scripts/

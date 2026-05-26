@@ -46,6 +46,7 @@ interface SidebarTreeProps {
   onReorder?: (ids: string[], parentId: string | undefined) => void;
   showAddChildButton?: boolean;
   draggablePageIds?: string[];
+  flatRoots?: boolean;
 }
 
 const NEST_HOVER_DELAY_MS = 500;
@@ -82,6 +83,7 @@ export function SidebarTree({
   onReorder,
   showAddChildButton = true,
   draggablePageIds,
+  flatRoots = false,
 }: SidebarTreeProps) {
   const {
     pages,
@@ -123,8 +125,9 @@ export function SidebarTree({
         workspaceId: activeNotebookId || undefined,
         isLocalNotebook,
         rootPageIds,
+        flatRoots,
       }),
-    [pages, openPageIds, activeNotebookId, isLocalNotebook, rootPageIds]
+    [pages, openPageIds, activeNotebookId, isLocalNotebook, rootPageIds, flatRoots]
   );
 
   const activeDescendantIds = useMemo(() => {

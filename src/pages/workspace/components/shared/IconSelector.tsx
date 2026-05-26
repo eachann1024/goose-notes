@@ -1,4 +1,3 @@
-import { EmojiPicker } from "frimousse";
 import * as LucideIcons from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -23,7 +22,6 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   children: React.ReactNode;
   portalContainerRef?: React.RefObject<T | null>;
   onFirstOpen?: () => void;
-  emojiOnly?: boolean;
   scope?: "file" | "general";
 }
 
@@ -56,11 +54,7 @@ const CURATED_ICONS: string[] = [
   "Briefcase",
 ];
 
-// 保留给历史使用 emoji 的 tab（默认隐藏，需要时通过 emojiOnly 触发）
-const GENERAL_EMOJIS = [
-  "📝", "📄", "📋", "📌", "🎯", "💡", "⭐", "✨", "🔥", "📚",
-  "📖", "📒", "🔖", "🏷️", "📂", "📁", "🗂️", "📅", "🧠", "🚩",
-];
+
 
 export function IconSelector<T extends HTMLElement = HTMLElement>({
   value,
@@ -68,7 +62,6 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   children,
   portalContainerRef,
   onFirstOpen,
-  emojiOnly = false,
 }: IconSelectorProps<T>) {
   const [open, setOpen] = useState(false);
   const portalContainer = portalContainerRef?.current ?? undefined;
@@ -87,11 +80,6 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   }, [open, onFirstOpen]);
 
   const handleRandomIcon = () => {
-    if (emojiOnly) {
-      const pool = GENERAL_EMOJIS;
-      onChange(pool[Math.floor(Math.random() * pool.length)]);
-      return;
-    }
     if (filteredIcons.length === 0) return;
     onChange(filteredIcons[Math.floor(Math.random() * filteredIcons.length)]);
   };
@@ -108,7 +96,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
       >
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
           <div className="text-[12px] font-medium text-muted-foreground">
-            {emojiOnly ? "选择表情" : "选择图标"}
+            选择图标
           </div>
           <div className="flex items-center gap-1">
             <TooltipProvider delayDuration={0}>
@@ -139,76 +127,39 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
           </div>
         </div>
 
-        {emojiOnly ? (
-          <EmojiPicker.Root
-            className="isolate flex h-[320px] flex-col bg-popover"
-            onEmojiSelect={({ emoji }) => {
-              onChange(emoji);
-              setOpen(false);
-            }}
-            columns={8}
-          >
-            <EmojiPicker.Search
-              placeholder="搜索表情"
-              className="z-10 mx-3 mb-2 appearance-none rounded-[10px] bg-[var(--goose-interactive-hover)] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none"
-            />
-            <EmojiPicker.Viewport className="relative flex-1 outline-hidden" style={{ scrollbarGutter: "auto" }}>
-              <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-                加载中…
-              </EmojiPicker.Loading>
-              <EmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-                未找到表情
-              </EmojiPicker.Empty>
-              <EmojiPicker.List
-                className="select-none px-3 pb-3"
-                components={{
-                  Emoji: ({ emoji, ...props }) => (
-                    <button
-                      className="flex size-8 items-center justify-center rounded-[8px] text-xl transition-colors hover:bg-[var(--goose-interactive-hover)] data-[active]:bg-[var(--goose-interactive-selected)]"
-                      {...props}
-                    >
-                      {emoji.emoji}
-                    </button>
-                  ),
-                }}
-              />
-            </EmojiPicker.Viewport>
-          </EmojiPicker.Root>
-        ) : (
-          <ScrollArea className="bg-popover">
-            <div className="px-3 pb-3 grid grid-cols-6 gap-1">
-              {filteredIcons.map((iconName) => {
-                const Icon = (LucideIcons as any)[iconName];
-                const selected = value === iconName;
-                return (
-                  <button
-                    key={iconName}
-                    type="button"
+        <ScrollArea className="bg-popover">
+          <div className="px-3 pb-3 grid grid-cols-6 gap-1">
+            {filteredIcons.map((iconName) => {
+              const Icon = (LucideIcons as any)[iconName];
+              const selected = value === iconName;
+              return (
+                <button
+                  key={iconName}
+                  type="button"
+                  className={cn(
+                    "group/icon inline-flex aspect-square w-full items-center justify-center rounded-[10px] transition-all duration-150",
+                    selected
+                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
+                      : "text-muted-foreground/85 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                  )}
+                  onClick={() => {
+                    onChange(iconName);
+                    setOpen(false);
+                  }}
+                  aria-label={iconName}
+                  aria-pressed={selected}
+                >
+                  <Icon
                     className={cn(
-                      "group/icon inline-flex aspect-square w-full items-center justify-center rounded-[10px] transition-all duration-150",
-                      selected
-                        ? "bg-[var(--goose-interactive-selected)] text-foreground"
-                        : "text-muted-foreground/85 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                      "h-[18px] w-[18px] stroke-[1.6] transition-transform duration-150",
+                      selected ? "scale-[1.05]" : "group-hover/icon:scale-[1.04]",
                     )}
-                    onClick={() => {
-                      onChange(iconName);
-                      setOpen(false);
-                    }}
-                    aria-label={iconName}
-                    aria-pressed={selected}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-[18px] w-[18px] stroke-[1.6] transition-transform duration-150",
-                        selected ? "scale-[1.05]" : "group-hover/icon:scale-[1.04]",
-                      )}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

@@ -25,6 +25,7 @@ interface BuildVisibleTreeOptions {
   workspaceId?: string;
   isLocalNotebook: boolean;
   rootPageIds?: string[];
+  flatRoots?: boolean;
 }
 
 interface ProjectionOptions {
@@ -64,6 +65,7 @@ export function buildVisibleTree({
   workspaceId,
   isLocalNotebook,
   rootPageIds,
+  flatRoots,
 }: BuildVisibleTreeOptions): VisibleTreeItem[] {
   const childrenMap = new Map<string | undefined, Page[]>();
 
@@ -87,8 +89,8 @@ export function buildVisibleTree({
 
   const appendNode = (page: Page, depth: number) => {
     const pageChildren = childrenMap.get(page.id) || [];
-    const hasChildren = pageChildren.length > 0;
-    const isOpen = openIds.has(page.id);
+    const hasChildren = flatRoots ? false : pageChildren.length > 0;
+    const isOpen = flatRoots ? false : openIds.has(page.id);
 
     visible.push({
       id: page.id,
