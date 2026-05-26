@@ -50,16 +50,18 @@ export function renderItem({
   const isLocalFolder = notebook?.source === "local-folder";
   const iconName = page?.icon;
 
-  // 阻断行的原生 drag / rct 拖拽 / 选中，让点击专门进入 IconSelector
+  // 阻断行的原生 drag —— 关键：mousedown 时 preventDefault，浏览器才不会启动 drag，
+  // 否则用户轻微鼠标移动就触发 drag，click 事件永远不会到达 Radix Popover Trigger。
   const blockRowDrag = {
     draggable: false as const,
+    onMouseDown: (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
     onDragStart: (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
     },
-    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
-    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-    onPointerDownCapture: (e: React.PointerEvent) => e.stopPropagation(),
     onClick: (e: React.MouseEvent) => e.stopPropagation(),
     onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
   };
