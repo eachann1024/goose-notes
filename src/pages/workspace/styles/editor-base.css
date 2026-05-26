@@ -261,6 +261,14 @@
   align-items: center;
 }
 
+/* 勾选后用灰色文字代替中划线 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
+  .bn-inline-content {
+  text-decoration: none;
+  color: hsl(var(--muted-foreground));
+}
+
 /* ===== BlockNote children 缩进优化 ===== */
 /* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
 .workspace-editor-surface .bn-block:has(> .bn-block-content[data-content-type="heading"]) > .bn-block-children {
