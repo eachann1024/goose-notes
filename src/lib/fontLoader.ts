@@ -150,7 +150,7 @@ export function applyFontVariables(customFonts: CustomFonts) {
     buildFontStack(
       customMonoList,
       DEFAULT_FONTS.mono,
-      ["DM Mono", "HarmonyOS Sans SC"],
+      ["DM Mono"],
       fallbacks.mono,
       "monospace",
     ),
@@ -170,7 +170,7 @@ export function getEditorFontFamilies(
   const fallbackMap = {
     default: ["Inter", "HarmonyOS Sans SC"],
     serif: ["仓耳今楷"],
-    mono: ["DM Mono", "HarmonyOS Sans SC"],
+    mono: ["DM Mono"],
   };
 
   const families = [

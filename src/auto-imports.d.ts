@@ -84,6 +84,7 @@ declare global {
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
   const Popover: typeof import('./components/ui/popover').Popover
+  const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
   const Portal: typeof import('./components/ui/portal').Portal
@@ -127,6 +128,8 @@ declare global {
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const blockToTable: typeof import('./lib/docxExport/docxBlocks').blockToTable
+  const blocksToHTML: typeof import('./lib/export/index').blocksToHTML
+  const blocksToMarkdown: typeof import('./lib/export/index').blocksToMarkdown
   const buildAiContextBundle: typeof import('./lib/ai-write/index').buildAiContextBundle
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write/index').buildAiWorkspaceUserPrompt
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
@@ -251,6 +254,7 @@ declare global {
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
+  const renderExportHtml: typeof import('./lib/export/index').renderExportHtml
   const resetAnalytics: typeof import('./lib/analytics').resetAnalytics
   const resolveAiTargetFromSelection: typeof import('./lib/ai-write/index').resolveAiTargetFromSelection
   const resolveAiTargetIntent: typeof import('./lib/ai-write/index').resolveAiTargetIntent
