@@ -2,7 +2,14 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { uToolsStorage } from '@/lib/storage'
 
-import type { Theme, CodeStyle, AISettings, UToolsSettings, DesktopSettings } from './types'
+import type {
+    Theme,
+    CodeStyle,
+    AISettings,
+    UToolsSettings,
+    DesktopSettings,
+    ClipperSettings,
+} from './types'
 import {
     normalizeCodeStyle,
     normalizeUIFontSize,
@@ -10,6 +17,7 @@ import {
     normalizeDesktopHotkeyStatus,
     mergeSearchProvidersWithDefaults,
     normalizeCustomActions,
+    normalizeClipperSettings,
     UTOOLS_WINDOW_HEIGHT_MIN,
     UTOOLS_WINDOW_HEIGHT_MAX,
     UTOOLS_WINDOW_HEIGHT_DEFAULT,
@@ -24,13 +32,15 @@ import { createAppearanceSlice, type AppearanceSlice } from './slices/appearance
 import { createUToolsSlice, type UToolsSlice } from './slices/utoolsSlice'
 import { createShortcutsSlice, type ShortcutsSlice } from './slices/shortcutsSlice'
 import { createSearchProvidersSlice, type SearchProvidersSlice } from './slices/searchProvidersSlice'
+import { createClipperSlice, type ClipperSlice } from './slices/clipperSlice'
 
 export type SettingsState =
     AISlice &
     AppearanceSlice &
     UToolsSlice &
     ShortcutsSlice &
-    SearchProvidersSlice & {
+    SearchProvidersSlice &
+    ClipperSlice & {
         _hasHydrated: boolean
     }
 
@@ -108,6 +118,7 @@ export const useSettings = create<SettingsState>()(
             ...createUToolsSlice(set as Parameters<typeof createUToolsSlice>[0]),
             ...createShortcutsSlice(set as Parameters<typeof createShortcutsSlice>[0]),
             ...createSearchProvidersSlice(set as Parameters<typeof createSearchProvidersSlice>[0]),
+            ...createClipperSlice(set as Parameters<typeof createClipperSlice>[0]),
             _hasHydrated: false,
         }),
         {
@@ -212,6 +223,13 @@ export const useSettings = create<SettingsState>()(
                         useSettings.setState({ customActions: normalizedCustomActions })
                     }
 
+                    const normalizedClipper = normalizeClipperSettings(
+                        state.clipper as Partial<ClipperSettings> | undefined,
+                    )
+                    if (JSON.stringify(state.clipper ?? null) !== JSON.stringify(normalizedClipper)) {
+                        useSettings.setState({ clipper: normalizedClipper })
+                    }
+
                     const storedDesktop = state.desktop as Partial<DesktopSettings> | undefined
                     const mergedDesktop: DesktopSettings = {
                         wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
@@ -273,6 +291,8 @@ export type {
     CustomFonts,
     CustomAction,
     UIFontSize,
+    ClipperMode,
+    ClipperSettings,
 } from './types'
 
 export {

@@ -41,6 +41,46 @@
       "code": "sticky_note",
       "explain": "以便签模式打开笔记",
       "cmds": ["便签", "sticky", "小窗", "note"]
+    },
+    {
+      "code": "clip_text",
+      "explain": "剪藏到鹅的笔记",
+      "cmds": [
+        {
+          "type": "over",
+          "label": "剪藏到鹅的笔记",
+          "minLength": 1,
+          "maxLength": 10000
+        }
+      ]
+    },
+    {
+      "code": "clip_image",
+      "explain": "剪藏图片到鹅的笔记",
+      "cmds": [
+        {
+          "type": "img",
+          "label": "剪藏到鹅的笔记"
+        }
+      ]
+    },
+    {
+      "code": "clip_files",
+      "explain": "剪藏文件到鹅的笔记",
+      "cmds": [
+        {
+          "type": "files",
+          "fileType": "file",
+          "label": "剪藏附件到鹅的笔记",
+          "extensions": ["pdf", "md", "txt", "png", "jpg", "jpeg", "webp", "gif", "mp3", "mp4"],
+          "maxLength": 20
+        }
+      ]
+    },
+    {
+      "code": "clip_quick",
+      "explain": "快速记录到收件箱",
+      "cmds": ["剪藏", "clip", "收件箱", "inbox"]
     }
   ],
   "tools": {
