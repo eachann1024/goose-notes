@@ -142,6 +142,7 @@ declare global {
   const clearBlockSourceMap: typeof import('./lib/local-block-diff').clearBlockSourceMap
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clonePageContent: typeof import('./lib/blocknote-content/index').clonePageContent
+  const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const commitAiWritePlan: typeof import('./lib/ai-write/index').commitAiWritePlan
