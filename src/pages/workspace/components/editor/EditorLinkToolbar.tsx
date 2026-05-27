@@ -17,12 +17,24 @@ export function EditorLinkToolbar({
   const [editing, setEditing] = useState(false);
   const [editUrl, setEditUrl] = useState(url);
   const [editText, setEditText] = useState(text);
+  const [visible, setVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setEditUrl(url);
     setEditText(text);
   }, [url, text]);
+
+  // hover 显示链接工具栏时延迟出现，避免鼠标划过链接立即弹出
+  useEffect(() => {
+    if (editing) {
+      setVisible(true);
+      return;
+    }
+    setVisible(false);
+    const timer = window.setTimeout(() => setVisible(true), 450);
+    return () => window.clearTimeout(timer);
+  }, [editing, url, range.from]);
 
   useEffect(() => {
     if (editing) {
@@ -63,20 +75,24 @@ export function EditorLinkToolbar({
   if (editing) {
     return (
       <div
-        className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
-        onMouseDown={(e) => e.preventDefault()}
+        className="flex w-[80vw] max-w-[720px] items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+        onMouseDown={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest("input, textarea")) return;
+          e.preventDefault();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
         }}
       >
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <Input
             ref={inputRef}
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             placeholder="链接文字"
-            className="h-7 w-52 text-xs"
+            className="h-7 w-full rounded-md text-xs"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -93,7 +109,7 @@ export function EditorLinkToolbar({
             value={editUrl}
             onChange={(e) => setEditUrl(e.target.value)}
             placeholder="https://..."
-            className="h-7 w-52 text-xs"
+            className="h-7 w-full rounded-md text-xs"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -125,6 +141,10 @@ export function EditorLinkToolbar({
         </div>
       </div>
     );
+  }
+
+  if (!visible) {
+    return null;
   }
 
   return (

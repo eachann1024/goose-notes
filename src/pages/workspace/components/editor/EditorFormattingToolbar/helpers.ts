@@ -108,7 +108,37 @@ export function shouldRenderFormattingToolbar(
 
   if (selection.empty) return false;
   if (doc.textBetween(selection.from, selection.to).length === 0) return false;
+  // 表格内选区暂不暴露——BlockNote FormattingToolbarController 的 store 和
+  // position 选择子在 cell 选择下无法稳定再开（pointerup 链路被 prosemirror-tables
+  // 截获，setState 后 useEditorState 也不会重新计算 position）。
+  // 走自有 Popover 方案的代价较大，目前保留原行为：表格内编辑直接走右键菜单。
   if (selectionTouchesTable(selection)) return false;
 
   return true;
+}
+
+/**
+ * 选区是否完全落在同一个表格单元格内（保留 helper 供未来扩展）。
+ */
+export function isSelectionInsideSingleCell(selection: any): boolean {
+  const $from = selection.$from;
+  const $to = selection.$to;
+  if (!$from || !$to) return false;
+  const fromCell = findAncestorOfRole($from, "cell");
+  const toCell = findAncestorOfRole($to, "cell");
+  if (!fromCell || !toCell) return false;
+  return fromCell.depth === toCell.depth && fromCell.pos === toCell.pos;
+}
+
+function findAncestorOfRole(
+  $pos: any,
+  role: "cell" | "row" | "table",
+): { depth: number; pos: number } | null {
+  for (let d = $pos.depth; d > 0; d--) {
+    const node = $pos.node(d);
+    if (node?.type?.spec?.tableRole === role) {
+      return { depth: d, pos: $pos.before(d) };
+    }
+  }
+  return null;
 }

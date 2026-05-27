@@ -23,6 +23,8 @@ import {
 } from "./helpers";
 import type { BindTooltip } from "./ToolbarTooltip";
 import { AiButton } from "./groups/AiButton";
+import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";
+import { toast } from "sonner";
 import { MarkGroup } from "./groups/MarkGroup";
 import { InlineGroup } from "./groups/InlineGroup";
 import { LinkButton } from "./groups/LinkButton";
@@ -149,6 +151,22 @@ export function EditorFormattingToolbar() {
     try {
       const { selection } = editor.prosemirrorState;
       if (selection.empty) return;
+
+      // BlockNote AI 菜单只支持自定义 OpenAI/Claude provider。提前校验，避免
+      // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
+      const aiSettings = useSettings.getState().ai;
+      const avail = getAIAvailability(aiSettings);
+      if (!avail.ok) {
+        toast.error(avail.reason);
+        return;
+      }
+      if (avail.provider === "utools") {
+        toast.error(
+          "uTools 内置模型暂不支持编辑器内 AI 菜单，请在 设置 → AI 助手 中切换到自定义 OpenAI 或 Claude provider。",
+        );
+        return;
+      }
+
       const saved = { from: selection.from, to: selection.to };
       savedSelectionRef.current = saved;
       setFakeSelection(editor, saved);
