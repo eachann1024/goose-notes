@@ -51,7 +51,6 @@ export function SidebarMainTree({
   const activePageId = usePages((s) => s.activePageId);
   const reorderPages = usePages((s) => s.reorderPages);
   const getChildren = usePages((s) => s.getChildren);
-  const setActivePage = usePages((s) => s.setActivePage);
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
 
@@ -297,8 +296,9 @@ export function SidebarMainTree({
             useTabs.getState().openTab(last);
           } else {
             if (activePageId === last) return;
+            // openInCurrentTab 内部已经通过 scheduleSetActivePage 串行触发 setActivePage，
+            // 这里不要再直接调用一次，否则会绕过串行锁产生竞态（点击偶尔无响应）。
             useTabs.getState().openInCurrentTab(last);
-            setActivePage(last);
           }
         }}
         onPrimaryAction={(item) => {
@@ -314,9 +314,9 @@ export function SidebarMainTree({
             }
             return;
           }
+          if (activePageId === id) return;
           window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
           useTabs.getState().openInCurrentTab(id);
-          setActivePage(id);
         }}
         onDrop={handleDrop}
         renderItem={renderItem}
