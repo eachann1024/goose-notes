@@ -232,6 +232,7 @@ declare global {
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
+  const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut
   const memo: typeof import('react').memo
@@ -248,6 +249,7 @@ declare global {
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
   const parseFrontmatterTags: typeof import('./lib/markdown-raw-guard').parseFrontmatterTags
   const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
+  const parseLocalMarkdownContent: typeof import('./lib/local-folder-scanner').parseLocalMarkdownContent
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const peekFrontmatterForPath: typeof import('./lib/local-frontmatter-store').peekFrontmatterForPath
@@ -382,6 +384,9 @@ declare global {
   // @ts-ignore
   export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
+  // @ts-ignore
+  export type { ParsedLocalMarkdown } from './lib/local-folder-scanner'
+  import('./lib/local-folder-scanner')
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')

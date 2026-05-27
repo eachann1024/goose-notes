@@ -437,16 +437,39 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       }, 0);
     };
 
+    // 文件被外部修改后由 store 派发：把磁盘最新内容刷进当前编辑器。
+    const handleReloadActiveEditor = (event: Event) => {
+      const detail = (event as CustomEvent<{ pageId?: string }>).detail;
+      const state = usePages.getState();
+      const targetId = detail?.pageId ?? state.activePageId;
+      if (!targetId || targetId !== state.activePageId) return;
+      if (targetId !== pageIdForUpdateRef.current) return;
+      const p = state.pages[targetId];
+      if (!p) return;
+      const nextContent = normalizePageContent(p.content);
+      syncedContentSignatureRef.current = getContentSignature(nextContent);
+      debouncedUpdate.cancel();
+      editor.replaceBlocks(editor.document, nextContent as any);
+    };
+
     window.addEventListener("goose-note:flush-editor", handleFlush);
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
     window.addEventListener("goose-note:plugin-enter", handlePluginEnter);
+    window.addEventListener(
+      "goose-note:reload-active-editor",
+      handleReloadActiveEditor,
+    );
 
     return () => {
       window.removeEventListener("goose-note:flush-editor", handleFlush);
       window.removeEventListener("goose-note:focus-editor-start", handleFocusStart);
       window.removeEventListener("goose-note:plugin-enter", handlePluginEnter);
+      window.removeEventListener(
+        "goose-note:reload-active-editor",
+        handleReloadActiveEditor,
+      );
     };
-  }, [commitEditorContent, editor]);
+  }, [commitEditorContent, debouncedUpdate, editor]);
 
   useImperativeHandle(ref, () => ({
     editor,

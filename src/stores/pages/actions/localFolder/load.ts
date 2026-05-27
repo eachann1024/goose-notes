@@ -1,8 +1,83 @@
 import type { Page } from "@/types";
 import { useNotebooks } from "../../../useNotebooks";
-import { scanLocalFolderPages } from "@/lib/local-folder-scanner";
+import {
+  scanLocalFolderPages,
+  parseLocalMarkdownContent,
+  localFileTitleFromPath,
+} from "@/lib/local-folder-scanner";
 import { localPageMetadataCache } from "../../persistence";
 import type { StoreSet, StoreGet } from "../hydrate";
+
+// 外部进程修改了文件后，把磁盘内容重新读入 store（不触发脏标记 / 自动保存）。
+// 若该文件有未保存的本地编辑（dirty）则跳过，避免覆盖用户输入。
+export const reloadLocalPageFromDiskAction = async (
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+): Promise<void> => {
+  if (typeof window === "undefined" || !window.gooseFs) return;
+
+  const page = get().pages[pageId];
+  if (!page || page.isFolder || !page.localFilePath) return;
+  if (get().dirtyLocalPageIds[pageId]) return;
+
+  const fs = window.gooseFs;
+  const filePath = page.localFilePath;
+
+  let markdown: string | null = null;
+  let readError: string | undefined;
+  try {
+    if (fs.readFileStatAsync) {
+      const result = await fs.readFileStatAsync(filePath);
+      markdown = result.ok ? result.content ?? "" : null;
+      readError = result.error || undefined;
+    } else if (fs.readFileStat) {
+      const result = fs.readFileStat(filePath);
+      markdown = result.ok ? result.content ?? "" : null;
+      readError = result.error || undefined;
+    } else if (fs.readFileAsync) {
+      markdown = await fs.readFileAsync(filePath);
+    } else {
+      markdown = fs.readFile(filePath);
+    }
+  } catch (error) {
+    console.error("[local-folder] reload read failed", error);
+    return;
+  }
+
+  const parsed = parseLocalMarkdownContent(
+    markdown,
+    localFileTitleFromPath(filePath),
+    readError,
+  );
+
+  set((state) => {
+    const current = state.pages[pageId];
+    if (!current) return state;
+    return {
+      pages: {
+        ...state.pages,
+        [pageId]: {
+          ...current,
+          content: parsed.content,
+          localFrontmatter: parsed.frontmatter,
+          localReadState: parsed.readState,
+          localReadError: parsed.readError,
+          updatedAt: Date.now(),
+        },
+      },
+    };
+  });
+
+  // 当前正在编辑的文件被外部修改 → 通知编辑器重载内容。
+  if (get().activePageId === pageId) {
+    window.dispatchEvent(
+      new CustomEvent("goose-note:reload-active-editor", {
+        detail: { pageId },
+      }),
+    );
+  }
+};
 
 export const loadLocalFolderPagesAction = async (
   set: StoreSet,
@@ -166,5 +241,12 @@ export const loadLocalFolderPagesAction = async (
       status: "ready",
       finishedAt: Date.now(),
     });
+    // 该笔记本页面已就绪：清理指向已不存在文件的持久化标签。
+    try {
+      const { useTabs } = await import("../../../useTabs");
+      useTabs.getState().reconcileTabs();
+    } catch {
+      // 忽略
+    }
   }
 };

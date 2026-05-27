@@ -100,6 +100,7 @@ export interface PagesState {
     basePath: string,
     options?: { showWelcome?: boolean },
   ) => Promise<void>;
+  reloadLocalPageFromDisk: (pageId: string) => Promise<void>;
   saveLocalPageContent: (
     pageId: string,
     content: JSONContent,

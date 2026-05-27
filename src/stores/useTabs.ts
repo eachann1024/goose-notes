@@ -6,6 +6,8 @@ import { useNotebooks } from "./useNotebooks";
 export interface TabItem {
   id: string;
   pageId: string;
+  pinned?: boolean;
+  workspaceId?: string;
 }
 
 interface TabsState {
@@ -23,6 +25,7 @@ interface TabsState {
   closeTabsToLeft: (tabId: string) => void;
   closeTabsToRight: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
+  togglePinTab: (tabId: string) => void;
   goBackTabHistory: () => void;
   goForwardTabHistory: () => void;
   canGoBackTabHistory: () => boolean;
@@ -30,10 +33,79 @@ interface TabsState {
   reorderTabs: (from: number, to: number) => void;
   removeDeletedPage: (pageId: string) => void;
   reopenLastClosedTab: () => void;
+  reconcileTabs: () => void;
 }
 
 const createTabId = (pageId: string) =>
   `tab-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${pageId.slice(0, 6)}`;
+
+const TABS_PERSIST_KEY = "goose-note:open-tabs:v1";
+
+const getWorkspaceIdForPage = (pageId: string): string | undefined =>
+  usePages.getState().getPage(pageId)?.workspaceId;
+
+// 固定标签恒排在普通标签之前，组内保持相对顺序（稳定分区）。
+const applyPinnedOrder = (tabs: TabItem[]): TabItem[] => {
+  const pinned = tabs.filter((t) => t.pinned);
+  const rest = tabs.filter((t) => !t.pinned);
+  return [...pinned, ...rest];
+};
+
+// 提交当前编辑器内容（切换/关闭标签前调用），确保未防抖落盘的编辑不丢。
+const commitActiveEditor = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("goose-note:flush-editor", { detail: { immediate: true } }),
+  );
+};
+
+interface PersistedTabs {
+  openTabs: TabItem[];
+  activeTabId: string | null;
+  recentlyClosedPageIds: string[];
+}
+
+const loadPersistedTabs = (): PersistedTabs | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(TABS_PERSIST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedTabs>;
+    if (!Array.isArray(parsed.openTabs)) return null;
+    return {
+      openTabs: parsed.openTabs.filter(
+        (t) => t && typeof t.id === "string" && typeof t.pageId === "string",
+      ),
+      activeTabId:
+        typeof parsed.activeTabId === "string" ? parsed.activeTabId : null,
+      recentlyClosedPageIds: Array.isArray(parsed.recentlyClosedPageIds)
+        ? parsed.recentlyClosedPageIds.filter((id) => typeof id === "string")
+        : [],
+    };
+  } catch {
+    return null;
+  }
+};
+
+let persistScheduled = false;
+const persistTabs = (state: TabsState) => {
+  if (typeof window === "undefined") return;
+  if (persistScheduled) return;
+  persistScheduled = true;
+  queueMicrotask(() => {
+    persistScheduled = false;
+    try {
+      const payload: PersistedTabs = {
+        openTabs: state.openTabs,
+        activeTabId: state.activeTabId,
+        recentlyClosedPageIds: state.recentlyClosedPageIds.slice(0, 10),
+      };
+      window.localStorage.setItem(TABS_PERSIST_KEY, JSON.stringify(payload));
+    } catch {
+      // 忽略存储异常（隐私模式 / 配额）
+    }
+  });
+};
 
 let setActivePageChain: Promise<void> = Promise.resolve();
 
@@ -89,13 +161,15 @@ export const useTabs = create<TabsState>()((set, get) => {
     return openTabs.some((tab) => tab.id === tabId) ? tabId : null;
   };
 
+  const persisted = loadPersistedTabs();
+
   return {
-    openTabs: [],
-    activeTabId: null,
+    openTabs: persisted?.openTabs ?? [],
+    activeTabId: persisted?.activeTabId ?? null,
     tabHistory: [],
     tabHistoryIndex: -1,
     isHistoryNavigating: false,
-    recentlyClosedPageIds: [],
+    recentlyClosedPageIds: persisted?.recentlyClosedPageIds ?? [],
 
     syncNotebookForPage: (pageId: string | null) => {
       if (!pageId) return;
@@ -115,11 +189,13 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
+      commitActiveEditor();
       const newTab: TabItem = {
         id: createTabId(pageId),
         pageId,
+        workspaceId: getWorkspaceIdForPage(pageId),
       };
-      const nextOpenTabs = [...openTabs, newTab];
+      const nextOpenTabs = applyPinnedOrder([...openTabs, newTab]);
       set({
         openTabs: nextOpenTabs,
         activeTabId: newTab.id,
@@ -143,10 +219,12 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
+      commitActiveEditor();
       const nextTabs = [...openTabs];
       nextTabs[activeIndex] = {
         ...nextTabs[activeIndex],
         pageId,
+        workspaceId: getWorkspaceIdForPage(pageId),
       };
       set({ openTabs: nextTabs });
       trackEvent("tab_reused_for_navigation", {
@@ -166,6 +244,9 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (index === -1) return;
 
       const closedPageId = openTabs[index].pageId;
+      // 关闭前确保该页的编辑已落盘（本地文件夹页面采用自动保存队列）。
+      if (tabId === activeTabId) commitActiveEditor();
+      void usePages.getState().flushPendingLocalSaveByPageId(closedPageId);
       const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
       set({ recentlyClosedPageIds: nextClosed });
 
@@ -199,7 +280,11 @@ export const useTabs = create<TabsState>()((set, get) => {
       const currentTab = openTabs.find((tab) => tab.id === tabId);
       if (!currentTab) return;
 
-      const nextTabs = [currentTab];
+      // 固定标签不被「关闭其他」关掉。
+      const nextTabs = applyPinnedOrder([
+        ...openTabs.filter((tab) => tab.pinned && tab.id !== tabId),
+        currentTab,
+      ]);
       const historyState = syncHistoryWithOpenTabs(nextTabs);
       set({
         openTabs: nextTabs,
@@ -215,7 +300,12 @@ export const useTabs = create<TabsState>()((set, get) => {
       const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
       if (currentIndex <= 0) return;
 
-      const nextTabs = openTabs.slice(currentIndex);
+      // 保留固定标签 + 当前标签及其右侧。
+      const keep = openTabs.slice(currentIndex);
+      const pinnedLeft = openTabs
+        .slice(0, currentIndex)
+        .filter((tab) => tab.pinned);
+      const nextTabs = applyPinnedOrder([...pinnedLeft, ...keep]);
       const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
         ? activeTabId
         : tabId;
@@ -236,7 +326,12 @@ export const useTabs = create<TabsState>()((set, get) => {
       const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
       if (currentIndex === -1 || currentIndex >= openTabs.length - 1) return;
 
-      const nextTabs = openTabs.slice(0, currentIndex + 1);
+      // 保留固定标签 + 当前标签及其左侧。
+      const keep = openTabs.slice(0, currentIndex + 1);
+      const pinnedRight = openTabs
+        .slice(currentIndex + 1)
+        .filter((tab) => tab.pinned);
+      const nextTabs = applyPinnedOrder([...keep, ...pinnedRight]);
       const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
         ? activeTabId
         : tabId;
@@ -253,9 +348,10 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     setActiveTab: (tabId: string) => {
-      const { openTabs } = get();
+      const { openTabs, activeTabId } = get();
       const tab = openTabs.find((item) => item.id === tabId);
       if (!tab) return;
+      if (tab.id !== activeTabId) commitActiveEditor();
 
       set({ activeTabId: tab.id });
       pushTabHistory(tab.id);
@@ -335,7 +431,55 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextTabs = [...openTabs];
       const [moved] = nextTabs.splice(from, 1);
       nextTabs.splice(to, 0, moved);
+      // 固定标签恒在前，拖拽后重新归位以维持不变式。
+      set({ openTabs: applyPinnedOrder(nextTabs) });
+    },
+
+    togglePinTab: (tabId: string) => {
+      const { openTabs } = get();
+      const exists = openTabs.some((tab) => tab.id === tabId);
+      if (!exists) return;
+      const nextTabs = applyPinnedOrder(
+        openTabs.map((tab) =>
+          tab.id === tabId ? { ...tab, pinned: !tab.pinned } : tab,
+        ),
+      );
       set({ openTabs: nextTabs });
+    },
+
+    reconcileTabs: () => {
+      const { openTabs, activeTabId } = get();
+      const pagesState = usePages.getState();
+      const notebooks = useNotebooks.getState().notebooks;
+      const loadedWorkspaceIds = new Set<string>();
+      for (const page of Object.values(pagesState.pages)) {
+        loadedWorkspaceIds.add(page.workspaceId);
+      }
+
+      const nextTabs = openTabs.filter((tab) => {
+        if (pagesState.getPage(tab.pageId)) return true;
+        // 页面不在内存：若它属于尚未加载的本地文件夹笔记本，保留（稍后会加载）。
+        const ws = tab.workspaceId;
+        if (
+          ws &&
+          notebooks[ws]?.source === "local-folder" &&
+          !loadedWorkspaceIds.has(ws)
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+      if (nextTabs.length === openTabs.length) return;
+      const nextActiveValid = nextTabs.some((tab) => tab.id === activeTabId);
+      const historyState = syncHistoryWithOpenTabs(nextTabs);
+      set({
+        openTabs: nextTabs,
+        activeTabId: nextActiveValid
+          ? activeTabId
+          : (nextTabs[nextTabs.length - 1]?.id ?? null),
+        ...historyState,
+      });
     },
 
     reopenLastClosedTab: () => {
@@ -378,6 +522,7 @@ export const useTabs = create<TabsState>()((set, get) => {
             const replacementTab: TabItem = {
               id: createTabId(preferredPageId),
               pageId: preferredPageId,
+              workspaceId: getWorkspaceIdForPage(preferredPageId),
             };
             finalTabs = [
               ...nextTabs.slice(0, insertionIndex),
@@ -419,3 +564,8 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
   };
 });
+
+// 标签状态变化时持久化（跨会话恢复上次打开的标签）。
+if (typeof window !== "undefined") {
+  useTabs.subscribe((state) => persistTabs(state));
+}
