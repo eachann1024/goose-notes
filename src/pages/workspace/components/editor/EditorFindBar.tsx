@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
-  BlockNoteViewRaw as BlockNoteView,
   FilePanelController,
   FormattingToolbarController,
   LinkToolbarController,
@@ -10,6 +9,8 @@ import {
   useEditorState,
   useExtensionState,
 } from "@blocknote/react";
+import { BlockNoteView } from "@blocknote/mantine";
+import "@blocknote/mantine/style.css";
 import {
   clonePageContent,
   ensureFirstTitleHeading,
@@ -28,6 +29,8 @@ import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
 import { EditorSideMenu } from "./EditorSideMenu";
 import { ImageLightbox } from "./ImageLightbox";
 import { EditorLinkToolbar } from "./EditorLinkToolbar";
+import { FindInPageBar } from "./FindInPageBar";
+import { closeAllOverlays } from "@/lib/closeAllOverlays";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "./components/EditorFilePanel";
@@ -95,6 +98,19 @@ export function EditorFindBar({
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [findBarOpen, setFindBarOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenFind = () => {
+      // 先关其它弹层，再开查找栏。setTimeout 让 Escape 引发的 commit 先跑完，
+      // 避免被同步的 close 路径反吃掉。
+      closeAllOverlays();
+      setTimeout(() => setFindBarOpen(true), 0);
+    };
+    window.addEventListener("goose-note:editor-find-open", handleOpenFind);
+    return () =>
+      window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
+  }, []);
 
   useEffect(() => {
     const handleOpen = () => {
@@ -278,6 +294,11 @@ export function EditorFindBar({
         </div>
       )}
       <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
+      <FindInPageBar
+        editor={editor}
+        open={findBarOpen}
+        onClose={() => setFindBarOpen(false)}
+      />
     </EditorContextMenu>
   );
 }

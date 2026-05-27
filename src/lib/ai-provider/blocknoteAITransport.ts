@@ -3,13 +3,8 @@
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import {
-  streamText,
-  convertToModelMessages,
-  type ChatTransport,
-  type UIMessage,
-  type UIMessageChunk,
-} from "ai";
+import { ClientSideTransport } from "@blocknote/xl-ai";
+import type { ChatTransport, UIMessage } from "ai";
 import type { AISettingsLike } from "./types";
 import { getAIAvailability } from "./modelCatalog";
 
@@ -51,7 +46,8 @@ export interface CreateGooseAITransportOptions {
   getModelId: () => string;
 }
 
-// 工厂函数：避开 TypeScript erasableSyntaxOnly 对 class parameter property 的限制
+// 工厂函数：xl-ai 需要 LLM 返回结构化 tool calls（不是纯文本），因此必须用
+// xl-ai 提供的 ClientSideTransport — 它会带上 tools + toolChoice:"required"。
 export function createGooseAITransport(
   options: CreateGooseAITransportOptions,
 ): ChatTransport<UIMessage> {
@@ -59,15 +55,8 @@ export function createGooseAITransport(
     const settings = options.getSettings();
     const modelId = options.getModelId();
     const model = buildModel(settings, modelId);
-    // convertToModelMessages 在 AI SDK v6 是异步的
-    const modelMessages = await convertToModelMessages(params.messages);
-
-    const result = streamText({
-      model,
-      messages: modelMessages,
-      abortSignal: params.abortSignal,
-    });
-    return result.toUIMessageStream() as unknown as ReadableStream<UIMessageChunk>;
+    const inner = new ClientSideTransport({ model });
+    return inner.sendMessages(params);
   };
 
   const reconnectToStream: ChatTransport<UIMessage>["reconnectToStream"] = async () => null;

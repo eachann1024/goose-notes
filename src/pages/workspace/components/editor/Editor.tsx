@@ -3,6 +3,7 @@ import { EditorState } from "@tiptap/pm/state";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
+import { zh as aiZh } from "@blocknote/xl-ai/locales";
 import "@blocknote/xl-ai/style.css";
 import { createGooseAITransport } from "@/lib/ai-provider/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
@@ -19,9 +20,11 @@ import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
 import { gooseCalloutKeyboardExtension } from "./calloutKeyboardExtension";
 import { gooseQuoteInputRuleExtension } from "./quoteInputRule";
+import { gooseMarkdownInputRulesExtension } from "./markdownInputRules";
 import { gooseFakeSelectionExtension } from "./fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "./arrowInputRule";
 import { gooseInlineCodeEscapeExtension } from "./inlineCodeEscapeExtension";
+import { gooseFindInPageExtension } from "./findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText } from "./EditorFindBar";
 import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
@@ -74,9 +77,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseCodeBlockKeyboardExtension,
         gooseCalloutKeyboardExtension,
         gooseQuoteInputRuleExtension,
+        gooseMarkdownInputRulesExtension,
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseInlineCodeEscapeExtension,
+        gooseFindInPageExtension,
         AIExtension({
           transport: createGooseAITransport({
             getSettings: () => useSettings.getState().ai,
@@ -91,6 +96,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           ...zh.placeholders,
           default: "输入 / 或 、来展开菜单...",
         },
+        ai: aiZh,
       },
       domAttributes: {
         editor: {
@@ -237,9 +243,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
       // 0. 选区在 callout / quote 内，且粘贴含多行 → 以 hardBreak 软换行注入，
       //    避免默认 Markdown 解析把多行拆成多个独立 paragraph 块溢出容器
+      // 同样地：在「空列表项」中粘贴时，默认 paste 会把外部 <p> 当成新段落块
+      // 替换掉空的列表块，导致刚打出的 `- ` bullet 被挤掉。这里走同一条软换行路径，
+      // 把粘贴内容作为内联文本注入，保留列表块本身。
       const pmState = editor.prosemirrorState;
       const $from = pmState.selection.$from;
       let inSoftWrapContainer = false;
+      let inEmptyListItem = false;
       for (let d = $from.depth; d >= 1; d--) {
         const node = $from.node(d);
         if (node.type.name === "blockContainer") {
@@ -247,11 +257,23 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           const name = contentNode?.type.name;
           if (name === "callout" || name === "quote") {
             inSoftWrapContainer = true;
+          } else if (
+            contentNode &&
+            (name === "bulletListItem" ||
+              name === "numberedListItem" ||
+              name === "checkListItem" ||
+              name === "toggleListItem") &&
+            contentNode.content.size === 0
+          ) {
+            inEmptyListItem = true;
           }
           break;
         }
       }
-      if (inSoftWrapContainer && plainText.includes("\n")) {
+      if (
+        (inSoftWrapContainer && plainText.includes("\n")) ||
+        inEmptyListItem
+      ) {
         event.preventDefault();
         event.stopPropagation();
         const schema = pmState.schema;

@@ -51,7 +51,7 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
 
   return (
     <div
-      className="absolute right-4 top-3 z-30 flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur"
+      className="fixed right-2 top-2 z-[20500] flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur"
       onMouseDown={(event) => event.stopPropagation()}
     >
       <LucideIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

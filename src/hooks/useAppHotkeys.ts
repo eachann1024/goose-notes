@@ -4,6 +4,7 @@ import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
+import { closeAllOverlays } from "@/lib/closeAllOverlays";
 
 export function useAppHotkeys() {
   const {
@@ -63,12 +64,14 @@ export function useAppHotkeys() {
 
       if (isOpenSettingsHotkey) {
         event.preventDefault();
+        closeAllOverlays();
         window.dispatchEvent(new CustomEvent("goose-note:open-settings"));
         return;
       }
 
       if (isOpenSearchHotkey) {
         event.preventDefault();
+        closeAllOverlays();
         window.dispatchEvent(new CustomEvent("goose-note:open-search"));
         return;
       }

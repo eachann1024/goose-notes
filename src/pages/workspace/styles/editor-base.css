@@ -21,6 +21,28 @@
   color: inherit;
 }
 
+.goose-find-match {
+  background-color: rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
+}
+
+.goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
+  color: inherit;
+}
+
+.dark .goose-find-match {
+  background-color: rgba(250, 204, 21, 0.32);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45);
+}
+
+.dark .goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.85);
+}
+
 .workspace-editor-surface .bn-container,
 .workspace-editor-surface .bn-root {
   flex: 1 1 100% !important;
