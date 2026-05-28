@@ -150,9 +150,9 @@ export const saveDirtyLocalPageAction = async (
   get: StoreGet,
   pageId: string,
 ): Promise<boolean> => {
-  if (!get().dirtyLocalPageIds[pageId]) return false;
   const page = get().pages[pageId];
   if (!page) return false;
+  if (page.localReadState === "error") return false;
 
   try {
     // 先让编辑器把最新内容刷进 store。
@@ -163,6 +163,8 @@ export const saveDirtyLocalPageAction = async (
     );
 
     // 若首块 H1 文字被改动，先把本地文件 rename，再写新路径。
+    // 注：内容已由自动保存落盘；显式保存的主要价值是应用「标题→文件名」重命名，
+    // 并确保最新内容一定落盘。
     const { pageId: effectivePageId, collision } =
       await maybeRenameLocalFileForTitle(set, get, pageId);
     if (collision) {

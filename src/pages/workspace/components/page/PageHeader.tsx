@@ -1,8 +1,173 @@
 import type { Page } from "@/types";
+import type { TabItem } from "@/stores/useTabs";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/lib/page-title";
+
+interface SortableTabItemProps {
+  tab: TabItem;
+  tabPage: Page;
+  isActive: boolean;
+  isDirty: boolean;
+  hasLeftTabs: boolean;
+  hasRightTabs: boolean;
+  hasOtherTabs: boolean;
+  closeTabShortcutLabel: string;
+  onActivate: () => void;
+  onClose: () => void;
+  onCloseOthers: () => void;
+  onCloseLeft: () => void;
+  onCloseRight: () => void;
+  onTogglePin: () => void;
+}
+
+function SortableTabItem({
+  tab,
+  tabPage,
+  isActive,
+  isDirty,
+  hasLeftTabs,
+  hasRightTabs,
+  hasOtherTabs,
+  closeTabShortcutLabel,
+  onActivate,
+  onClose,
+  onCloseOthers,
+  onCloseLeft,
+  onCloseRight,
+  onTogglePin,
+}: SortableTabItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: tab.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          {...listeners}
+          onClick={onActivate}
+          onAuxClick={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onActivate();
+            }
+          }}
+          className={cn(
+            "group flex h-8 max-w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
+            isDragging && "opacity-60",
+            isActive
+              ? "bg-[var(--goose-interactive-selected)] text-foreground"
+              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+          )}
+        >
+          {tab.pinned && (
+            <LucideIcons.Pin
+              aria-label="已固定"
+              className="h-3 w-3 shrink-0 text-primary"
+            />
+          )}
+          {isDirty && (
+            <span
+              aria-label="未保存"
+              className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+            />
+          )}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate",
+              isDirty && "font-medium italic",
+            )}
+          >
+            {getPageTitle(tabPage)}
+          </span>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors",
+                    isActive
+                      ? "text-foreground/70 hover:bg-white hover:text-foreground"
+                      : "text-muted-foreground/70 hover:bg-white hover:text-foreground",
+                  )}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onClose();
+                  }}
+                  aria-label="关闭标签页"
+                >
+                  <LucideIcons.X className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>关闭标签页</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {closeTabShortcutLabel}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-[200px]">
+        <ContextMenuItem onSelect={onTogglePin}>
+          {tab.pinned ? "取消固定" : "固定标签"}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onClose}>
+          关闭
+          <span className="ml-auto text-xs text-muted-foreground">
+            {closeTabShortcutLabel}
+          </span>
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onCloseOthers} disabled={!hasOtherTabs}>
+          关闭其他标签页
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onCloseLeft} disabled={!hasLeftTabs}>
+          关闭左侧标签页
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onCloseRight} disabled={!hasRightTabs}>
+          关闭右侧标签页
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
 
 
 interface PageHeaderProps {
@@ -46,8 +211,25 @@ export function PageHeader({
     closeOtherTabs,
     closeTabsToLeft,
     closeTabsToRight,
+    reorderTabs,
+    togglePinTab,
   } = useTabs();
   const { closeTabShortcut } = useSettings();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+  const handleTabDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = openTabs.findIndex((tab) => tab.id === active.id);
+    const to = openTabs.findIndex((tab) => tab.id === over.id);
+    if (from === -1 || to === -1) return;
+    reorderTabs(from, to);
+  };
+  const visibleTabs = openTabs.filter((tab) => {
+    const tabPage = getPage(tab.pageId);
+    return tabPage && !tabPage.trashedAt;
+  });
   const [showSaved, setShowSaved] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
   const closeTabShortcutLabel = closeTabShortcut
@@ -126,122 +308,44 @@ export function PageHeader({
           className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onWheel={handleTabsWheel}
         >
-          {openTabs.map((tab, tabIndex) => {
-            const tabPage = getPage(tab.pageId);
-            if (!tabPage || tabPage.trashedAt) return null;
-            const isActive = activeTabId === tab.id;
-            const hasLeftTabs = tabIndex > 0;
-            const hasRightTabs = tabIndex < openTabs.length - 1;
-            const hasOtherTabs = openTabs.length > 1;
-
-            return (
-              <ContextMenu key={tab.id}>
-                <ContextMenuTrigger asChild>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleTabDragEnd}
+          >
+            <SortableContext
+              items={visibleTabs.map((tab) => tab.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {visibleTabs.map((tab) => {
+                const tabPage = getPage(tab.pageId);
+                if (!tabPage) return null;
+                const originalIndex = openTabs.findIndex((t) => t.id === tab.id);
+                return (
+                  <SortableTabItem
+                    key={tab.id}
+                    tab={tab}
+                    tabPage={tabPage}
+                    isActive={activeTabId === tab.id}
+                    isDirty={isTabDirty(tab.pageId)}
+                    hasLeftTabs={originalIndex > 0}
+                    hasRightTabs={originalIndex < openTabs.length - 1}
+                    hasOtherTabs={openTabs.length > 1}
+                    closeTabShortcutLabel={closeTabShortcutLabel}
+                    onActivate={() => {
                       onExitAiPage?.();
                       setActiveTab(tab.id);
                     }}
-                    onAuxClick={(e) => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        closeTab(tab.id);
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onExitAiPage?.();
-                        setActiveTab(tab.id);
-                      }
-                    }}
-                    className={cn(
-                      "group flex h-8 max-w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-[var(--goose-interactive-selected)] text-foreground"
-                        : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-                    )}
-                  >
-                    {isTabDirty(tab.pageId) && (
-                      <span
-                        aria-label="未保存"
-                        className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
-                      />
-                    )}
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1 truncate",
-                        isTabDirty(tab.pageId) && "font-medium italic",
-                      )}
-                    >
-                      {getPageTitle(tabPage)}
-                    </span>
-                    <TooltipProvider delayDuration={0}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors",
-                              isActive
-                                ? "text-foreground/70 hover:bg-white hover:text-foreground"
-                                : "text-muted-foreground/70 hover:bg-white hover:text-foreground",
-                            )}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              closeTab(tab.id);
-                            }}
-                            aria-label="关闭标签页"
-                          >
-                            <LucideIcons.X className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          <div className="flex items-center gap-2">
-                            <span>关闭标签页</span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {closeTabShortcutLabel}
-                            </span>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-[200px]">
-                  <ContextMenuItem onSelect={() => closeTab(tab.id)}>
-                    关闭
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {closeTabShortcutLabel}
-                    </span>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => closeOtherTabs(tab.id)}
-                    disabled={!hasOtherTabs}
-                  >
-                    关闭其他标签页
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => closeTabsToLeft(tab.id)}
-                    disabled={!hasLeftTabs}
-                  >
-                    关闭左侧标签页
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => closeTabsToRight(tab.id)}
-                    disabled={!hasRightTabs}
-                  >
-                    关闭右侧标签页
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            );
-          })}
+                    onClose={() => closeTab(tab.id)}
+                    onCloseOthers={() => closeOtherTabs(tab.id)}
+                    onCloseLeft={() => closeTabsToLeft(tab.id)}
+                    onCloseRight={() => closeTabsToRight(tab.id)}
+                    onTogglePin={() => togglePinTab(tab.id)}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
 
           {openTabs.length === 0 && (
             <span className="truncate text-sm text-foreground/80">

@@ -9,6 +9,7 @@ import {
   removePersistedPageSnapshots,
   shouldPersistLocalPageMetaUpdate,
 } from "./persistence";
+import { queueLocalPageSave } from "./folderSync";
 
 // Re-export flushEditorContent for external consumers
 export { flushEditorContent } from "./actions/flushEditor";
@@ -26,6 +27,7 @@ import {
 } from "./actions/pageCreate";
 import {
   loadLocalFolderPagesAction,
+  reloadLocalPageFromDiskAction,
   writePageContentAction,
   appendPageContentAction,
   replaceBlockRangeAction,
@@ -123,9 +125,12 @@ export const usePages = create<PagesState>()((set, get) => ({
           "local-folder" &&
         page.localReadState !== "error"
       ) {
-        // 本地文件夹采用手动保存（VSCode 风格）：编辑只标脏，不写盘；
-        // 用户按 Cmd/Ctrl+S 时由 saveDirtyLocalPage 显式落盘。
+        // 本地文件夹与普通笔记本一致：编辑即自动保存。先标脏（短暂显示"保存中"），
+        // 再入防抖队列落盘；写盘成功后由 saveLocalPageContent 清除脏标记。
+        // 标题→文件名的 rename 仍由显式 Cmd/Ctrl+S（saveDirtyLocalPage）处理，
+        // 避免输入标题过程中频繁重命名文件。
         set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true } }));
+        queueLocalPageSave(id, updates.content, get);
       }
 
       return {
@@ -334,6 +339,9 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   loadLocalFolderPages: (notebookId, basePath, options) =>
     loadLocalFolderPagesAction(set, get, notebookId, basePath, options),
+
+  reloadLocalPageFromDisk: (pageId) =>
+    reloadLocalPageFromDiskAction(set, get, pageId),
 
   saveLocalPageContent: (pageId, content) =>
     saveLocalPageContentAction(set, get, pageId, content),

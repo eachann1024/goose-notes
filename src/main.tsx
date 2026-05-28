@@ -312,13 +312,10 @@ const setupSaveGuards = () => {
         toast.error("此文件无法解析，已禁用保存", { duration: 1800 });
         return;
       }
-      if (!pagesState.isLocalPageDirty(activePageId)) {
-        toast("无需保存：没有未保存的更改", { duration: 1200 });
-        return;
-      }
+      // 内容已自动保存；显式保存会再确保落盘并应用「标题→文件名」重命名。
       void pagesState.saveDirtyLocalPage(activePageId).then((ok) => {
         if (ok) toast.success("已保存", { duration: 1200 });
-        else toast.error("保存失败", { duration: 2000 });
+        else toast("内容已是最新", { duration: 1000 });
       });
       return;
     }

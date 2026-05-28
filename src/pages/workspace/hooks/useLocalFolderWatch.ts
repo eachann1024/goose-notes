@@ -43,6 +43,24 @@ export function useLocalFolderWatch({
         if (!gooseFs) return;
         const filePath = `${dirPath}/${filename}`;
 
+        if (eventType === "change") {
+          // 外部进程修改了文件内容 → 重新读入对应页面（脏页会被 reload 内部跳过）。
+          // 自身写入已由 preload 的 recentWrites 抑制，不会走到这里。
+          const pages = usePages.getState().pages;
+          const target = Object.values(pages).find(
+            (p) =>
+              p.workspaceId === notebook.id &&
+              !p.isFolder &&
+              (p.localFilePath === filePath ||
+                p.localFilePath?.replace(/\\/g, "/") ===
+                  filePath.replace(/\\/g, "/")),
+          );
+          if (target) {
+            void usePages.getState().reloadLocalPageFromDisk(target.id);
+          }
+          return;
+        }
+
         if (eventType === "rename") {
           void (async () => {
             const exists = gooseFs.existsAsync

@@ -10,6 +10,16 @@ import {
 import type { StoreSet, StoreGet } from "../hydrate";
 import { clonePageContent } from "../pageCreate";
 
+// FNV-1a 32 位哈希（含长度），用于按内容给图片附件命名以实现去重。
+function hashBase64(data: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < data.length; i++) {
+    hash ^= data.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16) + data.length.toString(36);
+}
+
 function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent {
   const baseBlocks = normalizePageContent(base);
   const additionBlocks = normalizePageContent(addition);
@@ -169,13 +179,22 @@ export const saveLocalPageContentAction = async (
         );
         if (match) {
           const ext = match[2] === "jpeg" ? "jpg" : match[2];
-          const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.${ext}`;
+          // 按内容哈希命名以去重：相同图片只落盘一次，避免反复保存产生重复文件。
+          const base64Data = match[3];
+          const filename = `img_${hashBase64(base64Data)}.${ext}`;
           const imagePath = `${assetsDir}/${filename}`;
 
-          if (window.gooseFs?.writeFileAsync) {
-            writePromises.push(window.gooseFs.writeFileAsync(imagePath, match[3], "base64"));
-          } else {
-            window.gooseFs?.writeFile(imagePath, match[3]);
+          let alreadyExists = false;
+          try {
+            alreadyExists = window.gooseFs?.exists?.(imagePath) ?? false;
+          } catch {}
+
+          if (!alreadyExists) {
+            if (window.gooseFs?.writeFileAsync) {
+              writePromises.push(window.gooseFs.writeFileAsync(imagePath, base64Data, "base64"));
+            } else {
+              window.gooseFs?.writeFile(imagePath, base64Data);
+            }
           }
 
           node.attrs.src = `./assets/${filename}`;
@@ -232,7 +251,11 @@ export const saveLocalPageContentAction = async (
   }
 
   if (result) {
-    set({ lastSavedAt: Date.now() });
+    // 落盘成功即清除脏标记（自动保存与显式保存共用此路径）。
+    set((s) => ({
+      lastSavedAt: Date.now(),
+      dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
+    }));
   }
   return result;
 };

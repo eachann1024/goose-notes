@@ -152,6 +152,50 @@ function buildFolderPage(
   };
 }
 
+export interface ParsedLocalMarkdown {
+  content: JSONContent;
+  frontmatter?: string;
+  readState: "ready" | "error";
+  readError?: string;
+}
+
+// 把磁盘上的 markdown 解析成编辑器内容（供初次扫描和外部变更后重新读取复用）。
+export function parseLocalMarkdownContent(
+  markdown: string | null,
+  fallbackTitle: string,
+  readError?: string,
+): ParsedLocalMarkdown {
+  if (markdown === null) {
+    return {
+      content: ensureLocalFileTitle({ type: "doc", content: [] }, fallbackTitle),
+      readState: "error",
+      readError: readError || "Markdown 文件读取失败",
+    };
+  }
+
+  // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
+  // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
+  // 3) Notion 风格的「文件名 ↔ H1 绑定」：scanner 把首块 H1 文字覆盖为文件名
+  //    （没有 H1 就前置一个）。保存时若用户改了 H1 文字会触发本地文件 rename。
+  const { frontmatter, body } = extractFrontmatter(markdown);
+  const encodedBody = encodeUnsupportedMarkdownForEditor(body);
+  const imported = importFromMarkdown(encodedBody, fallbackTitle);
+  const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
+  const boundBlocks = ensureFilenameAsTitle(importedBlocks, fallbackTitle);
+
+  return {
+    content: boundBlocks as unknown as JSONContent,
+    frontmatter: frontmatter || undefined,
+    readState: imported.success ? "ready" : "error",
+    readError: imported.success ? undefined : imported.error || "Markdown 解析失败",
+  };
+}
+
+export function localFileTitleFromPath(filePath: string): string {
+  const name = filePath.replace(/^.*[\\/]/, "");
+  return normalizeLocalFileTitle(name);
+}
+
 function buildMarkdownPage(
   notebookId: string,
   basePath: string,
@@ -161,50 +205,25 @@ function buildMarkdownPage(
 ): Page {
   const fallbackTitle = normalizeLocalFileTitle(entry.name);
   const fileId = buildLocalPageId(notebookId, basePath, entry.path);
-  const markdownContent = readResult.content;
-
-  if (markdownContent === null) {
-    return {
-      id: fileId,
-      workspaceId: notebookId,
-      content: ensureLocalFileTitle({ type: "doc", content: [] }, fallbackTitle),
-      isFolder: false,
-      isLocked: false,
-      isFullWidth: false,
-      fontSize: "default",
-      fontFamily: "default",
-      localFilePath: entry.path,
-      localReadState: "error",
-      localReadError: readResult.error || "Markdown 文件读取失败",
-      createdAt: now,
-      updatedAt: now,
-    };
-  }
-
-  // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
-  // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
-  // 3) Notion 风格的「文件名 ↔ H1 绑定」：scanner 把首块 H1 文字覆盖为文件名
-  //    （没有 H1 就前置一个）。保存时若用户改了 H1 文字会触发本地文件 rename。
-  const { frontmatter, body } = extractFrontmatter(markdownContent);
-  const encodedBody = encodeUnsupportedMarkdownForEditor(body);
-  const imported = importFromMarkdown(encodedBody, fallbackTitle);
-  const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
-  const boundBlocks = ensureFilenameAsTitle(importedBlocks, fallbackTitle);
-  const jsonContent: JSONContent = boundBlocks as unknown as JSONContent;
+  const parsed = parseLocalMarkdownContent(
+    readResult.content,
+    fallbackTitle,
+    readResult.error,
+  );
 
   return {
     id: fileId,
     workspaceId: notebookId,
-    content: jsonContent,
+    content: parsed.content,
     isFolder: false,
     isLocked: false,
     isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     localFilePath: entry.path,
-    localFrontmatter: frontmatter || undefined,
-    localReadState: imported.success ? "ready" : "error",
-    localReadError: imported.success ? undefined : imported.error || "Markdown 解析失败",
+    localFrontmatter: parsed.frontmatter,
+    localReadState: parsed.readState,
+    localReadError: parsed.readError,
     createdAt: now,
     updatedAt: now,
   };

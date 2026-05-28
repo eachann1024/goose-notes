@@ -1,4 +1,7 @@
-export { loadLocalFolderPagesAction } from "./localFolder/load";
+export {
+  loadLocalFolderPagesAction,
+  reloadLocalPageFromDiskAction,
+} from "./localFolder/load";
 export {
   writePageContentAction,
   appendPageContentAction,

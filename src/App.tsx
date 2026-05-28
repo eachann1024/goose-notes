@@ -43,33 +43,23 @@ function App() {
     }
   }, [hydrated, onboardingCompleted]);
 
-  // 同步 tab 状态：旧数据迁移 & 清理已删除页面的 tab
+  // 同步 tab 状态：清理已删除页面的 tab（保留尚未加载的本地文件夹标签）
   useEffect(() => {
     if (!hydrated) return;
-    const { activePageId, pages } = usePages.getState();
-    const { openTabs, openTab } = useTabs.getState();
+    const tabsStore = useTabs.getState();
 
-    // 清理 openTabs 中已不存在 of 页面
-    const validTabs = openTabs.filter(
-      (tab) => pages[tab.pageId] && !pages[tab.pageId].trashedAt,
-    );
-    if (validTabs.length !== openTabs.length) {
-      useTabs.setState({ openTabs: validTabs });
-      if (
-        useTabs.getState().activeTabId &&
-        !validTabs.some((tab) => tab.id === useTabs.getState().activeTabId)
-      ) {
-        useTabs.setState({ activeTabId: validTabs[0]?.id ?? null });
-      }
-    }
+    // reconcileTabs 会保留属于「尚未加载的本地文件夹笔记本」的标签，
+    // 待该文件夹加载后再由 loadLocalFolderPages 末尾的 reconcile 清理。
+    tabsStore.reconcileTabs();
 
     // 仅在没有标签时，用当前页面初始化第一个标签
+    const { activePageId, pages } = usePages.getState();
     if (
       activePageId &&
       useTabs.getState().openTabs.length === 0 &&
       pages[activePageId]
     ) {
-      openTab(activePageId);
+      useTabs.getState().openTab(activePageId);
     }
   }, [hydrated, activePageId]);
 
