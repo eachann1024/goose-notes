@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { flushSync } from "react-dom";
 import { EditorState } from "@tiptap/pm/state";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -13,6 +14,19 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/lib/blocknote-content";
+
+const contentSigCache = new WeakMap<object, string>();
+function getCachedContentSignature(content: unknown): string {
+  if (content && typeof content === "object") {
+    const key = content as object;
+    const hit = contentSigCache.get(key);
+    if (hit) return hit;
+    const sig = getContentSignature(content);
+    contentSigCache.set(key, sig);
+    return sig;
+  }
+  return getContentSignature(content);
+}
 import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "@/pages/workspace/components/command/blocknoteSlashItems";
 import { gooseSelectAllExtension } from "./selectAllExtension";
 import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
@@ -59,12 +73,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const initialContentRef = useRef(normalizePageContent(page?.content));
   // 初次 mount 时给 syncedContentSignatureRef 设置基线，
   // 否则切走时 flush 会把"只读打开"误判成编辑、刷新 updatedAt。
   if (syncedContentSignatureRef.current === null) {
-    syncedContentSignatureRef.current = getContentSignature(initialContentRef.current);
+    syncedContentSignatureRef.current = getCachedContentSignature(initialContentRef.current);
   }
   const editor = useCreateBlockNote(
     {
@@ -164,7 +179,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const debouncedUpdate = useMemo(() => {
     return debounce(
       (id: string, content: BlockNoteContent) => {
-        syncedContentSignatureRef.current = getContentSignature(content);
+        syncedContentSignatureRef.current = getCachedContentSignature(content);
         updatePage(id, { content });
       },
       800,
@@ -180,27 +195,40 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     debouncedUpdate.cancel();
 
     const p = activePageId ? getPage(activePageId) : undefined;
-    const nextContent = normalizePageContent(p?.content);
-    const sig = getContentSignature(nextContent);
-
     pageIdForUpdateRef.current = p?.id ?? null;
-    syncedContentSignatureRef.current = sig;
 
-    editor.replaceBlocks(editor.document, nextContent as any);
+    // 立即翻 isSwitching=true 让骨架先 paint，再下一帧做重活，避免主线程冻结
+    // 用 flushSync 强制同步提交，否则 React 18 会把 true→false 合批掉
+    flushSync(() => setIsSwitching(true));
 
-    // Reset undo history so edits from the previous page don't leak
-    const view = editor.prosemirrorView;
-    if (view) {
-      const newState = EditorState.create({
-        doc: view.state.doc,
-        plugins: view.state.plugins,
-      });
-      view.updateState(newState);
-    }
+    const rafId = requestAnimationFrame(() => {
+      const nextContent = normalizePageContent(p?.content);
+      const nextSig = getCachedContentSignature(nextContent);
 
-    if (p && getContentSignature(p.content) !== sig) {
-      updatePage(p.id, { content: nextContent }, { silent: true });
-    }
+      syncedContentSignatureRef.current = nextSig;
+
+      editor.replaceBlocks(editor.document, nextContent as any);
+
+      // Reset undo history so edits from the previous page don't leak
+      const view = editor.prosemirrorView;
+      if (view) {
+        const newState = EditorState.create({
+          doc: view.state.doc,
+          plugins: view.state.plugins,
+        });
+        view.updateState(newState);
+      }
+
+      // normalize 没改写结构时不要回写，避免触发 getPage 选择器又跑一遍 useEffect
+      if (p && getCachedContentSignature(p.content) !== nextSig) {
+        updatePage(p.id, { content: nextContent }, { silent: true });
+      }
+
+      // 下一帧再隐藏骨架，确保 BlockNote 已绘制
+      requestAnimationFrame(() => setIsSwitching(false));
+    });
+
+    return () => cancelAnimationFrame(rafId);
   }, [activePageId, debouncedUpdate, editor, getPage, updatePage]);
 
   const getSlashItems = useCallback(
@@ -403,7 +431,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         clonePageContent(editor.document as BlockNoteContent),
       );
       debouncedUpdate.cancel();
-      const nextSig = getContentSignature(nextContent);
+      const nextSig = getCachedContentSignature(nextContent);
       if (nextSig === syncedContentSignatureRef.current) return;
       syncedContentSignatureRef.current = nextSig;
       updatePage(safePageId, { content: nextContent });
@@ -523,6 +551,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       debouncedUpdate={debouncedUpdate}
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
       searchProviders={searchProviders} utools={utools} customActions={customActions}
+      isSwitching={isSwitching}
     />
   );
 });

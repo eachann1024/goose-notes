@@ -75,6 +75,7 @@ type EditorFindBarProps = {
   searchProviders: any[];
   utools: { openSearchInUtools: boolean };
   customActions: any[];
+  isSwitching?: boolean;
 };
 
 export function EditorFindBar({
@@ -94,6 +95,7 @@ export function EditorFindBar({
   searchProviders,
   utools,
   customActions,
+  isSwitching,
 }: EditorFindBarProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
@@ -192,6 +194,17 @@ export function EditorFindBar({
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
     >
+      {isSwitching && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex flex-col gap-3 px-8 pt-10 animate-in fade-in duration-150"
+        >
+          <div className="h-8 w-2/3 rounded-md bg-foreground/[0.06] animate-pulse dark:bg-foreground/[0.08]" />
+          <div className="mt-4 h-4 w-11/12 rounded bg-foreground/[0.05] animate-pulse dark:bg-foreground/[0.07]" />
+          <div className="h-4 w-10/12 rounded bg-foreground/[0.05] animate-pulse dark:bg-foreground/[0.07]" />
+          <div className="h-4 w-9/12 rounded bg-foreground/[0.05] animate-pulse dark:bg-foreground/[0.07]" />
+        </div>
+      )}
       <BlockNoteView
         editor={editor}
         editable={editable}

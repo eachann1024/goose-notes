@@ -16,6 +16,7 @@ import { useSettings } from "@/stores/useSettings";
 
 const lowlight = createLowlight(all);
 const lowlightParser = createLowlightParser(lowlight);
+const loadedLanguagesSet = new Set(lowlight.listLanguages());
 
 const LANGUAGE_ALIASES: Record<string, string> = {
   docker: "dockerfile",
@@ -92,29 +93,16 @@ const codeBlockHighlightParser: Parser = (options) => {
   if (language === "mermaid") return mermaidParser(options);
 
   try {
-    const loadedLanguages = lowlight.listLanguages();
     const useLanguage =
-      !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguages.includes(language)
+      !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguagesSet.has(language)
         ? language
         : undefined;
 
-    const decos = lowlightParser({
+    return lowlightParser({
       ...options,
       language: useLanguage,
-    });
-
-    console.log("[CodeBlockHighlight] Parser parsing", {
-      inputLanguage: options.language,
-      normalizedLanguage: language,
-      useLanguage,
-      decosCount: Array.isArray(decos) ? decos.length : "promise",
-      textLength: options.content.length,
-      contentStr: JSON.stringify(options.content),
-    });
-
-    return decos as any;
-  } catch (err) {
-    console.error("[CodeBlockHighlight] Parser error", err);
+    }) as any;
+  } catch {
     return lowlightParser({ ...options, language: undefined }) as any;
   }
 };
@@ -127,10 +115,6 @@ const codeBlockHighlightExtension = createExtension({
       nodeTypes: ["codeBlock"],
       languageExtractor: (node) => {
         const lang = node.attrs.language || node.attrs.props?.language;
-        console.log("[CodeBlockHighlight] languageExtractor", {
-          nodeAttrs: node.attrs,
-          extracted: lang,
-        });
         return normalizeHighlightLanguage(lang);
       },
     }),

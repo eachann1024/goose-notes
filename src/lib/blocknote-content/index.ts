@@ -29,6 +29,13 @@ import { normalizePageContent } from "./legacyMigration";
 import type { LegacyPageContent } from "./legacyMigration";
 
 export function clonePageContent<T extends PageContent>(content: T): T {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(content) as T;
+    } catch {
+      // structuredClone 不支持的少数类型（含函数等）会抛错，落到 JSON 兜底
+    }
+  }
   return JSON.parse(JSON.stringify(content)) as T;
 }
 
