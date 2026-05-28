@@ -228,7 +228,7 @@ export function WorkspaceLayout({
                         >
                           <div
                             className={cn(
-                              page.icon ? "mb-3 mt-2" : "mt-1",
+                              page.icon ? "-mb-1 mt-2" : "mt-1",
                               isEditorFullWidth
                                 ? "max-w-full"
                                 : "w-full max-w-[720px] mx-auto",
@@ -237,8 +237,8 @@ export function WorkspaceLayout({
                             {!isLocalFolderPage && (
                               <div
                                 className={cn(
-                                  "group relative mb-2",
-                                  !page.icon && "min-h-[20px]",
+                                  "group relative",
+                                  !page.icon && "min-h-[20px] mb-2",
                                 )}
                               >
                                 <IconSelector
@@ -254,12 +254,9 @@ export function WorkspaceLayout({
                                     variant="ghost"
                                     size="icon"
                                     className={cn(
-                                      "flex h-auto w-auto p-0 transition-all duration-300",
+                                      "inline-flex h-auto w-auto p-0 items-center justify-start transition-all duration-300",
                                       page.icon
-                                        ? "items-start justify-start [&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]"
-                                        : "items-center justify-center",
-                                      page.icon
-                                        ? "opacity-100 scale-100"
+                                        ? "opacity-100 scale-100 [&_svg]:!size-[5.25rem] [&_svg]:stroke-[2.2]"
                                         : page.trashedAt || page.isLocked
                                           ? "opacity-0"
                                           : isNewPage
@@ -268,20 +265,18 @@ export function WorkspaceLayout({
                                     )}
                                   >
                                     {page.icon ? (
-                                      <div className="flex items-center justify-center h-24 w-24 text-8xl">
-                                        {(LucideIcons as any)[page.icon] ? (
-                                          (() => {
-                                            const Icon = (LucideIcons as any)[
-                                              page.icon
-                                            ];
-                                            return (
-                                              <Icon className="h-full w-full" />
-                                            );
-                                          })()
-                                        ) : (
-                                          <span>{page.icon}</span>
-                                        )}
-                                      </div>
+                                      (LucideIcons as any)[page.icon] ? (
+                                        (() => {
+                                          const Icon = (LucideIcons as any)[
+                                            page.icon
+                                          ];
+                                          return <Icon />;
+                                        })()
+                                      ) : (
+                                        <span className="text-[5.25rem] leading-none">
+                                          {page.icon}
+                                        </span>
+                                      )
                                     ) : (
                                       <div className="flex items-center gap-1 text-sm text-muted-foreground hover:bg-muted px-2 py-1 rounded-md">
                                         <LucideIcons.Smile className="h-4 w-4" />

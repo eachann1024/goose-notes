@@ -81,7 +81,7 @@ function TreeRowIcon({
       <button
         type="button"
         title="点击更换图标"
-        className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
+        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-muted-foreground/15 transition-colors cursor-pointer shrink-0 mr-0.5"
         draggable={false}
         {...stopBubble}
         onClick={(e) => {
@@ -155,14 +155,19 @@ export function renderItem({
       )}
       style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
     >
-      {arrow}
-      {iconNode}
+      {/* 整行作为 hit area：interactive div 绝对覆盖整个 row。
+          arrow / icon 各自的实际可点击子节点已有自己的 pointer-events 与 stopPropagation，
+          标题文字给 pointer-events-none 透传给底层 interactive；占位 arrow 已 pointer-events-none。 */}
       <div
         {...interactive}
-        className="flex min-w-0 flex-1 items-center self-stretch outline-none"
-      >
-        <span className="truncate flex-1 min-w-0">{title}</span>
-      </div>
+        aria-label={title}
+        className="absolute inset-0 rounded-[8px] outline-none"
+      />
+      {arrow}
+      {iconNode}
+      <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none">
+        {title}
+      </span>
     </div>
   );
 
@@ -183,13 +188,19 @@ interface RenderArrowArgs {
 export function renderItemArrow({ item, context }: RenderArrowArgs) {
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
   if (!item.isFolder || !hasChildren) {
-    return <span className="ml-1.5 w-5 h-5 shrink-0" aria-hidden="true" />;
+    // 占位区：不抢 hit area，让外层 row 的 interactive 覆盖层接管点击
+    return (
+      <span
+        className="ml-1.5 w-5 h-5 shrink-0 pointer-events-none"
+        aria-hidden="true"
+      />
+    );
   }
   const arrowProps = context.arrowProps as HTMLProps<HTMLSpanElement>;
   return (
     <span
       {...arrowProps}
-      className="ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-muted-foreground/10 cursor-pointer"
+      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-muted-foreground/10 cursor-pointer"
       aria-hidden="true"
     >
       <LucideIcons.ChevronRight
