@@ -32,6 +32,7 @@ import { gooseSelectAllExtension } from "./selectAllExtension";
 import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "./tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "./codeBlockKeyboardExtension";
+import { gooseCodeBlockLinkStripExtension } from "./codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "./calloutKeyboardExtension";
 import { gooseQuoteInputRuleExtension } from "./quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "./markdownInputRules";
@@ -40,7 +41,7 @@ import { ArrowInputRuleExtension } from "./arrowInputRule";
 import { gooseInlineCodeEscapeExtension } from "./inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "./findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
-import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText } from "./EditorFindBar";
+import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
 import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
 
 export interface EditorRef {
@@ -90,6 +91,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseSelectAllExtension,
         gooseLinkKeyboardExtension,
         gooseCodeBlockKeyboardExtension,
+        gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
         gooseQuoteInputRuleExtension,
         gooseMarkdownInputRulesExtension,
@@ -402,16 +404,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
       const clipboardText = normalizeClipboardLineEndings(clipboardData.getData("text/plain"));
       if (
-        !shouldPreferVisibleSelectionText(
+        shouldPreferVisibleSelectionText(
           clipboardText,
           selectionContext.selectedText,
           selectionContext.withinCodeBlock,
         )
       ) {
+        clipboardData.setData("text/plain", selectionContext.selectedText);
         return;
       }
 
-      clipboardData.setData("text/plain", selectionContext.selectedText);
+      // 富文本含链接/格式时 markdown 序列化与可见文本不相等，上面不会替换；
+      // 仍需移除 markdown 软换行（hardBreak → "\<换行>"）残留的反斜杠 "\"。
+      const cleaned = stripMarkdownHardBreaks(clipboardText);
+      if (cleaned !== clipboardText) {
+        clipboardData.setData("text/plain", cleaned);
+      }
     };
 
     container.addEventListener("copy", patchClipboardPlainText);
