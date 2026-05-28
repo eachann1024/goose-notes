@@ -14,8 +14,8 @@ import {
   type CardThemeId,
   type CardTheme,
   type WatermarkConfig,
-  DEFAULT_WATERMARK_CONFIG,
 } from "@/lib/imageExport";
+import { useSettings } from "@/stores/settings";
 
 interface ImageExportThemeSelectorProps {
   open: boolean;
@@ -43,11 +43,11 @@ export function ImageExportThemeSelector({
   onConfirm,
   mode,
 }: ImageExportThemeSelectorProps) {
-  const [selectedId, setSelectedId] = useState<CardThemeId>("notion");
+  const selectedId = useSettings((s) => s.imageExportThemeId);
+  const setSelectedId = useSettings((s) => s.setImageExportThemeId);
+  const watermarkConfig = useSettings((s) => s.imageExportWatermark);
+  const setWatermarkConfig = useSettings((s) => s.setImageExportWatermark);
   const [configOpen, setConfigOpen] = useState(false);
-  const [watermarkConfig, setWatermarkConfig] = useState<WatermarkConfig>(
-    DEFAULT_WATERMARK_CONFIG,
-  );
 
   const handleConfirm = () => {
     onConfirm(selectedId, watermarkConfig);
@@ -57,13 +57,13 @@ export function ImageExportThemeSelector({
   const modeText = mode === "page" ? "整页" : "选中内容";
 
   const toggleConfig = (key: keyof WatermarkConfig) => {
-    setWatermarkConfig((prev) => ({ ...prev, [key]: !prev[key] }));
+    setWatermarkConfig({ ...watermarkConfig, [key]: !watermarkConfig[key] });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[760px] p-0 overflow-hidden gap-0">
-        <div className="px-6 pt-6 pb-4">
+      <DialogContent className="max-w-[760px] p-0 overflow-hidden gap-0 flex flex-col max-h-[88vh]">
+        <div className="px-6 pt-6 pb-4 shrink-0">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="text-[15px] font-semibold tracking-tight">选择卡片主题</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -72,7 +72,7 @@ export function ImageExportThemeSelector({
           </DialogHeader>
         </div>
 
-        <div className="px-6 pb-3 max-h-[480px] overflow-y-auto [scrollbar-width:thin]">
+        <div className="px-6 pb-3 flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin]">
           {(["light", "dark"] as const).map((mode) => {
             const themes = orderThemesForGroup(CARD_THEMES.filter((t) => t.mode === mode));
             if (themes.length === 0) return null;
@@ -102,7 +102,7 @@ export function ImageExportThemeSelector({
         </div>
 
         {/* Watermark Config Panel */}
-        <div className="px-6 py-3 border-t bg-muted/20">
+        <div className="px-6 py-3 border-t bg-muted/20 shrink-0 max-h-[40vh] overflow-y-auto [scrollbar-width:thin]">
           <button
             type="button"
             onClick={() => setConfigOpen((v) => !v)}
@@ -165,7 +165,7 @@ export function ImageExportThemeSelector({
           )}
         </div>
 
-        <DialogFooter className="p-4 pt-3">
+        <DialogFooter className="p-4 pt-3 shrink-0 border-t">
           <Button
             variant="ghost"
             size="sm"

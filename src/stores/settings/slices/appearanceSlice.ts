@@ -1,5 +1,7 @@
 import type { Theme, CodeStyle, CustomFonts, UIFontSize } from '../types'
 import { EDITOR_FONT_SIZE_MIN, EDITOR_FONT_SIZE_MAX, EDITOR_FONT_SIZE_DEFAULT, DEFAULT_UI_FONT_SIZE } from '../types'
+import type { WatermarkConfig, CardThemeId } from '@/lib/imageExport'
+import { DEFAULT_WATERMARK_CONFIG } from '@/lib/imageExport'
 
 export interface AppearanceSliceState {
     theme: Theme
@@ -11,6 +13,10 @@ export interface AppearanceSliceState {
     editorFontSize: number
     /** AI 聊天界面字号缩放比。可选值：0.8 / 0.9 / 1.0 / 1.1 / 1.2。副作用：影响 AI 聊天面板所有文字大小。 */
     aiChatScale: number
+    /** 导出图片的水印/生成选项，跨会话记忆用户选择 */
+    imageExportWatermark: WatermarkConfig
+    /** 导出图片上次选择的卡片主题 */
+    imageExportThemeId: CardThemeId
 }
 
 export interface AppearanceSliceActions {
@@ -29,6 +35,8 @@ export interface AppearanceSliceActions {
     setAiChatScale: (scale: number) => void
     increaseAiChatScale: () => void
     decreaseAiChatScale: () => void
+    setImageExportWatermark: (config: WatermarkConfig) => void
+    setImageExportThemeId: (id: CardThemeId) => void
 }
 
 export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions
@@ -46,6 +54,8 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     uiFontSize: DEFAULT_UI_FONT_SIZE,
     editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
     aiChatScale: 1.0,
+    imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
+    imageExportThemeId: 'notion',
 }
 
 type SetFn = (updater: Partial<AppearanceSlice> | ((state: AppearanceSlice) => Partial<AppearanceSlice>)) => void
@@ -104,5 +114,7 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
             set((state) => ({ aiChatScale: Math.min(1.5, Math.round((state.aiChatScale + 0.1) * 10) / 10) })),
         decreaseAiChatScale: () =>
             set((state) => ({ aiChatScale: Math.max(0.7, Math.round((state.aiChatScale - 0.1) * 10) / 10) })),
+        setImageExportWatermark: (imageExportWatermark) => set({ imageExportWatermark }),
+        setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
     }
 }
