@@ -8,6 +8,7 @@ export {}
 declare global {
   const Activity: typeof import('react').Activity
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
+  const Badge: typeof import('./components/ui/badge').Badge
   const Button: typeof import('./components/ui/button').Button
   const CARD_THEMES: typeof import('./lib/imageExport/index').CARD_THEMES
   const Card: typeof import('./components/ui/card').Card
@@ -88,6 +89,7 @@ declare global {
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
   const Portal: typeof import('./components/ui/portal').Portal
+  const Progress: typeof import('./components/ui/progress').Progress
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
@@ -107,6 +109,14 @@ declare global {
   const Switch: typeof import('./components/ui/switch').Switch
   const TIPS: typeof import('./lib/tips').TIPS
   const TITLE_HEADING_LEVEL: typeof import('./lib/blocknote-content/index').TITLE_HEADING_LEVEL
+  const Table: typeof import('./components/ui/table').Table
+  const TableBody: typeof import('./components/ui/table').TableBody
+  const TableCaption: typeof import('./components/ui/table').TableCaption
+  const TableCell: typeof import('./components/ui/table').TableCell
+  const TableFooter: typeof import('./components/ui/table').TableFooter
+  const TableHead: typeof import('./components/ui/table').TableHead
+  const TableHeader: typeof import('./components/ui/table').TableHeader
+  const TableRow: typeof import('./components/ui/table').TableRow
   const Tabs: typeof import('./components/ui/tabs').Tabs
   const TabsContent: typeof import('./components/ui/tabs').TabsContent
   const TabsList: typeof import('./components/ui/tabs').TabsList
@@ -126,6 +136,7 @@ declare global {
   const VALID_BLOCK_TYPES: typeof import('./lib/blocknote-content/index').VALID_BLOCK_TYPES
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
+  const badgeVariants: typeof import('./components/ui/badge').badgeVariants
   const blobToBase64: typeof import('./lib/imageProcessor').blobToBase64
   const blockToTable: typeof import('./lib/docxExport/docxBlocks').blockToTable
   const blocksToHTML: typeof import('./lib/export/index').blocksToHTML
@@ -139,19 +150,21 @@ declare global {
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
-  const clearBlockSourceMap: typeof import('./lib/local-block-diff').clearBlockSourceMap
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clonePageContent: typeof import('./lib/blocknote-content/index').clonePageContent
   const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
   const commitAiWritePlan: typeof import('./lib/ai-write/index').commitAiWritePlan
+  const compressIfNeeded: typeof import('./lib/imageProcessor').compressIfNeeded
   const compressImage: typeof import('./lib/imageProcessor').compressImage
+  const confirmLocalDelete: typeof import('./lib/confirm-local-delete').confirmLocalDelete
   const consumeFrontmatterForPath: typeof import('./lib/local-frontmatter-store').consumeFrontmatterForPath
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const countWords: typeof import('./lib/content-text-extractor').countWords
   const createAiChatOnlyTarget: typeof import('./lib/ai-write/index').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
+  const createDebounce: typeof import('./lib/debounce').createDebounce
   const createEmptyBlockNoteContent: typeof import('./lib/blocknote-content/index').createEmptyBlockNoteContent
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write/index').createStickyTargetFromResolvedTarget
@@ -217,7 +230,6 @@ declare global {
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const hasStructuredBlocks: typeof import('./lib/blocknote-content/index').hasStructuredBlocks
-  const hashBlock: typeof import('./lib/local-block-diff').hashBlock
   const importFile: typeof import('./lib/export/index').importFile
   const importFromJSON: typeof import('./lib/export/index').importFromJSON
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
@@ -277,16 +289,14 @@ declare global {
   const saveBlobAndReveal: typeof import('./lib/export/index').saveBlobAndReveal
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
   const selectExpandedIds: typeof import('./stores/useSidebarView').selectExpandedIds
+  const selectFavoritesCollapsed: typeof import('./stores/useSidebarView').selectFavoritesCollapsed
   const selectFocusedId: typeof import('./stores/useSidebarView').selectFocusedId
   const selectSelectedId: typeof import('./stores/useSidebarView').selectSelectedId
-  const serializeWithBlockDiff: typeof import('./lib/local-block-diff').serializeWithBlockDiff
-  const setBlockSourceMap: typeof import('./lib/local-block-diff').setBlockSourceMap
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setFrontmatterForPath: typeof import('./lib/local-frontmatter-store').setFrontmatterForPath
   const setFrontmatterTags: typeof import('./lib/markdown-raw-guard').setFrontmatterTags
   const simpleExtractText: typeof import('./lib/blocknote-content/index').simpleExtractText
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
-  const splitMarkdownIntoBlocks: typeof import('./lib/local-block-diff').splitMarkdownIntoBlocks
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
@@ -361,9 +371,6 @@ declare global {
   export type { AiBlockScopeKind, AiBlockScopeRange, AiBlockScope } from './lib/ai-block-scope'
   import('./lib/ai-block-scope')
   // @ts-ignore
-  export type { IntentVerdict, IntentRouterContext, IntentRouterResult } from './lib/ai-intent-router'
-  import('./lib/ai-intent-router')
-  // @ts-ignore
   export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider/index'
   import('./lib/ai-provider/index')
   // @ts-ignore
@@ -397,11 +404,17 @@ declare global {
   export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')
   // @ts-ignore
+  export type { BadgeProps } from './components/ui/badge'
+  import('./components/ui/badge')
+  // @ts-ignore
   export type { ButtonProps } from './components/ui/button'
   import('./components/ui/button')
   // @ts-ignore
   export type { IconButtonProps } from './components/ui/icon-button'
   import('./components/ui/icon-button')
+  // @ts-ignore
+  export type { ProgressProps } from './components/ui/progress'
+  import('./components/ui/progress')
   // @ts-ignore
   export type { SelectableCardProps } from './components/ui/selectable-card'
   import('./components/ui/selectable-card')

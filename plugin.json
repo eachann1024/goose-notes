@@ -13,6 +13,7 @@
     {
       "code": "gn",
       "explain": "打开鹅的笔记",
+      "mainPush": true,
       "cmds": ["Goose Note", "Notion", "Note", "笔记", "gn"]
     },
     {
@@ -40,6 +41,7 @@
     {
       "code": "sticky_note",
       "explain": "以便签模式打开笔记",
+      "mainHide": true,
       "cmds": ["便签", "sticky", "小窗", "note"]
     }
   ],

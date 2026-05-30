@@ -1030,6 +1030,49 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   registerMcpTools();
 
+  // 全局搜索 mainPush：在 uTools 主输入框返回最近笔记，点击直达对应笔记。
+  // onMainPush 为 uTools preload 级原生 API，本仓库无先例，按官方签名实现。
+  // 注意：plugin.json features[code=gn] 必须同时声明 "mainPush": true 才会触发。
+  if (typeof utools.onMainPush === "function") {
+    utools.onMainPush(
+      // push 回调：返回展示列表（formdata 形态）。
+      async () => {
+        try {
+          const { notes } = await listAllNotes();
+          const candidates = notes.filter(
+            (note) => !note.isFolder && typeof note.trashedAt !== "number",
+          );
+          const recent = sortNoteItems(candidates, "updated_at_desc").slice(
+            0,
+            12,
+          );
+          return recent.map((note) => ({
+            text: note.title || "无标题",
+            title: note.title || "无标题",
+            // 把笔记 id 编入 description 前缀，select 时解析出 pageId。
+            description: `gn-note:${note.id}`,
+          }));
+        } catch (err) {
+          console.error("[goose-note] onMainPush push failed:", err);
+          return [];
+        }
+      },
+      // select 回调：解析 id 并派发 React 监听的事件以打开对应笔记。
+      (_action, item) => {
+        const id = String(item?.description || "").replace(/^gn-note:/, "");
+        if (id) {
+          window.dispatchEvent(
+            new CustomEvent("goose-note:open-note", {
+              detail: { pageId: id },
+            }),
+          );
+        }
+        // 返回 true 表示进入插件主界面。
+        return true;
+      },
+    );
+  }
+
   // 处理 uTools 全局搜索（sublist）点击
   // 注意：sublist API 可能不是所有 uTools 版本都支持
   if (typeof utools.onSublistEnter === "function") {
@@ -1111,6 +1154,22 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           }
         }
       }
+      return;
+    }
+
+    if (code === "new_page") {
+      // over 类型：payload 通常为选中纯文本字符串；做 string/array 双兜底。
+      const selectedText =
+        typeof payload === "string"
+          ? payload
+          : (Array.isArray(payload) &&
+              (payload[0]?.data || payload[0]?.text)) ||
+            "";
+      window.dispatchEvent(
+        new CustomEvent("goose-note:new-page", {
+          detail: { text: selectedText },
+        }),
+      );
       return;
     }
   });
