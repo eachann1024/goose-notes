@@ -147,7 +147,7 @@ export function EditorContextMenu({
             data-font-family={page.fontFamily ?? "default"}
             className={cn(
               "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
-              isEditorFullWidth ? "max-w-none" : "max-w-4xl mx-auto",
+              isEditorFullWidth ? "max-w-none" : "max-w-[720px] mx-auto",
             )}
           >
             {children}

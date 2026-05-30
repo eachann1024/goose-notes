@@ -78,16 +78,12 @@ export function EditorFormattingToolbar() {
       const selectedText = doc
         .textBetween(selection.from, selection.to, "\n", "\n")
         .trim();
-      const firstBlock = blocks[0];
 
       return {
         hasTextSelection: !selection.empty && selectedText.length > 0,
         hasNonFormattableBlock: blocks.some(
           (block) => !!block.type && NON_FORMATTABLE_TYPES.has(block.type),
         ),
-        isTitleHeading:
-          firstBlock?.type === "heading" &&
-          (firstBlock.props as { level?: number } | undefined)?.level === 1,
       };
     },
   });
@@ -267,8 +263,7 @@ export function EditorFormattingToolbar() {
   if (
     !aiActive &&
     (!selectionState.hasTextSelection ||
-      selectionState.hasNonFormattableBlock ||
-      selectionState.isTitleHeading)
+      selectionState.hasNonFormattableBlock)
   ) {
     return null;
   }
