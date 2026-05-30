@@ -42,6 +42,7 @@ import {
   restorePageAction,
   permanentlyDeletePageAction,
   movePageTreeToNotebookAction,
+  undoMovePageTreeAction,
   setActivePageAction,
 } from "./actions/pageMutations";
 
@@ -200,6 +201,15 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   movePageTreeToNotebook: (pageId, targetNotebookId) =>
     movePageTreeToNotebookAction(set, get, pageId, targetNotebookId),
+
+  undoMovePageTree: (undoSnapshots, sourceNotebookId, prevActivePageId) =>
+    undoMovePageTreeAction(
+      set,
+      get,
+      undoSnapshots,
+      sourceNotebookId,
+      prevActivePageId,
+    ),
 
   setActivePage: (id) => setActivePageAction(set, get, id),
 

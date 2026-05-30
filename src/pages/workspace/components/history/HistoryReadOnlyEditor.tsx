@@ -71,34 +71,13 @@ export function HistoryReadOnlyEditor({
         class: "goose-blocknote-editor",
       },
     },
-    // 与 Editor.tsx 保持一致：att:/本地路径/uuid: 都要能解析，否则历史版本的图片显示 broken
+    // 与 Editor.tsx 共享同一解析实现和 ObjectURL 缓存，避免历史视图重复泄漏
     resolveFileUrl: async (url) => {
-      if (
-        url.startsWith("http://") ||
-        url.startsWith("https://") ||
-        url.startsWith("data:") ||
-        url.startsWith("blob:")
-      ) {
-        return url;
-      }
-      const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } =
-        await import("@/lib/imageStorage/strategies/file-system");
-      if (isLocalFilePath(url)) {
-        // 历史模式下读当前 page 的 localFilePath 作为相对路径基准
-        const { usePages } = await import("@/stores/usePages");
-        const activePageId = usePages.getState().activePageId;
-        const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-        if (activePage?.localFilePath) {
-          const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, "");
-          const fullPath = resolveToAbsolute(pageDir, url);
-          const blob = readLocalFileAsBlob(fullPath);
-          if (blob) return URL.createObjectURL(blob);
-        }
-      }
-      const { imageStorage } = await import("@/lib/imageStorage");
-      const blob = await imageStorage.load(url);
-      if (blob) return URL.createObjectURL(blob);
-      return url;
+      const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
+      const { usePages } = await import("@/stores/usePages");
+      const activePageId = usePages.getState().activePageId;
+      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+      return resolveImageRefToUrl(url, activePage?.localFilePath ?? null);
     },
   });
 

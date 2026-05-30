@@ -175,7 +175,7 @@ export async function exportPageToImage(
 ) {
   const theme = getCardTheme(themeId);
   const title = extractTitleFromContent(page.content);
-  const content = JSON.parse(JSON.stringify(page.content)) as BlockNoteContent;
+  const content = structuredClone(page.content) as BlockNoteContent;
   await resolveImageUrls(content as any[]);
 
   const container = document.createElement("div");
@@ -216,7 +216,7 @@ export async function exportSelectionToImage(
   const title = pageTitle || "选中内容";
 
   // Deep clone to avoid mutating the original blocks
-  const clonedBlocks = JSON.parse(JSON.stringify(selectionBlocks)) as any[];
+  const clonedBlocks = structuredClone(selectionBlocks) as any[];
   await resolveImageUrls(clonedBlocks);
 
   const container = document.createElement("div");

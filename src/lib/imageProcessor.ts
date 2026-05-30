@@ -3,23 +3,65 @@
  * 遵循 AGENTS.md 规则：>500KB 压缩至 80%，<100KB 内嵌 base64
  */
 
-const MAX_SIZE_BEFORE_COMPRESS = 500 * 1024 // 500KB
-const COMPRESS_QUALITY = 0.8
+import type { StorageConfig } from './imageStorage/types'
+import { DEFAULT_STORAGE_CONFIG } from './imageStorage/types'
 
 /**
- * 压缩图片
+ * 统一压缩入口：降采样 + 格式转换 + 压缩
+ *
+ * 规则：
+ * - SVG (image/svg+xml) 直接跳过，原样返回
+ * - max(width, height) > cfg.maxEdge 时等比降采样到 maxEdge
+ * - PNG 保留为 image/png（透明通道），其余输出 image/webp
+ * - 仅当 size > cfg.compressThreshold 或发生了降采样/格式转换时才重新编码
  */
-export async function compressImage(file: File, quality = COMPRESS_QUALITY): Promise<Blob> {
+export async function compressIfNeeded(
+  input: Blob | File,
+  cfg: StorageConfig = DEFAULT_STORAGE_CONFIG,
+): Promise<Blob> {
+  // SVG 矢量图直接跳过，不做任何转换
+  if (input.type === 'image/svg+xml') {
+    return input
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image()
-    const url = URL.createObjectURL(file)
+    const url = URL.createObjectURL(input)
 
     img.onload = () => {
       URL.revokeObjectURL(url)
 
+      const { width: origW, height: origH } = img
+      const maxEdge = cfg.maxEdge ?? DEFAULT_STORAGE_CONFIG.maxEdge
+
+      // 计算目标尺寸（等比降采样）
+      let targetW = origW
+      let targetH = origH
+      const needsResize = Math.max(origW, origH) > maxEdge
+      if (needsResize) {
+        if (origW >= origH) {
+          targetW = maxEdge
+          targetH = Math.round((origH / origW) * maxEdge)
+        } else {
+          targetH = maxEdge
+          targetW = Math.round((origW / origH) * maxEdge)
+        }
+      }
+
+      // 输出格式：PNG 保留，其余 webp
+      const isPng = input.type === 'image/png'
+      const outputMime = isPng ? 'image/png' : 'image/webp'
+      const formatChanged = input.type !== outputMime
+
+      // 如果不需要降采样、不需要格式转换、且体积未超阈值，原样返回
+      if (!needsResize && !formatChanged && input.size <= cfg.compressThreshold) {
+        resolve(input)
+        return
+      }
+
       const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = targetW
+      canvas.height = targetH
 
       const ctx = canvas.getContext('2d')
       if (!ctx) {
@@ -27,18 +69,18 @@ export async function compressImage(file: File, quality = COMPRESS_QUALITY): Pro
         return
       }
 
-      ctx.drawImage(img, 0, 0)
+      ctx.drawImage(img, 0, 0, targetW, targetH)
 
       canvas.toBlob(
         (blob) => {
           if (blob) {
             resolve(blob)
           } else {
-            reject(new Error('Failed to compress image'))
+            reject(new Error('Failed to encode image'))
           }
         },
-        'image/jpeg',
-        quality
+        outputMime,
+        cfg.compressQuality,
       )
     }
 
@@ -49,6 +91,13 @@ export async function compressImage(file: File, quality = COMPRESS_QUALITY): Pro
 
     img.src = url
   })
+}
+
+/**
+ * 压缩图片（向后兼容薄封装，委托给 compressIfNeeded）
+ */
+export async function compressImage(file: File, quality = DEFAULT_STORAGE_CONFIG.compressQuality): Promise<Blob> {
+  return compressIfNeeded(file, { ...DEFAULT_STORAGE_CONFIG, compressQuality: quality })
 }
 
 /**
@@ -63,45 +112,6 @@ export function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(blob)
   })
-}
-
-/**
- * 处理图片用于存储
- * - 超过 500KB 自动压缩至 80% 质量
- * - 返回 base64 格式
- */
-export async function processImageForStorage(file: File): Promise<string> {
-  let blob: Blob = file
-
-  // 超过阈值则压缩
-  if (file.size > MAX_SIZE_BEFORE_COMPRESS) {
-    blob = await compressImage(file)
-  }
-
-  return blobToBase64(blob)
-}
-
-/**
- * 处理图片用于存储（V2 - 使用策略模式）
- * - 小图片（< 100KB）：base64 内嵌
- * - 大图片（≥ 100KB）：根据环境选择最优存储
- *   - Web 端：IndexedDB
- *   - uTools 默认：base64（支持同步）
- *   - uTools 本地文件：./assets/
- */
-export async function processImageForStorageV2(file: File): Promise<string> {
-  let blob: Blob = file
-
-  // 超过阈值则压缩
-  if (file.size > MAX_SIZE_BEFORE_COMPRESS) {
-    blob = await compressImage(file)
-  }
-
-  // 动态导入 imageStorage 避免循环依赖
-  const { imageStorage } = await import('./imageStorage')
-
-  // 使用策略存储
-  return imageStorage.save(blob, blob.type || 'image/jpeg')
 }
 
 /**

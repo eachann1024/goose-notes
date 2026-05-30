@@ -1,6 +1,5 @@
 import { useNotebooks } from "../../../useNotebooks";
 import type { StoreSet, StoreGet } from "../hydrate";
-import { getPageTitle } from "@/lib/page-title";
 import {
   removePersistedPageSnapshot,
   removePersistedPageSnapshots,
@@ -36,13 +35,6 @@ export const permanentlyDeletePageAction = async (
 
     const targetPath = page.localFilePath || resolvePathFromId(id);
     if (!targetPath) return;
-
-    const confirmed = confirm(
-      page.isFolder
-        ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？将移入系统回收站。`
-        : `确定要删除本地文件 "${getPageTitle(page)}" 及其对应的文件吗？将移入系统回收站。`,
-    );
-    if (!confirmed) return;
 
     const removedIds = new Set<string>();
     const stack = [id];

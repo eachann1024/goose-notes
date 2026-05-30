@@ -5,6 +5,7 @@ import {
   writeDbStorageJSON,
 } from "./utoolsDbStorage";
 import { UToolsAdapter } from "../utools";
+import { toast } from "sonner";
 
 export const PAGE_DOC_PREFIX = "gn:page:";
 export const LOCAL_PAGE_META_DOC_PREFIX = "gn:local-meta:";
@@ -38,7 +39,7 @@ export interface HydratedPagesPayload {
 const getPageDocId = (pageId: string) => `${PAGE_DOC_PREFIX}${pageId}`;
 const getLocalPageMetaDocId = (pageId: string) => `${LOCAL_PAGE_META_DOC_PREFIX}${pageId}`;
 
-const clonePage = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const clonePage = <T>(value: T): T => structuredClone(value) as T;
 
 const putDocWithRetry = <T>(id: string, data: T): void => {
   const current = UToolsAdapter.db.get<T>(id);
@@ -49,6 +50,7 @@ const putDocWithRetry = <T>(id: string, data: T): void => {
   result = UToolsAdapter.db.put(id, data, latest?._rev);
   if (result.ok === false) {
     console.error("[pageRepository] db.put failed", id, result.error);
+    toast.error("保存失败，请重试");
   }
 };
 

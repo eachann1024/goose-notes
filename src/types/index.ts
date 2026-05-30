@@ -58,6 +58,7 @@ export interface Page {
   isPinned?: boolean;
   pinnedAt?: number;
   trashedAt?: number; // Soft delete
+  trashBatchId?: string; // Soft delete 批次标识，restore 精确匹配同批
 
   // Local file system (for local-folder mode)
   localFilePath?: string;

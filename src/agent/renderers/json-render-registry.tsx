@@ -13,6 +13,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption,
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * 将 Catalog 中的组件名映射到实际的 React 组件实现。
@@ -143,5 +154,56 @@ export const { registry } = defineRegistry(jsonRenderCatalog, {
         {children}
       </div>
     ),
+    DataTable: ({ props }) => (
+      <Table className={props.className}>
+        {props.caption && <TableCaption>{props.caption}</TableCaption>}
+        <TableHeader>
+          <TableRow>
+            {props.columns.map((col, i) => (
+              <TableHead key={i}>{col}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {props.rows.map((row, ri) => (
+            <TableRow key={ri}>
+              {row.map((cell, ci) => (
+                <TableCell key={ci}>{cell}</TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    ),
+    Progress: ({ props }) => (
+      <div className={cn("flex flex-col gap-1", props.className)}>
+        {props.label && (
+          <span className="text-xs text-muted-foreground">{props.label}</span>
+        )}
+        <Progress value={props.value} />
+      </div>
+    ),
+    Badge: ({ props }) => (
+      <Badge variant={props.variant} className={props.className}>
+        {props.text}
+      </Badge>
+    ),
+    Stat: ({ props }) => {
+      const deltaColor =
+        props.trend === "up"
+          ? "text-emerald-500"
+          : props.trend === "down"
+            ? "text-red-500"
+            : "text-muted-foreground";
+      return (
+        <div className={cn("flex flex-col gap-0.5", props.className)}>
+          <span className="text-xs text-muted-foreground">{props.label}</span>
+          <span className="text-2xl font-semibold">{props.value}</span>
+          {props.delta && (
+            <span className={cn("text-xs", deltaColor)}>{props.delta}</span>
+          )}
+        </div>
+      );
+    },
   },
 });

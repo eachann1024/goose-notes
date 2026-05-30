@@ -5,35 +5,50 @@
  */
 
 import type { IImageStorageStrategy } from '../types'
+import { getExtensionFromMimeType } from '../utils'
 import { UToolsAdapter } from '../../utools'
-import { compressImage } from '../../imageProcessor'
+import { compressIfNeeded } from '../../imageProcessor'
 
-const COMPRESS_THRESHOLD = 500 * 1024 // 500KB
-const COMPRESS_QUALITY = 0.8
 const ATT_PREFIX = 'att:'
 const ID_PREFIX = 'goose-img/'
+
+/**
+ * 计算 Blob 的 SHA-256 hex 摘要（需在 secure context / Electron 渲染进程中调用）
+ */
+async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
 
 export class AttachmentStrategy implements IImageStorageStrategy {
   /**
    * 保存图片为 uTools attachment
+   * - SVG/PNG 保留原格式，其余转 WebP
+   * - SHA-256 确定性 id，重复图片直接复用已有 attachment（去重）
    */
-  async save(blob: Blob, mimeType: string): Promise<string> {
-    // 压缩 > 500KB 的图片
-    let processedBlob = blob
-    if (blob.size > COMPRESS_THRESHOLD) {
-      const file = new File([blob], 'image.jpg', { type: mimeType })
-      processedBlob = await compressImage(file, COMPRESS_QUALITY)
-      mimeType = 'image/jpeg'
+  async save(blob: Blob, _mimeType: string): Promise<string> {
+    // 统一压缩/降采样/格式转换（入口已做，此处幂等兜底）
+    const out = await compressIfNeeded(blob)
+
+    // Blob → ArrayBuffer（SHA-256 和写入共用）
+    const arrayBuf = await out.arrayBuffer()
+    const buffer = new Uint8Array(arrayBuf)
+
+    // SHA-256 确定性 id
+    const hash = await sha256Hex(arrayBuf)
+    const ext = getExtensionFromMimeType(out.type)
+    const id = `${ID_PREFIX}${hash}.${ext}`
+
+    // 去重：已存在则直接复用，不重复写入
+    const existing = UToolsAdapter.db.getAttachment(id)
+    if (existing) {
+      return `${ATT_PREFIX}${id}`
     }
 
-    // Blob → Uint8Array
-    const buffer = new Uint8Array(await processedBlob.arrayBuffer())
-
-    // 生成唯一 ID
-    const id = `${ID_PREFIX}${Date.now()}_${crypto.randomUUID().slice(0, 8)}`
-
     // 存储到 uTools attachment
-    const result = UToolsAdapter.db.postAttachment(id, buffer, mimeType)
+    const result = UToolsAdapter.db.postAttachment(id, buffer, out.type)
     if (!result || result.ok === false) {
       throw new Error(`Failed to save attachment: ${JSON.stringify(result?.error)}`)
     }

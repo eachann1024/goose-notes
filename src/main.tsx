@@ -41,6 +41,7 @@ import { UToolsAdapter } from "./lib/utools";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
+import { useStickyNote } from "./stores/useStickyNote";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -375,6 +376,7 @@ const bootstrap = async () => {
   await Promise.all([
     useSettings.persist.rehydrate(),
     useNotebooks.persist.rehydrate(),
+    useStickyNote.persist.rehydrate(),
   ]);
   await usePages.getState().hydrateFromStorage();
   const pagesStore = usePages.getState();

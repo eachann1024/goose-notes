@@ -6,6 +6,26 @@ import {
   resolveExportColor,
 } from "./utils";
 
+const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
+  Lightbulb: "💡",
+  AlertTriangle: "⚠️",
+  CircleAlert: "❗",
+  CircleCheck: "✅",
+  Flame: "🔥",
+  Pin: "📌",
+  MessageSquare: "💬",
+  Target: "🎯",
+  Rocket: "🚀",
+  Star: "⭐",
+  Bell: "🔔",
+  Bug: "🐛",
+};
+
+function resolveCalloutIcon(raw: string | undefined): string {
+  if (!raw) return "💡";
+  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
+}
+
 export function renderBlock(block: any, theme: CardTheme): string {
   if (!block || typeof block !== "object") return "";
 
@@ -95,7 +115,7 @@ export function renderBlock(block: any, theme: CardTheme): string {
     }
 
     case "callout": {
-      const icon = block.props?.icon || block.props?.emoji || "💡";
+      const icon = resolveCalloutIcon(block.props?.icon || block.props?.emoji);
       return `<div class="callout"><div class="callout-icon">${escapeHtml(icon)}</div><div class="callout-text">${inlineHtml}</div></div>`;
     }
 

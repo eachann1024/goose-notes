@@ -146,6 +146,42 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
           props: { level: 3 },
         }),
     },
+    {
+      title: "折叠一级标题",
+      description: "可展开/收起下方内容的一级标题",
+      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      aliases: ["toggleheading", "toggleh1", "toggle", "collapseheading", "fold", "zhediebiaoti", "zhedie", "shouqibiaoti"],
+      badge: ">#",
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 1, isToggleable: true },
+        }),
+    },
+    {
+      title: "折叠二级标题",
+      description: "可展开/收起下方内容的二级标题",
+      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      aliases: ["toggleheading2", "toggleh2", "toggle", "fold", "zhedie", "zhedieerji"],
+      badge: ">##",
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 2, isToggleable: true },
+        }),
+    },
+    {
+      title: "折叠三级标题",
+      description: "可展开/收起下方内容的三级标题",
+      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      aliases: ["toggleheading3", "toggleh3", "toggle", "fold", "zhedie", "zhediesanji"],
+      badge: ">###",
+      onItemClick: () =>
+        insertOrUpdate({
+          type: "heading",
+          props: { level: 3, isToggleable: true },
+        }),
+    },
     { type: "divider" } as any,
     {
       title: "待办事项",

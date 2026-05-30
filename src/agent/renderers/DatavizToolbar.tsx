@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { Copy, Download, Loader2 } from "lucide-react";
-import * as echarts from "echarts";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { shell } from "@/lib/utools/shell";
@@ -20,6 +19,7 @@ async function captureImage(
   blockType: "echarts" | "html",
 ): Promise<string> {
   if (blockType === "echarts") {
+    const echarts = await import("echarts");
     const instance = echarts.getInstanceByDom(el);
     if (instance) {
       return instance.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "transparent" });

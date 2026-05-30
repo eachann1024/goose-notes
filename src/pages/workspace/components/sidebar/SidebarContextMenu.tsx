@@ -1,5 +1,6 @@
 import type { Page } from "@/types";
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { confirmLocalDelete } from "@/lib/confirm-local-delete";
 import { formatShortcut } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
@@ -19,6 +20,7 @@ export function SidebarContextMenu({
     restorePage,
     permanentlyDeletePage,
     movePageTreeToNotebook,
+    undoMovePageTree,
   } = usePages();
   const { deletePageWithUndo } = useDeletePageWithUndo();
   const notebooks = useNotebooks((state) => state.notebooks);
@@ -85,7 +87,20 @@ export function SidebarContextMenu({
     const targetName = targetNotebook?.name || "目标记事本";
     toast.success(`已移动到「${targetName}」`, {
       description: `共移动 ${result.movedCount} 个页面`,
-      duration: 2500,
+      duration: 5000,
+      action: {
+        label: "撤回",
+        onClick: () => {
+          const ok = undoMovePageTree(
+            result.undoSnapshots,
+            result.sourceNotebookId,
+            result.prevActivePageId,
+          );
+          if (!ok) {
+            toast.error("撤回失败：源记事本不存在");
+          }
+        },
+      },
     });
   };
 
@@ -192,6 +207,10 @@ export function SidebarContextMenu({
               <ContextMenuItem
                 onSelect={() => {
                   void (async () => {
+                    if (isLocalFolder) {
+                      const ok = await confirmLocalDelete(page);
+                      if (!ok) return;
+                    }
                     await permanentlyDeletePage(page.id);
                     if (usePages.getState().getPage(page.id)) return;
                     useTabs

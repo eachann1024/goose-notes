@@ -1,6 +1,26 @@
 import type { BlockNoteContent } from "@/lib/blocknote-content";
 import { isBlockNoteContent } from "@/lib/blocknote-content";
 
+const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
+  Lightbulb: "💡",
+  AlertTriangle: "⚠️",
+  CircleAlert: "❗",
+  CircleCheck: "✅",
+  Flame: "🔥",
+  Pin: "📌",
+  MessageSquare: "💬",
+  Target: "🎯",
+  Rocket: "🚀",
+  Star: "⭐",
+  Bell: "🔔",
+  Bug: "🐛",
+};
+
+function resolveCalloutIcon(raw: string | undefined): string {
+  if (!raw) return "💡";
+  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
+}
+
 const CODE_BLOCK_META_PREFIX = "goose-note=";
 
 function normalizeCodeBlockSummary(value: unknown): string {
@@ -148,7 +168,7 @@ function blockNoteBlockToMarkdown(block: any): string {
       break;
     }
     case "callout":
-      result = `> [!INFO] ${block.props?.icon || "💡"} ${text}`;
+      result = `> [!INFO] ${resolveCalloutIcon(block.props?.icon)} ${text}`;
       break;
     case "divider":
       result = "---";

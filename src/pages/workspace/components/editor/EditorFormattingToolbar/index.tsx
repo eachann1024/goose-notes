@@ -30,7 +30,6 @@ import { InlineGroup } from "./groups/InlineGroup";
 import { LinkButton } from "./groups/LinkButton";
 import { AlignGroup } from "./groups/AlignGroup";
 import { ClearFormatButton } from "./groups/ClearFormatButton";
-import { AiPanel } from "./AiPanel";
 
 export { shouldRenderFormattingToolbar };
 
@@ -101,11 +100,6 @@ export function EditorFormattingToolbar() {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
-  const [aiContext, setAiContext] = useState<{
-    selectedText: string;
-    blockText: string;
-    savedSelection: { from: number; to: number } | null;
-  } | null>(null);
 
   const bindTooltip = useCallback<BindTooltip>(
     (id) => ({
@@ -183,7 +177,6 @@ export function EditorFormattingToolbar() {
       /* ignore */
     }
     savedSelectionRef.current = null;
-    setAiContext(null);
     setAiActive(false);
 
     // 把 ProseMirror 选区恢复到原始范围并把焦点交还给 editor。
@@ -300,66 +293,55 @@ export function EditorFormattingToolbar() {
           pointerEvents: shouldHide ? "none" : "auto",
         }}
       >
-        {aiActive && aiContext ? (
-          <AiPanel
-            editor={editor}
-            savedSelection={aiContext.savedSelection}
-            selectedText={aiContext.selectedText}
-            blockText={aiContext.blockText}
-            initialAction="polish"
-            onClose={handleAiClose}
+        <div className="flex items-center gap-0.5 p-1">
+          {aiEnabled && (
+            <>
+              <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
+              <Separator
+                orientation="vertical"
+                className="h-5 opacity-70 mx-0.5"
+              />
+            </>
+          )}
+
+          <MarkGroup
+            isBold={isBold}
+            isItalic={isItalic}
+            isStrike={isStrike}
+            bindTooltip={bindTooltip}
           />
-        ) : (
-          <div className="flex items-center gap-0.5 p-1">
-            {aiEnabled && (
-              <>
-                <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
-                <Separator
-                  orientation="vertical"
-                  className="h-5 opacity-70 mx-0.5"
-                />
-              </>
-            )}
 
-            <MarkGroup
-              isBold={isBold}
-              isItalic={isItalic}
-              isStrike={isStrike}
-              bindTooltip={bindTooltip}
-            />
+          <FormattingToolbarColorPicker />
 
-            <FormattingToolbarColorPicker />
+          <InlineGroup
+            isUnderline={isUnderline}
+            isCode={isCode}
+            bindTooltip={bindTooltip}
+          />
 
-            <InlineGroup
-              isUnderline={isUnderline}
-              isCode={isCode}
-              bindTooltip={bindTooltip}
-            />
+          <Separator orientation="vertical" className="h-5 opacity-70" />
 
-            <Separator orientation="vertical" className="h-5 opacity-70" />
+          <LinkButton
+            isLinkActive={isLinkActive}
+            linkUrl={linkUrl}
+            bindTooltip={bindTooltip}
+          />
 
-            <LinkButton
-              isLinkActive={isLinkActive}
-              linkUrl={linkUrl}
-              bindTooltip={bindTooltip}
-            />
+          <Separator orientation="vertical" className="h-5 opacity-70" />
 
-            <Separator orientation="vertical" className="h-5 opacity-70" />
+          <AlignGroup
+            textAlignment={textAlignment}
+            setTextAlignment={setTextAlignment}
+            bindTooltip={bindTooltip}
+          />
 
-            <AlignGroup
-              textAlignment={textAlignment}
-              setTextAlignment={setTextAlignment}
-              bindTooltip={bindTooltip}
-            />
+          <Separator orientation="vertical" className="h-5 opacity-70" />
 
-            <Separator orientation="vertical" className="h-5 opacity-70" />
-
-            <ClearFormatButton
-              onClear={clearFormatting}
-              bindTooltip={bindTooltip}
-            />
-          </div>
-        )}
+          <ClearFormatButton
+            onClear={clearFormatting}
+            bindTooltip={bindTooltip}
+          />
+        </div>
       </div>
     </TooltipProvider>
   );

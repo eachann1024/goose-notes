@@ -8,6 +8,13 @@ import { HTML_TO_IMAGE_CDN, CAPTURE_SCRIPT, requestCapture, type CapturePromise 
 const MIN_HEIGHT = 60;
 const DEFAULT_HEIGHT = 200;
 
+/** iframe→host 合法消息类型白名单（sandbox srcdoc，origin 为 opaque 'null'，靠 source+type 双重校验） */
+const ALLOWED_IFRAME_MSG_TYPES = new Set([
+  "iframe-height",
+  "iframe-editor-zoom",
+  "screenshot-result",
+]);
+
 export interface HtmlWidgetBlockProps {
   html: string;
   streaming?: boolean;
@@ -48,6 +55,12 @@ export const HtmlWidgetBlock = React.memo(
             typeof event.data !== "object" ||
             event.source !== iframeRef.current?.contentWindow
           ) {
+            return;
+          }
+
+          // 非白名单 type 忽略（srcdoc sandbox iframe origin 为 opaque 'null'，
+          // source 校验已是主防线；type 白名单作为次要加固）
+          if (!ALLOWED_IFRAME_MSG_TYPES.has(event.data.type)) {
             return;
           }
 

@@ -10,6 +10,26 @@
 import type { Text } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
 
+const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
+  Lightbulb: "💡",
+  AlertTriangle: "⚠️",
+  CircleAlert: "❗",
+  CircleCheck: "✅",
+  Flame: "🔥",
+  Pin: "📌",
+  MessageSquare: "💬",
+  Target: "🎯",
+  Rocket: "🚀",
+  Star: "⭐",
+  Bell: "🔔",
+  Bug: "🐛",
+};
+
+function resolveCalloutIcon(raw: string | undefined): string {
+  if (!raw) return "💡";
+  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
+}
+
 const PIXELS_PER_POINT = 0.75;
 const FONT_SIZE = 16;
 
@@ -32,7 +52,7 @@ export async function createPdfBlockMappings() {
 
   // ----- callout -----
   const calloutMapping = (block: any, exporter: any): ReactElement<typeof Text> => {
-    const icon = (block.props?.icon as string) || "💡";
+    const icon = resolveCalloutIcon(block.props?.icon as string | undefined);
     return (
       <View
         wrap={false}

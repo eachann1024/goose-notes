@@ -127,7 +127,7 @@ export const replaceBlockRangeAction = async (
   const cloneArr = Array.isArray(clonedSource) ? clonedSource : [];
   const head = cloneArr.slice(0, startIdx);
   const tail = cloneArr.slice(endIdx + 1);
-  const replacement = JSON.parse(JSON.stringify(replacementBlocks)).map(
+  const replacement = clonePageContent(replacementBlocks as JSONContent).map(
     (block: any) => {
       if (block && typeof block === "object" && "id" in block) {
         const { id: _omit, ...rest } = block;

@@ -6,7 +6,6 @@ export function useActiveHeading(
 ) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const visibleSetRef = useRef<Set<string>>(new Set());
 
   const findTopMost = useCallback(() => {
     const container = scrollContainerRef?.current;
@@ -53,19 +52,8 @@ export function useActiveHeading(
       return;
     }
 
-    visibleSetRef.current.clear();
-
     observerRef.current = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.getAttribute("data-id");
-          if (!id) continue;
-          if (entry.isIntersecting) {
-            visibleSetRef.current.add(id);
-          } else {
-            visibleSetRef.current.delete(id);
-          }
-        }
+      () => {
         findTopMost();
       },
       {
@@ -87,21 +75,6 @@ export function useActiveHeading(
       observerRef.current?.disconnect();
     };
   }, [scrollContainerRef, headingIds, findTopMost]);
-
-  // 同时监听滚动事件作为 fallback
-  useEffect(() => {
-    const container = scrollContainerRef?.current;
-    if (!container) return;
-
-    const onScroll = () => {
-      findTopMost();
-    };
-
-    container.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", onScroll);
-    };
-  }, [scrollContainerRef, findTopMost]);
 
   return activeId;
 }

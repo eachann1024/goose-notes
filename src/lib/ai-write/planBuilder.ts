@@ -6,7 +6,7 @@ import type { AiResolvedTarget, AiWritePlan } from "./targetResolution";
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
 function cloneContent<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return structuredClone(value) as T;
 }
 
 function createPlainTextDoc(text: string, title?: string) {

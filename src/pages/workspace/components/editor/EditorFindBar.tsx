@@ -23,7 +23,6 @@ import {
   EditorFormattingToolbar,
   shouldRenderFormattingToolbar,
 } from "./EditorFormattingToolbar";
-import { AiInlineInput } from "./AiInlineInput";
 import { AIMenuController } from "@blocknote/xl-ai";
 import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
 import { EditorSideMenu } from "./EditorSideMenu";
@@ -272,7 +271,6 @@ export function EditorFindBar({
             }
           }}
         />
-        <AiInlineInput />
         <AIMenuController />
       </BlockNoteView>
       {linkPopoverOpen && (

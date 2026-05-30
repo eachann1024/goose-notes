@@ -6,20 +6,63 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import * as LucideIcons from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const EMOJI_LIST = [
-  "💡", "⚠️", "❗", "✅", "❌", "🔥", "📌", "💬",
-  "📝", "🎯", "🚀", "⭐", "🔔", "💎", "🎨", "🐛",
-  "📦", "🔒", "🔑", "🏗️", "📊", "🔍", "⚡", "🛠️",
-  "🌍", "🎉", "👍", "👎", "❓", "🤔", "👋", "💪",
+const ICON_LIST = [
+  "Lightbulb",
+  "AlertTriangle",
+  "CircleAlert",
+  "CircleCheck",
+  "Flame",
+  "Pin",
+  "MessageSquare",
+  "Target",
+  "Rocket",
+  "Star",
+  "Bell",
+  "Bug",
 ];
+
+/** Lucide 图标名 → 语义对应 emoji，供导出端使用 */
+export const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
+  Lightbulb: "💡",
+  AlertTriangle: "⚠️",
+  CircleAlert: "❗",
+  CircleCheck: "✅",
+  Flame: "🔥",
+  Pin: "📌",
+  MessageSquare: "💬",
+  Target: "🎯",
+  Rocket: "🚀",
+  Star: "⭐",
+  Bell: "🔔",
+  Bug: "🐛",
+};
+
+/** 将 Lucide 名（新存）或 emoji（存量）统一渲染为 React 元素 */
+function renderCalloutIcon(iconStr: string, className?: string) {
+  if (iconStr && !iconStr.match(/\p{Emoji}/u) && (LucideIcons as any)[iconStr]) {
+    const IconComp = (LucideIcons as any)[iconStr] as React.ElementType;
+    return (
+      <IconComp
+        className={cn("h-[18px] w-[18px] stroke-[1.75]", className)}
+      />
+    );
+  }
+  return (
+    <span className={cn("text-base leading-none", className)}>
+      {iconStr || "💡"}
+    </span>
+  );
+}
 
 function CalloutIconPicker({
   icon,
   onPick,
 }: {
   icon: string;
-  onPick: (emoji: string) => void;
+  onPick: (iconName: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -32,7 +75,7 @@ function CalloutIconPicker({
           onClick={() => setOpen(true)}
           data-callout-icon-trigger
         >
-          {icon || "💡"}
+          {renderCalloutIcon(icon)}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -41,18 +84,18 @@ function CalloutIconPicker({
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="grid grid-cols-8 gap-0.5">
-          {EMOJI_LIST.map((emoji) => (
+        <div className="grid grid-cols-6 gap-0.5">
+          {ICON_LIST.map((name) => (
             <button
-              key={emoji}
+              key={name}
               type="button"
-              className="flex h-7 w-7 items-center justify-center rounded text-base transition-colors hover:bg-foreground/10"
+              className="flex h-8 w-8 items-center justify-center rounded text-base transition-colors hover:bg-foreground/10"
               onClick={() => {
-                onPick(emoji);
+                onPick(name);
                 setOpen(false);
               }}
             >
-              {emoji}
+              {renderCalloutIcon(name)}
             </button>
           ))}
         </div>
@@ -104,9 +147,9 @@ export const calloutBlock = createReactBlockSpec(
           className="flex items-start gap-2 rounded-r-md border-l-[3px] border-l-primary/60 bg-muted/40 px-4 py-3"
           data-callout="true"
         >
-          <span className="mt-0.5 select-none text-base leading-none">
-            {(block.props.icon as string) || "💡"}
-          </span>
+              <span className="mt-0.5 select-none text-base leading-none">
+              {renderCalloutIcon((block.props.icon as string) || "💡")}
+            </span>
           <div ref={contentRef} className="min-w-0 flex-1 text-sm leading-relaxed" />
         </div>
       );

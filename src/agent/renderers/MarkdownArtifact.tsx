@@ -1,7 +1,10 @@
 import React, { useMemo, type ReactNode } from "react";
 import MarkdownIt from "markdown-it";
 import { LoaderCircle } from "lucide-react";
-import { EChartsBlock } from "./EChartsBlock";
+import { Suspense } from "react";
+const EChartsBlock = React.lazy(() =>
+  import("./EChartsBlock").then((m) => ({ default: m.EChartsBlock })),
+);
 import { HtmlWidgetBlock } from "./HtmlWidgetBlock";
 import { JSONUIProvider, Renderer } from "@json-render/react";
 import { registry } from "./json-render-registry";
@@ -52,7 +55,9 @@ export const EChartsSegment = React.memo(function EChartsSegment({ content }: { 
 
   return (
     <section className="relative overflow-visible">
-      <EChartsBlock ref={ref} config={config} />
+      <Suspense fallback={<div style={{ minHeight: 240, width: "100%" }} />}>
+        <EChartsBlock ref={ref} config={config} />
+      </Suspense>
     </section>
   );
 });

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { flushSync } from "react-dom";
-import { EditorState } from "@tiptap/pm/state";
-import { Fragment, Slice } from "@tiptap/pm/model";
+import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
 import { zh as aiZh } from "@blocknote/xl-ai/locales";
@@ -9,7 +8,7 @@ import "@blocknote/xl-ai/style.css";
 import { createGooseAITransport } from "@/lib/ai-provider/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
-import debounce from "lodash.debounce";
+import { createDebounce } from "@/lib/debounce";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
@@ -38,11 +37,13 @@ import { gooseQuoteInputRuleExtension } from "./quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "./markdownInputRules";
 import { gooseFakeSelectionExtension } from "./fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "./arrowInputRule";
+import { gooseToggleHeadingInputRuleExtension } from "./toggleHeadingInputRule";
 import { gooseInlineCodeEscapeExtension } from "./inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "./findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
-import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, isValidUrl, looksLikeMarkdownFragment, normalizeClipboardLineEndings, normalizeMarkdownPasteText, parseMarkdownLink, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
+import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
 import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
+import { useEditorPaste } from "./hooks/useEditorPaste";
 
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;
@@ -97,6 +98,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseMarkdownInputRulesExtension,
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
+        gooseToggleHeadingInputRuleExtension,
         gooseInlineCodeEscapeExtension,
         gooseFindInPageExtension,
         AIExtension({
@@ -128,35 +130,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         return URL.createObjectURL(file);
       },
       resolveFileUrl: async (url) => {
-        // 网络 URL / data: / blob: 直接用
-        if (
-          url.startsWith("http://") ||
-          url.startsWith("https://") ||
-          url.startsWith("data:") ||
-          url.startsWith("blob:")
-        ) {
-          return url;
-        }
-
-        // 本地文件路径：优先相对于页面文件目录解析（./assets/ 等相对路径）
-        const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } = await import("@/lib/imageStorage/strategies/file-system");
-        if (isLocalFilePath(url)) {
-          const activePageId = usePages.getState().activePageId;
-          const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-          if (activePage?.localFilePath) {
-            // 取页面文件所在目录
-            const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, '');
-            const fullPath = resolveToAbsolute(pageDir, url);
-            const blob = readLocalFileAsBlob(fullPath);
-            if (blob) return URL.createObjectURL(blob);
-          }
-        }
-
-        // att: / uuid: / 兜底 → 走 imageStorage.load()（使用笔记本根目录）
-        const { imageStorage } = await import("@/lib/imageStorage");
-        const blob = await imageStorage.load(url);
-        if (blob) return URL.createObjectURL(blob);
-        return url;
+        const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
+        const activePageId = usePages.getState().activePageId;
+        const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+        return resolveImageRefToUrl(url, activePage?.localFilePath ?? null);
       },
       links: {
         onClick: (event) => {
@@ -179,7 +156,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   );
 
   const debouncedUpdate = useMemo(() => {
-    return debounce(
+    return createDebounce(
       (id: string, content: BlockNoteContent) => {
         syncedContentSignatureRef.current = getCachedContentSignature(content);
         updatePage(id, { content });
@@ -256,118 +233,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     return true;
   }, [editor]);
 
-  const handleEditorPasteCapture = useCallback(
-    (event: React.ClipboardEvent<HTMLDivElement>) => {
-      if (!editable) return;
-      if (event.defaultPrevented) return;
-      if (shiftPressedRef.current) return;
-      if ((event.target as HTMLElement | null)?.closest(".goose-code-block-node")) return;
-
-      const clipboard = event.clipboardData;
-      const plainText = normalizeMarkdownPasteText(
-        clipboard.getData("text/plain"),
-      );
-      if (!plainText) return;
-
-      const trimmedText = plainText.trim();
-
-      // 0. 选区在 callout / quote 内，且粘贴含多行 → 以 hardBreak 软换行注入，
-      //    避免默认 Markdown 解析把多行拆成多个独立 paragraph 块溢出容器
-      // 同样地：在「空列表项」中粘贴时，默认 paste 会把外部 <p> 当成新段落块
-      // 替换掉空的列表块，导致刚打出的 `- ` bullet 被挤掉。这里走同一条软换行路径，
-      // 把粘贴内容作为内联文本注入，保留列表块本身。
-      const pmState = editor.prosemirrorState;
-      const $from = pmState.selection.$from;
-      let inSoftWrapContainer = false;
-      let inEmptyListItem = false;
-      for (let d = $from.depth; d >= 1; d--) {
-        const node = $from.node(d);
-        if (node.type.name === "blockContainer") {
-          const contentNode = d + 1 <= $from.depth ? $from.node(d + 1) : null;
-          const name = contentNode?.type.name;
-          if (name === "callout" || name === "quote") {
-            inSoftWrapContainer = true;
-          } else if (
-            contentNode &&
-            (name === "bulletListItem" ||
-              name === "numberedListItem" ||
-              name === "checkListItem" ||
-              name === "toggleListItem") &&
-            contentNode.content.size === 0
-          ) {
-            inEmptyListItem = true;
-          }
-          break;
-        }
-      }
-      if (
-        (inSoftWrapContainer && plainText.includes("\n")) ||
-        inEmptyListItem
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        const schema = pmState.schema;
-        const hardBreakType = schema.nodes.hardBreak;
-        const lines = plainText.split("\n");
-        const nodes: any[] = [];
-        lines.forEach((line, idx) => {
-          if (idx > 0 && hardBreakType) nodes.push(hardBreakType.create());
-          if (line.length > 0) nodes.push(schema.text(line));
-        });
-        const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
-        editor.prosemirrorView.dispatch(
-          pmState.tr.replaceSelection(slice).scrollIntoView(),
-        );
-        return;
-      }
-
-      // 1. 粘贴 Markdown 链接 [text](url) → 直接转为链接
-      const mdLink = parseMarkdownLink(trimmedText);
-      if (mdLink) {
-        event.preventDefault();
-        event.stopPropagation();
-        editor.createLink(mdLink.url, mdLink.text);
-        return;
-      }
-
-      // 2. 粘贴纯 URL → 根据是否有选中文本决定行为
-      if (isValidUrl(trimmedText)) {
-        // 先尝试 BlockNote 的选中文本 API，fallback 到原生选区
-        let selectedText = editor.getSelectedText();
-        if (!selectedText?.trim()) {
-          try {
-            const sel = document.getSelection();
-            selectedText = sel?.toString() || "";
-          } catch { /* ignore */ }
-        }
-
-        if (selectedText?.trim()) {
-          // 选中文本 + 粘贴 URL → 将选中文本转为链接
-          event.preventDefault();
-          event.stopPropagation();
-          editor.createLink(trimmedText, selectedText);
-          return;
-        }
-
-        // 无选中文本 + 粘贴纯 URL → 将 URL 作为链接文本插入
-        event.preventDefault();
-        event.stopPropagation();
-        editor.createLink(trimmedText, trimmedText);
-        return;
-      }
-
-      // 3. 其他 Markdown 内容
-      if (!looksLikeMarkdownFragment(plainText)) return;
-
-      const htmlText = clipboard.getData("text/html");
-      if (htmlText && htmlText.trim()) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      editor.pasteMarkdown(plainText);
-    },
-    [editable, editor],
-  );
+  const { handleEditorPasteCapture } = useEditorPaste({ editor, editable, shiftPressedRef });
 
   const focusEditorEnd = useCallback(() => {
     const lastBlock = editor.document.at(-1);
@@ -430,6 +296,68 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       container.removeEventListener("cut", patchClipboardPlainText);
     };
   }, []);
+
+  // 中文输入法（IME）斜杠菜单修复：BlockNote 0.51 的 suggestion 插件没有 composition
+  // 防护——用输入法上屏中文 query（如「、表格」）时，上屏那一刻的 replace transaction
+  // 命中插件内部的关闭判定，菜单被关掉、query 丢失（英文逐字符输入不经 composition 故正常）。
+  // 这里在 compositionend 后检测「当前块以触发符开头但菜单未显示」，程序化重新打开菜单
+  // 并恢复 query：把光标移到触发符之后 → openSuggestionMenu 钉住 queryStartPos →
+  // 光标移回上屏位置，query 即按 textBetween(触发符后, 光标) 自然算出。
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const TRIGGERS = ["、", "/"] as const;
+
+    const rebuildSlashMenu = () => {
+      if (!editor.isEditable) return;
+      const sug = (editor.getExtension as any)("suggestionMenu") as
+        | { shown: () => boolean; openSuggestionMenu: (trigger: string) => void }
+        | undefined;
+      // 菜单已显示则无需重建（避免与正常输入路径重复触发）
+      if (!sug || sug.shown()) return;
+
+      const view = editor.prosemirrorView;
+      if (!view) return;
+      const { selection } = view.state;
+      if (!selection.empty) return;
+
+      const $from = selection.$from;
+      const parent = $from.parent;
+      // 仅在文本块内、非代码块、非表格单元格内重建（与正常 slash 菜单的 shouldOpen 一致）
+      if (!parent.isTextblock || parent.type.spec.code) return;
+      if (parent.type.isInGroup("tableContent")) return;
+
+      const trigger = TRIGGERS.find((t) => parent.textContent.startsWith(t));
+      if (!trigger) return; // 触发符必须在块开头
+
+      const blockStart = $from.start();
+      const caret = selection.from;
+      if (caret <= blockStart) return; // 光标必须落在触发符之后
+
+      // A：光标移到触发符之后，作为 query 起点
+      view.dispatch(
+        view.state.tr.setSelection(
+          TextSelection.create(view.state.doc, blockStart + trigger.length),
+        ),
+      );
+      // B：打开菜单（queryStartPos 钉在当前光标）
+      sug.openSuggestionMenu(trigger);
+      // C：光标移回上屏后的位置，query 自然算出
+      view.dispatch(
+        view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)),
+      );
+    };
+
+    const handleCompositionEnd = () => {
+      // 等 ProseMirror 把 composition 落地进文档后再处理
+      requestAnimationFrame(rebuildSlashMenu);
+    };
+
+    container.addEventListener("compositionend", handleCompositionEnd);
+    return () =>
+      container.removeEventListener("compositionend", handleCompositionEnd);
+  }, [editor]);
 
   const commitEditorContent = useCallback(
     (targetPageId?: string) => {

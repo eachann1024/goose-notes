@@ -1,6 +1,6 @@
 import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/lib/blocknote-content";
-import JSZip from "jszip";
+import type JSZipNs from "jszip";
 import { extractTitleFromContent } from "@/lib/content-text-extractor";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import {
@@ -95,7 +95,7 @@ function resolveAndReadBase64(
 
 async function extractImagesFromContent(
   content: any[],
-  assetsFolder: JSZip,
+  assetsFolder: JSZipNs,
   imageMap: Map<string, string>,
   depth: number,
   notebookPath?: string,
@@ -191,6 +191,7 @@ export async function exportNotebooks(
   notebooksMap: Record<string, { name: string; localPath?: string }>,
   allPages: Page[],
 ) {
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   const { format, notebookIds } = options;
 
@@ -220,10 +221,10 @@ export async function exportNotebooks(
 
     const processPage = async (
       page: Page,
-      parentFolder: JSZip,
+      parentFolder: JSZipNs,
       depth: number,
     ) => {
-      const pageClone = JSON.parse(JSON.stringify(page)) as Page;
+      const pageClone = structuredClone(page) as Page;
       pageClone.content = normalizeExportContent(pageClone.content);
 
       await extractImagesFromContent(
@@ -334,10 +335,11 @@ export async function importNotebooksFromZip(
     parentId?: string,
   ) => string,
 ) {
+  const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(zipBlob);
 
   // 收集所有 assets：既查根级 assets/（旧格式），也查各笔记本内 xxx/assets/（新格式）
-  const loadAssetsFromFolder = async (folder: JSZip | null): Promise<Map<string, string>> => {
+  const loadAssetsFromFolder = async (folder: JSZipNs | null): Promise<Map<string, string>> => {
     const map = new Map<string, string>();
     if (!folder) return map;
     const files: string[] = [];

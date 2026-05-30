@@ -43,7 +43,7 @@
 
 /* ===== Theme-specific variable overrides ===== */
 
-:root.github-light {
+:root[data-code-theme="github-light"] {
   --code-bg: #ffffff;
   --code-fg: #24292f;
   --code-border: #d0d7de;
@@ -63,7 +63,7 @@
   --code-token-variable: #24292f;
 }
 
-:root.github-dark {
+:root[data-code-theme="github-dark"] {
   --code-bg: #0d1117;
   --code-fg: #c9d1d9;
   --code-border: #30363d;
@@ -83,7 +83,7 @@
   --code-token-variable: #c9d1d9;
 }
 
-:root.one-light {
+:root[data-code-theme="one-light"] {
   --code-bg: #fafafa;
   --code-fg: #383a42;
   --code-border: #e6e6e6;
@@ -103,7 +103,7 @@
   --code-token-variable: #383a42;
 }
 
-:root.one-dark {
+:root[data-code-theme="one-dark"] {
   --code-bg: #282c34;
   --code-fg: #abb2bf;
   --code-border: #21252b;
@@ -123,7 +123,7 @@
   --code-token-variable: #abb2bf;
 }
 
-:root.atom-light {
+:root[data-code-theme="atom-light"] {
   --code-bg: #ffffff;
   --code-fg: #333;
   --code-border: #dbdbdb;
@@ -143,7 +143,7 @@
   --code-token-variable: #333;
 }
 
-:root.dracula {
+:root[data-code-theme="dracula"] {
   --code-bg: #282a36;
   --code-fg: #f8f8f2;
   --code-border: #44475a;
@@ -163,7 +163,7 @@
   --code-token-variable: #f8f8f2;
 }
 
-:root.tokyo-night {
+:root[data-code-theme="tokyo-night"] {
   --code-bg: #1a1b26;
   --code-fg: #c0caf5;
   --code-border: #292e42;
@@ -183,7 +183,7 @@
   --code-token-variable: #c0caf5;
 }
 
-:root.nord {
+:root[data-code-theme="nord"] {
   --code-bg: #2e3440;
   --code-fg: #d8dee9;
   --code-border: #3b4252;
@@ -203,7 +203,7 @@
   --code-token-variable: #d8dee9;
 }
 
-:root.nord-light {
+:root[data-code-theme="nord-light"] {
   --code-bg: #eceff4;
   --code-fg: #2e3440;
   --code-border: #d8dee9;
@@ -223,7 +223,7 @@
   --code-token-variable: #2e3440;
 }
 
-:root.github-light-mod {
+:root[data-code-theme="github-light-mod"] {
   --code-bg: #d5d6db;
   --code-fg: #343b58;
   --code-border: #c0c2cc;

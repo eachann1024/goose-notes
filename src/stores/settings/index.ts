@@ -64,9 +64,6 @@ function applyCodeStyle(codeStyle: CodeStyle) {
     const root = document.documentElement
     const isDark = root.classList.contains('dark')
 
-    const allThemeClasses = ['one-dark', 'one-light', 'github-dark', 'github-light', 'dracula', 'atom-light', 'nord', 'nord-light', 'tokyo-night', 'github-light-mod']
-    root.classList.remove(...allThemeClasses)
-
     let finalClass = ''
 
     switch (codeStyle) {
@@ -93,7 +90,9 @@ function applyCodeStyle(codeStyle: CodeStyle) {
     }
 
     if (finalClass) {
-        root.classList.add(finalClass)
+        root.setAttribute('data-code-theme', finalClass)
+    } else {
+        root.removeAttribute('data-code-theme')
     }
 }
 

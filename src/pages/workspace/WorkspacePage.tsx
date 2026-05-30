@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { type EditorRef } from "./components/editor/Editor";
-import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { useWorkspaceEvents } from "./hooks/useWorkspaceEvents";
 import { useLocalFolderWatch } from "./hooks/useLocalFolderWatch";
 import { useScrollRestoration } from "./hooks/useScrollRestoration";
@@ -27,7 +26,6 @@ export function WorkspacePage() {
   }, []);
 
   // Hooks
-  useGlobalShortcuts();
   useWorkspaceEvents({ activePageId, page, setIsAiPageOpen });
   useLocalFolderWatch({ notebook, activePageId, page });
   const scrollContainerRef = useScrollRestoration(activePageId);

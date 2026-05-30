@@ -5,24 +5,15 @@
 
 import type { IImageStorageStrategy } from '../types'
 import { blobToBase64 } from '../utils'
-import { compressImage } from '../../imageProcessor'
-
-const COMPRESS_THRESHOLD = 500 * 1024 // 500KB
-const COMPRESS_QUALITY = 0.8
+import { compressIfNeeded } from '../../imageProcessor'
 
 export class Base64Strategy implements IImageStorageStrategy {
   /**
-   * 保存为 base64（压缩大图片）
+   * 保存为 base64（压缩大图片，SVG/PNG 保留格式，其余转 WebP）
    */
-  async save(blob: Blob, mimeType: string): Promise<string> {
-    // 压缩 > 500KB 的图片
-    let processedBlob = blob
-    if (blob.size > COMPRESS_THRESHOLD) {
-      const file = new File([blob], 'image.jpg', { type: mimeType })
-      processedBlob = await compressImage(file, COMPRESS_QUALITY)
-    }
-
-    return blobToBase64(processedBlob)
+  async save(blob: Blob, _mimeType: string): Promise<string> {
+    const out = await compressIfNeeded(blob)
+    return blobToBase64(out)
   }
 
   /**

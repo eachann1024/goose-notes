@@ -6,6 +6,9 @@ import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { useStickyNote } from "@/stores/useStickyNote";
 import { fs } from "@/lib/utools/fs";
+import { importMarkdownFragment } from "@/lib/export";
+
+const DEFAULT_NOTEBOOK = "default-notebook";
 
 type UToolsPluginEnterDetail = {
   code?: string;
@@ -103,6 +106,42 @@ export function usePluginEvents() {
       openStickyNote();
     };
 
+    // new_page 唤起：用选中文字新建笔记并打开（不触碰任何已存在页面）。
+    const handleNewPage = (event: Event) => {
+      if (!usePages.getState().hydrated) return;
+      const customEvent = event as CustomEvent<{ text?: string }>;
+      const text = customEvent.detail?.text ?? "";
+
+      const pagesStore = usePages.getState();
+      const nbId =
+        useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
+
+      let newId: string;
+      const content =
+        typeof text === "string" && text.trim().length > 0
+          ? importMarkdownFragment(text)
+          : null;
+      if (content) {
+        newId = pagesStore.createPageRecord({ workspaceId: nbId, content });
+      } else {
+        // 解析失败或无选中文字：回退到空白新页，绝不复用/覆盖已存在页面。
+        newId = pagesStore.createPage(undefined, nbId);
+      }
+      // openTab 内部会 scheduleSetActivePage → setActivePage（含 setLastActivePage），
+      // 无需再显式调用，避免重复/竞态。
+      useTabs.getState().openTab(newId);
+    };
+
+    // onMainPush select 的真正落地通路（goose-note:navigate 全仓无人监听，不可用）。
+    const handleOpenNote = (event: Event) => {
+      if (!usePages.getState().hydrated) return;
+      const customEvent = event as CustomEvent<{ pageId?: string }>;
+      const pageId = customEvent.detail?.pageId;
+      if (typeof pageId !== "string" || pageId.length === 0) return;
+      if (!usePages.getState().pages[pageId]) return;
+      useTabs.getState().openTab(pageId);
+    };
+
     window.addEventListener(
       "goose-note:plugin-enter",
       handlePluginEnter as EventListener,
@@ -114,6 +153,14 @@ export function usePluginEvents() {
     window.addEventListener(
       "goose-note:open-sticky-note",
       handleOpenStickyNote as EventListener,
+    );
+    window.addEventListener(
+      "goose-note:new-page",
+      handleNewPage as EventListener,
+    );
+    window.addEventListener(
+      "goose-note:open-note",
+      handleOpenNote as EventListener,
     );
 
     return () => {
@@ -128,6 +175,14 @@ export function usePluginEvents() {
       window.removeEventListener(
         "goose-note:open-sticky-note",
         handleOpenStickyNote as EventListener,
+      );
+      window.removeEventListener(
+        "goose-note:new-page",
+        handleNewPage as EventListener,
+      );
+      window.removeEventListener(
+        "goose-note:open-note",
+        handleOpenNote as EventListener,
       );
     };
   }, [openStickyNote]);

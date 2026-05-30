@@ -73,7 +73,26 @@ export interface PagesState {
     sourceNotebookId?: string;
     targetNotebookId?: string;
     reason?: string;
+    undoSnapshots?: Array<{
+      id: string;
+      workspaceId: string;
+      parentId?: string;
+      order?: number;
+    }>;
+    prevActivePageId?: string | null;
   };
+  undoMovePageTree: (
+    undoSnapshots:
+      | Array<{
+          id: string;
+          workspaceId: string;
+          parentId?: string;
+          order?: number;
+        }>
+      | undefined,
+    sourceNotebookId: string | undefined,
+    prevActivePageId: string | null | undefined,
+  ) => boolean;
   setActivePage: (id: string | null) => void;
   setPendingNavigatePageId: (id: string | null) => void;
   setExpandPageId: (id: string | null) => void;

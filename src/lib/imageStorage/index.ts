@@ -4,11 +4,13 @@
  */
 
 import type { IImageStorageStrategy } from './types'
+import { DEFAULT_STORAGE_CONFIG } from './types'
 import { AttachmentStrategy } from './strategies/attachment'
 import { Base64Strategy } from './strategies/base64'
 import { FileSystemStrategy } from './strategies/file-system'
 import { InlinedStrategy } from './strategies/inlined'
 import { UToolsAdapter } from '../utools'
+import { compressIfNeeded } from '../imageProcessor'
 
 type LocalFolderAccessState =
   | boolean
@@ -28,8 +30,8 @@ export class ImageStorage {
     null
 
   constructor() {
-    // 小图片策略（< 100KB）
-    this.inlinedStrategy = new InlinedStrategy(100 * 1024)
+    // 小图片策略（< 100KB），阈值与 DEFAULT_STORAGE_CONFIG 保持一致
+    this.inlinedStrategy = new InlinedStrategy(DEFAULT_STORAGE_CONFIG.inlineThreshold)
   }
 
   /**
@@ -81,18 +83,24 @@ export class ImageStorage {
 
   /**
    * 存储图片
+   * - 入口统一降采样（≤2560px）+ 压缩/格式转换（SVG 跳过）
    * - 小图片（< 100KB）：直接 base64 内嵌
    * - 大图片（≥ 100KB）：使用策略存储
    */
   async save(blob: Blob, mimeType: string): Promise<string> {
+    // 入口统一处理：降采样 + WebP/PNG 输出（SVG 跳过）
+    // 用压缩后的 blob.size 再决定是否内嵌，避免大图降采样后本可内嵌却走重策略
+    const processed = await compressIfNeeded(blob, DEFAULT_STORAGE_CONFIG)
+    const processedMime = processed.type || mimeType
+
     // 小图片直接内嵌
-    if (blob.size < 100 * 1024) {
-      return this.inlinedStrategy.save(blob, mimeType)
+    if (processed.size < DEFAULT_STORAGE_CONFIG.inlineThreshold) {
+      return this.inlinedStrategy.save(processed, processedMime)
     }
 
-    // 大图片使用策略存储
+    // 大图片使用策略存储（策略内 compressIfNeeded 幂等，不会重复编码）
     const strategy = await this.resolveStrategy()
-    return strategy.save(blob, mimeType)
+    return strategy.save(processed, processedMime)
   }
 
   /**

@@ -226,7 +226,9 @@ export function SettingsAI({
         modelOptions,
       });
 
-      setSelectedModelId(modelOptions[0].id);
+      if (modelOptions.length > 0) {
+        setSelectedModelId(modelOptions[0].id);
+      }
       toast.success("自定义 AI 已保存");
     } catch (error) {
       const message = error instanceof Error ? error.message : "保存自定义 AI 失败";

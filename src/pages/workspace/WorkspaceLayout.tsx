@@ -1,6 +1,7 @@
 import { type RefObject } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
+import { confirmLocalDelete } from "@/lib/confirm-local-delete";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
@@ -188,6 +189,19 @@ export function WorkspaceLayout({
                   onDelete={() => {
                     const deletedPageId = activePageId;
                     void (async () => {
+                      const targetPage = usePages
+                        .getState()
+                        .getPage(deletedPageId);
+                      const targetNotebook = targetPage
+                        ? notebooks[targetPage.workspaceId]
+                        : undefined;
+                      if (
+                        targetPage &&
+                        targetNotebook?.source === "local-folder"
+                      ) {
+                        const ok = await confirmLocalDelete(targetPage);
+                        if (!ok) return;
+                      }
                       await usePages.getState().permanentlyDeletePage(deletedPageId);
                       if (usePages.getState().getPage(deletedPageId)) return;
                       useTabs

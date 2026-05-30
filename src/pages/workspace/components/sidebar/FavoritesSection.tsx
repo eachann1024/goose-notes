@@ -18,7 +18,8 @@ export function FavoritesSection({
   const pages = usePages((state) => state.pages);
   const reorderFavorites = usePages((state) => state.reorderFavorites);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
-  const [favoritesCollapsed, setFavoritesCollapsed] = useState(false);
+  const favoritesCollapsed = useSidebarView((s) => s.favoritesCollapsed);
+  const setFavoritesCollapsed = useSidebarView((s) => s.setFavoritesCollapsed);
 
   const favorites = useMemo(
     () =>

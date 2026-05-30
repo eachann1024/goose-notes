@@ -42,6 +42,17 @@ export interface StorageConfig {
   inlineThreshold: number  // 内嵌阈值（字节），默认 100KB
   compressThreshold: number // 压缩阈值（字节），默认 500KB
   compressQuality: number   // 压缩质量，默认 0.8
+  maxEdge: number           // 最大边长（像素），超过则等比降采样，默认 2560
+}
+
+/**
+ * 默认存储配置
+ */
+export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
+  inlineThreshold: 100 * 1024,   // 100KB
+  compressThreshold: 500 * 1024, // 500KB
+  compressQuality: 0.8,
+  maxEdge: 2560,
 }
 
 /**

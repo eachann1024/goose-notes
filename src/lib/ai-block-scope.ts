@@ -1,12 +1,5 @@
-import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/lib/blocknote-content";
-import type { AISettingsLike } from "@/lib/ai-provider";
-import { runAIText } from "@/lib/ai-provider";
-import {
-  countWords,
-  extractStructureSummary,
-  extractTextFromContent,
-} from "@/lib/content-text-extractor";
+import { extractTextFromContent } from "@/lib/content-text-extractor";
 
 export type AiBlockScopeKind = "full_page" | "range";
 
@@ -47,8 +40,6 @@ const TRAILING_N_RE =
 
 const HEADING_SCOPE_RE =
   /[「『"'《]([^」』"'》]+)[」』"'》].{0,4}(标题|这一节|章节|这段|下面|底下|下方)|((?:^|[，。！？\s])([一二三四五六七八九十0-9A-Za-z一-龥]{1,40}))\s*(?:这个)?(?:标题|章节|节)(?:下|下面|底下)?/;
-
-const RANGE_DETECTION_HINT_RE = /(整理|改写|润色|修改|优化|重写|调整|改成|改为|变成|列|列表)/;
 
 function getBlocks(content: unknown): any[] {
   if (Array.isArray(content)) return content;
@@ -221,146 +212,6 @@ export function detectBlockScopeHeuristic(
   }
 
   return null;
-}
-
-function shouldAttemptScopeResolution(prompt: string): boolean {
-  return RANGE_DETECTION_HINT_RE.test(prompt) || /前面|开头|末尾|最后|这一节|章节/.test(prompt);
-}
-
-const SCOPE_SYSTEM_PROMPT = [
-  "你的任务：根据用户请求与目标页面的块结构，判定要 AI 重写的范围。",
-  "",
-  "只能输出以下三种结果之一，且只能输出严格 JSON：",
-  '1. {"verdict":"full_page"} — 用户希望整页重写。',
-  '2. {"verdict":"range","startBlockId":"<id>","endBlockId":"<id>","rangeLabel":"<不超过 14 字的中文范围描述>"} — 用户希望仅重写某连续段落。',
-  '3. {"verdict":"none"} — 用户没有提及要写入页面（聊天 / 仅询问）。',
-  "",
-  "判定规则：",
-  "- 当用户提到“前 N 行/块/段”“某标题下”“某章节”时，必须返回 range。",
-  "- range 的 startBlockId、endBlockId 必须来自下方“页面块结构”列表中实际存在的 id。",
-  "- 不要包含解释，不要输出 markdown 代码围栏，不要多余字符。",
-].join("\n");
-
-function buildScopeUserPrompt(prompt: string, structureWithIds: string) {
-  return [
-    "页面块结构（按出现顺序）：",
-    structureWithIds || "（页面为空）",
-    "",
-    "用户请求：",
-    prompt,
-  ].join("\n");
-}
-
-function parseScopeLlmResponse(
-  text: string,
-  blocks: any[],
-): AiBlockScope | null {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*?\}/);
-    if (!jsonMatch) return null;
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    if (parsed?.verdict === "full_page") return { kind: "full_page" };
-    if (parsed?.verdict === "range") {
-      const startId = String(parsed.startBlockId ?? "").trim();
-      const endId = String(parsed.endBlockId ?? "").trim();
-      if (!startId || !endId) return null;
-      const startIdx = blocks.findIndex((b) => b?.id === startId);
-      const endIdx = blocks.findIndex((b) => b?.id === endId);
-      if (startIdx < 0 || endIdx < startIdx) return null;
-      const label =
-        typeof parsed.rangeLabel === "string" && parsed.rangeLabel.trim()
-          ? parsed.rangeLabel.trim().slice(0, 14)
-          : `第 ${startIdx + 1}-${endIdx + 1} 块`;
-      return blocksRangeToScope(blocks, startIdx, endIdx, label);
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 综合识别：先正则启发式，没命中且 prompt 有"重写/整理"等动作意图时调用 LLM。
- * LLM 失败 / 超时 / 解析失败 → 返回 null，由调用方降级到整页。
- */
-export async function resolveBlockScope(params: {
-  prompt: string;
-  page: Page | null | undefined;
-  settings?: AISettingsLike | null;
-  abortSignal?: AbortSignal;
-  timeoutMs?: number;
-}): Promise<AiBlockScope | null> {
-  const { prompt, page, settings, abortSignal } = params;
-  if (!page || page.isFolder) return null;
-  const trimmedPrompt = prompt.trim();
-  if (!trimmedPrompt) return null;
-
-  const heuristic = detectBlockScopeHeuristic(trimmedPrompt, page.content);
-  if (heuristic) return heuristic;
-
-  if (!settings || !shouldAttemptScopeResolution(trimmedPrompt)) return null;
-
-  const blocks = getBlocks(page.content);
-  if (blocks.length === 0) return null;
-
-  // 大页面 / 极简页面直接走整页路径，避免没必要的 LLM 调用
-  if (countWords(page.content) < 30) return null;
-
-  const structureWithIds = extractStructureSummary(page.content, {
-    includeBlockIds: true,
-    maxSummaryParagraphs: 6,
-  });
-
-  const timeoutMs = params.timeoutMs ?? 4000;
-  const timeoutController = new AbortController();
-  const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
-  const signals: AbortSignal[] = [timeoutController.signal];
-  if (abortSignal) signals.push(abortSignal);
-  const merged = mergeSignals(signals);
-
-  try {
-    const rawText = await runAIText(
-      settings,
-      [
-        { role: "system", content: SCOPE_SYSTEM_PROMPT },
-        { role: "user", content: buildScopeUserPrompt(trimmedPrompt, structureWithIds) },
-      ],
-      {
-        abortSignal: merged.signal,
-        requestOverrides: {
-          selectedModelId: settings.selectedModelId,
-          reasoningLevel: "default",
-        },
-      },
-    );
-    return parseScopeLlmResponse(rawText, blocks);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-    merged.cleanup();
-  }
-}
-
-function mergeSignals(signals: AbortSignal[]) {
-  const controller = new AbortController();
-  const cleanups: Array<() => void> = [];
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort();
-      break;
-    }
-    const handler = () => controller.abort();
-    signal.addEventListener("abort", handler);
-    cleanups.push(() => signal.removeEventListener("abort", handler));
-  }
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      for (const fn of cleanups) fn();
-    },
-  };
 }
 
 /**

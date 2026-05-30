@@ -132,6 +132,48 @@ export const jsonRenderCatalog = defineCatalog(schema, {
       description:
         "A CSS grid container. Use for card grids, metric grids, comparison grids, etc.",
     },
+    DataTable: {
+      props: z.object({
+        columns: z.array(z.string()).describe("Column header labels"),
+        rows: z.array(z.array(z.string())).describe("Table rows, each row is an array of cell strings matching column count"),
+        caption: z.string().optional().describe("Optional table caption shown below"),
+        className: z.string().optional(),
+      }),
+      description:
+        "A data table with column headers and rows. Use for structured tabular data. Provide columns as string array and rows as 2D string array.",
+    },
+    Progress: {
+      props: z.object({
+        value: z.number().min(0).max(100).describe("Progress value 0-100"),
+        label: z.string().optional().describe("Optional label shown above the bar"),
+        className: z.string().optional(),
+      }),
+      description:
+        "A progress bar showing completion percentage (0-100). Use for tasks, loading states, skill levels.",
+    },
+    Badge: {
+      props: z.object({
+        text: z.string().describe("Badge label text"),
+        variant: z
+          .enum(["default", "secondary", "destructive", "outline"])
+          .optional()
+          .describe("Badge visual style: default (primary), secondary, destructive (red), outline"),
+        className: z.string().optional(),
+      }),
+      description:
+        "A small inline badge/tag for status labels, categories, or counts. Use inside FlexRow for tag groups.",
+    },
+    Stat: {
+      props: z.object({
+        label: z.string().describe("Metric label, e.g. 'Total Revenue'"),
+        value: z.string().describe("Primary metric value, e.g. '$12,345'"),
+        delta: z.string().optional().describe("Change value, e.g. '+12%' or '-3.2'"),
+        trend: z.enum(["up", "down", "flat"]).optional().describe("Trend direction affecting delta color"),
+        className: z.string().optional(),
+      }),
+      description:
+        "A single metric/stat display with label, value, and optional delta trend. Use inside Grid for metric dashboards.",
+    },
   },
 });
 
@@ -182,8 +224,10 @@ ${jsonRenderCatalog.componentNames.map((name) => `- ${name}`).join("\n")}
 #### 设计原则
 - 用 Card 作为顶层容器，CardHeader + CardTitle + CardDescription 做标题区，CardContent 放主体内容
 - 用 FlexRow 横向排列按钮/标签，FlexCol 纵向堆叠内容
-- 用 Grid 做等宽卡片/指标网格（2-4 列）
+- 用 Grid 做等宽卡片/指标网格（2-4 列）；在 Grid 内放 Stat 组件展示多个指标
 - 用 Separator 做分隔线
+- 表格数据优先用 DataTable（传 columns + rows 二维数组），而非手写 HTML 表格
+- 进度/完成度用 Progress（value 0-100），状态/分类标签用 Badge（FlexRow 内并排多个）
 - 每个元素必须有唯一 key（如 card-1, header-1），children 用 key 数组引用子元素
 - 不要在 props 中写 className 来控制布局，优先使用 FlexRow/FlexCol/Grid 等布局组件
 - 整体风格保持简洁，不要过度嵌套

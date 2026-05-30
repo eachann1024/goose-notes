@@ -8,6 +8,7 @@ export const HTML_TO_IMAGE_CDN = `https://cdn.jsdelivr.net/npm/html-to-image@1.1
 export const CAPTURE_SCRIPT = `<script data-goose-capture>
 (() => {
   window.addEventListener('message', (event) => {
+    if (event.source !== window.parent) return;
     if (event.data && event.data.type === 'capture-screenshot') {
       if (typeof htmlToImage === 'undefined') {
         window.parent.postMessage({ type: 'screenshot-result', error: 'html-to-image not loaded' }, '*');

@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
 import { getPageTitle } from "@/lib/page-title";
+import { confirmLocalDelete } from "@/lib/confirm-local-delete";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 
@@ -14,6 +15,13 @@ export function useDeletePageWithUndo() {
     const isLocalFolder = notebook?.source === "local-folder";
 
     const pageTitle = getPageTitle(page) || "无标题";
+
+    // local-folder 是物理删除（移入系统回收站，不可在应用内撤回），删除前先确认。
+    // 取消则直接返回，不调用 deletePage、不弹任何 toast。
+    if (isLocalFolder) {
+      const ok = await confirmLocalDelete(page);
+      if (!ok) return;
+    }
 
     const deleted = await deletePage(pageId);
 

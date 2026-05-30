@@ -142,7 +142,7 @@ export function PaletteResultGroup({
         <Command.Group
           heading={searchResults.hasQuery ? "搜索结果" : "所有页面"}
         >
-          {searchResults.all.map((page: SearchResultPage) => {
+          {searchResults.allDisplay.map((page: SearchResultPage) => {
             const breadcrumb = getPageBreadcrumb(page);
             return (
               <Command.Item

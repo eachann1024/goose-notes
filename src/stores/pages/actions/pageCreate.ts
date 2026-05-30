@@ -357,7 +357,7 @@ export const duplicatePageAction = (
     newId = uuidv4();
     const now = Date.now();
 
-    const clonedContent = JSON.parse(JSON.stringify(page.content));
+    const clonedContent = structuredClone(page.content);
     if (
       clonedContent.content?.[0]?.type === "heading" &&
       clonedContent.content[0].attrs?.level === 1

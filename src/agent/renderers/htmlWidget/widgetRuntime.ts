@@ -358,6 +358,7 @@ export const STORAGE_SHIM = `<script data-goose-storage-shim>
 export const UPDATE_LISTENER_SCRIPT = `<script data-goose-update-listener>
 (() => {
   window.addEventListener('message', (event) => {
+    if (event.source !== window.parent) return;
     if (event.data && event.data.type === 'update-html') {
       const container = document.getElementById('vis-container');
       if (container) {

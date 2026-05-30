@@ -95,7 +95,7 @@ export function useRenameDialog() {
     const nextTitle = renameValue.trim();
     if (!page || nextTitle === "") return;
 
-    const newContent = JSON.parse(JSON.stringify(page.content));
+    const newContent = structuredClone(page.content);
     if (!newContent || newContent.type !== "doc") {
       newContent.type = "doc";
       newContent.content = [];

@@ -1,7 +1,6 @@
 import { useNotebooks } from "../../../useNotebooks";
 import type { StoreSet, StoreGet } from "../hydrate";
 import { flushEditorContent } from "../flushEditor";
-import { getPageTitle } from "@/lib/page-title";
 import { resolveAdjacentPageAfterDeletion } from "./helpers";
 import {
   persistPageSnapshots,
@@ -34,13 +33,6 @@ export const deletePageAction = async (
 
     const targetPath = page.localFilePath || resolvePathFromId(id);
     if (!targetPath || !window.gooseFs) return false;
-
-    const confirmed = confirm(
-      page.isFolder
-        ? `确定要删除本地文件夹 "${getPageTitle(page)}" 及其内容吗？将移入系统回收站。`
-        : `确定要删除本地文件 "${getPageTitle(page)}" 吗？将移入系统回收站。`,
-    );
-    if (!confirmed) return false;
 
     const removedIds = new Set<string>();
     const stack = [id];
@@ -103,11 +95,13 @@ export const deletePageAction = async (
 
     const newPages = { ...state.pages };
     const now = Date.now();
+    const batchId = `b-${now}-${id}`;
     removedIds.forEach((pid) => {
       if (newPages[pid]) {
         newPages[pid] = {
           ...newPages[pid],
           trashedAt: now,
+          trashBatchId: batchId,
           updatedAt: now,
           isFavorite: false,
           isPinned: false,

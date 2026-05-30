@@ -31,7 +31,7 @@ export { saveBlobAndReveal } from "./fileSave";
 export { exportToPDF } from "@/lib/pdfExport";
 
 function cloneContent(content: BlockNoteContent): any[] {
-  return JSON.parse(JSON.stringify(content ?? [])) as any[];
+  return structuredClone(content ?? []) as any[];
 }
 
 function stripFirstH1(blocks: any[]): any[] {

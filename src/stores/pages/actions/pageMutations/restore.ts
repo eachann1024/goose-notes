@@ -50,6 +50,7 @@ export const restorePageAction = (
     if (!currentPage || !currentPage.trashedAt) return state;
 
     const trashStamp = currentPage.trashedAt;
+    const batchId = currentPage.trashBatchId;
     const now = Date.now();
     const restoredPages = { ...state.pages };
 
@@ -60,8 +61,14 @@ export const restorePageAction = (
       if (visited.has(currentId)) continue;
       visited.add(currentId);
       const current = restoredPages[currentId];
-      if (current?.trashedAt === trashStamp) {
-        const { trashedAt, ...rest } = current;
+      // 节点自身有 batchId 时按 batchId 精确匹配同批；
+      // 存量垃圾箱数据无 batchId，回退到 trashedAt 时间窗匹配（兼容旧行为）。
+      const matched =
+        current?.trashBatchId !== undefined
+          ? current.trashBatchId === batchId
+          : current?.trashedAt === trashStamp;
+      if (current && matched) {
+        const { trashedAt, trashBatchId, ...rest } = current;
         restoredPages[currentId] = {
           ...rest,
           updatedAt: now,

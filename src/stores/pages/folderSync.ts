@@ -8,7 +8,11 @@ export const pendingLocalSaveContents = new Map<string, JSONContent>();
 export const localSaveWriteChains = new Map<string, Promise<void>>();
 
 export const cloneJSONContent = (content: JSONContent): JSONContent => {
-  return JSON.parse(JSON.stringify(content)) as JSONContent;
+  try {
+    return structuredClone(content) as JSONContent;
+  } catch {
+    return JSON.parse(JSON.stringify(content)) as JSONContent;
+  }
 };
 
 export const clearLocalSaveTimers = (pageId: string) => {

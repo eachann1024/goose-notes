@@ -1,8 +1,19 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/lib/page-title";
 import { extractTextFromContent } from "@/lib/content-text-extractor";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
+
+// 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
+const textCache = new Map<string, { updatedAt: number; text: string }>();
+
+function getCachedText(page: Page): string {
+  const hit = textCache.get(page.id);
+  if (hit && hit.updatedAt === page.updatedAt) return hit.text;
+  const text = extractTextFromContent(page.content);
+  textCache.set(page.id, { updatedAt: page.updatedAt, text });
+  return text;
+}
 
 export interface SearchResultPage extends Page {
   contentSnippet?: string;
@@ -12,6 +23,7 @@ export interface SearchResultPage extends Page {
 export interface SearchResults {
   recent: SearchResultPage[];
   all: SearchResultPage[];
+  allDisplay: SearchResultPage[];
   hasQuery: boolean;
 }
 
@@ -66,6 +78,7 @@ export function useCommandSearch({
   searchAllNotebooks,
 }: CommandSearchState) {
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredQuery = useDeferredValue(searchQuery);
   const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("goose-recent-excludes");
@@ -122,7 +135,7 @@ export function useCommandSearch({
   );
 
   const searchResults: SearchResults = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = deferredQuery.trim().toLowerCase();
 
     if (!query) {
       const recent = filteredPages
@@ -136,7 +149,7 @@ export function useCommandSearch({
         return titleA.localeCompare(titleB, "zh-CN");
       }) as SearchResultPage[];
 
-      return { recent, all, hasQuery: false };
+      return { recent, all, allDisplay: all.slice(0, 30), hasQuery: false };
     }
 
     const matched: SearchResultPage[] = [];
@@ -151,7 +164,7 @@ export function useCommandSearch({
 
       const title = getPageTitle(page);
       const titleMatch = title.toLowerCase().includes(query);
-      const contentText = extractTextFromContent(page.content);
+      const contentText = getCachedText(page);
       const contentMatch = contentText.toLowerCase().includes(query);
       
       if (titleMatch || contentMatch) {
@@ -181,8 +194,8 @@ export function useCommandSearch({
       return titleA.localeCompare(titleB, "zh-CN");
     });
 
-    return { recent, all, hasQuery: true };
-  }, [filteredPages, searchQuery, removedRecentIds]);
+    return { recent, all, allDisplay: all.slice(0, 30), hasQuery: true };
+  }, [filteredPages, deferredQuery, removedRecentIds]);
 
   return {
     filteredPages,
