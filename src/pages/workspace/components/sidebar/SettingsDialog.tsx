@@ -57,6 +57,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setCodeStyle,
     globalEditorFullWidth,
     setGlobalEditorFullWidth,
+    tableEvenColumnWidth,
+    setTableEvenColumnWidth,
     searchProviders,
     toggleSearchProvider,
     reorderSearchProviders,
@@ -348,6 +350,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCodeStyle={setCodeStyle}
                 globalEditorFullWidth={globalEditorFullWidth}
                 setGlobalEditorFullWidth={setGlobalEditorFullWidth}
+                tableEvenColumnWidth={tableEvenColumnWidth}
+                setTableEvenColumnWidth={setTableEvenColumnWidth}
                 customFonts={customFonts}
                 setCustomLabel={setCustomLabel}
                 setCustomFont={setCustomFont}

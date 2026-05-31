@@ -124,6 +124,9 @@ export const useSettings = create<SettingsState>()(
                 if (state && typeof state.defaultCodeBlockWrap !== 'boolean') {
                     useSettings.setState({ defaultCodeBlockWrap: false })
                 }
+                if (state && typeof state.tableEvenColumnWidth !== 'boolean') {
+                    useSettings.setState({ tableEvenColumnWidth: true })
+                }
                 const normalizedUIFontSize = normalizeUIFontSize(state?.uiFontSize as string | undefined)
                 if (state && state.uiFontSize !== normalizedUIFontSize) {
                     useSettings.setState({ uiFontSize: normalizedUIFontSize })

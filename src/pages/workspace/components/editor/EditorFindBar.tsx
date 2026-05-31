@@ -71,6 +71,7 @@ type EditorFindBarProps = {
   debouncedUpdate: ((id: string, content: BlockNoteContent) => void) & { cancel: () => void };
   isEditorFullWidth: boolean;
   effectiveTheme: "light" | "dark";
+  tableEvenColumnWidth: boolean;
   searchProviders: any[];
   utools: { openSearchInUtools: boolean };
   customActions: any[];
@@ -91,6 +92,7 @@ export function EditorFindBar({
   debouncedUpdate,
   isEditorFullWidth,
   effectiveTheme,
+  tableEvenColumnWidth,
   searchProviders,
   utools,
   customActions,
@@ -192,6 +194,7 @@ export function EditorFindBar({
       customActions={customActions}
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
+      tableEvenColumnWidth={tableEvenColumnWidth}
     >
       {isSwitching && (
         <div

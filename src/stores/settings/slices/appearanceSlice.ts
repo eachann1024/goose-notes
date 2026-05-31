@@ -8,6 +8,7 @@ export interface AppearanceSliceState {
     codeStyle: CodeStyle
     defaultCodeBlockWrap: boolean
     globalEditorFullWidth: boolean
+    tableEvenColumnWidth: boolean
     customFonts: CustomFonts
     uiFontSize: UIFontSize
     editorFontSize: number
@@ -24,6 +25,7 @@ export interface AppearanceSliceActions {
     setCodeStyle: (style: CodeStyle) => void
     setDefaultCodeBlockWrap: (enabled: boolean) => void
     setGlobalEditorFullWidth: (enabled: boolean) => void
+    setTableEvenColumnWidth: (enabled: boolean) => void
     setCustomLabel: (type: 'default' | 'serif' | 'mono', label: string | null) => void
     setCustomFont: (type: 'default' | 'serif' | 'mono', font: string | null) => void
     resetCustomFont: (type: 'default' | 'serif' | 'mono') => void
@@ -46,6 +48,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     codeStyle: 'default',
     defaultCodeBlockWrap: false,
     globalEditorFullWidth: false,
+    tableEvenColumnWidth: true,
     customFonts: {
         default: { label: null, font: null },
         serif: { label: null, font: null },
@@ -74,6 +77,7 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
         },
         setDefaultCodeBlockWrap: (defaultCodeBlockWrap) => set({ defaultCodeBlockWrap }),
         setGlobalEditorFullWidth: (globalEditorFullWidth) => set({ globalEditorFullWidth }),
+        setTableEvenColumnWidth: (tableEvenColumnWidth) => set({ tableEvenColumnWidth }),
         setCustomLabel: (type, label) =>
             set((state) => ({
                 customFonts: {

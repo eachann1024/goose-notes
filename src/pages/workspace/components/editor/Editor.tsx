@@ -58,6 +58,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const { notebooks } = useNotebooks();
   const {
     globalEditorFullWidth,
+    tableEvenColumnWidth,
     customFonts,
     theme,
     searchProviders,
@@ -486,6 +487,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       syncedContentSignatureRef={syncedContentSignatureRef}
       debouncedUpdate={debouncedUpdate}
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
+      tableEvenColumnWidth={tableEvenColumnWidth}
       searchProviders={searchProviders} utools={utools} customActions={customActions}
       isSwitching={isSwitching}
     />

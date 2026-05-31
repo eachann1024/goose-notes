@@ -9,6 +9,8 @@ interface SettingsAppearanceProps {
   setCodeStyle: (style: CodeStyle) => void;
   globalEditorFullWidth: boolean;
   setGlobalEditorFullWidth: (enabled: boolean) => void;
+  tableEvenColumnWidth: boolean;
+  setTableEvenColumnWidth: (enabled: boolean) => void;
   customFonts: Record<"default" | "serif" | "mono", { label: string | null; font: string | null }>;
   setCustomLabel: (type: "default" | "serif" | "mono", label: string | null) => void;
   setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
@@ -66,6 +68,8 @@ export function SettingsAppearance({
   setCodeStyle,
   globalEditorFullWidth,
   setGlobalEditorFullWidth,
+  tableEvenColumnWidth,
+  setTableEvenColumnWidth,
   customFonts,
   setCustomLabel,
   setCustomFont,
@@ -203,6 +207,22 @@ export function SettingsAppearance({
             id="global-editor-full-width"
             checked={globalEditorFullWidth}
             onCheckedChange={setGlobalEditorFullWidth}
+            className={APPEARANCE_SWITCH_CLASS}
+          />
+        </div>
+        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+          <div>
+            <Label htmlFor="table-even-column-width" className="cursor-pointer">
+              表格两端对齐
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              像 Notion 一样让表格撑满可用宽度，并按列数平均分配单元格宽度。
+            </p>
+          </div>
+          <Switch
+            id="table-even-column-width"
+            checked={tableEvenColumnWidth}
+            onCheckedChange={setTableEvenColumnWidth}
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>
