@@ -217,8 +217,20 @@ export const loadLocalFolderPagesAction = async (
       }
 
       if (options?.showWelcome) {
-        result.activePageId = null;
-        result.expandPageId = null;
+        // 打开本地文件夹后：文件夹内有笔记则直接定位到首篇（按 order/创建时间），
+        // 只有真正的空文件夹才回落到欢迎空状态。修复「加了文件夹却仍停在新建引导」。
+        const firstPage = localPages
+          .filter((p) => !p.trashedAt)
+          .sort(
+            (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt),
+          )[0];
+        if (firstPage) {
+          result.activePageId = firstPage.id;
+          result.expandPageId = firstPage.id;
+        } else {
+          result.activePageId = null;
+          result.expandPageId = null;
+        }
         result.pendingNavigatePageId = null;
       }
 

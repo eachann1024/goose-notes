@@ -8,6 +8,9 @@ type State = {
   focusedByNotebook: Record<string, string | null>;
   selectedByNotebook: Record<string, string | null>;
   favoritesCollapsed: boolean;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
   setExpanded: (notebookId: string, ids: string[]) => void;
   expand: (notebookId: string, id: string) => void;
   collapse: (notebookId: string, id: string) => void;
@@ -23,6 +26,13 @@ export const useSidebarView = create<State>()(
       focusedByNotebook: {},
       selectedByNotebook: {},
       favoritesCollapsed: false,
+      sidebarCollapsed: false,
+      setSidebarCollapsed: (collapsed) => {
+        if (get().sidebarCollapsed === collapsed) return;
+        set({ sidebarCollapsed: collapsed });
+      },
+      toggleSidebarCollapsed: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setExpanded: (notebookId, ids) => {
         const current = get().expandedByNotebook[notebookId];
         if (current && current.length === ids.length && current.every((v, i) => v === ids[i])) {
@@ -72,7 +82,7 @@ export const useSidebarView = create<State>()(
     {
       name: "goose-sidebar-view",
       version: 1,
-      partialize: (state) => ({ expandedByNotebook: state.expandedByNotebook, favoritesCollapsed: state.favoritesCollapsed }),
+      partialize: (state) => ({ expandedByNotebook: state.expandedByNotebook, favoritesCollapsed: state.favoritesCollapsed, sidebarCollapsed: state.sidebarCollapsed }),
     },
   ),
 );

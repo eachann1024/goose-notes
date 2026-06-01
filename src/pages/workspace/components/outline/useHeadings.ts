@@ -82,11 +82,28 @@ export function useHeadings(
 
   useEffect(() => {
     if (!editor) return;
+    // IME composition 期间每个拼音中间态都会触发 onChange，这里调 editor.document
+    // 全量转换 + collectHeadings 遍历全文 + setHeadings 触发大纲面板重渲染，
+    // 高频叠加会与 PM composition 抢主线程导致输入卡顿。composition 中跳过，
+    // compositionend 后刷新一次即可（大纲对中间态不可见，无功能损失）。
+    const isComposing = () =>
+      Boolean(
+        (editor as { prosemirrorView?: { composing?: boolean } }).prosemirrorView
+          ?.composing,
+      );
     const unsub = editor.onChange?.(() => {
+      if (isComposing()) return;
       refresh();
     });
+    const dom = (editor as { prosemirrorView?: { dom?: HTMLElement } })
+      .prosemirrorView?.dom;
+    const handleCompositionEnd = () => {
+      requestAnimationFrame(() => refresh());
+    };
+    dom?.addEventListener("compositionend", handleCompositionEnd);
     return () => {
       if (typeof unsub === "function") unsub();
+      dom?.removeEventListener("compositionend", handleCompositionEnd);
     };
   }, [editor, refresh]);
 

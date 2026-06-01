@@ -4,6 +4,7 @@ import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
+import { useSidebarView } from "@/stores/useSidebarView";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 import { matchShortcut } from "@/lib/shortcut-match";
 
@@ -111,6 +112,16 @@ export function useAppHotkeys() {
           event.preventDefault();
           closeAllOverlays();
           window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+        },
+      },
+      // cmd+b 折叠/展开侧栏 —— 仅在非编辑态触发；编辑器内 Cmd+B 仍为加粗（when 不通过则放行给 BlockNote）
+      {
+        id: "toggle-sidebar",
+        match: (event) => matchShortcut(event, "Mod+B"),
+        when: () => !isEditableInput() && !isRichTextEditing(),
+        handler: (event) => {
+          event.preventDefault();
+          useSidebarView.getState().toggleSidebarCollapsed();
         },
       },
       // cmd+f editor find open
