@@ -39,7 +39,7 @@ import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fake
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
 import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
-import { gooseFindInPageExtension } from "./findInPagePlugin";
+import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";

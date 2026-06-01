@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
-import { createHighlightPlugin, type Parser } from "./highlightPlugin";
+import { createHighlightPlugin, type Parser } from "@/components/editor/find/highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
 import { all, createLowlight } from "lowlight";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
-import { MathView } from "./MathView";
+import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "./MermaidView";
 import { useSettings } from "@/stores/useSettings";
 

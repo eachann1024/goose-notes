@@ -22,7 +22,7 @@ import {
   FORMAT_SUPPORTED_LANGUAGES,
   LANGUAGE_DISPLAY_NAMES,
   POPULAR_LANGUAGES,
-} from "./codeBlockLanguages";
+} from "@/components/editor/blocks/code/codeBlockLanguages";
 
 interface CodeBlockToolbarProps {
   language: string;

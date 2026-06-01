@@ -32,10 +32,10 @@ import { FindInPageBar } from "./FindInPageBar";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 
 // Sub-component and modular utility imports
-import { EditorFilePanel } from "./components/EditorFilePanel";
+import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
 import { GooseTableHandle, GooseTableExtendButton } from "./components/GooseTableHandle";
 import { EditorContextMenu } from "./components/EditorContextMenu";
-import { editorSchema } from "./schema";
+import { editorSchema } from "@/components/editor/core/schema";
 
 // Re-exports to prevent broken imports elsewhere
 export {
@@ -55,7 +55,7 @@ export {
   isInteractiveEditorTarget,
 } from "@/components/editor/utils/selection";
 
-export { editorSchema } from "./schema";
+export { editorSchema } from "@/components/editor/core/schema";
 
 type EditorFindBarProps = {
   editor: any;

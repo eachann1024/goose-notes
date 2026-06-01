@@ -20,7 +20,7 @@ import {
   NON_FORMATTABLE_TYPES,
   shouldRenderFormattingToolbar,
   useSelectionMarkStates,
-} from "./helpers";
+} from "@/components/editor/toolbars/formatting/helpers";
 import type { BindTooltip } from "./ToolbarTooltip";
 import { AiButton } from "./groups/AiButton";
 import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";

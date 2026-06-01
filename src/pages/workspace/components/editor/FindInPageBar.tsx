@@ -7,7 +7,7 @@ import {
   getFindState,
   setFindQuery,
   stepFindMatch,
-} from "./findInPagePlugin";
+} from "@/components/editor/find/findInPagePlugin";
 
 type FindInPageBarProps = {
   editor: BlockNoteEditor<any, any, any> | null;
