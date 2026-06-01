@@ -242,9 +242,8 @@ export function AiPromptComposer({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="start"
-                        alignOffset={-10}
-                        sideOffset={50}
-                        className="w-[220px] max-h-[320px] overflow-y-auto"
+                        side="top"
+                        className="w-[220px] max-h-[min(var(--radix-dropdown-menu-content-available-height),360px)]"
                       >
                         {modelOptions.map((model) => (
                           <DropdownMenuItem
