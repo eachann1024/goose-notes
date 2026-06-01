@@ -30,8 +30,8 @@ export function SidebarFooter({
   };
 
   const btnClass =
-    "h-8 w-8 flex items-center justify-center rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent";
-  const activeClass = "text-foreground bg-accent";
+    "h-8 w-8 flex items-center justify-center rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-[var(--goose-interactive-hover)]";
+  const activeClass = "text-foreground bg-[var(--goose-interactive-selected)]";
 
   return (
     <div className="px-2 pb-2 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
