@@ -1,4 +1,4 @@
-import type { EditorRef } from "../editor/Editor";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import { OutlinePanel } from "../outline/OutlinePanel";
 import { useHeadings } from "../outline/useHeadings";
 import type { HeadingItem } from "../outline/useHeadings";

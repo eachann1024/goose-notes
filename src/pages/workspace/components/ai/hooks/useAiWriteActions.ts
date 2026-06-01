@@ -2,7 +2,7 @@ import { useCallback, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/analytics";
 import { commitAgentArtifact } from "@/agent/core/runtime";
-import type { EditorRef } from "../../editor/Editor";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import type { MarkdownNoteArtifact } from "@/agent/core/types";
 
 interface UseAiWriteActionsParams {

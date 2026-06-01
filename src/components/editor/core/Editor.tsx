@@ -9,9 +9,10 @@ import { createGooseAITransport } from "@/components/editor/ai/transport/blockno
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
-import { usePages } from "@/stores/usePages";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { useSettings } from "@/stores/useSettings";
+import {
+  useEditorSettings,
+  useEditorPageContext,
+} from "@/components/editor/platform/hostContext";
 import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const contentSigCache = new WeakMap<object, string>();
@@ -41,7 +42,7 @@ import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputr
 import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
-import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
+import { EditorComposer, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 
@@ -54,22 +55,21 @@ interface EditorProps {
 }
 
 export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true }, ref) {
-  const { activePageId, getPage, updatePage } = usePages();
-  const { notebooks } = useNotebooks();
   const {
-    globalEditorFullWidth,
-    tableEvenColumnWidth,
-    customFonts,
     theme,
     searchProviders,
     utools,
     customActions,
-  } = useSettings();
-  const page = activePageId ? getPage(activePageId) : undefined;
-  const notebook = page ? notebooks[page.workspaceId] : undefined;
-  const isEditorFullWidth = Boolean(
-    notebook?.editorFullWidth ?? globalEditorFullWidth,
-  );
+    tableEvenColumnWidth,
+    ai: aiSettings,
+  } = useEditorSettings();
+  const {
+    page,
+    isEditorFullWidth,
+    onContentChange,
+    getActivePageLocalFilePath,
+  } = useEditorPageContext();
+  const activePageId = page?.id ?? null;
 
   const pageIdForUpdateRef = useRef<string | null>(null);
   const syncedContentSignatureRef = useRef<string | null>(null);
@@ -77,6 +77,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
   const [isSwitching, setIsSwitching] = useState(false);
+
+  // 注入回调/数据的最新引用：供 useCreateBlockNote（deps=[]）的闭包与各 effect 读取，
+  // 避免把 settings/pageContext 直接进依赖数组导致编辑器重建（行为不变）。
+  const aiSettingsRef = useRef(aiSettings);
+  aiSettingsRef.current = aiSettings;
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
+  const getActivePageLocalFilePathRef = useRef(getActivePageLocalFilePath);
+  getActivePageLocalFilePathRef.current = getActivePageLocalFilePath;
+  const pageRef = useRef(page);
+  pageRef.current = page;
 
   const initialContentRef = useRef(normalizePageContent(page?.content));
   // 初次 mount 时给 syncedContentSignatureRef 设置基线，
@@ -104,9 +115,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseFindInPageExtension,
         AIExtension({
           transport: createGooseAITransport({
-            getSettings: () => useSettings.getState().ai,
+            getSettings: () => aiSettingsRef.current,
             getModelId: () =>
-              useSettings.getState().ai.selectedModelId || "gpt-4o-mini",
+              aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
           }),
         }),
       ],
@@ -132,9 +143,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       },
       resolveFileUrl: async (url) => {
         const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
-        const activePageId = usePages.getState().activePageId;
-        const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-        return resolveImageRefToUrl(url, activePage?.localFilePath ?? null);
+        return resolveImageRefToUrl(url, getActivePageLocalFilePathRef.current());
       },
       links: {
         onClick: (event) => {
@@ -158,14 +167,14 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
   const debouncedUpdate = useMemo(() => {
     return createDebounce(
-      (id: string, content: BlockNoteContent) => {
+      (_id: string, content: BlockNoteContent) => {
         syncedContentSignatureRef.current = getCachedContentSignature(content);
-        updatePage(id, { content });
+        onContentChangeRef.current(content);
       },
       800,
       { maxWait: 3000 },
     );
-  }, [updatePage]);
+  }, []);
 
   const prevPageIdRef = useRef<string | null>(activePageId);
   useEffect(() => {
@@ -174,7 +183,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
     debouncedUpdate.cancel();
 
-    const p = activePageId ? getPage(activePageId) : undefined;
+    const p = pageRef.current;
     pageIdForUpdateRef.current = p?.id ?? null;
 
     // 立即翻 isSwitching=true 让骨架先 paint，再下一帧做重活，避免主线程冻结
@@ -199,9 +208,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         view.updateState(newState);
       }
 
-      // normalize 没改写结构时不要回写，避免触发 getPage 选择器又跑一遍 useEffect
+      // normalize 改写了结构才回写（原 silent 持久化路径，经注入回调落库）
       if (p && getCachedContentSignature(p.content) !== nextSig) {
-        updatePage(p.id, { content: nextContent }, { silent: true });
+        onContentChangeRef.current(nextContent);
       }
 
       // 下一帧再隐藏骨架，确保 BlockNote 已绘制
@@ -209,7 +218,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     });
 
     return () => cancelAnimationFrame(rafId);
-  }, [activePageId, debouncedUpdate, editor, getPage, updatePage]);
+  }, [activePageId, debouncedUpdate, editor]);
 
   const getSlashItems = useCallback(
     async (query: string) => {
@@ -371,9 +380,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       const nextSig = getCachedContentSignature(nextContent);
       if (nextSig === syncedContentSignatureRef.current) return;
       syncedContentSignatureRef.current = nextSig;
-      updatePage(safePageId, { content: nextContent });
+      onContentChangeRef.current(nextContent);
     },
-    [debouncedUpdate, editor, updatePage],
+    [debouncedUpdate, editor],
   );
 
   useEffect(() => {
@@ -402,16 +411,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       }, 0);
     };
 
-    // 文件被外部修改后由 store 派发：把磁盘最新内容刷进当前编辑器。
+    // 文件被外部修改后由宿主派发：把当前激活页最新内容刷进编辑器。
     const handleReloadActiveEditor = (event: Event) => {
       const detail = (event as CustomEvent<{ pageId?: string }>).detail;
-      const state = usePages.getState();
-      const targetId = detail?.pageId ?? state.activePageId;
-      if (!targetId || targetId !== state.activePageId) return;
+      const activePage = pageRef.current;
+      const activeId = activePage?.id ?? null;
+      const targetId = detail?.pageId ?? activeId;
+      if (!targetId || targetId !== activeId) return;
       if (targetId !== pageIdForUpdateRef.current) return;
-      const p = state.pages[targetId];
-      if (!p) return;
-      const nextContent = normalizePageContent(p.content);
+      if (!activePage) return;
+      const nextContent = normalizePageContent(activePage.content);
       syncedContentSignatureRef.current = getContentSignature(nextContent);
       debouncedUpdate.cancel();
       editor.replaceBlocks(editor.document, nextContent as any);
@@ -477,7 +486,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   if (!page) return null;
 
   return (
-    <EditorFindBar
+    <EditorComposer
       editor={editor} editable={editable} page={page}
       editorContainerRef={editorContainerRef}
       handleEditorBlankMouseDown={handleEditorBlankMouseDown}
@@ -488,8 +497,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       debouncedUpdate={debouncedUpdate}
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
       tableEvenColumnWidth={tableEvenColumnWidth}
-      searchProviders={searchProviders} utools={utools} customActions={customActions}
+      searchProviders={searchProviders} utools={utools ?? { openSearchInUtools: false }} customActions={customActions}
       isSwitching={isSwitching}
     />
   );
 });
+

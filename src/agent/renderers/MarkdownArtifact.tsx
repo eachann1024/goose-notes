@@ -14,7 +14,7 @@ import {
   useDatavizSegments,
   useStreamingSegments,
 } from "./useArtifactRender";
-import { stripMarkdownHardBreaks } from "@/pages/workspace/components/editor/EditorFindBar";
+import { stripMarkdownHardBreaks } from "@/components/editor/core/EditorComposer";
 
 export const md = new MarkdownIt({ html: false, linkify: true, typographer: false }).enable("table");
 

@@ -2,7 +2,7 @@ import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { UToolsAdapter } from "@/lib/utools";
 import { cn } from "@/lib/utils";
-import { stripMarkdownHardBreaks } from "@/pages/workspace/components/editor/EditorFindBar";
+import { stripMarkdownHardBreaks } from "@/components/editor/core/EditorComposer";
 import type { AiConversationMessage } from "./useAiSessionHistory";
 
 interface AssistantMessageActionsProps {

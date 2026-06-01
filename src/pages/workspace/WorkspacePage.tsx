@@ -2,7 +2,7 @@ import "./styles/index.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { type EditorRef } from "./components/editor/Editor";
+import { type EditorRef } from "@/components/editor/core/Editor";
 import { useWorkspaceEvents } from "./hooks/useWorkspaceEvents";
 import { useLocalFolderWatch } from "./hooks/useLocalFolderWatch";
 import { useScrollRestoration } from "./hooks/useScrollRestoration";

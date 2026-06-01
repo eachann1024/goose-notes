@@ -7,7 +7,7 @@ import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
-import type { EditorRef } from "../editor/Editor";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import { useSidebarResize } from "./hooks/useSidebarResize";
 import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
 import { useSidebarEffects } from "./hooks/useSidebarEffects";

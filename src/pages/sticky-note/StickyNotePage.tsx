@@ -5,7 +5,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { StickyNoteSelector } from "./StickyNoteSelector";
 import { StickyNoteToolbar } from "./StickyNoteToolbar";
-import { Editor } from "@/pages/workspace/components/editor/Editor";
+import { Editor } from "@/components/editor/core/Editor";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";

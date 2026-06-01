@@ -102,6 +102,9 @@ export default defineConfig({
         "src/components/editor/utils",
         "!src/components/editor/utils/cn.ts",
         "src/components/editor/hooks",
+        // 内聚 store（useContextMenu / useFormattingToolbarAi）从 src/stores 迁入此处，
+        // 保留自动导入以维持既有全局符号（行为不变）。
+        "src/components/editor/state",
       ],
     }),
     {

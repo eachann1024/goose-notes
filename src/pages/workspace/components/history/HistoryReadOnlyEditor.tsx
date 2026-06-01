@@ -9,7 +9,7 @@ import {
   normalizePageContent,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
-import { editorSchema } from "@/pages/workspace/components/editor/EditorFindBar";
+import { editorSchema } from "@/components/editor/core/EditorComposer";
 import { cn } from "@/lib/utils";
 
 interface HistoryReadOnlyEditorProps {

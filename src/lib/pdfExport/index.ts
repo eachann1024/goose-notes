@@ -56,7 +56,7 @@ export async function exportToPDF(page: Page): Promise<void> {
       await Promise.all([
         import("@blocknote/xl-pdf-exporter"),
         import("@react-pdf/renderer"),
-        import("@/pages/workspace/components/editor/EditorFindBar"),
+        import("@/components/editor/core/EditorComposer"),
         import("@blocknote/xl-pdf-exporter"),
       ]);
 

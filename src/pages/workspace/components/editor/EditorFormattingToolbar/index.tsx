@@ -11,9 +11,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
-import { useContextMenu } from "@/stores/useContextMenu";
+import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
-import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
+import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {

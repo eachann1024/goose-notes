@@ -12,7 +12,7 @@ import { IconSelector } from "./components/shared/IconSelector";
 import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
-import { Editor, type EditorRef } from "./components/editor/Editor";
+import { Editor, type EditorRef } from "@/components/editor/core/Editor";
 import {
   HistoryToolbar,
   HistoryReader,

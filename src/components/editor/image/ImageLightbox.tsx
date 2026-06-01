@@ -6,8 +6,8 @@ import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
-import { usePages } from "@/stores/usePages";
 import { useEditorPlatform } from "@/components/editor/platform/context";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import {
   resolveImageSrc,
   getImageElements,
@@ -40,12 +40,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const selectedImageRef = useRef<SelectedImageState | null>(null);
   const platform = useEditorPlatform();
-
-  const getActivePageLocalFilePath = useCallback((): string | null => {
-    const activePageId = usePages.getState().activePageId;
-    const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-    return activePage?.localFilePath ?? null;
-  }, []);
+  const { getActivePageLocalFilePath } = useEditorPageContext();
 
   const cleanupObjectUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {

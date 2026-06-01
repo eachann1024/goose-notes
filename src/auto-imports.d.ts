@@ -326,7 +326,7 @@ declare global {
   const useCallback: typeof import('react').useCallback
   const useCompactViewport: typeof import('./hooks/useCompactViewport').useCompactViewport
   const useContext: typeof import('react').useContext
-  const useContextMenu: typeof import('./stores/useContextMenu').useContextMenu
+  const useContextMenu: typeof import('./components/editor/state/contextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
   const useDeletePageWithUndo: typeof import('./hooks/useDeletePageWithUndo').useDeletePageWithUndo
@@ -336,7 +336,7 @@ declare global {
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./components/editor/hooks/useFormatCode').useFormatCode
-  const useFormattingToolbarAi: typeof import('./stores/useFormattingToolbarAi').useFormattingToolbarAi
+  const useFormattingToolbarAi: typeof import('./components/editor/state/formattingToolbarAi').useFormattingToolbarAi
   const useGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').useGlobalScrollActivity
   const useHistoryRecorder: typeof import('./hooks/useHistoryRecorder').useHistoryRecorder
   const useHistoryView: typeof import('./stores/useHistoryView').useHistoryView

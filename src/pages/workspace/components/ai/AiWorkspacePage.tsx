@@ -14,7 +14,7 @@ import { useCompactViewport } from "@/hooks/useCompactViewport";
 import { AiPromptComposer } from "./AiPromptComposer";
 import { AiSessionHistoryPanel } from "./AiSessionHistoryPanel";
 import { AiWorkspaceMessages } from "./AiWorkspaceMessages";
-import type { EditorRef } from "../editor/Editor";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import { useAiWorkspaceState } from "./hooks/useAiWorkspaceState";
 import type { AiFileReferenceAttrs } from "../editor/ai-composer/referenceLookup";
 import { trackEvent } from "@/lib/analytics";

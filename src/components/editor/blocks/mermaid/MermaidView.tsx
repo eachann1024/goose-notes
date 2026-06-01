@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSettings } from "@/stores/useSettings";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 
 interface MermaidViewProps {
   value: string;
@@ -7,7 +7,7 @@ interface MermaidViewProps {
 
 export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
   const [svg, setSvg] = useState<string>("");
-  const { theme } = useSettings();
+  const { theme } = useEditorSettings();
 
   useEffect(() => {
     let active = true;

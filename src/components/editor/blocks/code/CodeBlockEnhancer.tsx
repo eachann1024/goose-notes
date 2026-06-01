@@ -8,7 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
-import { useSettings } from "@/stores/useSettings";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 
 type CodeBlockEntry = {
   id: string;
@@ -29,8 +29,10 @@ type FloatingCodeToolbarProps = {
 };
 
 function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
+  const { defaultCodeBlockWrap, onDefaultCodeBlockWrapChange } =
+    useEditorSettings();
   const [wrap, setWrap] = useState(
-    entry.block.props?.wrap ?? useSettings.getState().defaultCodeBlockWrap,
+    entry.block.props?.wrap ?? defaultCodeBlockWrap,
   );
 
   const rect = entry.element.getBoundingClientRect();
@@ -50,14 +52,14 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
 
   const handleWrapChange = useCallback(
     (nextWrap: boolean) => {
-      useSettings.getState().setDefaultCodeBlockWrap(nextWrap);
+      onDefaultCodeBlockWrapChange(nextWrap);
       setWrap(nextWrap);
       if (!codeEl) return;
       codeEl.style.whiteSpace = nextWrap ? "break-spaces" : "pre";
       codeEl.style.wordBreak = nextWrap ? "break-word" : "normal";
       codeEl.style.overflowWrap = nextWrap ? "anywhere" : "normal";
     },
-    [codeEl],
+    [codeEl, onDefaultCodeBlockWrapChange],
   );
 
   const handleFormat = useCallback(

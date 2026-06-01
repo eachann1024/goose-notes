@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
-import { useSettings } from "@/stores/useSettings";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 
 const lowlight = createLowlight(all);
 const lowlightParser = createLowlightParser(lowlight);
@@ -151,6 +151,7 @@ function CodeBlockComponent({
   contentRef: any;
   editor: any;
 }) {
+  const { onDefaultCodeBlockWrapChange } = useEditorSettings();
   const language = (block.props.language as string) || "text";
   const wrap = block.props.wrap === true;
   const collapsed = block.props.collapsed === true;
@@ -184,10 +185,10 @@ function CodeBlockComponent({
 
   const handleWrapChange = useCallback(
     (w: boolean) => {
-      useSettings.getState().setDefaultCodeBlockWrap(w);
+      onDefaultCodeBlockWrapChange(w);
       editor.updateBlock(block.id, { props: { wrap: w } });
     },
-    [editor, block.id],
+    [editor, block.id, onDefaultCodeBlockWrapChange],
   );
 
   const normalizeSummary = (v: string) => v.replace(/[\r\n]+/g, " ").trim();

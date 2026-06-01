@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
-import { useContextMenu } from "@/stores/useContextMenu"
+import { useContextMenu } from "@/components/editor/state/contextMenu"
 
 // 受控的 ContextMenu，自动管理全局状态以支持"切换页面隐藏菜单"等场景
 interface ContextMenuProps extends Omit<React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Root>, 'open'> {

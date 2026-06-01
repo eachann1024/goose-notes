@@ -7,7 +7,7 @@ import { useAiSessionHistory, getLastAgentPlan, getLastArtifact, normalizeConver
 import { useAiRequestSubmit } from "./useAiRequestSubmit";
 import { useAiWriteActions } from "./useAiWriteActions";
 import { CLOSE_AI_WORKSPACE_EVENT } from "../events";
-import type { EditorRef } from "../../editor/Editor";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import type { MarkdownNoteArtifact } from "@/agent/core/types";
 import type { AiComposerInputHandle } from "../../editor/ai-composer/AiComposerInput";
 import type { AiConversationMessage } from "../useAiSessionHistory";

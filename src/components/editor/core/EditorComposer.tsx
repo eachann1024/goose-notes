@@ -22,9 +22,9 @@ import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlas
 import {
   EditorFormattingToolbar,
   shouldRenderFormattingToolbar,
-} from "./EditorFormattingToolbar";
+} from "@/pages/workspace/components/editor/EditorFormattingToolbar";
 import { AIMenuController } from "@blocknote/xl-ai";
-import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
+import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
@@ -57,7 +57,7 @@ export {
 
 export { editorSchema } from "@/components/editor/core/schema";
 
-type EditorFindBarProps = {
+type EditorComposerProps = {
   editor: any;
   editable: boolean;
   page: any;
@@ -78,7 +78,7 @@ type EditorFindBarProps = {
   isSwitching?: boolean;
 };
 
-export function EditorFindBar({
+export function EditorComposer({
   editor,
   editable,
   page,
@@ -97,7 +97,7 @@ export function EditorFindBar({
   utools,
   customActions,
   isSwitching,
-}: EditorFindBarProps) {
+}: EditorComposerProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
