@@ -47,7 +47,14 @@ export function Sidebar({
   scrollContainerRef,
   isAiPageOpen = false,
 }: SidebarProps) {
-  const { activePageId, setActivePage, createPage, createLocalPage } = usePages();
+  const {
+    activePageId,
+    setActivePage,
+    createPage,
+    createLocalPage,
+    getPage,
+    setExpandPageId,
+  } = usePages();
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openInCurrentTab } = useTabs();
   const setExpanded = useSidebarView((s) => s.setExpanded);
@@ -108,12 +115,21 @@ export function Sidebar({
 
   const handleCreatePage = () => {
     if (!activeNotebookId) return;
+    // 在当前所处页面的同级创建：取当前页的 parentId 作为新页的父级
+    const basePageId = selectedPageId ?? activePageId;
+    const basePage = basePageId ? getPage(basePageId) : undefined;
+    const siblingParentId =
+      basePage && basePage.workspaceId === activeNotebookId
+        ? basePage.parentId
+        : undefined;
     if (isLocalFolder) {
-      void createLocalPage(undefined, activeNotebookId);
+      void createLocalPage(siblingParentId, activeNotebookId);
       return;
     }
-    const newPageId = createPage(undefined, activeNotebookId);
+    const newPageId = createPage(siblingParentId, activeNotebookId);
     openInCurrentTab(newPageId);
+    // 新页若落在折叠的父级下，展开祖先并聚焦使其可见
+    if (siblingParentId) setExpandPageId(newPageId);
     window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
   };
 
