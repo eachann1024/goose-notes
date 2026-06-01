@@ -7,7 +7,11 @@ import { ClientSideTransport } from "@blocknote/xl-ai";
 import type { ChatTransport, UIMessage } from "ai";
 import type { AISettingsLike } from "@/lib/ai-provider/types";
 
-function buildModel(settings: AISettingsLike, modelId: string) {
+function buildModel(
+  settings: AISettingsLike,
+  modelId: string,
+  fetchImpl: typeof fetch,
+) {
   if (!settings.enabled) {
     throw new Error("AI 助手尚未开启，请先到设置中打开");
   }
@@ -33,6 +37,7 @@ function buildModel(settings: AISettingsLike, modelId: string) {
       name: "goose-openai",
       baseURL: normalizeBase(settings.customOpenAIBaseURL, "https://api.openai.com/v1"),
       apiKey: settings.customOpenAIApiKey,
+      fetch: fetchImpl,
     });
     return provider.chatModel(modelId);
   }
@@ -45,6 +50,7 @@ function buildModel(settings: AISettingsLike, modelId: string) {
       // 浏览器侧 Anthropic CORS 需要这个 header
       "anthropic-dangerous-direct-browser-access": "true",
     },
+    fetch: fetchImpl,
   });
   return provider(modelId);
 }
@@ -52,6 +58,11 @@ function buildModel(settings: AISettingsLike, modelId: string) {
 export interface CreateGooseAITransportOptions {
   getSettings: () => AISettingsLike;
   getModelId: () => string;
+  /**
+   * 宿主注入的 fetch（如 Tauri plugin-http，绕过 WebView CORS）。
+   * 未提供时回退 globalThis.fetch —— uTools 端行为与浏览器直连完全一致。
+   */
+  getCustomFetch?: () => typeof fetch | undefined;
 }
 
 // 工厂函数：xl-ai 需要 LLM 返回结构化 tool calls（不是纯文本），因此必须用
@@ -62,7 +73,8 @@ export function createGooseAITransport(
   const sendMessages: ChatTransport<UIMessage>["sendMessages"] = async (params) => {
     const settings = options.getSettings();
     const modelId = options.getModelId();
-    const model = buildModel(settings, modelId);
+    const fetchImpl = options.getCustomFetch?.() ?? globalThis.fetch;
+    const model = buildModel(settings, modelId, fetchImpl);
     const inner = new ClientSideTransport({ model });
     return inner.sendMessages(params);
   };

@@ -118,6 +118,12 @@ export interface EditorPlatformAi {
     onChunk: (delta: string) => void,
     signal?: AbortSignal
   ): Promise<string> | null;
+  /**
+   * 宿主注入的 fetch，供 AI provider 绕过 WebView 的 CORS/ATS（如 Tauri 用 plugin-http
+   * 从 Rust 层发起请求）。未提供时 blocknoteAITransport 自动回退到 globalThis.fetch，
+   * uTools 端因不提供此成员，行为与浏览器直连完全一致。
+   */
+  customFetch?: typeof fetch;
 }
 
 // ── 顶层聚合 ──────────────────────────────

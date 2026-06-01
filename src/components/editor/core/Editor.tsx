@@ -122,6 +122,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
             getSettings: () => aiSettingsRef.current,
             getModelId: () =>
               aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
+            getCustomFetch: () => platformRef.current.ai.customFetch,
           }),
         }),
       ],
