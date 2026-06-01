@@ -28,6 +28,7 @@ import {
   resolveAiReferenceContexts,
 } from "@/components/editor/ai/composer/referenceLookup";
 import { utoolsEditorPlatform } from "@/lib/editor-platform/utools";
+import { UToolsAdapter } from "@/lib/utools";
 
 interface EditorHostBridgeProps {
   /** 当前被编辑的页（替换编辑器内核对 usePages.activePageId/getPage 的直读）。 */
@@ -65,6 +66,9 @@ export function EditorHostBridge({
       searchProviders,
       utools,
       customActions,
+      redirectAction: (label, payload) => {
+        UToolsAdapter.redirect(label as string | [string, string], payload);
+      },
     }),
     [
       theme,
@@ -97,8 +101,16 @@ export function EditorHostBridge({
           : null;
         return activePage?.localFilePath ?? null;
       },
-      searchPages: (query: string) => getAiReferenceSuggestionItems(query),
-      resolvePageContexts: (refs) => resolveAiReferenceContexts(refs),
+      searchPages: (query: string) => {
+        const { pages } = usePages.getState();
+        const { notebooks, activeNotebookId } = useNotebooks.getState();
+        return getAiReferenceSuggestionItems(query, pages, notebooks, activeNotebookId);
+      },
+      resolvePageContexts: (refs) => {
+        const { pages } = usePages.getState();
+        const { notebooks } = useNotebooks.getState();
+        return resolveAiReferenceContexts(refs, pages, notebooks);
+      },
     }),
     [page, isEditorFullWidth],
   );

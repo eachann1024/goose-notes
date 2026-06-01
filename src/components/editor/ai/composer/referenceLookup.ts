@@ -1,8 +1,7 @@
 import type { JSONContent, Page } from "@/types";
+import type { Notebook } from "@/stores/useNotebooks";
 import { extractStructureSummary, extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { getPageTitle } from "@/components/editor/utils/page-title";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { usePages } from "@/stores/usePages";
 
 export type AiFileReferenceSourceType = "app-page" | "local-file";
 
@@ -60,12 +59,12 @@ function getSourceType(page: Page): AiFileReferenceSourceType {
   return page.localFilePath ? "local-file" : "app-page";
 }
 
-function getNotebookSnapshot(workspaceId: string) {
-  return useNotebooks.getState().notebooks[workspaceId];
+function getNotebookSnapshot(workspaceId: string, notebooks: Record<string, Notebook>) {
+  return notebooks[workspaceId];
 }
 
-function getLocationSnapshot(page: Page) {
-  const notebook = getNotebookSnapshot(page.workspaceId);
+function getLocationSnapshot(page: Page, notebooks: Record<string, Notebook>) {
+  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   if (!page.localFilePath) return notebook?.name ?? "未知笔记本";
 
   const basePath = notebook?.localPath?.replace(/[\\/]+$/, "") ?? "";
@@ -80,42 +79,42 @@ function getLocationSnapshot(page: Page) {
   return normalizedPath;
 }
 
-function buildDescription(page: Page) {
-  const notebook = getNotebookSnapshot(page.workspaceId);
+function buildDescription(page: Page, notebooks: Record<string, Notebook>) {
+  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   const notebookName = notebook?.name ?? "未知笔记本";
 
   if (page.isFolder) {
-    return `文件夹 · ${notebookName} · ${getLocationSnapshot(page)}`;
+    return `文件夹 · ${notebookName} · ${getLocationSnapshot(page, notebooks)}`;
   }
 
   if (!page.localFilePath) {
     return `应用页面 · ${notebookName}`;
   }
 
-  return `本地文件 · ${notebookName} · ${getLocationSnapshot(page)}`;
+  return `本地文件 · ${notebookName} · ${getLocationSnapshot(page, notebooks)}`;
 }
 
-function getSearchHaystack(page: Page) {
-  const notebook = getNotebookSnapshot(page.workspaceId);
+function getSearchHaystack(page: Page, notebooks: Record<string, Notebook>) {
+  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   return [
     getPageTitle(page),
     notebook?.name ?? "",
     page.localFilePath ?? "",
-    getLocationSnapshot(page),
+    getLocationSnapshot(page, notebooks),
   ]
     .join(" ")
     .toLowerCase();
 }
 
-function compareSuggestionItems(a: Page, b: Page, activeNotebookId: string | null) {
+function compareSuggestionItems(a: Page, b: Page, activeNotebookId: string | null, notebooks: Record<string, Notebook>) {
   const aIsActiveNotebook = a.workspaceId === activeNotebookId;
   const bIsActiveNotebook = b.workspaceId === activeNotebookId;
   if (aIsActiveNotebook !== bIsActiveNotebook) {
     return aIsActiveNotebook ? -1 : 1;
   }
 
-  const aNotebook = getNotebookSnapshot(a.workspaceId);
-  const bNotebook = getNotebookSnapshot(b.workspaceId);
+  const aNotebook = getNotebookSnapshot(a.workspaceId, notebooks);
+  const bNotebook = getNotebookSnapshot(b.workspaceId, notebooks);
   const notebookCompare = (aNotebook?.name ?? "").localeCompare(
     bNotebook?.name ?? "",
     "zh-CN",
@@ -131,8 +130,8 @@ function compareSuggestionItems(a: Page, b: Page, activeNotebookId: string | nul
   return a.id.localeCompare(b.id);
 }
 
-export function buildAiFileReferenceAttrs(page: Page): AiFileReferenceAttrs {
-  const notebook = getNotebookSnapshot(page.workspaceId);
+export function buildAiFileReferenceAttrs(page: Page, notebooks: Record<string, Notebook>): AiFileReferenceAttrs {
+  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   return {
     pageId: page.id,
     workspaceId: page.workspaceId,
@@ -140,36 +139,36 @@ export function buildAiFileReferenceAttrs(page: Page): AiFileReferenceAttrs {
     sourceType: getSourceType(page),
     localFilePath: page.localFilePath,
     notebookNameSnapshot: notebook?.name ?? "未知笔记本",
-    locationSnapshot: getLocationSnapshot(page),
+    locationSnapshot: getLocationSnapshot(page, notebooks),
   };
 }
 
 export function getAiReferenceSuggestionItems(
   query: string,
+  pages: Record<string, Page>,
+  notebooks: Record<string, Notebook>,
+  activeNotebookId: string | null,
   options?: {
     includeFolders?: boolean;
   },
 ) {
   const normalizedQuery = normalizeSearchValue(query);
 
-  const { pages } = usePages.getState();
-  const { activeNotebookId } = useNotebooks.getState();
-
   return Object.values(pages)
     .filter((page) => !page.trashedAt)
     .filter((page) => options?.includeFolders || !page.isFolder)
     .filter((page) => {
       if (!normalizedQuery) return true;
-      return getSearchHaystack(page).includes(normalizedQuery);
+      return getSearchHaystack(page, notebooks).includes(normalizedQuery);
     })
-    .sort((a, b) => compareSuggestionItems(a, b, activeNotebookId))
+    .sort((a, b) => compareSuggestionItems(a, b, activeNotebookId, notebooks))
     .slice(0, 30)
     .map((page) => {
-      const attrs = buildAiFileReferenceAttrs(page);
+      const attrs = buildAiFileReferenceAttrs(page, notebooks);
       return {
         ...attrs,
         title: attrs.titleSnapshot,
-        description: buildDescription(page),
+        description: buildDescription(page, notebooks),
         isFolder: page.isFolder,
       } satisfies AiReferenceSuggestionItem;
     });
@@ -275,13 +274,13 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
   };
 }
 
-function resolveReferenceLocation(page: Page) {
-  const notebook = getNotebookSnapshot(page.workspaceId);
+function resolveReferenceLocation(page: Page, notebooks: Record<string, Notebook>) {
+  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   if (!page.localFilePath) {
     return notebook?.name ?? "未知笔记本";
   }
 
-  return getLocationSnapshot(page);
+  return getLocationSnapshot(page, notebooks);
 }
 
 function buildFallbackReferenceContext(
@@ -301,10 +300,11 @@ function buildFallbackReferenceContext(
   };
 }
 
-export function resolveAiReferenceContexts(references: AiFileReferenceAttrs[]) {
-  const { pages } = usePages.getState();
-  const { notebooks } = useNotebooks.getState();
-
+export function resolveAiReferenceContexts(
+  references: AiFileReferenceAttrs[],
+  pages: Record<string, Page>,
+  notebooks: Record<string, Notebook>,
+) {
   return references.map((reference) => {
     const page = pages[reference.pageId];
     if (!page) {
@@ -328,7 +328,7 @@ export function resolveAiReferenceContexts(references: AiFileReferenceAttrs[]) {
       title: getPageTitle(page),
       sourceType: getSourceType(page),
       notebookName,
-      location: resolveReferenceLocation(page),
+      location: resolveReferenceLocation(page, notebooks),
       contentText: extractTextFromContent(page.content).trim(),
       structureSummary: extractStructureSummary(page.content),
       readStatus: "ready",

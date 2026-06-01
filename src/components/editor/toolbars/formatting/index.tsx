@@ -10,7 +10,7 @@ import { TextSelection } from "prosemirror-state";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
-import { useSettings } from "@/stores/useSettings";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
@@ -36,6 +36,7 @@ export { shouldRenderFormattingToolbar };
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   const aiExtension = useExtension(AIExtension);
+  const { ai: aiSettings } = useEditorSettings();
   const markStates = useSelectionMarkStates(editor);
   const selectedBlocks = useSelectedBlocks();
 
@@ -144,7 +145,6 @@ export function EditorFormattingToolbar() {
 
       // BlockNote AI 菜单只支持自定义 OpenAI/Claude provider。提前校验，避免
       // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
-      const aiSettings = useSettings.getState().ai;
       const avail = getAIAvailability(aiSettings);
       if (!avail.ok) {
         toast.error(avail.reason);

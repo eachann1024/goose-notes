@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, type RefObject } from "react";
 import {
-  getAiReferenceSuggestionItems,
   type AiFileReferenceAttrs,
   type AiReferenceSuggestionItem,
 } from "./referenceLookup";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 
 interface DetectedMention {
   query: string;
@@ -77,12 +77,13 @@ export function useReferenceMentions({
   onContentMutation,
   onReferenceAdded,
 }: UseReferenceMentionsOptions) {
+  const { searchPages } = useEditorPageContext();
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDetectedRef = useRef<DetectedMention | null>(null);
   const [mention, setMention] = useState<MentionState>(INACTIVE_MENTION);
 
   const mentionItems = mention.active
-    ? getAiReferenceSuggestionItems(mention.query, { includeFolders: false })
+    ? searchPages(mention.query).filter((item) => !item.isFolder)
     : [];
 
   // Keep a ref so keyboard handler always sees current items without stale closure

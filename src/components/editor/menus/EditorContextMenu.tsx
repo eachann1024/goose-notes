@@ -15,7 +15,7 @@ import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
-import { UToolsAdapter } from "@/lib/utools";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "@/components/editor/utils/clipboard";
 import { cn, formatShortcut } from "@/lib/utils";
 
@@ -27,7 +27,6 @@ interface EditorContextMenuProps {
   handleEditorBlankMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   handleEditorPasteCapture: (event: React.ClipboardEvent<HTMLDivElement>) => void;
   searchProviders: any[];
-  utools: { openSearchInUtools: boolean };
   customActions: any[];
   effectiveTheme: "light" | "dark";
   isEditorFullWidth: boolean;
@@ -43,7 +42,6 @@ export function EditorContextMenu({
   handleEditorBlankMouseDown,
   handleEditorPasteCapture,
   searchProviders,
-  utools,
   customActions,
   isEditorFullWidth,
   tableEvenColumnWidth,
@@ -55,6 +53,7 @@ export function EditorContextMenu({
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
   const platform = useEditorPlatform();
+  const { redirectAction, utools: utoolsSettings } = useEditorSettings();
 
   const activeSearchProviders = useMemo(
     () => searchProviders.filter((provider) => provider.isEnabled),
@@ -173,7 +172,7 @@ export function EditorContextMenu({
                       "%s",
                       encodeURIComponent(selectedText),
                     );
-                    void platform.shell.openUrl(url, utools.openSearchInUtools);
+                    void platform.shell.openUrl(url, utoolsSettings?.openSearchInUtools ?? false);
                   }}
                 >
                   <LucideIcons.Search className="mr-2 h-4 w-4" />
@@ -198,7 +197,7 @@ export function EditorContextMenu({
                         const label = action.pluginName
                           ? [action.pluginName, action.command] as [string, string]
                           : action.command;
-                        UToolsAdapter.redirect(label, selectedText);
+                        redirectAction?.(label, selectedText);
                       }}
                     >
                       {action.name}

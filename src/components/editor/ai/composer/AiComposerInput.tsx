@@ -14,7 +14,7 @@ import {
 } from "./referenceLookup";
 import { ComposerSuggestionsList } from "@/components/editor/ai/composer/ComposerSuggestionsList";
 import { createChipElement, useReferenceMentions } from "./useReferenceMentions";
-import { useTabs } from "@/stores/useTabs";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import type { JSONContent } from "@/types";
 
 // ─── DOM helpers ────────────────────────────────────────────────────────────
@@ -161,6 +161,7 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
     },
     ref,
   ) => {
+    const { onOpenPage } = useEditorPageContext();
     const editorRef = useRef<HTMLDivElement | null>(null);
     const isComposingRef = useRef(false);
     // Track the most recent content we emitted upward so we can ignore the echo
@@ -321,9 +322,9 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
       const mentionId = target.dataset.aiMentionId;
       if (mentionId) {
         e.preventDefault();
-        useTabs.getState().openTab(mentionId);
+        onOpenPage(mentionId);
       }
-    }, []);
+    }, [onOpenPage]);
 
     return (
       <div

@@ -58,7 +58,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const {
     theme,
     searchProviders,
-    utools,
     customActions,
     tableEvenColumnWidth,
     ai: aiSettings,
@@ -500,7 +499,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       debouncedUpdate={debouncedUpdate}
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
       tableEvenColumnWidth={tableEvenColumnWidth}
-      searchProviders={searchProviders} utools={utools ?? { openSearchInUtools: false }} customActions={customActions}
+      searchProviders={searchProviders} customActions={customActions}
       isSwitching={isSwitching}
     />
   );

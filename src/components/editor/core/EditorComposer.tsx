@@ -73,7 +73,6 @@ type EditorComposerProps = {
   effectiveTheme: "light" | "dark";
   tableEvenColumnWidth: boolean;
   searchProviders: any[];
-  utools: { openSearchInUtools: boolean };
   customActions: any[];
   isSwitching?: boolean;
 };
@@ -94,7 +93,6 @@ export function EditorComposer({
   effectiveTheme,
   tableEvenColumnWidth,
   searchProviders,
-  utools,
   customActions,
   isSwitching,
 }: EditorComposerProps) {
@@ -190,7 +188,6 @@ export function EditorComposer({
       handleEditorBlankMouseDown={handleEditorBlankMouseDown}
       handleEditorPasteCapture={handleEditorPasteCapture}
       searchProviders={searchProviders}
-      utools={utools}
       customActions={customActions}
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}

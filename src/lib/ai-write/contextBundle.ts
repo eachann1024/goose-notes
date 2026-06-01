@@ -3,6 +3,7 @@ import { extractBlocksInRange } from "@/lib/ai-block-scope";
 import { extractStructureSummary } from "@/components/editor/utils/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
 import { usePages } from "@/stores/usePages";
+import { useNotebooks } from "@/stores/useNotebooks";
 import {
   formatAiReferenceContextBlock,
   resolveAiReferenceContexts,
@@ -80,7 +81,7 @@ export function buildAiContextBundle(params: {
 
   return {
     referenceContextBlock: formatAiReferenceContextBlock(
-      resolveAiReferenceContexts(filteredReferences),
+      resolveAiReferenceContexts(filteredReferences, usePages.getState().pages, useNotebooks.getState().notebooks),
     ),
     originContextBlock: getPageContextBlock(
       params.originPageId
