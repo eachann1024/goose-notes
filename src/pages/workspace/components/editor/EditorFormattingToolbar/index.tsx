@@ -15,7 +15,7 @@ import { useContextMenu } from "@/stores/useContextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
 import { FormattingToolbarColorPicker } from "../FormattingToolbarColorPicker";
-import { setFakeSelection } from "../fakeSelectionExtension";
+import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
   NON_FORMATTABLE_TYPES,
   shouldRenderFormattingToolbar,
