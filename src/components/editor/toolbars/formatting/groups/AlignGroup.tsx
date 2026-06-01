@@ -1,6 +1,6 @@
 import * as LucideIcons from "lucide-react";
-import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { Toggle } from "@/components/ui/toggle";
+import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import { Toggle } from "@/components/editor/ui/toggle";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 
 const ITEM_CLASS =

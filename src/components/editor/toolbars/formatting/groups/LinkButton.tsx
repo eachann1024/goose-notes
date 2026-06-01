@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
-import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { Toggle } from "@/components/ui/toggle";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import { Toggle } from "@/components/editor/ui/toggle";
+import { Button } from "@/components/editor/ui/button";
+import { Input } from "@/components/editor/ui/input";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@/components/ui/popover";
+} from "@/components/editor/ui/popover";
 import { useBlockNoteEditor } from "@blocknote/react";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 

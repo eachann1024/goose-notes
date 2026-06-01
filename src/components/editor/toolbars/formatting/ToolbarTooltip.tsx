@@ -1,5 +1,5 @@
-import { TooltipContent } from "@/components/ui/tooltip";
-import { Kbd } from "@/components/ui/kbd";
+import { TooltipContent } from "@/components/editor/ui/tooltip";
+import { Kbd } from "@/components/editor/ui/kbd";
 
 export function ToolbarTooltip({
   label,

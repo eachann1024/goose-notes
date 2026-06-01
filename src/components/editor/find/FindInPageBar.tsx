@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/editor/utils/cn";
 import type { BlockNoteEditor } from "@blocknote/core";
 import {
   clearFind,

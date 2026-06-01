@@ -14,22 +14,22 @@ import { useSettings } from "@/stores/useSettings";
 import { useContextMenu } from "@/stores/useContextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
-import { FormattingToolbarColorPicker } from "../FormattingToolbarColorPicker";
+import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
   NON_FORMATTABLE_TYPES,
   shouldRenderFormattingToolbar,
   useSelectionMarkStates,
 } from "@/components/editor/toolbars/formatting/helpers";
-import type { BindTooltip } from "./ToolbarTooltip";
-import { AiButton } from "./groups/AiButton";
+import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
+import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
 import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";
 import { toast } from "sonner";
-import { MarkGroup } from "./groups/MarkGroup";
-import { InlineGroup } from "./groups/InlineGroup";
-import { LinkButton } from "./groups/LinkButton";
-import { AlignGroup } from "./groups/AlignGroup";
-import { ClearFormatButton } from "./groups/ClearFormatButton";
+import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
+import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
+import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
+import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
+import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
 
 export { shouldRenderFormattingToolbar };
 

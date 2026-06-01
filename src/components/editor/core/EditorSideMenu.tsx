@@ -7,7 +7,7 @@ import {
 } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/editor/utils/cn";
 
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();

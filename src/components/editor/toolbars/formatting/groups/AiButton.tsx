@@ -1,6 +1,6 @@
 import * as LucideIcons from "lucide-react";
-import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import { Button } from "@/components/editor/ui/button";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 
 export function AiButton({

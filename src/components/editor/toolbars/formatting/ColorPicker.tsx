@@ -6,10 +6,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { Portal } from "@/components/ui/portal";
-import { cn } from "@/lib/utils";
+} from "@/components/editor/ui/tooltip";
+import { Button } from "@/components/editor/ui/button";
+import { Portal } from "@/components/editor/ui/portal";
+import { cn } from "@/components/editor/utils/cn";
 
 interface PositionState {
   top: number;

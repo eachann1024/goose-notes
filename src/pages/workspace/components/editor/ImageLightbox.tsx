@@ -19,7 +19,7 @@ import {
   getImageExtension,
   type ImageAlignment,
 } from "./lightbox/utils";
-import { ImageToolbar, type SelectedImageState } from "./lightbox/ImageToolbar";
+import { ImageToolbar, type SelectedImageState } from "@/components/editor/image/ImageToolbar";
 
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;

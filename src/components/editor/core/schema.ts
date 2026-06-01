@@ -1,6 +1,6 @@
 import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
 import { createHeadingBlockSpec } from "@blocknote/core";
-import { calloutBlock } from "@/pages/workspace/components/editor/calloutBlock";
+import { calloutBlock } from "@/components/editor/blocks/callout/calloutBlock";
 import { customFileBlock } from "../blocks/file/customFileBlock";
 import { codeBlockSpec } from "@/pages/workspace/components/editor/codeBlockSpec";
 

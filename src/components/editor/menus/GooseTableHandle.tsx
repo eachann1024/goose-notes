@@ -23,8 +23,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from "@/components/editor/ui/dropdown-menu";
+import { cn } from "@/components/editor/utils/cn";
 
 type TableExtendButtonProps = {
   orientation: "addOrRemoveRows" | "addOrRemoveColumns";

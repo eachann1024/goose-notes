@@ -12,7 +12,7 @@ import {
   type AiComposerToken,
   type AiFileReferenceAttrs,
 } from "./referenceLookup";
-import { ComposerSuggestionsList } from "./ComposerSuggestionsList";
+import { ComposerSuggestionsList } from "@/components/editor/ai/composer/ComposerSuggestionsList";
 import { createChipElement, useReferenceMentions } from "./useReferenceMentions";
 import { useTabs } from "@/stores/useTabs";
 import type { JSONContent } from "@/types";

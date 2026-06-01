@@ -5,9 +5,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/components/editor/ui/popover";
 import * as LucideIcons from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/editor/utils/cn";
 
 const ICON_LIST = [
   "Lightbulb",
