@@ -1,24 +1,23 @@
 import { useSettings } from "@/stores/settings";
+import { useSidebarView } from "@/stores/useSidebarView";
 
 interface SidebarFooterProps {
   currentView: "pages" | "trash" | "outline";
   isSettingsOpen: boolean;
-  onSwitchToPages: () => void;
   onSwitchToTrash: () => void;
-  onSwitchToOutline: () => void;
   onOpenSettings: () => void;
 }
 
 export function SidebarFooter({
   currentView,
   isSettingsOpen,
-  onSwitchToPages,
   onSwitchToTrash,
-  onSwitchToOutline,
   onOpenSettings,
 }: SidebarFooterProps) {
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
+  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
 
   const isDark =
     theme === "dark" ||
@@ -39,11 +38,11 @@ export function SidebarFooter({
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          className={cn(btnClass, isSettingsOpen && activeClass)}
-          aria-label="设置"
-          onClick={onOpenSettings}
+          className={cn(btnClass, sidebarCollapsed && activeClass)}
+          aria-label="收起侧栏"
+          onClick={toggleSidebarCollapsed}
         >
-          <LucideIcons.Settings className="h-4 w-4" />
+          <LucideIcons.PanelLeft className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -58,14 +57,11 @@ export function SidebarFooter({
         </button>
         <button
           type="button"
-          className={cn(
-            btnClass,
-            !isSettingsOpen && currentView === "outline" && activeClass,
-          )}
-          aria-label="大纲"
-          onClick={onSwitchToOutline}
+          className={cn(btnClass, isSettingsOpen && activeClass)}
+          aria-label="设置"
+          onClick={onOpenSettings}
         >
-          <LucideIcons.List className="h-4 w-4" />
+          <LucideIcons.Settings className="h-4 w-4" />
         </button>
       </div>
       <button
