@@ -212,6 +212,10 @@ export function WorkspaceLayout({
                   }}
                 />
 
+                <EditorHostBridge
+                  page={page}
+                  isEditorFullWidth={isEditorFullWidth}
+                >
                 <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
                   {isAiPageOpen && (
                     <div className="h-full">
@@ -304,20 +308,16 @@ export function WorkspaceLayout({
                             )}
                           </div>
 
-                          <EditorHostBridge
-                            page={page}
-                            isEditorFullWidth={isEditorFullWidth}
-                          >
-                            <Editor
-                              ref={editorRef}
-                              editable={!page.isLocked && !page.trashedAt}
-                            />
-                          </EditorHostBridge>
+                          <Editor
+                            ref={editorRef}
+                            editable={!page.isLocked && !page.trashedAt}
+                          />
                         </div>
                       );
                     })()}
                   </div>
                 </div>
+                </EditorHostBridge>
               </>
             ) : (
               <PageEmptyState />

@@ -11,6 +11,7 @@ import {
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
+import { offset as floatingOffset, shift as floatingShift } from "@floating-ui/react";
 import {
   clonePageContent,
   ensureFirstTitleHeading,
@@ -170,6 +171,14 @@ export function EditorComposer({
         open:
           formattingToolbarAiActive ||
           (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed),
+        // 锁定在选区上方，去掉默认的 flip()：跨多行拖选时选区包围盒不断变高，
+        // flip() 会在 top/bottom 之间反复翻转导致工具栏上下抖动（BlockNote #1569）。
+        // 仅保留 offset + 受限 shift，水平方向贴边时平移、不再纵向翻转。
+        placement: "top-start" as const,
+        middleware: [
+          floatingOffset(10),
+          floatingShift({ crossAxis: false, padding: 8 }),
+        ],
       },
     }),
     [
