@@ -36,14 +36,14 @@ export async function resolveImageRefToUrl(
   if (cached) return cached
 
   // 本地文件路径（./assets/ 等）
-  const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlob } = await import(
+  const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlobAsync } = await import(
     './strategies/file-system'
   )
   if (isLocalFilePath(url)) {
     if (pageLocalFilePath) {
       const pageDir = pageLocalFilePath.replace(/[\\/][^\\/]+$/, '')
       const fullPath = resolveToAbsolute(pageDir, url)
-      const blob = readLocalFileAsBlob(fullPath)
+      const blob = await readLocalFileAsBlobAsync(fullPath)
       if (blob) {
         const objectUrl = URL.createObjectURL(blob)
         objectUrlCache.set(url, objectUrl)

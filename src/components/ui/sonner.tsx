@@ -7,7 +7,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme="system"
-      position="top-right"
+      position="bottom-right"
       offset={14}
       mobileOffset={14}
       closeButton
@@ -16,7 +16,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       icons={{ close: <X className="pointer-events-none h-3 w-3" /> }}
       toastOptions={{
-        duration: 4000,
+        duration: 2600,
         classNames: {
           toast:
             "group toast !opacity-100 !bg-background/95 dark:!bg-background/90 !text-foreground !border !border-border/70 dark:!border-border/80 !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !min-w-fit !w-auto",

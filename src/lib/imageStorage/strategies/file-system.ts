@@ -60,6 +60,48 @@ export function readLocalFileAsBlob(fullPath: string): Blob | null {
 }
 
 /**
+ * 异步读取本地二进制文件为 Blob。
+ * 原生 macOS 壳（WKWebView）没有同步 fs，必须经异步桥 readFileBase64Async 往返；
+ * uTools/Electron preload 仍有同步 readFileBase64，作为回退。
+ */
+export async function readLocalFileAsBlobAsync(fullPath: string): Promise<Blob | null> {
+  try {
+    const gfs = (window as any).gooseFs
+    if (!gfs) return null
+    const mime = guessMime(fullPath)
+
+    // 原生壳：异步二进制桥
+    if (typeof gfs.readFileBase64Async === 'function') {
+      const base64 = (await gfs.readFileBase64Async(fullPath)) as string | null
+      if (base64) return base64ToUint8Blob(base64, mime)
+    }
+
+    // uTools/Electron：同步二进制
+    if (typeof gfs.readFileBase64 === 'function') {
+      const base64 = gfs.readFileBase64(fullPath) as string | null
+      if (base64) return base64ToUint8Blob(base64, mime)
+    }
+
+    // 兜底：SVG 文本（异步桥）
+    if (fullPath.toLowerCase().endsWith('.svg') && typeof gfs.readFileAsync === 'function') {
+      const text = (await gfs.readFileAsync(fullPath)) as string | null
+      if (text) return new Blob([text], { type: 'image/svg+xml' })
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/** 纯 base64（无 dataURL 前缀）→ Blob */
+function base64ToUint8Blob(base64: string, mime: string): Blob {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
+
+/**
  * 读取本地文件为 base64 字符串（供导出打包用）
  */
 export function readLocalFileAsBase64(fullPath: string): string | null {
@@ -176,7 +218,7 @@ export class FileSystemStrategy implements IImageStorageStrategy {
       return null
     }
 
-    return readLocalFileAsBlob(fullPath)
+    return readLocalFileAsBlobAsync(fullPath)
   }
 
   /**
