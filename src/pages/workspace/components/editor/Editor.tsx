@@ -5,7 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
 import { zh as aiZh } from "@blocknote/xl-ai/locales";
 import "@blocknote/xl-ai/style.css";
-import { createGooseAITransport } from "@/lib/ai-provider/blocknoteAITransport";
+import { createGooseAITransport } from "@/components/editor/ai/transport/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
@@ -28,7 +28,7 @@ function getCachedContentSignature(content: unknown): string {
 }
 import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "@/pages/workspace/components/command/blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
-import { gooseLinkKeyboardExtension } from "./linkKeyboardExtension";
+import { gooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";

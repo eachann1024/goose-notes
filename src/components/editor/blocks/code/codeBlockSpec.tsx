@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "@/components/editor/blocks/math/MathView";
-import { MermaidView } from "./MermaidView";
+import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
 import { useSettings } from "@/stores/useSettings";
 
 const lowlight = createLowlight(all);

@@ -5,8 +5,8 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { ClientSideTransport } from "@blocknote/xl-ai";
 import type { ChatTransport, UIMessage } from "ai";
-import type { AISettingsLike } from "./types";
-import { getAIAvailability } from "./modelCatalog";
+import type { AISettingsLike } from "@/lib/ai-provider/types";
+import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";
 
 function buildModel(settings: AISettingsLike, modelId: string) {
   const avail = getAIAvailability(settings);

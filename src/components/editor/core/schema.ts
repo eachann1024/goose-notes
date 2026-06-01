@@ -2,7 +2,7 @@ import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
 import { createHeadingBlockSpec } from "@blocknote/core";
 import { calloutBlock } from "@/components/editor/blocks/callout/calloutBlock";
 import { customFileBlock } from "../blocks/file/customFileBlock";
-import { codeBlockSpec } from "@/pages/workspace/components/editor/codeBlockSpec";
+import { codeBlockSpec } from "@/components/editor/blocks/code/codeBlockSpec";
 
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {

@@ -14,6 +14,7 @@ import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-sel
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import { UToolsAdapter } from "@/lib/utools";
 import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "@/components/editor/utils/clipboard";
 import { cn, formatShortcut } from "@/lib/utils";
@@ -53,6 +54,7 @@ export function EditorContextMenu({
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
+  const platform = useEditorPlatform();
 
   const activeSearchProviders = useMemo(
     () => searchProviders.filter((provider) => provider.isEnabled),
@@ -118,18 +120,18 @@ export function EditorContextMenu({
 
   const handleCopySelection = useCallback(() => {
     const text = selectedTextRef.current || editor.getSelectedText() || "";
-    UToolsAdapter.copyToClipboard(text);
-  }, [editor]);
+    void platform.clipboard.copyText(text);
+  }, [editor, platform]);
 
   const handleCutSelection = useCallback(() => {
     if (!editable) return;
     const text = selectedTextRef.current || editor.getSelectedText() || "";
-    UToolsAdapter.copyToClipboard(text);
+    void platform.clipboard.copyText(text);
     editor.exec((state: any, dispatch: any) => {
       dispatch?.(state.tr.deleteSelection());
       return true;
     });
-  }, [editable, editor]);
+  }, [editable, editor, platform]);
 
   const handleSelectionThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
     const blocks = selectedBlocksRef.current;
@@ -171,7 +173,7 @@ export function EditorContextMenu({
                       "%s",
                       encodeURIComponent(selectedText),
                     );
-                    UToolsAdapter.openUrl(url, utools.openSearchInUtools);
+                    void platform.shell.openUrl(url, utools.openSearchInUtools);
                   }}
                 >
                   <LucideIcons.Search className="mr-2 h-4 w-4" />

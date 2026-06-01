@@ -1,6 +1,6 @@
 import { AlignCenter, AlignLeft, AlignRight, Download, Maximize2 } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
-import type { ImageAlignment } from "@/pages/workspace/components/editor/lightbox/utils";
+import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 
 export interface SelectedImageState {
   blockId: string | null;

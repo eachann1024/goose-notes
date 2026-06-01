@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useFormatCode } from "@/components/editor/hooks/useFormatCode";
-import { UToolsAdapter } from "@/lib/utools";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   FORMAT_SUPPORTED_LANGUAGES,
   LANGUAGE_DISPLAY_NAMES,
@@ -48,13 +48,14 @@ export function CodeBlockToolbar({
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { format, isLoading } = useFormatCode();
+  const platform = useEditorPlatform();
 
   const displayLanguage = language
     ? LANGUAGE_DISPLAY_NAMES[language.toLowerCase()] || language
     : "Plain Text";
 
   const handleCopy = () => {
-    UToolsAdapter.copyToClipboard(getCodeContent());
+    void platform.clipboard.copyText(getCodeContent());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

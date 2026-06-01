@@ -1,45 +1,16 @@
-import { usePages } from "@/stores/usePages";
-import { imageStorage } from "@/lib/imageStorage";
-import {
-  isLocalFilePath,
-  resolveToAbsolute,
-  readLocalFileAsBlob,
-} from "@/lib/imageStorage/strategies/file-system";
+import type { EditorPlatform } from "@/components/editor/platform/types";
 
 export type ImageAlignment = "left" | "center" | "right";
 
-export async function resolveImageSrc(src: string): Promise<string> {
+export async function resolveImageSrc(
+  src: string,
+  platform: EditorPlatform,
+  pageLocalFilePath?: string | null,
+): Promise<string> {
   if (src.startsWith("http") || src.startsWith("data:") || src.startsWith("blob:")) {
     return src;
   }
-
-  // 本地文件路径：优先相对于页面文件目录解析
-  if (isLocalFilePath(src)) {
-    try {
-      const activePageId = usePages.getState().activePageId;
-      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-      if (activePage?.localFilePath) {
-        const pageDir = activePage.localFilePath.replace(/[\\/][^\\/]+$/, "");
-        const fullPath = resolveToAbsolute(pageDir, src);
-        const blob = readLocalFileAsBlob(fullPath);
-        if (blob) return URL.createObjectURL(blob);
-      }
-    } catch {
-      // fallthrough to imageStorage
-    }
-  }
-
-  // att: / uuid: 内部引用或本地文件路径兜底，走 imageStorage.load
-  try {
-    const blob = await imageStorage.load(src);
-    if (blob) {
-      return URL.createObjectURL(blob);
-    }
-  } catch {
-    // fallthrough
-  }
-
-  return src;
+  return platform.imageStorage.resolveRefToUrl(src, pageLocalFilePath);
 }
 
 export function getImageElements(container: HTMLElement): HTMLImageElement[] {

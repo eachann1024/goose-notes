@@ -1,5 +1,12 @@
 import { createExtension } from "@blocknote/core";
-import { openExternalUrl } from "@/lib/openExternalUrl";
+import { getEditorPlatform } from "@/components/editor/platform/context";
+
+function normalizeExternalUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
+}
 
 export const gooseLinkKeyboardExtension = createExtension({
   key: "goose-link-keyboard",
@@ -20,7 +27,8 @@ export const gooseLinkKeyboardExtension = createExtension({
     "Alt-Enter": ({ editor }) => {
       const url = editor.getSelectedLinkUrl();
       if (url) {
-        openExternalUrl(url);
+        const target = normalizeExternalUrl(url);
+        if (target) void getEditorPlatform().shell.openUrl(target, false);
         return true;
       }
       return false;

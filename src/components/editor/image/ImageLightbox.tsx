@@ -6,8 +6,8 @@ import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
-import { saveBlobAndReveal } from "@/lib/export";
-import { shell } from "@/lib/utools/shell";
+import { usePages } from "@/stores/usePages";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   resolveImageSrc,
   getImageElements,
@@ -18,7 +18,7 @@ import {
   getImageAlignmentFromBlock,
   getImageExtension,
   type ImageAlignment,
-} from "./lightbox/utils";
+} from "./imageUtils";
 import { ImageToolbar, type SelectedImageState } from "@/components/editor/image/ImageToolbar";
 
 interface ImageLightboxProps {
@@ -39,6 +39,13 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
   const resolvedUrlsRef = useRef<Map<string, string>>(new Map());
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const selectedImageRef = useRef<SelectedImageState | null>(null);
+  const platform = useEditorPlatform();
+
+  const getActivePageLocalFilePath = useCallback((): string | null => {
+    const activePageId = usePages.getState().activePageId;
+    const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+    return activePage?.localFilePath ?? null;
+  }, []);
 
   const cleanupObjectUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {
@@ -70,7 +77,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
 
       let resolved = resolvedUrlsRef.current.get(src);
       if (!resolved) {
-        resolved = await resolveImageSrc(src);
+        resolved = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
         resolvedUrlsRef.current.set(src, resolved);
         if (resolved.startsWith("blob:")) {
           objectUrlsRef.current.add(resolved);
@@ -81,7 +88,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     }
 
     return slides;
-  }, []);
+  }, [platform, getActivePageLocalFilePath]);
 
   const openLightboxAtImage = useCallback(async (img: HTMLImageElement) => {
     const container = editorContainerRef.current;
@@ -190,7 +197,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
   const downloadImage = useCallback(async (src: string) => {
     let resolvedObjectUrl: string | null = null;
     try {
-      const resolvedSrc = await resolveImageSrc(src);
+      const resolvedSrc = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
       if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
         resolvedObjectUrl = resolvedSrc;
       }
@@ -198,18 +205,31 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       const blob = await response.blob();
       const ext = getImageExtension(blob);
       const filename = `image-${Date.now()}.${ext}`;
-      const saved = await saveBlobAndReveal(blob, filename);
-      if (saved) {
-        toast.success("图片已保存");
-      } else {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.success("已开始下载");
+
+      const targetPath = await platform.dialog.showSaveDialog({
+        title: "保存文件",
+        defaultPath: filename,
+        buttonLabel: "保存",
+      });
+
+      if (targetPath) {
+        const base64 = await blobToBase64(blob);
+        const payload = base64.replace(/^data:.*;base64,/, "");
+        const saved = await platform.fs.writeFileAsync(targetPath, payload, "base64");
+        if (saved) {
+          await platform.shell.showItemInFolder(targetPath);
+          toast.success("图片已保存");
+          return;
+        }
       }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("已开始下载");
     } catch (err) {
       toast.error(`下载失败: ${err instanceof Error ? err.message : "未知错误"}`);
     } finally {
@@ -217,7 +237,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
         try { URL.revokeObjectURL(resolvedObjectUrl); } catch { /* ignore */ }
       }
     }
-  }, []);
+  }, [platform, getActivePageLocalFilePath]);
 
   const handleDownload = useCallback(async () => {
     if (!currentSlide) return;
@@ -231,12 +251,12 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
       const blob = await response.blob();
 
       const base64 = await blobToBase64(blob);
-      shell.copyImage(base64);
+      await platform.clipboard.copyImage(base64);
       toast.success("已复制到剪贴板");
     } catch (err) {
       toast.error(`复制失败: ${err instanceof Error ? err.message : "未知错误"}`);
     }
-  }, [currentSlide]);
+  }, [currentSlide, platform]);
 
   const applyImageAlignment = useCallback((alignment: ImageAlignment) => {
     if (!selectedImage?.blockId) return;

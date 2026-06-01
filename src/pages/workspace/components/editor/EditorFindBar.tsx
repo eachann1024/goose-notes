@@ -26,15 +26,15 @@ import {
 import { AIMenuController } from "@blocknote/xl-ai";
 import { useFormattingToolbarAi } from "@/stores/useFormattingToolbarAi";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
-import { ImageLightbox } from "./ImageLightbox";
-import { EditorLinkToolbar } from "./EditorLinkToolbar";
+import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
+import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
 import { GooseTableHandle, GooseTableExtendButton } from "@/components/editor/menus/GooseTableHandle";
-import { EditorContextMenu } from "./components/EditorContextMenu";
+import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
 
 // Re-exports to prevent broken imports elsewhere
