@@ -5,7 +5,7 @@ import { useSettings } from "@/stores/useSettings";
 import { buildAgentPlan, executeAgentPlan } from "@/agent/core/runtime";
 import { buildWorkspaceIntentRouterDeps } from "@/agent/core/routerDeps";
 import { createStickyTargetFromResolvedTarget, resolvedTargetToSelection } from "@/lib/ai-write";
-import type { AiComposerInputHandle } from "../../editor/ai-composer/AiComposerInput";
+import type { AiComposerInputHandle } from "@/components/editor/ai/composer/AiComposerInput";
 import type { AiSessionMessageVersion } from "@/stores/useAiSessions";
 import type { AIMessage, AIStreamPhase } from "@/lib/ai-provider";
 import type { AiConversationMessage } from "../useAiSessionHistory";

@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { AiResolvedTarget, AiStickyTarget, AiTargetSelection, AiWritePlan } from "@/lib/ai-write";
 import type { AgentArtifact, AgentPlan } from "@/agent/core/types";
 import { uToolsStorage } from "@/lib/storage";
-import type { AiFileReferenceAttrs } from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { JSONContent } from "@/types";
 
 // ── 持久化的消息结构（去掉 streaming / error 等瞬态字段）

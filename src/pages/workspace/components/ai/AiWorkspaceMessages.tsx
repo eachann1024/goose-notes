@@ -12,7 +12,7 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
-import type { AiFileReferenceAttrs } from "../editor/ai-composer/referenceLookup";
+import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import {
   STREAM_PHASE_LABEL,
   type AiConversationMessage,

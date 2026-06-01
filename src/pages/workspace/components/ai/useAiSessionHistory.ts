@@ -8,7 +8,7 @@ import {
 import type { AgentArtifact, AgentPlan } from "@/agent/core/types";
 import type { AIStreamPhase } from "@/lib/ai-provider";
 import { useAiSessions, type AiSession } from "@/stores/useAiSessions";
-import type { AiComposerInputHandle } from "../editor/ai-composer/AiComposerInput";
+import type { AiComposerInputHandle } from "@/components/editor/ai/composer/AiComposerInput";
 import {
   genSessionId,
   extractSessionTitle,

@@ -5,7 +5,7 @@ import { usePages } from "@/stores/usePages";
 import {
   type AiComposerPayload,
   type AiFileReferenceAttrs,
-} from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+} from "@/components/editor/ai/composer/referenceLookup";
 
 export type AiWriteAction =
   | "chat_only"

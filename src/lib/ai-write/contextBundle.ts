@@ -7,7 +7,7 @@ import {
   formatAiReferenceContextBlock,
   resolveAiReferenceContexts,
   type AiComposerPayload,
-} from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+} from "@/components/editor/ai/composer/referenceLookup";
 import type { AiContextBundle, AiResolvedTarget } from "./targetResolution";
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

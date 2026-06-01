@@ -25,7 +25,7 @@ import type {
   AiReferenceSuggestionItem,
   AiFileReferenceAttrs,
   ResolvedAiReferenceContext,
-} from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+} from "@/components/editor/ai/composer/referenceLookup";
 import type { EditorPlatform } from "./types";
 
 /** 宿主透传给编辑器的设置（替换对 useSettings 的直读）。 */

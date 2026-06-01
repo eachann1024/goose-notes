@@ -27,7 +27,7 @@ function getCachedContentSignature(content: unknown): string {
   }
   return getContentSignature(content);
 }
-import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "@/pages/workspace/components/command/blocknoteSlashItems";
+import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { gooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
@@ -222,7 +222,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
   const getSlashItems = useCallback(
     async (query: string) => {
-      const items = getBlockNoteSlashMenuItems(editor);
+      const items = getBlockNoteSlashMenuItems(
+        editor,
+        aiSettingsRef.current.enabled,
+      );
       return filterSlashMenuItems(items, query);
     },
     [editor],

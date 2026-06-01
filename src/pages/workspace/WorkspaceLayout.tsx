@@ -13,6 +13,7 @@ import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
+import { EditorHostBridge } from "./components/editor-host/EditorHostBridge";
 import {
   HistoryToolbar,
   HistoryReader,
@@ -313,10 +314,15 @@ export function WorkspaceLayout({
                             )}
                           </div>
 
-                          <Editor
-                            ref={editorRef}
-                            editable={!page.isLocked && !page.trashedAt}
-                          />
+                          <EditorHostBridge
+                            page={page}
+                            isEditorFullWidth={isEditorFullWidth}
+                          >
+                            <Editor
+                              ref={editorRef}
+                              editable={!page.isLocked && !page.trashedAt}
+                            />
+                          </EditorHostBridge>
                         </div>
                       );
                     })()}

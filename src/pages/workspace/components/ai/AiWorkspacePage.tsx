@@ -16,7 +16,7 @@ import { AiSessionHistoryPanel } from "./AiSessionHistoryPanel";
 import { AiWorkspaceMessages } from "./AiWorkspaceMessages";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useAiWorkspaceState } from "./hooks/useAiWorkspaceState";
-import type { AiFileReferenceAttrs } from "../editor/ai-composer/referenceLookup";
+import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import { trackEvent } from "@/lib/analytics";
 
 interface AiWorkspacePageProps {

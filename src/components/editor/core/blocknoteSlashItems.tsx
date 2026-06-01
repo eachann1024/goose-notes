@@ -2,7 +2,6 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { AIExtension } from "@blocknote/xl-ai";
 import * as LucideIcons from "lucide-react";
-import { useSettings } from "@/stores/useSettings";
 
 export interface SlashMenuItem {
   title: string;
@@ -16,7 +15,10 @@ export interface SlashMenuItem {
   onItemClick: () => void;
 }
 
-export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any>): SlashMenuItem[] {
+export function getBlockNoteSlashMenuItems(
+  editor: BlockNoteEditor<any, any, any>,
+  aiEnabled: boolean,
+): SlashMenuItem[] {
   const currentBlock = editor.getTextCursorPosition().block;
 
   // 插入完成后：把光标移到新块、把视图滚动到新块、把焦点交回编辑器
@@ -67,7 +69,7 @@ export function getBlockNoteSlashMenuItems(editor: BlockNoteEditor<any, any, any
 
   const items: SlashMenuItem[] = [];
 
-  if (useSettings.getState().ai.enabled) {
+  if (aiEnabled) {
     items.push({
       title: "生成",
       description: "接着写点什么...",

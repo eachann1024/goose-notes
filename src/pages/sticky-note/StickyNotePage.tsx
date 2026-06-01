@@ -6,6 +6,8 @@ import { useTabs } from "@/stores/useTabs";
 import { StickyNoteSelector } from "./StickyNoteSelector";
 import { StickyNoteToolbar } from "./StickyNoteToolbar";
 import { Editor } from "@/components/editor/core/Editor";
+import { EditorHostBridge } from "@/pages/workspace/components/editor-host/EditorHostBridge";
+import { useSettings } from "@/stores/useSettings";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -17,9 +19,13 @@ export function StickyNotePage() {
   const { openTab } = useTabs();
   const [isClosing, setIsClosing] = useState(false);
 
+  const globalEditorFullWidth = useSettings((s) => s.globalEditorFullWidth);
   const page = pageId ? getPage(pageId) : undefined;
   const notebook = page ? notebooks[page.workspaceId] : undefined;
   const isLocalFolderPage = notebook?.source === "local-folder";
+  const isEditorFullWidth = Boolean(
+    notebook?.editorFullWidth ?? globalEditorFullWidth,
+  );
 
   useEffect(() => {
     if (active) {
@@ -178,9 +184,14 @@ export function StickyNotePage() {
             <div className="px-4 py-3 pb-20">
               {/* 便签样式背景 */}
               <div className="rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 p-4 min-h-[200px]">
-                <Editor
-                  editable={!page.isLocked && !page.trashedAt}
-                />
+                <EditorHostBridge
+                  page={page}
+                  isEditorFullWidth={isEditorFullWidth}
+                >
+                  <Editor
+                    editable={!page.isLocked && !page.trashedAt}
+                  />
+                </EditorHostBridge>
               </div>
             </div>
           </div>

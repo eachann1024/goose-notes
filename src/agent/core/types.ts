@@ -15,7 +15,7 @@ import type {
   AiComposerPayload,
   AiComposerToken,
   AiFileReferenceAttrs,
-} from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+} from "@/components/editor/ai/composer/referenceLookup";
 
 export type AgentSurface = "workspace" | "inline";
 export type AgentExecutionStrategy = "single" | "delegated";

@@ -2,7 +2,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
-import type { AiReferenceSuggestionItem } from "@/pages/workspace/components/editor/ai-composer/referenceLookup";
+import type { AiReferenceSuggestionItem } from "@/components/editor/ai/composer/referenceLookup";
 
 interface ComposerSuggestionsListProps {
   items: AiReferenceSuggestionItem[];

@@ -27,8 +27,8 @@ import { useSettings } from "@/stores/useSettings";
 import {
   AiComposerInput,
   type AiComposerInputHandle,
-} from "../editor/ai-composer/AiComposerInput";
-import type { AiFileReferenceAttrs } from "../editor/ai-composer/referenceLookup";
+} from "@/components/editor/ai/composer/AiComposerInput";
+import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { JSONContent } from "@/types";
 
 interface AiPromptComposerProps {

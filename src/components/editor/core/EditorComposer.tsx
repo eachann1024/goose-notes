@@ -18,11 +18,11 @@ import {
   normalizePageContent,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
-import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
+import { CustomSlashMenu } from "@/components/editor/core/CustomSlashMenu";
 import {
   EditorFormattingToolbar,
   shouldRenderFormattingToolbar,
-} from "@/pages/workspace/components/editor/EditorFormattingToolbar";
+} from "@/components/editor/toolbars/formatting";
 import { AIMenuController } from "@blocknote/xl-ai";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";

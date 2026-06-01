@@ -1,10 +1,10 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useExtension } from "@blocknote/react";
 import { SuggestionMenu } from "@blocknote/core/extensions";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Kbd } from "@/components/ui/kbd";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/components/editor/utils/cn";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import { Kbd } from "@/components/editor/ui/kbd";
+import { Button } from "@/components/editor/ui/button";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
 
 interface CustomSlashMenuProps {

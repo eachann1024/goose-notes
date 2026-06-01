@@ -7,9 +7,9 @@ import {
 import { AIExtension } from "@blocknote/xl-ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TextSelection } from "prosemirror-state";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/editor/ui/tooltip";
+import { Separator } from "@/components/editor/ui/separator";
+import { cn } from "@/components/editor/utils/cn";
 import { useSettings } from "@/stores/useSettings";
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
