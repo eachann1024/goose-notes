@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useFormatCode } from "@/hooks/useFormatCode";
+import { useFormatCode } from "@/components/editor/hooks/useFormatCode";
 import { UToolsAdapter } from "@/lib/utools";
 import {
   FORMAT_SUPPORTED_LANGUAGES,

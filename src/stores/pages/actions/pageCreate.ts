@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "../../useNotebooks";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import {
   ONBOARDING_PAGE_CONTENT,
   ONBOARDING_CHILD_PAGE_CONTENT,
@@ -11,7 +11,7 @@ import {
   clonePageContent as cloneBlockNotePageContent,
   createEmptyBlockNoteContent,
   normalizePageContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import { savePagesMeta } from "@/lib/storage/pageRepository";
 import { buildLocalPageId } from "@/lib/local-folder-scanner";
 

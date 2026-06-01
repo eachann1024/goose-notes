@@ -1,6 +1,6 @@
 import type { Page } from "@/types";
 import { extractBlocksInRange } from "@/lib/ai-block-scope";
-import { extractStructureSummary } from "@/lib/content-text-extractor";
+import { extractStructureSummary } from "@/components/editor/utils/content-text-extractor";
 import { jsonContentToMarkdown } from "@/lib/export";
 import { usePages } from "@/stores/usePages";
 import {

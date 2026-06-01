@@ -1,7 +1,7 @@
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { FeatureToastCard } from "@/components/ui/feature-toast-card";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 
 /**

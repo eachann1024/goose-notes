@@ -1,7 +1,7 @@
 import type { Page } from "@/types";
-import type { BlockNoteContent } from "../blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, convertInchesToTwip } from "docx";
-import { extractTitleFromContent } from "../content-text-extractor";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { processBlockChildren } from "./docxBlocks";
 
 export * from "./docxStyles";

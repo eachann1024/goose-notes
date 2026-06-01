@@ -3,7 +3,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useEffect, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { trackEvent } from "@/lib/analytics";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";

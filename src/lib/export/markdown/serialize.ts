@@ -1,5 +1,5 @@
-import type { BlockNoteContent } from "@/lib/blocknote-content";
-import { isBlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { isBlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
   Lightbulb: "💡",

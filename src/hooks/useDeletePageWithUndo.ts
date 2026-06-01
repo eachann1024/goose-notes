@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { confirmLocalDelete } from "@/lib/confirm-local-delete";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";

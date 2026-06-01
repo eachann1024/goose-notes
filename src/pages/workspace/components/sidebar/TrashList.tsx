@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useEffect } from 'react';
 
 interface TrashListProps {

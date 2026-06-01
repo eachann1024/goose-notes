@@ -8,7 +8,7 @@ import { usePages } from "@/stores/usePages";
 import {
   normalizePageContent,
   type BlockNoteContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import { editorSchema } from "@/pages/workspace/components/editor/EditorFindBar";
 import { cn } from "@/lib/utils";
 

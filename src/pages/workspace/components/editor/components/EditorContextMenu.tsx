@@ -13,9 +13,9 @@ import {
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportSelectionToImage } from "@/lib/imageExport";
-import { extractBlockNoteTitle, type BlockNoteContent } from "@/lib/blocknote-content";
+import { extractBlockNoteTitle, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { UToolsAdapter } from "@/lib/utools";
-import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "../utils/clipboard";
+import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "@/components/editor/utils/clipboard";
 import { cn, formatShortcut } from "@/lib/utils";
 
 interface EditorContextMenuProps {

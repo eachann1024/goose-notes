@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
-import { extractPlainText } from "@/lib/blocknote-content";
-import { countWords } from "@/lib/content-text-extractor";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { extractPlainText } from "@/components/editor/utils/blocknote-content";
+import { countWords } from "@/components/editor/utils/content-text-extractor";
 import { recordHistorySnapshot } from "@/lib/history/snapshot";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useHistoryView } from "@/stores/useHistoryView";

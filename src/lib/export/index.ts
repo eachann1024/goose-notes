@@ -1,10 +1,10 @@
 import type { Page } from "@/types";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import {
   normalizePageContent,
   createEmptyBlockNoteContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import {
   blocksToMarkdown,
   blocksToHTML,

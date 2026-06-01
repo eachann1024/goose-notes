@@ -1,6 +1,6 @@
 import type { JSONContent } from "@/types";
 import { blocksToMarkdown } from "@/lib/export";
-import { normalizePageContent } from "@/lib/blocknote-content";
+import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import { extractFrontmatter } from "@/lib/markdown-raw-guard";
 import { isLocalFolderPage } from "../../persistence";
 import {

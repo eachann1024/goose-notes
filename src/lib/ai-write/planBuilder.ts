@@ -1,5 +1,5 @@
 import type { JSONContent } from "@/types";
-import { extractTextFromContent, extractTitleFromContent } from "@/lib/content-text-extractor";
+import { extractTextFromContent, extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { importFromMarkdown, importMarkdownFragment } from "@/lib/export";
 import type { AiResolvedTarget, AiWritePlan } from "./targetResolution";
 

@@ -1,10 +1,10 @@
 import { FontSelector } from "@/pages/workspace/components/shared/FontSelector";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
 import { useState } from "react";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
-import { extractBlockNoteTitle } from "@/lib/blocknote-content";
+import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-content";
 import { useHistoryView } from "@/stores/useHistoryView";
 
 function getEditorSelectedBlocks(): BlockNoteContent {

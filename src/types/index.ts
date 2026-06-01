@@ -1,4 +1,4 @@
-import type { PageContent } from "@/lib/blocknote-content";
+import type { PageContent } from "@/components/editor/utils/blocknote-content";
 export type JSONContent = PageContent | any;
 
 export type SyncProvider = "local" | "jianguoyun" | "icloud";

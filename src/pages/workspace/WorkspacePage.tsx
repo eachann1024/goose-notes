@@ -8,7 +8,7 @@ import { useLocalFolderWatch } from "./hooks/useLocalFolderWatch";
 import { useScrollRestoration } from "./hooks/useScrollRestoration";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useHistoryRecorder } from "@/hooks/useHistoryRecorder";
-import { getContentSignature } from "@/lib/blocknote-content";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { WorkspaceLayout } from "./WorkspaceLayout";
 
 export function WorkspacePage() {

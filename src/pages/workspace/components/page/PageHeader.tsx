@@ -17,7 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { PageMenu } from "./PageMenu";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 
 interface SortableTabItemProps {
   tab: TabItem;

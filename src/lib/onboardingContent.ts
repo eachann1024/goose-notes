@@ -1,5 +1,5 @@
 import type { PartialBlock } from "@blocknote/core";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const WELCOME_IMAGE =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png";

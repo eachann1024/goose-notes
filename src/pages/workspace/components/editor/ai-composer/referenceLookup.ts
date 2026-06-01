@@ -1,6 +1,6 @@
 import type { JSONContent, Page } from "@/types";
-import { extractStructureSummary, extractTextFromContent } from "@/lib/content-text-extractor";
-import { getPageTitle } from "@/lib/page-title";
+import { extractStructureSummary, extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 

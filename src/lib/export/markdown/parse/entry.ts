@@ -1,10 +1,10 @@
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { ImportResult } from "../parse";
 import {
   normalizeBlockContent,
   normalizePageContent,
   createEmptyBlockNoteContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import { markdownToJsonContent } from "./block";
 
 export function importFromMarkdown(

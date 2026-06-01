@@ -8,7 +8,7 @@
 
 import { toast } from "sonner";
 import type { Page } from "@/types";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { saveBlobAndReveal } from "@/lib/export/fileSave";
 import { registerPdfFonts, PDF_FONT_FAMILY } from "./fontConfig";
 import { createPdfBlockMappings } from "./blockMappings";

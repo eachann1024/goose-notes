@@ -1,12 +1,12 @@
 import type { Page } from "@/types";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type JSZipNs from "jszip";
-import { extractTitleFromContent } from "@/lib/content-text-extractor";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import {
   normalizePageContent,
   createEmptyBlockNoteContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
 import { renderExportHtml } from "./index";
 import { importFromMarkdown } from "./markdown/parse";

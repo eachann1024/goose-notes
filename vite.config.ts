@@ -95,6 +95,13 @@ export default defineConfig({
         "src/stores",
         "src/lib",
         "src/components/ui",
+        // 编辑器抽取后，原 src/lib / src/hooks 下被全 app 依赖的纯工具/hooks
+        // 迁入此处，仍需保持自动导入以维持既有的全局符号（行为不变）。
+        // 排除 cn.ts：编辑器自带的 cn 仅供编辑器内部显式 import，
+        // 不进全局命名空间（全局 cn 仍由 src/lib/utils.ts 提供，行为不变）。
+        "src/components/editor/utils",
+        "!src/components/editor/utils/cn.ts",
+        "src/components/editor/hooks",
       ],
     }),
     {

@@ -1,4 +1,4 @@
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Notebook } from "@/stores/useNotebooks";
 import type { Page } from "@/types";
 

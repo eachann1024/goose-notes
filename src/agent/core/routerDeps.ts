@@ -1,7 +1,7 @@
 import type { IntentRouterDeps } from "@/agent/capabilities/note";
 import type { AgentArtifact } from "@/agent/core/types";
 import type { AISettingsLike } from "@/lib/ai-provider";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { AiSessionMessage } from "@/stores/useAiSessions";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";

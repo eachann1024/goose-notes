@@ -1,4 +1,4 @@
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { historyRepository } from "./repository";
 
 /** 读取某个版本的完整内容。MVP 仅支持 snapshot 版本，直接返回 content。 */

@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import type { Page } from "@/types";
-import { getPageTitle } from "@/lib/page-title";
-import { extractTextFromContent } from "@/lib/content-text-extractor";
+import { getPageTitle } from "@/components/editor/utils/page-title";
+import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本

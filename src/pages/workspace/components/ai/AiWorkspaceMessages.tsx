@@ -8,7 +8,7 @@ import {
   artifactHasDataviz,
   textHasDataviz,
 } from "@/agent/renderers/AgentArtifactView";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";

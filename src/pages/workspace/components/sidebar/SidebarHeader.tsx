@@ -1,5 +1,5 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 
 interface SidebarHeaderProps {

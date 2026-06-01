@@ -1,5 +1,5 @@
-import type { BlockNoteContent } from "@/lib/blocknote-content";
-import { extractTextFromContent } from "@/lib/content-text-extractor";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 
 export type AiBlockScopeKind = "full_page" | "range";
 

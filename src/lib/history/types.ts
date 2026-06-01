@@ -1,4 +1,4 @@
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 export type HistoryTrigger = "idle" | "manual" | "pre-op";
 

@@ -8,11 +8,11 @@ import "@blocknote/xl-ai/style.css";
 import { createGooseAITransport } from "@/lib/ai-provider/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
-import { createDebounce } from "@/lib/debounce";
+import { createDebounce } from "@/components/editor/utils/debounce";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
-import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/lib/blocknote-content";
+import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const contentSigCache = new WeakMap<object, string>();
 function getCachedContentSignature(content: unknown): string {
@@ -42,8 +42,8 @@ import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/i
 import { gooseFindInPageExtension } from "./findInPagePlugin";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorFindBar, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorFindBar";
-import { useEditorShortcuts } from "./hooks/useEditorShortcuts";
-import { useEditorPaste } from "./hooks/useEditorPaste";
+import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
+import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;

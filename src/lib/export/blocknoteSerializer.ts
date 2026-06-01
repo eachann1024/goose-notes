@@ -8,7 +8,7 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 
 import { jsonContentToMarkdown } from "./markdown/serialize";
-import type { BlockNoteContent } from "@/lib/blocknote-content";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 /**
  * 把 <pre><code class="language-mermaid">...</code></pre> 转成

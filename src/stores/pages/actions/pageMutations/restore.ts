@@ -1,7 +1,7 @@
 import type { Page } from "@/types";
 import { useNotebooks } from "../../../useNotebooks";
 import type { StoreSet, StoreGet } from "../hydrate";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { persistPageSnapshots } from "../../persistence";
 
 export const restorePageAction = (

@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import type { VirtualItem } from "@tanstack/react-virtual";
 import type { CSSProperties, ComponentProps, RefObject } from "react";
 import { cn } from "@/lib/utils";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { VisibleTreeItem } from "../tree-dnd";
 import {
   BOTTOM_EDGE_DROP_ID,

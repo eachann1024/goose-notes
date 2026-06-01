@@ -17,7 +17,7 @@ import {
   getContentSignature,
   normalizePageContent,
   type BlockNoteContent,
-} from "@/lib/blocknote-content";
+} from "@/components/editor/utils/blocknote-content";
 import { CustomSlashMenu } from "@/pages/workspace/components/command/CustomSlashMenu";
 import {
   EditorFormattingToolbar,
@@ -46,14 +46,14 @@ export {
   parseMarkdownLink,
   shouldPreferVisibleSelectionText,
   isValidUrl,
-} from "./utils/clipboard";
+} from "@/components/editor/utils/clipboard";
 
 export {
   isBottomEditorBlankClick,
   getSelectedPlainTextContext,
   getElementFromNode,
   isInteractiveEditorTarget,
-} from "./utils/selection";
+} from "@/components/editor/utils/selection";
 
 export { editorSchema } from "./schema";
 

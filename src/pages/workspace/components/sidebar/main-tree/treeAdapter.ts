@@ -1,6 +1,6 @@
 import type { TreeItem, TreeItemIndex } from "react-complex-tree";
 import type { Page } from "@/types";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 
 export { getPageTitle };
 

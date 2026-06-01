@@ -1,5 +1,5 @@
 import type { Page } from "@/types";
-import { normalizePageContent } from "@/lib/blocknote-content";
+import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 
 export function flattenLegacyTitleHeadingChildren(
   content: unknown,

@@ -1,6 +1,6 @@
 import type { Page } from "@/types";
-import type { BlockNoteContent } from "../blocknote-content";
-import { extractTitleFromContent } from "../content-text-extractor";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { toPng } from "html-to-image";
 import { trackEvent } from "../analytics";
 import type { CardThemeId } from "./themes";

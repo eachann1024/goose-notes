@@ -1,7 +1,7 @@
 import { Command } from "cmdk";
 import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
-import { getPageTitle } from "@/lib/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { SearchResultPage, SearchResults } from "./useCommandSearch";
 
 function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: string }) {
