@@ -20,6 +20,7 @@ import {
 } from "@blocknote/react";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -251,6 +252,22 @@ function getUpdatedColumnWidths(
   return nextColumnWidths;
 }
 
+function getBlockElementWidth(blockId: string | undefined) {
+  if (!blockId) return 0;
+  const blockElement = document.querySelector<HTMLElement>(
+    `.bn-block[data-id="${blockId}"]`,
+  );
+  return blockElement?.getBoundingClientRect().width ?? 0;
+}
+
+function getEvenColumnWidths(columnCount: number, tableWidth: number) {
+  if (columnCount <= 0 || tableWidth <= 0) return undefined;
+  const baseWidth = Math.floor(tableWidth / columnCount);
+  const widths = Array.from({ length: columnCount }, () => baseWidth);
+  widths[widths.length - 1] += Math.round(tableWidth - baseWidth * columnCount);
+  return widths;
+}
+
 export function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) {
   const editor = useBlockNoteEditor<any, any, any>();
   const tableHandles = useExtension(TableHandlesExtension);
@@ -366,16 +383,36 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
     }
   }, [editor, index, isRow, orientation, state?.block, tableHandles, updateTableColumns]);
 
-  const handleToggleHeaderRow = useCallback(() => {
+  const handleToggleHeaderRow = useCallback((checked: boolean | "indeterminate") => {
     if (!state?.block || !isRow || index !== 0) return;
     editor.updateBlock(state.block, {
       ...state.block,
       content: {
         ...state.block.content,
-        headerRows: isHeaderRow ? undefined : 1,
+        headerRows: checked === true ? 1 : undefined,
       } as any,
     });
-  }, [editor, index, isHeaderRow, isRow, state?.block]);
+  }, [editor, index, isRow, state?.block]);
+
+  const handleEvenColumnWidth = useCallback(() => {
+    if (!state?.block) return;
+    const content = state.block.content as PartialTableContent<any, any>;
+    const columnCount = getTableColumnCount(content);
+    const columnWidths = getEvenColumnWidths(
+      columnCount,
+      getBlockElementWidth(state.block.id),
+    );
+    if (!columnWidths) return;
+
+    editor.updateBlock(state.block, {
+      type: "table",
+      content: {
+        ...content,
+        columnWidths,
+      } as any,
+    });
+    editor.setTextCursorPosition(state.block);
+  }, [editor, state?.block]);
 
   const runMenuAction = useCallback(
     (action: () => void) => {
@@ -424,10 +461,26 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
               <LucideIcons.ArrowDown className="mr-2 h-4 w-4" /> 下方添加行
             </DropdownMenuItem>
             {index === 0 && (
-              <DropdownMenuItem onClick={handleToggleHeaderRow}>
-                <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
-                {isHeaderRow ? "取消标题行" : "设为标题行"}
-              </DropdownMenuItem>
+              <>
+                {isHeaderRow ? (
+                  <DropdownMenuItem
+                    onClick={() => handleToggleHeaderRow(false)}
+                    className="bg-[var(--goose-interactive-selected)] text-foreground"
+                  >
+                    <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
+                    取消标题行
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => handleToggleHeaderRow(true)}>
+                    <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
+                    设为标题行
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => runMenuAction(handleEvenColumnWidth)}>
+                  <LucideIcons.AlignJustify className="mr-2 h-4 w-4" />
+                  两端对齐
+                </DropdownMenuItem>
+              </>
             )}
             <DropdownMenuItem onClick={handleDelete}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除行

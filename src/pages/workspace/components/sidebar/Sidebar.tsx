@@ -51,6 +51,8 @@ export function Sidebar({
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openInCurrentTab } = useTabs();
   const setExpanded = useSidebarView((s) => s.setExpanded);
+  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
@@ -125,17 +127,63 @@ export function Sidebar({
       ref={sidebarRef}
       className={cn(
         "pb-0 bg-[hsl(var(--goose-shell-bg))] h-full flex flex-col relative group/sidebar",
+        "transition-[width,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+        sidebarCollapsed && "pointer-events-none",
         className,
       )}
-      style={{ width, overflow: "visible" }}
+      style={{
+        width: sidebarCollapsed ? 0 : width,
+        minWidth: sidebarCollapsed ? 0 : undefined,
+        opacity: sidebarCollapsed ? 0 : 1,
+        overflow: sidebarCollapsed ? "hidden" : "visible",
+      }}
+      aria-hidden={sidebarCollapsed}
     >
-      {!disableResize && (
+      {!disableResize && !sidebarCollapsed && (
         <SidebarResizeEdge
           isResizing={isResizing}
           onMouseDown={handleResizeMouseDown}
           onPointerDown={handleResizePointerDown}
         />
       )}
+
+      {/* 原生壳 titlebar 让位区：红绿灯右侧放折叠按钮，其余空白可拖动窗口。
+          浏览器/uTools 下由 CSS 整体隐藏（见 index.css [data-sidebar-titlebar]）。 */}
+      <div
+        data-sidebar-titlebar
+        data-window-drag
+        className="absolute left-0 right-0 top-0 z-20 flex items-center"
+        style={{
+          height: "var(--goose-titlebar-h, 0px)",
+          paddingLeft: "calc(var(--goose-titlebar-left, 0px) - 14px)",
+        }}
+      >
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                data-no-window-drag
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                onClick={toggleSidebarCollapsed}
+                aria-label="收起侧栏"
+              >
+                <LucideIcons.PanelLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <div className="flex items-center gap-2">
+                <span>收起侧栏</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {formatShortcut("Mod+B")}
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
         <SidebarHeader
