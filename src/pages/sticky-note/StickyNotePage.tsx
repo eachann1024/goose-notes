@@ -132,56 +132,70 @@ export function StickyNotePage() {
   if (!active) return null;
 
   return (
+    /* 暗色遮罩：点遮罩关闭 */
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex flex-col bg-[hsl(var(--goose-editor-bg))]",
-        isClosing && "animate-out fade-out duration-200",
+        "fixed inset-0 z-[100] flex items-center justify-center p-6",
+        "bg-black/30 backdrop-blur-[1px]",
+        isClosing
+          ? "animate-out fade-out duration-200"
+          : "animate-in fade-in duration-150",
       )}
+      onClick={handleClose}
     >
-      {/* 顶部标题栏 */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <LucideIcons.StickyNote className="h-4 w-4 text-amber-500 shrink-0" />
-          <span className="text-sm font-medium truncate">
-            {page ? getPageTitle(page) || "无标题" : "便签模式"}
-          </span>
-          {notebook && (
-            <span className="text-xs text-muted-foreground truncate">
-              · {notebook.name}
+      {/* 浮窗：居中卡片，阻止冒泡 */}
+      <div
+        className={cn(
+          "w-[398px] max-w-[94vw] max-h-[80vh] flex flex-col",
+          "rounded-[14px] border border-border bg-card overflow-hidden",
+          "shadow-[0_16px_36px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
+          !isClosing && "animate-in zoom-in-95 fade-in duration-150",
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 顶部标题栏 */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <LucideIcons.StickyNote className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-sm font-medium truncate">
+              {page ? getPageTitle(page) || "无标题" : "便签模式"}
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {pageId && (
+            {notebook && (
+              <span className="text-xs text-muted-foreground truncate">
+                · {notebook.name}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {pageId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleOpenInWorkspace}
+                title="在工作区打开"
+              >
+                <LucideIcons.Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={handleOpenInWorkspace}
-              title="在工作区打开"
+              onClick={handleClose}
+              title="关闭"
             >
-              <LucideIcons.Maximize2 className="h-3.5 w-3.5" />
+              <LucideIcons.X className="h-3.5 w-3.5" />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleClose}
-            title="关闭"
-          >
-            <LucideIcons.X className="h-3.5 w-3.5" />
-          </Button>
+          </div>
         </div>
-      </div>
 
-      {/* 内容区 */}
-      <div className="flex-1 overflow-hidden relative">
-        {!pageId ? (
-          <StickyNoteSelector onSelect={handleSelectPage} />
-        ) : page ? (
-          <div className="h-full overflow-y-auto page-scroll-container">
-            <div className="px-4 py-3 pb-20">
+        {/* 内容区 */}
+        <div className="flex-1 min-h-0 overflow-y-auto page-scroll-container">
+          {!pageId ? (
+            <StickyNoteSelector onSelect={handleSelectPage} />
+          ) : page ? (
+            <div className="px-4 py-3">
               {/* 便签样式背景 */}
               <div className="rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 p-4 min-h-[200px]">
                 <EditorHostBridge
@@ -194,27 +208,27 @@ export function StickyNotePage() {
                 </EditorHostBridge>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <LucideIcons.FileX className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">笔记不存在或已被删除</p>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <div className="text-center">
+                <LucideIcons.FileX className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">笔记不存在或已被删除</p>
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* 底部工具栏 */}
+        {pageId && page && (
+          <StickyNoteToolbar
+            page={page}
+            pageId={pageId}
+            onClose={handleClose}
+            onSwitchPage={() => selectPage("")}
+            onOpenInWorkspace={handleOpenInWorkspace}
+          />
         )}
       </div>
-
-      {/* 底部工具栏 */}
-      {pageId && page && (
-        <StickyNoteToolbar
-          page={page}
-          pageId={pageId}
-          onClose={handleClose}
-          onSwitchPage={() => selectPage("")}
-          onOpenInWorkspace={handleOpenInWorkspace}
-        />
-      )}
     </div>
   );
 }

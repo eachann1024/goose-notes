@@ -16,6 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { useAiStatus } from "@/stores/useAiStatus";
+import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
@@ -236,6 +237,9 @@ export function PageHeader({
     ? formatShortcut(closeTabShortcut)
     : "未设置";
   const searchShortcuts = `${formatShortcut("Mod+K")} / ${formatShortcut("Mod+P")}`;
+  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
+  const toggleSidebarShortcutLabel = formatShortcut("Mod+B");
 
   useEffect(() => {
     if (lastSavedAt && isLocalItem) {
@@ -259,6 +263,32 @@ export function PageHeader({
   return (
     <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-shell-bg))] sticky top-0 z-10 shrink-0">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        {sidebarCollapsed ? (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                  onClick={toggleSidebarCollapsed}
+                  aria-label="展开侧栏"
+                >
+                  <LucideIcons.PanelLeftOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>展开侧栏</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {toggleSidebarShortcutLabel}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
         {aiEnabled ? (
           <TooltipProvider delayDuration={0}>
             <Tooltip>
