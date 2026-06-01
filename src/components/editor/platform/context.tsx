@@ -31,8 +31,13 @@ export function EditorPlatformProvider({
   platform: EditorPlatform;
   children: ReactNode;
 }) {
-  // 同步模块级单例，供非 React 调用点读取
+  // render 阶段同步赋值，确保首帧即可通过 getEditorPlatform() 拿到真实 platform
+  // （useEffect 在 paint 后异步执行，首帧前调用的 extension 会拿到 noopPlatform）。
+  currentPlatform = platform;
+
+  // cleanup 仍在 useEffect 中（安全回退到 noopPlatform，仅在 unmount 后生效）
   useEffect(() => {
+    // 确保在 StrictMode 二次渲染后 currentPlatform 也是最新的
     currentPlatform = platform;
     return () => {
       currentPlatform = noopPlatform;

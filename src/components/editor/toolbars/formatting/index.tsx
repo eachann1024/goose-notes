@@ -12,7 +12,7 @@ import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { useContextMenu } from "@/components/editor/state/contextMenu";
-import { useGlobalScrollActivity } from "@/hooks/useGlobalScrollActivity";
+import { useGlobalScrollActivity } from "@/components/editor/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
@@ -23,7 +23,6 @@ import {
 } from "@/components/editor/toolbars/formatting/helpers";
 import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
 import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
-import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";
 import { toast } from "sonner";
 import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
 import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
@@ -88,7 +87,6 @@ export function EditorFormattingToolbar() {
     },
   });
 
-  const aiEnabled = useSettings((state) => state.ai.enabled);
   const aiActive = useFormattingToolbarAi((s) => s.active);
   const setAiActive = useFormattingToolbarAi((s) => s.setActive);
 
@@ -145,15 +143,31 @@ export function EditorFormattingToolbar() {
 
       // BlockNote AI 菜单只支持自定义 OpenAI/Claude provider。提前校验，避免
       // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
-      const avail = getAIAvailability(aiSettings);
-      if (!avail.ok) {
-        toast.error(avail.reason);
+      if (!aiSettings.enabled) {
+        toast.error("AI 助手尚未开启，请先到设置中打开");
         return;
       }
-      if (avail.provider === "utools") {
+      if (!aiSettings.useCustomProvider) {
+        // 平台原生 AI（uTools 内置）不支持 BlockNote xl-ai 菜单（需要标准 OpenAI/Claude 协议）。
         toast.error(
           "uTools 内置模型暂不支持编辑器内 AI 菜单，请在 设置 → AI 助手 中切换到自定义 OpenAI 或 Claude provider。",
         );
+        return;
+      }
+      const apiKey = (
+        aiSettings.customProtocol === "openai"
+          ? aiSettings.customOpenAIApiKey
+          : aiSettings.customClaudeApiKey
+      ).trim();
+      if (!apiKey) {
+        toast.error('未填写 API Key。请前往"设置 → AI 助手 → 自定义 AI"检查配置。');
+        return;
+      }
+      const hasModel =
+        (aiSettings.selectedModelId?.trim()) ||
+        aiSettings.customModelOptions[0]?.id;
+      if (!hasModel) {
+        toast.error("请先保存自定义 AI 配置并获取模型列表");
         return;
       }
 
@@ -167,7 +181,7 @@ export function EditorFormattingToolbar() {
     } catch {
       /* ignore */
     }
-  }, [editor, aiExtension]);
+  }, [editor, aiExtension, aiSettings]);
 
   const handleAiClose = useCallback(() => {
     const savedSel = savedSelectionRef.current;
@@ -294,7 +308,7 @@ export function EditorFormattingToolbar() {
         }}
       >
         <div className="flex items-center gap-0.5 p-1">
-          {aiEnabled && (
+          {aiSettings.enabled && (
             <>
               <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
               <Separator

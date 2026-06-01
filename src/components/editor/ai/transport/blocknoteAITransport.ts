@@ -6,15 +6,23 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { ClientSideTransport } from "@blocknote/xl-ai";
 import type { ChatTransport, UIMessage } from "ai";
 import type { AISettingsLike } from "@/lib/ai-provider/types";
-import { getAIAvailability } from "@/lib/ai-provider/modelCatalog";
 
 function buildModel(settings: AISettingsLike, modelId: string) {
-  const avail = getAIAvailability(settings);
-  if (!avail.ok) throw new Error(avail.reason);
-  if (avail.provider === "utools") {
+  if (!settings.enabled) {
+    throw new Error("AI 助手尚未开启，请先到设置中打开");
+  }
+  if (!settings.useCustomProvider) {
     throw new Error(
       "uTools 内置模型暂不支持编辑器内 BlockNote AI 菜单。请在 设置 → AI 助手 中切换到自定义 OpenAI 或 Claude provider。",
     );
+  }
+  const apiKey = (
+    settings.customProtocol === "openai"
+      ? settings.customOpenAIApiKey
+      : settings.customClaudeApiKey
+  ).trim();
+  if (!apiKey) {
+    throw new Error('未填写 API Key。请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。');
   }
 
   const normalizeBase = (url: string, fallback: string) =>

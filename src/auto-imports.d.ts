@@ -337,7 +337,7 @@ declare global {
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./components/editor/hooks/useFormatCode').useFormatCode
   const useFormattingToolbarAi: typeof import('./components/editor/state/formattingToolbarAi').useFormattingToolbarAi
-  const useGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').useGlobalScrollActivity
+  const useGlobalScrollActivity: typeof import('./components/editor/hooks/useGlobalScrollActivity').useGlobalScrollActivity
   const useHistoryRecorder: typeof import('./hooks/useHistoryRecorder').useHistoryRecorder
   const useHistoryView: typeof import('./stores/useHistoryView').useHistoryView
   const useId: typeof import('react').useId

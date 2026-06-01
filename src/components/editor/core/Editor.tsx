@@ -13,6 +13,7 @@ import {
   useEditorSettings,
   useEditorPageContext,
 } from "@/components/editor/platform/hostContext";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const contentSigCache = new WeakMap<object, string>();
@@ -41,7 +42,6 @@ import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInp
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
 import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
-import { openExternalUrl } from "@/lib/openExternalUrl";
 import { EditorComposer, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
@@ -68,6 +68,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     onContentChange,
     getActivePageLocalFilePath,
   } = useEditorPageContext();
+  const platform = useEditorPlatform();
   const activePageId = page?.id ?? null;
 
   const pageIdForUpdateRef = useRef<string | null>(null);
@@ -87,6 +88,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   getActivePageLocalFilePathRef.current = getActivePageLocalFilePath;
   const pageRef = useRef(page);
   pageRef.current = page;
+  // platformRef 供 useCreateBlockNote 闭包（deps=[]）调用平台能力，
+  // 同 aiSettingsRef 模式，避免闭包捕获旧 platform 引用。
+  const platformRef = useRef(platform);
+  platformRef.current = platform;
 
   const initialContentRef = useRef(normalizePageContent(page?.content));
   // 初次 mount 时给 syncedContentSignatureRef 设置基线，
@@ -135,14 +140,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       },
       uploadFile: async (file) => {
         if (file.type.startsWith("image/")) {
-          const { imageStorage } = await import("@/lib/imageStorage");
-          return imageStorage.save(file, file.type);
+          return platformRef.current.imageStorage.save(file, file.type);
         }
         return URL.createObjectURL(file);
       },
       resolveFileUrl: async (url) => {
-        const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
-        return resolveImageRefToUrl(url, getActivePageLocalFilePathRef.current());
+        return platformRef.current.imageStorage.resolveRefToUrl(
+          url,
+          getActivePageLocalFilePathRef.current(),
+        );
       },
       links: {
         onClick: (event) => {
@@ -154,7 +160,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           if (link) {
             const href = link.getAttribute("href");
             if (href) {
-              openExternalUrl(href);
+              platformRef.current.shell.openUrl(href);
             }
           }
           return true;
