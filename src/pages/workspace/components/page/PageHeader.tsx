@@ -258,10 +258,10 @@ export function PageHeader({
   };
 
   const actionButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground/70 dark:text-muted-foreground/55 transition-colors duration-150 hover:bg-muted/65 dark:hover:bg-muted/45 hover:text-foreground dark:hover:text-foreground/85";
+    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/70 dark:text-muted-foreground/55 transition-colors duration-150 hover:bg-muted/65 dark:hover:bg-muted/45 hover:text-foreground dark:hover:text-foreground/85";
 
   return (
-    <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-shell-bg))] sticky top-0 z-10 shrink-0">
+    <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-editor-bg))] sticky top-0 z-10 shrink-0">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {sidebarCollapsed ? (
           <TooltipProvider delayDuration={0}>
@@ -271,7 +271,7 @@ export function PageHeader({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                  className="-ml-1.5 h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                   onClick={toggleSidebarCollapsed}
                   aria-label="展开侧栏"
                 >

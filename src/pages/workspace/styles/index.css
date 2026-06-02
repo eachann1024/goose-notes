@@ -86,6 +86,12 @@
   padding: 10px 10px 12px 10px;
 }
 
+/* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
+   导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。 */
+.workspace-shell .workspace-stage:has(.workspace-sidebar-pane[aria-hidden="true"]) {
+  gap: 0;
+}
+
 .workspace-shell .workspace-sidebar-pane {
   background: var(--workspace-sidebar-surface);
   border: 0;
