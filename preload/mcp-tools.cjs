@@ -205,76 +205,14 @@ function searchNoteItems(items, query) {
   return scored;
 }
 
-function getTodayKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseMcpUsagePayload(rawValue) {
-  if (typeof rawValue !== "string" || !rawValue.trim()) {
-    return { version: 1, entries: [] };
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue);
-    const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
-    return { version: 1, entries };
-  } catch {
-    return { version: 1, entries: [] };
-  }
-}
-
-function mergeSourceTypes(current, next) {
-  const merged = new Set();
-  for (const value of [current, next]) {
-    String(value || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .forEach((item) => merged.add(item));
-  }
-  return Array.from(merged).sort().join(",");
-}
-
-function upsertMcpUsageEntry(payload, entry) {
-  const nextPayload = parseMcpUsagePayload(JSON.stringify(payload));
-  const existing = nextPayload.entries.find(
-    (item) =>
-      item &&
-      item.toolName === entry.toolName &&
-      item.day === entry.day &&
-      item.distinctId === entry.distinctId,
-  );
-
-  if (existing) {
-    existing.count = Number(existing.count || 0) + Number(entry.count || 0);
-    existing.sourceTypes = mergeSourceTypes(existing.sourceTypes, entry.sourceTypes);
-    return nextPayload;
-  }
-
-  nextPayload.entries.push({
-    toolName: entry.toolName,
-    day: entry.day,
-    distinctId: entry.distinctId,
-    sourceTypes: mergeSourceTypes("", entry.sourceTypes),
-    count: Number(entry.count || 0),
-  });
-  return nextPayload;
-}
-
 module.exports = {
   buildLocalPageId,
   createSnippet,
   extractMarkdownTitle,
   extractTextFromPageContent,
   extractTitleFromPageContent,
-  getTodayKey,
-  parseMcpUsagePayload,
   parsePersistedNotebooks,
   searchNoteItems,
   sortNoteItems,
   stripMarkdownSyntax,
-  upsertMcpUsageEntry,
 };

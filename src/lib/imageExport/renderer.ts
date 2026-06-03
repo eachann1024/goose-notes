@@ -2,11 +2,10 @@ import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { toPng } from "html-to-image";
-import { trackEvent } from "../analytics";
 import type { CardThemeId } from "./themes";
 import { getCardTheme } from "./themes";
 import type { WatermarkConfig } from "./watermark";
-import { buildStyledHTML, renderBlock, extractInlineText } from "./domSerializer";
+import { buildStyledHTML, renderBlock } from "./domSerializer";
 import { resolveImageUrls } from "./remoteImageResolver";
 
 // ── Loading Overlay ────────────────────────────────────────────
@@ -197,7 +196,6 @@ export async function exportPageToImage(
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, buildFileName(title, theme));
-    trackEvent("share_image_full", { page_title_length: title?.length ?? 0, theme: themeId });
   } finally {
     document.body.removeChild(container);
   }
@@ -244,10 +242,6 @@ export async function exportSelectionToImage(
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, buildFileName(title, theme, "选中"));
-    const selectionLength = selectionBlocks
-      .map((block: any) => extractInlineText(block.content))
-      .join("\n").length;
-    trackEvent("share_image_selection", { selection_length: selectionLength, theme: themeId });
   } finally {
     document.body.removeChild(container);
   }

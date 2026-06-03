@@ -1,6 +1,5 @@
 import { useCallback, useState, type RefObject } from "react";
 import { toast } from "sonner";
-import { trackEvent } from "@/lib/analytics";
 import { commitAgentArtifact } from "@/agent/core/runtime";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import type { MarkdownNoteArtifact } from "@/agent/core/types";
@@ -23,24 +22,6 @@ export function useAiWriteActions({
   const handleConfirmWrite = useCallback(
     async (messageId: string, artifact: MarkdownNoteArtifact) => {
       setApplyingMessageId(messageId);
-      trackEvent("agent_commit_confirmed", {
-        feature: "agent_runtime",
-        capability_id: "note.commit",
-        artifact_type: artifact.type,
-        target_type: artifact.plan.target.mode,
-      });
-      trackEvent("ai_write_confirmed", {
-        feature: "ai_write",
-        action: "confirm",
-        write_action: artifact.plan.action,
-        target_type: artifact.plan.target.mode,
-        is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
-        cross_notebook: Boolean(
-          artifact.plan.target.workspaceId &&
-            activeNotebookId &&
-            artifact.plan.target.workspaceId !== activeNotebookId,
-        ),
-      });
 
       try {
         const editor = editorRef?.current?.editor;
@@ -86,21 +67,6 @@ export function useAiWriteActions({
               committedPageId: artifact.plan.target.pageId!,
             },
           }));
-          trackEvent("agent_commit_succeeded", {
-            feature: "agent_runtime",
-            capability_id: "note.commit",
-            artifact_type: artifact.type,
-            target_type: artifact.plan.target.mode,
-          });
-          trackEvent("ai_write_committed", {
-            feature: "ai_write",
-            action: "commit",
-            result: "success",
-            write_action: artifact.plan.action,
-            target_type: artifact.plan.target.mode,
-            is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
-            cross_notebook: false,
-          });
           toast.success("已写入目标页面");
           return;
         }
@@ -115,25 +81,6 @@ export function useAiWriteActions({
             committedPageId: result.pageId,
           },
         }));
-        trackEvent("agent_commit_succeeded", {
-          feature: "agent_runtime",
-          capability_id: "note.commit",
-          artifact_type: artifact.type,
-          target_type: artifact.plan.target.mode,
-        });
-        trackEvent("ai_write_committed", {
-          feature: "ai_write",
-          action: "commit",
-          result: "success",
-          write_action: artifact.plan.action,
-          target_type: artifact.plan.target.mode,
-          is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
-          cross_notebook: Boolean(
-            artifact.plan.target.workspaceId &&
-              activeNotebookId &&
-              artifact.plan.target.workspaceId !== activeNotebookId,
-          ),
-        });
         toast.success("已写入目标页面");
       } catch (error) {
         const message =
@@ -155,24 +102,6 @@ export function useAiWriteActions({
           status: "cancelled",
         },
       }));
-      trackEvent("agent_commit_cancelled", {
-        feature: "agent_runtime",
-        capability_id: "note.commit",
-        artifact_type: artifact.type,
-        target_type: artifact.plan.target.mode,
-      });
-      trackEvent("ai_write_cancelled", {
-        feature: "ai_write",
-        action: "cancel",
-        write_action: artifact.plan.action,
-        target_type: artifact.plan.target.mode,
-        is_local_folder: Boolean(artifact.plan.target.isLocalFolder),
-        cross_notebook: Boolean(
-          artifact.plan.target.workspaceId &&
-            activeNotebookId &&
-            artifact.plan.target.workspaceId !== activeNotebookId,
-        ),
-      });
     },
     [activeNotebookId, updateMessageArtifact],
   );

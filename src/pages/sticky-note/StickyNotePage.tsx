@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useStickyNote } from "@/stores/useStickyNote";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -10,7 +10,6 @@ import { EditorHostBridge } from "@/pages/workspace/components/editor-host/Edito
 import { useSettings } from "@/stores/useSettings";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
-import { trackEvent } from "@/lib/analytics";
 
 export function StickyNotePage() {
   const { active, pageId, close, selectPage } = useStickyNote();
@@ -27,49 +26,19 @@ export function StickyNotePage() {
     notebook?.editorFullWidth ?? globalEditorFullWidth,
   );
 
-  useEffect(() => {
-    if (active) {
-      trackEvent("sticky_note_opened", {
-        feature: "sticky_note",
-        action: "open",
-        result: "success",
-      });
-    }
-  }, [active]);
-
-  useEffect(() => {
-    if (!pageId) return;
-    trackEvent("sticky_note_page_selected", {
-      feature: "sticky_note",
-      action: "select_page",
-      page_id: pageId,
-      source_type: page?.localFilePath ? "local-file" : "app-page",
-    });
-  }, [pageId]);
-
   const handleClose = useCallback(() => {
     setIsClosing(true);
     setTimeout(() => {
       close();
       setIsClosing(false);
-      trackEvent("sticky_note_closed", {
-        feature: "sticky_note",
-        action: "close",
-      });
     }, 200);
   }, [close]);
 
   const handleOpenInWorkspace = useCallback(() => {
     if (!pageId) return;
-    trackEvent("sticky_note_open_in_workspace", {
-      feature: "sticky_note",
-      action: "open_in_workspace",
-      page_id: pageId,
-      source_type: page?.localFilePath ? "local-file" : "app-page",
-    });
     openTab(pageId);
     handleClose();
-  }, [pageId, page, openTab, handleClose]);
+  }, [pageId, openTab, handleClose]);
 
   const handleSelectPage = useCallback(
     (id: string) => {
@@ -77,45 +46,6 @@ export function StickyNotePage() {
     },
     [selectPage],
   );
-
-  // 记录便签使用时长
-  const openTimeRef = useRef<number>(0);
-  useEffect(() => {
-    if (active && pageId) {
-      openTimeRef.current = Date.now();
-    }
-    return () => {
-      if (openTimeRef.current > 0) {
-        const duration = Date.now() - openTimeRef.current;
-        trackEvent("sticky_note_duration", {
-          feature: "sticky_note",
-          action: "duration",
-          duration_ms: duration,
-          page_id: pageId,
-        });
-        openTimeRef.current = 0;
-      }
-    };
-  }, [active, pageId]);
-
-  // 监听编辑器交互（判断用户是否实际编辑）
-  useEffect(() => {
-    if (!active || !pageId) return;
-    let hasInteracted = false;
-    const handleEditorInteraction = () => {
-      if (hasInteracted) return;
-      hasInteracted = true;
-      trackEvent("sticky_note_editor_interacted", {
-        feature: "sticky_note",
-        action: "editor_interacted",
-        page_id: pageId,
-      });
-    };
-    window.addEventListener("goose-note:editor-interacted", handleEditorInteraction);
-    return () => {
-      window.removeEventListener("goose-note:editor-interacted", handleEditorInteraction);
-    };
-  }, [active, pageId]);
 
   // ESC 关闭便签模式
   useEffect(() => {

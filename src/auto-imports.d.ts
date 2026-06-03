@@ -144,12 +144,10 @@ declare global {
   const buildAiContextBundle: typeof import('./lib/ai-write/index').buildAiContextBundle
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write/index').buildAiWorkspaceUserPrompt
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
-  const buildIntentRouterContext: typeof import('./lib/ai-intent-router').buildIntentRouterContext
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
-  const classifyIntent: typeof import('./lib/ai-intent-router').classifyIntent
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clonePageContent: typeof import('./components/editor/utils/blocknote-content/index').clonePageContent
   const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
@@ -201,13 +199,8 @@ declare global {
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
-  const getAIAnalyticsContext: typeof import('./lib/analytics').getAIAnalyticsContext
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
-  const getAIErrorType: typeof import('./lib/analytics').getAIErrorType
   const getAIProviderMode: typeof import('./lib/ai-provider/index').getAIProviderMode
-  const getAnalyticsContext: typeof import('./lib/analytics').getAnalyticsContext
-  const getAnalyticsInstallId: typeof import('./lib/analytics').getAnalyticsInstallId
-  const getAnalyticsSessionId: typeof import('./lib/analytics').getAnalyticsSessionId
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getAvailableAIModelOptions: typeof import('./lib/ai-provider/index').getAvailableAIModelOptions
   const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
@@ -223,7 +216,6 @@ declare global {
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
-  const getNotebookAnalyticsContext: typeof import('./lib/analytics').getNotebookAnalyticsContext
   const getPageTitle: typeof import('./components/editor/utils/page-title').getPageTitle
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
@@ -237,9 +229,7 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
   const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
-  const initAnalytics: typeof import('./lib/analytics').initAnalytics
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
-  const isAnalyticsInitialized: typeof import('./lib/analytics').isAnalyticsInitialized
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
   const isBottomEditorBlankClick: typeof import('./components/editor/utils/selection').isBottomEditorBlankClick
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
@@ -267,8 +257,6 @@ declare global {
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
-  const parseFrontmatterTags: typeof import('./lib/markdown-raw-guard').parseFrontmatterTags
-  const parseIntentResponse: typeof import('./lib/ai-intent-router').parseIntentResponse
   const parseLocalMarkdownContent: typeof import('./lib/local-folder-scanner').parseLocalMarkdownContent
   const parseMarkdownLink: typeof import('./components/editor/utils/clipboard').parseMarkdownLink
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
@@ -276,18 +264,14 @@ declare global {
   const peekFrontmatterForPath: typeof import('./lib/local-frontmatter-store').peekFrontmatterForPath
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processBlockChildren: typeof import('./lib/docxExport/docxBlocks').processBlockChildren
-  const processImageForStorage: typeof import('./lib/imageProcessor').processImageForStorage
-  const processImageForStorageV2: typeof import('./lib/imageProcessor').processImageForStorageV2
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const renderExportHtml: typeof import('./lib/export/index').renderExportHtml
-  const resetAnalytics: typeof import('./lib/analytics').resetAnalytics
   const resolveAiTargetFromSelection: typeof import('./lib/ai-write/index').resolveAiTargetFromSelection
   const resolveAiTargetIntent: typeof import('./lib/ai-write/index').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write/index').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write/index').resolveAiTargetSelection
-  const resolveBlockScope: typeof import('./lib/ai-block-scope').resolveBlockScope
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const runAIText: typeof import('./lib/ai-provider/index').runAIText
@@ -303,7 +287,6 @@ declare global {
   const selectSelectedId: typeof import('./stores/useSidebarView').selectSelectedId
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setFrontmatterForPath: typeof import('./lib/local-frontmatter-store').setFrontmatterForPath
-  const setFrontmatterTags: typeof import('./lib/markdown-raw-guard').setFrontmatterTags
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
@@ -311,12 +294,8 @@ declare global {
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
   const stripMarkdownHardBreaks: typeof import('./components/editor/utils/clipboard').stripMarkdownHardBreaks
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
-  const syncAIAnalyticsContext: typeof import('./lib/analytics').syncAIAnalyticsContext
-  const syncAnalyticsContext: typeof import('./lib/analytics').syncAnalyticsContext
-  const syncNotebookAnalyticsContext: typeof import('./lib/analytics').syncNotebookAnalyticsContext
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
-  const trackEvent: typeof import('./lib/analytics').trackEvent
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
@@ -359,7 +338,6 @@ declare global {
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
-  const verdictToTargetMode: typeof import('./lib/ai-intent-router').verdictToTargetMode
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
   const writeDbStorageJSON: typeof import('./lib/storage').writeDbStorageJSON
   const writePersistentDismissState: typeof import('./lib/dismiss-state').writePersistentDismissState
@@ -390,9 +368,6 @@ declare global {
   // @ts-ignore
   export type { AiWriteAction, AiBlockRange, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle } from './lib/ai-write/index'
   import('./lib/ai-write/index')
-  // @ts-ignore
-  export type { ProviderSource, CustomProtocolValue, AnalyticsContext, AnalyticsInitOptions } from './lib/analytics'
-  import('./lib/analytics')
   // @ts-ignore
   export type { InlineItem } from './lib/docxExport/docxStyles'
   import('./lib/docxExport/docxStyles')

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite  --port 6001",
     "build": "tsc -b && vite build && node scripts/utools-build.js",
+    "build:debug": "GOOSE_DEBUG=1 tsc -b && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/utools-build.js",
     "test:e2e": "E2E_AUTO_START=1 playwright test",
     "test:e2e:headed": "E2E_AUTO_START=1 PW_HEADED=1 playwright test",
     "test:e2e:ui": "E2E_AUTO_START=1 playwright test --ui",
@@ -61,7 +62,6 @@
     "lucide-react": "^0.562.0",
     "markdown-it": "^14.1.0",
     "mermaid": "^11.12.2",
-    "mixpanel-browser": "^2.71.1",
     "playwright": "^1.57.0",
     "prettier": "^3.7.4",
     "prosemirror-model": "^1.25.4",

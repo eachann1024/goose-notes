@@ -11,13 +11,10 @@ const {
   extractMarkdownTitle,
   extractTextFromPageContent,
   extractTitleFromPageContent,
-  getTodayKey,
-  parseMcpUsagePayload,
   parsePersistedNotebooks,
   searchNoteItems,
   sortNoteItems,
   stripMarkdownSyntax,
-  upsertMcpUsageEntry,
 } = require("./mcp-tools.cjs");
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
@@ -25,8 +22,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const PENDING_OPEN_FOLDER_KEY = "__gooseNotePendingOpenFolder";
   const SETTINGS_STORAGE_KEY = "goose-note-settings";
   const NOTEBOOK_STORAGE_KEY = "goose-note-notebooks";
-  const ANALYTICS_INSTALL_ID_KEY = "goose-note-analytics-install-id";
-  const MCP_USAGE_STORAGE_KEY = "goose-note-mcp-tool-usage-v1";
   const INTERNAL_PAGE_DOC_PREFIX = "gn:page:";
   const STORAGE_FALLBACK_DOC_PREFIX = "gn:storage:";
   const UTOOLS_WINDOW_HEIGHT_MIN = 600;
@@ -140,63 +135,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   };
 
   applyStoredWindowHeightBeforeRender();
-
-  const createRandomId = (prefix) => {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      return `${prefix}-${crypto.randomUUID()}`;
-    }
-    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  };
-
-  const ensureAnalyticsInstallId = () => {
-    const existing = readStoredString(ANALYTICS_INSTALL_ID_KEY);
-    if (existing) return existing;
-    const installId = createRandomId("install");
-    writeStoredString(ANALYTICS_INSTALL_ID_KEY, installId);
-    return installId;
-  };
-
-  const getMcpDistinctId = () => {
-    const installId = ensureAnalyticsInstallId();
-    const user = typeof utools?.getUser === "function" ? utools.getUser() : null;
-    const nickname = typeof user?.nickname === "string" ? user.nickname.trim() : "";
-    const userType = typeof user?.type === "string" ? user.type.trim() : "";
-
-    if (!nickname && !userType) {
-      return installId;
-    }
-
-    return `utools:${nickname || "anonymous"}:${userType || "unknown"}`;
-  };
-
-  const serializeSourceTypes = (sourceTypes) => {
-    return Array.from(
-      new Set(
-        (Array.isArray(sourceTypes) ? sourceTypes : [sourceTypes])
-          .flatMap((item) => String(item || "").split(","))
-          .map((item) => item.trim())
-          .filter(Boolean),
-      ),
-    )
-      .sort()
-      .join(",");
-  };
-
-  const recordMcpToolUsage = (toolName, sourceTypes) => {
-    try {
-      const payload = parseMcpUsagePayload(readStoredString(MCP_USAGE_STORAGE_KEY));
-      const nextPayload = upsertMcpUsageEntry(payload, {
-        toolName,
-        day: getTodayKey(),
-        distinctId: getMcpDistinctId(),
-        sourceTypes: serializeSourceTypes(sourceTypes),
-        count: 1,
-      });
-      writeStoredString(MCP_USAGE_STORAGE_KEY, JSON.stringify(nextPayload));
-    } catch (error) {
-      console.error("[goose-note] record MCP usage failed:", error);
-    }
-  };
 
   const invalidateLocalNotebookCache = () => {
     localNotebookScanCache.clear();
@@ -632,10 +570,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         }),
       );
 
-      recordMcpToolUsage(
-        "list_notebooks",
-        items.map((item) => (item.source === "local-folder" ? "local-file" : "app-page")),
-      );
       return { items };
     });
 
@@ -646,10 +580,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       const paged = paginateItems(sorted, params, 100);
       const items = paged.items.map(buildListItem);
 
-      recordMcpToolUsage(
-        "list_notes",
-        items.map((item) => item.sourceType),
-      );
       return {
         total: paged.total,
         items,
@@ -675,10 +605,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         matchedFields: note.matchedFields,
       }));
 
-      recordMcpToolUsage(
-        "search_notes",
-        items.map((item) => item.sourceType),
-      );
       return {
         total: paged.total,
         items,
@@ -710,7 +636,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         throw new Error("未找到对应笔记");
       }
 
-      recordMcpToolUsage("get_note", note.sourceType);
       return buildGetNoteItem(note);
     });
   };

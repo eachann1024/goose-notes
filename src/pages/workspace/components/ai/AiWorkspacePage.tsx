@@ -17,7 +17,6 @@ import { AiWorkspaceMessages } from "./AiWorkspaceMessages";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useAiWorkspaceState } from "./hooks/useAiWorkspaceState";
 import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
-import { trackEvent } from "@/lib/analytics";
 
 interface AiWorkspacePageProps {
   editorRef?: RefObject<EditorRef | null>;
@@ -79,16 +78,7 @@ export function AiWorkspacePage({ editorRef }: AiWorkspacePageProps = {}) {
     }
   }, [messages, isStreaming, messagesEndRef, userScrolledUpRef]);
 
-  const handleReferenceAdded = (reference: AiFileReferenceAttrs) => {
-    trackEvent("ai_reference_added", {
-      feature: "ai",
-      action: "reference_add",
-      result: "success",
-      source: "ai_page",
-      reference_source_type: reference.sourceType,
-      reference_scope: "workspace_ai_page",
-    });
-  };
+  const handleReferenceAdded = (_reference: AiFileReferenceAttrs) => {};
 
   return (
     <div

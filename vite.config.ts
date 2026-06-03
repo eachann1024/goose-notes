@@ -3,70 +3,103 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
+import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 
 const hostTarget = "utools";
-const vendorChunkGroups: Array<[string, string[]]> = [
-  ["vendor-react", ["react", "react-dom", "zustand"]],
-  [
-    "vendor-ui",
-    [
-      "@radix-ui/react-context-menu",
-      "@radix-ui/react-dialog",
-      "@radix-ui/react-dropdown-menu",
-      "@radix-ui/react-label",
-      "@radix-ui/react-popover",
-      "@radix-ui/react-scroll-area",
-      "@radix-ui/react-separator",
-      "@radix-ui/react-slider",
-      "@radix-ui/react-slot",
-      "@radix-ui/react-switch",
-      "@radix-ui/react-tabs",
-      "@radix-ui/react-toggle",
-      "@radix-ui/react-tooltip",
-      "lucide-react",
-      "cmdk",
-      "sonner",
-    ],
-  ],
-  [
-    "vendor-blocknote",
-    [
-      "@blocknote/core",
-      "@blocknote/react",
-      "prosemirror-transform",
-      "prosemirror-state",
-      "prosemirror-view",
-      "prosemirror-model",
-    ],
-  ],
+
+// Vite 8 底层是 rolldown。分包用 rolldown 原生 codeSplitting.groups，
+// 不用已废弃的 output.manualChunks（rolldown 文档：manualChunks 与 codeSplitting 同时配置时
+// manualChunks 会被忽略；这里统一走 codeSplitting）。
+//
+// 约定：
+// - test 用 [\\/] 兼容 Windows 路径分隔符（rolldown 官方建议）。
+// - priority 越大越先匹配；命中后该模块从其它组移除。兜底组 priority 最低。
+// - entriesAware:true 让组按"被哪些入口/动态 import 链使用"再细分子 chunk，
+//   保住源码里精心做的懒加载边界（docx 静态、pdf/jszip 动态 import），
+//   避免把 docx + react-pdf + jszip 强行并进一个 3.5MB 大 chunk 后全量 eager 下载。
+type ChunkGroup = {
+  name: string;
+  test: RegExp;
+  priority: number;
+  entriesAware?: boolean;
+};
+
+const codeSplittingGroups: ChunkGroup[] = [
+  // React 运行时：优先级最高，确保 react / react-dom / 调度器不被卷进 blocknote 等组
+  {
+    name: "vendor-react",
+    test: /[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store|zustand)[\\/]/,
+    priority: 50,
+  },
+  // ProseMirror 内核（blocknote 底层）
+  {
+    name: "vendor-prosemirror",
+    test: /[\\/]node_modules[\\/]prosemirror-[^\\/]+[\\/]/,
+    priority: 40,
+  },
+  // BlockNote 编辑器（core + react + mantine）
+  {
+    name: "vendor-blocknote",
+    test: /[\\/]node_modules[\\/]@blocknote[\\/](core|react|mantine)[\\/]/,
+    priority: 39,
+  },
+  // 文档导出：docx / pdf / zip。entriesAware 让其按实际使用入口拆分，
+  // 用户只导出 Word 时不会被迫下载 react-pdf / xl-pdf-exporter 的体积。
+  {
+    name: "vendor-export",
+    test: /[\\/]node_modules[\\/](docx|jszip|@react-pdf[\\/]renderer|@blocknote[\\/]xl-pdf-exporter)[\\/]/,
+    priority: 38,
+    entriesAware: true,
+  },
   // AI SDK — 较大，单独隔离方便缓存
-  ["vendor-ai", ["ai", "@ai-sdk/anthropic", "@ai-sdk/openai-compatible"]],
-  // 可视化
-  ["vendor-echarts", ["echarts"]],
+  {
+    name: "vendor-ai",
+    test: /[\\/]node_modules[\\/](ai|@ai-sdk[\\/][^\\/]+|@blocknote[\\/]xl-ai)[\\/]/,
+    priority: 30,
+  },
+  // 可视化（echarts 经 React.lazy 边界已自然分块，这里只是命名归组）
+  {
+    name: "vendor-echarts",
+    test: /[\\/]node_modules[\\/](echarts|zrender)[\\/]/,
+    priority: 25,
+  },
   // 动画
-  ["vendor-motion", ["framer-motion"]],
-  // 文档导出（docx / pdf / zip）
-  [
-    "vendor-export",
-    ["docx", "jszip", "@blocknote/xl-pdf-exporter", "@react-pdf/renderer"],
-  ],
+  {
+    name: "vendor-motion",
+    test: /[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/,
+    priority: 24,
+  },
   // 拖拽
-  ["vendor-dnd", ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"]],
+  {
+    name: "vendor-dnd",
+    test: /[\\/]node_modules[\\/]@dnd-kit[\\/]/,
+    priority: 23,
+  },
   // 路由
-  ["vendor-router", ["react-router-dom"]],
+  {
+    name: "vendor-router",
+    test: /[\\/]node_modules[\\/](react-router|react-router-dom)[\\/]/,
+    priority: 22,
+  },
   // JSON 渲染
-  ["vendor-json-render", ["@json-render/core", "@json-render/react"]],
+  {
+    name: "vendor-json-render",
+    test: /[\\/]node_modules[\\/]@json-render[\\/]/,
+    priority: 21,
+  },
+  // Radix + 自建 UI 原语 + 图标/命令面板
+  {
+    name: "vendor-ui",
+    test: /[\\/]node_modules[\\/](@radix-ui[\\/][^\\/]+|@floating-ui[\\/][^\\/]+|lucide-react|cmdk|sonner|class-variance-authority|clsx|tailwind-merge|date-fns)[\\/]/,
+    priority: 20,
+  },
+  // 兜底：其余 node_modules
+  {
+    name: "vendor",
+    test: /[\\/]node_modules[\\/]/,
+    priority: 1,
+  },
 ];
-
-function resolveVendorChunk(id: string) {
-  if (!id.includes("node_modules")) {
-    return undefined;
-  }
-
-  return vendorChunkGroups.find(([, packages]) =>
-    packages.some((pkg) => id.includes(`node_modules/${pkg}/`)),
-  )?.[0];
-}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -163,10 +196,15 @@ export default defineConfig({
   },
 
   build: {
-    sourcemap: "hidden",
-    rollupOptions: {
+    // 正式 'hidden'（写盘后由 utools-build 删）；GOOSE_DEBUG=1 时 true（保留，供 DevTools 还原 src/）
+    sourcemap: debugSourcemap,
+    minify: debugMinify,
+    rolldownOptions: {
       output: {
-        manualChunks: resolveVendorChunk,
+        // rolldown 原生分包；不用废弃的 manualChunks
+        codeSplitting: {
+          groups: codeSplittingGroups,
+        },
         sourcemapIgnoreList: false,
         chunkFileNames: "chunks/[name].js",
         entryFileNames: "assets/[name].js",
@@ -180,5 +218,5 @@ export default defineConfig({
     chunkSizeWarningLimit: 3000,
     reportCompressedSize: false,
   },
-  logLevel: "warn",
+  logLevel: isDebugBuild ? "info" : "warn",
 });

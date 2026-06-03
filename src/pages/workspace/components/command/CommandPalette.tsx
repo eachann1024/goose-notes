@@ -2,7 +2,6 @@ import { useId, useRef, useEffect, useState, useCallback } from "react";
 import { Command } from "cmdk";
 import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
-import { trackEvent } from "@/lib/analytics";
 import { UToolsAdapter } from "@/lib/utools";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
@@ -50,18 +49,10 @@ export function CommandPalette() {
     activeNotebookId,
     searchAllNotebooks,
   });
-  const trackSearchOpened = useCallback((openSource: "utools_input" | "shortcut" | "programmatic") => {
-    trackEvent("search_opened", {
-      feature: "search",
-      action: "open",
-      source: openSource,
-      open_source: openSource,
-      search_scope: searchAllNotebooks ? "all_notebooks" : "current_notebook",
-      search_all_notebooks: searchAllNotebooks,
-      open_in_new_tab: openInNewTabRef.current,
-    });
-  }, [searchAllNotebooks]);
-  const lastTrackedQueryRef = useRef("");
+  const trackSearchOpened = useCallback(
+    (_openSource: "utools_input" | "shortcut" | "programmatic") => {},
+    [],
+  );
 
   const handleHideRecent = useCallback(() => {
     setShowRecentInSearch(false);
@@ -171,43 +162,11 @@ export function CommandPalette() {
     return () => cancelAnimationFrame(raf);
   }, [open, searchQuery]);
 
-  useEffect(() => {
-    const trimmedQuery = searchQuery.trim();
-    if (!open || !trimmedQuery) {
-      lastTrackedQueryRef.current = "";
-      return;
-    }
-    if (lastTrackedQueryRef.current === trimmedQuery) return;
-
-    lastTrackedQueryRef.current = trimmedQuery;
-    trackEvent("search_submit", {
-      feature: "search",
-      action: "submit",
-      source: "command_palette",
-      search_scope: searchAllNotebooks ? "all_notebooks" : "current_notebook",
-      query_length: trimmedQuery.length,
-      result_count: searchResults.all.length,
-    });
-  }, [open, searchAllNotebooks, searchQuery, searchResults.all.length]);
-
   const openPageInTab = useCallback(
     (page: SearchResultPage | Page, query: string | null) => {
       const targetNotebookId = page.workspaceId;
 
       runCommand(() => {
-        trackEvent("search_result_opened", {
-          feature: "search",
-          action: "open_result",
-          result: "success",
-          source: "command_palette",
-          open_mode: openInNewTabRef.current ? "new_tab" : "current_tab",
-          search_scope: searchAllNotebooks ? "all_notebooks" : "current_notebook",
-          search_all_notebooks: searchAllNotebooks,
-          has_query: Boolean(query?.trim()),
-          query_length: query?.trim().length ?? 0,
-          result_count: searchResults.all.length,
-          cross_notebook: Boolean(targetNotebookId && targetNotebookId !== activeNotebookId),
-        });
         if (targetNotebookId && targetNotebookId !== activeNotebookId) {
           setActiveNotebook(targetNotebookId);
         }

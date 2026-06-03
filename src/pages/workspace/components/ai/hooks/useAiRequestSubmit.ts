@@ -1,5 +1,4 @@
 import { useRef, useState, type RefObject, type MutableRefObject } from "react";
-import { trackEvent, getAIErrorType } from "@/lib/analytics";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSettings } from "@/stores/useSettings";
 import { buildAgentPlan, executeAgentPlan } from "@/agent/core/runtime";
@@ -175,17 +174,6 @@ export function useAiRequestSubmit({
       );
       if (activeRequestIdRef.current !== requestId) return;
 
-      trackEvent("ai_request_submitted", {
-        feature: "ai",
-        action: "submit",
-        result: "submitted",
-        source: "ai_workspace",
-        provider_type: providerType,
-        model_id: modelId,
-        capability_id: planning.intent?.capabilityId,
-        has_reference: payload.references.length > 0,
-      });
-
       if (!planning.plan) {
         const immediateArtifact: AgentArtifact = {
           type: "text_response",
@@ -247,17 +235,6 @@ export function useAiRequestSubmit({
       }
       const finalText = streamingAccRef.current.text;
 
-      trackEvent("ai_request_succeeded", {
-        feature: "ai",
-        action: "success",
-        result: "success",
-        source: "ai_workspace",
-        duration_ms: Date.now() - requestStartedAt,
-        provider_type: providerType,
-        model_id: modelId,
-        capability_id: result.plan.capabilityId,
-      });
-
       const idxSuccess = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
       if (idxSuccess !== -1) {
         const nextMsgsSuccess = [...latestMessagesRef.current];
@@ -296,16 +273,6 @@ export function useAiRequestSubmit({
       }
 
       const errMsg = err instanceof Error ? err.message : "请求失败，请重试";
-      trackEvent("ai_request_failed", {
-        feature: "ai",
-        action: "fail",
-        result: "failed",
-        source: "ai_workspace",
-        error_type: getAIErrorType(err),
-        duration_ms: Date.now() - requestStartedAt,
-        provider_type: providerType,
-        model_id: modelId,
-      });
 
       const idxErr = latestMessagesRef.current.findIndex((m) => m.id === assistantMessageId);
       if (idxErr !== -1) {

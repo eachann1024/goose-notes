@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import type { Page } from "@/types";
 import { cn } from "@/lib/utils";
-import { trackEvent } from "@/lib/analytics";
 
 interface StickyNoteToolbarProps {
   page: Page;
@@ -13,17 +12,11 @@ interface StickyNoteToolbarProps {
 
 export function StickyNoteToolbar({
   page,
-  pageId,
   onClose,
   onSwitchPage,
   onOpenInWorkspace,
 }: StickyNoteToolbarProps) {
   const handleSwitchPage = () => {
-    trackEvent("sticky_note_switch_page", {
-      feature: "sticky_note",
-      action: "switch_page",
-      from_page_id: pageId,
-    });
     onSwitchPage();
   };
   const formatTime = useCallback((timestamp: number) => {

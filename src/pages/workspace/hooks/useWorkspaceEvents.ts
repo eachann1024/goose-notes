@@ -1,12 +1,10 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { trackEvent } from "@/lib/analytics";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import {
   OPEN_AI_WORKSPACE_EVENT,
   CLOSE_AI_WORKSPACE_EVENT,
-  type OpenAiWorkspaceDetail,
 } from "../components/ai/events";
 
 interface UseWorkspaceEventsOptions {
@@ -25,8 +23,7 @@ export function useWorkspaceEvents({
 
   // Open AI workspace event
   useEffect(() => {
-    const handleOpenAiWorkspace = (event: Event) => {
-      const customEvent = event as CustomEvent<OpenAiWorkspaceDetail>;
+    const handleOpenAiWorkspace = () => {
       if (!useSettings.getState().ai.enabled) {
         toast.error("请先在设置中启用 AI 助手");
         return;
@@ -38,12 +35,6 @@ export function useWorkspaceEvents({
       }
 
       setIsAiPageOpen(true);
-      trackEvent("ai_page_opened", {
-        feature: "ai",
-        action: "open_page",
-        result: "success",
-        source: customEvent.detail?.source ?? "header",
-      });
     };
 
     window.addEventListener(

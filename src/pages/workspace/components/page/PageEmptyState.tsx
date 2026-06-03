@@ -5,7 +5,6 @@ import { useEffect, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
-import { trackEvent } from "@/lib/analytics";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { OPEN_AI_WORKSPACE_EVENT } from "../ai/events";
 import { cn } from "@/lib/utils";
@@ -136,25 +135,12 @@ export function PageEmptyState() {
 
   const onOpenAi = useCallback(async () => {
     if (!aiEnabled) {
-      trackEvent("workspace_empty_state_action_clicked", {
-        feature: "ai",
-        action: "open_settings",
-        source: "empty_state",
-        result: "redirect_settings",
-      });
       openAISettings();
       return;
     }
 
     const pageId = await activateOrCreatePage();
     if (!pageId) return;
-
-    trackEvent("workspace_empty_state_action_clicked", {
-      feature: "ai",
-      action: "open_workspace",
-      source: "empty_state",
-      result: "success",
-    });
 
     window.requestAnimationFrame(() => {
       window.dispatchEvent(

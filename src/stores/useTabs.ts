@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { trackEvent } from "@/lib/analytics";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 
@@ -200,12 +199,6 @@ export const useTabs = create<TabsState>()((set, get) => {
         openTabs: nextOpenTabs,
         activeTabId: newTab.id,
       });
-      trackEvent("tab_opened", {
-        feature: "tabs",
-        action: "open",
-        source: "page_navigation",
-        tab_count_after_open: nextOpenTabs.length,
-      });
       pushTabHistory(newTab.id);
       get().syncNotebookForPage(pageId);
       void scheduleSetActivePage(pageId);
@@ -227,12 +220,6 @@ export const useTabs = create<TabsState>()((set, get) => {
         workspaceId: getWorkspaceIdForPage(pageId),
       };
       set({ openTabs: nextTabs });
-      trackEvent("tab_reused_for_navigation", {
-        feature: "tabs",
-        action: "switch",
-        source: "page_navigation",
-        tab_count_current: nextTabs.length,
-      });
       pushTabHistory(nextTabs[activeIndex].id);
       get().syncNotebookForPage(pageId);
       void scheduleSetActivePage(pageId);

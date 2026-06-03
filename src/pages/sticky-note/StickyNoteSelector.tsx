@@ -4,7 +4,6 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { cn } from "@/lib/utils";
-import { trackEvent } from "@/lib/analytics";
 
 interface StickyNoteSelectorProps {
   onSelect: (pageId: string) => void;
@@ -15,7 +14,6 @@ export function StickyNoteSelector({ onSelect }: StickyNoteSelectorProps) {
   const { notebooks, activeNotebookId } = useNotebooks();
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasTrackedSearchRef = useRef(false);
 
   // 聚焦输入框
   useEffect(() => {
@@ -48,37 +46,11 @@ export function StickyNoteSelector({ onSelect }: StickyNoteSelectorProps) {
 
   const recentPages = sortedPages.slice(0, 8);
 
-  // 追踪搜索提交（用户输入后停留 800ms 视为一次搜索）
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      hasTrackedSearchRef.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (hasTrackedSearchRef.current) return;
-      hasTrackedSearchRef.current = true;
-      trackEvent("sticky_note_search_submitted", {
-        feature: "sticky_note",
-        action: "search_submitted",
-        query_length: searchQuery.trim().length,
-        result_count: recentPages.length,
-      });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [searchQuery, recentPages.length]);
-
   const handleSelect = useCallback(
     (pageId: string) => {
-      trackEvent("sticky_note_page_selected", {
-        feature: "sticky_note",
-        action: "select_page",
-        page_id: pageId,
-        has_search: Boolean(searchQuery.trim()),
-        search_query_length: searchQuery.trim().length,
-      });
       onSelect(pageId);
     },
-    [onSelect, searchQuery],
+    [onSelect],
   );
 
   return (
