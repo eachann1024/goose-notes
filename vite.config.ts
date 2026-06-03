@@ -57,11 +57,48 @@ const codeSplittingGroups: ChunkGroup[] = [
     test: /[\\/]node_modules[\\/](ai|@ai-sdk[\\/][^\\/]+|@blocknote[\\/]xl-ai)[\\/]/,
     priority: 30,
   },
-  // 可视化（echarts 经 React.lazy 边界已自然分块，这里只是命名归组）
+  // Mermaid（源码里 MermaidView 用 `await import("mermaid")` 懒加载）。
+  // 必须 entriesAware:true，否则会被下面的兜底 vendor 组卷进 eager vendor.js（曾达 7MB），
+  // 让源码的懒加载边界失效。这里只匹配 mermaid 私有依赖（cytoscape/dagre/roughjs/khroma…），
+  // d3/dayjs/uuid 等共享依赖交给 rolldown 按引用关系自动归并，避免重复打包。
+  {
+    name: "vendor-mermaid",
+    test: /[\\/]node_modules[\\/](mermaid|@mermaid-js[\\/][^\\/]+|cytoscape|cytoscape-[^\\/]+|dagre-d3-es|roughjs|khroma|@braintree[\\/]sanitize-url|d3-sankey|@upsetjs[\\/]venn\.js|stylis|ts-dedent)[\\/]/,
+    priority: 37,
+    entriesAware: true,
+  },
+  // KaTeX（MathView 用 `await import("katex")` 懒加载；rehype-katex 走导出链）。
+  // entriesAware:true 保住懒加载边界。
+  {
+    name: "vendor-katex",
+    test: /[\\/]node_modules[\\/]katex[\\/]/,
+    priority: 36,
+    entriesAware: true,
+  },
+  // Markdown / HTML 序列化管线（unified / remark / rehype / micromark / mdast / hast /
+  // markdown-it / lowlight / highlight.js / lowlight 解析）。
+  // 该管线经 @/lib/export 被 stores 静态引用 → 仍是 eager，但单独命名成块便于缓存，
+  // 把它从 7MB 兜底 vendor.js 里剥出来。
+  {
+    name: "vendor-markdown",
+    test: /[\\/]node_modules[\\/](unified|remark-[^\\/]+|rehype-[^\\/]+|hast-[^\\/]+|hastscript|mdast-[^\\/]+|micromark|micromark-[^\\/]+|markdown-it|markdown-table|lowlight|highlight\.js|prosemirror-highlight|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities[^\\/]*|trim-lines|trough|vfile|vfile-[^\\/]+|bail|is-plain-obj|zwitch|html-void-elements|web-namespaces|ccount|escape-string-regexp|mdurl|entities|linkify-it|uc\.micro|punycode\.js|devlop)[\\/]/,
+    priority: 35,
+  },
+  // Prettier standalone + 插件（useFormatCode 用 `await import("prettier/standalone")` 懒加载）。
+  // entriesAware:true 保住懒加载边界，否则 ~1MB prettier 被卷进 eager vendor.js。
+  {
+    name: "vendor-prettier",
+    test: /[\\/]node_modules[\\/]prettier[\\/]/,
+    priority: 34,
+    entriesAware: true,
+  },
+  // 可视化（echarts 经 MarkdownArtifact 的 React.lazy 边界懒加载）。
+  // entriesAware:true 保住懒加载边界，避免 1.1MB echarts 被卷进 eager vendor.js。
   {
     name: "vendor-echarts",
     test: /[\\/]node_modules[\\/](echarts|zrender)[\\/]/,
     priority: 25,
+    entriesAware: true,
   },
   // 动画
   {

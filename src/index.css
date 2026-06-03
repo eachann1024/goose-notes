@@ -2,9 +2,125 @@
 @import "./pages/workspace/styles/code-themes.css";
 @import "katex/dist/katex.min.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* HeroUI v3（React Aria 内核）样式。v3 无 Provider，仅需一行 import。
+ * 被替换的外壳基础控件（Input/Textarea/Switch/Badge）走 @heroui/react，
+ * 视觉仍由各组件 className 还原 shadcn token，HeroUI 自身的 --accent*
+ * 运行时令牌在下方 :root/.dark 映射到项目主色（neutral primary），
+ * 保证任何 HeroUI 默认上色面（focus/selection 等）与品牌一致、不漏默认蓝。 */
+@import "@heroui/styles";
+
+/* ── HeroUI ↔ shadcn 令牌冲突兜底 ───────────────────────────────
+ * @heroui/styles 会在 `:root,.light,.default,[data-theme=light|default]`
+ * 里把 --accent / --border 设成「已解析颜色」(oklch)，而本项目这两个 token
+ * 是「HSL 通道」形态、经 hsl(var(--xxx)) 消费。若 HeroUI 的值胜出，
+ * hsl(oklch(...)) 非法 → 全局边框 / bg-accent 视觉崩坏。
+ * 这里用「无 layer」规则重新声明本项目的通道值（无 layer 永远压过任何 @layer），
+ * 锁定 shadcn 视觉零改动；HeroUI 自身强调色面已由各替换组件 className 覆盖，不依赖此 token。 */
+:root,
+.light,
+.default,
+[data-theme="light"],
+[data-theme="default"] {
+  --accent: 60 6.67% 94.12%;
+  --border: 0 0% 86%;
+}
+.dark,
+[data-theme="dark"] {
+  --accent: 60 2.4% 16.1%;
+  --border: 0 0% 24%;
+}
+
+/* class 模式暗色：等价 v3 darkMode: ["class"] */
+@custom-variant dark (&:is(.dark *));
+
+/* ── Tailwind v4 CSS-first 主题映射 ──────────────────────────────
+ * 用 @theme inline：颜色值保持 hsl(var(--xxx)) 引用，
+ * 真正的色值仍由下方 :root/.dark 里的 CSS 变量驱动（与 shadcn v4 一致）。
+ * 这样 bg-background / text-foreground / border-border / rounded-lg /
+ * font-sans 等工具类按 v3 同名规则重新生成，视觉 token 完整保留。 */
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* borderRadius：v3 lg/md/sm 映射 */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* fontFamily：v3 sans/serif/mono 映射 */
+  --font-sans:
+    var(--font-default), sans-serif;
+  --font-serif: var(--font-serif), serif;
+  --font-mono: var(--font-mono), monospace;
+
+  /* accordion 动画（原 tailwindcss-animate 之外的项目自定义 keyframes） */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* v4 默认 ring 宽度为 1px、ring 颜色为 currentColor；
+ * 保留 v3 的 3px 默认，避免任何残留 ring 工具类视觉突变
+ * （本项目全局已用 --tw-ring-shadow:0 0 #0000 清掉 focus ring）。 */
+@theme {
+  --default-ring-width: 3px;
+}
+
+/* v4 起 border/divide 默认色为 currentColor。本项目已用
+ * `* { @apply border-border }` 显式指定，下面再兜底一层保险，
+ * 防止任何未被 @apply 覆盖到的元素出现 currentColor 描边突变。 */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+  }
+}
 
 @layer base {
   :root {

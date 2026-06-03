@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MousePointer2, Star, Download, Github } from "lucide-react";
+import { MousePointer2, Star, Download, GitBranch } from "lucide-react";
 import * as Copy from "../welcomeCopy";
 
 interface ButtonShowcaseProps {
@@ -41,7 +41,7 @@ export function ButtonShowcase({ handleButtonClick }: ButtonShowcaseProps) {
             带图标
           </Button>
           <Button variant="outline">
-            <Github className="mr-2 h-4 w-4" />
+            <GitBranch className="mr-2 h-4 w-4" />
             GitHub
           </Button>
         </div>
