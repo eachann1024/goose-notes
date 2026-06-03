@@ -1,6 +1,6 @@
 # BlockNote xl-ai 使用指南
 
-Goose Note 的编辑器内 AI 现在由 [@blocknote/xl-ai](https://www.blocknotejs.org/docs/ai)
+鹅的监控 的编辑器内 AI 现在由 [@blocknote/xl-ai](https://www.blocknotejs.org/docs/ai)
 官方接管。本文档说明如何配置、如何使用、当前限制。
 
 ## 一、如何启用

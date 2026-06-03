@@ -6,6 +6,12 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
       "port": 6001
+    },
+    {
+      "name": "tauri-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/eachann/WorkMark/goose-note-tauri && bun run dev"],
+      "port": 1420
     }
   ]
 }

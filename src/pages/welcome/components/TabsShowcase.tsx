@@ -31,7 +31,7 @@ export function TabsShowcase({ selectedTab, setSelectedTab }: TabsShowcaseProps)
           <TabsContent value="account" className="space-y-4">
             <div className="space-y-2">
               <Label>账户名称</Label>
-              <Input defaultValue="Goose Note User" />
+              <Input defaultValue="Goose Monitor User" />
             </div>
             <div className="space-y-2">
               <Label>邮箱</Label>
