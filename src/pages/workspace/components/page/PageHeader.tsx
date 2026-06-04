@@ -239,7 +239,7 @@ export function PageHeader({
   const searchShortcuts = `${formatShortcut("Mod+K")} / ${formatShortcut("Mod+P")}`;
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
-  const toggleSidebarShortcutLabel = formatShortcut("Mod+B");
+  const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
 
   useEffect(() => {
     if (lastSavedAt && isLocalItem) {
@@ -271,7 +271,7 @@ export function PageHeader({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="-ml-1.5 h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                   onClick={toggleSidebarCollapsed}
                   aria-label="展开侧栏"
                 >

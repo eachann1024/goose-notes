@@ -114,13 +114,19 @@ export function useAppHotkeys() {
           window.dispatchEvent(new CustomEvent("goose-note:open-search"));
         },
       },
-      // cmd+b 折叠/展开侧栏 —— 仅在非编辑态触发；编辑器内 Cmd+B 仍为加粗（when 不通过则放行给 BlockNote）
+      // Alt+B 折叠/展开侧栏 —— 避开编辑器内 Mod+B 加粗，聚焦编辑器时也可触发
       {
         id: "toggle-sidebar",
-        match: (event) => matchShortcut(event, "Mod+B"),
-        when: () => !isEditableInput() && !isRichTextEditing(),
+        match: (event) =>
+          event.altKey &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.repeat &&
+          event.code === "KeyB",
         handler: (event) => {
           event.preventDefault();
+          event.stopPropagation();
           useSidebarView.getState().toggleSidebarCollapsed();
         },
       },

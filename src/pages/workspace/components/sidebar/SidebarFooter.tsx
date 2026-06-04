@@ -1,3 +1,9 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSettings } from "@/stores/settings";
 import { useSidebarView } from "@/stores/useSidebarView";
 
@@ -18,6 +24,7 @@ export function SidebarFooter({
   const setTheme = useSettings((s) => s.setTheme);
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
+  const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
 
   const isDark =
     theme === "dark" ||
@@ -36,14 +43,28 @@ export function SidebarFooter({
   return (
     <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
       <div className="flex items-center gap-0.5">
-        <button
-          type="button"
-          className={cn(btnClass, sidebarCollapsed && activeClass)}
-          aria-label="收起侧栏"
-          onClick={toggleSidebarCollapsed}
-        >
-          <LucideIcons.PanelLeft className="h-4 w-4" />
-        </button>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(btnClass, sidebarCollapsed && activeClass)}
+                aria-label="收起侧栏"
+                onClick={toggleSidebarCollapsed}
+              >
+                <LucideIcons.PanelLeft className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <div className="flex items-center gap-2">
+                <span>收起侧栏</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {toggleSidebarShortcutLabel}
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <button
           type="button"
           className={cn(
