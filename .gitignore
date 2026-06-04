@@ -35,3 +35,5 @@ CHANGELOG.md
 playwright*/
 tasks/
 scripts/
+# design checks (local screenshots)
+.design-check/

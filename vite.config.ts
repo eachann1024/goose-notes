@@ -217,6 +217,15 @@ export default defineConfig({
   ],
   resolve: {
     dedupe: [
+      // React 单实例：dev 预构建 + 任何冷发现的非预构建模块都解析到同一份 react/react-dom，
+      // 否则 @blocknote/xl-ai → @ai-sdk/react 的 Chat/useChat 会拿到第二份 React，
+      // hooks dispatcher 为 null → useMemo 读 null → 整页白屏（Invalid hook call）。
+      "react",
+      "react-dom",
+      // BlockNote 内核/视图层也强制单实例，保证编辑器与 xl-ai 共享同一 core/react 运行时。
+      "@blocknote/core",
+      "@blocknote/react",
+      "@blocknote/mantine",
       "prosemirror-model",
       "prosemirror-state",
       "prosemirror-transform",
@@ -227,6 +236,27 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@host-runtime": path.resolve(__dirname, "./src/lib/host/runtime.utools.ts"),
     },
+  },
+  // dev 依赖预构建（esbuild）。显式 include 整条 BlockNote + AI SDK 链，
+  // 让它们与主体在同一次预构建里共享同一份 react，杜绝"第二份 React 实例"导致的
+  // useMemo/useState dispatcher 为 null 白屏。@ai-sdk/react 是 xl-ai 的 peer，
+  // 不在 src 直接 import，必须显式列出，否则可能被冷发现成非预构建模块而引入第二份 React。
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "react/jsx-runtime",
+      "@blocknote/core",
+      "@blocknote/react",
+      "@blocknote/mantine",
+      "@blocknote/xl-ai",
+      "@blocknote/xl-pdf-exporter",
+      "@ai-sdk/react",
+      "@ai-sdk/anthropic",
+      "@ai-sdk/openai-compatible",
+      "ai",
+    ],
   },
   server: {
     sourcemapIgnoreList: false,
