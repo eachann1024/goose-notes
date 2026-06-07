@@ -4,7 +4,6 @@ import { useSettings } from "@/stores/useSettings";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
-import { useStickyNote } from "@/stores/useStickyNote";
 import { fs } from "@/lib/utools/fs";
 import { importMarkdownFragment } from "@/lib/export";
 
@@ -72,8 +71,6 @@ const clearActivePageForBlankEntry = () => {
 };
 
 export function usePluginEvents() {
-  const { open: openStickyNote } = useStickyNote();
-
   // 仅首次挂载时应用一次窗口高度
   useEffect(() => {
     applyUToolsWindowHeight();
@@ -99,11 +96,6 @@ export function usePluginEvents() {
       if (!useSettings.getState().privacy.autoOpenLastNote) {
         clearActivePageForBlankEntry();
       }
-    };
-
-    const handleOpenStickyNote = () => {
-      if (!usePages.getState().hydrated) return;
-      openStickyNote();
     };
 
     // new_page 唤起：用选中文字新建笔记并打开（不触碰任何已存在页面）。
@@ -132,6 +124,20 @@ export function usePluginEvents() {
       useTabs.getState().openTab(newId);
     };
 
+    // 速记小窗改动了某条笔记：从 db 重读该页，使主窗内存与 db 一致（防跨窗脏写）。
+    // 跳过主窗正在编辑的活动页（避免打断输入）；reloadPageFromStorage 内部也只在
+    // db 版本更新时才覆盖，双重保险。
+    const handleExternalNoteUpdated = (event: Event) => {
+      if (!usePages.getState().hydrated) return;
+      const customEvent = event as CustomEvent<{ pageId?: string }>;
+      const pageId = customEvent.detail?.pageId;
+      if (typeof pageId !== "string" || pageId.length === 0) return;
+      const isActiveAndFocused =
+        usePages.getState().activePageId === pageId && document.hasFocus();
+      if (isActiveAndFocused) return;
+      usePages.getState().reloadPageFromStorage(pageId);
+    };
+
     // onMainPush select 的真正落地通路（goose-note:navigate 全仓无人监听，不可用）。
     const handleOpenNote = (event: Event) => {
       if (!usePages.getState().hydrated) return;
@@ -151,16 +157,16 @@ export function usePluginEvents() {
       handlePluginOut as EventListener,
     );
     window.addEventListener(
-      "goose-note:open-sticky-note",
-      handleOpenStickyNote as EventListener,
-    );
-    window.addEventListener(
       "goose-note:new-page",
       handleNewPage as EventListener,
     );
     window.addEventListener(
       "goose-note:open-note",
       handleOpenNote as EventListener,
+    );
+    window.addEventListener(
+      "goose-note:note-updated-external",
+      handleExternalNoteUpdated as EventListener,
     );
 
     return () => {
@@ -173,10 +179,6 @@ export function usePluginEvents() {
         handlePluginOut as EventListener,
       );
       window.removeEventListener(
-        "goose-note:open-sticky-note",
-        handleOpenStickyNote as EventListener,
-      );
-      window.removeEventListener(
         "goose-note:new-page",
         handleNewPage as EventListener,
       );
@@ -184,8 +186,12 @@ export function usePluginEvents() {
         "goose-note:open-note",
         handleOpenNote as EventListener,
       );
+      window.removeEventListener(
+        "goose-note:note-updated-external",
+        handleExternalNoteUpdated as EventListener,
+      );
     };
-  }, [openStickyNote]);
+  }, []);
 
   // 打开外部文件夹关联监听
   useEffect(() => {

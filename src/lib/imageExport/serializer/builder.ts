@@ -220,7 +220,44 @@ ${decoStyle}
 }
 .gooseshot-content .callout-text {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
   line-height: 1.75;
+}
+.gooseshot-content .nested-children {
+  margin-left: 22px;
+  margin-top: 6px;
+}
+.gooseshot-content .toggle-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.gooseshot-content .toggle-marker {
+  flex-shrink: 0;
+  color: ${t.secondaryText};
+  line-height: inherit;
+}
+.gooseshot-content .toggle-children {
+  margin-left: 22px;
+  margin-top: 6px;
+  border-left: 2px solid ${t.divider};
+  padding-left: 14px;
+}
+/* 嵌套容器内的块间距：.gooseshot-content > * 只命中直接子级，嵌套块需单独补 */
+.gooseshot-content .nested-children > *,
+.gooseshot-content .toggle-children > * {
+  margin-bottom: 8px;
+}
+.gooseshot-content .nested-children > *:last-child,
+.gooseshot-content .toggle-children > *:last-child {
+  margin-bottom: 0;
+}
+/* 嵌套进 callout/折叠块的宽内容（表格、代码块）兜底，避免撑破 flex 容器 */
+.gooseshot-content .callout-text pre,
+.gooseshot-content .nested-children table,
+.gooseshot-content .toggle-children table {
+  max-width: 100%;
 }
 .gooseshot-watermark {
   margin-top: 28px;

@@ -119,6 +119,7 @@ import { applyRolldownPolyfills } from "@/lib/rolldown-polyfill";
 applyRolldownPolyfills();
 
 import { createRoot } from "react-dom/client";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import "./index.css";
 import "./fonts.css";
@@ -137,10 +138,10 @@ import { setFrontmatterForPath } from "./lib/local-frontmatter-store";
 import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import { UToolsAdapter } from "./lib/utools";
+import { setupMainToQuickNotePush } from "./lib/utools/quickNoteSync";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
-import { useStickyNote } from "./stores/useStickyNote";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -455,13 +456,17 @@ const initHostFs = async () => {
   }
 };
 
-const bootstrap = async () => {
+// 渲染目标可被覆盖：主窗口渲染 <App/>，速记小窗（quicknote.tsx）复用同一套
+// host fs / 迁移 / hydration / guard 流程，仅把渲染根换成 <QuickNoteApp/>，
+// 保证两个窗口进程的数据层初始化完全一致（共享 uTools db）。
+export const bootstrap = async (
+  renderRoot: () => ReactNode = () => <App />,
+) => {
   await initHostFs();
   await migrateLegacyStorage();
   await Promise.all([
     useSettings.persist.rehydrate(),
     useNotebooks.persist.rehydrate(),
-    useStickyNote.persist.rehydrate(),
   ]);
   await usePages.getState().hydrateFromStorage();
   const pagesStore = usePages.getState();
@@ -499,6 +504,7 @@ const bootstrap = async () => {
   setupMarkdownOpenWriteGuard();
   setupLocalContentUpdateGuard();
   setupSaveGuards();
+  setupMainToQuickNotePush();
   await runCodeStyleMigration2026();
 
   const settingsStore = useSettings.getState();
@@ -510,7 +516,11 @@ const bootstrap = async () => {
   const settings = useSettings.getState();
   applyFontVariables(settings.customFonts);
 
-  createRoot(rootElement).render(<App />);
+  createRoot(rootElement).render(renderRoot());
 };
 
-void bootstrap();
+// 入口区分：index.html 把 #root 标记为 data-entry="main" → 自动以 <App/> 启动；
+// quicknote.html 不带该标记，由 quicknote.tsx 显式调用 bootstrap(<QuickNoteApp/>)。
+if (rootElement.dataset.entry !== "quicknote") {
+  void bootstrap();
+}

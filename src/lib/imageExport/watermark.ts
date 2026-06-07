@@ -25,7 +25,7 @@ export function getWatermarkHTML(
   if (!theme.watermarkVisible || !config.showWatermark) return "";
 
   const brandParts: string[] = [];
-  if (config.showBrand) brandParts.push("鹅的监控");
+  if (config.showBrand) brandParts.push("鹅的笔记");
   const brandHtml = brandParts.length > 0
     ? `<span class="gooseshot-watermark-brand">${brandParts.join(" · ")}</span>`
     : "";

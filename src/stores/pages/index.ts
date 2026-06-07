@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "../useNotebooks";
 
+import { loadInternalPage } from "@/lib/storage/pageRepository";
 import type { PagesState } from "./types";
 import {
   isLocalFolderPage,
@@ -61,6 +62,18 @@ export const usePages = create<PagesState>()((set, get) => ({
   dirtyLocalPageIds: {},
 
   hydrateFromStorage: () => hydrateFromStorageAction(set),
+
+  reloadPageFromStorage: (pageId) => {
+    const current = get().pages[pageId];
+    const fresh = loadInternalPage(pageId);
+    if (!fresh) return false;
+    // 仅当 db 版本更新时才覆盖，避免回退本进程尚未落盘的较新编辑。
+    if (current && fresh.updatedAt <= current.updatedAt) return false;
+    set((state) => ({
+      pages: { ...state.pages, [pageId]: fresh },
+    }));
+    return true;
+  },
 
   createOnboardingPages: () => createOnboardingPagesAction(set, get),
 

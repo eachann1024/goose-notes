@@ -77,16 +77,17 @@
   margin-bottom: 0;
 }
 
-.workspace-editor-surface .bn-block-group {
-  counter-reset: goose-numbered-list;
-}
-
+/*
+ * 有序列表编号：直接采用 BlockNote 算好的 data-index（1-based，已正确处理
+ * start 属性 + 被 divider/标题等非列表块打断后的重新计数），不要再用自增
+ * CSS counter——counter 会无视 data-index、整篇文档连续累加，导致用户输入
+ * 「1.」却延续上文显示「3.」、无法新起列表。
+ */
 .workspace-editor-surface
   .bn-block-outer:has(.bn-block-content[data-content-type="numberedListItem"])
   > .bn-block
   > .bn-block-content[data-content-type="numberedListItem"]::before {
-  counter-increment: goose-numbered-list;
-  content: counter(goose-numbered-list) "." !important;
+  content: attr(data-index) "." !important;
 }
 
 .workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
@@ -312,6 +313,26 @@
   .bn-inline-content {
   text-decoration: none;
   color: hsl(var(--muted-foreground));
+}
+
+/* ===== CheckListItem 对齐：单行时复选框与文字垂直居中，多行时对齐第一行 =====
+   原理：复选框包裹盒高度 = 一行行高（line-height 1.5em），盒内 input 垂直居中。
+   单行 → 盒高等于唯一一行 → 视觉居中；
+   多行 → 盒高仍只占第一行高度 → 复选框对齐第一行（顶部对齐效果）。
+   覆盖 BlockNote 内置的固定 height:24px，避免换字体后行高变化导致错位。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div:has(> input) {
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div > input {
+  height: auto;
+  margin-block: 0;
 }
 
 /* ===== BlockNote children 缩进优化 ===== */

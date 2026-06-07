@@ -1,11 +1,25 @@
 import path from "path";
-import { defineConfig } from "vite";
+import { defineConfig, createLogger } from "vite";
 import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
 import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 
 const hostTarget = "utools";
+
+const logger = createLogger();
+const originalWarnOnce = logger.warnOnce.bind(logger);
+const originalWarn = logger.warn.bind(logger);
+const isKatexFontWarning = (msg: string) =>
+  msg.includes("KaTeX_") && msg.includes("didn't resolve at build time");
+logger.warnOnce = (msg, options) => {
+  if (isKatexFontWarning(msg)) return;
+  originalWarnOnce(msg, options);
+};
+logger.warn = (msg, options) => {
+  if (isKatexFontWarning(msg)) return;
+  originalWarn(msg, options);
+};
 
 // Vite 8 底层是 rolldown。分包用 rolldown 原生 codeSplitting.groups，
 // 不用已废弃的 output.manualChunks（rolldown 文档：manualChunks 与 codeSplitting 同时配置时
@@ -140,6 +154,7 @@ const codeSplittingGroups: ChunkGroup[] = [
 
 // https://vite.dev/config/
 export default defineConfig({
+  customLogger: logger,
   base: "./", // utools 需要相对路径
   define: {
     __HOST_TARGET__: JSON.stringify(hostTarget),
@@ -267,6 +282,11 @@ export default defineConfig({
     sourcemap: debugSourcemap,
     minify: debugMinify,
     rolldownOptions: {
+      // 多入口：主窗口 index.html + 速记小窗 quicknote.html（独立 browser 窗口加载）
+      input: {
+        index: path.resolve(__dirname, "index.html"),
+        quicknote: path.resolve(__dirname, "quicknote.html"),
+      },
       output: {
         // rolldown 原生分包；不用废弃的 manualChunks
         codeSplitting: {
@@ -279,6 +299,9 @@ export default defineConfig({
       },
       onwarn(warning, warn) {
         if (warning.code === "INEFFECTIVE_DYNAMIC_IMPORT") return;
+        // KaTeX CSS 里字体用相对路径引用自身，Vite 打包后基准目录变动导致此警告，运行时正常
+        if (warning.code === "UNRESOLVED_IMPORT" && warning.message?.includes("fonts/KaTeX_")) return;
+        if (warning.message?.includes("didn't resolve at build time") && warning.message?.includes("KaTeX_")) return;
         warn(warning);
       },
     },

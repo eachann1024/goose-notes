@@ -4,7 +4,6 @@ export const EVENTS = {
   SUBLIST_ENTER: "goose-note:sublist-enter",
   OPEN_PAGE: "goose-note:open-page",
   OPEN_SEARCH: "goose-note:open-search",
-  STICKY_NOTE: "goose-note:sticky-note",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

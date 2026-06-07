@@ -20,6 +20,9 @@ import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
+// 临时隐藏标签栏左侧的 AI 页面图标。改回 true 即恢复（不影响 AI 设置/其它入口）。
+const AI_TAB_ICON_VISIBLE = false;
+
 interface SortableTabItemProps {
   tab: TabItem;
   tabPage: Page;
@@ -289,7 +292,7 @@ export function PageHeader({
             </Tooltip>
           </TooltipProvider>
         ) : null}
-        {aiEnabled ? (
+        {AI_TAB_ICON_VISIBLE && aiEnabled ? (
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>

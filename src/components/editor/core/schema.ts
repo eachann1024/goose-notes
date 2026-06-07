@@ -9,7 +9,9 @@ export const editorSchema = BlockNoteSchema.create({
     ...defaultBlockSpecs,
     heading: createHeadingBlockSpec({
       levels: [1, 2, 3],
-      allowToggleHeadings: false,
+      // 必须开启:否则 heading propSchema 不含 isToggleable 字段、render 不挂折叠箭头,
+      // 导致斜杠菜单「折叠标题」与行首 `> ` 输入规则全部失效(转换被静默丢弃)。
+      allowToggleHeadings: true,
     }),
     callout: calloutBlock,
     file: customFileBlock,

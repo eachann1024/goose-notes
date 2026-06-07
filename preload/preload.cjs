@@ -1022,9 +1022,142 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     );
   };
 
-  const UTOOLS_STICKY_HEIGHT = 480;
+  // ── 速记小窗（独立 browser 窗口）──────────────────────────────
+  // 尺寸参考 Raycast 浮动便签：紧凑竖向。集中成常量便于调。
+  const QUICKNOTE_WIDTH = 480;
+  const QUICKNOTE_HEIGHT = 600;
+  let quickNoteWin = null;
+  let quickNotePinned = false;
+
+  // 接收速记小窗（子窗）通过 utools.sendToParent 发回的窗口控制请求。
+  // createBrowserWindow 返回的 win 不含实例事件，故 blur 失焦在子窗内处理，
+  // 这里只负责执行子窗请求的 pin / close / hide。
+  // 仅主窗口需要（它持有 quickNoteWin）；小窗自身不接收这些。
+  const isMainWindow =
+    typeof utools.getWindowType !== "function" ||
+    utools.getWindowType() === "main";
+
+  // 速记小窗（browser 窗口）侧：把父窗 webContents.send 的复用信号转成 DOM 事件，
+  // 让渲染层（QuickNoteApp）按新模式重解析。
+  if (!isMainWindow) {
+    try {
+      const { ipcRenderer } = require("electron");
+      ipcRenderer.on("quicknote:enter", (_e, data) => {
+        window.dispatchEvent(
+          new CustomEvent("goose-note:quicknote-enter", { detail: data || {} }),
+        );
+      });
+      // 主窗改了笔记：转 DOM 事件，小窗据此从 db 重读（反向同步）。
+      ipcRenderer.on("quicknote:note-updated-from-main", (_e, pageId) => {
+        window.dispatchEvent(
+          new CustomEvent("goose-note:note-updated-external", {
+            detail: { pageId },
+          }),
+        );
+      });
+    } catch (err) {
+      console.error("[quicknote] 子窗 ipcRenderer 不可用:", err);
+    }
+  }
+
+  if (isMainWindow) try {
+    const { ipcRenderer } = require("electron");
+    ipcRenderer.on("quicknote:pin", (_e, pinned) => {
+      quickNotePinned = !!pinned;
+      if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+        try {
+          quickNoteWin.setAlwaysOnTop(quickNotePinned, "screen-saver");
+        } catch {
+          try { quickNoteWin.setAlwaysOnTop(quickNotePinned); } catch { /* noop */ }
+        }
+      }
+    });
+    ipcRenderer.on("quicknote:close", () => {
+      if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+        try { quickNoteWin.close(); } catch { /* noop */ }
+      }
+      quickNoteWin = null;
+    });
+    ipcRenderer.on("quicknote:hide", () => {
+      // 钉住时忽略失焦隐藏请求。
+      if (quickNotePinned) return;
+      if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+        try { quickNoteWin.hide(); } catch { /* noop */ }
+      }
+    });
+    // 小窗改动某条笔记：转 DOM 事件，主窗渲染层据此从 db 重读该页，防跨窗脏写。
+    ipcRenderer.on("quicknote:note-updated", (_e, pageId) => {
+      window.dispatchEvent(
+        new CustomEvent("goose-note:note-updated-external", {
+          detail: { pageId },
+        }),
+      );
+    });
+
+    // 反向同步：主窗渲染层改了笔记后调此，把变更推给小窗，让小窗从 db 重读。
+    window.gooseQuickNote = {
+      pushNoteUpdate(pageId) {
+        if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+          try {
+            quickNoteWin.webContents?.send?.("quicknote:note-updated-from-main", pageId);
+          } catch { /* noop */ }
+        }
+      },
+    };
+  } catch (err) {
+    console.error("[quicknote] ipcRenderer 不可用:", err);
+  }
+
+  // 打开/复用速记小窗。mode: 'new' 新建空白 | 'last' 直达上次。
+  const openQuickNoteWindow = (mode) => {
+    const hash = mode === "last" ? "#last" : "#new";
+    // 已有窗口且未销毁：复用，更新 hash 后显示并聚焦（reload 让前端按新模式重解析）。
+    if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+      try {
+        quickNoteWin.show();
+        quickNoteWin.focus?.();
+        quickNoteWin.webContents?.send?.("quicknote:enter", { mode });
+      } catch { /* noop */ }
+      return;
+    }
+    quickNoteWin = utools.createBrowserWindow(
+      `quicknote.html${hash}`,
+      {
+        show: false,
+        width: QUICKNOTE_WIDTH,
+        height: QUICKNOTE_HEIGHT,
+        minWidth: 320,
+        minHeight: 360,
+        frame: false,
+        resizable: true,
+        skipTaskbar: true,
+        closeable: true,
+        alwaysOnTop: quickNotePinned,
+        roundedCorners: true,
+        webPreferences: {
+          preload: "preload.js",
+        },
+      },
+      () => {
+        try {
+          quickNoteWin.show();
+          quickNoteWin.focus?.();
+          if (quickNotePinned) {
+            try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
+          }
+        } catch { /* noop */ }
+      },
+    );
+  };
 
   utools.onPluginEnter(({ code, type, payload, optional }) => {
+    // 速记小窗指令：直接拉独立窗口并收起主面板，不占用子输入框。
+    if (code === "quicknote_new" || code === "quicknote_last") {
+      openQuickNoteWindow(code === "quicknote_last" ? "last" : "new");
+      if (typeof utools.outPlugin === "function") utools.outPlugin();
+      return;
+    }
+
     // 确保每次进入插件都重新设置 subInput
     if (typeof utools.setSubInput === "function") {
       const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
@@ -1052,18 +1185,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         detail: { code, type, payload, optional },
       }),
     );
-
-    if (code === "sticky_note") {
-      if (typeof utools?.setExpendHeight === "function") {
-        utools.setExpendHeight(UTOOLS_STICKY_HEIGHT);
-      }
-      window.dispatchEvent(
-        new CustomEvent("goose-note:open-sticky-note", {
-          detail: {},
-        }),
-      );
-      return;
-    }
 
     if (code === "open_folder") {
       if ((type === "files" || type === "file") && payload && payload.length > 0) {

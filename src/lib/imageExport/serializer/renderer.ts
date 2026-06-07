@@ -26,6 +26,18 @@ function resolveCalloutIcon(raw: string | undefined): string {
   return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
 }
 
+// 渲染块的嵌套子块（block.children）。BlockNote 中任意块都可经 Tab 缩进容纳
+// 子块（折叠块的展开内容也存在 children），但导出渲染此前只处理了列表项的
+// children，导致折叠块/段落/勾选项等下方嵌套的图片在导出时被丢弃。
+// 仅当确有子块时才输出容器，避免空 div 撑乱间距。
+function renderChildren(block: any, theme: CardTheme, className = "nested-children"): string {
+  const children = block?.children;
+  if (!Array.isArray(children) || children.length === 0) return "";
+  const inner = children.map((c: any) => renderBlock(c, theme)).join("");
+  if (!inner) return "";
+  return `<div class="${className}">${inner}</div>`;
+}
+
 export function renderBlock(block: any, theme: CardTheme): string {
   if (!block || typeof block !== "object") return "";
 
@@ -41,7 +53,7 @@ export function renderBlock(block: any, theme: CardTheme): string {
   switch (block.type) {
     case "heading": {
       const level = Math.min(Math.max(block.props?.level || 1, 1), 3);
-      return `<h${level}${alignStyle}>${inlineHtml}</h${level}>`;
+      return `<h${level}${alignStyle}>${inlineHtml}</h${level}>${renderChildren(block, theme)}`;
     }
 
     case "bulletListItem": {
@@ -61,7 +73,9 @@ export function renderBlock(block: any, theme: CardTheme): string {
     case "checkListItem": {
       const checked = block.props?.checked;
       const checkboxClass = checked ? "task-checkbox checked" : "task-checkbox";
-      return `<div class="task-item"${alignStyle}><div class="${checkboxClass}"></div><span>${inlineHtml}</span></div>`;
+      const item = `<div class="task-item"${alignStyle}><div class="${checkboxClass}"></div><span>${inlineHtml}</span></div>`;
+      // children 容器放在 task-item 之外，避免被 flex 布局拉成横排
+      return `${item}${renderChildren(block, theme)}`;
     }
 
     case "codeBlock": {
@@ -76,11 +90,12 @@ export function renderBlock(block: any, theme: CardTheme): string {
     }
 
     case "quote": {
-      return `<blockquote${alignStyle}>${inlineHtml}</blockquote>`;
+      return `<blockquote${alignStyle}>${inlineHtml}</blockquote>${renderChildren(block, theme)}`;
     }
 
     case "paragraph": {
-      return inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : `<p${alignStyle}></p>`;
+      const p = inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : `<p${alignStyle}></p>`;
+      return `${p}${renderChildren(block, theme)}`;
     }
 
     case "image":
@@ -114,9 +129,19 @@ export function renderBlock(block: any, theme: CardTheme): string {
       return `<hr />`;
     }
 
+    case "toggleListItem": {
+      // 折叠块：导出为静态图时始终展开。标题行 + 展开内容(children)。
+      // 标题为空也要渲染 children，否则折叠块里的图片会整体丢失。
+      const summary = `<div class="toggle-summary"><span class="toggle-marker">▾</span><span>${inlineHtml}</span></div>`;
+      const childrenHtml = renderChildren(block, theme, "toggle-children");
+      return `<div class="toggle-block">${summary}${childrenHtml}</div>`;
+    }
+
     case "callout": {
       const icon = resolveCalloutIcon(block.props?.icon || block.props?.emoji);
-      return `<div class="callout"><div class="callout-icon">${escapeHtml(icon)}</div><div class="callout-text">${inlineHtml}</div></div>`;
+      // children 渲染在 callout-text 内，使嵌套内容随 callout 缩进对齐
+      const childrenHtml = renderChildren(block, theme);
+      return `<div class="callout"><div class="callout-icon">${escapeHtml(icon)}</div><div class="callout-text">${inlineHtml}${childrenHtml}</div></div>`;
     }
 
     case "bulletList": {
@@ -130,7 +155,10 @@ export function renderBlock(block: any, theme: CardTheme): string {
     }
 
     default: {
-      return inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : "";
+      // 兜底未知/自定义块：渲染内联内容，并递归 children，
+      // 避免未识别的可嵌套块吞掉子块（含图片）。
+      const body = inlineHtml ? `<p${alignStyle}>${inlineHtml}</p>` : "";
+      return `${body}${renderChildren(block, theme)}`;
     }
   }
 }

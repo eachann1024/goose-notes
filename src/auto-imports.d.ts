@@ -329,12 +329,12 @@ declare global {
   const usePages: typeof import('./stores/pages/index').usePages
   const usePersistentDismissState: typeof import('./hooks/usePersistentDismissState').usePersistentDismissState
   const usePluginEvents: typeof import('./hooks/usePluginEvents').usePluginEvents
+  const useQuickNote: typeof import('./stores/useQuickNote').useQuickNote
   const useReducer: typeof import('react').useReducer
   const useRef: typeof import('react').useRef
   const useSettings: typeof import('./stores/settings/index').useSettings
   const useSidebarView: typeof import('./stores/useSidebarView').useSidebarView
   const useState: typeof import('react').useState
-  const useStickyNote: typeof import('./stores/useStickyNote').useStickyNote
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition

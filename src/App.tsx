@@ -3,7 +3,6 @@ import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
-import { StickyNotePage } from "./pages/sticky-note";
 import {
   useSettings,
   EDITOR_FONT_SIZE_DEFAULT,
@@ -100,7 +99,6 @@ function App() {
   return (
     <>
       <WorkspacePage />
-      <StickyNotePage />
       <Toaster />
     </>
   );

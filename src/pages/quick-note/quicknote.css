@@ -1,0 +1,39 @@
+/* 速记小窗专属样式（仅 quicknote.html 入口加载）。 */
+
+/* 无边框窗口：根容器填满。窗口圆角交给系统（createBrowserWindow roundedCorners）。 */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.quicknote-root {
+  overflow: hidden;
+}
+
+/* 顶部标题栏：极轻，作为拖动区；按钮单独 no-drag（见组件内联 style）。 */
+.quicknote-titlebar {
+  -webkit-user-select: none;
+  user-select: none;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.quicknote-titlebar-btn {
+  cursor: default;
+}
+
+/* 速记滚动区：隐藏滚动条占位，保持极简（悬浮时才隐约可见）。 */
+.quicknote-root .page-scroll-container {
+  scrollbar-width: thin;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 3px;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}

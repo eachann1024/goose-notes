@@ -120,6 +120,12 @@ export const saveInternalPage = (page: Page): void => {
   putDocWithRetry(getPageDocId(page.id), clonePage(page));
 };
 
+/** 从 db 读取单条内部页快照（跨窗同步用：另一窗写盘后重读最新）。 */
+export const loadInternalPage = (pageId: string): Page | null => {
+  const doc = UToolsAdapter.db.get<PersistedPageDoc>(getPageDocId(pageId));
+  return doc?.data ? clonePage(doc.data) : null;
+};
+
 export const removeInternalPage = (pageId: string): void => {
   removeDoc(getPageDocId(pageId));
 };

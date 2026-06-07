@@ -14,7 +14,6 @@ import "@blocknote/mantine/style.css";
 import { offset as floatingOffset, shift as floatingShift } from "@floating-ui/react";
 import {
   clonePageContent,
-  ensureFirstTitleHeading,
   getContentSignature,
   normalizePageContent,
   type BlockNoteContent,
@@ -66,7 +65,6 @@ type EditorComposerProps = {
   handleEditorBlankMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   handleEditorPasteCapture: (event: React.ClipboardEvent<HTMLDivElement>) => void;
   getSlashItems: (query: string) => Promise<any[]>;
-  restoreFirstTitleHeading: () => boolean;
   pageIdForUpdateRef: RefObject<string | null>;
   syncedContentSignatureRef: RefObject<string | null>;
   debouncedUpdate: ((id: string, content: BlockNoteContent) => void) & { cancel: () => void };
@@ -86,7 +84,6 @@ export function EditorComposer({
   handleEditorBlankMouseDown,
   handleEditorPasteCapture,
   getSlashItems,
-  restoreFirstTitleHeading,
   pageIdForUpdateRef,
   syncedContentSignatureRef,
   debouncedUpdate,
@@ -225,7 +222,6 @@ export function EditorComposer({
         onChange={() => {
           const safePageId = pageIdForUpdateRef.current;
           if (!safePageId) return;
-          if (restoreFirstTitleHeading()) return;
           const nextContent = normalizePageContent(
             clonePageContent(editor.document as BlockNoteContent),
           );
@@ -251,9 +247,11 @@ export function EditorComposer({
           getItems={getSlashItems}
           shouldOpen={(event) => {
             const $from = event.selection.$from;
-            const isFirstBlock = $from.index(0) === 0;
-            const isAtBlockStart = $from.parentOffset === 0;
-            if (!isFirstBlock || !isAtBlockStart) return false;
+            // 首块是「文件名标题」(恒为 H1，见 emptyContent / firstTitleGuard)，
+            // 不允许被转成任何其它块类型，故首块行内一律不弹 slash 菜单。
+            const cursorBlock = editor.getTextCursorPosition().block;
+            if (cursorBlock && cursorBlock.id === editor.document[0]?.id) return false;
+            if ($from.parentOffset !== 0) return false; // 仅行首触发
             return !$from.parent.type.isInGroup("tableContent");
           }}
           suggestionMenuComponent={CustomSlashMenu}
@@ -268,9 +266,10 @@ export function EditorComposer({
           getItems={getSlashItems}
           shouldOpen={(event) => {
             const $from = event.selection.$from;
-            const isFirstBlock = $from.index(0) === 0;
-            const isAtBlockStart = $from.parentOffset === 0;
-            if (!isFirstBlock || !isAtBlockStart) return false;
+            // 同上：首块为文件名标题，不弹 slash 菜单。
+            const cursorBlock = editor.getTextCursorPosition().block;
+            if (cursorBlock && cursorBlock.id === editor.document[0]?.id) return false;
+            if ($from.parentOffset !== 0) return false; // 仅行首触发
             return !$from.parent.type.isInGroup("tableContent");
           }}
           suggestionMenuComponent={CustomSlashMenu}

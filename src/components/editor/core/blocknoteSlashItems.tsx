@@ -19,8 +19,6 @@ export function getBlockNoteSlashMenuItems(
   editor: BlockNoteEditor<any, any, any>,
   aiEnabled: boolean,
 ): SlashMenuItem[] {
-  const currentBlock = editor.getTextCursorPosition().block;
-
   // 插入完成后：把光标移到新块、把视图滚动到新块、把焦点交回编辑器
   const focusAndScrollTo = (block: { id: string }) => {
     try {
@@ -37,19 +35,48 @@ export function getBlockNoteSlashMenuItems(
   };
 
   const insertOrUpdate = (block: any): any => {
+    // 必须在点击执行时实时读取当前块：BlockNote 在调用 onItemClick 之前已先跑过
+    // closeMenu() → clearQuery()（删掉触发字符 / 或 、）。若沿用菜单构建时捕获的旧
+    // 快照，content 仍带着 /，会误判 hasTrigger 并对陈旧 block 引用做二次清空，
+    // 导致转换落到相邻块、整篇下移一行（用户反馈：第一行按 / 第二行却变成了标题）。
+    const currentBlock = editor.getTextCursorPosition().block;
     const content = currentBlock.content as any;
-    const hasTrigger =
-      Array.isArray(content) &&
-      content.length >= 1 &&
-      content[0]?.type === "text" &&
-      ((content[0].text || "").startsWith("/") || (content[0].text || "").startsWith("、"));
+
+    // 剥掉行首触发字符（/ 或 、），返回剩余 inline 内容。
+    // 不能用「先 updateBlock 清空 content 再取光标块」的两步法：清空一个带 children 的块
+    // （如折叠列表 toggleListItem）的标题后，光标会跳进它的第一个子块，第二步
+    // getTextCursorPosition() 取到的是子块而非原块，导致转换落到子块、原块标题与缩进
+    // 子内容（含图片）全部错乱丢失。改为对 currentBlock（稳定引用）一次性 updateBlock。
+    const stripLeadingTrigger = (
+      c: any,
+    ): { hasTrigger: boolean; content: any } => {
+      if (!Array.isArray(c) || c.length === 0 || c[0]?.type !== "text") {
+        return { hasTrigger: false, content: c };
+      }
+      const text = c[0].text || "";
+      const trigger = text.startsWith("/") ? "/" : text.startsWith("、") ? "、" : null;
+      if (!trigger) return { hasTrigger: false, content: c };
+      const nextText = text.slice(trigger.length);
+      return {
+        hasTrigger: true,
+        content: nextText
+          ? [{ ...c[0], text: nextText }, ...c.slice(1)]
+          : c.slice(1),
+      };
+    };
+
+    const stripped = stripLeadingTrigger(content);
+    const hasTrigger = stripped.hasTrigger;
 
     let target: any;
     if (hasTrigger) {
-      editor.updateBlock(currentBlock, { content: [] });
-      const clearedBlock = editor.getTextCursorPosition().block;
-      editor.updateBlock(clearedBlock, block);
-      target = clearedBlock;
+      // 目标块若是 inline 内容块（段落/标题/各类列表项），保留剥掉触发符后的 content；
+      // 若是结构化块（image/divider 等，content: "none"），不能塞 content。
+      const targetKind = (editor.schema as any).blockSchema?.[block.type]?.content;
+      target = editor.updateBlock(
+        currentBlock,
+        targetKind === "inline" ? { ...block, content: stripped.content } : block,
+      );
     } else {
       const isEmpty =
         !content ||

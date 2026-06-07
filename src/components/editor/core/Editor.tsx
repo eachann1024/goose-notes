@@ -14,7 +14,7 @@ import {
   useEditorPageContext,
 } from "@/components/editor/platform/hostContext";
 import { useEditorPlatform } from "@/components/editor/platform/context";
-import { clonePageContent, getContentSignature, normalizePageContent, ensureFirstTitleHeading, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { clonePageContent, getContentSignature, normalizePageContent, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 const contentSigCache = new WeakMap<object, string>();
 function getCachedContentSignature(content: unknown): string {
@@ -35,8 +35,12 @@ import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBeh
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
+import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
+import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
+import { gooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseQuoteInputRuleExtension } from "@/components/editor/inputrules/quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
+import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
@@ -52,9 +56,14 @@ export interface EditorRef {
 
 interface EditorProps {
   editable?: boolean;
+  /**
+   * 需从斜杠菜单隐藏的项标题列表（按 title 精确匹配）。
+   * 速记小窗用它砍掉表格/图片/AI 等重型项，主窗不传则保持全量。
+   */
+  hiddenSlashItemTitles?: string[];
 }
 
-export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true }, ref) {
+export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true, hiddenSlashItemTitles }, ref) {
   const {
     theme,
     searchProviders,
@@ -103,13 +112,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     {
       initialContent: initialContentRef.current as any,
       schema: editorSchema,
+      // 禁用内置 quote 块自带的 extension(key: quote-block-shortcuts)。它含两条输入规则:
+      // `> ` → 引用、`<引号> ` → 引用,以及 Mod-Alt-q。这里把 `>` 让给折叠功能
+      // (行首 `> ` → 折叠标题/折叠列表,见 toggleHeadingInputRule),引用改用 `| `/`｜ `
+      // (见 quoteInputRule)。斜杠菜单仍可插入引用,不受影响。
+      disableExtensions: ["quote-block-shortcuts"],
       extensions: [
+        gooseFirstTitleGuardExtension,
+        gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseTabBehaviorExtension,
         gooseSelectAllExtension,
         gooseLinkKeyboardExtension,
         gooseCodeBlockKeyboardExtension,
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
+        gooseFirstTitleEnterExtension,
+        gooseCrossBlockDeleteExtension,
         gooseQuoteInputRuleExtension,
         gooseMarkdownInputRulesExtension,
         gooseFakeSelectionExtension,
@@ -228,29 +246,32 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
   const getSlashItems = useCallback(
     async (query: string) => {
-      const items = getBlockNoteSlashMenuItems(
+      let items = getBlockNoteSlashMenuItems(
         editor,
         aiSettingsRef.current.enabled,
       );
+      if (hiddenSlashItemTitles && hiddenSlashItemTitles.length > 0) {
+        const hidden = new Set(hiddenSlashItemTitles);
+        const isDivider = (it: (typeof items)[number]) =>
+          (it as { type?: string }).type === "divider";
+        const kept = items.filter((item) => !hidden.has(item.title));
+        // 砍项后清理冗余分隔线：折叠连续/首部 divider，再去尾部 divider。
+        const collapsed: typeof items = [];
+        for (const it of kept) {
+          if (isDivider(it) && (collapsed.length === 0 || isDivider(collapsed[collapsed.length - 1]))) {
+            continue;
+          }
+          collapsed.push(it);
+        }
+        while (collapsed.length > 0 && isDivider(collapsed[collapsed.length - 1])) {
+          collapsed.pop();
+        }
+        items = collapsed;
+      }
       return filterSlashMenuItems(items, query);
     },
-    [editor],
+    [editor, hiddenSlashItemTitles],
   );
-
-  const restoreFirstTitleHeading = useCallback(() => {
-    const currentContent = editor.document as BlockNoteContent;
-    const firstBlock = currentContent[0];
-    if (
-      firstBlock?.type === "heading" &&
-      Number((firstBlock as any).props?.level) === 1
-    ) {
-      return false;
-    }
-
-    const nextContent = ensureFirstTitleHeading(clonePageContent(currentContent));
-    editor.replaceBlocks(editor.document, nextContent as any);
-    return true;
-  }, [editor]);
 
   const { handleEditorPasteCapture } = useEditorPaste({ editor, editable, shiftPressedRef });
 
@@ -500,7 +521,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       editorContainerRef={editorContainerRef}
       handleEditorBlankMouseDown={handleEditorBlankMouseDown}
       handleEditorPasteCapture={handleEditorPasteCapture}
-      getSlashItems={getSlashItems} restoreFirstTitleHeading={restoreFirstTitleHeading}
+      getSlashItems={getSlashItems}
       pageIdForUpdateRef={pageIdForUpdateRef}
       syncedContentSignatureRef={syncedContentSignatureRef}
       debouncedUpdate={debouncedUpdate}

@@ -39,6 +39,12 @@ export interface PagesState {
   dirtyLocalPageIds: Record<string, boolean>;
   hydrateFromStorage: () => Promise<void>;
 
+  /**
+   * 从 db 重读单页覆盖内存（跨窗同步用）。仅当 db 版本的 updatedAt 比内存新才覆盖，
+   * 避免回退本进程未落盘的较新编辑。返回是否实际更新。
+   */
+  reloadPageFromStorage: (pageId: string) => boolean;
+
   createOnboardingPages: () => void;
   createPage: (parentId?: string, workspaceId?: string) => string;
   createPageRecord: (options: {
