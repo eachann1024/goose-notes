@@ -261,8 +261,8 @@ function buildShortcutSection(section: ShortcutSection): PartialBlock[] {
 }
 
 export const onboardingPageContent: BlockNoteContent = [
-  heading(1, "鹅的监控 · 新手指南"),
-  paragraph("欢迎使用鹅的监控。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。"),
+  heading(1, "鹅的笔记 · 新手指南"),
+  paragraph("欢迎使用鹅的笔记。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。"),
   paragraph("先用 3 分钟扫完，再边试边改，你会比死记快捷键更快上手。"),
   callout(
     "🪶",
@@ -339,7 +339,7 @@ export const onboardingPageContent: BlockNoteContent = [
   heading(2, "示例区块"),
   paragraph("下面这些示例块可以直接改，边改边熟悉编辑体验。"),
   quote("灵感先记下来，结构可以稍后再整理。"),
-  codeBlock('print("Hello, Goose Monitor")\nlog("记录想法，比回忆更可靠")'),
+  codeBlock('print("Hello, Goose Note")\nlog("记录想法，比回忆更可靠")'),
   paragraph("行内公式示例：E=mc^2，适合穿插在普通句子里。"),
   codeBlock("f(x)=\\int_0^1 x^2 \, dx", "math"),
   codeBlock(

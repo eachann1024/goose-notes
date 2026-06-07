@@ -39,6 +39,11 @@ export const quickNoteWindow = {
     send("quicknote:note-updated", pageId);
   },
 
+  /** 请求父窗把小窗高度设为 height（自动调整高度模式用；宽度不变）。 */
+  setHeight(height: number): void {
+    send("quicknote:set-height", Math.round(height));
+  },
+
   /** 请求隐藏（失焦时调用，保留进程下次秒开）。 */
   hide(): void {
     if (!send("quicknote:hide")) {

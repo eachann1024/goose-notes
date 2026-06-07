@@ -73,6 +73,8 @@ type EditorComposerProps = {
   tableEvenColumnWidth: boolean;
   searchProviders: any[];
   customActions: any[];
+  /** 是否渲染块侧边菜单（+ / ⋮⋮）。速记小窗传 false 不显示，仅主编辑器显示。 */
+  showSideMenu?: boolean;
 };
 
 export function EditorComposer({
@@ -91,6 +93,7 @@ export function EditorComposer({
   tableEvenColumnWidth,
   searchProviders,
   customActions,
+  showSideMenu = true,
 }: EditorComposerProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
@@ -218,7 +221,7 @@ export function EditorComposer({
           debouncedUpdate(safePageId, nextContent);
         }}
       >
-        <EditorSideMenu />
+        {showSideMenu ? <EditorSideMenu /> : null}
         <TableHandlesController
           tableHandle={GooseTableHandle}
           extendButton={GooseTableExtendButton}

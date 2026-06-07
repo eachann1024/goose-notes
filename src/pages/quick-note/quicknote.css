@@ -5,10 +5,16 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
   margin: 0;
+  /* 背景兜底：setSize 放大窗口的瞬间，web 内容若尚未重绘到新尺寸，
+     会露出窗口底层（表现为右侧/底部一条灰边）。让 html/body 与编辑器同色，
+     任何未绘制区域都是同一底色，消除灰色残影。 */
+  background: hsl(var(--goose-editor-bg));
 }
 
 .quicknote-root {
+  width: 100vw;
   overflow: hidden;
 }
 
@@ -22,6 +28,16 @@ body,
 .quicknote-titlebar-btn {
   cursor: default;
 }
+
+/* 速记编辑区内边距：左侧留出 BlockNote 块手柄（+ / ⋮⋮）空间，右侧对称留白，
+   否则块会贴窗口边、手柄被裁、内容展示不全（小窗 480px 窄，不沿用主窗 54px 默认）。 */
+.quicknote-editor-surface {
+  padding-inline: 12px;
+}
+.quicknote-editor-surface .bn-editor {
+  padding-inline: 28px; /* 左侧容纳手柄热区，右侧对称 */
+}
+
 
 /* 速记滚动区：隐藏滚动条占位，保持极简（悬浮时才隐约可见）。 */
 .quicknote-root .page-scroll-container {

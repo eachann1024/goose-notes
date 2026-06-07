@@ -48,7 +48,7 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
       (page) =>
         page.workspaceId === workspaceId &&
         !page.trashedAt &&
-        extractTitleFromContent(page.content) === "鹅的监控 · 新手指南",
+        extractTitleFromContent(page.content) === "鹅的笔记 · 新手指南",
     );
 
     if (state.onboardingCompleted || hasExistingOnboardingPage) {

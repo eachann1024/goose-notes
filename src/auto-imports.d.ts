@@ -90,6 +90,8 @@ declare global {
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
   const Portal: typeof import('./components/ui/portal').Portal
   const Progress: typeof import('./components/ui/progress').Progress
+  const QUICKNOTE_DEFAULT_HEIGHT: typeof import('./stores/useQuickNote').QUICKNOTE_DEFAULT_HEIGHT
+  const QUICKNOTE_MIN_HEIGHT: typeof import('./stores/useQuickNote').QUICKNOTE_MIN_HEIGHT
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
@@ -232,14 +234,17 @@ declare global {
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
   const isBottomEditorBlankClick: typeof import('./components/editor/utils/selection').isBottomEditorBlankClick
+  const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
+  const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
+  const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut

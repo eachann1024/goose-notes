@@ -22,11 +22,22 @@ interface QuickNoteState {
   lastPageId: string | null;
   /** 是否置顶钉住（持久化，跨次保持） */
   pinned: boolean;
+  /** 记住的窗口高度（持久化，下次开窗沿用；手动拖动后更新） */
+  windowHeight: number;
+  /** 是否自动按内容调整窗口高度（持久化）。关闭时内容超出显示滚动条。 */
+  autoResize: boolean;
   /** 按模式解析并设置当前要编辑的笔记，返回最终 pageId */
   resolveForMode: (mode: "new" | "last") => string;
   setPageId: (id: string) => void;
   setPinned: (pinned: boolean) => void;
+  setWindowHeight: (height: number) => void;
+  setAutoResize: (autoResize: boolean) => void;
 }
+
+/** 速记小窗默认高度，与 preload QUICKNOTE_HEIGHT 保持一致。 */
+export const QUICKNOTE_DEFAULT_HEIGHT = 350;
+/** 速记小窗最小高度，与 preload QUICKNOTE_MIN_HEIGHT 保持一致。 */
+export const QUICKNOTE_MIN_HEIGHT = 300;
 
 export const useQuickNote = create<QuickNoteState>()(
   persist(
@@ -34,6 +45,8 @@ export const useQuickNote = create<QuickNoteState>()(
       pageId: null,
       lastPageId: null,
       pinned: false,
+      windowHeight: QUICKNOTE_DEFAULT_HEIGHT,
+      autoResize: false,
 
       resolveForMode: (mode) => {
         const pagesStore = usePages.getState();
@@ -57,6 +70,9 @@ export const useQuickNote = create<QuickNoteState>()(
 
       setPageId: (id) => set({ pageId: id, lastPageId: id }),
       setPinned: (pinned) => set({ pinned }),
+      setWindowHeight: (height) =>
+        set({ windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)) }),
+      setAutoResize: (autoResize) => set({ autoResize }),
     }),
     {
       name: "goose-note:quicknote",
@@ -64,6 +80,8 @@ export const useQuickNote = create<QuickNoteState>()(
       partialize: (state) => ({
         lastPageId: state.lastPageId,
         pinned: state.pinned,
+        windowHeight: state.windowHeight,
+        autoResize: state.autoResize,
       }),
       skipHydration: true,
     },

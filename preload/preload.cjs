@@ -955,49 +955,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   registerMcpTools();
 
-  // 全局搜索 mainPush：在 uTools 主输入框返回最近笔记，点击直达对应笔记。
-  // onMainPush 为 uTools preload 级原生 API，本仓库无先例，按官方签名实现。
-  // 注意：plugin.json features[code=gn] 必须同时声明 "mainPush": true 才会触发。
-  if (typeof utools.onMainPush === "function") {
-    utools.onMainPush(
-      // push 回调：返回展示列表（formdata 形态）。
-      async () => {
-        try {
-          const { notes } = await listAllNotes();
-          const candidates = notes.filter(
-            (note) => !note.isFolder && typeof note.trashedAt !== "number",
-          );
-          const recent = sortNoteItems(candidates, "updated_at_desc").slice(
-            0,
-            12,
-          );
-          return recent.map((note) => ({
-            text: note.title || "无标题",
-            title: note.title || "无标题",
-            // 把笔记 id 编入 description 前缀，select 时解析出 pageId。
-            description: `gn-note:${note.id}`,
-          }));
-        } catch (err) {
-          console.error("[goose-note] onMainPush push failed:", err);
-          return [];
-        }
-      },
-      // select 回调：解析 id 并派发 React 监听的事件以打开对应笔记。
-      (_action, item) => {
-        const id = String(item?.description || "").replace(/^gn-note:/, "");
-        if (id) {
-          window.dispatchEvent(
-            new CustomEvent("goose-note:open-note", {
-              detail: { pageId: id },
-            }),
-          );
-        }
-        // 返回 true 表示进入插件主界面。
-        return true;
-      },
-    );
-  }
-
   // 处理 uTools 全局搜索（sublist）点击
   // 注意：sublist API 可能不是所有 uTools 版本都支持
   if (typeof utools.onSublistEnter === "function") {
@@ -1025,9 +982,35 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // ── 速记小窗（独立 browser 窗口）──────────────────────────────
   // 尺寸参考 Raycast 浮动便签：紧凑竖向。集中成常量便于调。
   const QUICKNOTE_WIDTH = 480;
-  const QUICKNOTE_HEIGHT = 600;
+  const QUICKNOTE_HEIGHT = 350; // 首次开窗默认高度（用户调整后由 dbStorage 记住）
+  const QUICKNOTE_MIN_HEIGHT = 300;
+  const QUICKNOTE_EDGE_GAP = 16; // 右上角开窗时距屏幕上/右边缘的空隙
   let quickNoteWin = null;
   let quickNotePinned = false;
+
+  // 从 uTools db 读速记持久化偏好（zustand persist 存的 JSON）。preload 是 CJS，
+  // 拿不到 React store，直接读 dbStorage 同一 key。失败回退默认值，不抛错。
+  const readQuickNotePrefs = () => {
+    const fallback = { windowHeight: QUICKNOTE_HEIGHT, pinned: false, autoResize: false };
+    try {
+      const raw =
+        utools.dbStorage && typeof utools.dbStorage.getItem === "function"
+          ? utools.dbStorage.getItem("goose-note:quicknote")
+          : null;
+      if (typeof raw !== "string") return fallback;
+      const parsed = JSON.parse(raw);
+      const st = parsed && parsed.state ? parsed.state : parsed;
+      const h = Number(st && st.windowHeight);
+      return {
+        windowHeight: Number.isFinite(h) && h >= QUICKNOTE_MIN_HEIGHT ? Math.round(h) : QUICKNOTE_HEIGHT,
+        pinned: !!(st && st.pinned),
+        autoResize: !!(st && st.autoResize),
+      };
+    } catch (e) {
+      console.error("[quicknote] 读持久化偏好失败:", e);
+      return fallback;
+    }
+  };
 
   // 接收速记小窗（子窗）通过 utools.sendToParent 发回的窗口控制请求。
   // createBrowserWindow 返回的 win 不含实例事件，故 blur 失焦在子窗内处理，
@@ -1066,7 +1049,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       quickNotePinned = !!pinned;
       if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
         try {
-          quickNoteWin.setAlwaysOnTop(quickNotePinned, "screen-saver");
+          quickNoteWin.setAlwaysOnTop(quickNotePinned, "floating");
         } catch {
           try { quickNoteWin.setAlwaysOnTop(quickNotePinned); } catch { /* noop */ }
         }
@@ -1084,6 +1067,15 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
         try { quickNoteWin.hide(); } catch { /* noop */ }
       }
+    });
+    // 自动调整高度：子窗按内容算出目标高度，请求父窗 setSize（宽度保持不变）。
+    ipcRenderer.on("quicknote:set-height", (_e, height) => {
+      if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return;
+      const h = Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(Number(height) || 0));
+      try {
+        const [w] = quickNoteWin.getSize?.() || [QUICKNOTE_WIDTH];
+        quickNoteWin.setSize(w || QUICKNOTE_WIDTH, h, false);
+      } catch { /* noop */ }
     });
     // 小窗改动某条笔记：转 DOM 事件，主窗渲染层据此从 db 重读该页，防跨窗脏写。
     ipcRenderer.on("quicknote:note-updated", (_e, pageId) => {
@@ -1110,8 +1102,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // 打开/复用速记小窗。mode: 'new' 新建空白 | 'last' 直达上次。
   const openQuickNoteWindow = (mode) => {
-    const hash = mode === "last" ? "#last" : "#new";
-    // 已有窗口且未销毁：复用，更新 hash 后显示并聚焦（reload 让前端按新模式重解析）。
+    // 复用：窗口已存在则更新模式后显示聚焦（reload 由渲染层按 quicknote:enter 重解析）。
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
       try {
         quickNoteWin.show();
@@ -1120,41 +1111,91 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       } catch { /* noop */ }
       return;
     }
-    quickNoteWin = utools.createBrowserWindow(
-      `quicknote.html${hash}`,
-      {
-        show: false,
-        width: QUICKNOTE_WIDTH,
-        height: QUICKNOTE_HEIGHT,
-        minWidth: 320,
-        minHeight: 360,
-        frame: false,
-        resizable: true,
-        skipTaskbar: true,
-        closeable: true,
-        alwaysOnTop: quickNotePinned,
-        roundedCorners: true,
-        webPreferences: {
-          preload: "preload.js",
-        },
+
+    // 读持久化偏好：用记住的高度开窗，并同步置顶态。
+    const prefs = readQuickNotePrefs();
+    quickNotePinned = prefs.pinned;
+    const openHeight = prefs.windowHeight;
+
+    // 定位到光标所在显示器的右上角。优先用 workArea（已扣除 macOS 菜单栏 / Dock），
+    // 没有则回退 bounds，避免窗口被顶到菜单栏下面。
+    let area = null;
+    try {
+      const point = utools.getCursorScreenPoint();
+      const display = utools.getDisplayNearestPoint(point);
+      area = display ? display.workArea || display.bounds : null;
+    } catch { /* noop */ }
+    const winOpts = {
+      show: false,
+      width: QUICKNOTE_WIDTH,
+      height: openHeight,
+      minWidth: 320,
+      minHeight: QUICKNOTE_MIN_HEIGHT,
+      frame: false,
+      resizable: true,
+      skipTaskbar: true,
+      closable: true, // Electron 真实字段是 closable（uTools 文档把它写成 closeable 是笔误）
+      alwaysOnTop: quickNotePinned,
+      roundedCorners: true,
+      webPreferences: {
+        preload: "preload.js",
       },
-      () => {
+    };
+    if (area) {
+      // 右上角：贴右边缘留 GAP，贴上边缘留 GAP。
+      winOpts.x = Math.round(area.x + area.width - QUICKNOTE_WIDTH - QUICKNOTE_EDGE_GAP);
+      winOpts.y = Math.round(area.y + QUICKNOTE_EDGE_GAP);
+    }
+
+    // url 用 query 传模式（?mode=new），不用 #hash —— hash 在 Electron loadFile 下有解析坑。
+    // url 相对「插件根目录」，dev 加载 dist 目录时根即 dist，故直接写 quicknote.html。
+    const url = `quicknote.html?mode=${mode === "last" ? "last" : "new"}`;
+    console.log("[quicknote] createBrowserWindow url =", url);
+    try {
+      quickNoteWin = utools.createBrowserWindow(url, winOpts, () => {
         try {
           quickNoteWin.show();
           quickNoteWin.focus?.();
           if (quickNotePinned) {
             try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
           }
-        } catch { /* noop */ }
-      },
-    );
+          console.log("[quicknote] 子窗已 show, url =", quickNoteWin?.webContents?.getURL?.());
+        } catch (e) {
+          console.error("[quicknote] 子窗 show 失败:", e);
+        }
+      });
+      console.log("[quicknote] createBrowserWindow 返回, win =", typeof quickNoteWin, quickNoteWin == null ? "(null!)" : "(ok)");
+    } catch (e) {
+      console.error("[quicknote] createBrowserWindow 抛错:", e);
+    }
   };
 
+  // 速记指令处理：插件配了顶层 main，无法用 window.exports 的 mode:"none"（main 与模板模式互斥），
+  // 所以走 onPluginEnter——主界面会被 uTools 先拉起，我们立刻开独立浮窗并 hideMainWindow 把主界面藏掉。
+  // 不调 outPlugin（它会隐藏/卸载宿主进程，连带销毁刚建的浮窗 → 闪退，这是之前的根因）。
   utools.onPluginEnter(({ code, type, payload, optional }) => {
-    // 速记小窗指令：直接拉独立窗口并收起主面板，不占用子输入框。
+    const winType =
+      typeof utools.getWindowType === "function" ? utools.getWindowType() : "main";
+    console.log("[quicknote] onPluginEnter code =", code, "windowType =", winType);
+
     if (code === "quicknote_new" || code === "quicknote_last") {
-      openQuickNoteWindow(code === "quicknote_last" ? "last" : "new");
-      if (typeof utools.outPlugin === "function") utools.outPlugin();
+      // 仅主窗处理；子窗(browser)加载 quicknote.html 时也会跑这份 preload 并收到 enter，必须守卫避免套娃。
+      if (winType !== "main") {
+        console.log("[quicknote] 非主窗收到速记指令，忽略");
+        return;
+      }
+      console.log("[quicknote] 命中速记分支（主窗）");
+      try {
+        openQuickNoteWindow(code === "quicknote_last" ? "last" : "new");
+      } catch (err) {
+        console.error("[quicknote] openQuickNoteWindow 抛错:", err);
+      }
+      // 把主界面藏到后台（hideMainWindow 不影响独立浮窗）。延迟一拍，等浮窗 createBrowserWindow 先排上。
+      setTimeout(() => {
+        if (typeof utools.hideMainWindow === "function") {
+          try { utools.hideMainWindow(); } catch { /* noop */ }
+        }
+      }, 0);
       return;
     }
 
@@ -1251,4 +1292,5 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       utools.setSubInputValue(text);
     }
   });
+
 }

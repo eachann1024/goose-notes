@@ -4,7 +4,7 @@
  */
 
 // ── Header ──────────────────────────────────────────────────────────
-export const APP_TITLE = "欢迎使用 Goose Monitor";
+export const APP_TITLE = "欢迎使用 Goose Note";
 export const APP_DESCRIPTION =
   "这是一个功能强大的笔记应用，让我们通过以下控件展示来了解它的功能";
 export const BTN_GO_SUBPAGE = "前往子页面";
@@ -26,7 +26,7 @@ export const TOGGLE_CARD_DESC = "各种状态切换控件";
 export const TABS_CARD_TITLE = "选项卡组件";
 export const TABS_CARD_DESC = "选项卡切换示例";
 export const TAB_ABOUT_DESC =
-  "Goose Monitor 是一个现代化的笔记应用，提供强大的编辑和协作功能。";
+  "Goose Note 是一个现代化的笔记应用，提供强大的编辑和协作功能。";
 
 // ── Dialog / sheet card ─────────────────────────────────────────────
 export const DIALOG_CARD_TITLE = "对话框组件";

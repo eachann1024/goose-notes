@@ -61,9 +61,14 @@ interface EditorProps {
    * 速记小窗用它砍掉表格/图片/AI 等重型项，主窗不传则保持全量。
    */
   hiddenSlashItemTitles?: string[];
+  /**
+   * 是否显示块侧边菜单（+ / ⋮⋮）。默认 true（主编辑器）。
+   * 速记小窗传 false：窄窗里浮动菜单与块 hover 判定互抢导致闪烁，索性不显示。
+   */
+  showSideMenu?: boolean;
 }
 
-export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true, hiddenSlashItemTitles }, ref) {
+export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true, hiddenSlashItemTitles, showSideMenu = true }, ref) {
   const {
     theme,
     searchProviders,
@@ -517,6 +522,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
       tableEvenColumnWidth={tableEvenColumnWidth}
       searchProviders={searchProviders} customActions={customActions}
+      showSideMenu={showSideMenu}
     />
   );
 });
