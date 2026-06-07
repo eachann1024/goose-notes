@@ -58,6 +58,49 @@ export function shouldPreferVisibleSelectionText(
   return stripMarkdownHardBreakArtifacts(clipboardText) === selectedText;
 }
 
+/**
+ * 判断剪贴板内容是否为「块结构」(非纯单行文本)——用于「标题一隔离」：光标在标题一时，
+ * 块结构应落到标题下方而非注入标题。判定为「块结构」的依据(命中任一即是)：
+ * - HTML 含块级标签：img/figure/table/pre/code/ul/ol/li/h1-6/blockquote/hr/p×多 等；
+ * - 纯文本含块级 Markdown：标题(# )/列表(- 1.)/待办/代码围栏(```)/表格(|...|)/引用(> )/分隔线；
+ * - 纯文本含换行(多行)——标题是单行的，多行内容应落正文。
+ * 反之：单行纯文本、或仅含 inline 标签(b/i/a/strong/em/span/code-inline)的 HTML → 非块结构，
+ * 照常注入标题文字。
+ */
+export function looksLikeBlockStructure(
+  plainText: string,
+  htmlText: string,
+): boolean {
+  const html = (htmlText || "").trim();
+  if (html) {
+    // 块级标签出现即视为块结构。
+    if (
+      /<\s*(img|figure|picture|table|thead|tbody|tr|td|th|pre|ul|ol|li|h[1-6]|blockquote|hr|video|audio|iframe)\b/i.test(
+        html,
+      )
+    ) {
+      return true;
+    }
+    // 多个 <p>/<div> 段落 → 多块结构。
+    const blockParaCount = (html.match(/<\s*(p|div)\b/gi) || []).length;
+    if (blockParaCount >= 2) return true;
+  }
+
+  const text = (plainText || "").trim();
+  if (!text) return false;
+  // 含换行 = 多行 → 落正文。
+  if (/\n/.test(text)) return true;
+  // 单行但含块级 Markdown 语法。
+  if (
+    /^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|\s*[-*+]\s\[[ xX]\]\s|>\s|```|\|.+\||-{3,}$)/.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function isValidUrl(text: string): boolean {
   if (!text) return false;
   // 协议 URL

@@ -1,4 +1,5 @@
 import { createExtension } from "@blocknote/core";
+import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
 
 /**
  * Notion 风格折叠触发：在「块行首」输入 `> `(半角 > + 空格)或 `》 `(全角)时，按当前块类型分发：
@@ -28,6 +29,13 @@ export const gooseToggleHeadingInputRuleExtension = createExtension({
       find: /^[>》]\s$/u,
       replace: ({ editor }) => {
         const block = editor.getTextCursorPosition().block;
+
+        // 首块恒为「文件名标题」(H1，见 firstTitleGuard)，不允许被改成折叠形态。
+        if (block.id === editor.document[0]?.id) return undefined;
+
+        // 折叠块内部不允许再生成折叠块(任意后代)，避免无限折叠嵌套。
+        // 此时 `> ` 原样保留(return undefined)，不转折叠标题/折叠列表。
+        if (isInsideToggle(editor, block)) return undefined;
 
         if (block.type === "heading") {
           const props = block.props as { isToggleable?: boolean };

@@ -97,8 +97,19 @@ export const gooseSelectAllExtension = createExtension({
         return true;
       }
 
-      const blockStart = $from.start(blockContainerDepth);
-      const blockEnd = $from.end(blockContainerDepth);
+      // 选区范围必须限定在「块的内容节点」(heading/paragraph 的 inline 内容)，
+      // 不能用 blockContainerDepth——后者的 start/end 是 blockContainer 的边界位置，
+      // 会把块结构边界(含与下一块的边界)圈进选区。一旦删除，相邻块会被合并，
+      // 下一块内容继承本块类型(标题块场景下：下一行正文被升成 H1，严重 bug)。
+      // 用 blockContentDepth 的 start/end 精确取 inline 文字范围，删除只清文字、保留块本身。
+      const hasInlineContent =
+        blockContentNode != null && blockContentDepth <= $from.depth;
+      const blockStart = hasInlineContent
+        ? $from.start(blockContentDepth)
+        : $from.start(blockContainerDepth);
+      const blockEnd = hasInlineContent
+        ? $from.end(blockContentDepth)
+        : $from.end(blockContainerDepth);
 
       let isBlockFullySelected = false;
 

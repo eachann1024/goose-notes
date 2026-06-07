@@ -2,6 +2,7 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { AIExtension } from "@blocknote/xl-ai";
 import * as LucideIcons from "lucide-react";
+import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
 
 export interface SlashMenuItem {
   title: string;
@@ -180,7 +181,7 @@ export function getBlockNoteSlashMenuItems(
       description: "可展开/收起下方内容的一级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
       aliases: ["toggleheading", "toggleh1", "toggle", "collapseheading", "fold", "zhediebiaoti", "zhedie", "shouqibiaoti"],
-      badge: ">#",
+      badge: "> #",
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -192,7 +193,7 @@ export function getBlockNoteSlashMenuItems(
       description: "可展开/收起下方内容的二级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
       aliases: ["toggleheading2", "toggleh2", "toggle", "fold", "zhedie", "zhedieerji"],
-      badge: ">##",
+      badge: "> ##",
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -204,7 +205,7 @@ export function getBlockNoteSlashMenuItems(
       description: "可展开/收起下方内容的三级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
       aliases: ["toggleheading3", "toggleh3", "toggle", "fold", "zhedie", "zhediesanji"],
-      badge: ">###",
+      badge: "> ###",
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -241,7 +242,7 @@ export function getBlockNoteSlashMenuItems(
       description: "可展开/收起内容的折叠列表",
       icon: <LucideIcons.ChevronRight size={18} />,
       aliases: ["toggle", "collapse", "fold", "zhedie", "shouqi"],
-      badge: ">",
+      badge: "> ",
       onItemClick: () => insertOrUpdate({ type: "toggleListItem" }),
     },
     {
@@ -249,7 +250,7 @@ export function getBlockNoteSlashMenuItems(
       description: "插入一段引用文字",
       icon: <LucideIcons.Quote size={18} />,
       aliases: ["quote", "blockquote", "yinyong"],
-      badge: ">",
+      badge: "| ",
       onItemClick: () => insertOrUpdate({ type: "quote" }),
     },
     {
@@ -335,6 +336,19 @@ export function getBlockNoteSlashMenuItems(
       },
     },
   );
+
+  // 折叠块内部隐藏「折叠标题/折叠列表」项,避免无限折叠嵌套(任意后代)。
+  // 输入规则侧也做了同样拦截(见 toggleHeadingInputRule)。光标此时已在目标块。
+  const currentBlock = editor.getTextCursorPosition().block;
+  if (isInsideToggle(editor, currentBlock)) {
+    const TOGGLE_TITLES = new Set([
+      "折叠一级标题",
+      "折叠二级标题",
+      "折叠三级标题",
+      "折叠列表",
+    ]);
+    return items.filter((it) => !TOGGLE_TITLES.has(it.title));
+  }
 
   return items;
 }

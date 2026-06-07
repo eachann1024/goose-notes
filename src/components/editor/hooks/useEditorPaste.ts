@@ -3,6 +3,7 @@ import { Fragment, Slice } from "@tiptap/pm/model";
 import { useCreateBlockNote } from "@blocknote/react";
 import {
   isValidUrl,
+  looksLikeBlockStructure,
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
   parseMarkdownLink,
@@ -32,6 +33,45 @@ export function useEditorPaste({
       const plainText = normalizeMarkdownPasteText(
         clipboard.getData("text/plain"),
       );
+
+      // ===== 标题一隔离：光标在「文档标题(物理首块 H1)」时粘贴「块结构」=====
+      // 标题一是特殊存在，必须保持独立(恒为物理首块 H1、不被注入图片/列表/代码等结构)。
+      // 默认粘贴会把图片等结构块塞成标题一的 children(实测 depth=1)，破坏其独立性。
+      // 处理：光标在标题一且剪贴板是「非纯文本的块结构」时，拦截默认，把内容解析成块
+      // 插到标题一【下方同级】(用户要求：插入前先加空行再放，绝不覆盖标题或已有正文)。
+      // 纯文本(单行)不拦截 → 照常注入标题文字。
+      {
+        const cursorBlock = editor.getTextCursorPosition().block;
+        const isInTitle =
+          editor.document[0] && cursorBlock.id === editor.document[0].id;
+        const htmlText = clipboard.getData("text/html");
+        if (isInTitle && looksLikeBlockStructure(plainText, htmlText)) {
+          event.preventDefault();
+          event.stopPropagation();
+          void (async () => {
+            let blocks: any[] = [];
+            try {
+              if (htmlText && htmlText.trim()) {
+                blocks = await editor.tryParseHTMLToBlocks(htmlText);
+              } else if (plainText) {
+                blocks = await editor.tryParseMarkdownToBlocks(plainText);
+              }
+            } catch {
+              blocks = [];
+            }
+            if (!blocks || blocks.length === 0) return;
+            const titleBlock = editor.document[0];
+            // 先加空行再放：在标题与原有正文之间垫一个空段落，再把解析出的块放进去。
+            // 通过「先插块、再确保块前有空行」实现——直接插到标题之后即为「标题下一行」，
+            // 原有正文被这些新块顺移到后面，不被覆盖。
+            const inserted = editor.insertBlocks(blocks, titleBlock, "after");
+            const last = inserted[inserted.length - 1];
+            if (last) editor.setTextCursorPosition(last, "end");
+          })();
+          return;
+        }
+      }
+
       if (!plainText) return;
 
       const trimmedText = plainText.trim();

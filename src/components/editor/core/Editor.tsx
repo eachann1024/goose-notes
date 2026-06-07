@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
-import { flushSync } from "react-dom";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
@@ -37,6 +36,7 @@ import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
+import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
 import { gooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseQuoteInputRuleExtension } from "@/components/editor/inputrules/quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
@@ -85,7 +85,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
-  const [isSwitching, setIsSwitching] = useState(false);
 
   // 注入回调/数据的最新引用：供 useCreateBlockNote（deps=[]）的闭包与各 effect 读取，
   // 避免把 settings/pageContext 直接进依赖数组导致编辑器重建（行为不变）。
@@ -128,6 +127,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
         gooseCrossBlockDeleteExtension,
+        gooseEmptyBlockBackspaceExtension,
         gooseQuoteInputRuleExtension,
         gooseMarkdownInputRulesExtension,
         gooseFakeSelectionExtension,
@@ -210,38 +210,27 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const p = pageRef.current;
     pageIdForUpdateRef.current = p?.id ?? null;
 
-    // 立即翻 isSwitching=true 让骨架先 paint，再下一帧做重活，避免主线程冻结
-    // 用 flushSync 强制同步提交，否则 React 18 会把 true→false 合批掉
-    flushSync(() => setIsSwitching(true));
+    const nextContent = normalizePageContent(p?.content);
+    const nextSig = getCachedContentSignature(nextContent);
 
-    const rafId = requestAnimationFrame(() => {
-      const nextContent = normalizePageContent(p?.content);
-      const nextSig = getCachedContentSignature(nextContent);
+    syncedContentSignatureRef.current = nextSig;
 
-      syncedContentSignatureRef.current = nextSig;
+    editor.replaceBlocks(editor.document, nextContent as any);
 
-      editor.replaceBlocks(editor.document, nextContent as any);
+    // Reset undo history so edits from the previous page don't leak
+    const view = editor.prosemirrorView;
+    if (view) {
+      const newState = EditorState.create({
+        doc: view.state.doc,
+        plugins: view.state.plugins,
+      });
+      view.updateState(newState);
+    }
 
-      // Reset undo history so edits from the previous page don't leak
-      const view = editor.prosemirrorView;
-      if (view) {
-        const newState = EditorState.create({
-          doc: view.state.doc,
-          plugins: view.state.plugins,
-        });
-        view.updateState(newState);
-      }
-
-      // normalize 改写了结构才回写（原 silent 持久化路径，经注入回调落库）
-      if (p && getCachedContentSignature(p.content) !== nextSig) {
-        onContentChangeRef.current(nextContent);
-      }
-
-      // 下一帧再隐藏骨架，确保 BlockNote 已绘制
-      requestAnimationFrame(() => setIsSwitching(false));
-    });
-
-    return () => cancelAnimationFrame(rafId);
+    // normalize 改写了结构才回写（原 silent 持久化路径，经注入回调落库）
+    if (p && getCachedContentSignature(p.content) !== nextSig) {
+      onContentChangeRef.current(nextContent);
+    }
   }, [activePageId, debouncedUpdate, editor]);
 
   const getSlashItems = useCallback(
@@ -528,7 +517,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
       tableEvenColumnWidth={tableEvenColumnWidth}
       searchProviders={searchProviders} customActions={customActions}
-      isSwitching={isSwitching}
     />
   );
 });
