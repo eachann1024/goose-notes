@@ -1,7 +1,9 @@
 import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { usePages } from "@/stores/usePages";
 
 interface UseSidebarEffectsOptions {
-  activePageId: string | null | undefined;
+  /** 仅为调用方接口兼容保留；删除时改为直读 store 最新值，避免连续删除的闭包陈值。 */
+  activePageId?: string | null | undefined;
   currentView: string;
   isAiPageOpen: boolean;
   onAiPageOpenWithOutline: () => void;
@@ -9,7 +11,6 @@ interface UseSidebarEffectsOptions {
 }
 
 export function useSidebarEffects({
-  activePageId,
   currentView,
   isAiPageOpen,
   onAiPageOpenWithOutline,
@@ -30,13 +31,17 @@ export function useSidebarEffects({
           target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA";
 
-        if (activePageId && !isInEditor && currentView === "pages") {
+        // 直读 store 最新值：连续按 Mod+Backspace 时，React 重渲染（更新
+        // activePageId prop）滞后于 zustand 同步 set，闭包里的 activePageId
+        // 仍是上一个已删除的 id，会导致第二次删除空转。
+        const currentActivePageId = usePages.getState().activePageId;
+        if (currentActivePageId && !isInEditor && currentView === "pages") {
           e.preventDefault();
-          void deletePageWithUndo(activePageId);
+          void deletePageWithUndo(currentActivePageId);
         }
       }
     },
-    [activePageId, currentView, deletePageWithUndo, isAiPageOpen],
+    [currentView, deletePageWithUndo, isAiPageOpen],
   );
 
   useEffect(() => {

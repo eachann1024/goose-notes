@@ -11,30 +11,5 @@
       "Bash(curl -s http://localhost:6001/)",
       "Bash(pnpm exec tsc --noEmit*)"
     ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 -c \"import json,sys,re; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); blocked=re.search(r'(\\.env|\\.env\\..+|plugin\\.json|utools-build\\.js)$',f); print('BLOCK: 敏感文件需人工确认: '+f) if blocked else None; exit(2 if blocked else 0)\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 -c \"import json,sys,re,os,subprocess; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); ts=re.search(r'\\.(ts|tsx)$',f); result=subprocess.run(['pnpm','exec','tsc','--noEmit'],capture_output=True,text=True,cwd='/Users/eachann/WorkMark/goose-note') if ts else None; print(result.stdout[-2000:]+result.stderr[-1000:]) if result and result.returncode!=0 else None\"",
-            "statusMessage": "TypeScript 类型检查中..."
-          }
-        ]
-      }
-    ]
   }
 }

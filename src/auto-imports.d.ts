@@ -91,7 +91,9 @@ declare global {
   const Portal: typeof import('./components/ui/portal').Portal
   const Progress: typeof import('./components/ui/progress').Progress
   const QUICKNOTE_DEFAULT_HEIGHT: typeof import('./stores/useQuickNote').QUICKNOTE_DEFAULT_HEIGHT
+  const QUICKNOTE_DEFAULT_WIDTH: typeof import('./stores/useQuickNote').QUICKNOTE_DEFAULT_WIDTH
   const QUICKNOTE_MIN_HEIGHT: typeof import('./stores/useQuickNote').QUICKNOTE_MIN_HEIGHT
+  const QUICKNOTE_MIN_WIDTH: typeof import('./stores/useQuickNote').QUICKNOTE_MIN_WIDTH
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
@@ -147,6 +149,7 @@ declare global {
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write/index').buildAiWorkspaceUserPrompt
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
+  const buildQuickNoteDraftPage: typeof import('./stores/useQuickNote').buildQuickNoteDraftPage
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal

@@ -1,11 +1,41 @@
 import { useNotebooks } from "../../../useNotebooks";
+import { useSidebarView } from "../../../useSidebarView";
 import type { StoreSet, StoreGet } from "../hydrate";
 import { flushEditorContent } from "../flushEditor";
-import { resolveAdjacentPageAfterDeletion } from "./helpers";
+import { resolveVisibleRowAfterDeletion } from "./helpers";
 import {
   persistPageSnapshots,
   removePersistedPageSnapshots,
 } from "../../persistence";
+
+/**
+ * 删除后把侧栏的键盘焦点/选中同步到新激活页。
+ * 否则 focusedItem 仍指向已删除项，react-complex-tree 焦点丢失，
+ * 连续删除与方向键导航的起点会错乱。
+ */
+function syncSidebarSelectionAfterDelete(
+  workspaceId: string,
+  removedIds: Set<string>,
+  get: StoreGet,
+): void {
+  const view = useSidebarView.getState();
+  const focused = view.focusedByNotebook[workspaceId];
+  const selected = view.selectedByNotebook[workspaceId];
+  if (
+    !removedIds.has(focused || "") &&
+    !removedIds.has(selected || "")
+  ) {
+    return;
+  }
+  const nextActive = get().activePageId;
+  // nextActive 可能为 null（整本删空），此时清掉焦点/选中。
+  if (removedIds.has(focused || "")) {
+    view.setFocused(workspaceId, nextActive);
+  }
+  if (removedIds.has(selected || "")) {
+    view.setSelected(workspaceId, nextActive);
+  }
+}
 
 export const deletePageAction = async (
   set: StoreSet,
@@ -56,11 +86,13 @@ export const deletePageAction = async (
 
       let nextActivePageId = state.activePageId;
       if (removedIds.has(state.activePageId || "")) {
-        nextActivePageId = resolveAdjacentPageAfterDeletion({
+        nextActivePageId = resolveVisibleRowAfterDeletion({
           pages: state.pages,
           currentPage: page,
           removedIds,
           isLocalNotebook: true,
+          expandedIds:
+            useSidebarView.getState().expandedByNotebook[page.workspaceId] ?? [],
         });
         useNotebooks.getState().setLastActivePage(
           page.workspaceId,
@@ -74,6 +106,8 @@ export const deletePageAction = async (
       };
     });
 
+    syncSidebarSelectionAfterDelete(page.workspaceId, removedIds, get);
+
     removePersistedPageSnapshots(snapshotPages, removedIds);
 
     return true;
@@ -81,6 +115,7 @@ export const deletePageAction = async (
 
   const workspaceId = page.workspaceId;
   const changedIds: string[] = [];
+  const removedIdsForSync = new Set<string>();
 
   set((state) => {
     const removedIds = new Set<string>();
@@ -92,6 +127,7 @@ export const deletePageAction = async (
         if (p.parentId === currentId && !p.trashedAt) stack.push(p.id);
       });
     }
+    removedIds.forEach((pid) => removedIdsForSync.add(pid));
 
     const newPages = { ...state.pages };
     const now = Date.now();
@@ -113,11 +149,13 @@ export const deletePageAction = async (
 
     let newActivePageId = state.activePageId;
     if (removedIds.has(state.activePageId || "")) {
-      newActivePageId = resolveAdjacentPageAfterDeletion({
+      newActivePageId = resolveVisibleRowAfterDeletion({
         pages: state.pages,
         currentPage: page,
         removedIds,
         isLocalNotebook: false,
+        expandedIds:
+          useSidebarView.getState().expandedByNotebook[workspaceId] ?? [],
       });
       useNotebooks.getState().setLastActivePage(
         workspaceId,
@@ -130,6 +168,8 @@ export const deletePageAction = async (
       activePageId: newActivePageId,
     };
   });
+
+  syncSidebarSelectionAfterDelete(workspaceId, removedIdsForSync, get);
 
   persistPageSnapshots(get().pages, changedIds);
 

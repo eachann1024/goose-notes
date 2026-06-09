@@ -981,7 +981,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // ── 速记小窗（独立 browser 窗口）──────────────────────────────
   // 尺寸参考 Raycast 浮动便签：紧凑竖向。集中成常量便于调。
-  const QUICKNOTE_WIDTH = 480;
+  const QUICKNOTE_WIDTH = 480; // 首次开窗默认宽度（用户调整后由 dbStorage 记住）
+  const QUICKNOTE_MIN_WIDTH = 320;
   const QUICKNOTE_HEIGHT = 350; // 首次开窗默认高度（用户调整后由 dbStorage 记住）
   const QUICKNOTE_MIN_HEIGHT = 300;
   const QUICKNOTE_EDGE_GAP = 16; // 右上角开窗时距屏幕上/右边缘的空隙
@@ -991,7 +992,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 从 uTools db 读速记持久化偏好（zustand persist 存的 JSON）。preload 是 CJS，
   // 拿不到 React store，直接读 dbStorage 同一 key。失败回退默认值，不抛错。
   const readQuickNotePrefs = () => {
-    const fallback = { windowHeight: QUICKNOTE_HEIGHT, pinned: false, autoResize: false };
+    const fallback = {
+      windowWidth: QUICKNOTE_WIDTH,
+      windowHeight: QUICKNOTE_HEIGHT,
+      pinned: false,
+    };
     try {
       const raw =
         utools.dbStorage && typeof utools.dbStorage.getItem === "function"
@@ -1000,11 +1005,14 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       if (typeof raw !== "string") return fallback;
       const parsed = JSON.parse(raw);
       const st = parsed && parsed.state ? parsed.state : parsed;
+      const w = Number(st && st.windowWidth);
       const h = Number(st && st.windowHeight);
       return {
-        windowHeight: Number.isFinite(h) && h >= QUICKNOTE_MIN_HEIGHT ? Math.round(h) : QUICKNOTE_HEIGHT,
+        windowWidth:
+          Number.isFinite(w) && w >= QUICKNOTE_MIN_WIDTH ? Math.round(w) : QUICKNOTE_WIDTH,
+        windowHeight:
+          Number.isFinite(h) && h >= QUICKNOTE_MIN_HEIGHT ? Math.round(h) : QUICKNOTE_HEIGHT,
         pinned: !!(st && st.pinned),
-        autoResize: !!(st && st.autoResize),
       };
     } catch (e) {
       console.error("[quicknote] 读持久化偏好失败:", e);
@@ -1112,9 +1120,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       return;
     }
 
-    // 读持久化偏好：用记住的高度开窗，并同步置顶态。
+    // 读持久化偏好：用记住的宽高开窗，并同步置顶态（读到再开，不开后再调）。
     const prefs = readQuickNotePrefs();
     quickNotePinned = prefs.pinned;
+    const openWidth = prefs.windowWidth;
     const openHeight = prefs.windowHeight;
 
     // 定位到光标所在显示器的右上角。优先用 workArea（已扣除 macOS 菜单栏 / Dock），
@@ -1127,9 +1136,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     } catch { /* noop */ }
     const winOpts = {
       show: false,
-      width: QUICKNOTE_WIDTH,
+      width: openWidth,
       height: openHeight,
-      minWidth: 320,
+      minWidth: QUICKNOTE_MIN_WIDTH,
       minHeight: QUICKNOTE_MIN_HEIGHT,
       frame: false,
       resizable: true,
@@ -1142,14 +1151,14 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       },
     };
     if (area) {
-      // 右上角：贴右边缘留 GAP，贴上边缘留 GAP。
-      winOpts.x = Math.round(area.x + area.width - QUICKNOTE_WIDTH - QUICKNOTE_EDGE_GAP);
+      // 右上角：贴右边缘留 GAP，贴上边缘留 GAP（用记住的宽度算 x，确保贴边一致）。
+      winOpts.x = Math.round(area.x + area.width - openWidth - QUICKNOTE_EDGE_GAP);
       winOpts.y = Math.round(area.y + QUICKNOTE_EDGE_GAP);
     }
 
-    // url 用 query 传模式（?mode=new），不用 #hash —— hash 在 Electron loadFile 下有解析坑。
+    // 草稿便签：两条速记指令都开同一草稿，不再按 mode 区分笔记，故 url 不带 mode。
     // url 相对「插件根目录」，dev 加载 dist 目录时根即 dist，故直接写 quicknote.html。
-    const url = `quicknote.html?mode=${mode === "last" ? "last" : "new"}`;
+    const url = `quicknote.html`;
     console.log("[quicknote] createBrowserWindow url =", url);
     try {
       quickNoteWin = utools.createBrowserWindow(url, winOpts, () => {

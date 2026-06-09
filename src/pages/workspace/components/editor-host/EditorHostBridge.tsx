@@ -35,12 +35,18 @@ interface EditorHostBridgeProps {
   page: Page;
   /** 宿主预算：notebook.editorFullWidth ?? globalEditorFullWidth。 */
   isEditorFullWidth: boolean;
+  /**
+   * 内容变更落库回调的覆盖。默认走 usePages.updatePage 落库；速记小窗草稿模式传入此项，
+   * 把内容写到草稿存储而非真实 page（草稿不入 pages map、不进笔记列表）。
+   */
+  onContentChangeOverride?: (content: BlockNoteContent) => void;
   children: ReactNode;
 }
 
 export function EditorHostBridge({
   page,
   isEditorFullWidth,
+  onContentChangeOverride,
   children,
 }: EditorHostBridgeProps) {
   const theme = useSettings((s) => s.theme);
@@ -89,6 +95,10 @@ export function EditorHostBridge({
       page,
       isEditorFullWidth,
       onContentChange: (content: BlockNoteContent) => {
+        if (onContentChangeOverride) {
+          onContentChangeOverride(content);
+          return;
+        }
         usePages.getState().updatePage(page.id, { content } as Partial<Page>);
       },
       onOpenPage: (pageId: string) => {
@@ -112,7 +122,7 @@ export function EditorHostBridge({
         return resolveAiReferenceContexts(refs, pages, notebooks);
       },
     }),
-    [page, isEditorFullWidth],
+    [page, isEditorFullWidth, onContentChangeOverride],
   );
 
   // 触摸一次 useNotebooks 订阅，确保 notebook 变化时桥重渲染（宿主预算 isEditorFullWidth 在外层算）。

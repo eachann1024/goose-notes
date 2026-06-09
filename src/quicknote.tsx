@@ -2,29 +2,17 @@
  * 速记小窗入口（独立 browser 窗口加载 quicknote.html → 本文件）。
  *
  * 复用主窗的 bootstrap（host fs / 迁移 / hydration / guard）以保证数据层一致，
- * 仅把渲染根换成 <QuickNoteApp/>。启动模式经 URL query 传入（不用 hash —— hash 在
- * Electron loadFile 下有解析坑）：
- *   quicknote.html?mode=new  → 新建空白速记
- *   quicknote.html?mode=last → 直达上次（失效回退新建）
+ * 仅把渲染根换成 <QuickNoteApp/>。小窗是「草稿便签」：内容只落 useQuickNote.draftContent
+ * （持久化草稿），不对应真实笔记，不自动存盘；点左上角「保存到笔记本」才入库并清空。
  */
 import { bootstrap } from "./main";
 import { useQuickNote } from "./stores/useQuickNote";
 import { QuickNoteApp } from "./pages/quick-note/QuickNoteApp";
 import "./pages/quick-note/quicknote.css";
 
-function resolveMode(): "new" | "last" {
-  try {
-    const mode = new URLSearchParams(window.location.search).get("mode");
-    if (mode === "last") return "last";
-    if (mode === "new") return "new";
-  } catch { /* noop */ }
-  // 兜底：兼容旧的 hash 形式。
-  const hash = (window.location.hash || "").replace(/^#/, "").toLowerCase();
-  return hash === "last" ? "last" : "new";
-}
-
 void (async () => {
-  // useQuickNote 持久化了 lastPageId / pinned，需在解析模式前 rehydrate。
+  // useQuickNote 持久化了 draftContent / pinned / 窗口尺寸，需在渲染前 rehydrate，
+  // 否则草稿 page 拿不到已有草稿内容。
   await useQuickNote.persist.rehydrate();
-  await bootstrap(() => <QuickNoteApp mode={resolveMode()} />);
+  await bootstrap(() => <QuickNoteApp />);
 })();
