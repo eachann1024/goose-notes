@@ -1,4 +1,4 @@
-import { type RefObject } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { confirmLocalDelete } from "@/lib/confirm-local-delete";
@@ -13,6 +13,7 @@ import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
+import { locateAndHighlight } from "@/components/editor/find/searchHighlightLocate";
 import { EditorHostBridge } from "./components/editor-host/EditorHostBridge";
 import {
   HistoryToolbar,
@@ -48,6 +49,15 @@ export function WorkspaceLayout({
   scrollContainerRef,
 }: WorkspaceLayoutProps) {
   const { activePageId, updatePage, getPage } = usePages();
+  const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
+  const searchHighlightQuery = usePages((s) => s.searchHighlightQuery);
+  const searchHighlightPageId = usePages((s) => s.searchHighlightPageId);
+  const handledSearchHighlightNonce = usePages(
+    (s) => s.handledSearchHighlightNonce,
+  );
+  const setHandledSearchHighlightNonce = usePages(
+    (s) => s.setHandledSearchHighlightNonce,
+  );
   const { activeNotebookId, notebooks } = useNotebooks();
   const { globalEditorFullWidth } = useSettings();
   const historyActivePageId = useHistoryView((s) => s.active);
@@ -60,6 +70,56 @@ export function WorkspaceLayout({
   const isEditorFullWidth = Boolean(
     pageNotebook?.editorFullWidth ?? globalEditorFullWidth,
   );
+
+  // 全局搜索「跳转即定位」：监听搜索高亮信号，落到匹配块并展开折叠 + 高亮。
+  // 信号由命令面板写入（只带 query，不带 blockId），见 searchHighlightLocate.ts。
+  //
+  // 关键：点搜索结果时「切页」是异步的，nonce 信号到达那一刻 activePageId 往往还没追上
+  // 目标页。所以本 effect 不能只依赖 nonce，否则首跑被 pageId 守卫挡掉后永不重试。
+  // 改为：依赖 activePageId/page 一并参与，用 handledSearchHighlightNonce 做幂等去重，
+  // 等切页落定、目标页 editor ready 后自然会再跑一次并完成定位。
+  const locateRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (locateRetryRef.current) {
+      clearTimeout(locateRetryRef.current);
+      locateRetryRef.current = null;
+    }
+    if (!searchHighlightNonce || searchHighlightNonce <= 0) return;
+    // 这个 nonce 已经处理过了，跳过（幂等，避免重复定位/重复高亮）
+    if (searchHighlightNonce === handledSearchHighlightNonce) return;
+    if (!searchHighlightQuery) return;
+    // 信号指向的页面还没成为当前活动页 → 等切页完成后本 effect 会因 activePageId
+    // 变化再次运行，那时再继续。不在这里标记 handled，留待真正定位成功。
+    if (!searchHighlightPageId || searchHighlightPageId !== activePageId) return;
+    if (inHistoryMode || isAiPageOpen || !page) return;
+
+    const nonceToHandle = searchHighlightNonce;
+    const query = searchHighlightQuery;
+    let attempts = 0;
+    const tryLocate = () => {
+      const editor = editorRef.current?.editor;
+      if (editor) {
+        locateAndHighlight(editor, query);
+        setHandledSearchHighlightNonce(nonceToHandle);
+        locateRetryRef.current = null;
+        return;
+      }
+      // 切页后编辑器可能还没挂载/换内容，短轮询等待 ready（上限约 1.5s）
+      if (attempts++ < 30) {
+        locateRetryRef.current = setTimeout(tryLocate, 50);
+      }
+    };
+    // 首次延一帧，让切页的 replaceBlocks 先把目标页内容铺好
+    locateRetryRef.current = setTimeout(tryLocate, 60);
+
+    return () => {
+      if (locateRetryRef.current) {
+        clearTimeout(locateRetryRef.current);
+        locateRetryRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchHighlightNonce, activePageId, page]);
 
   return (
     <>

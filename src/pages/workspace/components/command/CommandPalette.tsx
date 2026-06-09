@@ -6,6 +6,7 @@ import { UToolsAdapter } from "@/lib/utools";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
 import { PaletteResultGroup } from "./PaletteResultGroup";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
@@ -22,6 +23,9 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const openInNewTabRef = useRef(false);
   const [open, setOpen] = useState(false);
+  // cmdk 根的「当前选中项」受控值。cmdk 不会在结果列表变化时自动重选第一项，
+  // 不受控就会出现「输完词没有任何项高亮、方向键/回车第一下没反应」。见下方 effect。
+  const [commandValue, setCommandValue] = useState("");
   const { openTab, openInCurrentTab } = useTabs();
   const {
     pages,
@@ -29,6 +33,7 @@ export function CommandPalette() {
     setSearchHighlightQuery,
     setSearchHighlightPageId,
     setSearchHighlightNonce,
+    loadAllLocalFolderPages,
   } = usePages();
   const { activeNotebookId, setActiveNotebook } = useNotebooks();
   const {
@@ -53,6 +58,36 @@ export function CommandPalette() {
     (_openSource: "utools_input" | "shortcut" | "programmatic") => {},
     [],
   );
+
+  // 计算「渲染顺序里第一个可见结果项」的 value，必须与 PaletteResultGroup 的 value 完全一致：
+  //   无 query 且显示最近访问 → recent[0] 用 `recent-...`，否则 all[0] 用 `all-...`
+  //   有 query → allDisplay[0] 用 `all-...`
+  const firstItemValue = (() => {
+    const hasQuery = searchQuery.trim().length > 0;
+    if (
+      !hasQuery &&
+      showRecentInSearch &&
+      searchResults.recent.length > 0
+    ) {
+      const p = searchResults.recent[0];
+      return `recent-${p.id}-${getPageTitle(p)}`;
+    }
+    const first = searchResults.allDisplay[0];
+    return first ? `all-${first.id}-${getPageTitle(first)}` : "";
+  })();
+
+  // 结果变化时把选中项重置到第一项（cmdk 不会自动做），保证打字后即可直接上下键 + 回车跳转。
+  useEffect(() => {
+    setCommandValue(firstItemValue);
+  }, [firstItemValue]);
+
+  // 切到「所有记事本」时兜底预加载未加载的 local-folder 记事本页面（启动预热的补充）。
+  // action 内部对已加载 / 加载中的记事本去重，重复调用安全。
+  useEffect(() => {
+    if (open && searchAllNotebooks) {
+      void loadAllLocalFolderPages();
+    }
+  }, [open, searchAllNotebooks, loadAllLocalFolderPages]);
 
   const handleHideRecent = useCallback(() => {
     setShowRecentInSearch(false);
@@ -205,6 +240,8 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Global Search"
+      value={commandValue}
+      onValueChange={setCommandValue}
       filter={() => 1}
       className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.97] data-[state=open]:slide-in-from-top-3 data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.97] data-[state=closed]:slide-out-to-top-3 data-[state=closed]:duration-150 bg-[hsl(var(--goose-shell-bg))] shadow-none"
       aria-describedby={descriptionId}
@@ -234,9 +271,11 @@ export function CommandPalette() {
             type="button"
             onClick={() => setSearchAllNotebooks(!searchAllNotebooks)}
             className={`px-2.5 py-1 rounded-[8px] text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              // 用实色交互变量而非 bg-foreground/8：uTools 旧内核解析不了 Tailwind 的
+              // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
               searchAllNotebooks
-                ? "bg-foreground/8 text-foreground/80"
-                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-foreground/5"
+                ? "bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))]"
+                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-[var(--goose-interactive-hover)]"
             }`}
           >
             {searchAllNotebooks ? "所有记事本" : currentNotebookName}

@@ -84,7 +84,7 @@ export function EditorLinkToolbar({
   if (editing) {
     return (
       <div
-        className="flex w-[80vw] max-w-[720px] items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+        className="flex w-[480px] max-w-[min(480px,80vw)] items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
         onMouseDown={(e) => {
           const target = e.target as HTMLElement;
           if (target.closest("input, textarea")) return;
@@ -158,7 +158,7 @@ export function EditorLinkToolbar({
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+      className="flex items-center gap-px rounded-lg border border-border/80 bg-popover px-0.5 py-0.5 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
       onMouseDown={(e) => e.preventDefault()}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -168,9 +168,9 @@ export function EditorLinkToolbar({
       <button
         type="button"
         onClick={startEditing}
-        className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-foreground/90 hover:bg-muted"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-accent hover:text-foreground transition-colors"
       >
-        <LucideIcons.Pencil className="h-3.5 w-3.5" />
+        <LucideIcons.Pencil className="h-3 w-3" />
         编辑
       </button>
       <button
@@ -187,17 +187,17 @@ export function EditorLinkToolbar({
           event.stopPropagation();
           handleOpen();
         }}
-        className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-foreground/90 hover:bg-muted"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-accent hover:text-foreground transition-colors"
       >
-        <LucideIcons.ExternalLink className="h-3.5 w-3.5" />
+        <LucideIcons.ExternalLink className="h-3 w-3" />
         打开
       </button>
       <button
         type="button"
         onClick={handleDelete}
-        className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
       >
-        <LucideIcons.Unlink className="h-3.5 w-3.5" />
+        <LucideIcons.Unlink className="h-3 w-3" />
         移除
       </button>
     </div>

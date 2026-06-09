@@ -161,6 +161,17 @@ export function useEditorPaste({
         return;
       }
 
+      // 2.5 纯文本含 Markdown 代码围栏(```lang ... ```) → 强制走 pasteMarkdown。
+      // 即便剪贴板同时带 text/html(从网页/IDE 复制常见),也优先用纯文本解析:
+      // 默认 HTML 粘贴对自定义 codeBlock 易降级成段落,而 pasteMarkdown 能正确还原代码块。
+      const hasMarkdownCodeFence = /(^|\n)\s*```/.test(plainText);
+      if (hasMarkdownCodeFence) {
+        event.preventDefault();
+        event.stopPropagation();
+        editor.pasteMarkdown(plainText);
+        return;
+      }
+
       // 3. 其他 Markdown 内容
       if (!looksLikeMarkdownFragment(plainText)) return;
 

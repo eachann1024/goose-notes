@@ -25,12 +25,21 @@
   background-color: rgba(250, 204, 21, 0.45);
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* 搜索定位高亮淡出：到点后加此 class，背景与描边过渡到透明 */
+.goose-find-match--fading,
+.goose-find-match--fading.goose-find-match--current {
+  background-color: transparent;
+  box-shadow: 0 0 0 1px transparent;
 }
 
 .goose-find-match--current {
   background-color: rgba(249, 115, 22, 0.7);
   box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
   color: inherit;
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
 }
 
 .dark .goose-find-match {
@@ -122,13 +131,16 @@
   overflow-wrap: anywhere;
 }
 
+/* 注意：BlockNote 在编辑器内部把 --foreground/--muted 覆盖成 oklch(...) 整色值，
+   不再是 HSL 三元组，所以这里不能用 hsl(var(--foreground) / a)，会解析失败导致透明。
+   标题行底色改用字面 rgba。 */
 .workspace-editor-surface .bn-editor [data-content-type="table"] th {
-  background-color: hsl(var(--muted) / 0.55);
+  background-color: rgba(0, 0, 0, 0.045);
   font-weight: 600;
 }
 
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] th {
-  background-color: hsl(var(--foreground) / 0.08);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,

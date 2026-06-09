@@ -28,6 +28,7 @@ import {
 } from "./actions/pageCreate";
 import {
   loadLocalFolderPagesAction,
+  loadAllLocalFolderPagesAction,
   reloadLocalPageFromDiskAction,
   writePageContentAction,
   appendPageContentAction,
@@ -365,6 +366,8 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   reloadLocalPageFromDisk: (pageId) =>
     reloadLocalPageFromDiskAction(set, get, pageId),
+
+  loadAllLocalFolderPages: () => loadAllLocalFolderPagesAction(set, get),
 
   saveLocalPageContent: (pageId, content) =>
     saveLocalPageContentAction(set, get, pageId, content),

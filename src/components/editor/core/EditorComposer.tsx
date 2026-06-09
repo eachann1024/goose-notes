@@ -206,6 +206,7 @@ export function EditorComposer({
         theme={effectiveTheme}
         slashMenu={false}
         formattingToolbar={false}
+        linkToolbar={false}
         sideMenu={false}
         tableHandles={false}
         filePanel={false}

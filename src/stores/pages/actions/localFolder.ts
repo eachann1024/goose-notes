@@ -2,6 +2,7 @@ export {
   loadLocalFolderPagesAction,
   reloadLocalPageFromDiskAction,
 } from "./localFolder/load";
+export { loadAllLocalFolderPagesAction } from "./localFolder/loadAll";
 export {
   writePageContentAction,
   appendPageContentAction,

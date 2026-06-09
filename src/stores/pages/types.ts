@@ -126,6 +126,8 @@ export interface PagesState {
     options?: { showWelcome?: boolean },
   ) => Promise<void>;
   reloadLocalPageFromDisk: (pageId: string) => Promise<void>;
+  // 预加载所有尚未加载的 local-folder 记事本页面（供「所有记事本」全局搜索覆盖全量）。
+  loadAllLocalFolderPages: () => Promise<void>;
   saveLocalPageContent: (
     pageId: string,
     content: JSONContent,
