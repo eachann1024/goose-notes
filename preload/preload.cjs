@@ -1085,6 +1085,44 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         quickNoteWin.setSize(w || QUICKNOTE_WIDTH, h, false);
       } catch { /* noop */ }
     });
+    // 用户拖动边框停下后：用 win.getSize() 读真实窗口尺寸，写回 dbStorage 的速记偏好
+    // （zustand persist 的同一 key），保留其它字段。下次开窗用记住的宽高，不再被重置回默认。
+    // win 不含 resize 实例事件，故由子窗 resize settle 后主动触发本通道；尺寸以主窗权威读取为准。
+    ipcRenderer.on("quicknote:persist-size", () => {
+      if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return;
+      let size;
+      try {
+        size = quickNoteWin.getSize?.();
+      } catch { /* noop */ }
+      if (!Array.isArray(size) || size.length < 2) return;
+      const w = Math.max(QUICKNOTE_MIN_WIDTH, Math.round(Number(size[0]) || 0));
+      const h = Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(Number(size[1]) || 0));
+      try {
+        const KEY = "goose-note:quicknote";
+        const raw =
+          utools.dbStorage && typeof utools.dbStorage.getItem === "function"
+            ? utools.dbStorage.getItem(KEY)
+            : null;
+        let parsed = {};
+        if (typeof raw === "string") {
+          try { parsed = JSON.parse(raw) || {}; } catch { parsed = {}; }
+        }
+        // zustand persist 形如 { state: {...}, version: n }；无则就地补出 state 容器。
+        const hasStateWrapper = parsed && typeof parsed.state === "object" && parsed.state;
+        const state = hasStateWrapper ? parsed.state : parsed;
+        state.windowWidth = w;
+        state.windowHeight = h;
+        const next = hasStateWrapper
+          ? { ...parsed, state }
+          : { state, version: 0 };
+        if (utools.dbStorage && typeof utools.dbStorage.setItem === "function") {
+          utools.dbStorage.setItem(KEY, JSON.stringify(next));
+        }
+      } catch (e) {
+        console.error("[quicknote] persist-size 写偏好失败:", e);
+      }
+    });
+
     // 小窗改动某条笔记：转 DOM 事件，主窗渲染层据此从 db 重读该页，防跨窗脏写。
     ipcRenderer.on("quicknote:note-updated", (_e, pageId) => {
       window.dispatchEvent(

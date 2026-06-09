@@ -44,6 +44,15 @@ export const quickNoteWindow = {
     send("quicknote:set-height", Math.round(height));
   },
 
+  /**
+   * 用户拖动边框停下后调用：请求主窗用 win.getSize() 读取真实窗口尺寸并写回
+   * dbStorage（持久化），下次开窗沿用。子窗渲染进程的 window.outerWidth 在 uTools
+   * frameless 窗口里 resize 后并不可靠，故由持有 win 的主窗权威读取，不传具体数值。
+   */
+  persistSize(): void {
+    send("quicknote:persist-size");
+  },
+
   /** 请求隐藏（失焦时调用，保留进程下次秒开）。 */
   hide(): void {
     if (!send("quicknote:hide")) {

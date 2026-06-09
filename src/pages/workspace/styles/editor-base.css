@@ -319,6 +319,18 @@
   color: #ff7b7b;
 }
 
+/* 表格单元格内的行内代码：BlockNote 给 th/td 设了单元格文字色，优先级高于上面的
+   .bn-inline-content code，把红字盖成默认色。这里显式补回，让表格内外的行内代码一致变红。 */
+.workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
+.workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+  color: #eb5757;
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+  color: #ff7b7b;
+}
+
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]

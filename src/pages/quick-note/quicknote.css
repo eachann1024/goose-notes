@@ -38,6 +38,24 @@ body,
   padding-inline: 28px; /* 左侧容纳手柄热区，右侧对称 */
 }
 
+.quicknote-toaster[data-sonner-toaster] {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  transform: none !important;
+}
+
+.quicknote-toaster[data-sonner-toaster] [data-sonner-toast] {
+  position: fixed !important;
+  left: 24px !important;
+  right: 24px !important;
+  top: auto !important;
+  bottom: 30px !important;
+  width: min(420px, calc(100vw - 48px)) !important;
+  margin-inline: auto !important;
+  transform: none !important;
+}
+
 
 /* 速记滚动区：隐藏滚动条占位，保持极简（悬浮时才隐约可见）。 */
 .quicknote-root .page-scroll-container {

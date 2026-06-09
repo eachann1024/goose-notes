@@ -42,6 +42,7 @@ interface QuickNoteState {
   setPinned: (pinned: boolean) => void;
   setWindowWidth: (width: number) => void;
   setWindowHeight: (height: number) => void;
+  setWindowSize: (width: number, height: number) => void;
 }
 
 /** 速记小窗默认宽度，与 preload QUICKNOTE_WIDTH 保持一致。 */
@@ -95,6 +96,11 @@ export const useQuickNote = create<QuickNoteState>()(
         set({ windowWidth: Math.max(QUICKNOTE_MIN_WIDTH, Math.round(width)) }),
       setWindowHeight: (height) =>
         set({ windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)) }),
+      setWindowSize: (width, height) =>
+        set({
+          windowWidth: Math.max(QUICKNOTE_MIN_WIDTH, Math.round(width)),
+          windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)),
+        }),
     }),
     {
       name: "goose-note:quicknote",

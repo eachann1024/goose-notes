@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Pin, PinOff, X, Save, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useNotebooks } from "@/stores/useNotebooks";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,
@@ -52,8 +51,7 @@ export function QuickNoteApp() {
   const draftContent = useQuickNote((s) => s.draftContent);
   const setDraftContent = useQuickNote((s) => s.setDraftContent);
   const saveDraftToNotebook = useQuickNote((s) => s.saveDraftToNotebook);
-  const setWindowWidth = useQuickNote((s) => s.setWindowWidth);
-  const setWindowHeight = useQuickNote((s) => s.setWindowHeight);
+  const setWindowSize = useQuickNote((s) => s.setWindowSize);
 
   // 编辑界面缩放比例（会话态，Cmd +/- 调整）。
   const [zoom, setZoom] = useState(1);
@@ -66,6 +64,9 @@ export function QuickNoteApp() {
   // 失焦隐藏的宽限期截止时间戳：开窗 / 重新唤起后短时间内忽略 blur，
   // 避免主窗 hideMainWindow 造成的瞬时焦点切换把刚弹出的小窗立刻收掉。
   const blurGraceUntilRef = useRef<number>(0);
+  const isResizingRef = useRef(false);
+  const blurTimerRef = useRef<number | null>(null);
+  const resizeSettleTimerRef = useRef<number | null>(null);
   const armBlurGrace = () => {
     blurGraceUntilRef.current = performance.now() + 600;
   };
@@ -118,13 +119,29 @@ export function QuickNoteApp() {
 
   // 失焦自动隐藏（Raycast 核心手感）：钉住时不隐藏。
   useEffect(() => {
+    const clearBlurTimer = () => {
+      if (blurTimerRef.current === null) return;
+      window.clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    };
     const onBlur = () => {
       if (useQuickNote.getState().pinned) return;
       if (performance.now() < blurGraceUntilRef.current) return;
-      quickNoteWindow.hide();
+      if (isResizingRef.current) return;
+      clearBlurTimer();
+      blurTimerRef.current = window.setTimeout(() => {
+        blurTimerRef.current = null;
+        if (useQuickNote.getState().pinned) return;
+        if (isResizingRef.current) return;
+        if (document.hasFocus()) return;
+        quickNoteWindow.hide();
+      }, 120);
     };
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+    return () => {
+      clearBlurTimer();
+      window.removeEventListener("blur", onBlur);
+    };
   }, []);
 
   // 键盘：Esc 收起；Cmd +/- 缩放编辑界面（Cmd+0 复位）。
@@ -152,31 +169,41 @@ export function QuickNoteApp() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // 窗口尺寸记忆：用户拖动窗口边框改宽高 → 记住最终尺寸，下次开窗沿用。
+  // 窗口尺寸记忆：用户拖动窗口边框改宽高 → 停下后记住最终尺寸，下次开窗沿用。
   useEffect(() => {
-    let raf = 0;
     const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        // outerWidth/outerHeight 含窗口边框，是真实窗口尺寸。
-        const w = window.outerWidth || window.innerWidth;
-        const h = window.outerHeight || window.innerHeight;
-        if (w >= QUICKNOTE_MIN_WIDTH) setWindowWidth(w);
-        if (h >= QUICKNOTE_MIN_HEIGHT) setWindowHeight(h);
-      });
+      isResizingRef.current = true;
+      if (blurTimerRef.current !== null) {
+        window.clearTimeout(blurTimerRef.current);
+        blurTimerRef.current = null;
+      }
+      if (resizeSettleTimerRef.current !== null) {
+        window.clearTimeout(resizeSettleTimerRef.current);
+      }
+      resizeSettleTimerRef.current = window.setTimeout(() => {
+        resizeSettleTimerRef.current = null;
+        isResizingRef.current = false;
+        // 持久化由主窗用 win.getSize() 权威读取后写回 dbStorage：子窗渲染进程的
+        // outerWidth 在 uTools frameless 窗口里 resize 后并不更新，直接存会记错值，
+        // 导致下次开窗仍回默认宽度（用户每次都要重新拉宽）。
+        quickNoteWindow.persistSize();
+        // 同步进程内 store（best-effort），用视口宽高兜底，开窗尺寸以 dbStorage 为准。
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        if (w >= QUICKNOTE_MIN_WIDTH && h >= QUICKNOTE_MIN_HEIGHT) {
+          setWindowSize(w, h);
+        }
+      }, 240);
     };
     window.addEventListener("resize", onResize);
     return () => {
-      cancelAnimationFrame(raf);
+      if (resizeSettleTimerRef.current !== null) {
+        window.clearTimeout(resizeSettleTimerRef.current);
+        resizeSettleTimerRef.current = null;
+      }
       window.removeEventListener("resize", onResize);
     };
-  }, [setWindowWidth, setWindowHeight]);
-
-  const isEditorFullWidth = useNotebooks((s) => {
-    const nbId = s.activeNotebookId;
-    const nb = nbId ? s.notebooks[nbId] : null;
-    return nb?.editorFullWidth ?? false;
-  });
+  }, [setWindowSize]);
 
   const headerBar = useMemo(
     () => (
@@ -270,12 +297,12 @@ export function QuickNoteApp() {
   );
 
   return (
-    <div className="quicknote-root flex h-screen w-screen flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+    <div className="quicknote-root flex h-screen w-screen flex-col bg-[hsl(var(--goose-editor-bg))]">
       {headerBar}
       <div className="min-h-0 flex-1 overflow-y-auto page-scroll-container">
         <EditorHostBridge
           page={draftPage}
-          isEditorFullWidth={isEditorFullWidth}
+          isEditorFullWidth
           onContentChangeOverride={onDraftChange}
         >
           <div
@@ -291,7 +318,19 @@ export function QuickNoteApp() {
           </div>
         </EditorHostBridge>
       </div>
-      <Toaster />
+      <Toaster
+        className="quicknote-toaster"
+        position="bottom-center"
+        offset={{ bottom: 30, left: 24, right: 24 }}
+        mobileOffset={{ bottom: 30, left: 24, right: 24 }}
+        toastOptions={{
+          classNames: {
+            toast:
+              "!min-w-0 !pr-10",
+            closeButton: "!right-2.5 !top-2.5",
+          },
+        }}
+      />
     </div>
   );
 }

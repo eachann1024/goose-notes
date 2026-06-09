@@ -237,6 +237,12 @@ export function Sidebar({
         currentView={currentView}
         isSettingsOpen={showSettings}
         onSwitchToTrash={() => {
+          // 再点一次回收箱图标即返回页面视图（回收箱视图隐藏了页面/大纲分区头，
+          // 没有别的返回入口，靠这个图标做开关，避免卡在回收箱里出不来）。
+          if (currentView === "trash") {
+            setCurrentView("pages");
+            return;
+          }
           if (inHistoryMode) exitHistoryView();
           setCurrentView("trash");
           setShowSettings(false);
