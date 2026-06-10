@@ -988,6 +988,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const QUICKNOTE_EDGE_GAP = 16; // 右上角开窗时距屏幕上/右边缘的空隙
   let quickNoteWin = null;
   let quickNotePinned = false;
+  let quickNoteVisible = false;
+  let quickNoteActiveMode = null;
 
   // 从 uTools db 读速记持久化偏好（zustand persist 存的 JSON）。preload 是 CJS，
   // 拿不到 React store，直接读 dbStorage 同一 key。失败回退默认值，不抛错。
@@ -1068,6 +1070,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         try { quickNoteWin.close(); } catch { /* noop */ }
       }
       quickNoteWin = null;
+      quickNoteVisible = false;
+      quickNoteActiveMode = null;
     });
     ipcRenderer.on("quicknote:hide", () => {
       // 钉住时忽略失焦隐藏请求。
@@ -1075,6 +1079,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
         try { quickNoteWin.hide(); } catch { /* noop */ }
       }
+      quickNoteVisible = false;
     });
     // 自动调整高度：子窗按内容算出目标高度，请求父窗 setSize（宽度保持不变）。
     ipcRenderer.on("quicknote:set-height", (_e, height) => {
@@ -1148,11 +1153,22 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // 打开/复用速记小窗。mode: 'new' 新建空白 | 'last' 直达上次。
   const openQuickNoteWindow = (mode) => {
-    // 复用：窗口已存在则更新模式后显示聚焦（reload 由渲染层按 quicknote:enter 重解析）。
+    // 复用：同一入口再次触发时收起；隐藏后或切换入口时再显示聚焦。
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
       try {
+        const isActuallyVisible =
+          typeof quickNoteWin.isVisible === "function"
+            ? quickNoteWin.isVisible()
+            : quickNoteVisible;
+        if (quickNoteActiveMode === mode && isActuallyVisible) {
+          quickNoteWin.hide();
+          quickNoteVisible = false;
+          return;
+        }
         quickNoteWin.show();
         quickNoteWin.focus?.();
+        quickNoteVisible = true;
+        quickNoteActiveMode = mode;
         quickNoteWin.webContents?.send?.("quicknote:enter", { mode });
       } catch { /* noop */ }
       return;
@@ -1203,6 +1219,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         try {
           quickNoteWin.show();
           quickNoteWin.focus?.();
+          quickNoteVisible = true;
+          quickNoteActiveMode = mode;
           if (quickNotePinned) {
             try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
           }

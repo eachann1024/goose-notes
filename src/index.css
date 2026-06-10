@@ -171,8 +171,12 @@
   .dark {
     --goose-shell-bg: 0 0% 12.55%;
     --goose-selected-bg: 60 2.4% 16.1%;
-    --goose-interactive-hover: hsl(var(--foreground) / 0.18);
-    --goose-interactive-selected: hsl(var(--foreground) / 0.32);
+    /* 用实色而非 foreground alpha：uTools 旧内核不吃 hsl(var(--foreground)/a)
+       的 color-mix，会回退成异常亮实色（见 memory utools-no-tailwind-foreground-alpha）。
+       基于 shell-bg(12.55%) 只抬亮一档，贴合深色背景不突兀；hover 比 shell 微亮，
+       selected 再亮一点点，块感克制。 */
+    --goose-interactive-hover: hsl(0 0% 17%);
+    --goose-interactive-selected: hsl(0 0% 25%);
     --goose-interactive-selected-border: transparent;
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 60 2.2% 44.5%;

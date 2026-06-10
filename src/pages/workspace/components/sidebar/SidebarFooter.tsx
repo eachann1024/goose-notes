@@ -37,7 +37,7 @@ export function SidebarFooter({
   };
 
   const btnClass =
-    "h-8 w-8 flex items-center justify-center rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-[var(--goose-interactive-hover)] [&_svg]:translate-y-[4px]";
+    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground [&_svg]:block";
   const activeClass = "text-foreground bg-[var(--goose-interactive-selected)]";
 
   return (

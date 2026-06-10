@@ -104,11 +104,9 @@ export function PageMenu() {
         </div>
 
         <DropdownMenuGroup>
-          <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
-            <div className="flex items-center gap-2">
-              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>锁定页面</span>
-            </div>
+          <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
+            <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 truncate">锁定页面</span>
             <Switch
               checked={page.isLocked}
               onCheckedChange={(checked) =>
@@ -120,11 +118,9 @@ export function PageMenu() {
 
         {/* Switches Section */}
         <DropdownMenuGroup>
-          <div className="flex items-center justify-between py-1 px-2 rounded-sm text-xs">
-            <div className="flex items-center gap-2">
-              <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>全宽显示（当前记事本）</span>
-            </div>
+          <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
+            <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 truncate">全宽显示（当前记事本）</span>
             <Switch
               checked={Boolean(notebook?.editorFullWidth ?? globalEditorFullWidth)}
               onCheckedChange={(checked) => {
@@ -135,82 +131,89 @@ export function PageMenu() {
           </div>
 
           <DropdownMenuItem
-            className="text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-red-600 dark:data-[highlighted]:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-red-600 dark:data-[highlighted]:text-red-400 focus:text-red-600 dark:focus:text-red-400"
             onClick={() => void deletePageWithUndo(activePageId)}
           >
-            <LucideIcons.Trash2 className="mr-2 h-3.5 w-3.5" />
-            <span>移至垃圾箱</span>
+            <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+            <span className="min-w-0 truncate">移至垃圾箱</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
         {/* Import */}
         <DropdownMenuGroup>
-          <DropdownMenuItem className="text-xs" onSelect={handleImport}>
-            <LucideIcons.Upload className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-            <span>导入</span>
+          <DropdownMenuItem className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs" onSelect={handleImport}>
+            <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="min-w-0 truncate">导入</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
         {/* Generate Image — standalone, before Export */}
         <DropdownMenuItem
-          className="text-xs relative overflow-hidden group"
+          className="page-menu-generate-image grid grid-cols-[16px_minmax(0,1fr)_auto] gap-x-2 text-xs text-foreground"
           onSelect={() => setThemeSelectorOpen(true)}
         >
-          <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-rose-50/80 to-amber-50/80 dark:from-rose-950/30 dark:to-amber-950/30 pointer-events-none" />
-          <LucideIcons.Image className="relative mr-2 h-3.5 w-3.5 text-rose-500" />
-          <span className="relative font-medium">{selectedBlocks.length > 0 ? "生成选中图片" : "生成图片"}</span>
-          <span className="relative ml-auto text-[10px] text-rose-400/70 font-normal">{selectedBlocks.length > 0 ? "选中" : "卡片"}</span>
+          <LucideIcons.Image className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="page-menu-shimmer-text min-w-0 truncate font-medium text-foreground">
+            {selectedBlocks.length > 0 ? "生成选中图片" : "生成图片"}
+          </span>
+          <span className="text-[10px] font-normal text-muted-foreground/70">
+            {selectedBlocks.length > 0 ? "选中" : "可选中生成"}
+          </span>
         </DropdownMenuItem>
 
         {/* Export submenu */}
         <DropdownMenuGroup>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="text-xs">
-              <LucideIcons.Download className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-              <span>导出</span>
+              <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="min-w-0 truncate">导出</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="min-w-[160px]">
               <DropdownMenuItem
-                className="text-xs"
+                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                 onSelect={() => exportToJSON(page)}
               >
-                <LucideIcons.FileJson className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> JSON
+                <LucideIcons.FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="min-w-0 truncate">JSON</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-xs"
+                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                 onSelect={() => {
                   void exportToMarkdown(page).catch((e) => {
                     console.error("[export] Markdown 失败:", e);
                   });
                 }}
               >
-                <LucideIcons.FileCode className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Markdown
+                <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="min-w-0 truncate">Markdown</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-xs"
+                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                 onSelect={() => {
                   void exportToHTML(page).catch((e) => {
                     console.error("[export] HTML 失败:", e);
                   });
                 }}
               >
-                <LucideIcons.FileType className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> HTML
+                <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="min-w-0 truncate">HTML</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-xs"
+                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                 onSelect={() => {
                   void exportToPDF(page).catch((e) => {
                     console.error("[export] PDF 失败:", e);
                   });
                 }}
               >
-                <LucideIcons.FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> PDF
+                <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="min-w-0 truncate">PDF</span>
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
           <DropdownMenuItem
-            className="text-xs"
+            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
             onSelect={() => {
               const pid = activePageId;
               // 进入历史模式前 flush，避免 200ms debounce 内的最新编辑丢失
@@ -220,8 +223,8 @@ export function PageMenu() {
               }, 80);
             }}
           >
-            <LucideIcons.History className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-            <span>页面历史</span>
+            <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="min-w-0 truncate">页面历史</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

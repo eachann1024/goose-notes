@@ -120,6 +120,52 @@
   overflow-anchor: none;
 }
 
+@keyframes page-menu-text-shimmer {
+  0% {
+    background-position: 115% 50%;
+  }
+  100% {
+    background-position: -15% 50%;
+  }
+}
+
+.page-menu-generate-image .page-menu-shimmer-text {
+  color: hsl(var(--foreground));
+}
+
+.page-menu-generate-image:hover .page-menu-shimmer-text,
+.page-menu-generate-image:focus .page-menu-shimmer-text,
+.page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
+  background-image: linear-gradient(
+    105deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--foreground)) 10%,
+    hsl(350 70% 64%) 24%,
+    hsl(34 82% 65%) 36%,
+    hsl(144 50% 54%) 48%,
+    hsl(199 68% 60%) 60%,
+    hsl(262 62% 68%) 72%,
+    hsl(350 70% 64%) 84%,
+    hsl(var(--foreground)) 94%,
+    hsl(var(--foreground)) 100%
+  );
+  background-size: 240% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: page-menu-text-shimmer 10s linear infinite;
+  will-change: background-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-menu-generate-image:hover .page-menu-shimmer-text,
+  .page-menu-generate-image:focus .page-menu-shimmer-text,
+  .page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
+    animation: none;
+    background-position: 52% 50%;
+  }
+}
+
 @keyframes shortcut-hint-shimmer {
   0% {
     background-position: 0% 50%;

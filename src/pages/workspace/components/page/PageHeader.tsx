@@ -436,7 +436,7 @@ export function PageHeader({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-foreground/10 text-white transition-colors hover:bg-amber-500/90 hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-amber-500/90 hover:text-white"
                   >
                     <LucideIcons.RotateCcw className="h-4 w-4" />
                   </Button>
@@ -451,7 +451,7 @@ export function PageHeader({
                     onClick={onDelete}
                     type="button"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-foreground/10 text-white transition-colors hover:bg-red-600 hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-red-600 hover:text-white"
                   >
                     <LucideIcons.Trash2 className="h-4 w-4" />
                   </Button>
