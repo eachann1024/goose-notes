@@ -11,6 +11,7 @@ import {
   updateSnapshotAfterWrite,
   applyTrailingNewlineStyle,
   isDiskContentMatchingSnapshot,
+  markSelfWrite,
 } from "@/lib/local-md-snapshot";
 import {
   flushPendingLocalSaveByPageIdInternal,
@@ -156,6 +157,7 @@ export const saveLocalPageContentAction = async (
   get: StoreGet,
   pageId: string,
   content: JSONContent,
+  options?: { force?: boolean },
 ): Promise<boolean> => {
   if (typeof window === "undefined" || !window.gooseFs)
     return false;
@@ -280,37 +282,42 @@ export const saveLocalPageContentAction = async (
   // ── 写盘前冲突检查 ──────────────────────────────────────────────────────────
   // 读一次磁盘当前内容，与快照比较（规范化后），不一致 = 外部已改 → 不写盘，触发冲突处理。
   // 这比仅与 store 内容比较更安全：保证不会静默覆盖外部编辑。
-  try {
-    let diskCurrentContent: string | null = null;
-    if (window.gooseFs?.readFileStatAsync) {
-      const r = await window.gooseFs.readFileStatAsync(filePath);
-      diskCurrentContent = r.ok ? (r.content ?? "") : null;
-    } else if (window.gooseFs?.readFileStat) {
-      const r = window.gooseFs.readFileStat(filePath);
-      diskCurrentContent = r.ok ? (r.content ?? "") : null;
-    } else if (window.gooseFs?.readFileAsync) {
-      diskCurrentContent = await window.gooseFs.readFileAsync(filePath);
-    } else if (window.gooseFs?.readFile) {
-      diskCurrentContent = window.gooseFs.readFile(filePath);
-    }
+  if (!options?.force) {
+    try {
+      let diskCurrentContent: string | null = null;
+      if (window.gooseFs?.readFileStatAsync) {
+        const r = await window.gooseFs.readFileStatAsync(filePath);
+        diskCurrentContent = r.ok ? (r.content ?? "") : null;
+      } else if (window.gooseFs?.readFileStat) {
+        const r = window.gooseFs.readFileStat(filePath);
+        diskCurrentContent = r.ok ? (r.content ?? "") : null;
+      } else if (window.gooseFs?.readFileAsync) {
+        diskCurrentContent = await window.gooseFs.readFileAsync(filePath);
+      } else if (window.gooseFs?.readFile) {
+        diskCurrentContent = window.gooseFs.readFile(filePath);
+      }
 
-    if (
-      diskCurrentContent !== null &&
-      !isDiskContentMatchingSnapshot(filePath, diskCurrentContent)
-    ) {
-      // 外部已修改磁盘文件 → 触发冲突 UX，不写盘
-      window.dispatchEvent(
-        new CustomEvent("goose-note:local-file-conflict", {
-          detail: { pageId, filePath, source: "pre-save" },
-        }),
-      );
-      return false;
+      if (
+        diskCurrentContent !== null &&
+        !isDiskContentMatchingSnapshot(filePath, diskCurrentContent)
+      ) {
+        // 外部已修改磁盘文件 → 触发冲突 UX，不写盘
+        window.dispatchEvent(
+          new CustomEvent("goose-note:local-file-conflict", {
+            detail: { pageId, filePath, source: "pre-save" },
+          }),
+        );
+        return false;
+      }
+    } catch {
+      // 读磁盘失败时放行（网络文件系统等异常情况下不阻断写盘）
     }
-  } catch {
-    // 读磁盘失败时放行（网络文件系统等异常情况下不阻断写盘）
   }
   // ────────────────────────────────────────────────────────────────────────────
 
+  // 写盘前标记自写：fs.watch 对本次写入触发的 change 事件（自写回声）
+  // 由 useLocalFolderWatch 据此忽略，不会误判成外部修改弹冲突提示。
+  markSelfWrite(filePath);
   let result: boolean;
   if (window.gooseFs?.writeFileAsync) {
     result = await window.gooseFs.writeFileAsync(filePath, diskContent);
@@ -331,12 +338,12 @@ export const saveLocalPageContentAction = async (
 };
 
 export const flushPendingLocalSaveByPageIdAction = async (
-  set: StoreSet,
+  _set: StoreSet,
   get: StoreGet,
   pageId: string,
 ) => {
+  // saveLocalPageContent 成功时自行清 dirty；失败（含冲突）时不能强清
   await flushPendingLocalSaveByPageIdInternal(pageId, get);
-  set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false } }));
 };
 
 export const flushPendingLocalSavesAction = async (

@@ -36,7 +36,6 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   selectedPageId?: string | null;
   editorRef?: React.RefObject<EditorRef | null>;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
-  isAiPageOpen?: boolean;
 }
 
 export function Sidebar({
@@ -45,7 +44,6 @@ export function Sidebar({
   selectedPageId,
   editorRef,
   scrollContainerRef,
-  isAiPageOpen = false,
 }: SidebarProps) {
   const {
     activePageId,
@@ -96,8 +94,6 @@ export function Sidebar({
   useSidebarEffects({
     activePageId,
     currentView,
-    isAiPageOpen,
-    onAiPageOpenWithOutline: () => setCurrentView("pages"),
     onOpenSettings: () => setShowSettings(true),
   });
 
@@ -192,7 +188,7 @@ export function Sidebar({
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="mt-1 shrink-0">
                 <SidebarSectionHeader
-                  title={isLocalFolder ? "本地文件夹" : "页面"}
+                  title={isLocalFolder ? "本地" : "页面"}
                   onSearch={handleSearch}
                   onCreate={handleCreatePage}
                   createTitle={isLocalFolder ? "新建文件" : "新建页面"}

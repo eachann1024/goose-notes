@@ -1,5 +1,5 @@
 import "./styles/index.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { type EditorRef } from "@/components/editor/core/Editor";
@@ -19,14 +19,12 @@ export function WorkspacePage() {
   const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;
 
   const editorRef = useRef<EditorRef>(null);
-  const [isAiPageOpen, setIsAiPageOpen] = useState(false);
-
   useEffect(() => {
     document.documentElement.classList.add("is-utools");
   }, []);
 
   // Hooks
-  useWorkspaceEvents({ activePageId, page, setIsAiPageOpen });
+  useWorkspaceEvents({ activePageId, page });
   useLocalFolderWatch({ notebook, activePageId, page });
   const scrollContainerRef = useScrollRestoration(activePageId);
 
@@ -58,8 +56,6 @@ export function WorkspacePage() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      isAiPageOpen={isAiPageOpen}
-      setIsAiPageOpen={setIsAiPageOpen}
       editorRef={editorRef}
       scrollContainerRef={scrollContainerRef}
     />

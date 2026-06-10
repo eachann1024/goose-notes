@@ -256,6 +256,8 @@ declare global {
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
+  const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
+  const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction
   const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
@@ -345,6 +347,7 @@ declare global {
   const useInsertionEffect: typeof import('react').useInsertionEffect
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
+  const useNotebookAiChats: typeof import('./stores/useNotebookAiChats').useNotebookAiChats
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
   const useOptimistic: typeof import('react').useOptimistic
   const usePages: typeof import('./stores/pages/index').usePages
@@ -360,15 +363,14 @@ declare global {
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
+  const wasRecentlyInteracting: typeof import('./lib/editor-interaction-signal').wasRecentlyInteracting
+  const wasRecentlySelfWritten: typeof import('./lib/local-md-snapshot').wasRecentlySelfWritten
   const writeDbStorageJSON: typeof import('./lib/storage').writeDbStorageJSON
   const writeLocalPageIdMap: typeof import('./lib/local-page-idmap').writeLocalPageIdMap
   const writePersistentDismissState: typeof import('./lib/dismiss-state').writePersistentDismissState
 }
 // for type re-export
 declare global {
-  // @ts-ignore
-  export type { AiSessionMessageVersion, AiSessionMessage, AiSession } from './stores/useAiSessions'
-  import('./stores/useAiSessions')
   // @ts-ignore
   export type { AiActivityPhase } from './stores/useAiStatus'
   import('./stores/useAiStatus')

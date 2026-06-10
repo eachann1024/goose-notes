@@ -50,6 +50,25 @@ export function updateSnapshotAfterWrite(
   snapshotMap.set(absPath, writtenContent);
 }
 
+// ── 自写回声抑制 ─────────────────────────────────────────────────────────────
+// 本应用写盘也会触发 fs.watch 的 change 事件（自写回声）。watch 处理器需要
+// 区分「自己刚写的盘」和「外部修改」，否则自动保存后必弹假冲突提示。
+// 主判据是内容 diff（写后快照已更新，回声读盘必与快照一致），这里的时间窗
+// 是双保险：覆盖「watch 事件在写入未完成时触发、读到半截内容」的边缘情况。
+const selfWriteTimestamps = new Map<string, number>();
+
+export function markSelfWrite(absPath: string): void {
+  selfWriteTimestamps.set(absPath, Date.now());
+}
+
+export function wasRecentlySelfWritten(
+  absPath: string,
+  windowMs = 800,
+): boolean {
+  const t = selfWriteTimestamps.get(absPath);
+  return t !== undefined && Date.now() - t < windowMs;
+}
+
 export function deleteLocalMdSnapshot(absPath: string): void {
   snapshotMap.delete(absPath);
 }

@@ -9,7 +9,6 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
 import { IconSelector } from "./components/shared/IconSelector";
-import { AiWorkspacePage } from "./components/ai/AiWorkspacePage";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
@@ -24,6 +23,8 @@ import {
   permanentlyDeletePageWithCleanup,
   restorePageWithToast,
 } from "@/lib/page-delete-actions";
+import { NotebookAiPanel } from "./components/notebook-ai/NotebookAiPanel";
+import { useNotebookAiPanel } from "./components/notebook-ai/useNotebookAiPanel";
 
 interface WorkspaceLayoutProps {
   isDragging: boolean;
@@ -32,8 +33,6 @@ interface WorkspaceLayoutProps {
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => Promise<void>;
-  isAiPageOpen: boolean;
-  setIsAiPageOpen: (value: boolean | ((prev: boolean) => boolean)) => void;
   editorRef: RefObject<EditorRef | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -45,8 +44,6 @@ export function WorkspaceLayout({
   onDragOver,
   onDragLeave,
   onDrop,
-  isAiPageOpen,
-  setIsAiPageOpen,
   editorRef,
   scrollContainerRef,
 }: WorkspaceLayoutProps) {
@@ -55,9 +52,10 @@ export function WorkspaceLayout({
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isWelcomeTab = activeTab?.type === "welcome";
   const openWelcomeTabHandler = () => {
-    setIsAiPageOpen(false);
     openWelcomeTab();
   };
+  const aiEnabled = useSettings((s) => s.ai.enabled);
+  const { isOpen: aiPanelOpen, toggle: toggleAiPanel, close: closeAiPanel } = useNotebookAiPanel();
   const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
   const searchHighlightQuery = usePages((s) => s.searchHighlightQuery);
   const searchHighlightPageId = usePages((s) => s.searchHighlightPageId);
@@ -100,7 +98,7 @@ export function WorkspaceLayout({
     // 信号指向的页面还没成为当前活动页 → 等切页完成后本 effect 会因 activePageId
     // 变化再次运行，那时再继续。不在这里标记 handled，留待真正定位成功。
     if (!searchHighlightPageId || searchHighlightPageId !== activePageId) return;
-    if (inHistoryMode || isAiPageOpen || !page) return;
+    if (inHistoryMode || !page) return;
 
     const nonceToHandle = searchHighlightNonce;
     const query = searchHighlightQuery;
@@ -179,10 +177,9 @@ export function WorkspaceLayout({
           <Sidebar
             className="workspace-sidebar-pane"
             disableResize={false}
-            selectedPageId={isAiPageOpen ? null : activePageId}
+            selectedPageId={activePageId}
             editorRef={editorRef}
             scrollContainerRef={scrollContainerRef}
-            isAiPageOpen={isAiPageOpen}
           />
 
 
@@ -191,6 +188,8 @@ export function WorkspaceLayout({
               <>
                 <PageHeader
                   onOpenSearch={openWelcomeTabHandler}
+                  aiPanelOpen={aiEnabled && aiPanelOpen}
+                  onToggleAiPanel={aiEnabled ? toggleAiPanel : undefined}
                 />
                 <PageEmptyState />
               </>
@@ -218,13 +217,6 @@ export function WorkspaceLayout({
               <>
                 <PageHeader
                   page={page}
-                  isAiPageOpen={isAiPageOpen}
-                  onToggleAiPage={() => {
-                    setIsAiPageOpen((current) => !current);
-                  }}
-                  onExitAiPage={() => {
-                    setIsAiPageOpen(false);
-                  }}
                   onOpenSearch={openWelcomeTabHandler}
                   onToggleFavorite={() =>
                     updatePage(activePageId, { isFavorite: !page.isFavorite })
@@ -236,23 +228,19 @@ export function WorkspaceLayout({
                   onDelete={() =>
                     void permanentlyDeletePageWithCleanup(activePageId)
                   }
+                  aiPanelOpen={aiEnabled && aiPanelOpen}
+                  onToggleAiPanel={aiEnabled ? toggleAiPanel : undefined}
                 />
 
                 <EditorHostBridge
                   page={page}
                   isEditorFullWidth={isEditorFullWidth}
                 >
-                <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
-                  {isAiPageOpen && (
-                    <div className="h-full">
-                      <AiWorkspacePage editorRef={editorRef} />
-                    </div>
-                  )}
+                <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden flex flex-row">
                   <div
                     ref={scrollContainerRef}
                     className={cn(
-                      "h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
-                      isAiPageOpen && "hidden",
+                      "h-full flex-1 min-w-0 overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
                     )}
                   >
                     {(() => {
@@ -346,6 +334,13 @@ export function WorkspaceLayout({
                       );
                     })()}
                   </div>
+                  {/* NotebookAiPanel 接线 */}
+                  {aiEnabled && aiPanelOpen && activeNotebookId && (
+                    <NotebookAiPanel
+                      notebookId={activeNotebookId}
+                      onClose={closeAiPanel}
+                    />
+                  )}
                 </div>
                 </EditorHostBridge>
               </>

@@ -13,7 +13,6 @@ import {
 import { usePages } from "@/stores/usePages";
 import { detectBlockScopeHeuristic } from "@/lib/ai-block-scope";
 import type { AISettingsLike } from "@/lib/ai-provider";
-import type { AiSessionMessage } from "@/stores/useAiSessions";
 
 export function buildInlinePrompt(params: {
   context: AgentInputContext;
@@ -56,7 +55,7 @@ export function buildInlinePrompt(params: {
 
 export interface IntentRouterDeps {
   settings: AISettingsLike;
-  messages: AiSessionMessage[];
+  messages: unknown[];
   lastArtifact?: any;
   originPageTitle?: string;
   originNotebookName?: string;

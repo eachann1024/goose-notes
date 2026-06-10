@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { Info } from "lucide-react";
-import { AiWritePreviewCard } from "@/pages/workspace/components/ai/AiWritePreviewCard";
 import type { AgentArtifact, MarkdownNoteArtifact } from "@/agent/core/types";
-import type { AiWritePlan } from "@/lib/ai-write";
 import { DatavizSegmentList } from "./MarkdownArtifact";
 import { md } from "./MarkdownArtifact";
 import { parseDatavizSegments, textHasDataviz } from "./useArtifactRender";
@@ -40,10 +38,6 @@ export function TextResponseRenderer({ artifact }: { artifact: AgentArtifact }) 
 
 export function MarkdownNoteRenderer({
   artifact,
-  applying = false,
-  onConfirmMarkdownNote,
-  onCancelMarkdownNote,
-  onOpenResult,
 }: AgentArtifactViewProps) {
   if (artifact.type !== "markdown_note") return null;
 
@@ -63,23 +57,6 @@ export function MarkdownNoteRenderer({
     );
   }
 
-  return (
-    <AiWritePreviewCard
-      plan={artifact.plan}
-      applying={applying}
-      onConfirm={(plan: AiWritePlan) => {
-        onConfirmMarkdownNote?.({
-          type: "markdown_note",
-          plan,
-        });
-      }}
-      onCancel={(plan: AiWritePlan) => {
-        onCancelMarkdownNote?.({
-          type: "markdown_note",
-          plan,
-        });
-      }}
-      onOpenResult={onOpenResult}
-    />
-  );
+  // TODO: NotebookAiPanel 接线后接入新的预览卡片
+  return null;
 }

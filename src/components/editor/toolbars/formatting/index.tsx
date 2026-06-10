@@ -236,30 +236,35 @@ export function EditorFormattingToolbar() {
 
   const setTextAlignment = useCallback(
     (alignment: "left" | "center" | "right") => {
-      for (const block of selectedBlocks) {
-        editor.updateBlock(block, {
-          props: { textAlignment: alignment },
-        });
-      }
+      // 多块逐个 updateBlock 会产生 N 个 undo 步骤，transact 合并成一步整体撤销
+      editor.transact(() => {
+        for (const block of selectedBlocks) {
+          editor.updateBlock(block, {
+            props: { textAlignment: alignment },
+          });
+        }
+      });
     },
     [editor, selectedBlocks],
   );
 
   const clearFormatting = useCallback(() => {
-    editor.removeStyles({
-      bold: true,
-      italic: true,
-      underline: true,
-      strike: true,
-      code: true,
-      textColor: true,
-      backgroundColor: true,
-    } as any);
-    for (const block of selectedBlocks) {
-      editor.updateBlock(block, {
-        props: { textAlignment: "left" },
-      });
-    }
+    editor.transact(() => {
+      editor.removeStyles({
+        bold: true,
+        italic: true,
+        underline: true,
+        strike: true,
+        code: true,
+        textColor: true,
+        backgroundColor: true,
+      } as any);
+      for (const block of selectedBlocks) {
+        editor.updateBlock(block, {
+          props: { textAlignment: "left" },
+        });
+      }
+    });
   }, [editor, selectedBlocks]);
 
   const shouldHideForScroll = isScrolling || isContextMenuOpen;

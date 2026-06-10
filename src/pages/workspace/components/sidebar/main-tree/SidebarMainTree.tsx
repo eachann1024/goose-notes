@@ -11,7 +11,6 @@ import {
 import type { Page } from "@/types";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
-import { CLOSE_AI_WORKSPACE_EVENT } from "../../ai/events";
 import {
   useSidebarView,
   selectExpandedIds,
@@ -241,7 +240,6 @@ export function SidebarMainTree({
         if (!page || (isLocalFolder && page.isFolder)) return;
         e.preventDefault();
         e.stopPropagation();
-        window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
         useTabs.getState().openTab(pageId);
       }}
     >
@@ -290,8 +288,7 @@ export function SidebarMainTree({
           const page = pages[last];
           if (!page) return;
           if (isLocalFolder && page.isFolder) return;
-          window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
-          const { meta, ctrl } = lastClickModRef.current;
+            const { meta, ctrl } = lastClickModRef.current;
           if (meta || ctrl) {
             useTabs.getState().openTab(last);
           } else {
@@ -315,8 +312,7 @@ export function SidebarMainTree({
             return;
           }
           if (activePageId === id) return;
-          window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
-          useTabs.getState().openInCurrentTab(id);
+            useTabs.getState().openInCurrentTab(id);
         }}
         onDrop={handleDrop}
         renderItem={renderItem}

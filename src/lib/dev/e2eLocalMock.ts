@@ -446,6 +446,8 @@ type GooseTestHandle = {
   getWriteLog(): WriteLogEntry[];
   resetWriteLog(): void;
   readMockFile(path: string): string | null;
+  /** 静默改盘：只更新内存 fs，不派发任何事件、不记 writeLog。模拟 watch 不在场期间（窗口隐藏/插件退出）的外部修改，供新鲜度检查测试用。 */
+  setMockFile(path: string, content: string): void;
   /** 模拟外部进程修改文件内容：更新内存 fs（不记 writeLog）+ 派发 change 事件。返回派发的 detail。 */
   simulateExternalChange(path: string, newContent: string): FileChangedDetail;
   /** 模拟外部进程删除文件/目录：内存 fs 移除 + 派发 rename 事件（Node 删除语义）。 */
@@ -530,6 +532,10 @@ export async function installE2ELocalMock(): Promise<void> {
 
     readMockFile(path: string) {
       return Object.prototype.hasOwnProperty.call(memFs, path) ? memFs[path] : null;
+    },
+
+    setMockFile(path: string, content: string) {
+      memFs[path] = content;
     },
 
     simulateExternalChange(path: string, newContent: string) {

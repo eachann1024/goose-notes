@@ -291,6 +291,9 @@ export const bootstrap = async (
     useSettings.persist.rehydrate(),
     useNotebooks.persist.rehydrate(),
   ]);
+  // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）
+  const { useNotebookAiChats } = await import("@/stores/useNotebookAiChats");
+  useNotebookAiChats.persist.rehydrate();
   await usePages.getState().hydrateFromStorage();
   const pagesStore = usePages.getState();
   const notebooksStore = useNotebooks.getState();

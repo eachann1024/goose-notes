@@ -20,7 +20,6 @@ import { IconSelector } from "../../shared/IconSelector";
 import { InlineOverflowRevealText } from "../InlineOverflowRevealText";
 import { SidebarContextMenu } from "../SidebarContextMenu";
 import { LocalFileIcon } from "../local-file-icon";
-import { CLOSE_AI_WORKSPACE_EVENT } from "../../ai/events";
 import { TREE_INDENT } from "./useTreeDnd";
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -258,7 +257,6 @@ export function SortablePageRow({
             if (isLocalFolder && page.isFolder) {
               return;
             }
-            window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
             if (e.metaKey || e.ctrlKey) {
               useTabs.getState().openTab(page.id);
             } else {
@@ -270,8 +268,7 @@ export function SortablePageRow({
               e.preventDefault();
               e.stopPropagation();
               if (isLocalFolder && page.isFolder) return;
-              window.dispatchEvent(new CustomEvent(CLOSE_AI_WORKSPACE_EVENT));
-              useTabs.getState().openTab(page.id);
+                useTabs.getState().openTab(page.id);
             }
           }}
         >
@@ -286,7 +283,7 @@ export function SortablePageRow({
               className={cn(
                 "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                 showArrow
-                  ? "hover:bg-muted-foreground/10 cursor-pointer"
+                  ? "hover:bg-muted-foreground/10 dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
                   : "opacity-0 pointer-events-none"
               )}
               onPointerDown={handleArrowPointerDown}
@@ -319,7 +316,7 @@ export function SortablePageRow({
                   value={iconName}
                   onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
                 >
-                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
                     <div className="h-4 w-4 flex items-center justify-center">
                       <LocalFileIcon
                         page={page}
@@ -361,7 +358,7 @@ export function SortablePageRow({
               )}
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                 onClick={handleAddChild}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}

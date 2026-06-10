@@ -5,6 +5,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
+@source "../node_modules/streamdown/dist/index.js";
+
 /* HeroUI v3（React Aria 内核）样式。v3 无 Provider，仅需一行 import。
  * 被替换的外壳基础控件（Input/Textarea/Switch/Badge）走 @heroui/react，
  * 视觉仍由各组件 className 还原 shadcn token，HeroUI 自身的 --accent*
@@ -995,4 +998,13 @@
 /* Lucide 图标全局描边统一为 1.75（贴近 Notion 视觉） */
 svg.lucide {
   stroke-width: 1.75;
+}
+
+/* ── uTools 旧内核兜底：模态菜单/弹层打开期间静默其余悬浮层 ──
+   Radix 模态层（右键菜单/下拉菜单/对话框）打开时 body 会带 data-scroll-locked。
+   旧内核可能丢失 pointerleave 等事件，导致 tooltip 等浮层卡住不关、
+   悬在菜单旁形成"幽灵阴影"。菜单打开期间这些浮层本就不该出现，直接隐藏。 */
+body[data-scroll-locked] [role="tooltip"],
+body[data-scroll-locked] [data-radix-popper-content-wrapper]:has([role="tooltip"]) {
+  display: none !important;
 }

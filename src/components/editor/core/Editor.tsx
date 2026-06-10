@@ -14,6 +14,8 @@ import {
 } from "@/components/editor/platform/hostContext";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { clonePageContent, getContentSignature, normalizePageContent, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { markUserInteraction } from "@/lib/editor-interaction-signal";
+import { usePages as usePagesStore } from "@/stores/usePages";
 
 /**
  * local-folder 页面内容 → 编辑器可用块数组（不做任何 normalize 改写）。
@@ -138,6 +140,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   useEffect(() => {
     const markInteracted = () => {
       userInteractedRef.current = true;
+      markUserInteraction();
     };
     const events = ["pointerdown", "keydown", "paste", "cut", "drop"] as const;
     events.forEach((name) =>
@@ -564,12 +567,14 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       const targetId = detail?.pageId ?? activeId;
       if (!targetId || targetId !== activeId) return;
       if (targetId !== pageIdForUpdateRef.current) return;
-      if (!activePage) return;
+      // 从 store 实时读内容（pageRef.current 可能是陈旧闭包值）
+      const livePage = usePagesStore.getState().pages[targetId];
+      if (!livePage) return;
       // local-folder 外部变更重载同样跳过 normalizePageContent
-      const isLocalPage = Boolean(activePage.localFilePath);
+      const isLocalPage = Boolean(livePage.localFilePath);
       const nextContent = isLocalPage
-        ? toEditorBlocks(activePage.content)
-        : normalizePageContent(activePage.content);
+        ? toEditorBlocks(livePage.content)
+        : normalizePageContent(livePage.content);
       debouncedUpdate.cancel();
       editor.replaceBlocks(editor.document, nextContent as any);
       // 基线与 EditorComposer.onChange 的计算方式保持一致（见切页 effect 注释）

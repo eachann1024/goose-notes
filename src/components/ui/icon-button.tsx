@@ -9,7 +9,7 @@ const iconButtonVariants = cva(
       tone: {
         default: "text-foreground/90 hover:bg-muted",
         muted:
-          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-muted-foreground/15",
+          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)]",
         danger:
           "text-destructive/80 hover:bg-destructive/10 hover:text-destructive",
         handle:

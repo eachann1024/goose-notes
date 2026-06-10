@@ -19,6 +19,7 @@ export const VALID_BLOCK_TYPES = new Set([
   "audio",
   "codeBlock",
   "quote",
+  "callout",
   "alert",
   "link",
   "embed",

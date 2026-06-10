@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "../useNotebooks";
+import type { JSONContent } from "@/types";
 
 import { loadInternalPage } from "@/lib/storage/pageRepository";
 import type { PagesState } from "./types";
@@ -380,8 +381,8 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   loadAllLocalFolderPages: () => loadAllLocalFolderPagesAction(set, get),
 
-  saveLocalPageContent: (pageId, content) =>
-    saveLocalPageContentAction(set, get, pageId, content),
+  saveLocalPageContent: (pageId: string, content: JSONContent, options?: { force?: boolean }) =>
+    saveLocalPageContentAction(set, get, pageId, content, options),
 
   flushPendingLocalSaves: () => flushPendingLocalSavesAction(set, get),
 

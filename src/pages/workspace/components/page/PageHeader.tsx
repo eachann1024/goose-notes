@@ -20,8 +20,8 @@ import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
-// 临时隐藏标签栏左侧的 AI 页面图标。改回 true 即恢复（不影响 AI 设置/其它入口）。
-const AI_TAB_ICON_VISIBLE = false;
+// AI 按钮现已接通 NotebookAiPanel，由 WorkspaceLayout 传入 onToggleAiPanel
+// 当 onToggleAiPanel 存在时显示按钮
 
 interface SortableTabItemProps {
   tab: TabItem;
@@ -71,6 +71,7 @@ function SortableTabItem({
           style={style}
           {...attributes}
           {...listeners}
+          data-tab-active={isActive || undefined}
           onClick={onActivate}
           onAuxClick={(e) => {
             if (e.button === 1) {
@@ -86,10 +87,11 @@ function SortableTabItem({
             }
           }}
           className={cn(
-            "group flex h-8 w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
+            // Chrome 式收缩：空间不足时所有标签等比变窄，活动标签保留更大下限，永不被挤出可视区
+            "group flex h-8 min-w-12 max-w-[150px] flex-[1_1_150px] @container items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
             isDragging && "opacity-60",
             isActive
-              ? "bg-[var(--goose-interactive-selected)] text-foreground"
+              ? "min-w-24 bg-[var(--goose-interactive-selected)] text-foreground"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
         >
@@ -121,10 +123,11 @@ function SortableTabItem({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "hidden h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors group-hover:flex",
+                    // 标签窄于 64px 时不再 hover 出关闭按钮，避免挤掉标题、误点关闭
+                    "hidden h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors @[64px]:group-hover:flex",
                     isActive
-                      ? "text-foreground/70 hover:bg-white hover:text-foreground"
-                      : "text-muted-foreground/70 hover:bg-white hover:text-foreground",
+                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                   )}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
@@ -176,30 +179,27 @@ function SortableTabItem({
 
 interface PageHeaderProps {
   page?: Page;
-  isAiPageOpen?: boolean;
-  onToggleAiPage?: () => void;
-  onExitAiPage?: () => void;
   onOpenSearch: () => void;
   onToggleFavorite?: () => void;
   onTogglePinned?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
-
+  /** AI 面板当前是否打开 */
+  aiPanelOpen?: boolean;
+  /** 切换 AI 面板（传入时显示按钮，不传则不渲染） */
+  onToggleAiPanel?: () => void;
 }
 
 export function PageHeader({
   page,
-  isAiPageOpen = false,
-  onToggleAiPage,
-  onExitAiPage,
   onOpenSearch,
   onToggleFavorite,
   onTogglePinned,
   onRestore,
   onDelete,
-
+  aiPanelOpen,
+  onToggleAiPanel,
 }: PageHeaderProps) {
-  const aiEnabled = useSettings((state) => state.ai.enabled);
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
   const isLocalItem = !!page?.localFilePath;
@@ -253,6 +253,22 @@ export function PageHeader({
     }
   }, [lastSavedAt, isLocalItem]);
 
+  // 切换标签或窗口缩放导致溢出时，保证活动标签始终在可视区内
+  // （inline: "nearest" 已可见时零移动，不会打断用户的手动横向滚动）
+  useEffect(() => {
+    const scroller = tabsScrollerRef.current;
+    if (!scroller) return;
+    const scrollActiveIntoView = () => {
+      scroller
+        .querySelector<HTMLElement>('[data-tab-active="true"]')
+        ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+    };
+    scrollActiveIntoView();
+    const observer = new ResizeObserver(scrollActiveIntoView);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, [activeTabId]);
+
   const handleTabsWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     const scroller = tabsScrollerRef.current;
     if (!scroller) return;
@@ -293,7 +309,8 @@ export function PageHeader({
             </Tooltip>
           </TooltipProvider>
         ) : null}
-        {AI_TAB_ICON_VISIBLE && aiEnabled ? (
+        {/* AI 面板入口按钮（onToggleAiPanel 存在且 AI 已启用时渲染） */}
+        {onToggleAiPanel ? (
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -303,43 +320,32 @@ export function PageHeader({
                   size="icon"
                   className={cn(
                     "ai-icon-button h-8 w-8 shrink-0 rounded-[8px] border transition-colors",
-                    isAiPageOpen
-                      ? "border-foreground/10 bg-[var(--goose-interactive-selected)]"
+                    aiPanelOpen
+                      ? "border-border/60 bg-[var(--goose-interactive-selected)]"
                       : "border-transparent hover:bg-[var(--goose-interactive-hover)]",
                   )}
                   data-ai-state={aiPhase}
-                  onClick={onToggleAiPage}
-                  aria-label={
-                    aiPhase === "streaming"
-                      ? "AI 正在生成"
-                      : "打开 AI 页面"
-                  }
+                  onClick={onToggleAiPanel}
+                  aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
+                  aria-pressed={aiPanelOpen}
                 >
                   <AiGradientIcon
                     key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
                     className="h-4 w-4"
                     state={aiPhase}
                   />
-                  {aiPhase === "done" && (
-                    <span
-                      key={`rings-${aiDoneToken}`}
-                      className="ai-icon-rings"
-                      aria-hidden="true"
-                    >
-                      <span className="ai-icon-ring" />
-                      <span className="ai-icon-ring ai-icon-ring--delayed" />
-                    </span>
-                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">AI 页面</TooltipContent>
+              <TooltipContent side="bottom">
+                {aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         ) : null}
 
         <div
           ref={tabsScrollerRef}
-          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scroll-padding-right:32px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onWheel={handleTabsWheel}
         >
           <DndContext
@@ -367,7 +373,6 @@ export function PageHeader({
                     hasOtherTabs={openTabs.length > 1}
                     closeTabShortcutLabel={closeTabShortcutLabel}
                     onActivate={() => {
-                      onExitAiPage?.();
                       setActiveTab(tab.id);
                     }}
                     onClose={() => closeTab(tab.id)}
@@ -387,25 +392,28 @@ export function PageHeader({
             </span>
           )}
 
+          {/* sticky：平时紧跟最后一个标签；极端溢出滚动时钉在右缘，不被挤出可视区 */}
           {!page?.trashedAt && (
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0 rounded-[7px] text-muted-foreground/70 hover:bg-muted/65 hover:text-foreground"
-                    onClick={onOpenSearch}
-                  >
-                    <LucideIcons.Plus className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <span>新标签页</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="sticky right-0 shrink-0 rounded-[7px] bg-[hsl(var(--goose-editor-bg))]">
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 rounded-[7px] text-muted-foreground/70 hover:bg-muted/65 hover:text-foreground"
+                      onClick={onOpenSearch}
+                    >
+                      <LucideIcons.Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <span>新标签页</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
         </div>
 
