@@ -22,6 +22,8 @@ export const permanentlyDeletePageAction = async (
     const snapshotPages = get().pages;
 
     const resolvePathFromId = (pageId: string) => {
+      // 兜底：从旧格式 id（local-{nb}-{encoded}）反解路径。
+      // 稳定 id 后路径应始终来自 page.localFilePath，此分支仅用于极端兜底。
       const prefix = `local-${page.workspaceId}-`;
       if (!pageId.startsWith(prefix)) return null;
       const encoded = pageId.slice(prefix.length);
@@ -33,6 +35,7 @@ export const permanentlyDeletePageAction = async (
       }
     };
 
+    // 路径优先从 page.localFilePath 取（稳定 id 后是主路径来源）。
     const targetPath = page.localFilePath || resolvePathFromId(id);
     if (!targetPath) return;
 

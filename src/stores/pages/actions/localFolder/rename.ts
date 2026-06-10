@@ -7,6 +7,8 @@ import {
   sanitizeFilenameSegment,
   splitFilePath,
 } from "@/lib/local-title-binding";
+import { migrateLocalPageIdMapEntry, toRelativePath } from "@/lib/local-page-idmap";
+import { migratePendingLocalSave } from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
 import { clonePageContent } from "../pageCreate";
 
@@ -44,8 +46,13 @@ function renameLocalPageInStore(
 
     const nextDirty = { ...state.dirtyLocalPageIds };
     if (oldPageId in nextDirty) {
+      // 注意：已保存的页面键值为 false 但键仍存在，不能用 `in` 当作"脏"——
+      // 否则 rename 后标签页凭空出现"未保存"黄点。只有真 dirty 才转移。
+      const wasDirty = nextDirty[oldPageId] === true;
       delete nextDirty[oldPageId];
-      nextDirty[newPageId] = true;
+      if (wasDirty) {
+        nextDirty[newPageId] = true;
+      }
     }
 
     return {
@@ -55,6 +62,10 @@ function renameLocalPageInStore(
         state.activePageId === oldPageId ? newPageId : state.activePageId,
     };
   });
+
+  // 防抖保存队列里挂在旧 id 上的待写内容迁到新 id，
+  // 避免计时器到期后按旧 id 查不到页面、内容丢失且脏标记清不掉。
+  migratePendingLocalSave(oldPageId, newPageId, get);
 
   // tabs 引用同步
   useTabs.setState((state) => ({
@@ -145,6 +156,100 @@ async function maybeRenameLocalFileForTitle(
   return { pageId: nextPageId, collision: false };
 }
 
+/**
+ * 显式重命名 local-folder 页面文件。
+ * 由虚拟标题组件在用户提交新名称时调用。
+ *
+ * @param newBaseName  新文件名（不含扩展名，已由调用方 sanitize）
+ * @returns            成功时返回新 pageId；失败时 throw
+ */
+export async function renameLocalPageFileAction(
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+  newBaseName: string,
+): Promise<string> {
+  const page = get().pages[pageId];
+  if (!page || !page.localFilePath) {
+    throw new Error("页面不存在或非本地文件夹页面");
+  }
+
+  const sanitized = sanitizeFilenameSegment(newBaseName);
+  if (!sanitized) {
+    throw new Error("文件名不能为空");
+  }
+
+  const { dir, base, ext } = splitFilePath(page.localFilePath);
+  if (sanitized === base) {
+    // 名称未变，无需操作
+    return pageId;
+  }
+
+  const nextFilePath = `${dir}/${sanitized}${ext}`;
+
+  if (typeof window === "undefined" || !window.gooseFs) {
+    throw new Error("文件系统不可用");
+  }
+
+  const fs = window.gooseFs;
+  const exists = (() => {
+    try {
+      return fs.exists?.(nextFilePath) ?? false;
+    } catch {
+      return false;
+    }
+  })();
+  if (exists) {
+    throw new Error(`已存在同名文件：${sanitized}${ext}`);
+  }
+
+  let renamed = false;
+  try {
+    renamed = Boolean(await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)));
+  } catch (err) {
+    throw new Error(`重命名失败：${(err as Error).message ?? String(err)}`);
+  }
+  if (!renamed) {
+    throw new Error("重命名操作未成功");
+  }
+
+  // 迁移快照 Map：旧路径 → 新路径（保持保存前 diff 有效）
+  const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
+    await import("@/lib/local-md-snapshot");
+  const oldSnapshot = getLocalMdSnapshot(page.localFilePath);
+  if (oldSnapshot !== undefined) {
+    setLocalMdSnapshot(nextFilePath, oldSnapshot);
+    deleteLocalMdSnapshot(page.localFilePath);
+  }
+
+  // 稳定 id：更新映射表（旧 relativePath → 新 relativePath，stableId 不变），
+  // 然后只更新 page 的 localFilePath 字段，id 保持不变。
+  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+  const basePath = notebook?.localPath || "";
+  const oldRelativePath = toRelativePath(basePath, page.localFilePath);
+  const newRelativePath = toRelativePath(basePath, nextFilePath);
+  migrateLocalPageIdMapEntry(
+    page.workspaceId,
+    oldRelativePath,
+    newRelativePath,
+    pageId,
+  );
+
+  // id 不变，仅更新 localFilePath（以及同步 dirtyLocalPageIds 键不需要改变）。
+  set((state) => {
+    const current = state.pages[pageId];
+    if (!current) return state;
+    return {
+      pages: {
+        ...state.pages,
+        [pageId]: { ...current, localFilePath: nextFilePath },
+      },
+    };
+  });
+
+  return pageId;
+}
+
 export const saveDirtyLocalPageAction = async (
   set: StoreSet,
   get: StoreGet,
@@ -162,14 +267,12 @@ export const saveDirtyLocalPageAction = async (
       }),
     );
 
-    // 若首块 H1 文字被改动，先把本地文件 rename，再写新路径。
-    // 注：内容已由自动保存落盘；显式保存的主要价值是应用「标题→文件名」重命名，
-    // 并确保最新内容一定落盘。
-    const { pageId: effectivePageId, collision } =
-      await maybeRenameLocalFileForTitle(set, get, pageId);
-    if (collision) {
-      return false;
-    }
+    // NOTE: 「H1 → 文件名」自动 rename 已停用。
+    // H1 不再绑定文件名（见 P0 止血：local-folder 链路重构），
+    // maybeRenameLocalFileForTitle 调用被跳过，待虚拟标题方案接管后再重新设计此机制。
+    // const { pageId: effectivePageId, collision } =
+    //   await maybeRenameLocalFileForTitle(set, get, pageId);
+    const effectivePageId = pageId;
 
     const latest = get().pages[effectivePageId];
     if (!latest) return false;

@@ -25,7 +25,7 @@ const AI_TAB_ICON_VISIBLE = false;
 
 interface SortableTabItemProps {
   tab: TabItem;
-  tabPage: Page;
+  tabPage?: Page;
   isActive: boolean;
   isDirty: boolean;
   hasLeftTabs: boolean;
@@ -86,7 +86,7 @@ function SortableTabItem({
             }
           }}
           className={cn(
-            "group flex h-8 max-w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
+            "group flex h-8 w-[150px] shrink-0 items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
             isDragging && "opacity-60",
             isActive
               ? "bg-[var(--goose-interactive-selected)] text-foreground"
@@ -111,9 +111,9 @@ function SortableTabItem({
               isDirty && "font-medium italic",
             )}
           >
-            {getPageTitle(tabPage)}
+            {tab.type === "welcome" ? "新标签页" : (tabPage ? getPageTitle(tabPage) : "")}
           </span>
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delayDuration={2000}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -121,7 +121,7 @@ function SortableTabItem({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors",
+                    "hidden h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors group-hover:flex",
                     isActive
                       ? "text-foreground/70 hover:bg-white hover:text-foreground"
                       : "text-muted-foreground/70 hover:bg-white hover:text-foreground",
@@ -175,13 +175,13 @@ function SortableTabItem({
 
 
 interface PageHeaderProps {
-  page: Page;
+  page?: Page;
   isAiPageOpen?: boolean;
   onToggleAiPage?: () => void;
   onExitAiPage?: () => void;
   onOpenSearch: () => void;
-  onToggleFavorite: () => void;
-  onTogglePinned: () => void;
+  onToggleFavorite?: () => void;
+  onTogglePinned?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
 
@@ -202,7 +202,7 @@ export function PageHeader({
   const aiEnabled = useSettings((state) => state.ai.enabled);
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
-  const isLocalItem = !!page.localFilePath;
+  const isLocalItem = !!page?.localFilePath;
   const { lastSavedAt, getPage } = usePages();
   const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
   const isTabDirty = (tabPageId: string) =>
@@ -231,6 +231,7 @@ export function PageHeader({
     reorderTabs(from, to);
   };
   const visibleTabs = openTabs.filter((tab) => {
+    if (tab.type === "welcome") return true;
     const tabPage = getPage(tab.pageId);
     return tabPage && !tabPage.trashedAt;
   });
@@ -351,8 +352,8 @@ export function PageHeader({
               strategy={horizontalListSortingStrategy}
             >
               {visibleTabs.map((tab) => {
-                const tabPage = getPage(tab.pageId);
-                if (!tabPage) return null;
+                const tabPage = tab.type === "welcome" ? undefined : getPage(tab.pageId);
+                if (tab.type !== "welcome" && !tabPage) return null;
                 const originalIndex = openTabs.findIndex((t) => t.id === tab.id);
                 return (
                   <SortableTabItem
@@ -380,13 +381,13 @@ export function PageHeader({
             </SortableContext>
           </DndContext>
 
-          {openTabs.length === 0 && (
+          {openTabs.length === 0 && page && (
             <span className="truncate text-sm text-foreground/80">
               {getPageTitle(page)}
             </span>
           )}
 
-          {!page.trashedAt && (
+          {!page?.trashedAt && (
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -401,12 +402,7 @@ export function PageHeader({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <div className="flex items-center gap-2">
-                    <span>新标签页</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {searchShortcuts}
-                    </span>
-                  </div>
+                  <span>新标签页</span>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -416,17 +412,17 @@ export function PageHeader({
         {showSaved && (
           <LucideIcons.Check className="h-3.5 w-3.5 text-green-500 animate-in fade-in duration-200" />
         )}
-        {page.isLocked && (
+        {page?.isLocked && (
           <span className="text-xs bg-yellow-300 text-yellow-950 px-1.5 py-0.5 rounded">已锁定</span>
         )}
-        {page.trashedAt && (
+        {page?.trashedAt && (
           <span className="text-xs bg-yellow-300 text-yellow-950 px-1.5 py-0.5 rounded">
             页面已被删除
           </span>
         )}
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1">
-        {page.trashedAt && onRestore && onDelete && (
+        {page?.trashedAt && onRestore && onDelete && (
           <>
             <TooltipProvider delayDuration={0}>
               <Tooltip>
@@ -462,7 +458,7 @@ export function PageHeader({
           </>
         )}
 
-        {!page.trashedAt && (
+        {page && !page.trashedAt && (
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -498,7 +494,7 @@ export function PageHeader({
           </TooltipProvider>
         )}
 
-        {!page.trashedAt && (
+        {page && !page.trashedAt && (
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -528,7 +524,7 @@ export function PageHeader({
           </TooltipProvider>
         )}
 
-        {!page.trashedAt && <PageMenu />}
+        {page && !page.trashedAt && <PageMenu />}
       </div>
     </div>
   );

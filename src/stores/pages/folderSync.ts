@@ -81,6 +81,25 @@ export const queueLocalPageSave = (
   }
 };
 
+/**
+ * 页面 id 重建（文件 rename）时迁移防抖保存队列：
+ * 把挂在旧 id 上的待写内容与计时器迁到新 id，避免计时器到期后按旧 id
+ * 查不到页面导致内容丢失、脏标记永远清不掉。
+ */
+export const migratePendingLocalSave = (
+  oldPageId: string,
+  newPageId: string,
+  getState: () => PagesState,
+) => {
+  if (oldPageId === newPageId) return;
+  clearLocalSaveTimers(oldPageId);
+  const pending = pendingLocalSaveContents.get(oldPageId);
+  pendingLocalSaveContents.delete(oldPageId);
+  if (pending) {
+    queueLocalPageSave(newPageId, pending, getState);
+  }
+};
+
 export const flushAllPendingLocalSavesInternal = async (getState: () => PagesState) => {
   const pageIds = new Set<string>([
     ...pendingLocalSaveContents.keys(),

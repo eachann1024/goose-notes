@@ -1,4 +1,4 @@
-import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
+import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { usePages } from "@/stores/usePages";
 
 interface UseSidebarEffectsOptions {
@@ -16,8 +16,6 @@ export function useSidebarEffects({
   onAiPageOpenWithOutline,
   onOpenSettings,
 }: UseSidebarEffectsOptions) {
-  const { deletePageWithUndo } = useDeletePageWithUndo();
-
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
@@ -41,7 +39,7 @@ export function useSidebarEffects({
         }
       }
     },
-    [currentView, deletePageWithUndo, isAiPageOpen],
+    [currentView, isAiPageOpen],
   );
 
   useEffect(() => {

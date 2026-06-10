@@ -30,6 +30,8 @@ import {
   loadLocalFolderPagesAction,
   loadAllLocalFolderPagesAction,
   reloadLocalPageFromDiskAction,
+  removeSingleLocalPageAction,
+  addSingleLocalPageAction,
   writePageContentAction,
   appendPageContentAction,
   replaceBlockRangeAction,
@@ -38,6 +40,7 @@ import {
   flushPendingLocalSavesAction,
   isLocalPageDirtyAction,
   saveDirtyLocalPageAction,
+  renameLocalPageFileAction,
 } from "./actions/localFolder";
 import {
   deletePageAction,
@@ -136,6 +139,7 @@ export const usePages = create<PagesState>()((set, get) => ({
 
       if (
         updates.content &&
+        !silent &&
         useNotebooks.getState().notebooks[page.workspaceId]?.source ===
           "local-folder" &&
         page.localReadState !== "error"
@@ -144,6 +148,7 @@ export const usePages = create<PagesState>()((set, get) => ({
         // 再入防抖队列落盘；写盘成功后由 saveLocalPageContent 清除脏标记。
         // 标题→文件名的 rename 仍由显式 Cmd/Ctrl+S（saveDirtyLocalPage）处理，
         // 避免输入标题过程中频繁重命名文件。
+        // silent=true（切页/normalize 被动同步）时跳过标脏与队列，不触发写盘。
         set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true } }));
         queueLocalPageSave(id, updates.content, get);
       }
@@ -367,6 +372,12 @@ export const usePages = create<PagesState>()((set, get) => ({
   reloadLocalPageFromDisk: (pageId) =>
     reloadLocalPageFromDiskAction(set, get, pageId),
 
+  removeSingleLocalPage: (filePath) =>
+    removeSingleLocalPageAction(set, get, filePath),
+
+  addSingleLocalPage: (notebookId, basePath, filePath) =>
+    addSingleLocalPageAction(set, get, notebookId, basePath, filePath),
+
   loadAllLocalFolderPages: () => loadAllLocalFolderPagesAction(set, get),
 
   saveLocalPageContent: (pageId, content) =>
@@ -380,6 +391,9 @@ export const usePages = create<PagesState>()((set, get) => ({
   isLocalPageDirty: (pageId) => isLocalPageDirtyAction(get, pageId),
 
   saveDirtyLocalPage: (pageId) => saveDirtyLocalPageAction(set, get, pageId),
+
+  renameLocalPageFile: (pageId, newBaseName) =>
+    renameLocalPageFileAction(set, get, pageId, newBaseName),
 
   getLocalFilePath: (pageId) => {
     const page = get().pages[pageId];

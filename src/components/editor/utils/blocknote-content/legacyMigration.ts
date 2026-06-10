@@ -165,14 +165,23 @@ function stripRedundantEmptyHeadings(blocks: BlockNoteContent): BlockNoteContent
   });
 }
 
-export function normalizePageContent(content: PageContent | null | undefined): BlockNoteContent {
-  if (!content) return createEmptyBlockNoteContent();
-  if (isBlockNoteContent(content)) {
-    const sanitized = normalizeBlockContent(content);
-    if (!sanitized.length) return createEmptyBlockNoteContent();
-    return stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized));
-  }
-  const blocks = normalizeBlockContent(childrenFromLegacy(content.content));
-  if (!blocks.length) return createEmptyBlockNoteContent();
-  return stripRedundantEmptyHeadings(ensureFirstTitleHeading(blocks));
+export function normalizePageContent(
+  content: PageContent | null | undefined,
+  options?: {
+    /**
+     * 是否强制首块为 H1 标题（ensureFirstTitleHeading + 剥冗余空标题）。
+     * 默认 true（内部笔记本行为）。local-folder 导入传 false：
+     * 磁盘 markdown 没有 H1 时首块保持段落原样，不做标题提升。
+     */
+    ensureFirstTitle?: boolean;
+  },
+): BlockNoteContent {
+  const ensureTitle = options?.ensureFirstTitle !== false;
+  if (!content) return ensureTitle ? createEmptyBlockNoteContent() : [];
+  const sanitized = isBlockNoteContent(content)
+    ? normalizeBlockContent(content)
+    : normalizeBlockContent(childrenFromLegacy(content.content));
+  if (!ensureTitle) return sanitized;
+  if (!sanitized.length) return createEmptyBlockNoteContent();
+  return stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized));
 }

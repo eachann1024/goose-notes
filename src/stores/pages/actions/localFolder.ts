@@ -1,6 +1,8 @@
 export {
   loadLocalFolderPagesAction,
   reloadLocalPageFromDiskAction,
+  removeSingleLocalPageAction,
+  addSingleLocalPageAction,
 } from "./localFolder/load";
 export { loadAllLocalFolderPagesAction } from "./localFolder/loadAll";
 export {
@@ -12,4 +14,4 @@ export {
   flushPendingLocalSavesAction,
   isLocalPageDirtyAction,
 } from "./localFolder/write";
-export { saveDirtyLocalPageAction } from "./localFolder/rename";
+export { saveDirtyLocalPageAction, renameLocalPageFileAction } from "./localFolder/rename";

@@ -84,7 +84,7 @@ export function EditorSideMenu() {
 
   return createPortal(
     <div
-      className="fixed z-[60] flex items-center rounded-lg p-1 transition-[opacity,transform] duration-150 ease-out"
+      className="fixed z-[60] flex items-center rounded-lg p-1 transition-[opacity,transform] duration-150 ease-out [body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none"
       style={{
         top,
         left,

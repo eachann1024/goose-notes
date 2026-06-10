@@ -129,12 +129,6 @@ import {
   migrateCodeStyleTo2026,
   runCodeStyleMigration2026,
 } from "./lib/code-style-migration";
-import {
-  decodeUnsupportedMarkdownForDisk,
-  encodeUnsupportedMarkdownForEditor,
-  extractFrontmatter,
-} from "./lib/markdown-raw-guard";
-import { setFrontmatterForPath } from "./lib/local-frontmatter-store";
 import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import { UToolsAdapter } from "./lib/utools";
@@ -149,15 +143,6 @@ if (!rootElement) {
 }
 
 let flushInFlight: Promise<void> | null = null;
-const MARKDOWN_OPEN_WRITE_BLOCK_MS = 5000;
-const markdownReadSnapshots = new Map<
-  string,
-  {
-    readAt: number;
-    content: string;
-  }
->();
-const markdownMutationAtByPath = new Map<string, number>();
 
 const flushAllPendingWrites = async () => {
   window.dispatchEvent(
@@ -176,9 +161,6 @@ const runFlushOnce = () => {
   return flushInFlight;
 };
 
-const isMarkdownPath = (filePath: string) => /\.(md|markdown)$/i.test(filePath);
-const normalizeFilePath = (filePath: string) => filePath.replace(/\\/g, "/");
-
 const hasVisiblePagesInNotebook = (
   notebookId: string | null,
   pages: ReturnType<typeof usePages.getState>["pages"],
@@ -190,178 +172,11 @@ const hasVisiblePagesInNotebook = (
   );
 };
 
-const captureMarkdownRead = (filePath: string, content: string | null | undefined) => {
-  if (!isMarkdownPath(filePath)) return;
-  if (typeof content !== "string") return;
-  markdownReadSnapshots.set(normalizeFilePath(filePath), {
-    readAt: Date.now(),
-    content,
-  });
-};
-
-const setupEditorMutationTracker = () => {
-  if (typeof document === "undefined") return;
-  const hostWindow = window as Window & {
-    __gooseNoteEditorMutationTrackerInstalled?: boolean;
-  };
-  if (hostWindow.__gooseNoteEditorMutationTrackerInstalled) return;
-  hostWindow.__gooseNoteEditorMutationTrackerInstalled = true;
-
-  const markMutationIfFromEditor = (event: Event) => {
-    const target = event.target;
-    if (!(target instanceof Node)) return;
-    const baseElement =
-      target instanceof Element ? target : target.parentElement;
-    if (!baseElement?.closest(".bn-editor")) return;
-
-    const pagesState = usePages.getState();
-    const activePageId = pagesState.activePageId;
-    if (!activePageId) return;
-    const activePage = pagesState.pages[activePageId];
-    const localFilePath =
-      typeof activePage?.localFilePath === "string"
-        ? activePage.localFilePath
-        : null;
-    if (!localFilePath || !isMarkdownPath(localFilePath)) return;
-
-    markdownMutationAtByPath.set(
-      normalizeFilePath(localFilePath),
-      Date.now(),
-    );
-  };
-
-  document.addEventListener("beforeinput", markMutationIfFromEditor, true);
-  document.addEventListener("paste", markMutationIfFromEditor, true);
-  document.addEventListener("drop", markMutationIfFromEditor, true);
-  document.addEventListener("cut", markMutationIfFromEditor, true);
-};
-
-const setupMarkdownOpenWriteGuard = () => {
-  if (typeof window === "undefined") return;
-  const gooseFs = window.gooseFs;
-  if (!gooseFs) return;
-
-  const hostWindow = window as Window & {
-    __gooseNoteMarkdownOpenWriteGuardInstalled?: boolean;
-  };
-  if (hostWindow.__gooseNoteMarkdownOpenWriteGuardInstalled) return;
-  hostWindow.__gooseNoteMarkdownOpenWriteGuardInstalled = true;
-
-  const shouldBlockWrite = (filePath: string, content: string) => {
-    const normalizedPath = normalizeFilePath(filePath);
-    if (!isMarkdownPath(normalizedPath)) return false;
-    const snapshot = markdownReadSnapshots.get(normalizedPath);
-    if (!snapshot) return false;
-    const now = Date.now();
-    if (now - snapshot.readAt > MARKDOWN_OPEN_WRITE_BLOCK_MS) return false;
-    const lastMutationAt = markdownMutationAtByPath.get(normalizedPath) ?? 0;
-    if (lastMutationAt > snapshot.readAt) return false;
-    if (content === snapshot.content) return false;
-    return true;
-  };
-
-  const splitFrontmatterAndEncode = (filePath: string, rawContent: string) => {
-    if (!isMarkdownPath(filePath)) return encodeUnsupportedMarkdownForEditor(rawContent);
-    const { frontmatter, body } = extractFrontmatter(rawContent);
-    setFrontmatterForPath(filePath, frontmatter);
-    return encodeUnsupportedMarkdownForEditor(body);
-  };
-
-  const readFileAsync = gooseFs.readFileAsync?.bind(gooseFs);
-  if (readFileAsync) {
-    gooseFs.readFileAsync = async (filePath: string) => {
-      const rawContent = await readFileAsync(filePath);
-      captureMarkdownRead(filePath, rawContent);
-      if (typeof rawContent !== "string") return rawContent;
-      return splitFrontmatterAndEncode(filePath, rawContent);
-    };
-  }
-
-  const readFile = gooseFs.readFile.bind(gooseFs);
-  gooseFs.readFile = (filePath: string) => {
-    const rawContent = readFile(filePath);
-    captureMarkdownRead(filePath, rawContent);
-    if (typeof rawContent !== "string") return rawContent;
-    return splitFrontmatterAndEncode(filePath, rawContent);
-  };
-
-  const writeFileAsync = gooseFs.writeFileAsync?.bind(gooseFs);
-  if (writeFileAsync) {
-    gooseFs.writeFileAsync = async (
-      filePath: string,
-      content: string,
-      encoding?: string,
-    ) => {
-      if (encoding === "base64" || encoding === "binary") {
-        return writeFileAsync(filePath, content, encoding);
-      }
-      const diskContent = decodeUnsupportedMarkdownForDisk(content);
-      if (shouldBlockWrite(filePath, diskContent)) {
-        console.warn("[Markdown Guard] Blocked auto write after open:", filePath);
-        return true;
-      }
-      return writeFileAsync(filePath, diskContent, encoding);
-    };
-  }
-
-  const writeFile = gooseFs.writeFile.bind(gooseFs);
-  gooseFs.writeFile = (filePath: string, content: string, encoding?: string) => {
-    if (encoding === "base64" || encoding === "binary") {
-      return writeFile(filePath, content, encoding);
-    }
-    const diskContent = decodeUnsupportedMarkdownForDisk(content);
-    if (shouldBlockWrite(filePath, diskContent)) {
-      console.warn("[Markdown Guard] Blocked auto write after open:", filePath);
-      return true;
-    }
-    return writeFile(filePath, diskContent, encoding);
-  };
-};
-
-const setupLocalContentUpdateGuard = () => {
-  if (typeof window === "undefined") return;
-  const hostWindow = window as Window & {
-    __gooseNoteLocalContentUpdateGuardInstalled?: boolean;
-  };
-  if (hostWindow.__gooseNoteLocalContentUpdateGuardInstalled) return;
-  hostWindow.__gooseNoteLocalContentUpdateGuardInstalled = true;
-
-  const store = usePages;
-  const originalUpdatePage = store.getState().updatePage;
-
-  store.setState({
-    updatePage: (id, updates) => {
-      const state = store.getState();
-      const page = state.pages[id];
-      const localFilePath =
-        typeof page?.localFilePath === "string"
-          ? normalizeFilePath(page.localFilePath)
-          : null;
-      const hasOnlyContentUpdate =
-        Object.keys(updates).length === 1 && Boolean(updates.content);
-
-      if (
-        localFilePath &&
-        hasOnlyContentUpdate &&
-        state.activePageId === id
-      ) {
-        const snapshot = markdownReadSnapshots.get(localFilePath);
-        const lastMutationAt = markdownMutationAtByPath.get(localFilePath) ?? 0;
-        const isInOpenWindow =
-          Boolean(snapshot) &&
-          Date.now() - (snapshot?.readAt ?? 0) <= MARKDOWN_OPEN_WRITE_BLOCK_MS;
-        const hasNoRealEdit = !snapshot || lastMutationAt <= snapshot.readAt;
-
-        // 拦截打开时由程序化 setContent 触发的 updatePage，避免列表排序闪烁。
-        if (isInOpenWindow && hasNoRealEdit) {
-          return;
-        }
-      }
-
-      originalUpdatePage(id, updates);
-    },
-  });
-};
+// 「打开后 5 秒时间窗写盘守卫」（setupMarkdownOpenWriteGuard / setupLocalContentUpdateGuard /
+// setupEditorMutationTracker + gooseFs monkey-patch）已整套移除：
+// 打开零写盘现在由链路本身保证——编辑器层用户意图门控（Editor.tsx / EditorComposer.tsx）、
+// updatePage silent 分流（stores/pages/index.ts）、写盘前 diff 兜底（write.ts + local-md-snapshot.ts）。
+// goose-raw fence 的 decode 职责随之收归 write.ts 的写盘路径。
 
 const setupSaveGuards = () => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -462,6 +277,14 @@ const initHostFs = async () => {
 export const bootstrap = async (
   renderRoot: () => ReactNode = () => <App />,
 ) => {
+  // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
+  // saveLocalPageContent 走与 uTools 相同的 gooseFs 接口）。
+  // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
+  if (import.meta.env.DEV && location.search.includes("e2eLocalMock")) {
+    const { installE2ELocalMock } = await import("@/lib/dev/e2eLocalMock");
+    await installE2ELocalMock();
+  }
+
   await initHostFs();
   await migrateLegacyStorage();
   await Promise.all([
@@ -500,9 +323,6 @@ export const bootstrap = async (
       Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
     useNotebooks.setState({ activeNotebookId: firstNotebookId });
   }
-  setupEditorMutationTracker();
-  setupMarkdownOpenWriteGuard();
-  setupLocalContentUpdateGuard();
   setupSaveGuards();
   setupMainToQuickNotePush();
   await runCodeStyleMigration2026();

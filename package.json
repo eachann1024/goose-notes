@@ -25,6 +25,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@floating-ui/react": "0.27.19",
+    "@handlewithcare/prosemirror-inputrules": "^0.1.4",
     "@heroui/react": "^3",
     "@heroui/styles": "^3",
     "@json-render/core": "0.19.0",
@@ -44,6 +45,7 @@
     "@radix-ui/react-tooltip": "^1.1.2",
     "@react-pdf/renderer": "^4.5.1",
     "@tanstack/react-virtual": "3.14.2",
+    "@tiptap/pm": "^3.25.0",
     "@types/markdown-it": "^14.1.2",
     "@types/uuid": "11.0.0",
     "ai": "6.0.195",
@@ -65,6 +67,7 @@
     "markdown-it": "14.2.0",
     "mermaid": "11.15.0",
     "prettier": "3.8.3",
+    "prosemirror-highlight": "^0.15.1",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-tables": "^1.8.5",
@@ -124,6 +127,7 @@
     "tailwindcss": "^4",
     "typescript": "6.0.3",
     "typescript-eslint": "8.60.1",
-    "vite": "8.0.16"
+    "vite": "8.0.16",
+    "vite-node": "^6.0.0"
   }
 }

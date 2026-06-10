@@ -126,6 +126,12 @@ export interface PagesState {
     options?: { showWelcome?: boolean },
   ) => Promise<void>;
   reloadLocalPageFromDisk: (pageId: string) => Promise<void>;
+  removeSingleLocalPage: (filePath: string) => void;
+  addSingleLocalPage: (
+    notebookId: string,
+    basePath: string,
+    filePath: string,
+  ) => Promise<void>;
   // 预加载所有尚未加载的 local-folder 记事本页面（供「所有记事本」全局搜索覆盖全量）。
   loadAllLocalFolderPages: () => Promise<void>;
   saveLocalPageContent: (
@@ -136,6 +142,12 @@ export interface PagesState {
   flushPendingLocalSaveByPageId: (pageId: string) => Promise<void>;
   isLocalPageDirty: (pageId: string) => boolean;
   saveDirtyLocalPage: (pageId: string) => Promise<boolean>;
+  /**
+   * 显式重命名 local-folder 页面文件（由虚拟标题编辑入口触发）。
+   * @param newBaseName 新文件名（不含扩展名）
+   * @returns 新 pageId（文件名不变则返回原 pageId）
+   */
+  renameLocalPageFile: (pageId: string, newBaseName: string) => Promise<string>;
   getLocalFilePath: (pageId: string) => string | null;
   createLocalPage: (
     parentId?: string,

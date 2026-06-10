@@ -2,9 +2,12 @@ import { create } from "zustand";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 
+export const WELCOME_TAB_PAGE_ID = "welcome";
+
 export interface TabItem {
   id: string;
   pageId: string;
+  type?: "welcome";
   pinned?: boolean;
   workspaceId?: string;
 }
@@ -18,6 +21,7 @@ interface TabsState {
   recentlyClosedPageIds: string[];
   syncNotebookForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
+  openWelcomeTab: () => void;
   openInCurrentTab: (pageId: string) => void;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;
@@ -204,6 +208,32 @@ export const useTabs = create<TabsState>()((set, get) => {
       void scheduleSetActivePage(pageId);
     },
 
+    openWelcomeTab: () => {
+      const { openTabs } = get();
+      // 复用已有的欢迎 tab（同时只存在一个）
+      const existingWelcome = openTabs.find(
+        (tab) => tab.type === "welcome",
+      );
+      if (existingWelcome) {
+        get().setActiveTab(existingWelcome.id);
+        return;
+      }
+
+      commitActiveEditor();
+      const newTab: TabItem = {
+        id: createTabId(WELCOME_TAB_PAGE_ID),
+        pageId: WELCOME_TAB_PAGE_ID,
+        type: "welcome",
+      };
+      const nextOpenTabs = applyPinnedOrder([...openTabs, newTab]);
+      set({
+        openTabs: nextOpenTabs,
+        activeTabId: newTab.id,
+      });
+      pushTabHistory(newTab.id);
+      // 欢迎 tab 不关联真实页面，不调用 syncNotebookForPage / scheduleSetActivePage
+    },
+
     openInCurrentTab: (pageId: string) => {
       const { openTabs, activeTabId } = get();
       const activeIndex = openTabs.findIndex((tab) => tab.id === activeTabId);
@@ -214,8 +244,11 @@ export const useTabs = create<TabsState>()((set, get) => {
 
       commitActiveEditor();
       const nextTabs = [...openTabs];
+      // 剥掉 type 字段：欢迎 tab 被替换为真实页面后就是普通 tab，
+      // 否则 type:"welcome" 残留会让 UI 始终渲染欢迎页、笔记打不开。
+      const { type: _droppedType, ...restTab } = nextTabs[activeIndex];
       nextTabs[activeIndex] = {
-        ...nextTabs[activeIndex],
+        ...restTab,
         pageId,
         workspaceId: getWorkspaceIdForPage(pageId),
       };
@@ -230,12 +263,16 @@ export const useTabs = create<TabsState>()((set, get) => {
       const index = openTabs.findIndex((tab) => tab.id === tabId);
       if (index === -1) return;
 
-      const closedPageId = openTabs[index].pageId;
+      const closedTab = openTabs[index];
+      const closedPageId = closedTab.pageId;
+      const isWelcomeTab = closedTab.type === "welcome";
       // 关闭前确保该页的编辑已落盘（本地文件夹页面采用自动保存队列）。
       if (tabId === activeTabId) commitActiveEditor();
-      void usePages.getState().flushPendingLocalSaveByPageId(closedPageId);
-      const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
-      set({ recentlyClosedPageIds: nextClosed });
+      if (!isWelcomeTab) {
+        void usePages.getState().flushPendingLocalSaveByPageId(closedPageId);
+        const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
+        set({ recentlyClosedPageIds: nextClosed });
+      }
 
       const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
       let nextActiveId: string | null = null;
@@ -342,8 +379,11 @@ export const useTabs = create<TabsState>()((set, get) => {
 
       set({ activeTabId: tab.id });
       pushTabHistory(tab.id);
-      get().syncNotebookForPage(tab.pageId);
-      void scheduleSetActivePage(tab.pageId);
+      // 欢迎 tab 不关联真实页面，不同步笔记本/活动页。
+      if (tab.type !== "welcome") {
+        get().syncNotebookForPage(tab.pageId);
+        void scheduleSetActivePage(tab.pageId);
+      }
     },
 
     goBackTabHistory: () => {
@@ -444,6 +484,8 @@ export const useTabs = create<TabsState>()((set, get) => {
       }
 
       const nextTabs = openTabs.filter((tab) => {
+        // 欢迎 tab 不关联真实页面，始终保留。
+        if (tab.type === "welcome") return true;
         if (pagesState.getPage(tab.pageId)) return true;
         // 页面不在内存：若它属于尚未加载的本地文件夹笔记本，保留（稍后会加载）。
         const ws = tab.workspaceId;

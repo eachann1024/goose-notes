@@ -1,10 +1,10 @@
 import { type RefObject, useEffect, useRef } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
-import { confirmLocalDelete } from "@/lib/confirm-local-delete";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { useTabs } from "@/stores/useTabs";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { PageHeader } from "./components/page/PageHeader";
@@ -20,8 +20,10 @@ import {
   HistoryReader,
 } from "./components/history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
-import { useTabs } from "@/stores/useTabs";
-import { toast } from "sonner";
+import {
+  permanentlyDeletePageWithCleanup,
+  restorePageWithToast,
+} from "@/lib/page-delete-actions";
 
 interface WorkspaceLayoutProps {
   isDragging: boolean;
@@ -49,6 +51,13 @@ export function WorkspaceLayout({
   scrollContainerRef,
 }: WorkspaceLayoutProps) {
   const { activePageId, updatePage, getPage } = usePages();
+  const { openTabs, activeTabId, openWelcomeTab } = useTabs();
+  const activeTab = openTabs.find((t) => t.id === activeTabId);
+  const isWelcomeTab = activeTab?.type === "welcome";
+  const openWelcomeTabHandler = () => {
+    setIsAiPageOpen(false);
+    openWelcomeTab();
+  };
   const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
   const searchHighlightQuery = usePages((s) => s.searchHighlightQuery);
   const searchHighlightPageId = usePages((s) => s.searchHighlightPageId);
@@ -178,7 +187,14 @@ export function WorkspaceLayout({
 
 
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
-            {activePageId && page && inHistoryMode ? (
+            {isWelcomeTab ? (
+              <>
+                <PageHeader
+                  onOpenSearch={openWelcomeTabHandler}
+                />
+                <PageEmptyState />
+              </>
+            ) : activePageId && page && inHistoryMode ? (
               <>
                 <HistoryToolbar />
                 <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
@@ -209,67 +225,17 @@ export function WorkspaceLayout({
                   onExitAiPage={() => {
                     setIsAiPageOpen(false);
                   }}
-                  onOpenSearch={() => {
-                    setIsAiPageOpen(false);
-                    window.dispatchEvent(
-                      new CustomEvent("goose-note:open-search", {
-                        detail: { resetQuery: true, openInNewTab: true },
-                      }),
-                    );
-                  }}
+                  onOpenSearch={openWelcomeTabHandler}
                   onToggleFavorite={() =>
                     updatePage(activePageId, { isFavorite: !page.isFavorite })
                   }
                   onTogglePinned={() =>
                     updatePage(activePageId, { isPinned: !page.isPinned })
                   }
-                  onRestore={() => {
-                    const result = usePages.getState().restorePage(activePageId);
-                    if (!result.ok) return;
-
-                    const parentPath =
-                      result.parentTitles && result.parentTitles.length > 0
-                        ? result.parentTitles.join(" / ")
-                        : "顶层";
-                    const restoredChildrenCount = Math.max(
-                      (result.restoredCount || 1) - 1,
-                      0,
-                    );
-                    const restoredChildrenText =
-                      restoredChildrenCount > 0
-                        ? `，并恢复 ${restoredChildrenCount} 个子项`
-                        : "";
-
-                    toast.success(
-                      `已恢复${result.itemLabel || "页面"}「${result.pageTitle || "无标题"}」`,
-                      {
-                        description: `位置：${result.notebookName || "未命名记事本"} / ${parentPath}${restoredChildrenText}`,
-                      },
-                    );
-                  }}
-                  onDelete={() => {
-                    const deletedPageId = activePageId;
-                    void (async () => {
-                      const targetPage = usePages
-                        .getState()
-                        .getPage(deletedPageId);
-                      const targetNotebook = targetPage
-                        ? notebooks[targetPage.workspaceId]
-                        : undefined;
-                      if (
-                        targetPage &&
-                        targetNotebook?.source === "local-folder"
-                      ) {
-                        const ok = await confirmLocalDelete(targetPage);
-                        if (!ok) return;
-                      }
-                      await usePages.getState().permanentlyDeletePage(deletedPageId);
-                      if (usePages.getState().getPage(deletedPageId)) return;
-                      useTabs
-                        .getState()
-                        .removeDeletedPage(deletedPageId);
-                    })();
-                  }}
+                  onRestore={() => restorePageWithToast(activePageId)}
+                  onDelete={() =>
+                    void permanentlyDeletePageWithCleanup(activePageId)
+                  }
                 />
 
                 <EditorHostBridge
@@ -341,6 +307,10 @@ export function WorkspaceLayout({
                                           : isNewPage
                                             ? "opacity-100 animate-slow-pulse hover:scale-105"
                                             : "opacity-0 group-hover:opacity-100 hover:scale-105",
+                                      // 模态浮层（右键菜单/下拉菜单）打开时隐藏提示并暂停脉冲，
+                                      // 避免菜单旁忽隐忽现的"幽灵阴影"
+                                      !page.icon &&
+                                        "[body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!animate-none",
                                     )}
                                   >
                                     {page.icon ? (

@@ -1,8 +1,17 @@
 import type { JSONContent } from "@/types";
 import { blocksToMarkdown } from "@/lib/export";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
-import { extractFrontmatter } from "@/lib/markdown-raw-guard";
+import {
+  extractFrontmatter,
+  decodeUnsupportedMarkdownForDisk,
+} from "@/lib/markdown-raw-guard";
 import { isLocalFolderPage } from "../../persistence";
+import {
+  isLocalMdUnchanged,
+  updateSnapshotAfterWrite,
+  applyTrailingNewlineStyle,
+  isDiskContentMatchingSnapshot,
+} from "@/lib/local-md-snapshot";
 import {
   flushPendingLocalSaveByPageIdInternal,
   flushAllPendingLocalSavesInternal,
@@ -160,13 +169,10 @@ export const saveLocalPageContentAction = async (
   const processedContent = content;
 
   const assetsDir = filePath.replace(/[^\/\\]+$/, "") + "assets";
-  try {
-    if (window.gooseFs.mkdir) {
-      await window.gooseFs.mkdir(assetsDir);
-    }
-  } catch {}
 
-  const writePromises: Promise<any>[] = [];
+  // 先收集需要落盘的图片，真正有图片要写时才 mkdir——
+  // 否则纯打开/flush（内容未变走 diff 跳过）也会在用户目录凭空创建 assets 文件夹。
+  const pendingImageWrites: Array<{ imagePath: string; base64Data: string }> = [];
 
   const processImages = (nodes: any[]) => {
     nodes.forEach((node) => {
@@ -190,11 +196,7 @@ export const saveLocalPageContentAction = async (
           } catch {}
 
           if (!alreadyExists) {
-            if (window.gooseFs?.writeFileAsync) {
-              writePromises.push(window.gooseFs.writeFileAsync(imagePath, base64Data, "base64"));
-            } else {
-              window.gooseFs?.writeFile(imagePath, base64Data);
-            }
+            pendingImageWrites.push({ imagePath, base64Data });
           }
 
           node.attrs.src = `./assets/${filename}`;
@@ -210,8 +212,20 @@ export const saveLocalPageContentAction = async (
     processImages(processedContent.content);
   }
 
-  if (writePromises.length > 0) {
-    await Promise.all(writePromises);
+  if (pendingImageWrites.length > 0) {
+    try {
+      if (window.gooseFs.mkdir) {
+        await window.gooseFs.mkdir(assetsDir);
+      }
+    } catch {}
+    await Promise.all(
+      pendingImageWrites.map(({ imagePath, base64Data }) => {
+        if (window.gooseFs?.writeFileAsync) {
+          return window.gooseFs.writeFileAsync(imagePath, base64Data, "base64");
+        }
+        return Promise.resolve(window.gooseFs?.writeFile(imagePath, base64Data));
+      }),
+    );
   }
 
   const markdownContent = await blocksToMarkdown(processedContent as any);
@@ -243,11 +257,65 @@ export const saveLocalPageContentAction = async (
     }
   }
 
+  // 编辑器表示 → 磁盘表示：解包 goose-raw fence（encodeUnsupportedMarkdownForEditor
+  // 的逆操作）。落盘内容绝不能带围栏。此前由 main.tsx 的 gooseFs 写包装器代劳，
+  // 守卫清理后 decode 职责收归这里（md 文本写盘唯一路径），diff/快照/写盘三者统一。
+  // 再按快照原文还原尾换行风格：blocksToMarkdown 不带尾 \n，不还原会让每次编辑
+  // 都丢掉原文件的 POSIX 尾换行，给 git diff 制造噪音。
+  const diskContent = applyTrailingNewlineStyle(
+    filePath,
+    decodeUnsupportedMarkdownForDisk(finalContent),
+  );
+
+  // 保存前 diff 兜底：与磁盘快照比较（规范化后），完全相同则跳过写盘。
+  // 防止「打开即写盘」——仅 normalize 或 frontmatter 无变化的情况触发的无意义落盘。
+  if (isLocalMdUnchanged(filePath, diskContent)) {
+    // 内容未变，按成功处理，清除脏标记（如果有的话）。
+    set((s) => ({
+      dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
+    }));
+    return true;
+  }
+
+  // ── 写盘前冲突检查 ──────────────────────────────────────────────────────────
+  // 读一次磁盘当前内容，与快照比较（规范化后），不一致 = 外部已改 → 不写盘，触发冲突处理。
+  // 这比仅与 store 内容比较更安全：保证不会静默覆盖外部编辑。
+  try {
+    let diskCurrentContent: string | null = null;
+    if (window.gooseFs?.readFileStatAsync) {
+      const r = await window.gooseFs.readFileStatAsync(filePath);
+      diskCurrentContent = r.ok ? (r.content ?? "") : null;
+    } else if (window.gooseFs?.readFileStat) {
+      const r = window.gooseFs.readFileStat(filePath);
+      diskCurrentContent = r.ok ? (r.content ?? "") : null;
+    } else if (window.gooseFs?.readFileAsync) {
+      diskCurrentContent = await window.gooseFs.readFileAsync(filePath);
+    } else if (window.gooseFs?.readFile) {
+      diskCurrentContent = window.gooseFs.readFile(filePath);
+    }
+
+    if (
+      diskCurrentContent !== null &&
+      !isDiskContentMatchingSnapshot(filePath, diskCurrentContent)
+    ) {
+      // 外部已修改磁盘文件 → 触发冲突 UX，不写盘
+      window.dispatchEvent(
+        new CustomEvent("goose-note:local-file-conflict", {
+          detail: { pageId, filePath, source: "pre-save" },
+        }),
+      );
+      return false;
+    }
+  } catch {
+    // 读磁盘失败时放行（网络文件系统等异常情况下不阻断写盘）
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   let result: boolean;
   if (window.gooseFs?.writeFileAsync) {
-    result = await window.gooseFs.writeFileAsync(filePath, finalContent);
+    result = await window.gooseFs.writeFileAsync(filePath, diskContent);
   } else {
-    result = window.gooseFs?.writeFile(filePath, finalContent) ?? false;
+    result = window.gooseFs?.writeFile(filePath, diskContent) ?? false;
   }
 
   if (result) {
@@ -256,6 +324,8 @@ export const saveLocalPageContentAction = async (
       lastSavedAt: Date.now(),
       dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
     }));
+    // 写盘成功后更新快照为实际写入磁盘的内容，下次变更比较以此为基准。
+    updateSnapshotAfterWrite(filePath, diskContent);
   }
   return result;
 };

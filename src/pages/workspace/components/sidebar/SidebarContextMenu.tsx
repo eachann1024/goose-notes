@@ -1,6 +1,9 @@
 import type { Page } from "@/types";
-import { useDeletePageWithUndo } from "@/hooks/useDeletePageWithUndo";
-import { confirmLocalDelete } from "@/lib/confirm-local-delete";
+import {
+  deletePageWithUndo,
+  permanentlyDeletePageWithCleanup,
+  restorePageWithToast,
+} from "@/lib/page-delete-actions";
 import { formatShortcut } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
@@ -17,12 +20,9 @@ export function SidebarContextMenu({
 }: SidebarContextMenuProps) {
   const {
     updatePage,
-    restorePage,
-    permanentlyDeletePage,
     movePageTreeToNotebook,
     undoMovePageTree,
   } = usePages();
-  const { deletePageWithUndo } = useDeletePageWithUndo();
   const notebooks = useNotebooks((state) => state.notebooks);
   const notebook = notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";
@@ -48,27 +48,7 @@ export function SidebarContextMenu({
     updatePage(page.id, { parentId: undefined });
   };
 
-  const handleRestore = () => {
-    const result = restorePage(page.id);
-    if (!result.ok) return;
-
-    const parentPath =
-      result.parentTitles && result.parentTitles.length > 0
-        ? result.parentTitles.join(" / ")
-        : "顶层";
-    const restoredChildrenCount = Math.max((result.restoredCount || 1) - 1, 0);
-    const restoredChildrenText =
-      restoredChildrenCount > 0
-        ? `，并恢复 ${restoredChildrenCount} 个子项`
-        : "";
-
-    toast.success(
-      `已恢复${result.itemLabel || "页面"}「${result.pageTitle || "无标题"}」`,
-      {
-        description: `位置：${result.notebookName || "未命名记事本"} / ${parentPath}${restoredChildrenText}`,
-      },
-    );
-  };
+  const handleRestore = () => restorePageWithToast(page.id);
 
   const handleMoveToNotebook = (targetNotebookId: string) => {
     const result = movePageTreeToNotebook(page.id, targetNotebookId);
@@ -205,19 +185,7 @@ export function SidebarContextMenu({
                 </span>
               </ContextMenuItem>
               <ContextMenuItem
-                onSelect={() => {
-                  void (async () => {
-                    if (isLocalFolder) {
-                      const ok = await confirmLocalDelete(page);
-                      if (!ok) return;
-                    }
-                    await permanentlyDeletePage(page.id);
-                    if (usePages.getState().getPage(page.id)) return;
-                    useTabs
-                      .getState()
-                      .removeDeletedPage(page.id);
-                  })();
-                }}
+                onSelect={() => void permanentlyDeletePageWithCleanup(page.id)}
                 className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
               >
                 <LucideIcons.Trash2 className="h-4 w-4" />

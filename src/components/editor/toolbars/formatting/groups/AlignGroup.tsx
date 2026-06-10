@@ -29,7 +29,7 @@ export function AlignGroup({
             <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
-        <ToolbarTooltip label="左对齐" shortcut="Mod+Shift+L" />
+        <ToolbarTooltip label="左对齐" />
       </Tooltip>
 
       <Tooltip {...bindTooltip("align-center")}>
@@ -44,7 +44,7 @@ export function AlignGroup({
             <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
-        <ToolbarTooltip label="居中对齐" shortcut="Mod+Shift+E" />
+        <ToolbarTooltip label="居中对齐" />
       </Tooltip>
 
       <Tooltip {...bindTooltip("align-right")}>
@@ -59,7 +59,7 @@ export function AlignGroup({
             <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
-        <ToolbarTooltip label="右对齐" shortcut="Mod+Shift+R" />
+        <ToolbarTooltip label="右对齐" />
       </Tooltip>
     </>
   );

@@ -3,7 +3,15 @@ import {
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
 } from "@/lib/markdown-raw-guard";
-import { ensureFilenameAsTitle } from "@/lib/local-title-binding";
+import { setLocalMdSnapshot } from "@/lib/local-md-snapshot";
+import {
+  type LocalPageIdMap,
+  readLocalPageIdMap,
+  resolveOrCreateStableId,
+  pruneLocalPageIdMap,
+  toRelativePath,
+  writeLocalPageIdMap,
+} from "@/lib/local-page-idmap";
 import type { JSONContent, Page } from "@/types";
 
 const IGNORED_FOLDERS = new Set([
@@ -49,34 +57,6 @@ function normalizeLocalFileTitle(name: string) {
   return base || "无标题";
 }
 
-function ensureLocalFileTitle(content: JSONContent, title: string): JSONContent {
-  const safeContent =
-    content && content.type === "doc" ? content : { type: "doc", content: [] };
-  const nodes = Array.isArray(safeContent.content) ? [...safeContent.content] : [];
-  const first = nodes[0];
-  const hasTitleNode = first?.type === "heading" && first.attrs?.level === 1;
-  const nextTitle = title.trim();
-
-  if (hasTitleNode) {
-    const hasText = first.content && first.content.length > 0;
-    if (!hasText) {
-      first.content = [{ type: "text", text: nextTitle }];
-    }
-    return { ...safeContent, content: nodes };
-  }
-
-  return {
-    ...safeContent,
-    content: [
-      {
-        type: "heading",
-        attrs: { level: 1 },
-        content: [{ type: "text", text: nextTitle }],
-      },
-      ...nodes,
-    ],
-  };
-}
 
 function shouldIgnoreEntry(name: string) {
   return name.startsWith(".") || IGNORED_FOLDERS.has(name);
@@ -125,9 +105,10 @@ function buildFolderPage(
   basePath: string,
   entry: LocalFolderEntry,
   parentId?: string,
+  resolvedId?: string,
 ): Page {
   return {
-    id: buildLocalPageId(notebookId, basePath, entry.path),
+    id: resolvedId ?? buildLocalPageId(notebookId, basePath, entry.path),
     workspaceId: notebookId,
     parentId,
     content: {
@@ -167,7 +148,7 @@ export function parseLocalMarkdownContent(
 ): ParsedLocalMarkdown {
   if (markdown === null) {
     return {
-      content: ensureLocalFileTitle({ type: "doc", content: [] }, fallbackTitle),
+      content: [] as unknown as JSONContent,
       readState: "error",
       readError: readError || "Markdown 文件读取失败",
     };
@@ -175,16 +156,19 @@ export function parseLocalMarkdownContent(
 
   // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
   // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
-  // 3) Notion 风格的「文件名 ↔ H1 绑定」：scanner 把首块 H1 文字覆盖为文件名
-  //    （没有 H1 就前置一个）。保存时若用户改了 H1 文字会触发本地文件 rename。
+  // 3) 内容保持解析原样：preserveStructure 关闭「首块提升 H1」的标题注入，
+  //    无 H1 的文件解析后首块保持段落（「文件名标题绑定」已废弃）。
+  //    侧栏/tab 标题由 getPageTitle() 从 localFilePath 文件名取得，不依赖 H1。
+  //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
   const { frontmatter, body } = extractFrontmatter(markdown);
   const encodedBody = encodeUnsupportedMarkdownForEditor(body);
-  const imported = importFromMarkdown(encodedBody, fallbackTitle);
+  const imported = importFromMarkdown(encodedBody, fallbackTitle, {
+    preserveStructure: true,
+  });
   const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
-  const boundBlocks = ensureFilenameAsTitle(importedBlocks, fallbackTitle);
 
   return {
-    content: boundBlocks as unknown as JSONContent,
+    content: importedBlocks as unknown as JSONContent,
     frontmatter: frontmatter || undefined,
     readState: imported.success ? "ready" : "error",
     readError: imported.success ? undefined : imported.error || "Markdown 解析失败",
@@ -202,14 +186,20 @@ function buildMarkdownPage(
   entry: LocalFolderEntry,
   readResult: { content: string | null; error?: string },
   now: number,
+  resolvedId?: string,
 ): Page {
   const fallbackTitle = normalizeLocalFileTitle(entry.name);
-  const fileId = buildLocalPageId(notebookId, basePath, entry.path);
+  const fileId = resolvedId ?? buildLocalPageId(notebookId, basePath, entry.path);
   const parsed = parseLocalMarkdownContent(
     readResult.content,
     fallbackTitle,
     readResult.error,
   );
+
+  // 记录磁盘原始内容快照（含 frontmatter），供写盘前 diff 比较以跳过无实质变更的写盘。
+  if (typeof readResult.content === "string") {
+    setLocalMdSnapshot(entry.path, readResult.content);
+  }
 
   return {
     id: fileId,
@@ -234,6 +224,12 @@ export async function scanLocalFolderPages({
   basePath,
   gooseFs,
 }: LocalFolderScannerOptions): Promise<Page[]> {
+  // 读取一次映射表，整个扫描过程共享（避免逐文件 IO）。
+  const idMap: LocalPageIdMap = readLocalPageIdMap(notebookId);
+  let idMapDirty = false;
+  // 记录本次扫描实际存在的相对路径，用于扫描结束后剪枝。
+  const liveRelativePaths = new Set<string>();
+
   const scanDirectory = async (
     dirPath: string,
     parentId?: string,
@@ -253,7 +249,16 @@ export async function scanLocalFolderPages({
       if (shouldIgnoreEntry(entry.name)) continue;
 
       if (entry.isDirectory) {
-        const folderPage = buildFolderPage(notebookId, basePath, entry, parentId);
+        const relativePath = toRelativePath(basePath, entry.path);
+        liveRelativePaths.add(relativePath);
+        const { id: folderId, dirty } = resolveOrCreateStableId(
+          notebookId,
+          relativePath,
+          idMap,
+        );
+        if (dirty) idMapDirty = true;
+
+        const folderPage = buildFolderPage(notebookId, basePath, entry, parentId, folderId);
         pages.push(folderPage);
         const subPages = await scanDirectory(entry.path, folderPage.id);
         pages.push(...subPages);
@@ -264,6 +269,15 @@ export async function scanLocalFolderPages({
         continue;
       }
 
+      const relativePath = toRelativePath(basePath, entry.path);
+      liveRelativePaths.add(relativePath);
+      const { id: fileId, dirty } = resolveOrCreateStableId(
+        notebookId,
+        relativePath,
+        idMap,
+      );
+      if (dirty) idMapDirty = true;
+
       const now = Date.now();
       const readResult = await readMarkdownFile(gooseFs, entry.path);
       const page = buildMarkdownPage(
@@ -272,6 +286,7 @@ export async function scanLocalFolderPages({
         entry,
         readResult,
         now,
+        fileId,
       );
       page.parentId = parentId;
       pages.push(page);
@@ -280,5 +295,13 @@ export async function scanLocalFolderPages({
     return pages;
   };
 
-  return await scanDirectory(basePath);
+  const pages = await scanDirectory(basePath);
+
+  // 扫描结束后统一处理映射表持久化与剪枝。
+  if (idMapDirty) {
+    writeLocalPageIdMap(notebookId, idMap);
+  }
+  pruneLocalPageIdMap(notebookId, liveRelativePaths);
+
+  return pages;
 }

@@ -39,7 +39,7 @@ interface EditorHostBridgeProps {
    * 内容变更落库回调的覆盖。默认走 usePages.updatePage 落库；速记小窗草稿模式传入此项，
    * 把内容写到草稿存储而非真实 page（草稿不入 pages map、不进笔记列表）。
    */
-  onContentChangeOverride?: (content: BlockNoteContent) => void;
+  onContentChangeOverride?: (content: BlockNoteContent, options?: { silent?: boolean }) => void;
   children: ReactNode;
 }
 
@@ -94,12 +94,12 @@ export function EditorHostBridge({
     () => ({
       page,
       isEditorFullWidth,
-      onContentChange: (content: BlockNoteContent) => {
+      onContentChange: (content: BlockNoteContent, options?: { silent?: boolean }) => {
         if (onContentChangeOverride) {
-          onContentChangeOverride(content);
+          onContentChangeOverride(content, options);
           return;
         }
-        usePages.getState().updatePage(page.id, { content } as Partial<Page>);
+        usePages.getState().updatePage(page.id, { content } as Partial<Page>, options?.silent ? { silent: true } : undefined);
       },
       onOpenPage: (pageId: string) => {
         useTabs.getState().openTab(pageId);

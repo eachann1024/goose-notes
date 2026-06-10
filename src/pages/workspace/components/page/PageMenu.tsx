@@ -6,6 +6,7 @@ import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-content";
 import { useHistoryView } from "@/stores/useHistoryView";
+import { deletePageWithUndo } from "@/lib/page-delete-actions";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -32,7 +33,6 @@ export function PageMenu() {
     createPage,
     setActivePage,
   } = usePages();
-  const { deletePageWithUndo } = useDeletePageWithUndo();
   const { activeNotebookId, notebooks, updateNotebook } = useNotebooks();
   const { globalEditorFullWidth } = useSettings();
   const page = activePageId ? getPage(activePageId) : undefined;

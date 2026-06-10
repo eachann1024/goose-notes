@@ -11,6 +11,7 @@ const INLINE_HTML_ALLOWLIST = new Set([
   "a",
   "img",
   "br",
+  "video",
 ]);
 
 function normalizeMarkdownLineBreaks(markdown: string): string {

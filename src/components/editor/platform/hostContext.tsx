@@ -52,8 +52,8 @@ export interface EditorPageContext {
   page: Page;
   /** 宿主预算 notebook.editorFullWidth ?? globalEditorFullWidth */
   isEditorFullWidth: boolean;
-  /** 替换 updatePage（去抖在宿主或编辑器内皆可） */
-  onContentChange: (content: BlockNoteContent) => void;
+  /** 替换 updatePage（去抖在宿主或编辑器内皆可）。silent=true 时宿主跳过标脏与写盘（切页/normalize 路径）。 */
+  onContentChange: (content: BlockNoteContent, options?: { silent?: boolean }) => void;
   /** 替换 useTabs.openTab（chip 点击导航） */
   onOpenPage: (pageId: string) => void;
   /** 图片相对路径解析：返回当前激活页的本地文件路径 */

@@ -1,10 +1,13 @@
 import type { Page } from "@/types";
 import { useNotebooks } from "../../../useNotebooks";
+import { useTabs } from "../../../useTabs";
 import {
   scanLocalFolderPages,
   parseLocalMarkdownContent,
   localFileTitleFromPath,
+  buildLocalPageId,
 } from "@/lib/local-folder-scanner";
+import { setLocalMdSnapshot, deleteLocalMdSnapshot } from "@/lib/local-md-snapshot";
 import { localPageMetadataCache } from "../../persistence";
 import type { StoreSet, StoreGet } from "../hydrate";
 
@@ -50,6 +53,11 @@ export const reloadLocalPageFromDiskAction = async (
     localFileTitleFromPath(filePath),
     readError,
   );
+
+  // 外部变更后更新快照，保证下次写盘前 diff 与磁盘最新状态比较。
+  if (typeof markdown === "string") {
+    setLocalMdSnapshot(filePath, markdown);
+  }
 
   set((state) => {
     const current = state.pages[pageId];
@@ -261,4 +269,135 @@ export const loadLocalFolderPagesAction = async (
       // 忽略
     }
   }
+};
+
+// ── 增量 watch 辅助：单页从 store 移除 ────────────────────────────────────────
+/**
+ * 文件被外部删除/移走时，从 store 中移除该页面并处理 activePage / tab 善后。
+ * 不触发全量重扫。
+ */
+export const removeSingleLocalPageAction = (
+  set: StoreSet,
+  get: StoreGet,
+  filePath: string,
+): void => {
+  const pages = get().pages;
+  const target = Object.values(pages).find(
+    (p) => p.localFilePath === filePath || p.localFilePath?.replace(/\\/g, "/") === filePath.replace(/\\/g, "/"),
+  );
+  if (!target) return;
+
+  const pageId = target.id;
+
+  // 清除快照
+  deleteLocalMdSnapshot(filePath);
+
+  set((state) => {
+    const newPages = { ...state.pages };
+    delete newPages[pageId];
+
+    const nextActivePageId =
+      state.activePageId === pageId ? null : state.activePageId;
+
+    const newDirty = { ...state.dirtyLocalPageIds };
+    delete newDirty[pageId];
+
+    return {
+      pages: newPages,
+      activePageId: nextActivePageId,
+      dirtyLocalPageIds: newDirty,
+    };
+  });
+
+  // 关闭指向该页面的标签
+  const tabs = useTabs.getState();
+  const tab = tabs.openTabs.find((t) => t.pageId === pageId);
+  if (tab) {
+    tabs.closeTab(tab.id);
+  }
+};
+
+// ── 增量 watch 辅助：单个新文件扫入 store ────────────────────────────────────
+/**
+ * 文件被外部新建/移入时，读取文件内容、构造 Page 对象并合并进 store。
+ * 若该 pageId 已存在（例如 rename 后先 add 再 remove）则更新内容。
+ * 不触发全量重扫，不触发 activePage 跳转。
+ */
+export const addSingleLocalPageAction = async (
+  set: StoreSet,
+  get: StoreGet,
+  notebookId: string,
+  basePath: string,
+  filePath: string,
+): Promise<void> => {
+  if (typeof window === "undefined" || !window.gooseFs) return;
+
+  const fs = window.gooseFs;
+
+  // 只处理 markdown 文件（非目录）
+  if (!/\.(md|markdown)$/i.test(filePath)) return;
+
+  const fallbackTitle = localFileTitleFromPath(filePath);
+  const pageId = buildLocalPageId(notebookId, basePath, filePath);
+
+  let markdown: string | null = null;
+  let readError: string | undefined;
+  try {
+    if (fs.readFileStatAsync) {
+      const result = await fs.readFileStatAsync(filePath);
+      markdown = result.ok ? (result.content ?? "") : null;
+      readError = result.error || undefined;
+    } else if (fs.readFileStat) {
+      const result = fs.readFileStat(filePath);
+      markdown = result.ok ? (result.content ?? "") : null;
+      readError = result.error || undefined;
+    } else if (fs.readFileAsync) {
+      markdown = await fs.readFileAsync(filePath);
+    } else {
+      markdown = fs.readFile(filePath);
+    }
+  } catch (err) {
+    console.error("[local-folder] addSingleLocalPage read failed", err);
+    return;
+  }
+
+  const parsed = parseLocalMarkdownContent(markdown, fallbackTitle, readError);
+
+  // 记录快照
+  if (typeof markdown === "string") {
+    setLocalMdSnapshot(filePath, markdown);
+  }
+
+  // 恢复元数据缓存（如果有）
+  const cachedMeta = localPageMetadataCache.get(pageId);
+
+  const now = Date.now();
+  const newPage: Page = {
+    id: pageId,
+    workspaceId: notebookId,
+    content: parsed.content,
+    isFolder: false,
+    isLocked: false,
+    isFullWidth: false,
+    fontSize: "default",
+    fontFamily: "default",
+    localFilePath: filePath,
+    localFrontmatter: parsed.frontmatter,
+    localReadState: parsed.readState,
+    localReadError: parsed.readError,
+    createdAt: now,
+    updatedAt: now,
+    ...(cachedMeta?.isFavorite !== undefined && { isFavorite: cachedMeta.isFavorite }),
+    ...(cachedMeta?.favoriteOrder !== undefined && { favoriteOrder: cachedMeta.favoriteOrder }),
+    ...(cachedMeta?.icon && { icon: cachedMeta.icon }),
+    ...(cachedMeta?.isPinned !== undefined && { isPinned: cachedMeta.isPinned }),
+    ...(cachedMeta?.pinnedAt !== undefined && { pinnedAt: cachedMeta.pinnedAt }),
+  };
+
+  set((state) => ({
+    pages: {
+      ...state.pages,
+      [pageId]: newPage,
+    },
+  }));
 };

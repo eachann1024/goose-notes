@@ -57,7 +57,9 @@ function getFirstBlock(
   return result;
 }
 
-function firstTitleGuardPlugin() {
+function firstTitleGuardPlugin(
+  isLocalFolderPageRef: { current: boolean } = { current: false },
+) {
   return new Plugin({
     appendTransaction(
       transactions: readonly Transaction[],
@@ -65,6 +67,8 @@ function firstTitleGuardPlugin() {
       newState: EditorState,
     ) {
       if (!transactions.some((tr) => tr.docChanged)) return null;
+      // local-folder 页面不施加首块 H1 约束，内容保持磁盘解析原样。
+      if (isLocalFolderPageRef.current) return null;
 
       const first = getFirstBlock(newState.doc);
       if (!first) return null;
@@ -106,7 +110,23 @@ function firstTitleGuardPlugin() {
   });
 }
 
-export const gooseFirstTitleGuardExtension = createExtension({
-  key: "goose-first-title-guard",
-  prosemirrorPlugins: [firstTitleGuardPlugin()],
+/**
+ * 创建 firstTitleGuard 扩展实例。
+ *
+ * @param isLocalFolderPageRef - 指向当前页是否为 local-folder 的 ref。
+ *   local-folder 页面不施加「首块恒为 H1」约束（文件内容应保持原样，H1 不再绑定文件名）。
+ *   内部笔记本（ref.current === false）仍走完整守卫，行为零变化。
+ */
+export function createGooseFirstTitleGuardExtension(
+  isLocalFolderPageRef: { current: boolean },
+) {
+  return createExtension({
+    key: "goose-first-title-guard",
+    prosemirrorPlugins: [firstTitleGuardPlugin(isLocalFolderPageRef)],
+  });
+}
+
+/** 向后兼容：不传 ref 则永远启用（用于内部笔记本场景的单元测试等）。 */
+export const gooseFirstTitleGuardExtension = createGooseFirstTitleGuardExtension({
+  current: false,
 });

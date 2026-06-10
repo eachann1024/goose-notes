@@ -53,15 +53,13 @@ export function parseCodeFenceInfo(infoLine: string): {
   };
 }
 
-export function alignToContainerStyle(align: "left" | "center" | "right"): string {
-  const marginMap = {
-    left: "margin: 0 auto 0 0;",
-    center: "margin: 0 auto;",
-    right: "margin: 0 0 0 auto;",
-  };
-  return marginMap[align];
-}
-
+/**
+ * 解析 GFM 表格 → BlockNote table 块格式：
+ * { type: "table", content: { type: "tableContent", rows: [{ cells: [InlineContent[]] }] } }
+ *
+ * 直接输出 BlockNote 运行时格式（而非 TipTap tableRow 节点），使 normalizeBlocks
+ * 直通后编辑器可直接加载，序列化侧统一走 rows/cells 读取。首行为表头（GFM 约定）。
+ */
 export function parseTableBlock(
   lines: string[],
   i: number,
@@ -97,31 +95,18 @@ export function parseTableBlock(
       index++;
     }
 
-    const toCell = (text: string, type: "tableHeader" | "tableCell") => ({
-      type: "tableCell",
-      attrs: { ...((type === "tableHeader" && { isHeader: true }) || {}) },
-      content: [
-        {
-          type: "paragraph",
-          content: parseInline(text.replace(/\\\|/g, "|")),
-        },
-      ],
-    });
-
-    const headerRow = {
-      type: "tableRow",
-      content: headerCells.map((cell: any) => toCell(cell, "tableHeader")),
-    };
-
-    const bodyRowNodes = bodyRows.map((row: any) => ({
-      type: "tableRow",
-      content: row.map((cell: any) => toCell(cell, "tableCell")),
-    }));
+    const toCellContent = (text: string) => parseInline(text.replace(/\\\|/g, "|"));
 
     return {
       block: {
         type: "table",
-        content: [headerRow, ...bodyRowNodes],
+        content: {
+          type: "tableContent",
+          rows: [
+            { cells: headerCells.map(toCellContent) },
+            ...bodyRows.map((row) => ({ cells: row.map(toCellContent) })),
+          ],
+        },
       },
       nextIndex: index,
     };

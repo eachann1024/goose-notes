@@ -36,6 +36,7 @@ import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
 import { GooseTableHandle, GooseTableExtendButton } from "@/components/editor/menus/GooseTableHandle";
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
+import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
 
 // Re-exports to prevent broken imports elsewhere
 export {
@@ -68,6 +69,10 @@ type EditorComposerProps = {
   pageIdForUpdateRef: RefObject<string | null>;
   syncedContentSignatureRef: RefObject<string | null>;
   debouncedUpdate: ((id: string, content: BlockNoteContent) => void) & { cancel: () => void };
+  /** 自上次程序化同步（切页/外部重载）以来用户是否真实交互过（见 Editor.tsx 意图门控）。 */
+  userInteractedRef: RefObject<boolean>;
+  /** 静默同步 store（不标脏、不入保存队列）：用于编辑器初始化后的异步 props 补全。 */
+  silentContentSync: (content: BlockNoteContent) => void;
   isEditorFullWidth: boolean;
   effectiveTheme: "light" | "dark";
   tableEvenColumnWidth: boolean;
@@ -88,6 +93,8 @@ export function EditorComposer({
   pageIdForUpdateRef,
   syncedContentSignatureRef,
   debouncedUpdate,
+  userInteractedRef,
+  silentContentSync,
   isEditorFullWidth,
   effectiveTheme,
   tableEvenColumnWidth,
@@ -200,6 +207,9 @@ export function EditorComposer({
       isEditorFullWidth={isEditorFullWidth}
       tableEvenColumnWidth={tableEvenColumnWidth}
     >
+      {page?.localFilePath && (
+        <LocalFileTitle pageId={page.id} localFilePath={page.localFilePath} />
+      )}
       <BlockNoteView
         editor={editor}
         editable={editable}
@@ -213,12 +223,25 @@ export function EditorComposer({
         onChange={() => {
           const safePageId = pageIdForUpdateRef.current;
           if (!safePageId) return;
-          const nextContent = normalizePageContent(
-            clonePageContent(editor.document as BlockNoteContent),
-          );
+          // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
+          // 与 Editor.tsx 切页/commit 路径保持一致：否则 normalize 改写让签名与基线
+          // 永不一致，打开后首个 onChange 即触发非 silent 保存（打开即写盘）。
+          // 用户真实输入仍会让文档签名偏离基线，照常走 debouncedUpdate 保存。
+          const isLocalPage = Boolean(page?.localFilePath);
+          const rawContent = clonePageContent(editor.document as BlockNoteContent);
+          const nextContent = isLocalPage
+            ? rawContent
+            : normalizePageContent(rawContent);
           const nextSig = getContentSignature(nextContent);
           if (nextSig === syncedContentSignatureRef.current) return;
           syncedContentSignatureRef.current = nextSig;
+          // 用户意图门控（仅 local 页面）：打开后无任何用户交互时的 onChange 来自
+          // BlockNote 异步 props 补全（折叠块/视频/带属性图片等），静默同步 store 与
+          // 基线、不入保存队列。一旦用户交互过（打字/IME/点击/拖拽…），照常入队保存。
+          if (isLocalPage && !userInteractedRef.current) {
+            silentContentSync(nextContent);
+            return;
+          }
           debouncedUpdate(safePageId, nextContent);
         }}
       >

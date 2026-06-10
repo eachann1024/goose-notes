@@ -35,10 +35,14 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       (index: number) => {
         const item = items[index];
         if (item && (item as any).type !== "divider" && !item.disabled) {
-          item.onItemClick();
+          // 必须经由 props.onItemClick 调用，让 SuggestionMenuWrapper 的
+          // onItemClickCloseMenu 先执行 closeMenu() + clearQuery()，再回调
+          // item.onItemClick()。直接调用 item.onItemClick() 会绕过 closeMenu/
+          // clearQuery，导致查询词残留进块内容、菜单不关闭。
+          onItemClick?.(item);
         }
       },
-      [items],
+      [items, onItemClick],
     );
 
     useEffect(() => {

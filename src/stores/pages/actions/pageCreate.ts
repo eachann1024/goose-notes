@@ -14,6 +14,12 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { savePagesMeta } from "@/lib/storage/pageRepository";
 import { buildLocalPageId } from "@/lib/local-folder-scanner";
+import {
+  readLocalPageIdMap,
+  resolveOrCreateStableId,
+  toRelativePath,
+  writeLocalPageIdMap,
+} from "@/lib/local-page-idmap";
 
 import type { PagesState } from "../types";
 import { persistPageSnapshot, persistPageSnapshots, syncLocalPageMetadataCache } from "../persistence";
@@ -36,7 +42,14 @@ export function clonePageContent(content?: JSONContent | null) {
 function generateLocalPageId(notebookId: string, filePath: string): string {
   const notebook = useNotebooks.getState().notebooks[notebookId];
   if (!notebook?.localPath) return uuidv4();
-  return buildLocalPageId(notebookId, notebook.localPath, filePath);
+  const basePath = notebook.localPath;
+  const relativePath = toRelativePath(basePath, filePath);
+  const map = readLocalPageIdMap(notebookId);
+  const { id, dirty } = resolveOrCreateStableId(notebookId, relativePath, map);
+  if (dirty) {
+    writeLocalPageIdMap(notebookId, map);
+  }
+  return id;
 }
 
 export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
@@ -244,7 +257,10 @@ export const createLocalPageRecordAction = async (
   const resolveParentPath = () => {
     if (!parentId) return null;
     const parentPage = get().pages[parentId];
+    // 优先从 page.localFilePath 取路径（稳定 id 后，路径永远在 localFilePath 字段）。
     if (parentPage?.localFilePath) return parentPage.localFilePath;
+    // 兜底：页面不在 store 时，尝试从旧格式 id（local-{nb}-{encoded}）反解。
+    // 注意：稳定 id 后 id 不再必然等于路径编码，此兜底仅供迁移过渡期使用。
     const prefix = `local-${workspaceId}-`;
     if (!parentId.startsWith(prefix)) return null;
     const encoded = parentId.slice(prefix.length);
