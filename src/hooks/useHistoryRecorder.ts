@@ -89,21 +89,25 @@ export function useHistoryRecorder(params: {
       }
       if (useAiStatus.getState().phase === "streaming") return;
 
-      const entry = recordHistorySnapshot({
+      const sig = p.signature;
+      const fingerprint = p.fingerprint;
+      const charCount = p.charCount;
+      recordHistorySnapshot({
         pageId,
         workspaceId,
         content: p.content,
         trigger: "idle",
-      });
-      if (entry) {
-        lastRecordedSigRef.current = p.signature;
-        lastRecordedFingerprintRef.current = p.fingerprint;
-        lastRecordedCharRef.current = p.charCount;
-        const view = useHistoryView.getState();
-        if (view.active === pageId) {
-          view.bumpRefresh();
+      }).then((entry) => {
+        if (entry) {
+          lastRecordedSigRef.current = sig;
+          lastRecordedFingerprintRef.current = fingerprint;
+          lastRecordedCharRef.current = charCount;
+          const view = useHistoryView.getState();
+          if (view.active === pageId) {
+            view.bumpRefresh();
+          }
         }
-      }
+      }).catch((err) => console.error("[history] recordHistorySnapshot failed:", err));
       pendingRef.current = null;
       if (idleTimerRef.current) {
         clearTimeout(idleTimerRef.current);

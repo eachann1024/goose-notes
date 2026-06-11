@@ -4,7 +4,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { getPageTitle } from "@/components/editor/utils/page-title";
-import { lookupCreatedPage } from "@/lib/notebook-ai/liveWriter";
+import { lookupCreatedPage, reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
 import {
   createEmptyBlockNoteContent,
   normalizePageContent,
@@ -153,6 +153,7 @@ export const replaceInPage = tool({
       newContent as JSONContent,
       "replace",
     );
+    reloadEditorIfActive(input.pageId);
 
     return { pageId: input.pageId, replacedCount: count };
   },

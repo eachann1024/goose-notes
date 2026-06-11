@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster as Sonner } from "sonner";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,19 @@ const defaultToastClassNames = {
 } satisfies NonNullable<ToasterProps["toastOptions"]>["classNames"];
 
 const Toaster = ({ className, toastOptions, ...props }: ToasterProps) => {
+  useEffect(() => {
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const closeBtn = target?.closest?.('[data-sonner-toast] [data-close-button]') as HTMLElement | null;
+      if (closeBtn) {
+        e.preventDefault();
+        closeBtn.click();
+      }
+    };
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, []);
+
   return (
     <Sonner
       theme="system"

@@ -16,6 +16,8 @@ interface SettingsAppearanceProps {
   setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
   uiFontSize: "small" | "normal";
   setUIFontSize: (size: "small" | "normal") => void;
+  hideExpandArrows: boolean;
+  setHideExpandArrows: (hidden: boolean) => void;
 }
 
 const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
@@ -75,6 +77,8 @@ export function SettingsAppearance({
   setCustomFont,
   uiFontSize,
   setUIFontSize,
+  hideExpandArrows,
+  setHideExpandArrows,
 }: SettingsAppearanceProps) {
   const getFontPreview = (type: "default" | "serif" | "mono") =>
     customFonts[type].font || defaultFonts[type];
@@ -96,7 +100,10 @@ export function SettingsAppearance({
         description="选择深浅模式，并调整界面字体大小。"
       >
         <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="dark-mode">深色模式</Label>
+          <div className="flex items-center gap-3">
+            <LucideIcons.SunMoon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <Label htmlFor="dark-mode">深色模式</Label>
+          </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
             <TooltipProvider delayDuration={0}>
               <Tooltip>
@@ -156,11 +163,12 @@ export function SettingsAppearance({
 
         <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
           <div>
-            <Label>界面字体大小</Label>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              调整整体界面的文字大小
-              <br />
-              在界面按下 {primaryModifier} + / - / 0 可以临时调整字体大小
+            <div className="flex items-center gap-3">
+              <LucideIcons.ALargeSmall className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label>界面字体大小</Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              调整整体界面的文字大小；也可随时按 {primaryModifier} + / - / 0 临时缩放。
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
@@ -196,11 +204,14 @@ export function SettingsAppearance({
       >
         <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="global-editor-full-width" className="cursor-pointer">
-              全局默认全宽
-            </Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              作为默认宽度生效；你仍可在每个记事本中单独切换并记忆自己的宽度偏好。
+            <div className="flex items-center gap-3">
+              <LucideIcons.StretchHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="global-editor-full-width" className="cursor-pointer">
+                全局默认全宽
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              让编辑区铺满整个宽度；每个记事本还可以单独覆盖这个默认值。
             </p>
           </div>
           <Switch
@@ -212,11 +223,14 @@ export function SettingsAppearance({
         </div>
         <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="table-even-column-width" className="cursor-pointer">
-              表格两端对齐
-            </Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              像 Notion 一样让表格撑满可用宽度，并按列数平均分配单元格宽度。
+            <div className="flex items-center gap-3">
+              <LucideIcons.Table2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="table-even-column-width" className="cursor-pointer">
+                表格两端对齐
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              让表格撑满可用宽度，并按列数均分每列宽度，像 Notion 表格那样整齐。
             </p>
           </div>
           <Switch
@@ -226,11 +240,30 @@ export function SettingsAppearance({
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>
+        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+          <div>
+            <div className="flex items-center gap-3">
+              <LucideIcons.ChevronsDownUp className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="hide-expand-arrows" className="cursor-pointer">
+                隐藏展开箭头
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              藏起侧栏里的小箭头，给标题腾地方；双击条目就能展开或收起。
+            </p>
+          </div>
+          <Switch
+            id="hide-expand-arrows"
+            checked={hideExpandArrows}
+            onCheckedChange={setHideExpandArrows}
+            className={APPEARANCE_SWITCH_CLASS}
+          />
+        </div>
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="主题与代码风格"
-        description="选择代码块视觉风格（自动适配深浅模式）。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Code2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />主题与代码风格</span>}
+        description="选择代码块的配色方案，深浅模式自动适配。"
       >
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {codeStyles.map((t) => (
@@ -258,8 +291,8 @@ export function SettingsAppearance({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="自定义字体"
-        description="留空使用默认值，填写系统已安装字体名即可。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Type className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />自定义字体</span>}
+        description="填写系统已安装的字体名；留空则用默认字体。"
       >
         <div className="space-y-4">
           {(["default", "serif", "mono"] as const).map((type) => (

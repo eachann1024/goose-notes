@@ -105,7 +105,7 @@ export function PageMenu() {
 
         <DropdownMenuGroup>
           <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
-            <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="min-w-0 truncate">锁定页面</span>
             <Switch
               checked={page.isLocked}
@@ -119,7 +119,7 @@ export function PageMenu() {
         {/* Switches Section */}
         <DropdownMenuGroup>
           <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
-            <LucideIcons.ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <LucideIcons.ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="min-w-0 truncate">全宽显示（当前记事本）</span>
             <Switch
               checked={Boolean(notebook?.editorFullWidth ?? globalEditorFullWidth)}
@@ -131,7 +131,7 @@ export function PageMenu() {
           </div>
 
           <DropdownMenuItem
-            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-red-600 dark:data-[highlighted]:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
             onClick={() => void deletePageWithUndo(activePageId)}
           >
             <LucideIcons.Trash2 className="h-3.5 w-3.5" />
@@ -164,7 +164,7 @@ export function PageMenu() {
         {/* Export submenu */}
         <DropdownMenuGroup>
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs">
+            <DropdownMenuSubTrigger className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 text-xs">
               <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="min-w-0 truncate">导出</span>
             </DropdownMenuSubTrigger>
@@ -230,17 +230,19 @@ export function PageMenu() {
 
         <div className="px-2 py-1.5 text-xs text-muted-foreground">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
+            <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2">
+              <span aria-hidden="true" />
               <span>字数</span>
-              <span className="text-[10px] opacity-80">
-                {countWords(page.content)}
-              </span>
+              <span className="text-[10px] opacity-80">{countWords(page.content)}</span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span>最后编辑于</span>
-              <span className="text-[10px] opacity-80">
-                {new Date(page.updatedAt).toLocaleString("zh-CN")}
-              </span>
+            <div className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2">
+              <span aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <span>最后编辑于</span>
+                <span className="text-[10px] opacity-80">
+                  {new Date(page.updatedAt).toLocaleString("zh-CN")}
+                </span>
+              </div>
             </div>
           </div>
         </div>

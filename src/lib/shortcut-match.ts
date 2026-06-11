@@ -55,5 +55,11 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   if (!keyToken) {
     return isModifierToken(eventKey) && expectedModifiers[eventKey as keyof typeof expectedModifiers];
   }
-  return !isModifierToken(eventKey) && eventKey === keyToken;
+  if (!isModifierToken(eventKey) && eventKey === keyToken) return true;
+  // macOS 上 Option 组合键的 event.key 是变音字符（如 ⌥W → "∑"），用 event.code 兜底
+  const code = event.code || "";
+  let codeKey = "";
+  if (/^Key[A-Z]$/.test(code)) codeKey = code.slice(3).toLowerCase();
+  else if (/^Digit[0-9]$/.test(code)) codeKey = code.slice(5);
+  return !!codeKey && codeKey === keyToken;
 }

@@ -38,6 +38,7 @@ const CURATED_ICONS: string[] = [
   "Clipboard",
   "ClipboardList",
   "Folder",
+  "FolderOpen",
   "Archive",
   "Inbox",
   "Bookmark",

@@ -1,7 +1,6 @@
 import { FavoritesSection } from "./FavoritesSection";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarTree } from "./SidebarTree";
 import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
@@ -23,7 +22,7 @@ const SIDEBAR_SIDE_GAP_RIGHT = 9;
 const SIDEBAR_CONTENT_WIDTH_OFFSET = SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;
 
 type SidebarView = "pages" | "trash" | "outline";
-type SidebarDragGuideMode = "sort" | "nest-pending" | "nest-ready";
+type SidebarDragGuideMode = "sort" | "nest-ready";
 
 interface SidebarDragGuideState {
   direction: "left" | "right";

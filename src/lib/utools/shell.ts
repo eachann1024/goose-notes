@@ -55,6 +55,19 @@ export const shell = {
     return false;
   },
 
+  openWithEditor: async (filePath: string, editor: string): Promise<boolean> => {
+    type GooseFs = { openWithApp?: (f: string, e: string) => Promise<boolean> };
+    const gooseFs = (window as Window & { gooseFs?: GooseFs }).gooseFs;
+    if (editor && gooseFs?.openWithApp) {
+      try {
+        return await gooseFs.openWithApp(filePath, editor);
+      } catch {
+        return false;
+      }
+    }
+    return shell.openPath(filePath);
+  },
+
   getDownloadsPath: (): string | null => {
     const utools = getUToolsApi();
     if (!utools?.getPath) return null;

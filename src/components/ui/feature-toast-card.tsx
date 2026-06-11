@@ -5,6 +5,7 @@ import { Button, type ButtonProps } from "./button";
 type FeatureToastAction = {
   label: string;
   onClick: () => void;
+  onPointerDown?: (e: React.PointerEvent<HTMLButtonElement>) => void;
   variant?: ButtonProps["variant"];
   className?: string;
 };
@@ -43,6 +44,7 @@ export function FeatureToastCard({
               size="sm"
               className={cn("h-8 rounded-[10px] px-3 text-xs", action.className)}
               onClick={action.onClick}
+              onPointerDown={action.onPointerDown}
             >
               {action.label}
             </Button>

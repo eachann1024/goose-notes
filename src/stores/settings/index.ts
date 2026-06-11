@@ -24,13 +24,15 @@ import { createAppearanceSlice, type AppearanceSlice } from './slices/appearance
 import { createUToolsSlice, type UToolsSlice } from './slices/utoolsSlice'
 import { createShortcutsSlice, type ShortcutsSlice } from './slices/shortcutsSlice'
 import { createSearchProvidersSlice, type SearchProvidersSlice } from './slices/searchProvidersSlice'
+import { createLocalFolderSlice, type LocalFolderSlice } from './slices/localFolderSlice'
 
 export type SettingsState =
     AISlice &
     AppearanceSlice &
     UToolsSlice &
     ShortcutsSlice &
-    SearchProvidersSlice & {
+    SearchProvidersSlice &
+    LocalFolderSlice & {
         _hasHydrated: boolean
     }
 
@@ -107,6 +109,7 @@ export const useSettings = create<SettingsState>()(
             ...createUToolsSlice(set as Parameters<typeof createUToolsSlice>[0]),
             ...createShortcutsSlice(set as Parameters<typeof createShortcutsSlice>[0]),
             ...createSearchProvidersSlice(set as Parameters<typeof createSearchProvidersSlice>[0]),
+            ...createLocalFolderSlice(set as Parameters<typeof createLocalFolderSlice>[0]),
             _hasHydrated: false,
         }),
         {
@@ -123,6 +126,9 @@ export const useSettings = create<SettingsState>()(
                 }
                 if (state && typeof state.defaultCodeBlockWrap !== 'boolean') {
                     useSettings.setState({ defaultCodeBlockWrap: false })
+                }
+                if (state && typeof state.hideExpandArrows !== 'boolean') {
+                    useSettings.setState({ hideExpandArrows: false })
                 }
                 if (state && typeof state.tableEvenColumnWidth !== 'boolean') {
                     useSettings.setState({ tableEvenColumnWidth: true })
@@ -225,6 +231,16 @@ export const useSettings = create<SettingsState>()(
                     }
                     if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
                         useSettings.setState({ desktop: mergedDesktop })
+                    }
+                }
+
+                if (state) {
+                    const normalizedLocalFolderExternalEditor =
+                        typeof state.localFolderExternalEditor === 'string'
+                            ? state.localFolderExternalEditor
+                            : ''
+                    if (state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor) {
+                        useSettings.setState({ localFolderExternalEditor: normalizedLocalFolderExternalEditor })
                     }
                 }
 

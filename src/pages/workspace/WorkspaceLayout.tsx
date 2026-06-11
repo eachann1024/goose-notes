@@ -86,6 +86,17 @@ export function WorkspaceLayout({
   // 改为：依赖 activePageId/page 一并参与，用 handledSearchHighlightNonce 做幂等去重，
   // 等切页落定、目标页 editor ready 后自然会再跑一次并完成定位。
   const locateRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mod+J 快捷键（useAppHotkeys 派发）→ 开关 AI 面板，与 UI 按钮门控一致：未启用 AI 时不响应
+  useEffect(() => {
+    const onToggle = () => {
+      if (!aiEnabled) return;
+      toggleAiPanel();
+    };
+    window.addEventListener("goose-note:toggle-ai-panel", onToggle);
+    return () =>
+      window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
+  }, [aiEnabled, toggleAiPanel]);
+
   useEffect(() => {
     if (locateRetryRef.current) {
       clearTimeout(locateRetryRef.current);

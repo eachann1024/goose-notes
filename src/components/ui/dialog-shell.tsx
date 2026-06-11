@@ -66,6 +66,7 @@ export function DialogShell({
                 isFullscreen ? "top-4 right-4" : "top-4 right-4"
               )}
               aria-label="关闭"
+              onPointerDown={(e) => { e.preventDefault(); onOpenChange(false); }}
             >
               <LucideIcons.X className="h-7 w-7" />
             </button>

@@ -41,7 +41,7 @@ export function CommandPalette() {
     setSearchAllNotebooks,
     showRecentInSearch,
     setShowRecentInSearch,
-    searchPanelCloseShortcut,
+    closeTabShortcut,
   } = useSettings();
   const {
     searchResults,
@@ -122,7 +122,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (open && matchShortcut(e, searchPanelCloseShortcut)) {
+      if (open && matchShortcut(e, closeTabShortcut)) {
         e.preventDefault();
         e.stopPropagation();
         setOpen(false);
@@ -159,7 +159,7 @@ export function CommandPalette() {
       document.removeEventListener("keydown", down, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
-  }, [open, searchAllNotebooks, searchPanelCloseShortcut, setSearchAllNotebooks]);
+  }, [open, searchAllNotebooks, closeTabShortcut, setSearchAllNotebooks]);
 
   const runCommand = useCallback(async (command: () => void) => {
     command();

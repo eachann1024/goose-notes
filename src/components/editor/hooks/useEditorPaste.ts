@@ -137,6 +137,11 @@ export function useEditorPaste({
 
       // 2. 粘贴纯 URL → 根据是否有选中文本决定行为
       if (isValidUrl(trimmedText)) {
+        // 裸域名(baidu.com)/www. 开头没有协议，href 不补全的话 openUrl 打不开，
+        // 这里统一补 https://，显示文本仍保留原文。
+        const href = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmedText)
+          ? trimmedText
+          : `https://${trimmedText}`;
         // 先尝试 BlockNote 的选中文本 API，fallback 到原生选区
         let selectedText = editor.getSelectedText();
         if (!selectedText?.trim()) {
@@ -150,14 +155,14 @@ export function useEditorPaste({
           // 选中文本 + 粘贴 URL → 将选中文本转为链接
           event.preventDefault();
           event.stopPropagation();
-          editor.createLink(trimmedText, selectedText);
+          editor.createLink(href, selectedText);
           return;
         }
 
         // 无选中文本 + 粘贴纯 URL → 将 URL 作为链接文本插入
         event.preventDefault();
         event.stopPropagation();
-        editor.createLink(trimmedText, trimmedText);
+        editor.createLink(href, trimmedText);
         return;
       }
 

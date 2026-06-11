@@ -1,16 +1,12 @@
 import {
-  type DragEndEvent,
   type DragMoveEvent,
-  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
 import type { Page } from "@/types";
 import { type FlatTreeItem } from "../tree-dnd";
 import {
-  getDragCenterX,
   getDragCenterY,
-  getClientXFromActivator,
   getClientYFromActivator,
   TOP_EDGE_DROP_ID,
   BOTTOM_EDGE_DROP_ID,
@@ -22,7 +18,7 @@ import { useDragEnd } from "./dragHandlers/useDragEnd";
 
 export type DropIntentKind = "before" | "after" | "nest";
 export type DragGuideDirection = "left" | "right";
-export type DragGuideMode = "sort" | "nest-pending" | "nest-ready";
+export type DragGuideMode = "sort" | "nest-ready";
 
 export interface DropIntent {
   overId: string;
@@ -43,19 +39,15 @@ interface UseTreeDragHandlersParams {
   getSiblingPages: (parentId: string | undefined) => Page[];
   isLocalNotebook: boolean;
   itemHeight: number;
-  nestHoverDelayMs: number;
   onReorder?: (ids: string[], parentId: string | undefined) => void;
   pages: Record<string, Page>;
   reorderPages: (ids: string[], parentId?: string) => void;
   resetTitleReveal: () => void;
-  rightNestEnterOffset: number;
-  rightNestExitOffset: number;
   rowHeight: number;
   scrollRef: RefObject<HTMLDivElement | null>;
   setActiveId: Dispatch<SetStateAction<string | null>>;
   setDropIntent: Dispatch<SetStateAction<DropIntent | null>>;
   setOpenPageIds: Dispatch<SetStateAction<Set<string>>>;
-  updateNestGuide: (guide: { overId: string; locked: boolean } | null) => void;
   visibleIndexMap: Map<string, number>;
 }
 
@@ -68,56 +60,39 @@ export function useTreeDragHandlers({
   getSiblingPages,
   isLocalNotebook,
   itemHeight,
-  nestHoverDelayMs,
   onReorder,
   pages,
   reorderPages,
   resetTitleReveal,
-  rightNestEnterOffset,
-  rightNestExitOffset,
   rowHeight,
   scrollRef,
   setActiveId,
   setDropIntent,
   setOpenPageIds,
-  updateNestGuide,
   visibleIndexMap,
 }: UseTreeDragHandlersParams) {
   const autoExpandTimerRef = useRef<number | null>(null);
+  const autoExpandTargetRef = useRef<string | null>(null);
   const dragPointerYRef = useRef<number | null>(null);
-  const dragPointerXRef = useRef<number | null>(null);
-  const dragStartPointerXRef = useRef<number | null>(null);
   const dragStartPointerYRef = useRef<number | null>(null);
   const isTrackingPointerRef = useRef(false);
-  const nestDelayTimerRef = useRef<number | null>(null);
-  const nestCandidateRef = useRef<string | null>(null);
-  const lockedNestIdRef = useRef<string | null>(null);
-  const rightNestActiveRef = useRef(false);
 
   const clearAutoExpandTimer = () => {
     if (autoExpandTimerRef.current !== null) {
       window.clearTimeout(autoExpandTimerRef.current);
       autoExpandTimerRef.current = null;
     }
-  };
-
-  const clearNestDelayTimer = () => {
-    if (nestDelayTimerRef.current !== null) {
-      window.clearTimeout(nestDelayTimerRef.current);
-      nestDelayTimerRef.current = null;
-    }
+    autoExpandTargetRef.current = null;
   };
 
   const handleGlobalPointerMove = useCallback((event: PointerEvent) => {
     dragPointerYRef.current = event.clientY;
-    dragPointerXRef.current = event.clientX;
   }, []);
 
   const handleGlobalTouchMove = useCallback((event: TouchEvent) => {
     const touch = event.touches[0] || event.changedTouches[0];
     if (!touch) return;
     dragPointerYRef.current = touch.clientY;
-    dragPointerXRef.current = touch.clientX;
   }, []);
 
   const startPointerTracking = useCallback(() => {
@@ -137,7 +112,9 @@ export function useTreeDragHandlers({
   useEffect(() => {
     return () => {
       stopPointerTracking();
-      clearNestDelayTimer();
+      if (autoExpandTimerRef.current !== null) {
+        window.clearTimeout(autoExpandTimerRef.current);
+      }
     };
   }, [stopPointerTracking]);
 
@@ -163,20 +140,12 @@ export function useTreeDragHandlers({
     resetTitleReveal();
     setActiveId(String(active.id));
     setDropIntent(null);
-    updateNestGuide(null);
-    clearNestDelayTimer();
-    nestCandidateRef.current = null;
-    lockedNestIdRef.current = null;
-    rightNestActiveRef.current = false;
+    clearAutoExpandTimer();
     startPointerTracking();
     const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
     dragPointerYRef.current =
       getClientYFromActivator(activatorEvent) ??
       getDragCenterY(translatedRect, activatorEvent);
-    dragPointerXRef.current =
-      getClientXFromActivator(activatorEvent) ??
-      getDragCenterX(translatedRect, activatorEvent);
-    dragStartPointerXRef.current = dragPointerXRef.current;
     dragStartPointerYRef.current = dragPointerYRef.current;
     emitDragGuide({ direction: "left", mode: "sort" });
   };
@@ -188,25 +157,15 @@ export function useTreeDragHandlers({
     } else {
       dragPointerYRef.current = getDragCenterY(translatedRect, undefined);
     }
-    if (dragStartPointerXRef.current !== null) {
-      dragPointerXRef.current = dragStartPointerXRef.current + delta.x;
-    } else {
-      dragPointerXRef.current = getDragCenterX(translatedRect, undefined);
-    }
     autoScrollVertical(translatedRect);
   };
 
   const { handleDragOver } = useDragOver({
     dragPointerYRef,
-    dragPointerXRef,
-    dragStartPointerXRef,
-    lockedNestIdRef,
-    nestCandidateRef,
-    rightNestActiveRef,
-    nestDelayTimerRef,
+    autoExpandTimerRef,
+    autoExpandTargetRef,
     dropIntent,
     setDropIntent,
-    updateNestGuide,
     emitDragGuide,
     flatItems,
     scrollRef,
@@ -214,23 +173,16 @@ export function useTreeDragHandlers({
     activeDescendantIds,
     allowNest,
     isLocalNotebook,
-    rightNestEnterOffset,
-    rightNestExitOffset,
     rowHeight,
     itemHeight,
-    nestHoverDelayMs,
-    clearNestDelayTimer,
+    setOpenPageIds,
+    clearAutoExpandTimer,
   });
 
   const { handleDragEnd } = useDragEnd({
     resetTitleReveal,
     clearAutoExpandTimer,
-    clearNestDelayTimer,
-    nestCandidateRef,
-    lockedNestIdRef,
-    rightNestActiveRef,
     stopPointerTracking,
-    updateNestGuide,
     emitDragGuide,
     dropIntent,
     scrollRef,
@@ -238,8 +190,6 @@ export function useTreeDragHandlers({
     setActiveId,
     setDropIntent,
     dragPointerYRef,
-    dragPointerXRef,
-    dragStartPointerXRef,
     dragStartPointerYRef,
     activeDescendantIds,
     pages,
@@ -253,18 +203,11 @@ export function useTreeDragHandlers({
   const handleDragCancel = () => {
     resetTitleReveal();
     clearAutoExpandTimer();
-    clearNestDelayTimer();
-    nestCandidateRef.current = null;
-    lockedNestIdRef.current = null;
-    rightNestActiveRef.current = false;
     stopPointerTracking();
     setActiveId(null);
     setDropIntent(null);
-    updateNestGuide(null);
     emitDragGuide(null);
     dragPointerYRef.current = null;
-    dragPointerXRef.current = null;
-    dragStartPointerXRef.current = null;
     dragStartPointerYRef.current = null;
   };
 

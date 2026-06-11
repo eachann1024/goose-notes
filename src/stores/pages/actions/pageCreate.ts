@@ -10,6 +10,7 @@ import {
 import {
   clonePageContent as cloneBlockNotePageContent,
   createEmptyBlockNoteContent,
+  createEmptyLocalPageContent,
   normalizePageContent,
 } from "@/components/editor/utils/blocknote-content";
 import { savePagesMeta } from "@/lib/storage/pageRepository";
@@ -37,6 +38,17 @@ export function clonePageContent(content?: JSONContent | null) {
     return cloneBlockNotePageContent(initialContent);
   }
   return cloneBlockNotePageContent(normalizePageContent(content));
+}
+
+// local-folder 页面标题由文件名（LocalFileTitle）承担，内容不存在
+// 「首块必须是 H1」的约束，克隆时禁止 ensureFirstTitleHeading 注入空标题块。
+export function cloneLocalPageContent(content?: JSONContent | null) {
+  if (!content) {
+    return cloneBlockNotePageContent(createEmptyLocalPageContent());
+  }
+  return cloneBlockNotePageContent(
+    normalizePageContent(content, { ensureFirstTitle: false }),
+  );
 }
 
 function generateLocalPageId(notebookId: string, filePath: string): string {
@@ -218,7 +230,7 @@ export const createLocalPageAction = async (
     workspaceId,
     parentId,
     title: "新页面",
-    content: createDefaultPageContent(""),
+    content: createEmptyLocalPageContent(),
   });
   if (!id) return null;
   set({ activePageId: id });
@@ -307,10 +319,10 @@ export const createLocalPageRecordAction = async (
   }
 
   if (window.gooseFs.writeFileAsync) {
-    const ok = await window.gooseFs.writeFileAsync(filePath, `# \n`);
+    const ok = await window.gooseFs.writeFileAsync(filePath, ``);
     if (!ok) return null;
   } else {
-    if (!window.gooseFs.writeFile(filePath, `# \n`)) {
+    if (!window.gooseFs.writeFile(filePath, ``)) {
       return null;
     }
   }
@@ -320,7 +332,7 @@ export const createLocalPageRecordAction = async (
     id,
     workspaceId,
     parentId: storedParentId,
-    content: clonePageContent(content),
+    content: cloneLocalPageContent(content),
     isFolder: false,
     isLocked: false,
     isFullWidth: false,
@@ -337,7 +349,7 @@ export const createLocalPageRecordAction = async (
   }));
 
   syncLocalPageMetadataCache(id, null);
-  const saved = await get().saveLocalPageContent(id, clonePageContent(newPage.content));
+  const saved = await get().saveLocalPageContent(id, cloneLocalPageContent(newPage.content));
   if (!saved) {
     set((state) => {
       const nextPages = { ...state.pages };

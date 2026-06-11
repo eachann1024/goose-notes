@@ -7,7 +7,19 @@ import {
 import { formatShortcut } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
+import { useSettings } from "@/stores/useSettings";
+import { shell } from "@/lib/utools/shell";
 import { toast } from "sonner";
+
+const _platform = navigator.platform || navigator.userAgent;
+const _isMac = /Mac/i.test(_platform);
+const _isWin = /Win/i.test(_platform);
+function getFinderLabel(isFolder: boolean) {
+  const action = isFolder ? "打开" : "显示";
+  if (_isMac) return `在访达中${action}`;
+  if (_isWin) return `在资源管理器中${action}`;
+  return `在文件管理器中${action}`;
+}
 
 interface SidebarContextMenuProps {
   page: Page;
@@ -84,6 +96,7 @@ export function SidebarContextMenu({
     });
   };
 
+  const localFolderExternalEditor = useSettings((s) => s.localFolderExternalEditor);
   const hasParent = !!page.parentId;
 
   return (
@@ -111,23 +124,49 @@ export function SidebarContextMenu({
               {formatShortcut("Mod")}+点击
             </span>
           </ContextMenuItem>
+          {isLocalFolder && !isTrashed && page.localFilePath && !page.isFolder && (
+            <ContextMenuItem
+              onSelect={() => {
+                void shell.openWithEditor(page.localFilePath!, localFolderExternalEditor).then((ok) => {
+                  if (!ok) toast.error("打开失败，请检查外部编辑器设置");
+                });
+              }}
+            >
+              <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
+              <span>用外部编辑器打开</span>
+            </ContextMenuItem>
+          )}
+          {isLocalFolder && !isTrashed && page.localFilePath && (
+            <ContextMenuItem
+              onSelect={() => {
+                if (page.isFolder) {
+                  void shell.openPath(page.localFilePath!);
+                } else {
+                  void shell.showItemInFolder(page.localFilePath!);
+                }
+              }}
+            >
+              <LucideIcons.FolderOpen className="h-4 w-4" />
+              <span>{getFinderLabel(!!page.isFolder)}</span>
+            </ContextMenuItem>
+          )}
           {!isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={toggleFavorite}>
               <LucideIcons.Star
                 className={cn(
                   "h-4 w-4",
-                  page.isFavorite && "fill-yellow-400 text-yellow-400",
+                  page.isFavorite && "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
                 )}
               />
               <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
             </ContextMenuItem>
           )}
-          {!isTrashed && (
+          {!isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={togglePinned}>
               <LucideIcons.Pin
                 className={cn(
                   "h-4 w-4",
-                  page.isPinned && "text-primary",
+                  page.isPinned && "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
                 )}
               />
               <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
@@ -186,7 +225,7 @@ export function SidebarContextMenu({
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() => void permanentlyDeletePageWithCleanup(page.id)}
-                className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
+                className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-destructive/10"
               >
                 <LucideIcons.Trash2 className="h-4 w-4" />
                 <span>永久删除</span>
@@ -195,7 +234,7 @@ export function SidebarContextMenu({
           ) : (
             <ContextMenuItem
               onSelect={() => void deletePageWithUndo(page.id)}
-              className="text-foreground/85 dark:text-foreground/85 focus:text-red-600 dark:focus:text-red-400 focus:bg-destructive/10"
+              className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-destructive/10"
             >
               <LucideIcons.Trash2 className="h-4 w-4" />
               <span>移至垃圾箱</span>

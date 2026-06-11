@@ -1,6 +1,8 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 
 export const WELCOME_TAB_PAGE_ID = "welcome";
 
@@ -59,6 +61,27 @@ const commitActiveEditor = () => {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent("goose-note:flush-editor", { detail: { immediate: true } }),
+  );
+};
+
+// 对被关闭的页面执行 flush，完成后若仍 dirty（写盘失败）则 toast 警告一次。
+// 冲突场景下 write.ts 会 dispatch goose-note:local-file-conflict，
+// useLocalFolderWatch 已有 showConflictToast 处理，此处统一 toast 也可接受（不删冲突 UX）。
+const flushClosedPageSaves = (pageIds: string[]): void => {
+  if (pageIds.length === 0) return;
+  const pagesStore = usePages.getState();
+  void Promise.all(
+    pageIds.map(async (pageId) => {
+      await pagesStore.flushPendingLocalSaveByPageId(pageId);
+      const stillDirty = usePages.getState().dirtyLocalPageIds[pageId];
+      if (stillDirty) {
+        const page = usePages.getState().getPage(pageId);
+        const title = page ? getPageTitle(page) : pageId;
+        toast.warning(`「${title}」未能保存到磁盘`, {
+          description: "文件可能被外部程序修改，请检查文件状态。",
+        });
+      }
+    }),
   );
 };
 
@@ -269,7 +292,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       // 关闭前确保该页的编辑已落盘（本地文件夹页面采用自动保存队列）。
       if (tabId === activeTabId) commitActiveEditor();
       if (!isWelcomeTab) {
-        void usePages.getState().flushPendingLocalSaveByPageId(closedPageId);
+        flushClosedPageSaves([closedPageId]);
         const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
         set({ recentlyClosedPageIds: nextClosed });
       }
@@ -300,7 +323,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     closeOtherTabs: (tabId: string) => {
-      const { openTabs } = get();
+      const { openTabs, activeTabId } = get();
       const currentTab = openTabs.find((tab) => tab.id === tabId);
       if (!currentTab) return;
 
@@ -309,6 +332,16 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...openTabs.filter((tab) => tab.pinned && tab.id !== tabId),
         currentTab,
       ]);
+
+      // 计算被关闭的 tab 集合，flush 落盘并在失败时 toast 警告。
+      const nextTabIds = new Set(nextTabs.map((t) => t.id));
+      const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
+      if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
+      const closedPageIds = closedTabs
+        .filter((t) => t.type !== "welcome")
+        .map((t) => t.pageId);
+      flushClosedPageSaves(closedPageIds);
+
       const historyState = syncHistoryWithOpenTabs(nextTabs);
       set({
         openTabs: nextTabs,
@@ -333,6 +366,16 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
         ? activeTabId
         : tabId;
+
+      // 计算被关闭的 tab 集合，flush 落盘并在失败时 toast 警告。
+      const nextTabIds = new Set(nextTabs.map((t) => t.id));
+      const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
+      if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
+      const closedPageIds = closedTabs
+        .filter((t) => t.type !== "welcome")
+        .map((t) => t.pageId);
+      flushClosedPageSaves(closedPageIds);
+
       const historyState = syncHistoryWithOpenTabs(nextTabs);
 
       set({
@@ -359,6 +402,16 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextActiveId = nextTabs.some((tab) => tab.id === activeTabId)
         ? activeTabId
         : tabId;
+
+      // 计算被关闭的 tab 集合，flush 落盘并在失败时 toast 警告。
+      const nextTabIds = new Set(nextTabs.map((t) => t.id));
+      const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
+      if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
+      const closedPageIds = closedTabs
+        .filter((t) => t.type !== "welcome")
+        .map((t) => t.pageId);
+      flushClosedPageSaves(closedPageIds);
+
       const historyState = syncHistoryWithOpenTabs(nextTabs);
 
       set({

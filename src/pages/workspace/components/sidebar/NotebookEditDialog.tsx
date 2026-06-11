@@ -9,6 +9,7 @@ interface NotebookEditDialogProps {
   confirmName: string;
   icon: string;
   openDeleteConfirm?: boolean;
+  isLocalFolder?: boolean;
   onOpenChange: (open: boolean) => void;
   onNameChange: (name: string) => void;
   onIconChange: (icon: string) => void;
@@ -23,6 +24,7 @@ export function NotebookEditDialog({
   confirmName,
   icon,
   openDeleteConfirm = false,
+  isLocalFolder = false,
   onOpenChange,
   onNameChange,
   onIconChange,
@@ -66,11 +68,13 @@ export function NotebookEditDialog({
             </div>
           )}
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {showDeleteConfirm ? "永久删除记事本" : "编辑记事本"}
+            {showDeleteConfirm
+              ? (isLocalFolder ? "移除本地文件夹" : "永久删除记事本")
+              : "编辑记事本"}
           </h1>
           <p className="text-muted-foreground">
             {showDeleteConfirm
-              ? "此操作无法撤销，请谨慎操作"
+              ? (isLocalFolder ? "仅移除挂载，不会删除磁盘上的文件" : "此操作无法撤销，请谨慎操作")
               : "修改记事本的名称与图标"}
           </p>
         </div>
@@ -83,7 +87,7 @@ export function NotebookEditDialog({
                 htmlFor="confirm-delete"
                 className="select-text text-sm font-medium text-destructive"
               >
-                确认删除 <span className="select-text font-bold">{confirmName}</span>
+                {isLocalFolder ? "确认移除" : "确认删除"} <span className="select-text font-bold">{confirmName}</span>
               </Label>
               <Input
                 id="confirm-delete"
@@ -122,7 +126,7 @@ export function NotebookEditDialog({
                 disabled={!isDeleteEnabled}
                 className="flex-1"
               >
-                确认删除
+                {isLocalFolder ? "确认移除" : "确认删除"}
               </Button>
             </div>
           </div>
@@ -142,7 +146,7 @@ export function NotebookEditDialog({
                 >
                   <IconSelector
                     value={icon}
-                    onChange={(val) => onIconChange(val || "BookOpen")}
+                    onChange={(val) => onIconChange(val || (isLocalFolder ? "FolderOpen" : "BookOpen"))}
                     portalContainerRef={editDialogContentRef}
                   >
                     <Button
@@ -194,7 +198,7 @@ export function NotebookEditDialog({
                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full"
                 >
                   <LucideIcons.Trash2 className="mr-2 h-4 w-4" />
-                  删除此记事本
+                  {isLocalFolder ? "移除此记事本" : "删除此记事本"}
                 </Button>
               )}
 

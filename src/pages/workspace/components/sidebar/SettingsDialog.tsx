@@ -1,5 +1,6 @@
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
+import { SettingsLocalFolder } from "./SettingsLocalFolder";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
@@ -27,6 +28,7 @@ interface SettingsDialogProps {
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "general", label: "通用设置", icon: LucideIcons.Settings },
+  { id: "local-folder", label: "本地文件夹", icon: LucideIcons.FolderOpen },
   { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
   { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
@@ -76,19 +78,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setShowRecentInSearch,
     closeTabShortcut,
     setCloseTabShortcut,
-    searchPanelCloseShortcut,
-    setSearchPanelCloseShortcut,
     customFonts,
     setCustomLabel,
     setCustomFont,
     uiFontSize,
     setUIFontSize,
+    hideExpandArrows,
+    setHideExpandArrows,
     customActions,
     addCustomAction,
     updateCustomAction,
     removeCustomAction,
     notebookDropdownHoverExpand,
     setNotebookDropdownHoverExpand,
+    localFolderExternalEditor,
+    setLocalFolderExternalEditor,
   } = useSettings();
   const { notebooks } = useNotebooks();
   const { pages } = usePages();
@@ -329,14 +333,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setShowRecentInSearch={setShowRecentInSearch}
                 closeTabShortcut={closeTabShortcut}
                 setCloseTabShortcut={setCloseTabShortcut}
-                searchPanelCloseShortcut={searchPanelCloseShortcut}
-                setSearchPanelCloseShortcut={setSearchPanelCloseShortcut}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}
                 removeCustomAction={removeCustomAction}
+              />
+            </div>
+          )}
+
+          {activeTab === "local-folder" && (
+            <div>
+              <SettingsLocalFolder
+                localFolderExternalEditor={localFolderExternalEditor}
+                setLocalFolderExternalEditor={setLocalFolderExternalEditor}
               />
             </div>
           )}
@@ -357,6 +368,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCustomFont={setCustomFont}
                 uiFontSize={uiFontSize}
                 setUIFontSize={setUIFontSize}
+                hideExpandArrows={hideExpandArrows}
+                setHideExpandArrows={setHideExpandArrows}
               />
             </div>
           )}

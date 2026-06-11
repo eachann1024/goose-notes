@@ -1,7 +1,10 @@
 import type { DropIntentKind } from "../useTreeDragHandlers";
 
-const SAME_ROW_BEFORE_RATIO = 0.48;
-const SAME_ROW_AFTER_RATIO = 0.52;
+/** 行内垂直分区：上 30% 插前面，下 30% 插后面，中间 40% 成为子页面 */
+const BEFORE_ZONE_RATIO = 0.3;
+const AFTER_ZONE_RATIO = 0.7;
+/** 分区边界迟滞，避免指针在边界处来回抖动 */
+const ZONE_HYSTERESIS = 0.06;
 
 export const TOP_EDGE_DROP_ID = "__sidebar-drop-top";
 export const BOTTOM_EDGE_DROP_ID = "__sidebar-drop-bottom";
@@ -21,21 +24,6 @@ export function getClientYFromActivator(event: Event | null | undefined): number
   return null;
 }
 
-export function getClientXFromActivator(event: Event | null | undefined): number | null {
-  if (!event) return null;
-
-  if (event instanceof MouseEvent || event instanceof PointerEvent) {
-    return event.clientX;
-  }
-
-  if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
-    const touch = event.touches[0] || event.changedTouches[0];
-    return touch?.clientX ?? null;
-  }
-
-  return null;
-}
-
 export function getDragCenterY(
   translatedRect: { top: number; height: number } | null | undefined,
   activatorEvent: Event | null | undefined
@@ -46,59 +34,61 @@ export function getDragCenterY(
   return getClientYFromActivator(activatorEvent);
 }
 
-export function getDragCenterX(
-  translatedRect: { left: number; width: number } | null | undefined,
-  activatorEvent: Event | null | undefined
-): number | null {
-  if (translatedRect) {
-    return translatedRect.left + translatedRect.width / 2;
-  }
-  return getClientXFromActivator(activatorEvent);
+export interface ResolveDropIntentParams {
+  /** 目标行是否允许成为父级（allowNest、非自身后代、local 笔记本需为文件夹） */
+  canNest: boolean;
+  /** 目标行处于展开状态且有子项：下部区域不再是 after（落点会跳到所有子项之后，歧义），归入 nest */
+  isOverOpenParent: boolean;
+  overRect: { top: number; height: number };
+  pointerY: number | null;
+  previousKind: DropIntentKind | null;
 }
 
-export function resolveDropKind(
-  activeIndex: number,
-  overIndex: number,
-  overRect: { top: number; height: number },
-  pointerY: number | null,
-  previousKind: DropIntentKind | null,
-  isNestLocked: boolean
-): DropIntentKind {
-  if (isNestLocked) {
-    return "nest";
-  }
-
-  if (activeIndex < overIndex) {
-    return "after";
-  }
-  if (activeIndex > overIndex) {
-    return "before";
-  }
-
+export function resolveDropIntentKind({
+  canNest,
+  isOverOpenParent,
+  overRect,
+  pointerY,
+  previousKind,
+}: ResolveDropIntentParams): DropIntentKind {
   let ratio = 0.5;
   if (pointerY !== null) {
     const overHeight = Math.max(overRect.height, 1);
-    ratio = (pointerY - overRect.top) / overHeight;
-  }
-  const clampedRatio = Math.max(0, Math.min(1, ratio));
-
-  if (previousKind === "before" && clampedRatio <= SAME_ROW_AFTER_RATIO + 0.06) {
-    return "before";
+    ratio = Math.max(0, Math.min(1, (pointerY - overRect.top) / overHeight));
   }
 
-  if (previousKind === "after" && clampedRatio >= SAME_ROW_BEFORE_RATIO - 0.06) {
-    return "after";
+  if (!canNest) {
+    if (previousKind === "before" && ratio <= 0.5 + ZONE_HYSTERESIS) return "before";
+    if (previousKind === "after" && ratio >= 0.5 - ZONE_HYSTERESIS) return "after";
+    return ratio < 0.5 ? "before" : "after";
   }
 
-  if (clampedRatio < SAME_ROW_BEFORE_RATIO) {
-    return "before";
-  }
-  if (clampedRatio > SAME_ROW_AFTER_RATIO) {
-    return "after";
+  // after 边界：展开父级时设为 >1，使 after 不可达（要排到它后面应使用下一可见行的 before 区）
+  const afterEdge = isOverOpenParent ? 1.01 : AFTER_ZONE_RATIO;
+
+  let kind: DropIntentKind;
+  if (ratio < BEFORE_ZONE_RATIO) {
+    kind = "before";
+  } else if (ratio > afterEdge) {
+    kind = "after";
+  } else {
+    kind = "nest";
   }
 
-  if (previousKind === "before" || previousKind === "after") {
-    return previousKind;
+  if (previousKind && previousKind !== kind) {
+    if (previousKind === "before" && ratio <= BEFORE_ZONE_RATIO + ZONE_HYSTERESIS) {
+      return "before";
+    }
+    if (previousKind === "after" && ratio >= afterEdge - ZONE_HYSTERESIS) {
+      return "after";
+    }
+    if (
+      previousKind === "nest" &&
+      ratio >= BEFORE_ZONE_RATIO - ZONE_HYSTERESIS &&
+      ratio <= afterEdge + ZONE_HYSTERESIS
+    ) {
+      return "nest";
+    }
   }
-  return activeIndex <= overIndex ? "before" : "after";
+  return kind;
 }

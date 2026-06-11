@@ -132,7 +132,7 @@ export const useNotebooks = create<NotebooksState>()(
         const notebook: Notebook = {
           id,
           name,
-          icon: "📁", // 使用文件夹图标
+          icon: "FolderOpen",
           source: "local-folder",
           localPath,
           localPathMissing: false,
@@ -340,7 +340,7 @@ export const useNotebooks = create<NotebooksState>()(
     }),
     {
       name: "goose-note-notebooks",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
@@ -374,7 +374,9 @@ export const useNotebooks = create<NotebooksState>()(
               icon:
                 id === DEFAULT_NOTEBOOK_ID && notebook.icon === "📓"
                   ? "BookOpen"
-                  : notebook.icon,
+                  : notebook.source === "local-folder" && notebook.icon === "📁"
+                    ? "FolderOpen"
+                    : notebook.icon,
             },
           ]),
         );

@@ -15,3 +15,5 @@ export {
   isLocalPageDirtyAction,
 } from "./localFolder/write";
 export { saveDirtyLocalPageAction, renameLocalPageFileAction } from "./localFolder/rename";
+export { moveLocalPageAction } from "./localFolder/move";
+export { wasRecentlySelfMoved } from "./localFolder/move";

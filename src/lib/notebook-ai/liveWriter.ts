@@ -124,8 +124,8 @@ function followScroll(session: WriterSession) {
   setTimeout(scroll, 400);
 }
 
-/** 触发编辑器重载当前页面内容 */
-function reloadEditorIfActive(pageId: string) {
+/** 触发编辑器重载当前页面内容（replaceInPage 等非流式写入工具也复用此通路） */
+export function reloadEditorIfActive(pageId: string) {
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("goose-note:reload-active-editor", {

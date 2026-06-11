@@ -104,7 +104,7 @@ function SortableTabItem({
           {isDirty && (
             <span
               aria-label="未保存"
-              className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+              className="h-2 w-2 shrink-0 rounded-full bg-[var(--goose-color-unsaved)]"
             />
           )}
           <span
@@ -244,6 +244,7 @@ export function PageHeader({
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
+  const toggleAiPanelShortcutLabel = formatShortcut("Mod+J");
 
   useEffect(() => {
     if (lastSavedAt && isLocalItem) {
@@ -337,7 +338,12 @@ export function PageHeader({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
+                <div className="flex items-center gap-2">
+                  <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {toggleAiPanelShortcutLabel}
+                  </span>
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -418,13 +424,13 @@ export function PageHeader({
         </div>
 
         {showSaved && (
-          <LucideIcons.Check className="h-3.5 w-3.5 text-green-500 animate-in fade-in duration-200" />
+          <LucideIcons.Check className="h-3.5 w-3.5 text-[var(--goose-color-success)] animate-in fade-in duration-200" />
         )}
         {page?.isLocked && (
-          <span className="text-xs bg-yellow-300 text-yellow-950 px-1.5 py-0.5 rounded">已锁定</span>
+          <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">已锁定</span>
         )}
         {page?.trashedAt && (
-          <span className="text-xs bg-yellow-300 text-yellow-950 px-1.5 py-0.5 rounded">
+          <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">
             页面已被删除
           </span>
         )}
@@ -440,7 +446,7 @@ export function PageHeader({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-amber-500/90 hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-restore-hover)] hover:text-white"
                   >
                     <LucideIcons.RotateCcw className="h-4 w-4" />
                   </Button>
@@ -455,7 +461,7 @@ export function PageHeader({
                     onClick={onDelete}
                     type="button"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-red-600 hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-hover)] hover:text-white"
                   >
                     <LucideIcons.Trash2 className="h-4 w-4" />
                   </Button>
@@ -485,7 +491,7 @@ export function PageHeader({
                     className={cn(
                       "h-4 w-4 transition-colors",
                       page.isFavorite
-                        ? "fill-yellow-400 text-yellow-400"
+                        ? "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]"
                         : "text-muted-foreground/70 dark:text-muted-foreground/55",
                     )}
                   />
@@ -519,7 +525,7 @@ export function PageHeader({
                     className={cn(
                       "h-4 w-4 transition-colors",
                       page.isPinned
-                        ? "text-primary"
+                        ? "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]"
                         : "text-muted-foreground/70 dark:text-muted-foreground/55",
                     )}
                   />

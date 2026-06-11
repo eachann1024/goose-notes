@@ -951,6 +951,31 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     },
 
     revealItemInFolder,
+
+    openWithApp: (filePath, editorCommand) => {
+      return new Promise((resolve) => {
+        try {
+          const { spawn } = require("child_process");
+          const isDarwin = process.platform === "darwin";
+          const timeout = setTimeout(() => resolve(true), 3000);
+          if (isDarwin) {
+            const child = spawn("open", ["-a", editorCommand, filePath], { detached: true, stdio: "ignore" });
+            child.on("error", () => { clearTimeout(timeout); resolve(false); });
+            child.on("close", (code) => { clearTimeout(timeout); resolve(code === 0); });
+            child.on("exit", (code) => { clearTimeout(timeout); resolve(code === 0); });
+            child.unref();
+          } else {
+            const child = spawn(editorCommand, [filePath], { detached: true, stdio: "ignore" });
+            child.on("error", () => { clearTimeout(timeout); resolve(false); });
+            child.on("spawn", () => { clearTimeout(timeout); resolve(true); });
+            child.unref();
+          }
+        } catch (err) {
+          console.error("[gooseFs] openWithApp failed:", err);
+          resolve(false);
+        }
+      });
+    },
   };
 
   registerMcpTools();

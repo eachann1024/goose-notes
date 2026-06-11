@@ -114,6 +114,16 @@ export function useAppHotkeys() {
           window.dispatchEvent(new CustomEvent("goose-note:open-search"));
         },
       },
+      // Mod+J 开关 AI 面板 —— 对齐 Notion（mac ⌘J / win ctrl J），跨平台用 Mod 自动转
+      // 是否真正切换由 WorkspaceLayout 侧监听判断（需 ai.enabled），这里只负责派发
+      {
+        id: "toggle-ai-panel",
+        match: (event) => matchShortcut(event, "Mod+J"),
+        handler: (event) => {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent("goose-note:toggle-ai-panel"));
+        },
+      },
       // Alt+B 折叠/展开侧栏 —— 避开编辑器内 Mod+B 加粗，聚焦编辑器时也可触发
       {
         id: "toggle-sidebar",
@@ -219,14 +229,22 @@ export function useAppHotkeys() {
           }
         },
       },
-      // close tab (user-configurable shortcut, read from ref)
+      // unified close (user-configurable shortcut, read from ref)
+      // Layered: toast → dialog → tab. Fires even inside inputs unless in shortcut recorder.
       {
-        id: "close-tab",
+        id: "unified-close",
         match: (event) =>
           !event.defaultPrevented &&
           matchShortcut(event, closeTabShortcutRef.current),
         when: (event) => {
           const target = event.target as HTMLElement | null;
+          // Never intercept when inside the shortcut recorder input itself
+          if (target?.closest?.('[data-shortcut-recorder]')) return false;
+          // Check if any closeable layer exists — if so, fire even from an input
+          const hasToast = !!document.querySelector('[data-sonner-toast]:not([data-removed="true"])');
+          const hasDialog = !!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
+          if (hasToast || hasDialog) return true;
+          // Otherwise use original input guard
           const isInInput =
             !!target &&
             (target.tagName === "INPUT" ||
@@ -236,6 +254,21 @@ export function useAppHotkeys() {
         },
         handler: (event) => {
           event.preventDefault();
+          // a. dismiss toasts first
+          const toastEl = document.querySelector('[data-sonner-toast]:not([data-removed="true"])');
+          if (toastEl) {
+            toast.dismiss();
+            return;
+          }
+          // b. close topmost dialog via Escape
+          const dialogEl = document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
+          if (dialogEl) {
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true, cancelable: true }),
+            );
+            return;
+          }
+          // c. close tab
           const activeId = activeTabIdRef.current;
           if (activeId) {
             useTabs.getState().closeTab(activeId);

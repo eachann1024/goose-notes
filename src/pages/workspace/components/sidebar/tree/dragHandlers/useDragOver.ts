@@ -3,29 +3,24 @@ import type { DragOverEvent } from "@dnd-kit/core";
 import type { FlatTreeItem } from "../../tree-dnd";
 import type { DropIntent, SidebarDragGuide } from "../useTreeDragHandlers";
 import {
-  getClientXFromActivator,
   getClientYFromActivator,
-  getDragCenterX,
   getDragCenterY,
-  resolveDropKind,
+  resolveDropIntentKind,
   TOP_EDGE_DROP_ID,
   BOTTOM_EDGE_DROP_ID,
 } from "./geometry";
 
 const EDGE_DROP_PADDING = 10;
 const DROP_INTENT_STABLE_PADDING = 8;
+/** 悬停在折叠的父级行 nest 区上自动展开的延迟 */
+const AUTO_EXPAND_DELAY_MS = 600;
 
 interface UseDragOverParams {
   dragPointerYRef: MutableRefObject<number | null>;
-  dragPointerXRef: MutableRefObject<number | null>;
-  dragStartPointerXRef: MutableRefObject<number | null>;
-  lockedNestIdRef: MutableRefObject<string | null>;
-  nestCandidateRef: MutableRefObject<string | null>;
-  rightNestActiveRef: MutableRefObject<boolean>;
-  nestDelayTimerRef: MutableRefObject<number | null>;
+  autoExpandTimerRef: MutableRefObject<number | null>;
+  autoExpandTargetRef: MutableRefObject<string | null>;
   dropIntent: DropIntent | null;
   setDropIntent: Dispatch<SetStateAction<DropIntent | null>>;
-  updateNestGuide: (guide: { overId: string; locked: boolean } | null) => void;
   emitDragGuide: (guide: SidebarDragGuide | null) => void;
   flatItems: FlatTreeItem[];
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -33,25 +28,18 @@ interface UseDragOverParams {
   activeDescendantIds: Set<string>;
   allowNest: boolean;
   isLocalNotebook: boolean;
-  rightNestEnterOffset: number;
-  rightNestExitOffset: number;
   rowHeight: number;
   itemHeight: number;
-  nestHoverDelayMs: number;
-  clearNestDelayTimer: () => void;
+  setOpenPageIds: Dispatch<SetStateAction<Set<string>>>;
+  clearAutoExpandTimer: () => void;
 }
 
 export function useDragOver({
   dragPointerYRef,
-  dragPointerXRef,
-  dragStartPointerXRef,
-  lockedNestIdRef,
-  nestCandidateRef,
-  rightNestActiveRef,
-  nestDelayTimerRef,
+  autoExpandTimerRef,
+  autoExpandTargetRef,
   dropIntent,
   setDropIntent,
-  updateNestGuide,
   emitDragGuide,
   flatItems,
   scrollRef,
@@ -59,27 +47,37 @@ export function useDragOver({
   activeDescendantIds,
   allowNest,
   isLocalNotebook,
-  rightNestEnterOffset,
-  rightNestExitOffset,
   rowHeight,
   itemHeight,
-  nestHoverDelayMs,
-  clearNestDelayTimer,
+  setOpenPageIds,
+  clearAutoExpandTimer,
 }: UseDragOverParams) {
+  const scheduleAutoExpand = (targetId: string | null) => {
+    if (autoExpandTargetRef.current === targetId) return;
+    clearAutoExpandTimer();
+    autoExpandTargetRef.current = targetId;
+    if (!targetId) return;
+    autoExpandTimerRef.current = window.setTimeout(() => {
+      autoExpandTimerRef.current = null;
+      autoExpandTargetRef.current = null;
+      setOpenPageIds((prev) => {
+        if (prev.has(targetId)) return prev;
+        const next = new Set(prev);
+        next.add(targetId);
+        return next;
+      });
+    }, AUTO_EXPAND_DELAY_MS);
+  };
+
   const handleDragOver = ({ over, active, activatorEvent }: DragOverEvent) => {
     const translatedRect = active.rect.current.translated ?? active.rect.current.initial;
     const pointerY =
       dragPointerYRef.current ??
       getClientYFromActivator(activatorEvent) ??
       getDragCenterY(translatedRect, activatorEvent);
-    const pointerX = dragPointerXRef.current ?? getClientXFromActivator(activatorEvent);
 
     if (!over) {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      lockedNestIdRef.current = null;
-      rightNestActiveRef.current = false;
-      updateNestGuide(null);
+      scheduleAutoExpand(null);
       emitDragGuide({ direction: "left", mode: "sort" });
       if (flatItems.length > 0 && pointerY !== null) {
         const containerRect = scrollRef.current?.getBoundingClientRect();
@@ -101,10 +99,8 @@ export function useDragOver({
     }
 
     let overItemId = String(over.id);
-    const stableAnchorId =
-      lockedNestIdRef.current ??
-      nestCandidateRef.current ??
-      dropIntent?.overId;
+    // 指针仍停留在当前意图行内时保持锚定，避免 collision 在行间跳变
+    const stableAnchorId = dropIntent?.overId;
     if (
       pointerY !== null &&
       stableAnchorId &&
@@ -131,11 +127,7 @@ export function useDragOver({
     }
 
     if (overItemId === TOP_EDGE_DROP_ID) {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      lockedNestIdRef.current = null;
-      rightNestActiveRef.current = false;
-      updateNestGuide(null);
+      scheduleAutoExpand(null);
       emitDragGuide({ direction: "left", mode: "sort" });
       const firstItem = flatItems[0];
       if (!firstItem) {
@@ -147,11 +139,7 @@ export function useDragOver({
     }
 
     if (overItemId === BOTTOM_EDGE_DROP_ID) {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      lockedNestIdRef.current = null;
-      rightNestActiveRef.current = false;
-      updateNestGuide(null);
+      scheduleAutoExpand(null);
       emitDragGuide({ direction: "left", mode: "sort" });
       const lastItem = flatItems[flatItems.length - 1];
       if (!lastItem) {
@@ -163,53 +151,24 @@ export function useDragOver({
     }
 
     if (activeDescendantIds.has(overItemId)) {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      lockedNestIdRef.current = null;
-      rightNestActiveRef.current = false;
-      updateNestGuide(null);
+      scheduleAutoExpand(null);
       emitDragGuide({ direction: "left", mode: "sort" });
       setDropIntent(null);
       return;
     }
 
-    const activeIndex = flatItems.findIndex((item) => item.id === String(active.id));
-    const overIndex = flatItems.findIndex((item) => item.id === overItemId);
     const overItem = flatItems.find((item) => item.id === overItemId);
-    if (!overItem || activeIndex < 0 || overIndex < 0) {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      lockedNestIdRef.current = null;
-      rightNestActiveRef.current = false;
-      updateNestGuide(null);
+    if (!overItem || overItemId === String(active.id)) {
+      scheduleAutoExpand(null);
       emitDragGuide({ direction: "left", mode: "sort" });
       setDropIntent(null);
       return;
-    }
-
-    if (lockedNestIdRef.current && lockedNestIdRef.current !== overItemId) {
-      lockedNestIdRef.current = null;
     }
 
     const canNest =
       allowNest &&
       !activeDescendantIds.has(overItem.id) &&
       (!isLocalNotebook || !!overItem.page.isFolder);
-    const pointerOffsetX =
-      pointerX !== null && dragStartPointerXRef.current !== null
-        ? pointerX - dragStartPointerXRef.current
-        : null;
-    const rectOffsetX =
-      active.rect.current.initial && translatedRect
-        ? translatedRect.left - active.rect.current.initial.left
-        : 0;
-    const dragOffsetX = pointerOffsetX ?? rectOffsetX;
-    const horizontalNestEnabled = canNest && (
-      rightNestActiveRef.current
-        ? dragOffsetX >= rightNestExitOffset
-        : dragOffsetX >= rightNestEnterOffset
-    );
-    rightNestActiveRef.current = horizontalNestEnabled;
 
     let overRectForIntent: { top: number; height: number } = {
       top: over.rect.top,
@@ -225,56 +184,29 @@ export function useDragOver({
       };
     }
 
-    if (horizontalNestEnabled) {
-      if (
-        nestCandidateRef.current !== overItemId &&
-        lockedNestIdRef.current !== overItemId
-      ) {
-        clearNestDelayTimer();
-        nestCandidateRef.current = overItemId;
-        updateNestGuide({ overId: overItemId, locked: false });
-        nestDelayTimerRef.current = window.setTimeout(() => {
-          lockedNestIdRef.current = overItemId;
-          updateNestGuide({ overId: overItemId, locked: true });
-          setDropIntent((current) => {
-            if (!current || current.overId !== overItemId) return current;
-            return { overId: overItemId, kind: "nest" };
-          });
-        }, nestHoverDelayMs);
-      } else {
-        updateNestGuide({
-          overId: overItemId,
-          locked: lockedNestIdRef.current === overItemId,
-        });
-      }
-    } else {
-      clearNestDelayTimer();
-      nestCandidateRef.current = null;
-      if (lockedNestIdRef.current === overItemId) {
-        lockedNestIdRef.current = null;
-      }
-      updateNestGuide(null);
-    }
-
-    if (horizontalNestEnabled) {
-      emitDragGuide({
-        direction: "right",
-        mode: lockedNestIdRef.current === overItemId ? "nest-ready" : "nest-pending",
-      });
-    } else {
-      emitDragGuide({ direction: "left", mode: "sort" });
-    }
-
     const previousKind =
       dropIntent?.overId === overItemId ? dropIntent.kind : null;
-    const kind = resolveDropKind(
-      activeIndex,
-      overIndex,
-      overRectForIntent,
+    const kind = resolveDropIntentKind({
+      canNest,
+      isOverOpenParent: overItem.isOpen && overItem.hasChildren,
+      overRect: overRectForIntent,
       pointerY,
       previousKind,
-      lockedNestIdRef.current === overItemId
+    });
+
+    // 悬停在折叠且有子项的目标 nest 区时，延迟自动展开，便于继续往内部拖
+    if (kind === "nest" && overItem.hasChildren && !overItem.isOpen) {
+      scheduleAutoExpand(overItemId);
+    } else {
+      scheduleAutoExpand(null);
+    }
+
+    emitDragGuide(
+      kind === "nest"
+        ? { direction: "right", mode: "nest-ready" }
+        : { direction: "left", mode: "sort" }
     );
+
     if (dropIntent?.overId === overItemId && dropIntent.kind === kind) {
       return;
     }

@@ -1,6 +1,7 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { countWords } from "@/components/editor/utils/content-text-extractor";
-import { historyRepository } from "./repository";
+import { resolveHistoryBackend } from "./backend";
+import { usePages } from "@/stores/usePages";
 import type {
   HistoryIndexEntry,
   HistoryTrigger,
@@ -34,12 +35,13 @@ export interface RecordSnapshotParams {
 /**
  * 落一个完整快照版本。返回新创建的索引条目；若与最新版本无差异且非手动，则返回 null 跳过。
  */
-export function recordHistorySnapshot(
+export async function recordHistorySnapshot(
   params: RecordSnapshotParams,
-): HistoryIndexEntry | null {
+): Promise<HistoryIndexEntry | null> {
   const { pageId, workspaceId, content, trigger, isMilestone, label } = params;
 
-  const index = historyRepository.loadIndex(pageId);
+  const backend = resolveHistoryBackend(pageId);
+  const index = await backend.loadIndex(pageId);
   const now = Date.now();
   const charCount = countWords(content);
   const charDelta = charCount - index.lastVersionCharCount;
@@ -56,6 +58,10 @@ export function recordHistorySnapshot(
   const versionId = genVersionId(now);
   const size = estimateSize(content);
 
+  // 本地文件夹页面额外保存 frontmatter
+  const page = usePages.getState().pages[pageId];
+  const localFrontmatter = page?.localFrontmatter;
+
   const version: HistoryVersion = {
     versionId,
     pageId,
@@ -68,9 +74,10 @@ export function recordHistorySnapshot(
     charDelta,
     size,
     content,
+    ...(localFrontmatter !== undefined ? { localFrontmatter } : {}),
   };
 
-  historyRepository.saveVersion(version);
+  await backend.saveVersion(version);
 
   const entry: HistoryIndexEntry = {
     versionId,
@@ -90,12 +97,12 @@ export function recordHistorySnapshot(
       const evictIdx = nextVersions.findIndex((v) => !v.isMilestone);
       if (evictIdx === -1) break;
       const evicted = nextVersions[evictIdx];
-      historyRepository.removeVersion(pageId, evicted.versionId);
+      await backend.removeVersion(pageId, evicted.versionId);
       nextVersions = nextVersions.filter((_, i) => i !== evictIdx);
     }
   }
 
-  historyRepository.saveIndex({
+  await backend.saveIndex({
     pageId,
     versions: nextVersions,
     lastVersionCharCount: charCount,
@@ -104,49 +111,57 @@ export function recordHistorySnapshot(
   return entry;
 }
 
-function patchEntry(
+async function patchEntry(
   pageId: string,
   versionId: string,
   patch: Partial<HistoryIndexEntry>,
-): void {
-  const index = historyRepository.loadIndex(pageId);
+): Promise<void> {
+  const backend = resolveHistoryBackend(pageId);
+  const index = await backend.loadIndex(pageId);
   const nextVersions = index.versions.map((v) =>
     v.versionId === versionId ? { ...v, ...patch } : v,
   );
-  historyRepository.saveIndex({ ...index, versions: nextVersions });
+  await backend.saveIndex({ ...index, versions: nextVersions });
 
-  const version = historyRepository.loadVersion(pageId, versionId);
+  const version = await backend.loadVersion(pageId, versionId);
   if (version) {
-    historyRepository.saveVersion({ ...version, ...patch });
+    await backend.saveVersion({ ...version, ...patch });
   }
 }
 
-export function markMilestone(
+export async function markMilestone(
   pageId: string,
   versionId: string,
   label?: string,
-): void {
-  patchEntry(pageId, versionId, {
+): Promise<void> {
+  await patchEntry(pageId, versionId, {
     isMilestone: true,
     ...(label !== undefined ? { label } : {}),
   });
 }
 
-export function unmarkMilestone(pageId: string, versionId: string): void {
-  patchEntry(pageId, versionId, { isMilestone: false });
+export async function unmarkMilestone(
+  pageId: string,
+  versionId: string,
+): Promise<void> {
+  await patchEntry(pageId, versionId, { isMilestone: false });
 }
 
-export function renameVersion(
+export async function renameVersion(
   pageId: string,
   versionId: string,
   label: string,
-): void {
-  patchEntry(pageId, versionId, { label });
+): Promise<void> {
+  await patchEntry(pageId, versionId, { label });
 }
 
-export function deleteVersion(pageId: string, versionId: string): void {
-  const index = historyRepository.loadIndex(pageId);
+export async function deleteVersion(
+  pageId: string,
+  versionId: string,
+): Promise<void> {
+  const backend = resolveHistoryBackend(pageId);
+  const index = await backend.loadIndex(pageId);
   const nextVersions = index.versions.filter((v) => v.versionId !== versionId);
-  historyRepository.removeVersion(pageId, versionId);
-  historyRepository.saveIndex({ ...index, versions: nextVersions });
+  await backend.removeVersion(pageId, versionId);
+  await backend.saveIndex({ ...index, versions: nextVersions });
 }

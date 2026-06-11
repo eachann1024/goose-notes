@@ -195,7 +195,7 @@ export function EditorLinkToolbar({
       <button
         type="button"
         onClick={handleDelete}
-        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)] transition-colors"
       >
         <LucideIcons.Unlink className="h-3 w-3" />
         移除

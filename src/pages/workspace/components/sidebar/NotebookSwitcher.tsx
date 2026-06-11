@@ -45,6 +45,7 @@ export function NotebookSwitcher() {
     confirmName: "",
     icon: "",
     openDeleteConfirm: false,
+    isLocalFolder: false,
   });
   const [createDialog, setCreateDialog] = useState({
     open: false,
@@ -139,9 +140,11 @@ export function NotebookSwitcher() {
       id,
       name: notebook.name,
       confirmName: notebook.name,
-      icon: notebook.icon || "BookOpen",
+      icon: notebook.icon || (notebook.source === "local-folder" ? "FolderOpen" : "BookOpen"),
       openDeleteConfirm: false,
+      isLocalFolder: notebook.source === "local-folder",
     });
+    setIsOpen(false);
   };
 
   const handleSaveEdit = () => {
@@ -253,29 +256,7 @@ export function NotebookSwitcher() {
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0 justify-end">
-                {notebook.source === "local-folder" ? (
-                  canDeleteNotebook && (
-                    <TooltipProvider delayDuration={0}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotebook(notebook.id);
-                            }}
-                            aria-label="删除本地记事本"
-                          >
-                            <LucideIcons.Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">删除本地记事本</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )
-                ) : (
+                {notebook.source === "local-folder" && canDeleteNotebook && (
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -283,19 +264,38 @@ export function NotebookSwitcher() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                          aria-label="编辑记事本"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEdit(notebook.id);
+                            deleteNotebook(notebook.id);
                           }}
+                          aria-label="删除本地记事本"
                         >
-                          <LucideIcons.Settings className="h-3.5 w-3.5" />
+                          <LucideIcons.Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">编辑记事本</TooltipContent>
+                      <TooltipContent side="bottom">删除本地记事本</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 )}
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                        aria-label="编辑记事本"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(notebook.id);
+                        }}
+                      >
+                        <LucideIcons.Settings className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">编辑记事本</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {activeNotebookId === notebook.id && (
                   <LucideIcons.Check className="h-4 w-4" />
                 )}
@@ -329,6 +329,7 @@ export function NotebookSwitcher() {
           confirmName={editDialog.confirmName}
           icon={editDialog.icon}
           openDeleteConfirm={editDialog.openDeleteConfirm}
+          isLocalFolder={editDialog.isLocalFolder}
           onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
           onNameChange={(name) => setEditDialog({ ...editDialog, name })}
           onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}

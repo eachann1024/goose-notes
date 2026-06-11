@@ -191,9 +191,9 @@ export const { registry } = defineRegistry(jsonRenderCatalog, {
     Stat: ({ props }) => {
       const deltaColor =
         props.trend === "up"
-          ? "text-emerald-500"
+          ? "text-[var(--goose-color-success)]"
           : props.trend === "down"
-            ? "text-red-500"
+            ? "text-[var(--goose-color-danger)]"
             : "text-muted-foreground";
       return (
         <div className={cn("flex flex-col gap-0.5", props.className)}>

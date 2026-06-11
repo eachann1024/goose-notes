@@ -247,8 +247,8 @@ export function SettingsAI({
       </div>
 
       <SettingsSectionCard
-        title="AI 开关"
-        description="开启后，页头会显示 AI 页面入口，空白段落按空格也会唤起 AI 工具栏。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 开关</span>}
+        description="开启后页头出现 AI 入口，空白段落按空格也能唤起 AI 工具栏。"
       >
         <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
           <div className="space-y-1.5">
@@ -267,15 +267,19 @@ export function SettingsAI({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="AI 来源"
-        description="关闭 uTools AI 后，可改用自定义协议。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Bot className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 来源</span>}
+        description="默认使用 uTools 内置 AI；关掉后可接入自己的 API。"
       >
         <div className="space-y-3">
           <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-            <div className="space-y-1">
-              <Label htmlFor="ai-custom-enabled" className="cursor-pointer text-sm font-medium text-foreground">
-                关闭 utoolsAI 使用自定义 AI
-              </Label>
+            <div>
+              <div className="flex items-center gap-3">
+                <LucideIcons.Cable className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                <Label htmlFor="ai-custom-enabled" className="cursor-pointer text-sm font-medium text-foreground">
+                  关闭 utoolsAI 使用自定义 AI
+                </Label>
+              </div>
+              <p className="mt-1 pl-7 text-xs text-muted-foreground">关闭 uTools 内置 AI，改用你自己填写的 API 地址和密钥。</p>
             </div>
             <Switch
               id="ai-custom-enabled"
@@ -290,8 +294,11 @@ export function SettingsAI({
           {usingCustomProvider ? (
             <div className="space-y-3">
               <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-foreground">协议</Label>
+                <div className="flex items-center gap-3">
+                  <LucideIcons.Server className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-foreground">协议</Label>
+                  </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -324,9 +331,12 @@ export function SettingsAI({
               </div>
 
               <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-                <Label htmlFor="custom-ai-base-url" className="text-sm font-medium text-foreground">
-                  Base URL
-                </Label>
+                <div className="flex items-center gap-3">
+                  <LucideIcons.Globe className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                  <Label htmlFor="custom-ai-base-url" className="text-sm font-medium text-foreground">
+                    Base URL
+                  </Label>
+                </div>
                 <Input
                   id="custom-ai-base-url"
                   value={customBaseURL}
@@ -344,9 +354,12 @@ export function SettingsAI({
               </div>
 
               <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-                <Label htmlFor="custom-ai-api-key" className="text-sm font-medium text-foreground">
-                  API Key
-                </Label>
+                <div className="flex items-center gap-3">
+                  <LucideIcons.KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                  <Label htmlFor="custom-ai-api-key" className="text-sm font-medium text-foreground">
+                    API Key
+                  </Label>
+                </div>
                 <Input
                   id="custom-ai-api-key"
                   type="password"
@@ -365,8 +378,12 @@ export function SettingsAI({
               </div>
 
               <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-foreground">保存配置</Label>
+                <div className="flex items-center gap-3">
+                  <LucideIcons.Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-foreground">保存配置</Label>
+                    <p className="text-xs text-muted-foreground">保存后自动拉取该服务可用的模型列表。</p>
+                  </div>
                 </div>
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
@@ -397,8 +414,8 @@ export function SettingsAI({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="AI 模型"
-        description="从当前可用模型中选择默认模型。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Brain className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 模型</span>}
+        description="选一个默认模型，AI 功能都会用它来响应。"
         actions={
           usingCustomProvider ? (
             <Button
@@ -419,8 +436,11 @@ export function SettingsAI({
       >
         <div className="space-y-3">
           <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-            <div className="space-y-1">
-              <Label className="text-sm font-medium text-foreground">默认模型</Label>
+            <div className="flex items-center gap-3">
+              <LucideIcons.Cpu className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-foreground">默认模型</Label>
+              </div>
             </div>
             <TooltipProvider delayDuration={0}>
               <Tooltip>

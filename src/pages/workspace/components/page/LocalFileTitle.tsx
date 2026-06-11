@@ -3,7 +3,10 @@
  *
  * 只渲染 page.localFilePath 非空时。
  * 纯展示层，**不写入 page.content**。
- * 视觉上与 BlockNote H1 首块对齐（font-size: 3em / font-weight: 700 / padding-top: 18px）。
+ * 盒模型逐项复刻 BlockNote H1 首块，保证与内部笔记本标题视觉一致：
+ *   字号 = 编辑器字号 × 3（跟随 --editor-font-size 设置）、行高 1.5（bn-block-outer）、
+ *   上 18px / 下 3px 内边距（heading / bn-block-content）、块底 margin 0.5em（bn-block-outer）。
+ *   letter-spacing 不显式设置，与 h1 一样继承 body 的 0.01em。
  *
  * 点击进入行内编辑：Enter/失焦提交，Esc 取消。
  * 提交后调用 usePages.renameLocalPageFile(pageId, newBaseName)。
@@ -108,8 +111,8 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
         className="local-file-title-wrapper"
         style={{
           paddingTop: 18,
-          marginBottom: 4,
-          // Matches BlockNote's bn-block-outer margin-bottom: 0.5em at 3em.
+          paddingBottom: 3,
+          marginBottom: "calc(var(--editor-font-size, 16px) * 0.5)",
         }}
       >
         <input
@@ -121,10 +124,9 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
             void commitRename();
           }}
           style={{
-            fontSize: "3em",
+            fontSize: "calc(var(--editor-font-size, 16px) * 3)",
             fontWeight: 700,
-            lineHeight: 1.3,
-            letterSpacing: "-0.01em",
+            lineHeight: 1.5,
             width: "100%",
             background: "transparent",
             border: "none",
@@ -148,7 +150,8 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
       className="local-file-title-wrapper"
       style={{
         paddingTop: 18,
-        marginBottom: 4,
+        paddingBottom: 3,
+        marginBottom: "calc(var(--editor-font-size, 16px) * 0.5)",
       }}
     >
       <div
@@ -163,10 +166,9 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
         }}
         title="点击重命名文件"
         style={{
-          fontSize: "3em",
+          fontSize: "calc(var(--editor-font-size, 16px) * 3)",
           fontWeight: 700,
-          lineHeight: 1.3,
-          letterSpacing: "-0.01em",
+          lineHeight: 1.5,
           cursor: "text",
           wordBreak: "break-word",
           outline: "none",

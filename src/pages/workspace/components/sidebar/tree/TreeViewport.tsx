@@ -34,7 +34,6 @@ interface TreeViewportProps {
   highlightedPageId: string | null | undefined;
   isLocalNotebook: boolean;
   itemHeight: number;
-  nestGuide: { overId: string; locked: boolean } | null;
   renderItems: VisibleTreeItem[];
   rowHeight: number;
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -63,7 +62,6 @@ export function TreeViewport({
   highlightedPageId,
   isLocalNotebook,
   itemHeight,
-  nestGuide,
   renderItems,
   rowHeight,
   scrollRef,
@@ -161,16 +159,8 @@ export function TreeViewport({
                 }
 
                 const isDropTarget = dropIntent?.overId === item.id && activeId !== item.id;
-                const nestGuideState =
-                  nestGuide?.overId === item.id
-                    ? (nestGuide.locked ? "locked" : "pending")
-                    : "idle";
-                const isNestDropTarget =
-                  isDropTarget && (dropIntent?.kind === "nest" || nestGuideState !== "idle");
-                const showDropLine =
-                  isDropTarget &&
-                  dropIntent?.kind !== "nest" &&
-                  nestGuideState === "idle";
+                const isNestDropTarget = isDropTarget && dropIntent?.kind === "nest";
+                const showDropLine = isDropTarget && dropIntent?.kind !== "nest";
                 const dropLinePosition = dropIntent?.kind === "after" ? "bottom" : "top";
                 const dropLineLeft = item.depth * TREE_INDENT + 16;
                 const dragEnabled = draggablePageIdSet
@@ -192,7 +182,6 @@ export function TreeViewport({
                     isLocalNotebook={isLocalNotebook}
                     isActive={highlightedPageId === item.id}
                     isNestDropTarget={isNestDropTarget}
-                    nestGuideState={nestGuideState}
                     showDropLine={showDropLine}
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}

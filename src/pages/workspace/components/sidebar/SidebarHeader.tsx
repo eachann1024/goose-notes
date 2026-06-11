@@ -5,7 +5,7 @@ import type { Page } from "@/types";
 interface SidebarHeaderProps {
   dragGuide: {
     direction: "left" | "right";
-    mode: "sort" | "nest-pending" | "nest-ready";
+    mode: "sort" | "nest-ready";
   } | null;
   onOpenPinnedPage?: () => void;
   selectedPageId?: string | null;
@@ -227,7 +227,7 @@ export function SidebarHeader({
             <SelectedIcon
               className={cn(
                 "h-4 w-4 transition-all duration-200",
-                isActive ? "text-foreground scale-[1.15]" : "text-muted-foreground/85",
+                isActive ? "text-[var(--goose-pin-accent)] scale-[1.15]" : "text-muted-foreground/85",
               )}
             />
           );
@@ -249,7 +249,7 @@ export function SidebarHeader({
         <LucideIcons.Folder
           className={cn(
             "h-4 w-4 transition-all duration-200",
-            isActive ? "text-foreground scale-[1.15]" : "text-muted-foreground/80",
+            isActive ? "text-[var(--goose-pin-accent)] scale-[1.15]" : "text-muted-foreground/80",
           )}
         />
       );
@@ -259,7 +259,7 @@ export function SidebarHeader({
         <DefaultIcon
           className={cn(
             "h-4 w-4 transition-all duration-200",
-            isActive ? "text-foreground scale-[1.15]" : "text-muted-foreground/80",
+            isActive ? "text-[var(--goose-pin-accent)] scale-[1.15]" : "text-muted-foreground/80",
           )}
         />
       );
@@ -319,8 +319,7 @@ export function SidebarHeader({
         <div className="group/pinned relative overflow-hidden rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)] px-1 py-1">
           {dragGuide && (
             <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
-              {dragGuide.mode === "sort" && "左移继续排序，右移可放入子页面"}
-              {dragGuide.mode === "nest-pending" && "保持右移 0.5 秒后松手，放入子页面"}
+              {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
               {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
             </div>
           )}
@@ -348,9 +347,10 @@ export function SidebarHeader({
                           className={cn(
                             "h-8 w-8 shrink-0 rounded-full inline-flex items-center justify-center transition-all duration-200",
                             "animate-in fade-in-0 zoom-in-95",
+                            // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
                             isActive
-                              ? "bg-[var(--goose-interactive-selected)] text-foreground scale-105 shadow-sm"
-                              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground hover:scale-105",
+                              ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                           )}
                           onClick={() => handleOpenPinnedPage(page.id)}
                           onContextMenu={(event) =>

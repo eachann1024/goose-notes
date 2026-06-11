@@ -16,6 +16,8 @@ function openAISettings() {
 }
 
 function createNoticeContent(handleClose: () => void) {
+  const settingsRef = { current: false };
+  const closeRef = { current: false };
   return (
     <FeatureToastCard
       icon={<LucideIcons.Sparkles className="h-5 w-5" />}
@@ -23,14 +25,13 @@ function createNoticeContent(handleClose: () => void) {
       actions={[
         {
           label: "设置",
-          onClick: () => {
-            openAISettings();
-            handleClose();
-          },
+          onPointerDown: (e) => { e.preventDefault(); settingsRef.current = true; openAISettings(); handleClose(); },
+          onClick: () => { if (settingsRef.current) { settingsRef.current = false; return; } openAISettings(); handleClose(); },
         },
         {
           label: "我知道了",
-          onClick: handleClose,
+          onPointerDown: (e) => { e.preventDefault(); closeRef.current = true; handleClose(); },
+          onClick: () => { if (closeRef.current) { closeRef.current = false; return; } handleClose(); },
           variant: "ghost",
           className: "text-muted-foreground hover:text-foreground",
         },

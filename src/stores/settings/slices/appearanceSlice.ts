@@ -18,6 +18,8 @@ export interface AppearanceSliceState {
     imageExportWatermark: WatermarkConfig
     /** 导出图片上次选择的卡片主题 */
     imageExportThemeId: CardThemeId
+    /** 隐藏侧栏展开箭头，减少占位；展开/收起改用双击条目 */
+    hideExpandArrows: boolean
 }
 
 export interface AppearanceSliceActions {
@@ -39,6 +41,7 @@ export interface AppearanceSliceActions {
     decreaseAiChatScale: () => void
     setImageExportWatermark: (config: WatermarkConfig) => void
     setImageExportThemeId: (id: CardThemeId) => void
+    setHideExpandArrows: (hidden: boolean) => void
 }
 
 export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions
@@ -59,6 +62,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     aiChatScale: 1.0,
     imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
     imageExportThemeId: 'notion',
+    hideExpandArrows: false,
 }
 
 type SetFn = (updater: Partial<AppearanceSlice> | ((state: AppearanceSlice) => Partial<AppearanceSlice>)) => void
@@ -120,5 +124,6 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
             set((state) => ({ aiChatScale: Math.max(0.7, Math.round((state.aiChatScale - 0.1) * 10) / 10) })),
         setImageExportWatermark: (imageExportWatermark) => set({ imageExportWatermark }),
         setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
+        setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
     }
 }

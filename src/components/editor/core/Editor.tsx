@@ -60,6 +60,7 @@ import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputr
 import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { EditorComposer, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
+import { isLinkworthyText } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 
@@ -241,6 +242,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           }
           return true;
         },
+        // autolink/粘贴/HTML 导入的统一闸口：linkifyjs 认全量 TLD 表，
+        // `AppClient.java`(.java 是真实 gTLD)这类类名/文件名会被误转链接，
+        // 这里收紧为「协议白名单 + 裸域名常用 TLD 白名单」，见 isLinkworthyText。
+        isValidLink: isLinkworthyText,
       },
     },
     [],

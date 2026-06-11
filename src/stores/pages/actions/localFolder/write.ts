@@ -18,7 +18,7 @@ import {
   flushAllPendingLocalSavesInternal,
 } from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
-import { clonePageContent } from "../pageCreate";
+import { clonePageContent, cloneLocalPageContent } from "../pageCreate";
 
 // FNV-1a 32 位哈希（含长度），用于按内容给图片附件命名以实现去重。
 function hashBase64(data: string): string {
@@ -30,9 +30,13 @@ function hashBase64(data: string): string {
   return (hash >>> 0).toString(16) + data.length.toString(36);
 }
 
-function mergePageContent(base: JSONContent, addition: JSONContent): JSONContent {
-  const baseBlocks = normalizePageContent(base);
-  const additionBlocks = normalizePageContent(addition);
+function mergePageContent(
+  base: JSONContent,
+  addition: JSONContent,
+  opts?: { ensureFirstTitle?: boolean },
+): JSONContent {
+  const baseBlocks = normalizePageContent(base, opts);
+  const additionBlocks = normalizePageContent(addition, opts);
   if (!additionBlocks.length) {
     return baseBlocks;
   }
@@ -61,15 +65,16 @@ export const writePageContentAction = async (
   const page = get().pages[pageId];
   if (!page || page.isFolder) return false;
 
+  const isLocal = isLocalFolderPage(page);
   get().updatePage(pageId, {
-    content: clonePageContent(content),
+    content: isLocal ? cloneLocalPageContent(content) : clonePageContent(content),
   });
 
-  if (isLocalFolderPage(page)) {
+  if (isLocal) {
     // 程序化写入（AI 等）不走 dirty 队列：直接落盘并清掉 dirty 标记。
     const saved = await get().saveLocalPageContent(
       pageId,
-      clonePageContent(content),
+      cloneLocalPageContent(content),
     );
     if (saved) {
       set((s) => ({
@@ -91,9 +96,12 @@ export const appendPageContentAction = async (
   const page = get().pages[pageId];
   if (!page || page.isFolder) return false;
 
+  const isLocal = isLocalFolderPage(page);
+  const mergeOpts = isLocal ? { ensureFirstTitle: false } : undefined;
   const mergedContent = mergePageContent(
-    clonePageContent(page.content),
-    clonePageContent(content),
+    isLocal ? cloneLocalPageContent(page.content) : clonePageContent(page.content),
+    isLocal ? cloneLocalPageContent(content) : clonePageContent(content),
+    mergeOpts,
   );
 
   return await get().writePageContent(pageId, mergedContent);
@@ -133,11 +141,13 @@ export const replaceBlockRangeAction = async (
       : [];
   if (!replacementBlocks.length) return false;
 
-  const clonedSource = clonePageContent(sourceContent as JSONContent) as any[];
+  const isLocal = isLocalFolderPage(page);
+  const cloner = isLocal ? cloneLocalPageContent : clonePageContent;
+  const clonedSource = cloner(sourceContent as JSONContent) as any[];
   const cloneArr = Array.isArray(clonedSource) ? clonedSource : [];
   const head = cloneArr.slice(0, startIdx);
   const tail = cloneArr.slice(endIdx + 1);
-  const replacement = clonePageContent(replacementBlocks as JSONContent).map(
+  const replacement = cloner(replacementBlocks as JSONContent).map(
     (block: any) => {
       if (block && typeof block === "object" && "id" in block) {
         const { id: _omit, ...rest } = block;

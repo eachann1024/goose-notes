@@ -9,7 +9,9 @@ import {
   type TreeRef,
 } from "react-complex-tree";
 import type { Page } from "@/types";
+import { toast } from "sonner";
 import { useNotebooks } from "@/stores/useNotebooks";
+import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import {
   useSidebarView,
@@ -49,6 +51,7 @@ export function SidebarMainTree({
   const pages = usePages((s) => s.pages);
   const activePageId = usePages((s) => s.activePageId);
   const reorderPages = usePages((s) => s.reorderPages);
+  const moveLocalPage = usePages((s) => s.moveLocalPage);
   const getChildren = usePages((s) => s.getChildren);
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
@@ -64,6 +67,9 @@ export function SidebarMainTree({
   );
   const shouldShowLocalSkeleton =
     isLocalFolder && localLoadStatus === "loading";
+
+  // Subscribe so re-render propagates to renderItem/renderItemArrow closures
+  useSettings((s) => s.hideExpandArrows);
 
   const expandedIds = useSidebarView(selectExpandedIds(activeNotebookId));
   const focusedId = useSidebarView(selectFocusedId(activeNotebookId));
@@ -204,9 +210,35 @@ export function SidebarMainTree({
       return;
     }
 
-    const siblings = getChildren(newParentId, activeNotebookId)
-      .map((p) => p.id)
-      .filter((id) => !dragIds.includes(id));
+    // ── 本地文件夹：文件系统移动，无自定义排序 ────────────────────────────────
+    if (isLocalFolder) {
+      void (async () => {
+        for (const id of dragIds) {
+          try {
+            await moveLocalPage(id, newParentId);
+          } catch (err) {
+            toast.error(`移动失败：${(err as Error).message ?? String(err)}`);
+          }
+        }
+        if (newParentId && !expandedIds.includes(newParentId)) {
+          expandView(activeNotebookId, newParentId);
+        }
+      })();
+      return;
+    }
+
+    // ── uTools 内置模式：原有内存排序逻辑 ────────────────────────────────────
+    const allChildren = getChildren(newParentId, activeNotebookId).map((p) => p.id);
+    // rct 的 childIndex 基于含被拖项的原列表；过滤后 splice 前要补偿
+    // 插入点之前被移除的项数，否则从上往下拖会偏后一位
+    if (insertIndex > 0) {
+      const removedBefore = dragIds.filter((id) => {
+        const idx = allChildren.indexOf(id);
+        return idx >= 0 && idx < insertIndex;
+      }).length;
+      insertIndex -= removedBefore;
+    }
+    const siblings = allChildren.filter((id) => !dragIds.includes(id));
 
     const finalIds =
       insertIndex < 0
@@ -218,9 +250,12 @@ export function SidebarMainTree({
           ];
 
     reorderPages(finalIds, newParentId);
-  };
 
-  const canDragHandler = isLocalFolder ? () => false : undefined;
+    // 拖入成为子页面后自动展开新父级，让落点立即可见
+    if (newParentId && !expandedIds.includes(newParentId)) {
+      expandView(activeNotebookId, newParentId);
+    }
+  };
 
   return (
     <div
@@ -250,19 +285,20 @@ export function SidebarMainTree({
         }
         viewState={viewState}
         defaultInteractionMode={InteractionMode.ClickArrowToExpand}
-        canDragAndDrop={!isLocalFolder}
-        canReorderItems={!isLocalFolder}
-        canDropOnFolder={!isLocalFolder}
+        canDragAndDrop={true}
+        canReorderItems={true}
+        canDropOnFolder={true}
         canDropOnNonFolder={false}
         canRename={false}
-        canDrag={canDragHandler}
         canDropAt={(dragItems, target) => {
-          if (isLocalFolder) return false;
           const targetId =
             target.targetType === "between-items"
               ? String(target.parentItem)
               : String((target as any).targetItem);
           if (targetId === "root") return true;
+          const parentPage = pages[targetId];
+          // 本地文件夹：落点父级必须是目录（或根）
+          if (isLocalFolder && parentPage && !parentPage.isFolder) return false;
           return !dragItems.some((it) => {
             const id = String(it.index);
             return id === targetId || isAncestor(id, targetId);

@@ -42,6 +42,7 @@ import {
   isLocalPageDirtyAction,
   saveDirtyLocalPageAction,
   renameLocalPageFileAction,
+  moveLocalPageAction,
 } from "./actions/localFolder";
 import {
   deletePageAction,
@@ -395,6 +396,9 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   renameLocalPageFile: (pageId, newBaseName) =>
     renameLocalPageFileAction(set, get, pageId, newBaseName),
+
+  moveLocalPage: (pageId, targetFolderId) =>
+    moveLocalPageAction(set, get, pageId, targetFolderId),
 
   getLocalFilePath: (pageId) => {
     const page = get().pages[pageId];

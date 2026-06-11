@@ -231,7 +231,7 @@ export function CodeBlockToolbar({
                 className={cn("h-6 w-6 p-0", chipClass)}
               >
                 {copied ? (
-                  <LucideIcons.Check className={cn(iconSize, "text-green-500")} />
+                  <LucideIcons.Check className={cn(iconSize, "text-[var(--goose-color-success)]")} />
                 ) : (
                   <LucideIcons.Copy className={iconSize} />
                 )}

@@ -1,4 +1,4 @@
-import { Download, FileText, Globe, Upload } from "lucide-react";
+import { Download, FileText, Globe, RotateCcw, Upload } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
@@ -58,8 +58,8 @@ export function SettingsDataPanel({
       </div>
 
       <SettingsSectionCard
-        title="导入与导出"
-        description="导入时选择 ZIP 文件，导出时由系统保存对话框选择位置。"
+        title={<span className="flex items-center gap-2"><Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />导入与导出</span>}
+        description="导入选 ZIP 文件；导出时会弹出系统保存对话框让你选路径。"
         actions={
           <Button variant="secondary" size="sm" onClick={onImport} disabled={importing}>
             {importing ? "导入中..." : "导入 ZIP"}
@@ -166,8 +166,8 @@ export function SettingsDataPanel({
 
       <SettingsSectionCard
         tone="danger"
-        title="重置所有数据"
-        description="删除所有记事本和页面，此操作不可撤销"
+        title={<span className="flex items-center gap-2"><RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />重置所有数据</span>}
+        description="会清空所有记事本和页面，无法撤销，操作前建议先导出备份。"
         actions={
           <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
             重置所有数据

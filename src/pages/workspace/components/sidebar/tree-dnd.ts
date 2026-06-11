@@ -96,7 +96,7 @@ export function buildVisibleTree({
       id: page.id,
       page,
       depth,
-      parentId: page.parentId,
+      parentId: flatRoots ? undefined : page.parentId,
       hasChildren,
       isOpen,
     });

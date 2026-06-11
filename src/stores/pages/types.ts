@@ -149,6 +149,11 @@ export interface PagesState {
    * @returns 新 pageId（文件名不变则返回原 pageId）
    */
   renameLocalPageFile: (pageId: string, newBaseName: string) => Promise<string>;
+  /**
+   * 移动 local-folder 页面（文件或目录）到目标父目录。
+   * targetFolderId 为 undefined 表示移到根目录。
+   */
+  moveLocalPage: (pageId: string, targetFolderId: string | undefined) => Promise<void>;
   getLocalFilePath: (pageId: string) => string | null;
   createLocalPage: (
     parentId?: string,

@@ -4,6 +4,7 @@ export {
   emptyBlock,
   titleHeadingBlock,
   createEmptyBlockNoteContent,
+  createEmptyLocalPageContent,
   isBlockNoteContent,
 } from "./emptyContent";
 

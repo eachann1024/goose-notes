@@ -38,9 +38,6 @@ interface SidebarTreeProps {
   rootPageIds?: string[];
   fitContent?: boolean;
   showEmptyState?: boolean;
-  nestHoverDelayMs?: number;
-  rightNestEnterOffset?: number;
-  rightNestExitOffset?: number;
   allowNest?: boolean;
   resolveSiblings?: (parentId: string | undefined) => Page[];
   onReorder?: (ids: string[], parentId: string | undefined) => void;
@@ -48,10 +45,6 @@ interface SidebarTreeProps {
   draggablePageIds?: string[];
   flatRoots?: boolean;
 }
-
-const NEST_HOVER_DELAY_MS = 500;
-const RIGHT_NEST_ENTER_OFFSET = 20;
-const RIGHT_NEST_EXIT_OFFSET = 10;
 
 class LeftButtonPointerSensor extends PointerSensor {
   static activators = [
@@ -75,9 +68,6 @@ export function SidebarTree({
   rootPageIds,
   fitContent = false,
   showEmptyState = true,
-  nestHoverDelayMs = NEST_HOVER_DELAY_MS,
-  rightNestEnterOffset = RIGHT_NEST_ENTER_OFFSET,
-  rightNestExitOffset = RIGHT_NEST_EXIT_OFFSET,
   allowNest = true,
   resolveSiblings,
   onReorder,
@@ -111,7 +101,6 @@ export function SidebarTree({
   const [openPageIds, setOpenPageIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null);
-  const [nestGuide, setNestGuide] = useState<{ overId: string; locked: boolean } | null>(null);
   const [titleRevealResetSignal, setTitleRevealResetSignal] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -131,7 +120,9 @@ export function SidebarTree({
   );
 
   const activeDescendantIds = useMemo(() => {
-    if (!activeId) return new Set<string>();
+    // flatRoots 模式（收藏区平铺列表）下所有 item 视为虚拟根的直接子项，
+    // 不存在祖先-后代关系，强制返回空集，避免误拦截平铺重排。
+    if (!activeId || flatRoots) return new Set<string>();
     const descendants = new Set<string>();
     const stack = [activeId];
 
@@ -145,7 +136,7 @@ export function SidebarTree({
     }
 
     return descendants;
-  }, [activeId, pages]);
+  }, [activeId, pages, flatRoots]);
 
   const renderItems = useMemo(
     () =>
@@ -278,18 +269,6 @@ export function SidebarTree({
     onDragGuideChange(guide);
   }, [onDragGuideChange]);
 
-  const updateNestGuide = useCallback((guide: { overId: string; locked: boolean } | null) => {
-    setNestGuide((current) => {
-      if (
-        current?.overId === guide?.overId &&
-        current?.locked === guide?.locked
-      ) {
-        return current;
-      }
-      return guide;
-    });
-  }, []);
-
   useEffect(() => {
     return () => {
       onDragGuideChange?.(null);
@@ -325,19 +304,15 @@ export function SidebarTree({
     getSiblingPages,
     isLocalNotebook,
     itemHeight,
-    nestHoverDelayMs,
     onReorder,
     pages,
     reorderPages,
     resetTitleReveal,
-    rightNestEnterOffset,
-    rightNestExitOffset,
     rowHeight,
     scrollRef,
     setActiveId,
     setDropIntent,
     setOpenPageIds,
-    updateNestGuide,
     visibleIndexMap,
   });
 
@@ -376,7 +351,6 @@ export function SidebarTree({
       highlightedPageId={highlightedPageId}
       isLocalNotebook={isLocalNotebook}
       itemHeight={itemHeight}
-      nestGuide={nestGuide}
       renderItems={renderItems}
       rowHeight={rowHeight}
       scrollRef={scrollRef}

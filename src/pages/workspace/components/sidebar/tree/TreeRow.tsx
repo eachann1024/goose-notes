@@ -5,6 +5,7 @@
  *  - EdgeDropZone：顶/底边缘拖放区
  *  - PlaceholderRow：空文件夹占位行
  */
+import { toast } from "sonner";
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -14,6 +15,7 @@ import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } fro
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
 import { IconSelector } from "../../shared/IconSelector";
@@ -80,7 +82,6 @@ export interface SortablePageRowProps {
   isLocalNotebook: boolean;
   isActive: boolean;
   isNestDropTarget: boolean;
-  nestGuideState: "idle" | "pending" | "locked";
   showDropLine: boolean;
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
@@ -101,7 +102,6 @@ export function SortablePageRow({
   isLocalNotebook,
   isActive,
   isNestDropTarget,
-  nestGuideState,
   showDropLine,
   dropLinePosition,
   dropLineLeft,
@@ -137,6 +137,7 @@ export function SortablePageRow({
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
 
+  const hideExpandArrows = useSettings((s) => s.hideExpandArrows);
   const page = item.page;
   const hasChildren = item.hasChildren;
   const showArrow = hasChildren;
@@ -245,8 +246,6 @@ export function SortablePageRow({
             "relative z-20 flex items-center h-full pl-0 pr-1 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "opacity-60 cursor-grabbing",
-            nestGuideState !== "idle" &&
-              "bg-[hsl(var(--primary)/0.14)] ring-1 ring-[hsl(var(--primary)/0.45)]",
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
             isActive &&
@@ -263,6 +262,14 @@ export function SortablePageRow({
               openInCurrentTab(page.id);
             }
           }}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            if (hasChildren) {
+              onToggleOpen(page.id);
+            } else {
+              toast.info(isLocalFolder && page.isFolder ? "这个文件夹是空的" : "这个页面没有子页面", { position: "top-right" });
+            }
+          }}
           onAuxClick={(e) => {
             if (e.button === 1) {
               e.preventDefault();
@@ -276,26 +283,28 @@ export function SortablePageRow({
             className="flex items-center h-full flex-1 min-w-0"
             style={{ paddingLeft: depth * TREE_INDENT }}
           >
-            <button
-              type="button"
-              aria-label={item.isOpen ? "折叠子页面" : "展开子页面"}
-              aria-expanded={item.isOpen}
-              className={cn(
-                "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
-                showArrow
-                  ? "hover:bg-muted-foreground/10 dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
-                  : "opacity-0 pointer-events-none"
-              )}
-              onPointerDown={handleArrowPointerDown}
-              onClick={handleArrowClick}
-            >
-              <LucideIcons.ChevronRight
+            {hideExpandArrows ? null : (
+              <button
+                type="button"
+                aria-label={item.isOpen ? "折叠子页面" : "展开子页面"}
+                aria-expanded={item.isOpen}
                 className={cn(
-                  "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
-                  item.isOpen && "rotate-90"
+                  "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
+                  showArrow
+                    ? "hover:bg-muted-foreground/10 dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+                    : "opacity-0 pointer-events-none"
                 )}
-              />
-            </button>
+                onPointerDown={handleArrowPointerDown}
+                onClick={handleArrowClick}
+              >
+                <LucideIcons.ChevronRight
+                  className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
+                    item.isOpen && "rotate-90"
+                  )}
+                />
+              </button>
+            )}
 
             <div
               className="flex items-center justify-center w-5 h-5 shrink-0 mr-0.5 select-none"
@@ -309,6 +318,7 @@ export function SortablePageRow({
                     page={page}
                     iconName={iconName}
                     isLocalFolder={isLocalFolder}
+                    hasChildren={hasChildren}
                   />
                 </div>
               ) : (
@@ -322,6 +332,7 @@ export function SortablePageRow({
                         page={page}
                         iconName={iconName}
                         isLocalFolder={false}
+                        hasChildren={hasChildren}
                       />
                     </div>
                   </div>
@@ -346,14 +357,14 @@ export function SortablePageRow({
                 "ml-1 items-center shrink-0",
                 titleExpanded
                   ? "hidden"
-                  : nestGuideState !== "idle"
+                  : isNestDropTarget
                     ? "flex"
                     : "hidden group-hover:flex"
               )}
             >
-              {nestGuideState !== "idle" && (
+              {isNestDropTarget && (
                 <span className="mr-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-primary bg-[hsl(var(--primary)/0.14)]">
-                  {nestGuideState === "locked" ? "松手移入子页面" : "右移停留后移入"}
+                  松手移入子页面
                 </span>
               )}
               <button

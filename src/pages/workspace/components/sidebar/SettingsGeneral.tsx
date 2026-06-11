@@ -29,8 +29,6 @@ interface SettingsGeneralProps {
   setShowRecentInSearch: (enabled: boolean) => void;
   closeTabShortcut: string;
   setCloseTabShortcut: (shortcut: string) => void;
-  searchPanelCloseShortcut: string;
-  setSearchPanelCloseShortcut: (shortcut: string) => void;
   notebookDropdownHoverExpand: boolean;
   setNotebookDropdownHoverExpand: (enabled: boolean) => void;
   customActions?: CustomAction[];
@@ -115,20 +113,24 @@ function ShortcutField({
   return (
     <div className={`space-y-2 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
       <div>
-        <Label htmlFor={id} className="cursor-pointer">
-          {title}
-        </Label>
-        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        <div className="flex items-center gap-3">
+          <LucideIcons.Keyboard className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+          <Label htmlFor={id} className="cursor-pointer">
+            {title}
+          </Label>
+        </div>
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
       </div>
       <div className="flex items-center gap-2">
         <Input
           id={id}
           value={displayValue}
           readOnly
+          data-shortcut-recorder
           placeholder={isCapturing ? "现在可以按下快捷键..." : "点击后按下快捷键"}
           className={cn(
             "h-9 text-sm transition-colors",
-            isCapturing && "placeholder:text-red-500",
+            isCapturing && "placeholder:text-[var(--goose-color-capture-hint)]",
           )}
           onFocus={() => setIsCapturing(true)}
           onBlur={() => setIsCapturing(false)}
@@ -210,8 +212,6 @@ export function SettingsGeneral({
   setShowRecentInSearch,
   closeTabShortcut,
   setCloseTabShortcut,
-  searchPanelCloseShortcut,
-  setSearchPanelCloseShortcut,
   notebookDropdownHoverExpand,
   setNotebookDropdownHoverExpand,
   customActions = [],
@@ -219,11 +219,8 @@ export function SettingsGeneral({
   updateCustomAction = () => {},
   removeCustomAction = () => {},
 }: SettingsGeneralProps) {
-  const isMac = isMacPlatform();
   const closeTabDefaultLabel = formatShortcut(DEFAULT_CLOSE_TAB_SHORTCUT);
-  const closeTabShortcutDescription = `默认 ${closeTabDefaultLabel}，可自定义修改。`;
-  const modifierExample = isMac ? "⌘" : "Ctrl";
-  const searchPanelCloseDescription = `支持单修饰键（如 ${modifierExample}）和组合键，默认不设置。`;
+  const closeTabShortcutDescription = `默认 ${closeTabDefaultLabel}（Windows 为 Alt+W）。按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。`;
 
   return (
     <div className="space-y-6">
@@ -232,14 +229,17 @@ export function SettingsGeneral({
         <p className="mt-1 text-sm text-muted-foreground">配置应用的通用设置。</p>
       </div>
 
-      <SettingsSectionCard title="隐私设置">
+      <SettingsSectionCard title="行为设置">
         <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="auto-open-last-note" className="cursor-pointer">
-              自动打开上次笔记
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              启动应用时自动打开上次编辑的笔记
+            <div className="flex items-center gap-3">
+              <LucideIcons.FileClock className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="auto-open-last-note" className="cursor-pointer">
+                自动打开上次笔记
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              打开应用就直接跳到你上次编辑的那篇笔记，省去再点一次的麻烦。
             </p>
           </div>
           <Switch
@@ -251,11 +251,14 @@ export function SettingsGeneral({
         </div>
         <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="notebook-hover-expand" className="cursor-pointer">
-              悬停展开笔记本切换
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              鼠标悬停在笔记本名称上时自动展开下拉菜单
+            <div className="flex items-center gap-3">
+              <LucideIcons.MousePointer2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="notebook-hover-expand" className="cursor-pointer">
+                悬停展开笔记本切换
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              鼠标停在笔记本名称上就自动弹出切换菜单，不用点击。
             </p>
           </div>
           <Switch
@@ -270,11 +273,14 @@ export function SettingsGeneral({
       <SettingsSectionCard title="搜索设置">
         <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="show-recent-in-search" className="cursor-pointer">
-              搜索框显示最近访问
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              关闭后不显示“最近访问”分组
+            <div className="flex items-center gap-3">
+              <LucideIcons.History className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="show-recent-in-search" className="cursor-pointer">
+                搜索框显示最近访问
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              关闭后搜索框里不再出现「最近访问」分组，只显示搜索结果。
             </p>
           </div>
           <Switch
@@ -284,19 +290,12 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        <ShortcutField
-          id="search-panel-close-shortcut"
-          title="退出搜索框快捷键"
-          description={searchPanelCloseDescription}
-          value={searchPanelCloseShortcut}
-          onChange={setSearchPanelCloseShortcut}
-        />
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="标签页设置">
+      <SettingsSectionCard title="快捷键设置">
         <ShortcutField
           id="close-tab-shortcut"
-          title="关闭标签页快捷键"
+          title="关闭快捷键"
           description={closeTabShortcutDescription}
           value={closeTabShortcut}
           onChange={setCloseTabShortcut}
@@ -305,7 +304,7 @@ export function SettingsGeneral({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="搜索引擎"
+        title={<span className="flex items-center gap-2"><LucideIcons.Search className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />搜索引擎</span>}
         description="配置右键菜单中显示的搜索引擎，支持拖拽排序。"
       >
         <SearchProviderSortableGrid
@@ -318,11 +317,14 @@ export function SettingsGeneral({
       <SettingsSectionCard title="插件设置">
         <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
           <div>
-            <Label htmlFor="open-in-utools" className="cursor-pointer">
-              使用 uTools 打开搜索结果
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              关闭后将使用系统默认浏览器打开
+            <div className="flex items-center gap-3">
+              <LucideIcons.Plug2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="open-in-utools" className="cursor-pointer">
+                使用 uTools 打开搜索结果
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              开启后搜索结果链接在 uTools 内置浏览器里打开；关闭则用系统浏览器。
             </p>
           </div>
           <Switch
@@ -336,7 +338,10 @@ export function SettingsGeneral({
 
       <SettingsSectionCard title="窗口高度">
         <div className="flex items-center justify-between mb-2">
-          <Label>窗口高度</Label>
+          <div className="flex items-center gap-3">
+            <LucideIcons.MoveVertical className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <Label>窗口高度</Label>
+          </div>
           <span className="text-sm text-muted-foreground">
             {windowHeight}px
           </span>
@@ -359,8 +364,8 @@ export function SettingsGeneral({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="快捷动作"
-        description="右键菜单中跳转到其他插件，必填项必须填写完整。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Zap className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />快捷动作</span>}
+        description="右键菜单里直接跳转到其他插件，名称和指令都填完才能生效。"
         actions={
           <Button
             size="sm"

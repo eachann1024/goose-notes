@@ -132,6 +132,20 @@
     --goose-interactive-hover: hsl(var(--goose-selected-bg) / 0.76);
     --goose-interactive-selected: hsl(60 5% 88%);
     --goose-interactive-selected-border: transparent;
+    /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
+    --goose-pin-accent: #ef4444;
+    /* 语义实色变量——替代 Tailwind 裸调色板色，uTools 旧内核 oklch 解析失败兜底 */
+    --goose-color-danger: #ef4444;           /* Pin/删除强调红 */
+    --goose-color-danger-hover: #dc2626;     /* 删除按钮 hover 背景红 */
+    --goose-color-danger-subtle-bg: #fee2e2; /* 链接移除按钮 hover 淡红背景 */
+    --goose-color-danger-focus: #dc2626;     /* 危险菜单项 focus/highlighted 文字色 */
+    --goose-color-favorite: #facc15;         /* 收藏星星黄 */
+    --goose-color-unsaved: #f59e0b;          /* 未保存状态点琥珀 */
+    --goose-color-success: #22c55e;          /* 成功确认勾绿 */
+    --goose-color-lock-bg: #fef08a;          /* 已锁定/已删除徽章背景 */
+    --goose-color-lock-text: #713f12;        /* 已锁定/已删除徽章文字 */
+    --goose-color-restore-hover: #d97706;    /* 恢复按钮 hover 背景琥珀 */
+    --goose-color-capture-hint: #ef4444;     /* 快捷键捕获提示占位符红 */
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 68.24%;
     --background: var(--goose-shell-bg);
@@ -181,6 +195,19 @@
     --goose-interactive-hover: hsl(0 0% 17%);
     --goose-interactive-selected: hsl(0 0% 25%);
     --goose-interactive-selected-border: transparent;
+    --goose-pin-accent: #f87171;
+    /* 深色模式语义实色变量覆盖 */
+    --goose-color-danger: #f87171;
+    --goose-color-danger-hover: #dc2626;
+    --goose-color-danger-subtle-bg: #3f1919;
+    --goose-color-danger-focus: #f87171;
+    --goose-color-favorite: #fbbf24;
+    --goose-color-unsaved: #fb923c;
+    --goose-color-success: #4ade80;
+    --goose-color-lock-bg: #78350f;
+    --goose-color-lock-text: #fef9c3;
+    --goose-color-restore-hover: #b45309;
+    --goose-color-capture-hint: #f87171;
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 60 2.2% 44.5%;
     --background: var(--goose-shell-bg);

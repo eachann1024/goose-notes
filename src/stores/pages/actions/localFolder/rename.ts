@@ -10,7 +10,7 @@ import {
 import { migrateLocalPageIdMapEntry, toRelativePath } from "@/lib/local-page-idmap";
 import { migratePendingLocalSave } from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
-import { clonePageContent } from "../pageCreate";
+import { cloneLocalPageContent } from "../pageCreate";
 
 function renameLocalPageInStore(
   set: StoreSet,
@@ -279,7 +279,7 @@ export const saveDirtyLocalPageAction = async (
 
     const ok = await get().saveLocalPageContent(
       effectivePageId,
-      clonePageContent(latest.content),
+      cloneLocalPageContent(latest.content),
     );
     if (ok) {
       set((s) => ({

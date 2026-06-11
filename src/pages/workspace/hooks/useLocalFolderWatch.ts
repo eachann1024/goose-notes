@@ -7,6 +7,7 @@ import {
   wasRecentlySelfWritten,
   updateSnapshotAfterWrite,
 } from "@/lib/local-md-snapshot";
+import { wasRecentlySelfMoved } from "@/stores/pages/actions/localFolder/move";
 
 interface GooseFs {
   existsAsync?: (path: string) => Promise<boolean>;
@@ -166,6 +167,15 @@ export function useLocalFolderWatch({
         return;
       }
 
+      // 忽略 dot 路径（任一段以 . 开头）：与 local-folder-scanner 的忽略规则
+      // 对齐，并抑制历史后端写 .goose/history/*.json 的自写回声触发全量重扫
+      if (
+        typeof filename === "string" &&
+        filename.split(/[\\/]/).some((seg: string) => seg.startsWith("."))
+      ) {
+        return;
+      }
+
       const gooseFs = (window as any).gooseFs as GooseFs | undefined;
       if (!gooseFs) return;
       const filePath = `${dirPath}/${filename}`;
@@ -215,6 +225,9 @@ export function useLocalFolderWatch({
 
         const timer = setTimeout(async () => {
           renameDebounceTimers.current.delete(debounceKey);
+
+          // 自移回声抑制：本应用内发起的 fs.rename 登记了路径，跳过处理
+          if (wasRecentlySelfMoved(filePath)) return;
 
           const exists = gooseFs.existsAsync
             ? await gooseFs.existsAsync(filePath)

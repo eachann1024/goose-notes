@@ -7,6 +7,7 @@ interface LocalFileIconProps {
   iconName?: string;
   isLocalFolder: boolean;
   className?: string;
+  hasChildren?: boolean;
 }
 
 function nodeHasVisibleContent(node: unknown): boolean {
@@ -48,6 +49,7 @@ export function LocalFileIcon({
   iconName,
   isLocalFolder,
   className,
+  hasChildren,
 }: LocalFileIconProps) {
   const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
   const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
@@ -65,7 +67,11 @@ export function LocalFileIcon({
   }
 
   if (isLocalFolder) {
-    const Icon = page.isFolder ? LucideIcons.Folder : DefaultPageIcon;
+    const Icon = page.isFolder
+      ? hasChildren
+        ? LucideIcons.FolderOpen
+        : LucideIcons.Folder
+      : DefaultPageIcon;
     return (
       <Icon
         className={cn(
@@ -80,11 +86,24 @@ export function LocalFileIcon({
     return <SelectedIcon className={cn("h-4 w-4", className)} />;
   }
 
+  // 内置笔记本：有子页面且未自定义图标时，用"有内容的文件夹"标识可展开
+  if (hasChildren) {
+    return (
+      <LucideIcons.FolderOpen
+        className={cn(
+          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          className,
+        )}
+      />
+    );
+  }
+
   // 已设置 iconName 但 lucide 中不存在该 key（升级/改名导致）：
   // fallback 到默认图标，避免把英文字符串直接渲染到侧栏。
   if (page.isFolder) {
+    const FolderIcon = hasChildren ? LucideIcons.FolderOpen : LucideIcons.Folder;
     return (
-      <LucideIcons.Folder
+      <FolderIcon
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,

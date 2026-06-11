@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,7 +7,7 @@ import { useHistoryView } from "@/stores/useHistoryView";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
-import { historyRepository } from "@/lib/history/repository";
+import { resolveHistoryBackend } from "@/lib/history/backend";
 import {
   markMilestone,
   recordHistorySnapshot,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/history/snapshot";
 import { materializeVersion } from "@/lib/history/restore";
 import type { HistoryIndex, HistoryIndexEntry } from "@/lib/history/types";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { HistoryReadOnlyEditor } from "./HistoryReadOnlyEditor";
 
 const TRIGGER_LABEL: Record<HistoryIndexEntry["trigger"], string> = {
@@ -63,14 +64,38 @@ function useHistoryViewLogic() {
   const pageTitle = page ? extractBlockNoteTitle(page.content) || "无标题" : "";
 
   const [index, setIndex] = useState<HistoryIndex | null>(null);
+  const [selectedContent, setSelectedContent] = useState<BlockNoteContent | null>(null);
 
+  // 加载版本索引
   useEffect(() => {
     if (!pageId) {
       setIndex(null);
       return;
     }
-    setIndex(historyRepository.loadIndex(pageId));
+    let cancelled = false;
+    const backend = resolveHistoryBackend(pageId);
+    backend.loadIndex(pageId).then((idx) => {
+      if (!cancelled) setIndex(idx);
+    }).catch(() => {
+      if (!cancelled) setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
+    });
+    return () => { cancelled = true; };
   }, [pageId, refreshTick]);
+
+  // 加载选中版本内容
+  useEffect(() => {
+    if (!pageId || !selectedVersionId) {
+      setSelectedContent(null);
+      return;
+    }
+    let cancelled = false;
+    materializeVersion(pageId, selectedVersionId).then((result) => {
+      if (!cancelled) setSelectedContent(result?.content ?? null);
+    }).catch(() => {
+      if (!cancelled) setSelectedContent(null);
+    });
+    return () => { cancelled = true; };
+  }, [pageId, selectedVersionId]);
 
   useEffect(() => {
     if (!index || index.versions.length === 0) return;
@@ -120,11 +145,6 @@ function useHistoryViewLogic() {
     [index, selectedVersionId],
   );
 
-  const selectedContent = useMemo(() => {
-    if (!pageId || !selectedVersionId) return null;
-    return materializeVersion(pageId, selectedVersionId);
-  }, [pageId, selectedVersionId]);
-
   const handleRestore = () => {
     if (!pageId || !selectedVersionId) return;
     const current = getPage(pageId);
@@ -144,27 +164,37 @@ function useHistoryViewLogic() {
       workspaceId: latest.workspaceId,
       content: latest.content,
       trigger: "pre-op",
-    });
+    }).catch((err) => console.error("[history] pre-op snapshot failed:", err));
 
-    const content = materializeVersion(pageId, selectedVersionId);
-    if (!content) {
+    materializeVersion(pageId, selectedVersionId).then((result) => {
+      if (!result) {
+        toast.error("无法读取该版本");
+        return;
+      }
+      const updates: Parameters<typeof updatePage>[1] = { content: result.content };
+      if (result.localFrontmatter !== undefined) {
+        updates.localFrontmatter = result.localFrontmatter;
+      }
+      updatePage(pageId, updates);
+      toast.success("已还原，当前内容已保留为「操作前」版本");
+      exit();
+    }).catch(() => {
       toast.error("无法读取该版本");
-      return;
-    }
-    updatePage(pageId, { content });
-    toast.success("已还原，当前内容已保留为「操作前」版本");
-    exit();
+    });
   };
 
   const handleToggleMilestone = (versionId: string, willBe: boolean) => {
     if (!pageId) return;
     if (willBe) {
-      markMilestone(pageId, versionId);
-      toast.success("已标记为里程碑");
+      markMilestone(pageId, versionId).then(() => {
+        toast.success("已标记为里程碑");
+        bumpRefresh();
+      }).catch((err) => console.error("[history] markMilestone failed:", err));
     } else {
-      unmarkMilestone(pageId, versionId);
+      unmarkMilestone(pageId, versionId).then(() => {
+        bumpRefresh();
+      }).catch((err) => console.error("[history] unmarkMilestone failed:", err));
     }
-    bumpRefresh();
   };
 
   return {
