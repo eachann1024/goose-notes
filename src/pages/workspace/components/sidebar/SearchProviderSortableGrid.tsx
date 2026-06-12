@@ -81,7 +81,7 @@ function ProviderCard({ provider, onToggle }: ProviderCardProps) {
         >
           <GripVertical className="h-4 w-4 mx-auto" />
         </button>
-        <TooltipProvider delayDuration={0}>
+        <TooltipProvider delayDuration={600}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Label

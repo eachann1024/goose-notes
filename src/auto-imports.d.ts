@@ -248,6 +248,7 @@ declare global {
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
+  const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -281,6 +282,7 @@ declare global {
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const permanentlyDeletePageWithCleanup: typeof import('./lib/page-delete-actions').permanentlyDeletePageWithCleanup
+  const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const processBlockChildren: typeof import('./lib/docxExport/docxBlocks').processBlockChildren
   const pruneLocalPageIdMap: typeof import('./lib/local-page-idmap').pruneLocalPageIdMap

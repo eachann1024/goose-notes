@@ -26,6 +26,16 @@ export function getBlockNoteSlashMenuItems(
       editor.setTextCursorPosition(block, "end");
     } catch { /* block 可能已被 BlockNote 内部刷新；忽略 */ }
     editor.focus();
+    // React 自定义块（如 codeBlock）的 contentDOM 挂载是异步的：上面同步设的
+    // PM 光标位置在 DOM 里找不到落点，会被回退到块容器外——表现为创建代码块后
+    // 立刻粘贴贴到块外。等本轮事件处理结束、React 挂载完成后补设一次，把 DOM
+    // 光标真正送进块内。用 setTimeout 而非 rAF：后台标签页 rAF 不触发。
+    window.setTimeout(() => {
+      try {
+        editor.setTextCursorPosition(block, "end");
+      } catch { /* block 可能已被 BlockNote 内部刷新；忽略 */ }
+      editor.focus();
+    }, 0);
     // 等 DOM 更新一帧后再滚动，确保新块已渲染
     requestAnimationFrame(() => {
       const el = document.querySelector(

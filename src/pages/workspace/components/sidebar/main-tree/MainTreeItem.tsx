@@ -84,8 +84,7 @@ function TreeRowIcon({
     >
       <button
         type="button"
-        title="点击更换图标"
-        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer shrink-0 mr-0.5"
+        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer shrink-0 mr-0.5"
         draggable={false}
         {...stopBubble}
         onClick={(e) => {
@@ -256,7 +255,7 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
   return (
     <span
       {...arrowProps}
-      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-muted-foreground/10 dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
       aria-hidden="true"
     >
       <LucideIcons.ChevronRight

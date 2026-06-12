@@ -119,7 +119,7 @@ export function CodeBlockToolbar({
   const iconSize = "h-3.5 w-3.5";
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={600}>
       <div contentEditable={false} className="goose-code-toolbar-actions inline-flex items-center">
         <div className="flex shrink-0 items-center gap-1">
           {editable && !isMathOrMermaid ? (

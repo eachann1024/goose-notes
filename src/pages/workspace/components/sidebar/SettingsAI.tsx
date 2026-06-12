@@ -385,7 +385,7 @@ export function SettingsAI({
                     <p className="text-xs text-muted-foreground">保存后自动拉取该服务可用的模型列表。</p>
                   </div>
                 </div>
-                <TooltipProvider delayDuration={0}>
+                <TooltipProvider delayDuration={600}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div>
@@ -442,7 +442,7 @@ export function SettingsAI({
                 <Label className="text-sm font-medium text-foreground">默认模型</Label>
               </div>
             </div>
-            <TooltipProvider delayDuration={0}>
+            <TooltipProvider delayDuration={600}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div>

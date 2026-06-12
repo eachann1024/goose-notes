@@ -112,7 +112,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
             选择图标
           </div>
           <div className="flex items-center gap-1">
-            <TooltipProvider delayDuration={0}>
+            <TooltipProvider delayDuration={600}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button

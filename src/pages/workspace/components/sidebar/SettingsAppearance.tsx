@@ -105,7 +105,7 @@ export function SettingsAppearance({
             <Label htmlFor="dark-mode">深色模式</Label>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-            <TooltipProvider delayDuration={0}>
+            <TooltipProvider delayDuration={600}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

@@ -1042,7 +1042,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         pinned: !!(st && st.pinned),
       };
     } catch (e) {
-      console.error("[quicknote] 读持久化偏好失败:", e);
+      qlog("读持久化偏好失败:", e);
       return fallback;
     }
   };
@@ -1050,10 +1050,34 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 接收速记小窗（子窗）通过 utools.sendToParent 发回的窗口控制请求。
   // createBrowserWindow 返回的 win 不含实例事件，故 blur 失焦在子窗内处理，
   // 这里只负责执行子窗请求的 pin / close / hide。
-  // 仅主窗口需要（它持有 quickNoteWin）；小窗自身不接收这些。
+  // 仅宿主窗口需要（它持有 quickNoteWin）；小窗自身不接收这些。
+  // getWindowType 三态：main=吸附在 uTools、detach=分离的独立窗口、browser=createBrowserWindow 子窗。
+  // 吸附与分离都算宿主，只有速记子窗（browser）才是子窗侧。
   const isMainWindow =
     typeof utools.getWindowType !== "function" ||
-    utools.getWindowType() === "main";
+    utools.getWindowType() !== "browser";
+
+  const qlog = (...args) => {
+    const line = `[${new Date().toISOString()}][pid:${process.pid}] ${args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ")}`;
+    console.log("[quicknote]", ...args);
+    try { fs.appendFileSync("/tmp/goose-quicknote.log", line + "\n"); } catch { /* noop */ }
+  };
+
+  qlog("preload 启动 winType =", typeof utools.getWindowType === "function" ? utools.getWindowType() : "no-api", "href =", location.href);
+
+  // ── 取证日志：focus / blur / visibilitychange ─────────────────
+  const _getWinType = () =>
+    typeof utools.getWindowType === "function" ? utools.getWindowType() : "?";
+  window.addEventListener("focus", () =>
+    qlog("window focus, winType =", _getWinType(), "visibility =", document.visibilityState));
+  window.addEventListener("blur", () =>
+    qlog("window blur, winType =", _getWinType(), "visibility =", document.visibilityState));
+  document.addEventListener("visibilitychange", () =>
+    qlog("visibilitychange →", document.visibilityState, "winType =", _getWinType()));
+
+  // 记录 preload 加载时刻，用于区分「本次触发刚拉起」的 detach 宿主（实例新鲜）
+  // 与用户早已常驻的 detach 窗（实例老）——前者应 hideMainWindow，后者保留。
+  const preloadLoadedAt = Date.now();
 
   // 速记小窗（browser 窗口）侧：把父窗 webContents.send 的复用信号转成 DOM 事件，
   // 让渲染层（QuickNoteApp）按新模式重解析。
@@ -1061,6 +1085,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     try {
       const { ipcRenderer } = require("electron");
       ipcRenderer.on("quicknote:enter", (_e, data) => {
+        qlog("子窗收到 quicknote:enter, data =", data);
         window.dispatchEvent(
           new CustomEvent("goose-note:quicknote-enter", { detail: data || {} }),
         );
@@ -1074,7 +1099,39 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         );
       });
     } catch (err) {
-      console.error("[quicknote] 子窗 ipcRenderer 不可用:", err);
+      qlog("子窗 ipcRenderer 不可用:", err);
+    }
+
+    // 文件轮询通路：每 200ms 读 /tmp cmd 文件，命中新鲜命令后响应。
+    // dbStorage/bc/sendTo 在子窗里均不可用；fs 是唯一可靠通路。
+    try {
+      let lastSeenNonce = null;
+      setInterval(() => {
+        try {
+          let raw;
+          try { raw = fs.readFileSync(QN_CMD_FILE, "utf8"); } catch { return; }
+          let cmd;
+          try { cmd = JSON.parse(raw); } catch { return; }
+          if (!cmd || !cmd.nonce) return;
+          if (cmd.nonce === lastSeenNonce) return; // 已处理过
+          if (Date.now() - cmd.ts > 3000) return; // 陈旧命令，跳过
+          // 命中新鲜命令
+          lastSeenNonce = cmd.nonce;
+          qlog("子窗文件轮询命中 cmd nonce =", cmd.nonce, "visibility =", document.visibilityState);
+          // 不删 cmd 文件，让叠着的多个孤儿都能看到同一命令
+          if (document.visibilityState === "visible") {
+            try { fs.writeFileSync(QN_ACK_FILE, JSON.stringify({ nonce: cmd.nonce })); } catch (e) { qlog("写 ack 失败:", e); }
+            qlog("子窗可见，写 ack 并 close()");
+            try { window.close(); } catch { /* noop */ }
+          } else {
+            qlog("子窗不可见（孤儿），静默 close()");
+            try { window.close(); } catch { /* noop */ }
+          }
+        } catch { /* noop */ }
+      }, 200);
+      qlog("子窗文件轮询已启动");
+    } catch (e) {
+      qlog("子窗文件轮询 interval 启动失败:", e);
     }
   }
 
@@ -1149,7 +1206,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           utools.dbStorage.setItem(KEY, JSON.stringify(next));
         }
       } catch (e) {
-        console.error("[quicknote] persist-size 写偏好失败:", e);
+        qlog("persist-size 写偏好失败:", e);
       }
     });
 
@@ -1173,7 +1230,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       },
     };
   } catch (err) {
-    console.error("[quicknote] ipcRenderer 不可用:", err);
+    qlog("ipcRenderer 不可用:", err);
   }
 
   // 打开/复用速记小窗。mode: 'new' 新建空白 | 'last' 直达上次。
@@ -1185,18 +1242,27 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           typeof quickNoteWin.isVisible === "function"
             ? quickNoteWin.isVisible()
             : quickNoteVisible;
-        if (quickNoteActiveMode === mode && isActuallyVisible) {
+        // 两条速记指令开同一草稿，可见时再次触发一律收起（不再区分 mode）。
+        if (isActuallyVisible) {
+          qlog("复用：hide, isActuallyVisible =", isActuallyVisible);
           quickNoteWin.hide();
           quickNoteVisible = false;
           return;
         }
+        qlog("复用：show, isActuallyVisible =", isActuallyVisible);
         quickNoteWin.show();
         quickNoteWin.focus?.();
         quickNoteVisible = true;
         quickNoteActiveMode = mode;
         quickNoteWin.webContents?.send?.("quicknote:enter", { mode });
-      } catch { /* noop */ }
-      return;
+        return;
+      } catch (e) {
+        // 句柄已坏（子窗被 sendTo 路径自关等），清空后继续走新建逻辑
+        qlog("复用失败，句柄已坏，重新新建:", e);
+        quickNoteWin = null;
+        quickNoteVisible = false;
+        quickNoteActiveMode = null;
+      }
     }
 
     // 读持久化偏好：用记住的宽高开窗，并同步置顶态（读到再开，不开后再调）。
@@ -1238,7 +1304,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     // 草稿便签：两条速记指令都开同一草稿，不再按 mode 区分笔记，故 url 不带 mode。
     // url 相对「插件根目录」，dev 加载 dist 目录时根即 dist，故直接写 quicknote.html。
     const url = `quicknote.html`;
-    console.log("[quicknote] createBrowserWindow url =", url);
+    qlog("createBrowserWindow url =", url);
     try {
       quickNoteWin = utools.createBrowserWindow(url, winOpts, () => {
         try {
@@ -1249,43 +1315,130 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           if (quickNotePinned) {
             try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
           }
-          console.log("[quicknote] 子窗已 show, url =", quickNoteWin?.webContents?.getURL?.());
+          qlog("子窗已 show, url =", quickNoteWin?.webContents?.getURL?.());
+          _triggerInFlight = false;
         } catch (e) {
-          console.error("[quicknote] 子窗 show 失败:", e);
+          qlog("子窗 show 失败:", e);
+          _triggerInFlight = false;
         }
       });
-      console.log("[quicknote] createBrowserWindow 返回, win =", typeof quickNoteWin, quickNoteWin == null ? "(null!)" : "(ok)");
+      qlog("createBrowserWindow 返回, win =", typeof quickNoteWin, quickNoteWin == null ? "(null!)" : "(ok)");
     } catch (e) {
-      console.error("[quicknote] createBrowserWindow 抛错:", e);
+      qlog("createBrowserWindow 抛错:", e);
+      _triggerInFlight = false;
     }
+  };
+
+  // 文件信道常量（os/path 已在顶部 require）
+  const QN_CMD_FILE = path.join(os.tmpdir(), "goose-quicknote-cmd.json");
+  const QN_ACK_FILE = path.join(os.tmpdir(), "goose-quicknote-ack.json");
+
+  let _triggerInFlight = false; // 连按防抖：跨实例流程进行中时忽略重复触发
+  let _triggerCounter = 0; // nonce 自增计数器
+
+  // 协调入口：文件信道协议。
+  // 1. 本实例持活窗 → 直接处理，结束。
+  // 2. 防抖：_triggerInFlight true → 忽略，return。
+  // 3. 生成 nonce，先删旧 ack，写 cmd 文件。
+  // 4. 450ms 后读 ack 文件：命中 → 孤儿已收起，结束；否则 → 本地新建。
+  const triggerQuickNote = (mode) => {
+    // 本地持窗路径：直接 toggle，不受防抖限制
+    if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+      openQuickNoteWindow(mode);
+      return;
+    }
+    // 跨实例流程中忽略重复触发（连按防抖）
+    if (_triggerInFlight) {
+      qlog("triggerInFlight，忽略重复触发");
+      return;
+    }
+    _triggerInFlight = true;
+    // 1200ms 兜底强制复位
+    setTimeout(() => { _triggerInFlight = false; }, 1200);
+
+    // 生成唯一 nonce（不用 Math.random，用计数器 + 加载时刻）
+    const nonce = `${preloadLoadedAt}-${++_triggerCounter}`;
+
+    // 先删旧 ack，避免上次残留干扰
+    try { fs.unlinkSync(QN_ACK_FILE); } catch { /* noop */ }
+
+    // 写 cmd 文件；写失败则直接本地新建
+    try {
+      fs.writeFileSync(QN_CMD_FILE, JSON.stringify({ nonce, mode, ts: Date.now() }));
+      qlog("已写 cmd 文件 nonce =", nonce);
+    } catch (e) {
+      qlog("写 cmd 文件失败，直接本地新建:", e);
+      openQuickNoteWindow(mode);
+      return;
+    }
+
+    // 450ms 后读 ack 文件（覆盖子窗 200ms 轮询周期 + 执行耗时）
+    setTimeout(() => {
+      let ack = null;
+      try {
+        const raw = fs.readFileSync(QN_ACK_FILE, "utf8");
+        ack = JSON.parse(raw);
+      } catch { /* noop */ }
+      if (ack && ack.nonce === nonce) {
+        qlog("ack 命中，孤儿小窗已收起，结束");
+        try { fs.unlinkSync(QN_ACK_FILE); } catch { /* noop */ }
+        try { fs.unlinkSync(QN_CMD_FILE); } catch { /* noop */ }
+        _triggerInFlight = false;
+      } else {
+        qlog("无应答，本地新建");
+        try { fs.unlinkSync(QN_CMD_FILE); } catch { /* noop */ }
+        openQuickNoteWindow(mode);
+        // _triggerInFlight 将在 createBrowserWindow 回调中复位
+      }
+    }, 450);
   };
 
   // 速记指令处理：插件配了顶层 main，无法用 window.exports 的 mode:"none"（main 与模板模式互斥），
   // 所以走 onPluginEnter——主界面会被 uTools 先拉起，我们立刻开独立浮窗并 hideMainWindow 把主界面藏掉。
-  // 不调 outPlugin（它会隐藏/卸载宿主进程，连带销毁刚建的浮窗 → 闪退，这是之前的根因）。
+  // 吸附态(main)用 hideMainWindow 藏主界面；自动分离态(detach 新鲜实例)用 outPlugin(false)
+  // 送走分离窗（v2.6.2 起分离窗内 outPlugin 语义=隐藏到后台；真机日志证实子浮窗在宿主隐藏/结束后仍存活）。
   utools.onPluginEnter(({ code, type, payload, optional }) => {
     const winType =
       typeof utools.getWindowType === "function" ? utools.getWindowType() : "main";
-    console.log("[quicknote] onPluginEnter code =", code, "windowType =", winType);
+    qlog("onPluginEnter code =", code, "windowType =", winType, "hasFocus =", document.hasFocus(), "visibility =", document.visibilityState);
 
     if (code === "quicknote_new" || code === "quicknote_last") {
-      // 仅主窗处理；子窗(browser)加载 quicknote.html 时也会跑这份 preload 并收到 enter，必须守卫避免套娃。
-      if (winType !== "main") {
-        console.log("[quicknote] 非主窗收到速记指令，忽略");
+      // 仅宿主窗（main 吸附 / detach 分离独立窗）处理；子窗(browser)加载 quicknote.html 时
+      // 也会跑这份 preload 并收到 enter，必须守卫避免套娃。
+      if (winType === "browser") {
+        qlog("速记子窗收到速记指令，忽略");
         return;
       }
-      console.log("[quicknote] 命中速记分支（主窗）");
+      qlog("命中速记分支（宿主窗 =", winType, "）");
       try {
-        openQuickNoteWindow(code === "quicknote_last" ? "last" : "new");
+        triggerQuickNote(code === "quicknote_last" ? "last" : "new");
       } catch (err) {
-        console.error("[quicknote] openQuickNoteWindow 抛错:", err);
+        qlog("triggerQuickNote 抛错:", err);
       }
-      // 把主界面藏到后台（hideMainWindow 不影响独立浮窗）。延迟一拍，等浮窗 createBrowserWindow 先排上。
-      setTimeout(() => {
-        if (typeof utools.hideMainWindow === "function") {
-          try { utools.hideMainWindow(); } catch { /* noop */ }
-        }
-      }, 0);
+      // 吸附模式（main）：把主界面藏到后台（hideMainWindow 不影响独立浮窗）。
+      // 分离模式（detach）：uTools v2.6.2 起 hideMainWindow 对分离窗无效（官方文档）；
+      // 若 preload 是本次触发刚加载的（实例新鲜，1500ms 内），说明是 uTools 本次触发拉起的
+      // 自动分离窗，应用 outPlugin 把它送走（语义为"隐藏到后台"）；
+      // 延迟 800ms 给子窗 create/show 留足时间，再送走宿主。
+      // 用户早已常驻的分离窗（>1500ms）不动。
+      if (winType === "main") {
+        setTimeout(() => {
+          if (typeof utools.hideMainWindow === "function") {
+            try { utools.hideMainWindow(); } catch { /* noop */ }
+          }
+        }, 0);
+      } else if (winType === "detach" && Date.now() - preloadLoadedAt < 1500) {
+        setTimeout(() => {
+          try {
+            if (typeof utools.outPlugin === "function") {
+              utools.outPlugin(false);
+              qlog("outPlugin 送走自动分离主窗");
+            }
+          } catch (e) {
+            qlog("outPlugin 失败:", e);
+          }
+        }, 800);
+      }
       return;
     }
 

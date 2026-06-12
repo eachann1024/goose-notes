@@ -17,21 +17,35 @@ import { createExtension } from "@blocknote/core";
  * - 光标不在块开头（parentOffset !== 0）→ 默认（块内普通删除保持原样）。
  * - 当前块内容非空 → 默认（非空块的块内删除保持默认手感）。
  * - 当前块已是 paragraph → 默认（已是纯文本段落，无可降级；再删走 PM 默认回上一行）。
- * - 当前块是列表项（bullet/numbered/check/toggleListItem）→ 默认，交给 BlockNote 原生
+ * - 当前块是列表项（bullet/numbered/check）→ 默认，交给 BlockNote 原生
  *   降级逻辑（它们原生 Backspace 本就会变 paragraph / 调整缩进），避免与原生冲突。
- * - 当前块带 children（如带子项的折叠块）→ 默认，paragraph 不支持 children，绝不在此破坏子树。
+ * - toggleListItem 且有 children → 整树删除（见下方整树删除逻辑）。
+ * - toggleListItem 无 children → 默认（原生降级为 paragraph）。
+ * - isToggleable heading 且有 children → 整树删除（见下方整树删除逻辑）。
+ * - 当前块带 children（非上述折叠块场景）→ 默认，paragraph 不支持 children，绝不在此破坏子树。
  * - 当前块无 inline 内容模型（image/file/divider 等 void 块，content 非数组）→ 默认。
+ *
+ * 整树删除逻辑：
+ * - toggleListItem 空标题 + 有 children → removeBlocks([block]) 整树删除，光标置于上一块末尾。
+ * - isToggleable heading 空标题 + 有 children → 同上。
+ * - 若无上一块则光标落到下一块（或不删，视边界情况）。
+ * - 首块红线：block.id === editor.document[0].id 时绝不删除。
  *
  * 实现依据（BlockNote 0.51 dist 源码已核实）：BlockNote 自身无块合并 API，向前合并完全来自
  * PM 默认 joinBackward；updateBlock 仅切换块 type、保留为空内容，光标停留当前块。
+ *
+ * 例外（pending input-rule undo）：tiptap 的 Backspace 命令链第一优先是 undoInputRule——
+ * 输入规则（`》 `/`- `/`1. ` 等）刚触发转换、紧接着按退格时，它会把触发文本**原样还原**，
+ * 且因 BlockNote 用的 @handlewithcare fork 已先行插入文本、tiptap 又补插一次，结果是
+ * 「》  」多出一个空格（用户实测）。Notion 手感应是：退格 = 降级为普通段落，触发字符不还原。
+ * 故检测到任一 isInputRules 插件存在待撤销状态时，列表项不再放行给原生，统一原地降级。
  */
 
-/** 交给 BlockNote 原生降级逻辑的列表项类型，本扩展不接管。 */
+/** 交给 BlockNote 原生降级逻辑的列表项类型（无 children 时），本扩展不接管。 */
 const LIST_ITEM_TYPES = new Set([
   "bulletListItem",
   "numberedListItem",
   "checkListItem",
-  "toggleListItem",
 ]);
 
 /** 块是否「有 inline 内容模型且当前为空」。void 块（image/file/divider）content 非数组 → false。 */
@@ -51,13 +65,58 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
 
       const block = editor.getTextCursorPosition().block;
 
+      // 首块红线：永不删除首块（通常是 H1 标题）。
+      if (block.id === editor.document[0]?.id) return false;
+
       // 已是普通段落 → 放行默认（再删走 PM 默认：回上一行）。
       if (block.type === "paragraph") return false;
-      // 列表项 → 交给 BlockNote 原生降级，避免冲突。
-      if (LIST_ITEM_TYPES.has(block.type)) return false;
-      // 内容非空 → 默认（非空块块内删除保持默认手感）。
-      if (!isInlineBlockEmpty(block)) return false;
-      // 带 children（折叠块等）→ 默认，paragraph 不支持 children，不在此破坏子树。
+
+      // 输入规则刚触发、还存着待撤销状态（见顶部注释「例外」）：此时放行会被
+      // tiptap undoInputRule 抢走、把触发字符还原回来（还多一个空格）。
+      // 统一接管为原地降级，不还原触发文本。
+      const pendingInputRuleUndo = state.plugins.some(
+        (p) => (p.spec as { isInputRules?: boolean }).isInputRules && p.getState(state),
+      );
+
+      if (!pendingInputRuleUndo) {
+        // 普通列表项 → 交给 BlockNote 原生降级，避免冲突。
+        if (LIST_ITEM_TYPES.has(block.type)) return false;
+        // 内容非空 → 默认（非空块块内删除保持默认手感）。
+        if (!isInlineBlockEmpty(block)) return false;
+
+        // 空的 toggleListItem 有 children → 整树删除。
+        if (block.type === "toggleListItem" && block.children && block.children.length > 0) {
+          return deleteBlockTree(editor, block);
+        }
+
+        // 空的 toggleListItem 无 children → 放行原生（降级为 paragraph）。
+        if (block.type === "toggleListItem") return false;
+
+        // 空的 isToggleable heading 有 children → 整树删除。
+        if (
+          block.type === "heading" &&
+          (block.props as { isToggleable?: boolean })?.isToggleable &&
+          block.children &&
+          block.children.length > 0
+        ) {
+          return deleteBlockTree(editor, block);
+        }
+      } else {
+        // pending 场景下块内容可能非空（如在已有文字行首打 `# ` 转标题后立刻退格），
+        // updateBlock 只改 type、保留 content，正是期望的「降级保文字」。
+        // 但 void 块（content 非数组）无法降级为 paragraph，仍放行。
+        if (!Array.isArray(block.content)) return false;
+        // 折叠标题（`》 ` 打在已有 heading 上只是改 props）→ 反向去掉折叠态即可，
+        // 不动 heading 级别与文字，也兼容带 children 的情况。
+        if (
+          block.type === "heading" &&
+          (block.props as { isToggleable?: boolean })?.isToggleable
+        ) {
+          editor.updateBlock(block, { props: { isToggleable: false } });
+          return true;
+        }
+      }
+      // 带 children（非上述整树删除场景）→ 默认，paragraph 不支持 children，不在此破坏子树。
       if (block.children && block.children.length > 0) return false;
 
       // 空的非段落控件：原地降级为普通空段落，光标留当前行，不向前合并、不跳行。
@@ -67,3 +126,34 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
     },
   },
 });
+
+/**
+ * 整树删除折叠块（含所有 children），光标移至上一块末尾。
+ * 若无上一块则移至下一块开头；若两者都无则不删。
+ */
+function deleteBlockTree(editor: any, block: any): boolean {
+  const pos = editor.getTextCursorPosition();
+  const prevBlock = pos.prevBlock;
+  const nextBlock = pos.nextBlock;
+
+  // 无上一块也无下一块时不删（极端情况：文档只剩这一块）。
+  if (!prevBlock && !nextBlock) return false;
+
+  editor.removeBlocks([block]);
+
+  if (prevBlock) {
+    try {
+      editor.setTextCursorPosition(prevBlock, "end");
+    } catch {
+      // prevBlock 可能是折叠块的父块，setTextCursorPosition 可能失败，忽略。
+    }
+  } else if (nextBlock) {
+    try {
+      editor.setTextCursorPosition(nextBlock, "start");
+    } catch {
+      // 忽略边界异常。
+    }
+  }
+
+  return true;
+}

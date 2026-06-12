@@ -247,7 +247,14 @@ export function NotebookSwitcher() {
               }}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-interactive-hover)]">
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-interactive-hover)] transition-colors",
+                    "group-hover:bg-[var(--goose-icon-chip-on-selected)] group-data-[highlighted]:bg-[var(--goose-icon-chip-on-selected)]",
+                    activeNotebookId === notebook.id &&
+                      "bg-[var(--goose-icon-chip-on-selected)]",
+                  )}
+                >
                   {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
                 </span>
                 <span className="truncate text-sm font-medium leading-none">{notebook.name}</span>
@@ -257,7 +264,7 @@ export function NotebookSwitcher() {
               </div>
               <div className="flex items-center gap-1 shrink-0 justify-end">
                 {notebook.source === "local-folder" && canDeleteNotebook && (
-                  <TooltipProvider delayDuration={0}>
+                  <TooltipProvider delayDuration={600}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -277,7 +284,7 @@ export function NotebookSwitcher() {
                     </Tooltip>
                   </TooltipProvider>
                 )}
-                <TooltipProvider delayDuration={0}>
+                <TooltipProvider delayDuration={600}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button

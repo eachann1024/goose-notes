@@ -3,6 +3,7 @@ import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { SearchResultPage, SearchResults } from "./useCommandSearch";
+import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
 
 function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: string }) {
   if (parts.length === 0) {
@@ -29,6 +30,8 @@ function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: strin
   );
 }
 
+const MARK_CLASS = "rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground";
+
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const regex = new RegExp(
@@ -36,22 +39,53 @@ function HighlightText({ text, query }: { text: string; query: string }) {
     "gi",
   );
   const parts = text.split(regex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark
-            key={i}
-            className="rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground"
-          >
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </>
-  );
+
+  // 普通字符串命中
+  const hasMatch = parts.length > 1;
+  if (hasMatch) {
+    return (
+      <>
+        {parts.map((part, i) =>
+          regex.test(part) ? (
+            <mark key={i} className={MARK_CLASS}>{part}</mark>
+          ) : (
+            part
+          ),
+        )}
+      </>
+    );
+  }
+
+  // 尝试拼音匹配高亮
+  if (isPinyinQuery(query.trim())) {
+    const indices = pinyinMatchIndices(text, query.trim());
+    if (indices && indices.length > 0) {
+      const hitSet = new Set(indices);
+      // 分段：连续命中合并为一个 mark
+      const segments: { chars: string; hit: boolean }[] = [];
+      for (let i = 0; i < text.length; i++) {
+        const hit = hitSet.has(i);
+        if (segments.length > 0 && segments[segments.length - 1].hit === hit) {
+          segments[segments.length - 1].chars += text[i];
+        } else {
+          segments.push({ chars: text[i], hit });
+        }
+      }
+      return (
+        <>
+          {segments.map((seg, i) =>
+            seg.hit ? (
+              <mark key={i} className={MARK_CLASS}>{seg.chars}</mark>
+            ) : (
+              seg.chars
+            ),
+          )}
+        </>
+      );
+    }
+  }
+
+  return <>{text}</>;
 }
 
 interface PaletteResultGroupProps {

@@ -22,10 +22,16 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={6}
       className={cn(
-        "z-[20000] w-64 rounded-[10px] border border-border/80 bg-[hsl(var(--popover)/0.995)] p-2 text-popover-foreground shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:bg-[hsl(var(--popover)/0.99)] outline-none data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-[20000] w-64 rounded-[10px] border border-border/80 bg-[hsl(var(--popover))] p-2 text-popover-foreground outline-none data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
       {...props}
+      style={{
+        // uTools 旧内核渲染不出 Tailwind 的 box-shadow 变量链，投影走内联 style
+        boxShadow:
+          "0 8px 22px rgba(15,23,42,0.1), 0 1px 3px rgba(15,23,42,0.06)",
+        ...props.style,
+      }}
     />
   </PopoverPrimitive.Portal>
 ))

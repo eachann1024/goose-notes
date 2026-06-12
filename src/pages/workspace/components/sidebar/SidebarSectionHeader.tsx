@@ -59,7 +59,7 @@ export function SidebarSectionHeader({
           大纲
         </button>
       </div>
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delayDuration={600}>
         <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
           <Tooltip>
             <TooltipTrigger asChild>

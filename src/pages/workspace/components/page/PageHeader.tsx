@@ -285,7 +285,7 @@ export function PageHeader({
     <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-editor-bg))] sticky top-0 z-10 shrink-0">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {sidebarCollapsed ? (
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -312,7 +312,7 @@ export function PageHeader({
         ) : null}
         {/* AI 面板入口按钮（onToggleAiPanel 存在且 AI 已启用时渲染） */}
         {onToggleAiPanel ? (
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -401,7 +401,7 @@ export function PageHeader({
           {/* sticky：平时紧跟最后一个标签；极端溢出滚动时钉在右缘，不被挤出可视区 */}
           {!page?.trashedAt && (
             <div className="sticky right-0 shrink-0 rounded-[7px] bg-[hsl(var(--goose-editor-bg))]">
-              <TooltipProvider delayDuration={0}>
+              <TooltipProvider delayDuration={600}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -438,7 +438,7 @@ export function PageHeader({
       <div className="ml-2 flex shrink-0 items-center gap-1">
         {page?.trashedAt && onRestore && onDelete && (
           <>
-            <TooltipProvider delayDuration={0}>
+            <TooltipProvider delayDuration={600}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -454,7 +454,7 @@ export function PageHeader({
                 <TooltipContent side="bottom">恢复页面</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <TooltipProvider delayDuration={0}>
+            <TooltipProvider delayDuration={600}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -473,7 +473,7 @@ export function PageHeader({
         )}
 
         {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -509,7 +509,7 @@ export function PageHeader({
         )}
 
         {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

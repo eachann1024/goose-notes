@@ -352,7 +352,7 @@ export function FormattingToolbarColorPicker() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Tooltip delayDuration={0}>
+      <Tooltip delayDuration={600}>
         <TooltipTrigger asChild>
           <button
             type="button"

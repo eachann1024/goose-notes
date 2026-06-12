@@ -63,7 +63,7 @@ export function FileTrigger({
 
   const triggerContent =
     isDisabled && disabledReason ? (
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delayDuration={600}>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="block w-full cursor-not-allowed">{child}</span>

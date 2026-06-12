@@ -102,7 +102,7 @@ export function EditorFormattingToolbar() {
 
   const bindTooltip = useCallback<BindTooltip>(
     (id) => ({
-      delayDuration: 0,
+      delayDuration: 600,
       open: activeTooltip === id,
       onOpenChange: (open) =>
         setActiveTooltip((prev) => (open ? id : prev === id ? null : prev)),
@@ -282,7 +282,7 @@ export function EditorFormattingToolbar() {
 
   return (
     <TooltipProvider
-      delayDuration={0}
+      delayDuration={600}
       skipDelayDuration={0}
       disableHoverableContent
     >

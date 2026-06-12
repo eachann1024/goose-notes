@@ -43,7 +43,7 @@ export function SidebarFooter({
   return (
     <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
       <div className="flex items-center gap-0.5">
-        <TooltipProvider delayDuration={0}>
+        <TooltipProvider delayDuration={600}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button

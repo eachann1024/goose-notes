@@ -338,7 +338,7 @@ export function SidebarHeader({
                 const isActive = highlightedPageId === page.id;
                 const title = getPageTitle(page);
                 return (
-                  <TooltipProvider key={page.id} delayDuration={100}>
+                  <TooltipProvider key={page.id} delayDuration={600}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button

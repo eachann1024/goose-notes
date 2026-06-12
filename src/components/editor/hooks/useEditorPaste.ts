@@ -136,7 +136,11 @@ export function useEditorPaste({
       }
 
       // 2. 粘贴纯 URL → 根据是否有选中文本决定行为
-      if (isValidUrl(trimmedText)) {
+      //    仅当整段「只是」一个 URL(内部无空白)时才建链;若是「URL + 空格 + 其它文字」
+      //    (如 `http://x.com/p 登录地址必须用这个`),isValidUrl 的非 anchored 正则仍会
+      //    命中开头的 URL → 整段被 createLink 吞成一个链接,后面的文字也被并进去。
+      //    这类整段交给后续普通粘贴/autolink,只把真正的 URL 片段识别成链接。
+      if (!/\s/.test(trimmedText) && isValidUrl(trimmedText)) {
         // 裸域名(baidu.com)/www. 开头没有协议，href 不补全的话 openUrl 打不开，
         // 这里统一补 https://，显示文本仍保留原文。
         const href = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmedText)

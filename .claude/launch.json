@@ -4,14 +4,45 @@
     {
       "name": "dev",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev"],
-      "port": 6001
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 6001,
+      "autoPort": false
+    },
+    {
+      "name": "dev-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "x",
+        "vite",
+        "--port",
+        "6010",
+        "--strictPort"
+      ],
+      "port": 6010
     },
     {
       "name": "tauri-dev",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd /Users/eachann/WorkMark/goose-note-tauri && bun run dev"],
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/eachann/WorkMark/goose-note-tauri && bun run dev"
+      ],
       "port": 1420
+    },
+    {
+      "name": "ink-flow",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "6020",
+        "--directory",
+        "/Users/eachann/WorkMark/ink-flow"
+      ],
+      "port": 6020
     }
   ]
 }

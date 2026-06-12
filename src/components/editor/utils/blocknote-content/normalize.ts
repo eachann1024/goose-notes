@@ -238,7 +238,13 @@ function normalizeBlock(block: any): PartialBlock[] {
 
   const children = normalizeBlocks(block.children);
 
-  if (children.length > 0 && type === "heading") {
+  // 可折叠标题（isToggleable）的 children 是折叠内容本体，必须保留；
+  // 下面的「heading 带 children 拍平」只针对旧数据里的普通标题。
+  const isToggleableHeading =
+    type === "heading" &&
+    Boolean(block.props?.isToggleable ?? block.attrs?.isToggleable);
+
+  if (children.length > 0 && type === "heading" && !isToggleableHeading) {
     if (!hasInlineText(block.content)) {
       return children;
     }
@@ -248,7 +254,7 @@ function normalizeBlock(block: any): PartialBlock[] {
     return [headingBlock, ...children];
   }
 
-  if (children.length > 0 && isEmptyWrapperBlock(type, block)) {
+  if (children.length > 0 && !isToggleableHeading && isEmptyWrapperBlock(type, block)) {
     return children;
   }
 

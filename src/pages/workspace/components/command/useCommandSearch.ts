@@ -3,6 +3,7 @@ import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
+import { pinyinMatchIndices } from "@/lib/pinyin-search";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
@@ -163,7 +164,9 @@ export function useCommandSearch({
       }
 
       const title = getPageTitle(page);
-      const titleMatch = title.toLowerCase().includes(query);
+      const titleMatch =
+        title.toLowerCase().includes(query) ||
+        pinyinMatchIndices(title, deferredQuery.trim()) !== null;
       const contentText = getCachedText(page);
       const contentMatch = contentText.toLowerCase().includes(query);
       

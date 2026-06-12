@@ -291,7 +291,7 @@ export function SortablePageRow({
                 className={cn(
                   "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                   showArrow
-                    ? "hover:bg-muted-foreground/10 dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+                    ? "hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
                     : "opacity-0 pointer-events-none"
                 )}
                 onPointerDown={handleArrowPointerDown}
@@ -326,7 +326,7 @@ export function SortablePageRow({
                   value={iconName}
                   onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
                 >
-                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
+                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
                     <div className="h-4 w-4 flex items-center justify-center">
                       <LocalFileIcon
                         page={page}
@@ -369,7 +369,7 @@ export function SortablePageRow({
               )}
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                 onClick={handleAddChild}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}

@@ -107,7 +107,7 @@ export function SidebarContextMenu({
             {children}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-60 !border-0 !ring-0">
+        <ContextMenuContent className="w-60 !border-0">
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
             {menuLabel}
           </div>
@@ -194,7 +194,7 @@ export function SidebarContextMenu({
                   sideOffset={8}
                   alignOffset={-4}
                   collisionPadding={12}
-                  className="w-56 max-h-72 overflow-y-auto !border-0 !ring-0"
+                  className="w-56 max-h-72 overflow-y-auto !border-0"
                 >
                   {movableNotebooks.map((item) => (
                     <ContextMenuItem

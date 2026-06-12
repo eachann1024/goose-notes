@@ -136,7 +136,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
           className="z-50 w-[280px] rounded-[var(--radius-notion-slash)] border border-border/75 bg-popover p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]"
         >
           <div ref={containerRef} className="max-h-[320px] overflow-y-auto overscroll-contain">
-            <TooltipProvider delayDuration={200}>
+            <TooltipProvider delayDuration={600}>
               <div className="flex flex-col gap-0.5">
                 {items.map((item, index) => {
                   if ((item as any).type === "divider") {

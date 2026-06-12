@@ -15,6 +15,110 @@
  * 保证任何 HeroUI 默认上色面（focus/selection 等）与品牌一致、不漏默认蓝。 */
 @import "@heroui/styles";
 
+/* ── uTools 旧内核 @property 降级 ───────────────────────────────
+ * Tailwind v4 的 shadow-* / ring-* / 渐变 / transform 等工具类全部依赖
+ * @property 注册初值的 --tw-* 变量链（如 box-shadow: var(--tw-inset-shadow), ..., var(--tw-shadow)）。
+ * uTools 旧内核不支持 @property，且 Tailwind 自带降级块包在旧内核同样匹配不上的
+ * @supports 门里 → 变量未定义 → 整条 box-shadow 等声明作废（菜单/弹层投影消失）。
+ * 这里把官方降级块原样无条件声明一份（@layer properties 优先级低于 utilities，
+ * 工具类自身的变量赋值仍正常覆盖，新内核/浏览器零影响）。 */
+@layer properties {
+  *,
+  :before,
+  :after,
+  ::backdrop {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-scale-x: 1;
+    --tw-scale-y: 1;
+    --tw-scale-z: 1;
+    --tw-rotate-x: initial;
+    --tw-rotate-y: initial;
+    --tw-rotate-z: initial;
+    --tw-skew-x: initial;
+    --tw-skew-y: initial;
+    --tw-space-y-reverse: 0;
+    --tw-space-x-reverse: 0;
+    --tw-divide-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-gradient-position: initial;
+    --tw-gradient-from: #0000;
+    --tw-gradient-via: #0000;
+    --tw-gradient-to: #0000;
+    --tw-gradient-stops: initial;
+    --tw-gradient-via-stops: initial;
+    --tw-gradient-from-position: 0%;
+    --tw-gradient-via-position: 50%;
+    --tw-gradient-to-position: 100%;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-ordinal: initial;
+    --tw-slashed-zero: initial;
+    --tw-numeric-figure: initial;
+    --tw-numeric-spacing: initial;
+    --tw-numeric-fraction: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-outline-style: solid;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+    --tw-backdrop-blur: initial;
+    --tw-backdrop-brightness: initial;
+    --tw-backdrop-contrast: initial;
+    --tw-backdrop-grayscale: initial;
+    --tw-backdrop-hue-rotate: initial;
+    --tw-backdrop-invert: initial;
+    --tw-backdrop-opacity: initial;
+    --tw-backdrop-saturate: initial;
+    --tw-backdrop-sepia: initial;
+    --tw-duration: initial;
+    --tw-ease: initial;
+    --tw-content: "";
+    --tw-animation-delay: 0s;
+    --tw-animation-direction: normal;
+    --tw-animation-duration: initial;
+    --tw-animation-fill-mode: none;
+    --tw-animation-iteration-count: 1;
+    --tw-enter-blur: 0;
+    --tw-enter-opacity: 1;
+    --tw-enter-rotate: 0;
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-blur: 0;
+    --tw-exit-opacity: 1;
+    --tw-exit-rotate: 0;
+    --tw-exit-scale: 1;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+  }
+}
+
 /* ── HeroUI ↔ shadcn 令牌冲突兜底 ───────────────────────────────
  * @heroui/styles 会在 `:root,.light,.default,[data-theme=light|default]`
  * 里把 --accent / --border 设成「已解析颜色」(oklch)，而本项目这两个 token
@@ -132,6 +236,9 @@
     --goose-interactive-hover: hsl(var(--goose-selected-bg) / 0.76);
     --goose-interactive-selected: hsl(60 5% 88%);
     --goose-interactive-selected-border: transparent;
+    /* 图标小方块落在 hover/选中行上时的底色：浅色下行高亮(88%)比方块默认底(94%/.76)更深，
+       方块会融进背景"消失"，必须比 selected 再深一档保持层次 */
+    --goose-icon-chip-on-selected: hsl(60 4% 82%);
     /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
     --goose-pin-accent: #ef4444;
     /* 语义实色变量——替代 Tailwind 裸调色板色，uTools 旧内核 oklch 解析失败兜底 */
@@ -195,6 +302,8 @@
     --goose-interactive-hover: hsl(0 0% 17%);
     --goose-interactive-selected: hsl(0 0% 25%);
     --goose-interactive-selected-border: transparent;
+    /* 深色下方块(17%)本就比行高亮(25%)深，保持原值即可 */
+    --goose-icon-chip-on-selected: hsl(0 0% 17%);
     --goose-pin-accent: #f87171;
     /* 深色模式语义实色变量覆盖 */
     --goose-color-danger: #f87171;

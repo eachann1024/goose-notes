@@ -15,6 +15,10 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+/* uTools 旧内核渲染不出 Tailwind 的 box-shadow 变量链，菜单投影必须走内联 style */
+const MENU_SHADOW =
+  "0 14px 34px rgba(15,23,42,0.16), 0 2px 8px rgba(15,23,42,0.08)";
+
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
@@ -45,10 +49,11 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.SubContent
       ref={ref}
       className={cn(
-        "z-[20000] min-w-[9.5rem] overflow-hidden rounded-[14px] border-0 outline-none bg-[hsl(var(--popover)/0.998)] p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--popover)/0.996)] data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
+        "z-[20000] min-w-[9.5rem] overflow-hidden rounded-[14px] border-0 outline-none bg-[hsl(var(--popover))] p-1.5 text-popover-foreground data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
         className
       )}
       {...props}
+      style={{ boxShadow: MENU_SHADOW, ...props.style }}
     />
   </DropdownMenuPrimitive.Portal>
 ));
@@ -64,10 +69,11 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={6}
       className={cn(
-        "z-[20000] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[9.5rem] overflow-y-auto overflow-x-hidden rounded-[14px] border-0 outline-none bg-[hsl(var(--popover)/0.998)] p-1.5 text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--popover)/0.996)] data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
+        "z-[20000] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[9.5rem] overflow-y-auto overflow-x-hidden rounded-[14px] border-0 outline-none bg-[hsl(var(--popover))] p-1.5 text-popover-foreground data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
         className
       )}
       {...props}
+      style={{ boxShadow: MENU_SHADOW, ...props.style }}
     />
   </DropdownMenuPrimitive.Portal>
 ));

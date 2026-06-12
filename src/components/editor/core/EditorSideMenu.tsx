@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   useBlockNoteEditor,
@@ -8,11 +8,22 @@ import {
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/editor/ui/tooltip";
+
+const isMac = /Mac/i.test(navigator.platform);
+const altKeyLabel = isMac ? "⌥" : "Alt";
 
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
   const sideMenu = useExtension(SideMenuExtension);
   const lastPosRef = useRef({ top: 0, left: 0 });
+  const [addTipOpen, setAddTipOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>
@@ -33,6 +44,7 @@ export function EditorSideMenu() {
 
   const handleAdd = useCallback(
     (e: React.MouseEvent) => {
+      setAddTipOpen(false);
       if (!block) return;
       const placement: "before" | "after" =
         e.altKey || e.ctrlKey || e.metaKey ? "before" : "after";
@@ -57,6 +69,8 @@ export function EditorSideMenu() {
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
       if (!block || !sideMenu) return;
+      setAddTipOpen(false);
+      setIsDragging(true);
       sideMenu.blockDragStart(
         { dataTransfer: e.dataTransfer, clientY: e.clientY },
         block,
@@ -66,6 +80,7 @@ export function EditorSideMenu() {
   );
 
   const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
     sideMenu?.blockDragEnd?.();
   }, [sideMenu]);
 
@@ -108,16 +123,39 @@ export function EditorSideMenu() {
         e.stopPropagation();
       }}
     >
-      <button
-        type="button"
-        onClick={handleAdd}
-        className={cn(
-          "flex h-6 w-5 items-center justify-center rounded-md text-muted-foreground/50",
-          "transition-colors hover:bg-muted hover:text-foreground",
-        )}
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
+      <TooltipProvider delayDuration={600} disableHoverableContent>
+        <Tooltip
+          open={addTipOpen && isVisible && !isDragging}
+          onOpenChange={setAddTipOpen}
+        >
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleAdd}
+              className={cn(
+                "flex h-6 w-5 items-center justify-center rounded-md text-muted-foreground/50",
+                "transition-colors hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start">
+            <div className="flex flex-col gap-1 whitespace-nowrap">
+              <span>
+                <span className="text-[hsl(var(--foreground))]">点击</span>{" "}
+                在下方添加块
+              </span>
+              <span>
+                <span className="text-[hsl(var(--foreground))]">
+                  {altKeyLabel} 点击
+                </span>{" "}
+                在上方添加块
+              </span>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <button
         type="button"
         draggable

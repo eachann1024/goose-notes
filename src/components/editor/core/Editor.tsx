@@ -48,6 +48,7 @@ import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
+import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
@@ -173,7 +174,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       // `> ` → 引用、`<引号> ` → 引用,以及 Mod-Alt-q。这里把 `>` 让给折叠功能
       // (行首 `> ` → 折叠标题/折叠列表,见 toggleHeadingInputRule),引用改用 `| `/`｜ `
       // (见 quoteInputRule)。斜杠菜单仍可插入引用,不受影响。
-      disableExtensions: ["quote-block-shortcuts"],
+      // 同时禁用 toggle-list-item-shortcuts:它的 Enter handler 对非空 toggleListItem
+      // 无条件接管分裂(收起态也照分,把收起的 children 挤给新块,再也收不回去),且注册
+      // 顺序先于自定义扩展、无法被 collapsedToggleEnterExtension 拦截。其全部行为
+      // (空块降级 / 非空分裂 / Mod-Shift-6 转折叠列表)已在 collapsedToggleEnterExtension
+      // 中按收起态感知重新实现。
+      disableExtensions: ["quote-block-shortcuts", "toggle-list-item-shortcuts"],
       extensions: [
         createGooseFirstTitleGuardExtension(isLocalFolderPageRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
@@ -184,6 +190,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
+        gooseCollapsedToggleEnterExtension,
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
         gooseQuoteInputRuleExtension,
@@ -207,7 +214,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         placeholders: {
           ...zh.placeholders,
           default: "输入 / 或 、来展开菜单...",
+          toggleListItem: "",
         },
+        // 空折叠块展开后的提示行（默认「空的切换区。点击添加区块。」太生硬）
+        toggle_blocks: { add_block_button: "空的折叠块，点击添加内容" },
         ai: aiZh,
       },
       domAttributes: {
