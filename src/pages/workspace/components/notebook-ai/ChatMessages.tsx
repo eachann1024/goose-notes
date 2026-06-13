@@ -2,8 +2,10 @@
  * 消息列表组件 — Streamdown 渲染 text part，自动吸底，用户上滚暂停
  */
 import { useEffect, useRef, useCallback, useState } from "react";
+import type { ComponentProps } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
+import { Check } from "lucide-react";
 import { ToolCallCard } from "./ToolCallCard";
 import { TableCard } from "./TableCard";
 import { ChartCard } from "./ChartCard";
@@ -14,6 +16,26 @@ const ANIMATE_OPTIONS = {
   duration: 250,
   sep: "word" as const,
 };
+
+/** 任务列表的原生 checkbox 替换为自绘勾选框（样式见 notebook-ai.css） */
+function MdInput({
+  node: _node,
+  ...props
+}: ComponentProps<"input"> & { node?: unknown }) {
+  if (props.type === "checkbox") {
+    return (
+      <span
+        className="ai-md-checkbox"
+        data-checked={props.checked ? "true" : "false"}
+      >
+        {props.checked ? <Check strokeWidth={2.5} /> : null}
+      </span>
+    );
+  }
+  return <input {...props} />;
+}
+
+const MD_COMPONENTS = { input: MdInput };
 
 interface ChatMessagesProps {
   messages: NotebookAiMessage[];
@@ -136,11 +158,10 @@ export function ChatMessages({
               if (partType === "text") {
                 const textContent = (part as { text: string }).text;
                 return (
-                  <div
-                    key={pi}
-                    className="prose prose-sm max-w-none text-foreground [&_a]:text-foreground [&_a]:underline [&_a]:decoration-border [&_a]:underline-offset-2 [&_code]:bg-[var(--goose-interactive-hover)] [&_code]:px-1 [&_code]:rounded [&_pre]:bg-[var(--goose-interactive-hover)] [&_pre]:rounded-[8px]"
-                  >
+                  <div key={pi} className="ai-md text-sm text-foreground">
                     <Streamdown
+                      className="space-y-2"
+                      components={MD_COMPONENTS}
                       isAnimating={isStreaming}
                       animated={ANIMATE_OPTIONS}
                       plugins={{ cjk }}

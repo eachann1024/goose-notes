@@ -28,6 +28,9 @@
 .bn-editor .bn-toggle-add-block-button {
   opacity: 0.45;
   font-size: 14px;
+  /* 与 children 缩进对齐（见下方 .bn-block-group 规则），读作「子内容占位行」，
+     而不是顶格另起一行盖在标题正下方 */
+  margin-left: 22px;
 }
 
 /* 折叠箭头换成与侧栏一致的 Lucide ChevronRight（描边 1.75）：
@@ -50,6 +53,72 @@
   background-color: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* 折叠标题的箭头悬挂到左侧 gutter（Notion 手感）：
+   chevron 按钮默认是行内 flex item，会把标题文字/placeholder 往右推一个按钮宽，
+   视觉上像「标题前面多了空格」。改为绝对定位挂在 wrapper 左外侧，
+   标题文字与普通标题左对齐；editor 自带 54px padding-inline，gutter 放得下。
+   普通折叠列表(toggleListItem)的箭头充当列表 marker，保持行内不动。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper {
+  position: relative;
+}
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+  position: absolute;
+  right: 100%;
+  /* 垂直居中用 inset+margin，不占用 transform——展开态旋转
+     (.bn-toggle-wrapper[data-show-children=true] .bn-toggle-button { transform: rotate(90deg) })
+     还要用它。 */
+  top: 0;
+  bottom: 0;
+  height: fit-content;
+  margin: auto 0;
+}
+
+/* 普通折叠列表(toggleListItem)的箭头统一手感：
+   箭头不再参与 flex 流（默认它是行内 flex item，多行/空块时会整块垂直居中、
+   把空块的占位行挤到下一行），改为绝对定位钉在首行左侧 marker 位；
+   wrapper 用 padding-left 保留 22px marker 空间，文字 x 在收起/展开/换行
+   三态下恒定不动。 */
+.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper {
+  position: relative;
+  padding-left: 22px;
+}
+.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* 钉在首行：高度=正文行高(1.5em)，图标在其内垂直居中；
+     不用 transform——展开态旋转 rotate(90deg) 还要用它 */
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+
+/* 折叠块 children 缩进与标题文字精确对齐（marker 22px），
+   默认 .bn-block-group 的 24px 会比标题文字多出 2px */
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group {
+  margin-left: 22px;
+}
+
+/* 折叠块 children 缩进引用线：连续空行没有任何文字时，没这条线
+   完全看不出这些行还在折叠块里（像内容跑到了折叠块外面）。
+   线挂在箭头列正下方，两种折叠块（toggleListItem / 折叠标题）都画。 */
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group {
+  position: relative;
+}
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group::before,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group::before {
+  content: "";
+  position: absolute;
+  /* children group 相对标题文字缩进 22px，箭头列中心 ≈ 文字左缘往左 14px */
+  left: -14px;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  border-radius: 1px;
+  background: hsl(var(--border));
 }
 
 .goose-find-match {
@@ -411,13 +480,13 @@
 
 /* ===== 自定义代码块增强（DOM 注入方案） ===== */
 
-/* 内置 codeBlock 容器 */
+/* 内置 codeBlock 容器：中性化 BlockNote 默认 chrome（#161616 黑底/白字/圆角），
+   视觉统一交给内层 .goose-code-block-node */
 .workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
-  background-color: var(--code-bg, hsl(var(--muted) / 0.55));
-  color: var(--code-fg, hsl(var(--foreground)));
-  border: 1px solid var(--code-border, hsl(var(--border) / 0.5));
-  border-radius: var(--editor-code-block-radius, 8px);
-  overflow: hidden;
+  background-color: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
 }
 
 /* 隐藏内置 language select（工具栏替代） */
@@ -477,7 +546,8 @@
   min-height: 96px;
   background-color: var(--code-bg, hsl(var(--muted) / 0.55));
   color: var(--code-fg, hsl(var(--foreground)));
-  border: 1px solid var(--code-border, hsl(var(--border) / 0.5));
+  /* 外壳边框与文件块统一，不随代码主题走（--code-border 仅供内部分隔线使用） */
+  border: 1px solid hsl(var(--border) / 0.4);
   border-radius: var(--editor-code-block-radius, 8px);
   overflow: hidden;
 }
@@ -623,12 +693,18 @@
   background-color: hsl(var(--muted) / 0.4);
   border: 1px solid hsl(var(--border) / 0.4);
   transition: border-color 150ms ease, background-color 150ms ease;
-  margin-inline: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .goose-file-block-content:hover {
   background-color: hsl(var(--muted) / 0.55);
   border-color: hsl(var(--border) / 0.6);
+}
+
+/* 确保 BlockNote wrapper 不收缩 */
+.workspace-editor-surface .bn-block-content[data-content-type="file"] .bn-file-block-content-wrapper {
+  width: 100%;
 }
 
 .goose-file-block-info {
@@ -640,9 +716,21 @@
   color: hsl(var(--foreground));
 }
 
-.goose-file-block-info > svg {
+.goose-file-block-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: hsl(var(--muted-foreground) / 0.8);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.goose-file-block-icon-btn:hover {
+  color: hsl(var(--foreground));
 }
 
 .goose-file-block-name {
@@ -654,11 +742,31 @@
   color: hsl(var(--foreground));
 }
 
+.goose-file-block-name-input {
+  font-size: 14px;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  background: hsl(var(--muted) / 0.28);
+  color: hsl(var(--foreground));
+  border: none;
+  outline: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
 .goose-file-block-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.goose-file-block-content:hover .goose-file-block-actions,
+.goose-file-block-content:focus-within .goose-file-block-actions {
+  opacity: 1;
 }
 
 .goose-file-block-action-btn {

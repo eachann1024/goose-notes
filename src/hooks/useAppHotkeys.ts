@@ -18,19 +18,23 @@ type HotkeyEntry = {
 export function useAppHotkeys() {
   // Subscribe to closeTabShortcut so the ref stays in sync, but the keydown
   // listener itself is registered only once (deps=[]).
-  const { closeTabShortcut } = useSettings();
+  const { closeTabShortcut, appShortcuts } = useSettings();
   const { openTabs, activeTabId } = useTabs();
 
   // Dynamic values consumed inside the single keydown listener must be read
   // through refs, otherwise the once-registered listener would capture stale
   // values (breaks tab switching / close after the list changes).
   const closeTabShortcutRef = useRef(closeTabShortcut);
+  const appShortcutsRef = useRef(appShortcuts);
   const openTabsRef = useRef(openTabs);
   const activeTabIdRef = useRef(activeTabId);
 
   useEffect(() => {
     closeTabShortcutRef.current = closeTabShortcut;
   }, [closeTabShortcut]);
+  useEffect(() => {
+    appShortcutsRef.current = appShortcuts;
+  }, [appShortcuts]);
   useEffect(() => {
     openTabsRef.current = openTabs;
   }, [openTabs]);
@@ -88,15 +92,23 @@ export function useAppHotkeys() {
           );
         },
       },
-      // cmd+, settings — keep custom matcher (Chinese comma '，' + event.code 'Comma')
+      // cmd+, settings — if still default, keep Chinese comma / event.code fallback
       {
         id: "open-settings",
-        match: (event) =>
-          hasPrimaryModifier(event) &&
-          (event.key === "," ||
-            event.key === "，" ||
-            event.code === "Comma") &&
-          !event.shiftKey,
+        match: (event) => {
+          const s = appShortcutsRef.current.openSettings;
+          if (!s) return false;
+          if (s === 'Mod+,') {
+            return (
+              hasPrimaryModifier(event) &&
+              (event.key === "," ||
+                event.key === "，" ||
+                event.code === "Comma") &&
+              !event.shiftKey
+            );
+          }
+          return matchShortcut(event, s);
+        },
         handler: (event) => {
           event.preventDefault();
           closeAllOverlays();
@@ -106,7 +118,10 @@ export function useAppHotkeys() {
       // cmd+shift+k search
       {
         id: "open-search",
-        match: (event) => matchShortcut(event, "Mod+Shift+K"),
+        match: (event) => {
+          const s = appShortcutsRef.current.openSearch;
+          return !!s && matchShortcut(event, s);
+        },
         when: () => !isEditableInput() && !isRichTextEditing(),
         handler: (event) => {
           event.preventDefault();
@@ -118,22 +133,22 @@ export function useAppHotkeys() {
       // 是否真正切换由 WorkspaceLayout 侧监听判断（需 ai.enabled），这里只负责派发
       {
         id: "toggle-ai-panel",
-        match: (event) => matchShortcut(event, "Mod+J"),
+        match: (event) => {
+          const s = appShortcutsRef.current.toggleAIPanel;
+          return !!s && matchShortcut(event, s);
+        },
         handler: (event) => {
           event.preventDefault();
           window.dispatchEvent(new CustomEvent("goose-note:toggle-ai-panel"));
         },
       },
-      // Alt+B 折叠/展开侧栏 —— 避开编辑器内 Mod+B 加粗，聚焦编辑器时也可触发
+      // toggle sidebar — configurable, default Alt+B; allow triggering even from editor
       {
         id: "toggle-sidebar",
-        match: (event) =>
-          event.altKey &&
-          !event.metaKey &&
-          !event.ctrlKey &&
-          !event.shiftKey &&
-          !event.repeat &&
-          event.code === "KeyB",
+        match: (event) => {
+          const s = appShortcutsRef.current.toggleSidebar;
+          return !!s && matchShortcut(event, s);
+        },
         handler: (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -143,7 +158,10 @@ export function useAppHotkeys() {
       // cmd+f editor find open
       {
         id: "editor-find-open",
-        match: (event) => matchShortcut(event, "Mod+F"),
+        match: (event) => {
+          const s = appShortcutsRef.current.editorFindOpen;
+          return !!s && matchShortcut(event, s);
+        },
         handler: (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -195,10 +213,13 @@ export function useAppHotkeys() {
           useSettings.getState().setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
         },
       },
-      // cmd+s save (matchShortcut 'Mod+S' == key 's' && !shift && only meta/ctrl)
+      // cmd+s save
       {
         id: "save",
-        match: (event) => matchShortcut(event, "Mod+S"),
+        match: (event) => {
+          const s = appShortcutsRef.current.saveNote;
+          return !!s && matchShortcut(event, s);
+        },
         when: () => !isEditableInput(),
         handler: (event) => {
           event.preventDefault();
@@ -216,7 +237,10 @@ export function useAppHotkeys() {
       // cmd+n new note
       {
         id: "new-note",
-        match: (event) => matchShortcut(event, "Mod+N"),
+        match: (event) => {
+          const s = appShortcutsRef.current.newNote;
+          return !!s && matchShortcut(event, s);
+        },
         when: () => !isEditableInput(),
         handler: (event) => {
           event.preventDefault();
@@ -227,6 +251,74 @@ export function useAppHotkeys() {
             useTabs.getState().openTab(newPageId);
             toast("已创建新笔记", { duration: 1500 });
           }
+        },
+      },
+      // toggle theme (Mod+Shift+L)
+      {
+        id: "toggle-theme",
+        match: (event) => {
+          const s = appShortcutsRef.current.toggleTheme;
+          return !!s && matchShortcut(event, s);
+        },
+        handler: (event) => {
+          event.preventDefault();
+          useSettings.getState().toggleDarkMode();
+        },
+      },
+      // nav-back / nav-forward (Mod+[ / Mod+])
+      {
+        id: "nav-back",
+        match: (event) => {
+          const s = appShortcutsRef.current.navBack;
+          return !!s && matchShortcut(event, s);
+        },
+        when: () => {
+          const hasOpenModal = () =>
+            !!document.querySelector(
+              '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+            );
+          return !hasOpenModal();
+        },
+        handler: (event) => {
+          event.preventDefault();
+          useTabs.getState().goBackTabHistory();
+        },
+      },
+      {
+        id: "nav-forward",
+        match: (event) => {
+          const s = appShortcutsRef.current.navForward;
+          return !!s && matchShortcut(event, s);
+        },
+        when: () => {
+          const hasOpenModal = () =>
+            !!document.querySelector(
+              '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+            );
+          return !hasOpenModal();
+        },
+        handler: (event) => {
+          event.preventDefault();
+          useTabs.getState().goForwardTabHistory();
+        },
+      },
+      // new-tab (Mod+T)
+      {
+        id: "new-tab",
+        match: (event) => {
+          const s = appShortcutsRef.current.newTab;
+          return !!s && matchShortcut(event, s);
+        },
+        when: () => {
+          const hasOpenModal = () =>
+            !!document.querySelector(
+              '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+            );
+          return !hasOpenModal();
+        },
+        handler: (event) => {
+          event.preventDefault();
+          useTabs.getState().openWelcomeTab();
         },
       },
       // unified close (user-configurable shortcut, read from ref)
@@ -325,8 +417,11 @@ export function useAppHotkeys() {
       // Mod+Shift+T reopen last closed tab
       {
         id: "reopen-tab",
-        match: (event) =>
-          !event.defaultPrevented && matchShortcut(event, "Mod+Shift+T"),
+        match: (event) => {
+          if (event.defaultPrevented) return false;
+          const s = appShortcutsRef.current.reopenTab;
+          return !!s && matchShortcut(event, s);
+        },
         handler: (event) => {
           event.preventDefault();
           useTabs.getState().reopenLastClosedTab();
@@ -335,6 +430,10 @@ export function useAppHotkeys() {
     ];
 
     const dispatcher = (event: KeyboardEvent) => {
+      // 快捷键录制输入框内的按键一律放行，否则已配置的快捷键会在
+      // capture 阶段被吞掉，导致用户无法重新录制同名/相近的快捷键
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) return;
       for (const entry of entries) {
         if (!entry.match(event)) continue;
         if (entry.when && !entry.when(event)) continue;

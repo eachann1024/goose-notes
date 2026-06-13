@@ -5,7 +5,7 @@
 :root {
   --code-bg: hsl(var(--background));
   --code-fg: hsl(var(--foreground) / 0.95);
-  --code-border: hsl(var(--foreground) / 0.14);
+  --code-border: hsl(var(--border) / 0.4);
   --code-line-number: hsl(var(--muted-foreground) / 0.72);
   --code-toolbar-chip-bg: hsl(var(--muted) / 0.92);
   --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.95);
@@ -24,7 +24,7 @@
 
 .dark {
   --code-bg: hsl(var(--background) / 0.94);
-  --code-border: hsl(var(--foreground) / 0.24);
+  --code-border: hsl(var(--border) / 0.4);
   --code-line-number: hsl(var(--muted-foreground) / 0.78);
   --code-toolbar-chip-bg: hsl(var(--muted) / 0.72);
   --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.92);

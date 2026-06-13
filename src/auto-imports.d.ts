@@ -32,6 +32,7 @@ declare global {
   const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
+  const DEFAULT_APP_SHORTCUTS: typeof import('./stores/settings/index').DEFAULT_APP_SHORTCUTS
   const DEFAULT_CLAUDE_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_CLAUDE_BASE_URL
   const DEFAULT_CLOSE_TAB_SHORTCUT: typeof import('./stores/settings/index').DEFAULT_CLOSE_TAB_SHORTCUT
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
@@ -351,6 +352,7 @@ declare global {
   const useInsertionEffect: typeof import('react').useInsertionEffect
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
+  const useNativeContextMenuGuard: typeof import('./hooks/useNativeContextMenuGuard').useNativeContextMenuGuard
   const useNotebookAiChats: typeof import('./stores/useNotebookAiChats').useNotebookAiChats
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
   const useOptimistic: typeof import('react').useOptimistic

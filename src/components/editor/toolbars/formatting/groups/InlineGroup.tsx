@@ -12,12 +12,16 @@ export function InlineGroup({
   isUnderline,
   isCode,
   bindTooltip,
+  hideMarks,
 }: {
   isUnderline: boolean;
   isCode: boolean;
   bindTooltip: BindTooltip;
+  hideMarks?: boolean;
 }) {
   const editor = useBlockNoteEditor();
+
+  if (hideMarks) return null;
 
   return (
     <>

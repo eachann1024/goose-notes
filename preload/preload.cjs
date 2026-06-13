@@ -1102,7 +1102,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       qlog("子窗 ipcRenderer 不可用:", err);
     }
 
-    // 文件轮询通路：每 200ms 读 /tmp cmd 文件，命中新鲜命令后响应。
+    // 文件轮询通路：每 60ms 读 /tmp cmd 文件，命中新鲜命令后响应。
     // dbStorage/bc/sendTo 在子窗里均不可用；fs 是唯一可靠通路。
     try {
       let lastSeenNonce = null;
@@ -1128,7 +1128,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
             try { window.close(); } catch { /* noop */ }
           }
         } catch { /* noop */ }
-      }, 200);
+      }, 60);
       qlog("子窗文件轮询已启动");
     } catch (e) {
       qlog("子窗文件轮询 interval 启动失败:", e);
@@ -1233,6 +1233,100 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     qlog("ipcRenderer 不可用:", err);
   }
 
+  // 文件信道常量（os/path 已在顶部 require）
+  const QN_CMD_FILE = path.join(os.tmpdir(), "goose-quicknote-cmd.json");
+  const QN_ACK_FILE = path.join(os.tmpdir(), "goose-quicknote-ack.json");
+  // 宿主可见性心跳文件：宿主实例每 2s 写一次自身 pid + visible 状态。
+  // 新实例在 onPluginEnter 读此文件，若另一宿主在触发前可见则保留分离窗不 outPlugin。
+  const QN_HOST_STATE_FILE = path.join(os.tmpdir(), "goose-quicknote-host-state.json");
+
+  // ── 宿主可见性心跳（仅宿主实例写）────────────────────────────────
+  // 目的：让新实例在 onPluginEnter 读此文件，判断触发前是否存在可见的别的宿主进程，
+  // 从而决定是否调 outPlugin 折叠分离主窗（若用户当时正在用主窗则不折叠）。
+  //
+  // 时序约束：新实例自身启动也是宿主，若立刻写心跳会覆盖旧实例的记录，
+  // 导致 onPluginEnter（启动后数百毫秒内）读到自己的心跳而判断失误。
+  // 因此首次写心跳故意延迟——不立即调，用 setInterval(2000) 让第一跳在 2s 后触发，
+  // visibilitychange 回调内也加 preloadLoadedAt + 2500ms 的保护窗口。
+  // 这样 onPluginEnter 读到的必然是旧实例（若存在）的心跳。
+  if (isMainWindow) {
+    let lastDetachSeenAt = 0;
+    const writeHostState = () => {
+      try {
+        const wt = typeof utools.getWindowType === "function" ? utools.getWindowType() : "main";
+        if (wt === "detach") lastDetachSeenAt = Date.now();
+        const visible = document.visibilityState === "visible";
+        // uTools 杀实例/重新 enter 前会把分离窗隐藏且 winType 短暂收回 "main"，该瞬态不能写进心跳；
+        // 但 outPlugin(false) 送回后台后 winType 会【永久】停在 "main"+hidden，特征相同，
+        // 所以只有刚离开 detach 态 3s 内才算瞬态，之后必须恢复如实写入（visible=false），否则心跳永久停写
+        if (!visible && wt === "main" && Date.now() - lastDetachSeenAt < 3000) {
+          qlog("心跳跳过回收瞬态（hidden + winType=main，3s 窗口内）");
+          return;
+        }
+        fs.writeFileSync(QN_HOST_STATE_FILE, JSON.stringify({ pid: process.pid, visible, ts: Date.now() }));
+      } catch { /* noop */ }
+    };
+    // 第一跳在 2s 后，避免新实例启动瞬间覆盖旧实例记录（见上方时序约束）
+    setInterval(writeHostState, 2000);
+    // visibilitychange 也更新，但保护窗口内（启动后 2.5s 内）不写，同理
+    document.addEventListener("visibilitychange", () => {
+      if (Date.now() - preloadLoadedAt > 2500) {
+        writeHostState();
+      }
+    });
+    // 分离窗因失焦/用户手动隐藏时（hidden 且 winType 仍是 detach），uTools 状态机没同步，
+    // 之后速记快捷键会被 uTools 吞掉不发 enter（真机日志证实）；补一个 outPlugin(false)
+    // 把它转成 uTools 认账的「干净收起」。enter 前的回收瞬态特征是 hidden+main，不会误触发。
+    // 仅在子窗不存在时执行；子窗存活期间主窗失焦不送走（宿主是子窗遥控唯一通道）。
+    let _hiddenSyncTimer = null;
+    document.addEventListener("visibilitychange", () => {
+      if (Date.now() - preloadLoadedAt < 2500) return;
+      if (_hiddenSyncTimer) { clearTimeout(_hiddenSyncTimer); _hiddenSyncTimer = null; }
+      const wt = typeof utools.getWindowType === "function" ? utools.getWindowType() : "main";
+      if (document.visibilityState !== "hidden" || wt !== "detach") return;
+      _hiddenSyncTimer = setTimeout(() => {
+        _hiddenSyncTimer = null;
+        if (document.visibilityState !== "hidden") return; // 600ms 内又被打开，不收
+        // 子窗存活时宿主是其唯一命令下达者，绝不能 outPlugin（会切断遥控链路致下次按键被吞）
+        if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+          qlog("失焦收起同步：子窗存活，跳过 outPlugin 保命");
+          return;
+        }
+        try {
+          if (typeof utools.outPlugin === "function") {
+            utools.outPlugin(false);
+            qlog("失焦收起同步：补 outPlugin 让 uTools 状态归位");
+          }
+        } catch (e) {
+          qlog("失焦收起同步 outPlugin 失败:", e);
+        }
+      }, 600);
+    });
+  }
+
+  // enter 前稳定可见态：uTools 发 enter 前总会把宿主窗短暂回收成 hidden 再拉起，
+  // enter 时刻的 visibilityState 不可信；状态持续超过 500ms 才视为稳定。
+  let _visStableVisible = document.visibilityState === "visible";
+  let _visCurrentVisible = _visStableVisible;
+  let _visCurrentSince = preloadLoadedAt;
+  document.addEventListener("visibilitychange", () => {
+    const now = Date.now();
+    if (now - _visCurrentSince > 500) _visStableVisible = _visCurrentVisible;
+    _visCurrentVisible = document.visibilityState === "visible";
+    _visCurrentSince = now;
+  });
+  const getStableVisible = () =>
+    Date.now() - _visCurrentSince > 500 ? _visCurrentVisible : _visStableVisible;
+
+  // 速记动作完成回调：由 onPluginEnter 速记分支注册，在小窗 toggle/新建完成的时刻触发，
+  // 用于「动作完成立即送走宿主窗」——抢在 uTools 异步 show 宿主窗（enter 后约 400ms）之前
+  let _quickNoteSettledCb = null;
+  const _settleQuickNote = () => {
+    const cb = _quickNoteSettledCb;
+    _quickNoteSettledCb = null;
+    if (cb) { try { cb(); } catch (e) { qlog("settled 回调抛错:", e); } }
+  };
+
   // 打开/复用速记小窗。mode: 'new' 新建空白 | 'last' 直达上次。
   const openQuickNoteWindow = (mode) => {
     // 复用：同一入口再次触发时收起；隐藏后或切换入口时再显示聚焦。
@@ -1247,6 +1341,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           qlog("复用：hide, isActuallyVisible =", isActuallyVisible);
           quickNoteWin.hide();
           quickNoteVisible = false;
+          _settleQuickNote();
           return;
         }
         qlog("复用：show, isActuallyVisible =", isActuallyVisible);
@@ -1255,6 +1350,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         quickNoteVisible = true;
         quickNoteActiveMode = mode;
         quickNoteWin.webContents?.send?.("quicknote:enter", { mode });
+        _settleQuickNote();
         return;
       } catch (e) {
         // 句柄已坏（子窗被 sendTo 路径自关等），清空后继续走新建逻辑
@@ -1317,6 +1413,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           }
           qlog("子窗已 show, url =", quickNoteWin?.webContents?.getURL?.());
           _triggerInFlight = false;
+          _settleQuickNote();
         } catch (e) {
           qlog("子窗 show 失败:", e);
           _triggerInFlight = false;
@@ -1329,10 +1426,6 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
   };
 
-  // 文件信道常量（os/path 已在顶部 require）
-  const QN_CMD_FILE = path.join(os.tmpdir(), "goose-quicknote-cmd.json");
-  const QN_ACK_FILE = path.join(os.tmpdir(), "goose-quicknote-ack.json");
-
   let _triggerInFlight = false; // 连按防抖：跨实例流程进行中时忽略重复触发
   let _triggerCounter = 0; // nonce 自增计数器
 
@@ -1340,7 +1433,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 1. 本实例持活窗 → 直接处理，结束。
   // 2. 防抖：_triggerInFlight true → 忽略，return。
   // 3. 生成 nonce，先删旧 ack，写 cmd 文件。
-  // 4. 450ms 后读 ack 文件：命中 → 孤儿已收起，结束；否则 → 本地新建。
+  // 4. 160ms 后读 ack 文件：命中 → 孤儿已收起，结束；否则 → 本地新建。
   const triggerQuickNote = (mode) => {
     // 本地持窗路径：直接 toggle，不受防抖限制
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
@@ -1372,7 +1465,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       return;
     }
 
-    // 450ms 后读 ack 文件（覆盖子窗 200ms 轮询周期 + 执行耗时）
+    // 160ms 后读 ack 文件（覆盖子窗 60ms 轮询周期 ×2 + 文件读写执行耗时）
     setTimeout(() => {
       let ack = null;
       try {
@@ -1384,13 +1477,14 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         try { fs.unlinkSync(QN_ACK_FILE); } catch { /* noop */ }
         try { fs.unlinkSync(QN_CMD_FILE); } catch { /* noop */ }
         _triggerInFlight = false;
+        _settleQuickNote();
       } else {
         qlog("无应答，本地新建");
         try { fs.unlinkSync(QN_CMD_FILE); } catch { /* noop */ }
         openQuickNoteWindow(mode);
         // _triggerInFlight 将在 createBrowserWindow 回调中复位
       }
-    }, 450);
+    }, 160);
   };
 
   // 速记指令处理：插件配了顶层 main，无法用 window.exports 的 mode:"none"（main 与模板模式互斥），
@@ -1410,34 +1504,65 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         return;
       }
       qlog("命中速记分支（宿主窗 =", winType, "）");
+      // 吸附模式（main）：triggerQuickNote 后 hideMainWindow 隐藏主界面（不影响独立浮窗）。
+      // 分离模式（detach）：先判断「触发前主窗是否可见」并注册完成回调，必须在 triggerQuickNote 之前——
+      // 本地句柄 toggle 是同步路径，调用返回前就会触发 settle，回调须提前注册。
+      // 触发前不可见时改为动作完成即送（_settleQuickNote 触发），抢在 uTools 异步 show
+      // 宿主窗（enter 后约 400ms）之前；另加 900ms 兜底复查以防 outPlugin 未能取消排队的 show。
+      if (winType === "detach") {
+        const fresh = Date.now() - preloadLoadedAt < 1500;
+        let hostWasVisible = false;
+        if (fresh) {
+          // 新实例：旧实例已被 uTools 杀掉，读它留下的心跳判断触发前主窗是否可见
+          try {
+            const st = JSON.parse(fs.readFileSync(QN_HOST_STATE_FILE, "utf8"));
+            const stAge = Date.now() - st.ts;
+            qlog("读到心跳 pid =", st.pid, "visible =", st.visible, "age =", stAge, "ms");
+            hostWasVisible = st.pid !== process.pid && st.visible === true && stAge < 5000;
+          } catch (e) {
+            qlog("读心跳失败（无旧实例或文件不存在）:", e && e.message);
+          }
+        } else {
+          // 常驻实例：enter 时 uTools 会把本窗强行拉到前台，用进程内稳定可见态判断
+          // 触发前主窗是否本来就开着；本来藏着的要送回后台，不打扰用户
+          hostWasVisible = getStableVisible();
+          qlog("常驻实例 enter 前稳定可见态 =", hostWasVisible);
+        }
+        if (hostWasVisible) {
+          qlog("触发前主窗可见，保留分离窗不送走");
+          _quickNoteSettledCb = null;
+        } else {
+          const sendAway = () => {
+            try {
+              if (typeof utools.outPlugin === "function") {
+                utools.outPlugin(false);
+                qlog("outPlugin 送走自动分离主窗（动作完成即送）");
+              }
+            } catch (e) { qlog("outPlugin 失败:", e); }
+          };
+          _quickNoteSettledCb = () => {
+            sendAway();
+            // race 兜底：uTools 可能已排队要 show 宿主窗，outPlugin 未必能取消；350ms 后若又可见则补送
+            setTimeout(() => {
+              if (document.visibilityState === "visible") {
+                qlog("兜底复查：宿主窗仍可见，补送 outPlugin");
+                sendAway();
+              }
+            }, 350);
+          };
+        }
+      }
       try {
         triggerQuickNote(code === "quicknote_last" ? "last" : "new");
       } catch (err) {
         qlog("triggerQuickNote 抛错:", err);
       }
-      // 吸附模式（main）：把主界面藏到后台（hideMainWindow 不影响独立浮窗）。
-      // 分离模式（detach）：uTools v2.6.2 起 hideMainWindow 对分离窗无效（官方文档）；
-      // 若 preload 是本次触发刚加载的（实例新鲜，1500ms 内），说明是 uTools 本次触发拉起的
-      // 自动分离窗，应用 outPlugin 把它送走（语义为"隐藏到后台"）；
-      // 延迟 800ms 给子窗 create/show 留足时间，再送走宿主。
-      // 用户早已常驻的分离窗（>1500ms）不动。
       if (winType === "main") {
         setTimeout(() => {
           if (typeof utools.hideMainWindow === "function") {
             try { utools.hideMainWindow(); } catch { /* noop */ }
           }
         }, 0);
-      } else if (winType === "detach" && Date.now() - preloadLoadedAt < 1500) {
-        setTimeout(() => {
-          try {
-            if (typeof utools.outPlugin === "function") {
-              utools.outPlugin(false);
-              qlog("outPlugin 送走自动分离主窗");
-            }
-          } catch (e) {
-            qlog("outPlugin 失败:", e);
-          }
-        }, 800);
       }
       return;
     }

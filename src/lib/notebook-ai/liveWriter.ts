@@ -14,13 +14,7 @@ import type { LiveWriterContext } from "./types";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
-import { importMarkdownFragment } from "@/lib/export/markdown/parse";
-import {
-  normalizePageContent,
-  titleHeadingBlock,
-  emptyBlock,
-} from "@/components/editor/utils/blocknote-content";
-import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
 import type { JSONContent } from "@/types";
 
 // ----------------------------------------------------------------
@@ -78,19 +72,6 @@ function tryExtractFromPartialJson(
   };
 }
 
-/** 将 title + markdown 组合成合规的页面 BlockNoteContent */
-function buildPageContent(title: string, markdown: string): JSONContent {
-  const stripped = markdown.replace(/^\s*#[^\n]*\n?/, "").trim();
-  const bodyBlocks: BlockNoteContent = stripped
-    ? (importMarkdownFragment(stripped) ?? [emptyBlock()])
-    : [emptyBlock()];
-
-  const content: BlockNoteContent = [titleHeadingBlock(title), ...bodyBlocks];
-  return normalizePageContent(content, {
-    ensureFirstTitle: false,
-  }) as JSONContent;
-}
-
 /** 获取当前活动页的 pageId */
 function getActivePageId(): string | null {
   const { openTabs, activeTabId } = useTabs.getState();
@@ -143,7 +124,7 @@ function writeIntermediateFrame(
   session: WriterSession,
 ) {
   try {
-    const content = buildPageContent(title, markdown);
+    const content = buildAiPageContent(title, markdown);
     usePages.getState().updatePage(pageId, { content: content as JSONContent }, { silent: true });
     reloadEditorIfActive(pageId);
     followScroll(session);
@@ -160,7 +141,7 @@ async function writeFinalFrame(
   session: WriterSession,
 ) {
   try {
-    const content = buildPageContent(title, markdown);
+    const content = buildAiPageContent(title, markdown);
     await usePages.getState().writePageContent(pageId, content as JSONContent, "replace");
     reloadEditorIfActive(pageId);
     followScroll(session);
@@ -188,12 +169,12 @@ async function ensurePageCreated(
     pageId = await usePages.getState().createLocalPageRecord({
       workspaceId: notebookId,
       title,
-      content: buildPageContent(title, "") as JSONContent,
+      content: buildAiPageContent(title, "") as JSONContent,
     });
   } else {
     pageId = usePages.getState().createPageRecord({
       workspaceId: notebookId,
-      content: buildPageContent(title, "") as JSONContent,
+      content: buildAiPageContent(title, "") as JSONContent,
     });
   }
 

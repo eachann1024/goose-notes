@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
@@ -11,6 +11,8 @@ function CustomFileBlockContent({
   editor: any;
 }) {
   const showLoader = useUploadLoading(block.id);
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState("");
 
   const handleAddFile = useCallback(() => {
     if (!editor.isEditable) return;
@@ -35,6 +37,37 @@ function CustomFileBlockContent({
     editor.removeBlocks([block]);
   }, [editor, block]);
 
+  const handleRenameStart = useCallback(() => {
+    setDraftName(block.props.name || "");
+    setRenaming(true);
+  }, [block.props.name]);
+
+  const handleRenameCommit = useCallback(() => {
+    const trimmed = draftName.trim();
+    if (trimmed) {
+      editor.updateBlock(block, { props: { name: trimmed } });
+    }
+    setRenaming(false);
+  }, [editor, block, draftName]);
+
+  const handleRenameCancel = useCallback(() => {
+    setRenaming(false);
+  }, []);
+
+  const handleRenameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleRenameCommit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        handleRenameCancel();
+      }
+    },
+    [handleRenameCommit, handleRenameCancel]
+  );
+
   if (showLoader) {
     return (
       <div className="bn-file-loading-preview">Loading...</div>
@@ -55,23 +88,53 @@ function CustomFileBlockContent({
   return (
     <div className="goose-file-block-content">
       <div className="goose-file-block-info">
-        <LucideIcons.FileText size={20} />
-        <span className="goose-file-block-name">{block.props.name}</span>
+        <button
+          type="button"
+          className="goose-file-block-icon-btn"
+          onClick={handleAddFile}
+          title="更换文件"
+        >
+          <LucideIcons.FileText size={20} strokeWidth={1.75} />
+        </button>
+        {renaming ? (
+          <input
+            className="goose-file-block-name-input"
+            value={draftName}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={handleRenameCommit}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className="goose-file-block-name">{block.props.name}</span>
+        )}
       </div>
       <div className="goose-file-block-actions">
         <button
           type="button"
           className="goose-file-block-action-btn"
-          onClick={handleDownload}
+          onClick={handleRenameStart}
+          title="重命名"
         >
-          <LucideIcons.Download size={16} />
+          <LucideIcons.Pencil size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          className="goose-file-block-action-btn"
+          onClick={handleDownload}
+          title="下载"
+        >
+          <LucideIcons.Download size={16} strokeWidth={1.75} />
         </button>
         <button
           type="button"
           className="goose-file-block-action-btn"
           onClick={handleDelete}
+          title="删除"
         >
-          <LucideIcons.Trash2 size={16} />
+          <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
         </button>
       </div>
     </div>

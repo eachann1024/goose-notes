@@ -12,13 +12,17 @@ export function MarkGroup({
   isItalic,
   isStrike,
   bindTooltip,
+  hideMarks,
 }: {
   isBold: boolean;
   isItalic: boolean;
   isStrike: boolean;
   bindTooltip: BindTooltip;
+  hideMarks?: boolean;
 }) {
   const editor = useBlockNoteEditor();
+
+  if (hideMarks) return null;
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
+import { SettingsShortcuts } from "./settings/SettingsShortcuts";
 import { SettingsLocalFolder } from "./SettingsLocalFolder";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
@@ -28,6 +29,7 @@ interface SettingsDialogProps {
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "general", label: "通用设置", icon: LucideIcons.Settings },
+  { id: "shortcuts", label: "快捷键", icon: LucideIcons.Keyboard },
   { id: "local-folder", label: "本地文件夹", icon: LucideIcons.FolderOpen },
   { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
   { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
@@ -78,6 +80,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setShowRecentInSearch,
     closeTabShortcut,
     setCloseTabShortcut,
+    searchPanelCloseShortcut,
+    setSearchPanelCloseShortcut,
+    appShortcuts,
+    setAppShortcut,
+    resetAppShortcuts,
     customFonts,
     setCustomLabel,
     setCustomFont,
@@ -331,14 +338,26 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setAutoOpenLastNote={setAutoOpenLastNote}
                 showRecentInSearch={showRecentInSearch}
                 setShowRecentInSearch={setShowRecentInSearch}
-                closeTabShortcut={closeTabShortcut}
-                setCloseTabShortcut={setCloseTabShortcut}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}
                 removeCustomAction={removeCustomAction}
+              />
+            </div>
+          )}
+
+          {activeTab === "shortcuts" && (
+            <div>
+              <SettingsShortcuts
+                closeTabShortcut={closeTabShortcut}
+                setCloseTabShortcut={setCloseTabShortcut}
+                searchPanelCloseShortcut={searchPanelCloseShortcut}
+                setSearchPanelCloseShortcut={setSearchPanelCloseShortcut}
+                appShortcuts={appShortcuts}
+                setAppShortcut={setAppShortcut}
+                resetAppShortcuts={resetAppShortcuts}
               />
             </div>
           )}

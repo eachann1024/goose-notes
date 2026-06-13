@@ -22,7 +22,7 @@ import {
 import { createAISlice, type AISlice } from './slices/aiSlice'
 import { createAppearanceSlice, type AppearanceSlice } from './slices/appearanceSlice'
 import { createUToolsSlice, type UToolsSlice } from './slices/utoolsSlice'
-import { createShortcutsSlice, type ShortcutsSlice } from './slices/shortcutsSlice'
+import { createShortcutsSlice, type ShortcutsSlice, DEFAULT_APP_SHORTCUTS } from './slices/shortcutsSlice'
 import { createSearchProvidersSlice, type SearchProvidersSlice } from './slices/searchProvidersSlice'
 import { createLocalFolderSlice, type LocalFolderSlice } from './slices/localFolderSlice'
 
@@ -220,6 +220,13 @@ export const useSettings = create<SettingsState>()(
                         useSettings.setState({ customActions: normalizedCustomActions })
                     }
 
+                    // Merge stored appShortcuts with defaults (add missing keys)
+                    const storedAppShortcuts = (state as { appShortcuts?: Record<string, string> }).appShortcuts ?? {}
+                    const mergedAppShortcuts: Record<string, string> = { ...DEFAULT_APP_SHORTCUTS, ...storedAppShortcuts }
+                    if (JSON.stringify(state.appShortcuts) !== JSON.stringify(mergedAppShortcuts)) {
+                        useSettings.setState({ appShortcuts: mergedAppShortcuts })
+                    }
+
                     const storedDesktop = state.desktop as Partial<DesktopSettings> | undefined
                     const mergedDesktop: DesktopSettings = {
                         wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
@@ -306,3 +313,5 @@ export {
     UTOOLS_WINDOW_HEIGHT_DEFAULT,
     DEFAULT_SEARCH_PROVIDERS,
 } from './types'
+
+export { DEFAULT_APP_SHORTCUTS } from './slices/shortcutsSlice'

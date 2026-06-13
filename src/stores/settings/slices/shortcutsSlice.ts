@@ -8,10 +8,26 @@ import {
     normalizeDesktopHotkeyStatus,
 } from '../types'
 
+export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
+    toggleSidebar: 'Alt+B',
+    toggleAIPanel: 'Mod+J',
+    openSearch: 'Mod+Shift+K',
+    openSettings: 'Mod+,',
+    editorFindOpen: 'Mod+F',
+    newNote: 'Mod+N',
+    saveNote: 'Mod+S',
+    reopenTab: 'Mod+Shift+T',
+    toggleTheme: 'Mod+Shift+L',
+    navBack: 'Mod+[',
+    navForward: 'Mod+]',
+    newTab: 'Mod+T',
+}
+
 export interface ShortcutsSliceState {
     desktop: DesktopSettings
     closeTabShortcut: string
     searchPanelCloseShortcut: string
+    appShortcuts: Record<string, string>
 }
 
 export interface ShortcutsSliceActions {
@@ -23,6 +39,8 @@ export interface ShortcutsSliceActions {
     setSearchHotkeyStatus: (status: DesktopHotkeyStatus) => void
     setCloseTabShortcut: (shortcut: string) => void
     setSearchPanelCloseShortcut: (shortcut: string) => void
+    setAppShortcut: (id: string, shortcut: string) => void
+    resetAppShortcuts: () => void
 }
 
 export type ShortcutsSlice = ShortcutsSliceState & ShortcutsSliceActions
@@ -38,6 +56,7 @@ export const SHORTCUTS_INITIAL_STATE: ShortcutsSliceState = {
     },
     closeTabShortcut: DEFAULT_CLOSE_TAB_SHORTCUT,
     searchPanelCloseShortcut: DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
+    appShortcuts: { ...DEFAULT_APP_SHORTCUTS },
 }
 
 type SetFn = (updater: Partial<ShortcutsSlice> | ((state: ShortcutsSlice) => Partial<ShortcutsSlice>)) => void
@@ -99,5 +118,10 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
             })),
         setCloseTabShortcut: (shortcut) => set({ closeTabShortcut: shortcut }),
         setSearchPanelCloseShortcut: (shortcut) => set({ searchPanelCloseShortcut: shortcut }),
+        setAppShortcut: (id, shortcut) =>
+            set((state) => ({
+                appShortcuts: { ...state.appShortcuts, [id]: shortcut },
+            })),
+        resetAppShortcuts: () => set({ appShortcuts: { ...DEFAULT_APP_SHORTCUTS } }),
     }
 }

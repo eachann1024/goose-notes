@@ -9,6 +9,7 @@ import {
 } from "@/stores/useSettings";
 import { useAppHotkeys } from "./hooks/useAppHotkeys";
 import { usePluginEvents } from "./hooks/usePluginEvents";
+import { useNativeContextMenuGuard } from "./hooks/useNativeContextMenuGuard";
 
 const UI_FONT_SIZE_MAP = {
   small: 14,
@@ -26,6 +27,9 @@ function App() {
 
   // 绑定全局快捷键
   useAppHotkeys();
+
+  // 全局兜底：禁止未被 Radix / A1 处理的原生浏览器右键菜单
+  useNativeContextMenuGuard();
 
   // 订阅插件/本地关联事件
   const { restoreLastNoteIfNeeded, clearActivePageForBlankEntry } = usePluginEvents();

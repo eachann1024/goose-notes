@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import * as LucideIcons from "lucide-react";
 import {
-  DEFAULT_CLOSE_TAB_SHORTCUT,
   UTOOLS_WINDOW_HEIGHT_MAX,
   UTOOLS_WINDOW_HEIGHT_MIN,
   type CustomAction,
@@ -27,8 +26,6 @@ interface SettingsGeneralProps {
   setAutoOpenLastNote: (enabled: boolean) => void;
   showRecentInSearch: boolean;
   setShowRecentInSearch: (enabled: boolean) => void;
-  closeTabShortcut: string;
-  setCloseTabShortcut: (shortcut: string) => void;
   notebookDropdownHoverExpand: boolean;
   setNotebookDropdownHoverExpand: (enabled: boolean) => void;
   customActions?: CustomAction[];
@@ -43,160 +40,6 @@ const SETTINGS_OPTION_ROW_CLASS =
 const SETTINGS_SWITCH_CLASS =
   "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
-interface ShortcutInputEvent {
-  key: string;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-  preventDefault: () => void;
-  stopPropagation: () => void;
-}
-
-interface ShortcutFieldProps {
-  id: string;
-  title: string;
-  description: string;
-  value: string;
-  onChange: (shortcut: string) => void;
-  resetValue?: string;
-}
-
-const MODIFIER_KEYS = new Set(["control", "ctrl", "meta", "alt", "shift"]);
-const MODIFIER_ORDER = ["Ctrl", "Meta", "Alt", "Shift"];
-
-function normalizeShortcutKey(rawKey: string) {
-  const key = rawKey.trim().toLowerCase();
-  if (!key) return "";
-  if (key === "control" || key === "ctrl") return "Ctrl";
-  if (key === "meta" || key === "command" || key === "cmd") return "Meta";
-  if (key === "alt" || key === "option") return "Alt";
-  if (key === "shift") return "Shift";
-  if (key === "escape" || key === "esc") return "Esc";
-  if (key === " ") return "Space";
-  if (key.length === 1) return key.toUpperCase();
-  return key.charAt(0).toUpperCase() + key.slice(1);
-}
-
-function getShortcutFromKeyEvent(event: ShortcutInputEvent) {
-  const baseModifiers = [
-    event.ctrlKey ? "Ctrl" : "",
-    event.metaKey ? "Meta" : "",
-    event.altKey ? "Alt" : "",
-    event.shiftKey ? "Shift" : "",
-  ].filter(Boolean);
-  const normalizedKey = normalizeShortcutKey(event.key);
-  const isModifierKey = MODIFIER_KEYS.has(event.key.toLowerCase());
-  const hasKey = normalizedKey && !isModifierKey;
-  const tokens = hasKey ? [...baseModifiers, normalizedKey] : baseModifiers;
-  const ordered = MODIFIER_ORDER.filter((key) => tokens.includes(key));
-  if (hasKey) {
-    ordered.push(normalizedKey);
-  }
-  return ordered.join("+");
-}
-
-function ShortcutField({
-  id,
-  title,
-  description,
-  value,
-  onChange,
-  resetValue,
-}: ShortcutFieldProps) {
-  const [isCapturing, setIsCapturing] = useState(false);
-  const displayValue = value ? formatShortcut(value) : "";
-  const hintText = isCapturing
-    ? "正在监听，现可直接按下快捷键"
-    : "点击输入框后开始录入快捷键";
-
-  return (
-    <div className={`space-y-2 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
-      <div>
-        <div className="flex items-center gap-3">
-          <LucideIcons.Keyboard className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-          <Label htmlFor={id} className="cursor-pointer">
-            {title}
-          </Label>
-        </div>
-        <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          value={displayValue}
-          readOnly
-          data-shortcut-recorder
-          placeholder={isCapturing ? "现在可以按下快捷键..." : "点击后按下快捷键"}
-          className={cn(
-            "h-9 text-sm transition-colors",
-            isCapturing && "placeholder:text-[var(--goose-color-capture-hint)]",
-          )}
-          onFocus={() => setIsCapturing(true)}
-          onBlur={() => setIsCapturing(false)}
-          onKeyDown={(event) => {
-            if (
-              event.key === "Tab" &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey &&
-              !event.shiftKey
-            ) {
-              return;
-            }
-
-            if (
-              (event.key === "Backspace" || event.key === "Delete") &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey &&
-              !event.shiftKey
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              onChange("");
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            onChange(getShortcutFromKeyEvent(event));
-          }}
-        />
-        {resetValue !== undefined && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 rounded-[10px]"
-            onClick={() => onChange(resetValue)}
-          >
-            恢复默认
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-9 shrink-0 rounded-[10px]"
-          onClick={() => onChange("")}
-        >
-          清空
-        </Button>
-      </div>
-      <p
-        className={cn(
-          "text-[11px] transition-colors",
-          isCapturing
-            ? "shortcut-capture-hint font-medium"
-            : "text-muted-foreground",
-        )}
-      >
-        {hintText}
-      </p>
-    </div>
-  );
-}
 
 export function SettingsGeneral({
   searchProviders,
@@ -210,8 +53,6 @@ export function SettingsGeneral({
   setAutoOpenLastNote,
   showRecentInSearch,
   setShowRecentInSearch,
-  closeTabShortcut,
-  setCloseTabShortcut,
   notebookDropdownHoverExpand,
   setNotebookDropdownHoverExpand,
   customActions = [],
@@ -219,9 +60,6 @@ export function SettingsGeneral({
   updateCustomAction = () => {},
   removeCustomAction = () => {},
 }: SettingsGeneralProps) {
-  const closeTabDefaultLabel = formatShortcut(DEFAULT_CLOSE_TAB_SHORTCUT);
-  const closeTabShortcutDescription = `默认 ${closeTabDefaultLabel}（Windows 为 Alt+W）。按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。`;
-
   return (
     <div className="space-y-6">
       <div>
@@ -290,17 +128,6 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard title="快捷键设置">
-        <ShortcutField
-          id="close-tab-shortcut"
-          title="关闭快捷键"
-          description={closeTabShortcutDescription}
-          value={closeTabShortcut}
-          onChange={setCloseTabShortcut}
-          resetValue={DEFAULT_CLOSE_TAB_SHORTCUT}
-        />
       </SettingsSectionCard>
 
       <SettingsSectionCard

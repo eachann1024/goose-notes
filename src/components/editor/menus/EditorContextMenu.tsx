@@ -19,6 +19,31 @@ import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "@/components/editor/utils/clipboard";
 import { cn, formatShortcut } from "@/lib/utils";
 
+// 展示型块在这些类型上右键无意义，阻断编辑器右键菜单（含浏览器默认菜单）
+// math/mermaid 是 codeBlock 的 language 变体，其 data-content-type 为 "codeBlock"，
+// 但需通过父块的 data-language 属性区分；image/file/audio/video/divider/imageResize 直接匹配
+const CONTEXT_MENU_EXCLUDED_BLOCK_TYPES = new Set([
+  "image",
+  "imageResize",
+  "file",
+  "audio",
+  "video",
+  "divider",
+]);
+
+function isExcludedBlockTarget(target: HTMLElement): boolean {
+  const blockContent = target.closest(".bn-block-content");
+  if (!blockContent) return false;
+  const contentType = (blockContent as HTMLElement).dataset.contentType ?? "";
+  if (CONTEXT_MENU_EXCLUDED_BLOCK_TYPES.has(contentType)) return true;
+  // codeBlock 且 language 为 math 或 mermaid 也属于展示型
+  if (contentType === "codeBlock") {
+    const lang = (blockContent as HTMLElement).dataset.language ?? "";
+    if (lang === "math" || lang === "mermaid") return true;
+  }
+  return false;
+}
+
 interface EditorContextMenuProps {
   editor: any;
   editable: boolean;
@@ -147,6 +172,12 @@ export function EditorContextMenu({
             ref={editorContainerRef}
             onMouseDown={handleEditorBlankMouseDown}
             onPasteCapture={handleEditorPasteCapture}
+            onContextMenuCapture={(e) => {
+              if (isExcludedBlockTarget(e.target as HTMLElement)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
             data-font-family={page.fontFamily ?? "default"}
             className={cn(
               "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
@@ -208,14 +239,16 @@ export function EditorContextMenu({
               <ContextMenuSeparator />
             </>
           )}
-          <ContextMenuItem
-            disabled={!editable || !selectedText}
-            onSelect={handleCutSelection}
-          >
-            <LucideIcons.Scissors className="mr-2 h-4 w-4" />
-            剪切
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+X")}</span>
-          </ContextMenuItem>
+          {editable && (
+            <ContextMenuItem
+              disabled={!selectedText}
+              onSelect={handleCutSelection}
+            >
+              <LucideIcons.Scissors className="mr-2 h-4 w-4" />
+              剪切
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+X")}</span>
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             disabled={!selectedText}
             onSelect={handleCopySelection}
@@ -224,14 +257,15 @@ export function EditorContextMenu({
             拷贝
             <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+C")}</span>
           </ContextMenuItem>
-          <ContextMenuItem
-            disabled={!editable}
-            onSelect={handleContextPaste}
-          >
-            <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
-            粘贴
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+V")}</span>
-          </ContextMenuItem>
+          {editable && (
+            <ContextMenuItem
+              onSelect={handleContextPaste}
+            >
+              <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
+              粘贴
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+V")}</span>
+            </ContextMenuItem>
+          )}
           {selectedBlocks.length > 0 && (
             <ContextMenuItem
               onSelect={() => {

@@ -24,6 +24,7 @@ export interface AppearanceSliceState {
 
 export interface AppearanceSliceActions {
     setTheme: (theme: Theme) => void
+    toggleDarkMode: () => void
     setCodeStyle: (style: CodeStyle) => void
     setDefaultCodeBlockWrap: (enabled: boolean) => void
     setGlobalEditorFullWidth: (enabled: boolean) => void
@@ -74,6 +75,18 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
         setTheme: (theme) => {
             set({ theme })
             getApply().applyTheme(theme)
+        },
+        toggleDarkMode: () => {
+            set((state) => {
+                const isDark =
+                    state.theme === 'dark' ||
+                    (state.theme === 'system' &&
+                        typeof window !== 'undefined' &&
+                        window.matchMedia('(prefers-color-scheme: dark)').matches)
+                const nextTheme: Theme = isDark ? 'light' : 'dark'
+                getApply().applyTheme(nextTheme)
+                return { theme: nextTheme }
+            })
         },
         setCodeStyle: (codeStyle) => {
             set({ codeStyle })

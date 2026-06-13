@@ -289,23 +289,6 @@ export function SidebarHeader({
     ],
   );
 
-  const handleOpenPinnedPageInNewTab = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>, pageId: string) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const targetPage = usePages.getState().getPage(pageId);
-      if (!targetPage || targetPage.trashedAt) return;
-      onOpenPinnedPage?.();
-
-      if (useNotebooks.getState().activeNotebookId !== targetPage.workspaceId) {
-        setPendingNavigatePageId(targetPage.id);
-        setActiveNotebook(targetPage.workspaceId);
-      }
-      openTab(targetPage.id);
-      setExpandPageId(targetPage.id);
-    },
-    [onOpenPinnedPage, openTab, setActiveNotebook, setExpandPageId, setPendingNavigatePageId],
-  );
 
   return (
     <>
@@ -353,9 +336,6 @@ export function SidebarHeader({
                               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                           )}
                           onClick={() => handleOpenPinnedPage(page.id)}
-                          onContextMenu={(event) =>
-                            handleOpenPinnedPageInNewTab(event, page.id)
-                          }
                         >
                           {renderPinnedIcon(page, isActive)}
                         </button>

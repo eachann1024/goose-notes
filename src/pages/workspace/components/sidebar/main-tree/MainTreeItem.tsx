@@ -216,7 +216,9 @@ export function renderItem({
       />
       {hideExpandArrows ? null : arrow}
       {iconNode}
-      <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none">
+      {/* leading-snug 抵消行容器的 leading-none：truncate(overflow hidden) 配 1 倍行高
+          会把 g/y/p 等字母的降部裁掉 */}
+      <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
         {title}
       </span>
     </div>

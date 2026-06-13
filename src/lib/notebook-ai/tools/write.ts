@@ -5,38 +5,10 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { lookupCreatedPage, reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
-import {
-  createEmptyBlockNoteContent,
-  normalizePageContent,
-  titleHeadingBlock,
-  emptyBlock,
-} from "@/components/editor/utils/blocknote-content";
-import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { JSONContent } from "@/types";
-
-/**
- * 将 markdown 转换为以 H1 标题开头的完整页面 BlockNoteContent。
- * 标题固定为 title，正文内容来自 markdown（跳过第一行如果也是 H1）。
- */
-function buildPageContent(title: string, markdown: string): JSONContent {
-  // 去掉开头重复的 # 标题行（如果 markdown 第一行就是 # title）
-  const stripped = markdown
-    .replace(/^\s*#[^\n]*\n?/, "")
-    .trim();
-
-  const bodyBlocks = stripped
-    ? (importMarkdownFragment(stripped) ?? [emptyBlock()])
-    : [emptyBlock()];
-
-  const content: BlockNoteContent = [
-    titleHeadingBlock(title),
-    ...bodyBlocks,
-  ];
-
-  return normalizePageContent(content, { ensureFirstTitle: false }) as JSONContent;
-}
 
 // ----------------------------------------------------------------
 // createPage
@@ -46,7 +18,11 @@ export const createPage = tool({
     "在当前绑定笔记本新建一篇文章并打开它。markdown 参数需包含完整正文内容（首行不要重复标题）；写作类任务必须用这个工具，且 markdown 参数要输出完整文章。",
   inputSchema: z.object({
     title: z.string().describe("文章标题（不含 # 前缀）"),
-    markdown: z.string().describe("文章正文，标准 Markdown 格式，首行不要重复标题"),
+    markdown: z
+      .string()
+      .describe(
+        "文章正文，标准 Markdown 格式，首行不要重复标题。待办/进度/清单类内容必须用任务列表语法：`- [ ] 内容`（未完成）/ `- [x] 内容`（已完成），列表项之间不留空行；禁止使用 emoji 和裸 `[x]` 文本。",
+      ),
   }),
   execute: async (input, { experimental_context, toolCallId }) => {
     const { notebookId } = experimental_context as { notebookId: string };
@@ -55,7 +31,7 @@ export const createPage = tool({
     const existingPageId = lookupCreatedPage(toolCallId);
     if (existingPageId) {
       // 复用已建页面，只做最终落盘（完整 markdown 写入，标题更新为完整 title）
-      const content = buildPageContent(input.title, input.markdown);
+      const content = buildAiPageContent(input.title, input.markdown);
       await usePages.getState().writePageContent(
         existingPageId,
         content as JSONContent,
@@ -68,7 +44,7 @@ export const createPage = tool({
     const notebook = useNotebooks.getState().notebooks[notebookId];
     if (!notebook) return { error: `笔记本 ${notebookId} 不存在` };
 
-    const content = buildPageContent(input.title, input.markdown);
+    const content = buildAiPageContent(input.title, input.markdown);
 
     let pageId: string;
     if (notebook.source === "local-folder") {
@@ -105,14 +81,16 @@ export const updatePage = tool({
     pageId: z.string().describe("要更新的页面 id"),
     markdown: z
       .string()
-      .describe("新的正文内容（Markdown），首行不要包含 # 标题"),
+      .describe(
+        "新的正文内容（Markdown），首行不要包含 # 标题。待办/进度/清单类内容必须用任务列表语法：`- [ ] 内容` / `- [x] 内容`，列表项之间不留空行；禁止使用 emoji 和裸 `[x]` 文本。",
+      ),
   }),
   execute: async (input) => {
     const page = usePages.getState().pages[input.pageId];
     if (!page) return { error: `页面 ${input.pageId} 不存在` };
 
     const title = getPageTitle(page);
-    const content = buildPageContent(title, input.markdown);
+    const content = buildAiPageContent(title, input.markdown);
 
     await usePages.getState().writePageContent(
       input.pageId,
@@ -146,7 +124,7 @@ export const replaceInPage = tool({
 
     const newMd = currentMd.split(input.find).join(input.replace);
     const title = getPageTitle(page);
-    const newContent = buildPageContent(title, newMd);
+    const newContent = buildAiPageContent(title, newMd);
 
     await usePages.getState().writePageContent(
       input.pageId,

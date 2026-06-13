@@ -190,7 +190,8 @@ export function NotebookSwitcher() {
                     {renderNotebookIcon(activeNotebook.icon || "BookOpen", "h-[18px] w-[18px] leading-none")}
                   </span>
                 )}
-                <span className="truncate text-[13px] tracking-[0.01em] leading-none">
+                {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
+                <span className="truncate text-[13px] tracking-[0.01em] leading-snug">
                   {activeNotebook?.name || "选择记事本"}
                 </span>
               </div>
@@ -257,7 +258,7 @@ export function NotebookSwitcher() {
                 >
                   {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
                 </span>
-                <span className="truncate text-sm font-medium leading-none">{notebook.name}</span>
+                <span className="truncate text-sm font-medium leading-snug">{notebook.name}</span>
                 {notebook.localPathMissing && (
                   <span className="text-xs text-destructive">路径失效</span>
                 )}

@@ -49,12 +49,14 @@ import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
 import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
+import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseQuoteInputRuleExtension } from "@/components/editor/inputrules/quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
+import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
@@ -183,6 +185,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       extensions: [
         createGooseFirstTitleGuardExtension(isLocalFolderPageRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
+        gooseHeadingMarkSuppressExtension,
         gooseTabBehaviorExtension,
         gooseSelectAllExtension,
         gooseLinkKeyboardExtension,
@@ -191,6 +194,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
         gooseCollapsedToggleEnterExtension,
+        gooseToggleHeadingAutoCollectExtension(),
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
         gooseQuoteInputRuleExtension,

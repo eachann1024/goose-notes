@@ -1,4 +1,9 @@
 import { createExtension } from "@blocknote/core";
+import {
+  findParentBlock,
+  isToggleBlock,
+  type ToggleBlock,
+} from "./collapsedToggleEnterExtension";
 
 /**
  * 「删除空控件 → 原地降级为普通空段落，光标留在当前行」。全局统一手感。
@@ -17,6 +22,9 @@ import { createExtension } from "@blocknote/core";
  * - 光标不在块开头（parentOffset !== 0）→ 默认（块内普通删除保持原样）。
  * - 当前块内容非空 → 默认（非空块的块内删除保持默认手感）。
  * - 当前块已是 paragraph → 默认（已是纯文本段落，无可降级；再删走 PM 默认回上一行）。
+ *   例外：空段落是折叠块（toggleListItem / isToggleable heading）的 child 时接管——
+ *   只删本行、光标回上一行（首行回标题）末尾；默认 lift 会把空行提出折叠块且
+ *   后续兄弟整体跟着出去挂到它下面，折叠块被掏空。
  * - 当前块是列表项（bullet/numbered/check）→ 默认，交给 BlockNote 原生
  *   降级逻辑（它们原生 Backspace 本就会变 paragraph / 调整缩进），避免与原生冲突。
  * - toggleListItem 且有 children → 整树删除（见下方整树删除逻辑）。
@@ -67,6 +75,31 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
 
       // 首块红线：永不删除首块（通常是 H1 标题）。
       if (block.id === editor.document[0]?.id) return false;
+
+      // 折叠块 children 内的空段落 → 只删除这一行，光标回上一行末尾
+      // （第一行则回折叠块标题末尾）。默认 joinBackward/lift 会把空行提出
+      // 折叠块，且后续兄弟整体被挂到提出的空段落下面——折叠块被掏空、
+      // 后面的内容看起来「变成普通文本」（用户实测）。
+      if (
+        block.type === "paragraph" &&
+        isInlineBlockEmpty(block) &&
+        (!block.children || block.children.length === 0)
+      ) {
+        const parent = findParentBlock(
+          editor.document as ToggleBlock[],
+          block.id,
+        );
+        if (parent && isToggleBlock(parent)) {
+          const siblings = parent.children as { id: string }[];
+          const idx = siblings.findIndex((s) => s.id === block.id);
+          const target = idx > 0 ? siblings[idx - 1] : parent;
+          editor.transact(() => {
+            editor.removeBlocks([block]);
+            editor.setTextCursorPosition(target, "end");
+          });
+          return true;
+        }
+      }
 
       // 已是普通段落 → 放行默认（再删走 PM 默认：回上一行）。
       if (block.type === "paragraph") return false;

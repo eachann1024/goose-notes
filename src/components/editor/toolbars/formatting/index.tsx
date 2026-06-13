@@ -10,14 +10,19 @@ import { TextSelection } from "prosemirror-state";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
-import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/components/editor/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
-  NON_FORMATTABLE_TYPES,
+  selectionHasNonFormattableBlock,
+  selectionIsInsideFirstTitleBlock,
+  selectionIsInsideHeadingBlock,
   shouldRenderFormattingToolbar,
   useSelectionMarkStates,
 } from "@/components/editor/toolbars/formatting/helpers";
@@ -36,6 +41,8 @@ export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   const aiExtension = useExtension(AIExtension);
   const { ai: aiSettings } = useEditorSettings();
+  const { page } = useEditorPageContext();
+  const isLocalFolderPage = Boolean(page?.localFilePath);
   const markStates = useSelectionMarkStates(editor);
   const selectedBlocks = useSelectedBlocks();
 
@@ -43,36 +50,6 @@ export function EditorFormattingToolbar() {
     editor,
     selector: ({ editor }) => {
       const { selection, doc } = editor.prosemirrorState;
-      let blocks: Array<{ type?: string; props?: Record<string, unknown> }> =
-        [];
-
-      const $from = selection.$from;
-      let inBlock = false;
-      for (let d = $from.depth; d > 0; d--) {
-        if ($from.node(d).type.name === "blockContainer") {
-          inBlock = true;
-          break;
-        }
-      }
-
-      if (inBlock) {
-        try {
-          const selected = editor.getSelection();
-          if (Array.isArray(selected?.blocks)) {
-            blocks = selected.blocks;
-          }
-        } catch {
-          blocks = [];
-        }
-
-        if (blocks.length === 0) {
-          try {
-            blocks = [editor.getTextCursorPosition().block];
-          } catch {
-            blocks = [];
-          }
-        }
-      }
 
       const selectedText = doc
         .textBetween(selection.from, selection.to, "\n", "\n")
@@ -80,11 +57,22 @@ export function EditorFormattingToolbar() {
 
       return {
         hasTextSelection: !selection.empty && selectedText.length > 0,
-        hasNonFormattableBlock: blocks.some(
-          (block) => !!block.type && NON_FORMATTABLE_TYPES.has(block.type),
-        ),
+        hasNonFormattableBlock: selectionHasNonFormattableBlock(editor),
       };
     },
+  });
+
+  // B2：仅当选区完全落在标题一内（内部笔记本页面的物理首块 H1）时禁用工具栏。
+  // local-folder 页面的标题由 LocalFileTitle 虚拟渲染，BlockNote 文档首块是普通正文，不施加此限制。
+  const isInTitleOne = useEditorState({
+    editor,
+    selector: ({ editor }) =>
+      !isLocalFolderPage && selectionIsInsideFirstTitleBlock(editor),
+  });
+
+  const isInHeading = useEditorState({
+    editor,
+    selector: ({ editor }) => selectionIsInsideHeadingBlock(editor),
   });
 
   const aiActive = useFormattingToolbarAi((s) => s.active);
@@ -275,7 +263,8 @@ export function EditorFormattingToolbar() {
   if (
     !aiActive &&
     (!selectionState.hasTextSelection ||
-      selectionState.hasNonFormattableBlock)
+      selectionState.hasNonFormattableBlock ||
+      isInTitleOne)
   ) {
     return null;
   }
@@ -328,6 +317,7 @@ export function EditorFormattingToolbar() {
             isItalic={isItalic}
             isStrike={isStrike}
             bindTooltip={bindTooltip}
+            hideMarks={isInHeading}
           />
 
           <FormattingToolbarColorPicker />
@@ -336,9 +326,10 @@ export function EditorFormattingToolbar() {
             isUnderline={isUnderline}
             isCode={isCode}
             bindTooltip={bindTooltip}
+            hideMarks={isInHeading}
           />
 
-          <Separator orientation="vertical" className="h-5 opacity-70" />
+          {!isInHeading && <Separator orientation="vertical" className="h-5 opacity-70" />}
 
           <LinkButton
             isLinkActive={isLinkActive}

@@ -21,7 +21,7 @@ export function SidebarFooter({
   onOpenSettings,
 }: SidebarFooterProps) {
   const theme = useSettings((s) => s.theme);
-  const setTheme = useSettings((s) => s.setTheme);
+  const toggleDarkMode = useSettings((s) => s.toggleDarkMode);
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
@@ -31,10 +31,6 @@ export function SidebarFooter({
     (theme === "system" &&
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-  const toggleTheme = () => {
-    setTheme(isDark ? "light" : "dark");
-  };
 
   const btnClass =
     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground [&_svg]:block";
@@ -89,7 +85,7 @@ export function SidebarFooter({
         type="button"
         className={cn(btnClass)}
         aria-label={isDark ? "切换到亮色模式" : "切换到暗色模式"}
-        onClick={toggleTheme}
+        onClick={toggleDarkMode}
       >
         {isDark ? (
           <LucideIcons.Sun className="h-4 w-4" />
