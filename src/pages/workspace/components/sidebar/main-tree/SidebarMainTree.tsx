@@ -117,6 +117,8 @@ export function SidebarMainTree({
 
   const treeRef = useRef<TreeRef>(null);
   const lastClickModRef = useRef({ meta: false, ctrl: false });
+  // 记录上一次已为之展开/定位的激活页，避免每次 render 重复 focus 打断用户
+  const lastLocatedActiveIdRef = useRef<string | null>(null);
 
   const viewState = useMemo(() => {
     const highlightSelection =
@@ -167,6 +169,33 @@ export function SidebarMainTree({
     setExpanded,
     setExpandPageId,
   ]);
+
+  // 切标签 / 激活页变化时：自动展开当前页的祖先链并滚动定位
+  // （选中高亮由 viewState.selectedItems 已处理；此处补「展开到可见 + 滚动」）
+  useEffect(() => {
+    if (!activePageId || !activeNotebookId) return;
+    // 同一激活页只定位一次，避免重复 focus 打断用户的手动滚动/折叠
+    if (lastLocatedActiveIdRef.current === activePageId) return;
+    const page = pages[activePageId];
+    if (!page || page.trashedAt) return;
+    if (page.workspaceId !== activeNotebookId) return;
+    lastLocatedActiveIdRef.current = activePageId;
+
+    const ancestorIds: string[] = [];
+    let current: Page | undefined = page;
+    while (current && current.parentId && pages[current.parentId]) {
+      ancestorIds.push(current.parentId);
+      current = pages[current.parentId];
+    }
+    if (ancestorIds.length > 0) {
+      const merged = Array.from(new Set([...expandedIds, ...ancestorIds]));
+      setExpanded(activeNotebookId, merged);
+    }
+    const timer = window.setTimeout(() => {
+      treeRef.current?.focusItem(activePageId);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [activePageId, activeNotebookId, pages, expandedIds, setExpanded]);
 
   if (shouldShowLocalSkeleton) {
     return <LocalFolderLoadingSkeleton />;

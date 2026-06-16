@@ -108,6 +108,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
 
+  // 点击编辑器空白区域消闪：mousedown 时短暂抑制格式化工具栏（prosemirror 会先短暂
+  // 出现非空选区再被 focusEditorEnd 塌缩），mouseup 时恢复。
+  const [suppressFormattingToolbar, setSuppressFormattingToolbar] = useState(false);
+  const suppressFormattingToolbarRef = useRef(false);
+
   // 注入回调/数据的最新引用：供 useCreateBlockNote（deps=[]）的闭包与各 effect 读取，
   // 避免把 settings/pageContext 直接进依赖数组导致编辑器重建（行为不变）。
   const aiSettingsRef = useRef(aiSettings);
@@ -126,7 +131,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
   // 内容保持磁盘解析原样，避免 normalize 引发的结构变化误触写盘。
   // 内部笔记本仍走完整 normalizePageContent，首块 H1 约束不受影响。
-  const isLocalFolderPage = Boolean(page?.localFilePath);
+  // 小窗草稿页(id 恒为 __quicknote_draft__)同样豁免首块 H1 约束,从正文开始
+  const isLocalFolderPage = Boolean(page?.localFilePath) || page?.id === "__quicknote_draft__";
   const isLocalFolderPageRef = useRef(isLocalFolderPage);
   isLocalFolderPageRef.current = isLocalFolderPage;
   const normalizeContent = (c: unknown): BlockNoteContent =>
@@ -389,6 +395,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       const container = editorContainerRef.current;
       if (!container || !isBottomEditorBlankClick(event, container)) return;
 
+      suppressFormattingToolbarRef.current = true;
+      setSuppressFormattingToolbar(true);
       event.preventDefault();
       focusEditorEnd();
     },
@@ -420,6 +428,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       if (event.clientY < lastBlock.getBoundingClientRect().bottom) return;
 
       // 点击确实在末块之下，阻止默认行为并聚焦末尾
+      suppressFormattingToolbarRef.current = true;
+      setSuppressFormattingToolbar(true);
       event.preventDefault();
       focusEditorEnd();
     };
@@ -429,6 +439,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       document.removeEventListener("mousedown", handleDocMouseDown, true);
     };
   }, [editable, focusEditorEnd]);
+
+  // 消闪 mouseup 清理：空白区域 mousedown 后抑制格式化工具栏，mouseup 时恢复。
+  // 兜底 blur：鼠标拖出窗口松开时 document mouseup 不触发，window blur 覆盖此场景。
+  useEffect(() => {
+    const clearSuppress = () => {
+      if (!suppressFormattingToolbarRef.current) return;
+      suppressFormattingToolbarRef.current = false;
+      setSuppressFormattingToolbar(false);
+    };
+    document.addEventListener("mouseup", clearSuppress, true);
+    window.addEventListener("blur", clearSuppress);
+    return () => {
+      document.removeEventListener("mouseup", clearSuppress, true);
+      window.removeEventListener("blur", clearSuppress);
+    };
+  }, []);
 
   useEditorShortcuts({ shiftPressedRef });
 
@@ -680,6 +706,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       tableEvenColumnWidth={tableEvenColumnWidth}
       searchProviders={searchProviders} customActions={customActions}
       showSideMenu={showSideMenu}
+      suppressFormattingToolbar={suppressFormattingToolbar}
     />
   );
 });

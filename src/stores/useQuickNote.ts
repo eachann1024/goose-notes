@@ -8,8 +8,7 @@ import {
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import {
-  createEmptyBlockNoteContent,
-  type BlockNoteContent,
+  createEmptyLocalPageContent,
 } from "@/components/editor/utils/blocknote-content";
 import type { JSONContent, Page } from "@/types";
 
@@ -57,41 +56,6 @@ export const QUICKNOTE_DEFAULT_HEIGHT = 350;
 /** 速记小窗最小高度，与 preload QUICKNOTE_MIN_HEIGHT 保持一致。 */
 export const QUICKNOTE_MIN_HEIGHT = 300;
 
-const quickNoteIntroContent = (): BlockNoteContent => [
-  {
-    type: "heading",
-    props: { level: 1 },
-    content: "小窗功能介绍",
-  },
-  {
-    type: "bulletListItem",
-    content: "完整鹅的笔记的所有功能",
-  },
-  {
-    type: "bulletListItem",
-    content: [
-      { type: "text", text: "ctrl + -/+", styles: { code: true } },
-      { type: "text", text: " 调整笔记本窗口大小", styles: {} },
-    ],
-  },
-  {
-    type: "bulletListItem",
-    content: "左上角保存标签为笔记并且清空便签",
-  },
-  {
-    type: "bulletListItem",
-    content: [
-      { type: "text", text: "左上角", styles: {} },
-      { type: "text", text: "❓", styles: {} },
-      { type: "text", text: "有齐全使用说明", styles: {} },
-    ],
-  },
-  {
-    type: "paragraph",
-    content: "",
-  },
-];
-
 /** 判断草稿内容是否为空白（无任何可见文本）——避免保存出空笔记。 */
 const isDraftEmpty = (content: JSONContent | null): boolean => {
   if (!content) return true;
@@ -104,7 +68,7 @@ const isDraftEmpty = (content: JSONContent | null): boolean => {
 export const useQuickNote = create<QuickNoteState>()(
   persist(
     (set, get) => ({
-      draftContent: quickNoteIntroContent(),
+      draftContent: createEmptyLocalPageContent(),
       pinned: false,
       windowWidth: QUICKNOTE_DEFAULT_WIDTH,
       windowHeight: QUICKNOTE_DEFAULT_HEIGHT,
@@ -161,7 +125,7 @@ export function buildQuickNoteDraftPage(content: JSONContent | null): Page {
     id: "__quicknote_draft__",
     workspaceId: DEFAULT_NOTEBOOK,
     parentId: undefined,
-    content: content ?? createEmptyBlockNoteContent(),
+    content: content ?? createEmptyLocalPageContent(),
     isFolder: false,
     isLocked: false,
     isFullWidth: false,

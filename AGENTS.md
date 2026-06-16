@@ -12,9 +12,17 @@
 src/
 ├── pages/workspace/       # 主编辑区（编辑器 + 侧栏 + 大纲）
 ├── stores/                # Zustand stores（usePages / useNotebooks / useSettings / useTabs）
-├── lib/                   # 工具库（内容序列化、导出、AI、埋点）
+├── lib/                   # 工具库（内容序列化、导出、AI）
 └── hooks/                 # 自定义 hooks
 ```
+
+## 任务路由
+
+1. 架构与方案设计由主会话（Fable）亲自做，不下放。
+2. 代码实现 / 重构 / 写测试派 sonnet 子代理（`.claude/agents/sonnet-coder.md`）；文件定位 / 代码扫描 / grep 类检索派 haiku 子代理（`.claude/agents/haiku-scout.md`）。
+3. 只有相互独立的任务才并行拆分，串行依赖的合并到同一个子代理。
+4. 子代理一律只返回精炼总结（结论 / 涉及文件 / 风险点，≤10 行），禁止把原始文件内容回灌主会话。
+5. 子代理模型由 agent 定义文件的 `model` frontmatter 锁定，不依赖对话临时指定。
 
 ## 验证
 

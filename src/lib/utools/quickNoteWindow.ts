@@ -53,9 +53,28 @@ export const quickNoteWindow = {
     send("quicknote:persist-size");
   },
 
-  /** 请求隐藏（失焦时调用，保留进程下次秒开）。 */
+  /**
+   * B 插件保存：通过 utools.redirect 把草稿内容回传 A 插件落库。
+   * A 插件 pluginName="鹅的笔记"，feature cmds=["速记入库"]。
+   * blocks 直接传 PartialBlock[] 原值，A 侧落库时自行 normalize。
+   */
+  redirectSaveToMainApp(blocks: unknown): boolean {
+    const ut = getUToolsApi();
+    if (!ut || typeof ut.redirect !== "function") return false;
+    try {
+      ut.redirect(["鹅的笔记", "速记入库"], JSON.stringify(blocks));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * 请求隐藏（hide 现等价于 close：速记窗改为每次销毁重建，不再常驻）。
+   * 保留此导出名以维持外部调用兼容性，内部统一走 close 语义。
+   */
   hide(): void {
-    if (!send("quicknote:hide")) {
+    if (!send("quicknote:close")) {
       try {
         window.close();
       } catch {

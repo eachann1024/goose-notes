@@ -80,6 +80,11 @@ type EditorComposerProps = {
   customActions: any[];
   /** 是否渲染块侧边菜单（+ / ⋮⋮）。速记小窗传 false 不显示，仅主编辑器显示。 */
   showSideMenu?: boolean;
+  /**
+   * 为 true 时强制隐藏格式化工具栏（仅在空白区域 mousedown 期间短暂置 true 用于消闪，
+   * 由 Editor.tsx 的空白点击处理器管理）。
+   */
+  suppressFormattingToolbar?: boolean;
 };
 
 export function EditorComposer({
@@ -101,6 +106,7 @@ export function EditorComposer({
   searchProviders,
   customActions,
   showSideMenu = true,
+  suppressFormattingToolbar = false,
 }: EditorComposerProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
@@ -174,8 +180,9 @@ export function EditorComposer({
     () => ({
       useFloatingOptions: {
         open:
-          formattingToolbarAiActive ||
-          (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed),
+          !suppressFormattingToolbar &&
+          (formattingToolbarAiActive ||
+          (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed)),
         // 锁定在选区上方，去掉默认的 flip()：跨多行拖选时选区包围盒不断变高，
         // flip() 会在 top/bottom 之间反复翻转导致工具栏上下抖动（BlockNote #1569）。
         // 仅保留 offset + 受限 shift，水平方向贴边时平移、不再纵向翻转。
@@ -187,6 +194,7 @@ export function EditorComposer({
       },
     }),
     [
+      suppressFormattingToolbar,
       formattingToolbarAiActive,
       formattingToolbarSelectionAllowed,
       formattingToolbarStoreOpen,

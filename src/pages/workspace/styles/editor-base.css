@@ -74,6 +74,12 @@
   height: fit-content;
   margin: auto 0;
 }
+/* BlockNote 默认给 .bn-toggle-button:hover 上 hovered-background 底色。
+   折叠标题的箭头悬挂在标题左外侧、字号大，hover 底色一块很突兀——去掉。
+   仅作用于折叠标题；普通折叠列表(toggleListItem)的箭头 hover 底色保持不变。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button:hover {
+  background: transparent;
+}
 
 /* 普通折叠列表(toggleListItem)的箭头统一手感：
    箭头不再参与 flex 流（默认它是行内 flex item，多行/空块时会整块垂直居中、
@@ -171,6 +177,15 @@
   background: transparent;
   padding-inline: 0;
   width: 100%;
+}
+
+/* 全宽态（uTools 主窗默认铺满 / 用户手动开全宽）左右留白：
+   全宽态内容铺满窗口、左缘贴边，side menu(+/把手)绝对定位在内容左缘 -40px 会贴着
+   窗口左边甚至溢出。补 ~56px gutter 让 side menu 落进留白区不溢出窗口；右侧对称留白。
+   注：折叠标题箭头与 side menu 同锚内容左缘、向同侧展开，留白只整体右移、消不掉两者
+   重叠——那由折叠标题专门处理（见下方 toggle 列覆盖规则）。 */
+.workspace-editor-surface.max-w-none .bn-editor {
+  padding-inline: 56px;
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {

@@ -38,6 +38,7 @@ interface SortableTabItemProps {
   onCloseLeft: () => void;
   onCloseRight: () => void;
   onTogglePin: () => void;
+  onLocateInTree?: () => void;
 }
 
 function SortableTabItem({
@@ -55,6 +56,7 @@ function SortableTabItem({
   onCloseLeft,
   onCloseRight,
   onTogglePin,
+  onLocateInTree,
 }: SortableTabItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: tab.id });
@@ -152,6 +154,14 @@ function SortableTabItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-[200px]">
+        {tab.type !== "welcome" && onLocateInTree && (
+          <>
+            <ContextMenuItem onSelect={onLocateInTree}>
+              在文件树中定位
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuItem onSelect={onTogglePin}>
           {tab.pinned ? "取消固定" : "固定标签"}
         </ContextMenuItem>
@@ -217,7 +227,16 @@ export function PageHeader({
     closeTabsToRight,
     reorderTabs,
     togglePinTab,
+    syncNotebookForPage,
   } = useTabs();
+  const setExpandPageId = usePages((s) => s.setExpandPageId);
+  const setSidebarCollapsedView = useSidebarView((s) => s.setSidebarCollapsed);
+  const locateInTree = (pageId: string) => {
+    // 侧栏若已折叠，先展开，否则定位无处可见
+    setSidebarCollapsedView(false);
+    syncNotebookForPage(pageId);
+    setExpandPageId(pageId);
+  };
   const { closeTabShortcut } = useSettings();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -386,6 +405,7 @@ export function PageHeader({
                     onCloseLeft={() => closeTabsToLeft(tab.id)}
                     onCloseRight={() => closeTabsToRight(tab.id)}
                     onTogglePin={() => togglePinTab(tab.id)}
+                    onLocateInTree={() => locateInTree(tab.pageId)}
                   />
                 );
               })}

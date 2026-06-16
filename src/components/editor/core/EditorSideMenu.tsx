@@ -37,10 +37,15 @@ export function EditorSideMenu() {
   });
 
   const block = state?.block;
+  // 折叠标题的折叠箭头悬挂在内容左缘外侧，与 side menu(+/拖拽把手)同列重叠
+  // （留白消不掉，因二者同锚内容左缘、向同侧展开）。折叠标题整块不显示 side menu，
+  // 加块/拖拽改走其它入口。toggleListItem 箭头是行内 marker、不重叠，不受影响。
+  const headingProps = (block as any)?.props ?? {};
+  const isToggleableHeading =
+    block?.type === "heading" &&
+    (headingProps.isToggleable === true || headingProps.n === true);
   const isVisible =
-    !!state?.show &&
-    !!state.referencePos &&
-    !(block && block.id === editor.document[0]?.id);
+    !!state?.show && !!state.referencePos && !isToggleableHeading;
 
   const handleAdd = useCallback(
     (e: React.MouseEvent) => {

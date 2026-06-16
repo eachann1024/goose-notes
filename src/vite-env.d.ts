@@ -40,5 +40,7 @@ declare global {
   interface Window {
     utools?: any;
     gooseFs?: GooseFs;
+    /** B 插件（独立速记）preload 注入的标志，子窗 web 侧据此区分 redirect vs 本地落库。 */
+    __GOOSE_QUICKNOTE_STANDALONE__?: boolean;
   }
 }

@@ -18,16 +18,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { quickNoteWindow } from "@/lib/utools/quickNoteWindow";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
-// 速记小窗砍掉的斜杠菜单重型项（按 title 精确匹配），保留标题/列表/待办/引用/标注/代码/分隔线。
-const QUICKNOTE_HIDDEN_SLASH_ITEMS = [
-  "生成",
-  "表格",
-  "数学公式",
-  "Mermaid 图表",
-  "图片",
-  "文件",
-];
-
 // 编辑界面缩放（Cmd +/-）范围与步进。
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 1.8;
@@ -76,8 +66,35 @@ export function QuickNoteApp() {
     setDraftContent(content as never);
   };
 
-  // 保存到笔记本：草稿入库成真实笔记 → 提示 → 清空草稿 → 重置编辑器为空白。
+  // 保存到笔记本：B 插件(standalone)→ redirect 回传 A 落库；A 插件 → 原本地落库。
   const handleSave = () => {
+    const isStandalone =
+      typeof window !== "undefined" && window.__GOOSE_QUICKNOTE_STANDALONE__ === true;
+
+    if (isStandalone) {
+      // B 插件：取最新草稿内容（getState() 绕过闭包，拿到 onChange 实时更新值）。
+      const content = useQuickNote.getState().draftContent;
+      if (!content) {
+        toast.info("便签是空的，没有需要保存的内容");
+        return;
+      }
+      const ok = quickNoteWindow.redirectSaveToMainApp(content);
+      if (ok) {
+        toast.success("已发送到鹅的笔记");
+        useQuickNote.getState().clearDraft();
+        // 清空编辑器到空白便签：重置内容并聚焦。
+        requestAnimationFrame(() => {
+          editorRef.current?.editor?.replaceBlocks?.(
+            editorRef.current.editor.document,
+            buildQuickNoteDraftPage(null).content as never,
+          );
+          editorRef.current?.editor?.focus?.();
+        });
+      }
+      return;
+    }
+
+    // A 插件（非 standalone）：原本地落库逻辑不变。
     const id = saveDraftToNotebook();
     if (id) {
       toast.success("已保存到笔记本");
@@ -134,7 +151,7 @@ export function QuickNoteApp() {
         if (useQuickNote.getState().pinned) return;
         if (isResizingRef.current) return;
         if (document.hasFocus()) return;
-        quickNoteWindow.hide();
+        quickNoteWindow.close();
       }, 120);
     };
     window.addEventListener("blur", onBlur);
@@ -149,7 +166,7 @@ export function QuickNoteApp() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        quickNoteWindow.hide();
+        quickNoteWindow.close();
         return;
       }
       // 仅在按下 Cmd（macOS）/ Ctrl 时处理缩放。
@@ -208,7 +225,7 @@ export function QuickNoteApp() {
   const headerBar = useMemo(
     () => (
       <div
-        className="quicknote-titlebar flex h-9 shrink-0 items-center justify-between gap-1 px-2"
+        className="quicknote-titlebar flex h-9 items-center justify-between gap-1 px-2"
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
         <div className="flex items-center gap-1">
@@ -297,7 +314,7 @@ export function QuickNoteApp() {
   );
 
   return (
-    <div className="quicknote-root flex h-screen w-screen flex-col bg-[hsl(var(--goose-editor-bg))]">
+    <div className="quicknote-root relative flex h-screen w-screen flex-col bg-[hsl(var(--goose-editor-bg))]">
       {headerBar}
       <div className="min-h-0 flex-1 overflow-y-auto page-scroll-container">
         <EditorHostBridge
@@ -306,14 +323,12 @@ export function QuickNoteApp() {
           onContentChangeOverride={onDraftChange}
         >
           <div
-            className="quicknote-editor-surface flex min-h-full flex-col pt-2"
+            className="quicknote-editor-surface flex min-h-full flex-col"
             style={{ zoom } as CSSProperties}
           >
             <Editor
               ref={editorRef}
               editable
-              hiddenSlashItemTitles={QUICKNOTE_HIDDEN_SLASH_ITEMS}
-              showSideMenu={false}
             />
           </div>
         </EditorHostBridge>
