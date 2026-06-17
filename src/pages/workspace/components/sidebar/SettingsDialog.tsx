@@ -98,6 +98,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     removeCustomAction,
     notebookDropdownHoverExpand,
     setNotebookDropdownHoverExpand,
+    sidebarClickBehavior,
+    setSidebarClickBehavior,
     localFolderExternalEditor,
     setLocalFolderExternalEditor,
   } = useSettings();
@@ -340,6 +342,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
+                sidebarClickBehavior={sidebarClickBehavior}
+                setSidebarClickBehavior={setSidebarClickBehavior}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}

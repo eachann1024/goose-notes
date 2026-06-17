@@ -3,6 +3,8 @@ import { EDITOR_FONT_SIZE_MIN, EDITOR_FONT_SIZE_MAX, EDITOR_FONT_SIZE_DEFAULT, D
 import type { WatermarkConfig, CardThemeId } from '@/lib/imageExport'
 import { DEFAULT_WATERMARK_CONFIG } from '@/lib/imageExport'
 
+export type SidebarClickBehavior = 'preview' | 'replace-current'
+
 export interface AppearanceSliceState {
     theme: Theme
     codeStyle: CodeStyle
@@ -20,6 +22,8 @@ export interface AppearanceSliceState {
     imageExportThemeId: CardThemeId
     /** 隐藏侧栏展开箭头，减少占位；展开/收起改用双击条目 */
     hideExpandArrows: boolean
+    /** 侧栏单击打开方式：预览标签（VSCode 风格）或替换当前普通标签 */
+    sidebarClickBehavior: SidebarClickBehavior
 }
 
 export interface AppearanceSliceActions {
@@ -43,6 +47,7 @@ export interface AppearanceSliceActions {
     setImageExportWatermark: (config: WatermarkConfig) => void
     setImageExportThemeId: (id: CardThemeId) => void
     setHideExpandArrows: (hidden: boolean) => void
+    setSidebarClickBehavior: (behavior: SidebarClickBehavior) => void
 }
 
 export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions
@@ -64,6 +69,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
     imageExportThemeId: 'notion',
     hideExpandArrows: false,
+    sidebarClickBehavior: 'preview',
 }
 
 type SetFn = (updater: Partial<AppearanceSlice> | ((state: AppearanceSlice) => Partial<AppearanceSlice>)) => void
@@ -138,5 +144,6 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
         setImageExportWatermark: (imageExportWatermark) => set({ imageExportWatermark }),
         setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
         setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
+        setSidebarClickBehavior: (sidebarClickBehavior) => set({ sidebarClickBehavior }),
     }
 }

@@ -26,7 +26,7 @@ export function CommandPalette() {
   // cmdk 根的「当前选中项」受控值。cmdk 不会在结果列表变化时自动重选第一项，
   // 不受控就会出现「输完词没有任何项高亮、方向键/回车第一下没反应」。见下方 effect。
   const [commandValue, setCommandValue] = useState("");
-  const { openTab, openInCurrentTab } = useTabs();
+  const { openPreviewTab, openPermanentTab } = useTabs();
   const {
     pages,
     setExpandPageId,
@@ -207,9 +207,9 @@ export function CommandPalette() {
         }
 
         if (openInNewTabRef.current) {
-          openTab(page.id);
+          openPermanentTab(page.id);
         } else {
-          openInCurrentTab(page.id);
+          openPreviewTab(page.id);
         }
         setExpandPageId(page.id);
         setSearchHighlightQuery(query);
@@ -224,8 +224,8 @@ export function CommandPalette() {
     },
     [
       activeNotebookId,
-      openInCurrentTab,
-      openTab,
+      openPreviewTab,
+      openPermanentTab,
       setActiveNotebook,
       setExpandPageId,
       setSearchHighlightNonce,

@@ -232,6 +232,7 @@ declare global {
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
   const getRandomTip: typeof import('./lib/tips').getRandomTip
+  const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
@@ -277,6 +278,7 @@ declare global {
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
+  const openPageFromSidebar: typeof import('./lib/sidebarPageNavigation').openPageFromSidebar
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
   const parseLocalMarkdownContent: typeof import('./lib/local-folder-scanner').parseLocalMarkdownContent
   const parseMarkdownLink: typeof import('./components/editor/utils/clipboard').parseMarkdownLink
@@ -314,6 +316,7 @@ declare global {
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setLocalMdSnapshot: typeof import('./lib/local-md-snapshot').setLocalMdSnapshot
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
+  const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
   const startTransition: typeof import('react').startTransition

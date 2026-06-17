@@ -253,6 +253,12 @@
     --goose-color-lock-text: #713f12;        /* 已锁定/已删除徽章文字 */
     --goose-color-restore-hover: #d97706;    /* 恢复按钮 hover 背景琥珀 */
     --goose-color-capture-hint: #ef4444;     /* 快捷键捕获提示占位符红 */
+    /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，uTools 旧内核会回退成刺眼实色 */
+    --goose-block-subtle-bg: #f3f2f1;
+    --goose-block-subtle-border: #e8e7e5;
+    --goose-block-subtle-hover: #ebeae8;
+    --goose-block-subtle-inset: #f7f6f5;
+    --goose-callout-accent: #a8a8a8;
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 68.24%;
     --background: var(--goose-shell-bg);
@@ -317,6 +323,11 @@
     --goose-color-lock-text: #fef9c3;
     --goose-color-restore-hover: #b45309;
     --goose-color-capture-hint: #f87171;
+    --goose-block-subtle-bg: #252525;
+    --goose-block-subtle-border: #363636;
+    --goose-block-subtle-hover: #2e2e2e;
+    --goose-block-subtle-inset: #222222;
+    --goose-callout-accent: #6b6b6b;
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 60 2.2% 44.5%;
     --background: var(--goose-shell-bg);
@@ -505,7 +516,8 @@
 
 /* Inline Math */
 .inline-math-node {
-  @apply mx-0.5 px-1 rounded bg-muted/30 border border-transparent hover:border-border transition-colors;
+  @apply mx-0.5 px-1 rounded border border-transparent hover:border-border transition-colors;
+  background-color: var(--goose-block-subtle-bg);
   display: inline-flex !important;
   align-items: center;
   vertical-align: middle;
@@ -513,11 +525,16 @@
 
 /* Details / Toggle List */
 .details-wrapper {
-  @apply my-2 border rounded-lg overflow-hidden border-border/40;
+  @apply my-2 border rounded-lg overflow-hidden;
+  border-color: var(--goose-block-subtle-border);
 }
 
 .details-wrapper summary {
-  @apply px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors font-medium list-none flex items-center gap-2;
+  @apply px-3 py-2 cursor-pointer transition-colors font-medium list-none flex items-center gap-2;
+}
+
+.details-wrapper summary:hover {
+  background-color: var(--goose-block-subtle-hover);
 }
 
 .details-wrapper summary::-webkit-details-marker {
@@ -543,7 +560,9 @@
 
 .details-wrapper div[data-type="detailsContent"],
 .details-wrapper > div[data-type="details-content"] {
-  @apply p-3 pt-1 border-t border-border/20 bg-muted/5;
+  @apply p-3 pt-1 border-t;
+  border-top-color: var(--goose-block-subtle-border);
+  background-color: var(--goose-block-subtle-inset);
 }
 
 /* Callout Node */

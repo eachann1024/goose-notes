@@ -30,6 +30,7 @@ import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
+import { useTabs } from "@/stores/useTabs";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -52,6 +53,7 @@ export {
 export {
   isBottomEditorBlankClick,
   getSelectedPlainTextContext,
+  getSelectedCellPlainText,
   getElementFromNode,
   isInteractiveEditorTarget,
 } from "@/components/editor/utils/selection";
@@ -251,6 +253,9 @@ export function EditorComposer({
             return;
           }
           debouncedUpdate(safePageId, nextContent);
+          if (userInteractedRef.current) {
+            useTabs.getState().promotePreviewTab();
+          }
         }}
       >
         {showSideMenu ? <EditorSideMenu /> : null}

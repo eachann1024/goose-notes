@@ -29,6 +29,10 @@ import {
   renderTreeContainer,
   renderDragBetweenLine,
 } from "./MainTreeItem";
+import {
+  openPageFromSidebar,
+  shouldSuppressSidebarSelect,
+} from "@/lib/sidebarPageNavigation";
 import "./main-tree.css";
 
 interface SidebarMainTreeProps {
@@ -304,7 +308,7 @@ export function SidebarMainTree({
         if (!page || (isLocalFolder && page.isFolder)) return;
         e.preventDefault();
         e.stopPropagation();
-        useTabs.getState().openTab(pageId);
+        openPageFromSidebar(pageId, "permanent");
       }}
     >
       <ControlledTreeEnvironment<Page>
@@ -350,17 +354,15 @@ export function SidebarMainTree({
           const last = selected.length > 0 ? String(selected[selected.length - 1]) : null;
           setSelectedView(activeNotebookId, last);
           if (!last || last === "root") return;
+          if (shouldSuppressSidebarSelect()) return;
           const page = pages[last];
           if (!page) return;
           if (isLocalFolder && page.isFolder) return;
-            const { meta, ctrl } = lastClickModRef.current;
+          const { meta, ctrl } = lastClickModRef.current;
           if (meta || ctrl) {
-            useTabs.getState().openTab(last);
+            openPageFromSidebar(last, "permanent");
           } else {
-            if (activePageId === last) return;
-            // openInCurrentTab 内部已经通过 scheduleSetActivePage 串行触发 setActivePage，
-            // 这里不要再直接调用一次，否则会绕过串行锁产生竞态（点击偶尔无响应）。
-            useTabs.getState().openInCurrentTab(last);
+            openPageFromSidebar(last, "preview");
           }
         }}
         onPrimaryAction={(item) => {
@@ -376,8 +378,7 @@ export function SidebarMainTree({
             }
             return;
           }
-          if (activePageId === id) return;
-            useTabs.getState().openInCurrentTab(id);
+          openPageFromSidebar(id, "preview");
         }}
         onDrop={handleDrop}
         renderItem={renderItem}

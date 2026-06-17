@@ -386,8 +386,9 @@ function CodeBlockComponent({
             onClick={() => setShowLatexHint(!showLatexHint)}
             className={cn(
               "h-6 w-6 p-0 rounded-md",
-              "bg-background/90 border border-border/50",
-              showLatexHint && "bg-primary/10 border-primary/30 text-primary",
+              "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)]",
+              showLatexHint &&
+                "border-[var(--goose-callout-accent)] bg-[var(--goose-interactive-selected)] text-primary",
             )}
           >
             <LucideIcons.HelpCircle className="h-3.5 w-3.5" />
@@ -411,7 +412,7 @@ function CodeBlockComponent({
                       key={i}
                       type="button"
                       onClick={() => setShowLatexHint(false)}
-                      className="flex flex-col items-start gap-1 rounded-md border bg-muted/30 px-2 py-1.5 text-left hover:bg-accent/60"
+                      className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)]"
                     >
                       <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
                       <code className="text-[11px] font-mono text-foreground break-all">{s.code}</code>

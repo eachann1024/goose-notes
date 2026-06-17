@@ -130,6 +130,13 @@ export const useSettings = create<SettingsState>()(
                 if (state && typeof state.hideExpandArrows !== 'boolean') {
                     useSettings.setState({ hideExpandArrows: false })
                 }
+                if (
+                    state &&
+                    state.sidebarClickBehavior !== 'preview' &&
+                    state.sidebarClickBehavior !== 'replace-current'
+                ) {
+                    useSettings.setState({ sidebarClickBehavior: 'preview' })
+                }
                 if (state && typeof state.tableEvenColumnWidth !== 'boolean') {
                     useSettings.setState({ tableEvenColumnWidth: true })
                 }

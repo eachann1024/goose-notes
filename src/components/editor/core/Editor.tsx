@@ -62,7 +62,7 @@ import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInp
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
 import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
-import { EditorComposer, editorSchema, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
+import { EditorComposer, editorSchema, getSelectedCellPlainText, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
 import { isLinkworthyText } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
@@ -287,6 +287,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     if (activePageId === prevPageIdRef.current) return;
     prevPageIdRef.current = activePageId;
 
+    // 切页起点即重置：侧栏点击等切页前的 pointerdown 不应算进新页面的用户编辑。
+    userInteractedRef.current = false;
+
     debouncedUpdate.cancel();
 
     const p = pageRef.current;
@@ -465,6 +468,20 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const patchClipboardPlainText = (event: ClipboardEvent) => {
       const clipboardData = event.clipboardData;
       if (!clipboardData) return;
+
+      // 表格单元格选区（CellSelection）原生 DOM 选区是塌缩的，下方
+      // getSelectedPlainTextContext 会拿不到内容而放弃，落回 prosemirror-tables
+      // 默认 copy：序列化为完整 <table> HTML（含表头），转 Markdown 后带上
+      // 「名称/Key/说明」整表结构。这里优先处理 CellSelection——只取选中单元格
+      // 的纯文本（单格即单格内容，多格按行/Tab 拼接），并清空 text/html，
+      // 避免内核再写整表 HTML。
+      const cellText = getSelectedCellPlainText(editor.prosemirrorState);
+      if (cellText != null) {
+        event.preventDefault();
+        clipboardData.setData("text/plain", cellText);
+        clipboardData.setData("text/html", "");
+        return;
+      }
 
       const selectionContext = getSelectedPlainTextContext(container);
       if (!selectionContext) return;

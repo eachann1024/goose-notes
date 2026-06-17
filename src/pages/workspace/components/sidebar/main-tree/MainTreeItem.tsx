@@ -20,6 +20,7 @@ import { LocalFileIcon } from "../local-file-icon";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { getPageTitle } from "./treeAdapter";
 
 const INDENT = 18;
@@ -205,11 +206,16 @@ export function renderItem({
         onDragStart={handleDragStart}
         onDoubleClick={(e) => {
           e.preventDefault();
-          if (hasChildren) {
-            context.toggleExpandedState();
-          } else {
-            toast.info(isLocalFolder && page?.isFolder ? "这个文件夹是空的" : "这个页面没有子页面", { position: "top-right" });
+          e.stopPropagation();
+          if (isLocalFolder && page?.isFolder) {
+            if (hasChildren) {
+              context.toggleExpandedState();
+            } else {
+              toast.info("这个文件夹是空的", { position: "top-right" });
+            }
+            return;
           }
+          openPageFromSidebar(String(item.index), "permanent");
         }}
         aria-label={title}
         className="absolute inset-0 rounded-[8px] outline-none"
@@ -259,6 +265,13 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
       {...arrowProps}
       className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
       aria-hidden="true"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // 库默认 arrow onClick 会 selectItem → 触发 onSelectItems 切页；展开/收起不应导航
+        context.toggleExpandedState();
+      }}
     >
       <LucideIcons.ChevronRight
         className={cn(

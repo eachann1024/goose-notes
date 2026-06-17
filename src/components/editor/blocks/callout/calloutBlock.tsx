@@ -24,6 +24,8 @@ const ICON_LIST = [
   "Bug",
 ];
 
+export const DEFAULT_CALLOUT_ICON = ICON_LIST[0];
+
 /** Lucide 图标名 → 语义对应 emoji，供导出端使用 */
 export const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
   Lightbulb: "💡",
@@ -42,8 +44,9 @@ export const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
 
 /** 将 Lucide 名（新存）或 emoji（存量）统一渲染为 React 元素 */
 function renderCalloutIcon(iconStr: string, className?: string) {
-  if (iconStr && !iconStr.match(/\p{Emoji}/u) && (LucideIcons as any)[iconStr]) {
-    const IconComp = (LucideIcons as any)[iconStr] as React.ElementType;
+  const resolved = iconStr || DEFAULT_CALLOUT_ICON;
+  if (!resolved.match(/\p{Emoji}/u) && (LucideIcons as any)[resolved]) {
+    const IconComp = (LucideIcons as any)[resolved] as React.ElementType;
     return (
       <IconComp
         className={cn("h-[18px] w-[18px] stroke-[1.75]", className)}
@@ -52,7 +55,7 @@ function renderCalloutIcon(iconStr: string, className?: string) {
   }
   return (
     <span className={cn("text-base leading-none", className)}>
-      {iconStr || "💡"}
+      {resolved}
     </span>
   );
 }
@@ -71,7 +74,7 @@ function CalloutIconPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="mt-[2px] flex h-6 w-6 shrink-0 select-none items-center justify-center rounded text-base leading-none transition-colors hover:bg-foreground/10"
+          className="flex h-[1.625rem] w-6 shrink-0 select-none items-center justify-center rounded transition-colors hover:bg-[var(--goose-interactive-hover)]"
           onClick={() => setOpen(true)}
           data-callout-icon-trigger
         >
@@ -89,7 +92,7 @@ function CalloutIconPicker({
             <button
               key={name}
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded text-base transition-colors hover:bg-foreground/10"
+              className="flex h-8 w-8 items-center justify-center rounded text-base transition-colors hover:bg-[var(--goose-interactive-hover)]"
               onClick={() => {
                 onPick(name);
                 setOpen(false);
@@ -110,14 +113,14 @@ export const calloutBlock = createReactBlockSpec(
     propSchema: {
       ...defaultProps,
       icon: {
-        default: "💡",
+        default: DEFAULT_CALLOUT_ICON,
       },
     },
     content: "inline",
   },
   {
     render: ({ block, contentRef, editor }) => {
-      const icon = (block.props.icon as string) || "💡";
+      const icon = (block.props.icon as string) || DEFAULT_CALLOUT_ICON;
 
       const handleIconPick = useCallback(
         (emoji: string) => {
@@ -130,13 +133,13 @@ export const calloutBlock = createReactBlockSpec(
 
       return (
         <div
-          className="callout-block group flex w-full items-start gap-2.5 rounded-r-lg border-l-[3px] border-l-primary/60 bg-muted/40 px-3.5 py-2.5"
+          className="callout-block group flex w-full items-start gap-2.5 rounded-r-lg border-l-[3px] border-l-[var(--goose-callout-accent)] bg-[var(--goose-block-subtle-bg)] px-3.5 py-2.5"
           data-callout="true"
         >
           <CalloutIconPicker icon={icon} onPick={handleIconPick} />
           <div
             ref={contentRef}
-            className="min-w-0 flex-1 text-sm leading-relaxed"
+            className="min-w-0 flex-1 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
           />
         </div>
       );
@@ -144,13 +147,18 @@ export const calloutBlock = createReactBlockSpec(
     toExternalHTML: ({ block, contentRef }) => {
       return (
         <div
-          className="flex items-start gap-2 rounded-r-md border-l-[3px] border-l-primary/60 bg-muted/40 px-4 py-3"
+          className="flex items-start gap-2 rounded-r-md border-l-[3px] border-l-[var(--goose-callout-accent)] bg-[var(--goose-block-subtle-bg)] px-4 py-3"
           data-callout="true"
         >
-              <span className="mt-0.5 select-none text-base leading-none">
-              {renderCalloutIcon((block.props.icon as string) || "💡")}
+              <span className="flex h-[1.625rem] w-6 shrink-0 select-none items-center justify-center">
+              {renderCalloutIcon(
+                (block.props.icon as string) || DEFAULT_CALLOUT_ICON,
+              )}
             </span>
-          <div ref={contentRef} className="min-w-0 flex-1 text-sm leading-relaxed" />
+          <div
+            ref={contentRef}
+            className="min-w-0 flex-1 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
+          />
         </div>
       );
     },

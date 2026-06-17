@@ -249,7 +249,7 @@ export function SettingsAppearance({
               </Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              藏起侧栏里的小箭头，给标题腾地方；双击条目就能展开或收起。
+              藏起侧栏里的小箭头，给标题腾地方；展开/收起请点行首箭头。
             </p>
           </div>
           <Switch

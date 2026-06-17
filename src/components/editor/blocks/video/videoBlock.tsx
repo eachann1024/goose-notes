@@ -23,7 +23,7 @@ function VideoUrlInput({
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+    <div className="flex items-center gap-2 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-3 py-2">
       <LucideIcons.Link className="h-4 w-4 shrink-0 text-muted-foreground" />
       <input
         type="text"

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { toast } from "sonner";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
+import { useSettings } from "./useSettings";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
 export const WELCOME_TAB_PAGE_ID = "welcome";
@@ -11,6 +12,8 @@ export interface TabItem {
   pageId: string;
   type?: "welcome";
   pinned?: boolean;
+  /** 预览/临时标签：侧栏单击打开，可被下一个预览替换；编辑后晋升永久 */
+  preview?: boolean;
   workspaceId?: string;
 }
 
@@ -24,6 +27,9 @@ interface TabsState {
   syncNotebookForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
   openWelcomeTab: () => void;
+  openPreviewTab: (pageId: string) => void;
+  openPermanentTab: (pageId: string, options?: { pin?: boolean }) => void;
+  promotePreviewTab: (tabId?: string) => void;
   openInCurrentTab: (pageId: string) => void;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;
@@ -49,12 +55,18 @@ const TABS_PERSIST_KEY = "goose-note:open-tabs:v1";
 const getWorkspaceIdForPage = (pageId: string): string | undefined =>
   usePages.getState().getPage(pageId)?.workspaceId;
 
-// 固定标签恒排在普通标签之前，组内保持相对顺序（稳定分区）。
-const applyPinnedOrder = (tabs: TabItem[]): TabItem[] => {
+// 固定 → 预览（单槽）→ 普通永久；组内保持相对顺序。
+const orderTabs = (tabs: TabItem[]): TabItem[] => {
   const pinned = tabs.filter((t) => t.pinned);
-  const rest = tabs.filter((t) => !t.pinned);
-  return [...pinned, ...rest];
+  const preview = tabs.filter((t) => t.preview && !t.pinned);
+  const rest = tabs.filter((t) => !t.pinned && !t.preview);
+  return [...pinned, ...preview, ...rest];
 };
+
+const applyPinnedOrder = orderTabs;
+
+const findTabByPageId = (tabs: TabItem[], pageId: string) =>
+  tabs.find((tab) => tab.pageId === pageId && tab.type !== "welcome");
 
 // 提交当前编辑器内容（切换/关闭标签前调用），确保未防抖落盘的编辑不丢。
 const commitActiveEditor = () => {
@@ -121,9 +133,15 @@ const persistTabs = (state: TabsState) => {
   queueMicrotask(() => {
     persistScheduled = false;
     try {
+      const persistableTabs = state.openTabs.filter((tab) => !tab.preview);
+      const activeStillValid = persistableTabs.some(
+        (tab) => tab.id === state.activeTabId,
+      );
       const payload: PersistedTabs = {
-        openTabs: state.openTabs,
-        activeTabId: state.activeTabId,
+        openTabs: persistableTabs,
+        activeTabId: activeStillValid
+          ? state.activeTabId
+          : (persistableTabs[persistableTabs.length - 1]?.id ?? null),
         recentlyClosedPageIds: state.recentlyClosedPageIds.slice(0, 10),
       };
       window.localStorage.setItem(TABS_PERSIST_KEY, JSON.stringify(payload));
@@ -208,9 +226,20 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openTab: (pageId: string) => {
-      const { openTabs } = get();
-      const existingTab = openTabs.find((tab) => tab.pageId === pageId);
+      get().openPermanentTab(pageId);
+    },
+
+    openPermanentTab: (pageId: string, options?: { pin?: boolean }) => {
+      const { openTabs, activeTabId } = get();
+      const existingTab = findTabByPageId(openTabs, pageId);
       if (existingTab) {
+        if (existingTab.id !== activeTabId) commitActiveEditor();
+        if (existingTab.preview) {
+          get().promotePreviewTab(existingTab.id);
+        }
+        if (options?.pin && !existingTab.pinned) {
+          get().togglePinTab(existingTab.id);
+        }
         get().setActiveTab(existingTab.id);
         return;
       }
@@ -220,8 +249,10 @@ export const useTabs = create<TabsState>()((set, get) => {
         id: createTabId(pageId),
         pageId,
         workspaceId: getWorkspaceIdForPage(pageId),
+        pinned: options?.pin ? true : undefined,
+        preview: false,
       };
-      const nextOpenTabs = applyPinnedOrder([...openTabs, newTab]);
+      const nextOpenTabs = orderTabs([...openTabs, newTab]);
       set({
         openTabs: nextOpenTabs,
         activeTabId: newTab.id,
@@ -229,6 +260,126 @@ export const useTabs = create<TabsState>()((set, get) => {
       pushTabHistory(newTab.id);
       get().syncNotebookForPage(pageId);
       void scheduleSetActivePage(pageId);
+    },
+
+    openPreviewTab: (pageId: string) => {
+      const { openTabs, activeTabId } = get();
+      const behavior =
+        useSettings.getState().sidebarClickBehavior ?? "preview";
+
+      const existingTab = findTabByPageId(openTabs, pageId);
+      if (existingTab) {
+        if (existingTab.id !== activeTabId) commitActiveEditor();
+        get().setActiveTab(existingTab.id);
+        return;
+      }
+
+      commitActiveEditor();
+      const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+      const previewTab = openTabs.find((tab) => tab.preview);
+      const workspaceId = getWorkspaceIdForPage(pageId);
+
+      const activateTab = (tabId: string) => {
+        set({ activeTabId: tabId });
+        pushTabHistory(tabId);
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
+      };
+
+      if (
+        behavior === "replace-current" &&
+        activeTab &&
+        !activeTab.pinned &&
+        !activeTab.preview &&
+        activeTab.type !== "welcome"
+      ) {
+        const nextTabs = openTabs.map((tab) =>
+          tab.id === activeTab.id
+            ? {
+                ...tab,
+                pageId,
+                workspaceId,
+                preview: false,
+              }
+            : tab,
+        );
+        set({ openTabs: orderTabs(nextTabs) });
+        activateTab(activeTab.id);
+        return;
+      }
+
+      if (activeTab?.preview) {
+        const nextTabs = openTabs.map((tab) =>
+          tab.id === activeTab.id
+            ? { ...tab, pageId, workspaceId, preview: true }
+            : tab,
+        );
+        set({ openTabs: orderTabs(nextTabs) });
+        activateTab(activeTab.id);
+        return;
+      }
+
+      if (previewTab) {
+        const nextTabs = openTabs.map((tab) =>
+          tab.id === previewTab.id
+            ? { ...tab, pageId, workspaceId, preview: true }
+            : tab,
+        );
+        set({ openTabs: orderTabs(nextTabs) });
+        activateTab(previewTab.id);
+        return;
+      }
+
+      if (activeTab?.type === "welcome") {
+        const nextTabs = openTabs.map((tab) =>
+          tab.id === activeTab.id
+            ? {
+                ...tab,
+                pageId,
+                workspaceId,
+                type: undefined,
+                preview: true,
+              }
+            : tab,
+        );
+        set({ openTabs: orderTabs(nextTabs) });
+        activateTab(activeTab.id);
+        return;
+      }
+
+      const newTab: TabItem = {
+        id: createTabId(pageId),
+        pageId,
+        workspaceId,
+        preview: true,
+      };
+      const pinnedCount = openTabs.filter((tab) => tab.pinned).length;
+      const nextOpenTabs = orderTabs([
+        ...openTabs.slice(0, pinnedCount),
+        newTab,
+        ...openTabs.slice(pinnedCount),
+      ]);
+      set({
+        openTabs: nextOpenTabs,
+        activeTabId: newTab.id,
+      });
+      pushTabHistory(newTab.id);
+      get().syncNotebookForPage(pageId);
+      void scheduleSetActivePage(pageId);
+    },
+
+    promotePreviewTab: (tabId?: string) => {
+      const { openTabs, activeTabId } = get();
+      const targetId = tabId ?? activeTabId;
+      if (!targetId) return;
+      const target = openTabs.find((tab) => tab.id === targetId);
+      if (!target?.preview) return;
+      const nextTabs = orderTabs(
+        openTabs.map((tab) =>
+          tab.id === targetId ? { ...tab, preview: false } : tab,
+        ),
+      );
+      set({ openTabs: nextTabs });
     },
 
     openWelcomeTab: () => {
@@ -258,27 +409,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openInCurrentTab: (pageId: string) => {
-      const { openTabs, activeTabId } = get();
-      const activeIndex = openTabs.findIndex((tab) => tab.id === activeTabId);
-      if (activeIndex === -1) {
-        get().openTab(pageId);
-        return;
-      }
-
-      commitActiveEditor();
-      const nextTabs = [...openTabs];
-      // 剥掉 type 字段：欢迎 tab 被替换为真实页面后就是普通 tab，
-      // 否则 type:"welcome" 残留会让 UI 始终渲染欢迎页、笔记打不开。
-      const { type: _droppedType, ...restTab } = nextTabs[activeIndex];
-      nextTabs[activeIndex] = {
-        ...restTab,
-        pageId,
-        workspaceId: getWorkspaceIdForPage(pageId),
-      };
-      set({ openTabs: nextTabs });
-      pushTabHistory(nextTabs[activeIndex].id);
-      get().syncNotebookForPage(pageId);
-      void scheduleSetActivePage(pageId);
+      get().openPreviewTab(pageId);
     },
 
     closeTab: (tabId: string) => {
@@ -519,10 +650,16 @@ export const useTabs = create<TabsState>()((set, get) => {
       const { openTabs } = get();
       const exists = openTabs.some((tab) => tab.id === tabId);
       if (!exists) return;
-      const nextTabs = applyPinnedOrder(
-        openTabs.map((tab) =>
-          tab.id === tabId ? { ...tab, pinned: !tab.pinned } : tab,
-        ),
+      const nextTabs = orderTabs(
+        openTabs.map((tab) => {
+          if (tab.id !== tabId) return tab;
+          const pinned = !tab.pinned;
+          return {
+            ...tab,
+            pinned,
+            preview: pinned ? false : tab.preview,
+          };
+        }),
       );
       set({ openTabs: nextTabs });
     },

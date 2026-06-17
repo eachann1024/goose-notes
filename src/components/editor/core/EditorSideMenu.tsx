@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   useBlockNoteEditor,
@@ -21,7 +21,6 @@ const altKeyLabel = isMac ? "⌥" : "Alt";
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
   const sideMenu = useExtension(SideMenuExtension);
-  const lastPosRef = useRef({ top: 0, left: 0 });
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -40,12 +39,14 @@ export function EditorSideMenu() {
   // 折叠标题的折叠箭头悬挂在内容左缘外侧，与 side menu(+/拖拽把手)同列重叠
   // （留白消不掉，因二者同锚内容左缘、向同侧展开）。折叠标题整块不显示 side menu，
   // 加块/拖拽改走其它入口。toggleListItem 箭头是行内 marker、不重叠，不受影响。
-  const headingProps = (block as any)?.props ?? {};
+  const headingProps = (block as { props?: { isToggleable?: boolean; n?: boolean } })
+    ?.props;
   const isToggleableHeading =
     block?.type === "heading" &&
-    (headingProps.isToggleable === true || headingProps.n === true);
-  const isVisible =
-    !!state?.show && !!state.referencePos && !isToggleableHeading;
+    Boolean(headingProps?.isToggleable ?? headingProps?.n);
+  // 先判定是否应显示，再更新位置/挂载 DOM，避免折叠标题上把手闪一下
+  const shouldShow =
+    Boolean(state?.show && state.referencePos && block) && !isToggleableHeading;
 
   const handleAdd = useCallback(
     (e: React.MouseEvent) => {
@@ -89,30 +90,26 @@ export function EditorSideMenu() {
     sideMenu?.blockDragEnd?.();
   }, [sideMenu]);
 
-  if (state?.referencePos) {
-    const sideMenuWidth = 40;
-    // BlockNote 为 heading 设置了 padding-top:18px，底部仅 3px，
-    // 导致几何中心比文字视觉中心偏高 (18-3)/2 = 7.5px，需补偿。
-    const headingOffset = block?.type === "heading" ? 7.5 : 0;
-    lastPosRef.current = {
-      top: state.referencePos.top + state.referencePos.height / 2 + headingOffset,
-      left: Math.max(4, state.referencePos.left - sideMenuWidth),
-    };
+  const referencePos = state?.referencePos;
+  if (!shouldShow || !referencePos || !block) {
+    return null;
   }
 
-  const { top, left } = lastPosRef.current;
-
+  const sideMenuWidth = 40;
+  // BlockNote 为 heading 设置了 padding-top:18px，底部仅 3px，
+  // 导致几何中心比文字视觉中心偏高 (18-3)/2 = 7.5px，需补偿。
+  const headingOffset = block.type === "heading" ? 7.5 : 0;
+  const top = referencePos.top + referencePos.height / 2 + headingOffset;
+  const left = Math.max(4, referencePos.left - sideMenuWidth);
   return createPortal(
     <div
       className="fixed z-[60] flex items-center rounded-lg p-1 transition-[opacity,transform] duration-150 ease-out [body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none"
       style={{
         top,
         left,
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible
-          ? "translateY(-50%) scale(1)"
-          : "translateY(-50%) scale(0.92)",
-        pointerEvents: isVisible ? "auto" : "none",
+        opacity: 1,
+        transform: "translateY(-50%) scale(1)",
+        pointerEvents: "auto",
       }}
       onMouseDown={(e) => e.stopPropagation()}
       onDragEnter={(e) => {
@@ -130,7 +127,7 @@ export function EditorSideMenu() {
     >
       <TooltipProvider delayDuration={600} disableHoverableContent>
         <Tooltip
-          open={addTipOpen && isVisible && !isDragging}
+          open={addTipOpen && shouldShow && !isDragging}
           onOpenChange={setAddTipOpen}
         >
           <TooltipTrigger asChild>

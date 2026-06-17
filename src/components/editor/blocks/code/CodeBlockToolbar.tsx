@@ -110,12 +110,13 @@ export function CodeBlockToolbar({
   const isMathOrMermaid = language === "math" || language === "mermaid";
   const chipClass = cn(
     "transition-colors duration-150",
-    "border border-border/50 bg-muted/40 text-muted-foreground",
-    "hover:bg-accent/50 hover:text-foreground",
+    "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
+    "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
     "focus-visible:ring-0 focus-visible:ring-offset-0",
     "cursor-pointer rounded-md",
   );
-  const chipActiveClass = "border-border/70 bg-accent/60 text-foreground hover:bg-accent/60";
+  const chipActiveClass =
+    "border-[var(--goose-block-subtle-border)] bg-[var(--goose-interactive-selected)] text-foreground hover:bg-[var(--goose-interactive-selected)]";
   const iconSize = "h-3.5 w-3.5";
 
   return (
@@ -175,7 +176,7 @@ export function CodeBlockToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="inline-flex h-6 cursor-default items-center rounded-md bg-muted/50 px-1.5 font-mono text-[11px] text-muted-foreground">
+            <div className="inline-flex h-6 cursor-default items-center rounded-md bg-[var(--goose-block-subtle-bg)] px-1.5 font-mono text-[11px] text-muted-foreground">
               {displayLanguage}
             </div>
           )}

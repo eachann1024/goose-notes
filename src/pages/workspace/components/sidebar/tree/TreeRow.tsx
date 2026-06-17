@@ -10,12 +10,13 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import * as LucideIcons from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
+import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
 import { IconSelector } from "../../shared/IconSelector";
@@ -150,6 +151,7 @@ export function SortablePageRow({
     ? `${virtualTransform} ${dndTransform}`.trim()
     : virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
+  const rowClickTimerRef = useRef<number | null>(null);
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
@@ -256,26 +258,42 @@ export function SortablePageRow({
             if (isLocalFolder && page.isFolder) {
               return;
             }
-            if (e.metaKey || e.ctrlKey) {
-              useTabs.getState().openTab(page.id);
-            } else {
-              openInCurrentTab(page.id);
+            if (rowClickTimerRef.current !== null) {
+              window.clearTimeout(rowClickTimerRef.current);
             }
+            const openInNewTab = e.metaKey || e.ctrlKey;
+            rowClickTimerRef.current = window.setTimeout(() => {
+              rowClickTimerRef.current = null;
+              if (openInNewTab) {
+                openPageFromSidebar(page.id, "permanent");
+              } else {
+                openPageFromSidebar(page.id, "preview");
+              }
+            }, 220);
           }}
           onDoubleClick={(e) => {
             e.preventDefault();
-            if (hasChildren) {
-              onToggleOpen(page.id);
-            } else {
-              toast.info(isLocalFolder && page.isFolder ? "这个文件夹是空的" : "这个页面没有子页面", { position: "top-right" });
+            e.stopPropagation();
+            if (rowClickTimerRef.current !== null) {
+              window.clearTimeout(rowClickTimerRef.current);
+              rowClickTimerRef.current = null;
             }
+            if (isLocalFolder && page.isFolder) {
+              if (hasChildren) {
+                onToggleOpen(page.id);
+              } else {
+                toast.info("这个文件夹是空的", { position: "top-right" });
+              }
+              return;
+            }
+            openPageFromSidebar(page.id, "permanent");
           }}
           onAuxClick={(e) => {
             if (e.button === 1) {
               e.preventDefault();
               e.stopPropagation();
               if (isLocalFolder && page.isFolder) return;
-                useTabs.getState().openTab(page.id);
+              openPageFromSidebar(page.id, "permanent");
             }
           }}
         >

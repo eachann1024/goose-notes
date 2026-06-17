@@ -157,7 +157,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       onMouseEnter={() => setSelectedIndex(index)}
                       onClick={() => selectItem(index)}
                     >
-                      <div className="mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-notion-slash-icon)] bg-muted/65">
+                      <div className="mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-notion-slash-icon)] bg-[var(--goose-block-subtle-bg)]">
                         {item.icon ? (
                           <span
                             className={cn(

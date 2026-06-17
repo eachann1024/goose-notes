@@ -28,6 +28,8 @@ interface SettingsGeneralProps {
   setShowRecentInSearch: (enabled: boolean) => void;
   notebookDropdownHoverExpand: boolean;
   setNotebookDropdownHoverExpand: (enabled: boolean) => void;
+  sidebarClickBehavior: "preview" | "replace-current";
+  setSidebarClickBehavior: (behavior: "preview" | "replace-current") => void;
   customActions?: CustomAction[];
   addCustomAction?: (action: Omit<CustomAction, "id">) => void;
   updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, "id">>) => void;
@@ -55,6 +57,8 @@ export function SettingsGeneral({
   setShowRecentInSearch,
   notebookDropdownHoverExpand,
   setNotebookDropdownHoverExpand,
+  sidebarClickBehavior,
+  setSidebarClickBehavior,
   customActions = [],
   addCustomAction = () => {},
   updateCustomAction = () => {},
@@ -103,6 +107,27 @@ export function SettingsGeneral({
             id="notebook-hover-expand"
             checked={notebookDropdownHoverExpand}
             onCheckedChange={setNotebookDropdownHoverExpand}
+            className={SETTINGS_SWITCH_CLASS}
+          />
+        </div>
+        <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
+          <div>
+            <div className="flex items-center gap-3">
+              <LucideIcons.PanelTop className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <Label htmlFor="sidebar-click-preview" className="cursor-pointer">
+                侧栏单击使用预览标签
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              开启后单击侧栏页面会在临时预览标签打开（类似 VSCode）；关闭则替换当前普通标签。固定标签始终不会被替换。
+            </p>
+          </div>
+          <Switch
+            id="sidebar-click-preview"
+            checked={sidebarClickBehavior === "preview"}
+            onCheckedChange={(enabled) =>
+              setSidebarClickBehavior(enabled ? "preview" : "replace-current")
+            }
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>

@@ -1,4 +1,38 @@
+import { CellSelection } from "prosemirror-tables";
+import type { EditorState } from "prosemirror-state";
+
 import { normalizeClipboardLineEndings } from "./clipboard";
+
+/**
+ * 表格单元格选区（CellSelection）的纯文本提取。
+ * 选中一个或多个表格单元格时，原生 window.getSelection() 往往是塌缩的——
+ * 单元格高亮由 ProseMirror decoration 绘制，DOM 选区并未真正覆盖文字。
+ * 复制时需直接从 CellSelection 读单元格文本，绕过 DOM 选区。
+ *
+ * @returns 选中单元格的纯文本（多格按行连接、同行各格用 Tab 连接）；
+ *          当前选区不是 CellSelection 时返回 null（交回常规复制流程）。
+ */
+export function getSelectedCellPlainText(state: EditorState): string | null {
+  const selection = state.selection;
+  if (!(selection instanceof CellSelection)) return null;
+
+  // forEachCell 按文档顺序遍历选中单元格；按所在表格行分组，
+  // 同行各格用 Tab 连接、行间用换行连接，单格场景即纯单格文本。
+  const rows: string[][] = [];
+  let lastRowTop = Number.NaN;
+  selection.forEachCell((cellNode, cellPos) => {
+    const $cell = state.doc.resolve(cellPos);
+    const rowTop = $cell.before($cell.depth);
+    if (rowTop !== lastRowTop) {
+      rows.push([]);
+      lastRowTop = rowTop;
+    }
+    rows[rows.length - 1].push(cellNode.textContent);
+  });
+
+  const text = rows.map((cells) => cells.join("\t")).join("\n");
+  return normalizeClipboardLineEndings(text);
+}
 
 export function getElementFromNode(node: Node | null): HTMLElement | null {
   if (!node) return null;

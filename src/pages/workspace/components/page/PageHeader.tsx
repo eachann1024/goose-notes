@@ -74,6 +74,9 @@ function SortableTabItem({
           {...attributes}
           {...listeners}
           data-tab-active={isActive || undefined}
+          data-tab-page-id={tab.pageId}
+          data-tab-preview={tab.preview || undefined}
+          data-tab-pinned={tab.pinned || undefined}
           onClick={onActivate}
           onAuxClick={(e) => {
             if (e.button === 1) {
@@ -112,7 +115,9 @@ function SortableTabItem({
           <span
             className={cn(
               "min-w-0 flex-1 truncate",
-              isDirty && "font-medium italic",
+              tab.preview && "italic text-muted-foreground",
+              isDirty && "font-medium",
+              isDirty && !tab.preview && "italic",
             )}
           >
             {tab.type === "welcome" ? "新标签页" : (tabPage ? getPageTitle(tabPage) : "")}

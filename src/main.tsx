@@ -294,6 +294,10 @@ export const bootstrap = async (
   const { useNotebookAiChats } = await import("@/stores/useNotebookAiChats");
   useNotebookAiChats.persist.rehydrate();
   await usePages.getState().hydrateFromStorage();
+  if (import.meta.env.DEV) {
+    const { installTestBridge } = await import("@/testBridge");
+    installTestBridge();
+  }
   const pagesStore = usePages.getState();
   const notebooksStore = useNotebooks.getState();
   const recoveredNotebooks = recoverMissingNotebooksFromPages({
