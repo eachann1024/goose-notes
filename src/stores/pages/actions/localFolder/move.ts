@@ -119,11 +119,11 @@ export async function moveLocalPageAction(
   await flushPendingLocalSaveByPageIdInternal(pageId, get);
 
   // 执行文件系统移动
-  let renamed = false;
+  let renamed: boolean;
   try {
     renamed = Boolean(await Promise.resolve(fs.rename(oldPath, newPath)));
   } catch (err) {
-    throw new Error(`移动失败：${(err as Error).message ?? String(err)}`);
+    throw new Error(`移动失败：${(err as Error).message ?? String(err)}`, { cause: err });
   }
   if (!renamed) {
     throw new Error("移动操作未成功");

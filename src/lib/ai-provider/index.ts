@@ -71,7 +71,6 @@ export async function runAITextStream(
 ) {
   const messages = rawMessages
     .filter((m) => typeof m.content === "string" && m.content.trim() !== "")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((m) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cleanMessage: any = { role: m.role, content: m.content };

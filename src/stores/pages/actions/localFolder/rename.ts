@@ -130,7 +130,7 @@ async function maybeRenameLocalFileForTitle(
     return { pageId, collision: true };
   }
 
-  let renamed = false;
+  let renamed: boolean;
   try {
     renamed = Boolean(
       await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)),
@@ -203,11 +203,11 @@ export async function renameLocalPageFileAction(
     throw new Error(`已存在同名文件：${sanitized}${ext}`);
   }
 
-  let renamed = false;
+  let renamed: boolean;
   try {
     renamed = Boolean(await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)));
   } catch (err) {
-    throw new Error(`重命名失败：${(err as Error).message ?? String(err)}`);
+    throw new Error(`重命名失败：${(err as Error).message ?? String(err)}`, { cause: err });
   }
   if (!renamed) {
     throw new Error("重命名操作未成功");

@@ -245,7 +245,7 @@ function serializeLegacyListItem(item: any, indent: string): string {
         .filter(Boolean)
     : [];
 
-  let line = "";
+  let line: string;
   if (item.type === "taskItem") {
     const checked = item?.attrs?.checked === true || item?.props?.checked === true;
     line = `${indent}- [${checked ? "x" : " "}] ${legacyItemInline(item)}`;
@@ -266,7 +266,7 @@ function serializeLegacyListItem(item: any, indent: string): string {
 
 function blockNoteBlockToMarkdown(block: any, indent = ""): string {
   const text = blockNoteInlineToText(block.content);
-  let result = "";
+  let result: string;
 
   switch (block.type) {
     case "heading":

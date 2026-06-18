@@ -1,5 +1,5 @@
 import type { Page } from "@/types";
-import type { TabItem } from "@/stores/useTabs";
+import { useTabs, type TabItem } from "@/stores/useTabs";
 import {
   DndContext,
   PointerSensor,
@@ -260,6 +260,7 @@ export function PageHeader({
     return tabPage && !tabPage.trashedAt;
   });
   const [showSaved, setShowSaved] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
   const closeTabShortcutLabel = closeTabShortcut
     ? formatShortcut(closeTabShortcut)
@@ -280,6 +281,7 @@ export function PageHeader({
 
   // 切换标签或窗口缩放导致溢出时，保证活动标签始终在可视区内
   // （inline: "nearest" 已可见时零移动，不会打断用户的手动横向滚动）
+  // 同步更新 isOverflowing 供「全部标签」下拉按钮显示逻辑使用
   useEffect(() => {
     const scroller = tabsScrollerRef.current;
     if (!scroller) return;
@@ -287,6 +289,7 @@ export function PageHeader({
       scroller
         .querySelector<HTMLElement>('[data-tab-active="true"]')
         ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+      setIsOverflowing(scroller.scrollWidth > scroller.clientWidth);
     };
     scrollActiveIntoView();
     const observer = new ResizeObserver(scrollActiveIntoView);
@@ -377,6 +380,12 @@ export function PageHeader({
           ref={tabsScrollerRef}
           className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scroll-padding-right:32px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onWheel={handleTabsWheel}
+          onDoubleClick={(e) => {
+            // 只在点击容器自身空白区域时触发（非标签项、非按钮）
+            if (e.target === e.currentTarget) {
+              useTabs.getState().openWelcomeTab();
+            }
+          }}
         >
           <DndContext
             sensors={sensors}
@@ -425,7 +434,7 @@ export function PageHeader({
 
           {/* sticky：平时紧跟最后一个标签；极端溢出滚动时钉在右缘，不被挤出可视区 */}
           {!page?.trashedAt && (
-            <div className="sticky right-0 shrink-0 rounded-[7px] bg-[hsl(var(--goose-editor-bg))]">
+            <div className="sticky right-0 shrink-0 flex items-center gap-0.5 rounded-[7px] bg-[hsl(var(--goose-editor-bg))]">
               <TooltipProvider delayDuration={600}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -444,6 +453,75 @@ export function PageHeader({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              {isOverflowing && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      aria-label="全部标签页"
+                    >
+                      <LucideIcons.ChevronDown
+                        className="h-3.5 w-3.5"
+                        strokeWidth={1.75}
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-[220px] outline-none"
+                    align="end"
+                    sideOffset={4}
+                  >
+                    {visibleTabs.map((tab) => {
+                      const tabPage = tab.type === "welcome" ? undefined : getPage(tab.pageId);
+                      const title = tab.type === "welcome" ? "新标签页" : (tabPage ? getPageTitle(tabPage) : "");
+                      const isActive = activeTabId === tab.id;
+                      return (
+                        <DropdownMenuItem
+                          key={tab.id}
+                          className={cn(
+                            "flex items-center gap-2 text-[13px]",
+                            isActive && "bg-[var(--goose-interactive-selected)] text-foreground",
+                          )}
+                          onSelect={() => {
+                            setActiveTab(tab.id);
+                            // 跳转后滚动到该标签（welcome 标签无 pageId，直接找活动标签）
+                            setTimeout(() => {
+                              const scroller = tabsScrollerRef.current;
+                              if (!scroller) return;
+                              const el = tab.pageId
+                                ? scroller.querySelector<HTMLElement>(`[data-tab-page-id="${tab.pageId}"]`)
+                                : scroller.querySelector<HTMLElement>('[data-tab-active="true"]');
+                              el?.scrollIntoView({ inline: "nearest", block: "nearest" });
+                            }, 0);
+                          }}
+                        >
+                          {tab.pinned && (
+                            <LucideIcons.Pin
+                              className="h-3 w-3 shrink-0 text-primary"
+                              strokeWidth={1.75}
+                            />
+                          )}
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate",
+                              tab.preview && "italic text-muted-foreground",
+                            )}
+                          >
+                            {title}
+                          </span>
+                          {isActive && (
+                            <LucideIcons.Check
+                              className="h-3.5 w-3.5 shrink-0 text-foreground/60"
+                              strokeWidth={1.75}
+                            />
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           )}
         </div>

@@ -234,7 +234,7 @@ export async function scanLocalFolderPages({
     dirPath: string,
     parentId?: string,
   ): Promise<Page[]> => {
-    let entries: LocalFolderEntry[] = [];
+    let entries: LocalFolderEntry[];
 
     try {
       entries = await readDirectory(gooseFs, dirPath);

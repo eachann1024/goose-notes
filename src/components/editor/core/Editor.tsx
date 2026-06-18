@@ -295,8 +295,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const p = pageRef.current;
     pageIdForUpdateRef.current = p?.id ?? null;
 
-    // local-folder 页面跳过 normalizePageContent（不触发 ensureFirstTitleHeading）
-    const isLocalPage = Boolean(p?.localFilePath);
+    // local-folder 页面跳过 normalizePageContent（不触发 ensureFirstTitleHeading）。
+    // 须与本文件 :135 的 isLocalFolderPage 及 EditorComposer.onChange 的判断一致：
+    // 小窗草稿页(__quicknote_draft__)同样豁免，否则切页/重开时此处 replaceBlocks 会把
+    // 首块强转 H1 并刷新签名基线，导致草稿首块每次重开都变「标题1」。
+    const isLocalPage =
+      Boolean(p?.localFilePath) || p?.id === "__quicknote_draft__";
     const nextContent = isLocalPage
       ? toEditorBlocks(p?.content)
       : normalizePageContent(p?.content);

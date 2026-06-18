@@ -39,7 +39,7 @@ async function downloadBlob(blob: Blob, filename: string): Promise<void> {
       URL.revokeObjectURL(url);
     });
   } catch (error) {
-    throw new Error("PDF 保存失败：无法写入文件");
+    throw new Error("PDF 保存失败：无法写入文件", { cause: error });
   }
 }
 

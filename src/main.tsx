@@ -26,6 +26,8 @@ if (!(Array.prototype as any).toReversed) {
     };
 
     define("filter", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => boolean) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {
@@ -35,6 +37,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("map", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => unknown) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {
@@ -42,6 +46,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("take", function (this: Iterator<unknown>, limit: number) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       return (function* () {
         let n = 0;
@@ -53,6 +59,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("drop", function (this: Iterator<unknown>, limit: number) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       return (function* () {
         let n = 0;
@@ -63,6 +71,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("flatMap", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => unknown) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {

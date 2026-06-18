@@ -74,6 +74,7 @@ export function sanitizeFilenameSegment(value: string): string {
   const trimmed = (value || "").trim();
   if (!trimmed) return "";
   let cleaned = trimmed
+    // eslint-disable-next-line no-control-regex -- 有意匹配控制字符以清洗文件名
     .replace(/[\x00-\x1f\x7f]/g, "")
     .replace(INVALID_FILENAME_CHARS, "-")
     .replace(/\s+/g, " ")

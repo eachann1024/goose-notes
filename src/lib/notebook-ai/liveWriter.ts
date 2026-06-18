@@ -164,7 +164,7 @@ async function ensurePageCreated(
   const notebook = useNotebooks.getState().notebooks[notebookId];
   if (!notebook) return null;
 
-  let pageId: string | null = null;
+  let pageId: string | null;
   if (notebook.source === "local-folder") {
     pageId = await usePages.getState().createLocalPageRecord({
       workspaceId: notebookId,

@@ -18,11 +18,6 @@ const send = (channel: string, ...args: unknown[]) => {
 };
 
 export const quickNoteWindow = {
-  /** 置顶钉住开关（连带停用失焦隐藏，由主窗 preload 处理 win.setAlwaysOnTop）。 */
-  setPinned(pinned: boolean): void {
-    send("quicknote:pin", pinned);
-  },
-
   /** 关闭小窗。优先请求主窗关闭（win.close），兜底 window.close()。 */
   close(): void {
     if (!send("quicknote:close")) {

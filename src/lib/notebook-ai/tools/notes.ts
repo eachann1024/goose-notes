@@ -80,7 +80,7 @@ export const searchNotes = tool({
 
     // 把 query 按分隔符切成 ≥2 字的词项（用于降级分词匹配）
     const queryTerms = queryLower
-      .split(/[\s,，。、？！?!​]+/)
+      .split(/[\s,，。、？！?!]+/)
       .filter((t) => t.length >= 2);
 
     /** 对原始文本打分并返回命中位置 */

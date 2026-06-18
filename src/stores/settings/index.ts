@@ -66,7 +66,7 @@ function applyCodeStyle(codeStyle: CodeStyle) {
     const root = document.documentElement
     const isDark = root.classList.contains('dark')
 
-    let finalClass = ''
+    let finalClass: string
 
     switch (codeStyle) {
         case 'default':

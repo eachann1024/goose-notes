@@ -196,7 +196,7 @@ async function saveBlobViaDialog(
   }
   if (!revealed && utools?.shellOpenPath) {
     const folderPath = targetPath.replace(/[/\\][^/\\]*$/, "");
-    revealed = Boolean(await Promise.resolve(utools.shellOpenPath(folderPath)));
+    await Promise.resolve(utools.shellOpenPath(folderPath));
   }
 
   return true;

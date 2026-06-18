@@ -28,7 +28,7 @@ export const reloadLocalPageFromDiskAction = async (
   const fs = window.gooseFs;
   const filePath = page.localFilePath;
 
-  let markdown: string | null = null;
+  let markdown: string | null;
   let readError: string | undefined;
   try {
     if (fs.readFileStatAsync) {
@@ -345,7 +345,7 @@ export const addSingleLocalPageAction = async (
   const fallbackTitle = localFileTitleFromPath(filePath);
   const pageId = buildLocalPageId(notebookId, basePath, filePath);
 
-  let markdown: string | null = null;
+  let markdown: string | null;
   let readError: string | undefined;
   try {
     if (fs.readFileStatAsync) {

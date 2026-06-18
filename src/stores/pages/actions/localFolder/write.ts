@@ -253,7 +253,7 @@ export const saveLocalPageContentAction = async (
     try { exists = window.gooseFs?.exists(filePath) ?? false; } catch {}
 
     if (exists) {
-      let oldContent = "";
+      let oldContent: string;
       if (window.gooseFs?.readFileAsync) {
         oldContent = await window.gooseFs.readFileAsync(filePath) || "";
       } else {

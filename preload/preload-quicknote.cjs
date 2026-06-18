@@ -11,37 +11,80 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const QUICKNOTE_MIN_HEIGHT = 300;
   const QUICKNOTE_EDGE_GAP = 16;
   let quickNoteWin = null;
-  let quickNotePinned = false;
+  // 速记小窗强制置顶：恒为最前层，无取消置顶入口（产品决定）。
+  const QUICKNOTE_ALWAYS_ON_TOP = true;
   let quickNoteVisible = false;
   let quickNoteActiveMode = null;
 
+  const QUICKNOTE_DB_KEY = "goose-note:quicknote";
+
   // 从 uTools dbStorage 读速记持久化偏好（与 A 插件共享同一 key，数据共通）。
+  // 位置 windowX/windowY 可缺省（首次开窗或老数据）：缺省时回退到「光标屏右上角」。
   const readQuickNotePrefs = () => {
     const fallback = {
       windowWidth: QUICKNOTE_WIDTH,
       windowHeight: QUICKNOTE_HEIGHT,
-      pinned: false,
+      windowX: null,
+      windowY: null,
     };
     try {
       const raw =
         utools.dbStorage && typeof utools.dbStorage.getItem === "function"
-          ? utools.dbStorage.getItem("goose-note:quicknote")
+          ? utools.dbStorage.getItem(QUICKNOTE_DB_KEY)
           : null;
       if (typeof raw !== "string") return fallback;
       const parsed = JSON.parse(raw);
       const st = parsed && parsed.state ? parsed.state : parsed;
       const w = Number(st && st.windowWidth);
       const h = Number(st && st.windowHeight);
+      const x = Number(st && st.windowX);
+      const y = Number(st && st.windowY);
       return {
         windowWidth:
           Number.isFinite(w) && w >= QUICKNOTE_MIN_WIDTH ? Math.round(w) : QUICKNOTE_WIDTH,
         windowHeight:
           Number.isFinite(h) && h >= QUICKNOTE_MIN_HEIGHT ? Math.round(h) : QUICKNOTE_HEIGHT,
-        pinned: !!(st && st.pinned),
+        windowX: Number.isFinite(x) ? Math.round(x) : null,
+        windowY: Number.isFinite(y) ? Math.round(y) : null,
       };
     } catch {
       return fallback;
     }
+  };
+
+  // 把窗口当前 bounds（位置+尺寸）写回 dbStorage 速记偏好（持久化），下次开窗沿用。
+  // persist-size（拖动停下）与关窗时都调用——拖动只触发 resize、移动不触发，故关窗兜底位置。
+  const persistQuickNoteBounds = () => {
+    if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return;
+    let bounds;
+    try {
+      bounds = quickNoteWin.getBounds?.();
+    } catch { /* noop */ }
+    if (!bounds || typeof bounds !== "object") return;
+    const w = Math.max(QUICKNOTE_MIN_WIDTH, Math.round(Number(bounds.width) || 0));
+    const h = Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(Number(bounds.height) || 0));
+    const x = Math.round(Number(bounds.x));
+    const y = Math.round(Number(bounds.y));
+    try {
+      const raw =
+        utools.dbStorage && typeof utools.dbStorage.getItem === "function"
+          ? utools.dbStorage.getItem(QUICKNOTE_DB_KEY)
+          : null;
+      let parsed = {};
+      if (typeof raw === "string") {
+        try { parsed = JSON.parse(raw) || {}; } catch { parsed = {}; }
+      }
+      const hasStateWrapper = parsed && typeof parsed.state === "object" && parsed.state;
+      const state = hasStateWrapper ? parsed.state : parsed;
+      state.windowWidth = w;
+      state.windowHeight = h;
+      if (Number.isFinite(x)) state.windowX = x;
+      if (Number.isFinite(y)) state.windowY = y;
+      const next = hasStateWrapper ? { ...parsed, state } : { state, version: 0 };
+      if (utools.dbStorage && typeof utools.dbStorage.setItem === "function") {
+        utools.dbStorage.setItem(QUICKNOTE_DB_KEY, JSON.stringify(next));
+      }
+    } catch { /* noop */ }
   };
 
   // getWindowType 三态：main=吸附在 uTools、detach=分离独立窗口、browser=createBrowserWindow 子窗。
@@ -76,18 +119,13 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   if (isMainWindow) try {
     const { ipcRenderer } = require("electron");
 
-    ipcRenderer.on("quicknote:pin", (_e, pinned) => {
-      quickNotePinned = !!pinned;
-      if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
-        try {
-          quickNoteWin.setAlwaysOnTop(quickNotePinned, "floating");
-        } catch {
-          try { quickNoteWin.setAlwaysOnTop(quickNotePinned); } catch { /* noop */ }
-        }
-      }
-    });
+    // 强制置顶后无置顶切换入口；保留监听仅为兼容旧子窗发来的 pin 请求，不做任何操作。
+    ipcRenderer.on("quicknote:pin", () => { /* 强制置顶，忽略 */ });
 
     ipcRenderer.on("quicknote:close", () => {
+      // 关窗前把当前 bounds（位置+尺寸）写回持久化：移动窗口不触发 resize，
+      // 关窗是位置/尺寸都为终态、最可靠的记忆时机。
+      persistQuickNoteBounds();
       if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
         try { quickNoteWin.close(); } catch { /* noop */ }
       }
@@ -106,37 +144,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       } catch { /* noop */ }
     });
 
-    // 用户拖动边框停下后：读真实窗口尺寸，写回 dbStorage 速记偏好（持久化）。
+    // 用户拖动边框停下后：读真实窗口 bounds（位置+尺寸），写回 dbStorage 速记偏好（持久化）。
     ipcRenderer.on("quicknote:persist-size", () => {
-      if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return;
-      let size;
-      try {
-        size = quickNoteWin.getSize?.();
-      } catch { /* noop */ }
-      if (!Array.isArray(size) || size.length < 2) return;
-      const w = Math.max(QUICKNOTE_MIN_WIDTH, Math.round(Number(size[0]) || 0));
-      const h = Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(Number(size[1]) || 0));
-      try {
-        const KEY = "goose-note:quicknote";
-        const raw =
-          utools.dbStorage && typeof utools.dbStorage.getItem === "function"
-            ? utools.dbStorage.getItem(KEY)
-            : null;
-        let parsed = {};
-        if (typeof raw === "string") {
-          try { parsed = JSON.parse(raw) || {}; } catch { parsed = {}; }
-        }
-        const hasStateWrapper = parsed && typeof parsed.state === "object" && parsed.state;
-        const state = hasStateWrapper ? parsed.state : parsed;
-        state.windowWidth = w;
-        state.windowHeight = h;
-        const next = hasStateWrapper
-          ? { ...parsed, state }
-          : { state, version: 0 };
-        if (utools.dbStorage && typeof utools.dbStorage.setItem === "function") {
-          utools.dbStorage.setItem(KEY, JSON.stringify(next));
-        }
-      } catch { /* noop */ }
+      persistQuickNoteBounds();
     });
 
     // 小窗改动某条笔记：B 插件无主窗，此处仅作空消费（防止 sendToParent 丢失报错）。
@@ -150,6 +160,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const openQuickNoteWindow = (mode) => {
     // 再次触发 = 收起：直接 close 销毁，不留孤儿，下次触发必走新建路径。
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
+      // 收起前记住 bounds（位置+尺寸），下次开窗沿用。
+      persistQuickNoteBounds();
       try {
         quickNoteWin.close();
       } catch { /* noop */ }
@@ -159,19 +171,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       return;
     }
 
-    // 读持久化偏好：用记住的宽高开窗，并同步置顶态。
+    // 读持久化偏好：用记住的宽高+位置开窗。
     const prefs = readQuickNotePrefs();
-    quickNotePinned = prefs.pinned;
     const openWidth = prefs.windowWidth;
     const openHeight = prefs.windowHeight;
-
-    // 定位到光标所在显示器的右上角。优先用 workArea（已扣除 macOS 菜单栏/Dock）。
-    let area = null;
-    try {
-      const point = utools.getCursorScreenPoint();
-      const display = utools.getDisplayNearestPoint(point);
-      area = display ? display.workArea || display.bounds : null;
-    } catch { /* noop */ }
 
     const winOpts = {
       show: false,
@@ -183,15 +186,29 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       resizable: true,
       skipTaskbar: true,
       closable: true,
-      alwaysOnTop: quickNotePinned,
+      alwaysOnTop: QUICKNOTE_ALWAYS_ON_TOP,
       roundedCorners: true,
       webPreferences: {
         preload: "preload-quicknote.js",
       },
     };
-    if (area) {
-      winOpts.x = Math.round(area.x + area.width - openWidth - QUICKNOTE_EDGE_GAP);
-      winOpts.y = Math.round(area.y + QUICKNOTE_EDGE_GAP);
+
+    // 位置：优先用记住的 x/y；缺省（首次开窗/老数据）才回退到光标所在屏右上角。
+    if (prefs.windowX !== null && prefs.windowY !== null) {
+      winOpts.x = prefs.windowX;
+      winOpts.y = prefs.windowY;
+    } else {
+      // 定位到光标所在显示器的右上角。优先用 workArea（已扣除 macOS 菜单栏/Dock）。
+      let area = null;
+      try {
+        const point = utools.getCursorScreenPoint();
+        const display = utools.getDisplayNearestPoint(point);
+        area = display ? display.workArea || display.bounds : null;
+      } catch { /* noop */ }
+      if (area) {
+        winOpts.x = Math.round(area.x + area.width - openWidth - QUICKNOTE_EDGE_GAP);
+        winOpts.y = Math.round(area.y + QUICKNOTE_EDGE_GAP);
+      }
     }
 
     const url = `quicknote.html`;
@@ -202,9 +219,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           quickNoteWin.focus?.();
           quickNoteVisible = true;
           quickNoteActiveMode = mode;
-          if (quickNotePinned) {
-            try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
-          }
+          // 强制置顶：用最高层级 screen-saver，确保盖在其他置顶窗之上。
+          try { quickNoteWin.setAlwaysOnTop(true, "screen-saver"); } catch { /* noop */ }
         } catch { /* noop */ }
       });
     } catch { /* noop */ }

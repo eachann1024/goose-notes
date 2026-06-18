@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreateBlockNote, BlockNoteViewRaw as BlockNoteView } from "@blocknote/react";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 interface HistoryReadOnlyEditorProps {
   content: BlockNoteContent;
-  /** 切换版本时强制重建编辑器（避免 initialContent 不同步） */
+  /** 当前版本标识；变化时用 replaceBlocks 换内容，而非重建实例 */
   versionKey: string;
 }
 
@@ -24,12 +24,14 @@ interface HistoryReadOnlyEditorProps {
  * 设计取舍：
  *  - 不复用 Editor.tsx：那是写态编辑器，绑死 usePages.activePageId、有 debouncedUpdate / file drop / shortcuts，
  *    在历史模式下这些副作用全是噪音。这里只要一个干净的只读渲染。
- *  - 用 versionKey 作为外层 key（在父组件 wrap），切版本即重建实例，避免 BlockNote 的 initialContent 只生效一次。
+ *  - 切版本时用 editor.replaceBlocks 原地换内容，而非靠外层 key 重建实例。
+ *    重建 BlockNote/ProseMirror 实例开销极大，uTools 旧内核下连续回看多个版本会卡死主线程；
+ *    复用同一实例只换 blocks 把开销降到一次解析。
  *  - 不挂 SideMenu / FormattingToolbar / SlashMenu：只读不需要任何编辑控件。
  */
 export function HistoryReadOnlyEditor({
   content,
-  versionKey: _versionKey,
+  versionKey,
 }: HistoryReadOnlyEditorProps) {
   const { globalEditorFullWidth, theme } = useSettings();
   const { activePageId } = usePages();
@@ -85,6 +87,17 @@ export function HistoryReadOnlyEditor({
   useEffect(() => {
     editor.isEditable = false;
   }, [editor]);
+
+  // 切版本时原地换内容：initialContent 只在创建时生效一次，后续版本靠 replaceBlocks
+  // 把整篇文档换掉，复用同一编辑器实例（不重建，避免卡死）。
+  // 以 normalized 引用为准（content 真正到达才换），而非 versionKey——后者会先于
+  // 异步内容变化，导致用旧内容多刷一次。
+  const renderedContentRef = useRef(normalized);
+  useEffect(() => {
+    if (renderedContentRef.current === normalized) return; // 首次渲染由 initialContent 承担
+    renderedContentRef.current = normalized;
+    editor.replaceBlocks(editor.document, normalized as any);
+  }, [editor, normalized]);
 
   // 与主 Editor 在 WorkspaceLayout 内的包裹完全一致：max-w-4xl mx-auto / max-w-full
   // 父级（HistoryView 的 page-scroll-container 内）已经提供 px-8 / px-6 md:px-8 lg:px-10
