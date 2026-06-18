@@ -1,0 +1,324 @@
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { uToolsStorage } from '@/lib/storage'
+
+import type { Theme, CodeStyle, AISettings, UToolsSettings, DesktopSettings } from './types'
+import {
+    normalizeCodeStyle,
+    normalizeUIFontSize,
+    normalizeAISettings,
+    normalizeDesktopHotkeyStatus,
+    mergeSearchProvidersWithDefaults,
+    normalizeCustomActions,
+    UTOOLS_WINDOW_HEIGHT_MIN,
+    UTOOLS_WINDOW_HEIGHT_MAX,
+    UTOOLS_WINDOW_HEIGHT_DEFAULT,
+    DEFAULT_WAKE_HOTKEY,
+    DEFAULT_SEARCH_HOTKEY,
+    DEFAULT_CLOSE_TAB_SHORTCUT,
+    DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
+} from './types'
+
+import { createAISlice, type AISlice } from './slices/aiSlice'
+import { createAppearanceSlice, type AppearanceSlice } from './slices/appearanceSlice'
+import { createUToolsSlice, type UToolsSlice } from './slices/utoolsSlice'
+import { createShortcutsSlice, type ShortcutsSlice, DEFAULT_APP_SHORTCUTS } from './slices/shortcutsSlice'
+import { createSearchProvidersSlice, type SearchProvidersSlice } from './slices/searchProvidersSlice'
+import { createLocalFolderSlice, type LocalFolderSlice } from './slices/localFolderSlice'
+
+export type SettingsState =
+    AISlice &
+    AppearanceSlice &
+    UToolsSlice &
+    ShortcutsSlice &
+    SearchProvidersSlice &
+    LocalFolderSlice & {
+        _hasHydrated: boolean
+    }
+
+// 应用主题到 DOM
+function applyTheme(theme: Theme) {
+    const root = document.documentElement
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+    if (isDark) {
+        root.classList.add('dark')
+    } else {
+        root.classList.remove('dark')
+    }
+
+    void applyNativeWindowTheme(theme, isDark)
+
+    // Re-apply code style when theme changes (because light/dark mode changed)
+    const state = useSettings.getState()
+    if (state) {
+        applyCodeStyle(state.codeStyle)
+    }
+}
+
+async function applyNativeWindowTheme(theme: Theme, isDark: boolean) {
+    void theme
+    void isDark
+}
+
+// 应用代码主题到 DOM
+function applyCodeStyle(codeStyle: CodeStyle) {
+    const root = document.documentElement
+    const isDark = root.classList.contains('dark')
+
+    let finalClass = ''
+
+    switch (codeStyle) {
+        case 'default':
+            finalClass = isDark ? 'github-dark' : 'github-light'
+            break
+        case 'github':
+            finalClass = isDark ? 'github-dark' : 'github-light'
+            break
+        case 'modern':
+            finalClass = isDark ? 'one-dark' : 'one-light'
+            break
+        case 'night':
+            finalClass = isDark ? 'tokyo-night' : 'github-light-mod'
+            break
+        case 'nord':
+            finalClass = isDark ? 'nord' : 'nord-light'
+            break
+        case 'nord-light':
+            finalClass = isDark ? 'nord' : 'nord-light'
+            break
+        default:
+            finalClass = isDark ? 'github-dark' : 'github-light'
+    }
+
+    if (finalClass) {
+        root.setAttribute('data-code-theme', finalClass)
+    } else {
+        root.removeAttribute('data-code-theme')
+    }
+}
+
+const applyFns = { applyTheme, applyCodeStyle }
+const getApply = () => applyFns
+
+export const useSettings = create<SettingsState>()(
+    persist(
+        (set) => ({
+            ...createAISlice(set as Parameters<typeof createAISlice>[0]),
+            ...createAppearanceSlice(set as Parameters<typeof createAppearanceSlice>[0], getApply),
+            ...createUToolsSlice(set as Parameters<typeof createUToolsSlice>[0]),
+            ...createShortcutsSlice(set as Parameters<typeof createShortcutsSlice>[0]),
+            ...createSearchProvidersSlice(set as Parameters<typeof createSearchProvidersSlice>[0]),
+            ...createLocalFolderSlice(set as Parameters<typeof createLocalFolderSlice>[0]),
+            _hasHydrated: false,
+        }),
+        {
+            name: 'goose-note-settings',
+            storage: createJSONStorage(() => uToolsStorage),
+            skipHydration: true,
+            onRehydrateStorage: () => (state) => {
+                const theme = state?.theme || 'system'
+                const codeStyle = normalizeCodeStyle(state?.codeStyle as string | undefined)
+                applyTheme(theme)
+                applyCodeStyle(codeStyle)
+                if (state && state.codeStyle !== codeStyle) {
+                    useSettings.setState({ codeStyle })
+                }
+                if (state && typeof state.defaultCodeBlockWrap !== 'boolean') {
+                    useSettings.setState({ defaultCodeBlockWrap: false })
+                }
+                if (state && typeof state.hideExpandArrows !== 'boolean') {
+                    useSettings.setState({ hideExpandArrows: false })
+                }
+                if (
+                    state &&
+                    state.sidebarClickBehavior !== 'preview' &&
+                    state.sidebarClickBehavior !== 'replace-current'
+                ) {
+                    useSettings.setState({ sidebarClickBehavior: 'preview' })
+                }
+                if (state && typeof state.tableEvenColumnWidth !== 'boolean') {
+                    useSettings.setState({ tableEvenColumnWidth: true })
+                }
+                const normalizedUIFontSize = normalizeUIFontSize(state?.uiFontSize as string | undefined)
+                if (state && state.uiFontSize !== normalizedUIFontSize) {
+                    useSettings.setState({ uiFontSize: normalizedUIFontSize })
+                }
+
+                const normalizedWindowHeight = Math.min(
+                    UTOOLS_WINDOW_HEIGHT_MAX,
+                    Math.max(
+                        UTOOLS_WINDOW_HEIGHT_MIN,
+                        state?.utools?.windowHeight ?? UTOOLS_WINDOW_HEIGHT_DEFAULT,
+                    ),
+                )
+                if (state?.utools && state.utools.windowHeight !== normalizedWindowHeight) {
+                    useSettings.setState({
+                        utools: {
+                            ...state.utools,
+                            windowHeight: normalizedWindowHeight,
+                        },
+                    })
+                }
+
+                const normalizedUTools: UToolsSettings | null = state?.utools
+                    ? {
+                        globalSearchEnabled: Boolean(state.utools.globalSearchEnabled),
+                        openSearchInUtools:
+                            typeof state.utools.openSearchInUtools === 'boolean'
+                                ? state.utools.openSearchInUtools
+                                : true,
+                        windowHeight: normalizedWindowHeight,
+                    }
+                    : null
+                if (normalizedUTools && JSON.stringify(state?.utools ?? null) !== JSON.stringify(normalizedUTools)) {
+                    useSettings.setState({ utools: normalizedUTools })
+                }
+
+                // Apply window height immediately upon rehydration
+                if (normalizedUTools) {
+                    try {
+                        const hostWindow = window as Window & {
+                            utools?: {
+                                setExpendHeight?: (height: number) => void
+                            }
+                        }
+                        hostWindow.utools?.setExpendHeight?.(normalizedUTools.windowHeight)
+                    } catch (e) {
+                        console.error("Failed to apply window height on rehydrate", e)
+                    }
+                }
+
+                const normalizedAI = normalizeAISettings(state?.ai as Partial<AISettings> | undefined)
+                if (JSON.stringify(state?.ai ?? null) !== JSON.stringify(normalizedAI)) {
+                    useSettings.setState({ ai: normalizedAI })
+                }
+
+                if (state) {
+                    if (typeof state.showRecentInSearch !== 'boolean') {
+                        useSettings.setState({ showRecentInSearch: true })
+                    }
+
+                    const normalizedCloseTabShortcut =
+                        typeof state.closeTabShortcut === 'string'
+                            ? state.closeTabShortcut.trim()
+                            : DEFAULT_CLOSE_TAB_SHORTCUT
+                    const normalizedSearchPanelCloseShortcut =
+                        typeof state.searchPanelCloseShortcut === 'string'
+                            ? state.searchPanelCloseShortcut.trim()
+                            : DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
+                    if (
+                        state.closeTabShortcut !== normalizedCloseTabShortcut ||
+                        state.searchPanelCloseShortcut !== normalizedSearchPanelCloseShortcut
+                    ) {
+                        useSettings.setState({
+                            closeTabShortcut: normalizedCloseTabShortcut,
+                            searchPanelCloseShortcut: normalizedSearchPanelCloseShortcut,
+                        })
+                    }
+
+                    const mergedProviders = mergeSearchProvidersWithDefaults(state.searchProviders)
+                    if (JSON.stringify(state.searchProviders) !== JSON.stringify(mergedProviders)) {
+                        useSettings.setState({ searchProviders: mergedProviders })
+                    }
+
+                    const normalizedCustomActions = normalizeCustomActions(state.customActions)
+                    if (JSON.stringify(state.customActions ?? []) !== JSON.stringify(normalizedCustomActions)) {
+                        useSettings.setState({ customActions: normalizedCustomActions })
+                    }
+
+                    // Merge stored appShortcuts with defaults (add missing keys)
+                    const storedAppShortcuts = (state as { appShortcuts?: Record<string, string> }).appShortcuts ?? {}
+                    const mergedAppShortcuts: Record<string, string> = { ...DEFAULT_APP_SHORTCUTS, ...storedAppShortcuts }
+                    if (JSON.stringify(state.appShortcuts) !== JSON.stringify(mergedAppShortcuts)) {
+                        useSettings.setState({ appShortcuts: mergedAppShortcuts })
+                    }
+
+                    const storedDesktop = state.desktop as Partial<DesktopSettings> | undefined
+                    const mergedDesktop: DesktopSettings = {
+                        wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
+                        wakeHotkeyEnabled: storedDesktop?.wakeHotkeyEnabled ?? true,
+                        searchHotkey: storedDesktop?.searchHotkey ?? DEFAULT_SEARCH_HOTKEY,
+                        searchHotkeyEnabled: storedDesktop?.searchHotkeyEnabled ?? true,
+                        wakeHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.wakeHotkeyStatus),
+                        searchHotkeyStatus: normalizeDesktopHotkeyStatus(storedDesktop?.searchHotkeyStatus),
+                    }
+                    if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
+                        useSettings.setState({ desktop: mergedDesktop })
+                    }
+                }
+
+                if (state) {
+                    const normalizedLocalFolderExternalEditor =
+                        typeof state.localFolderExternalEditor === 'string'
+                            ? state.localFolderExternalEditor
+                            : ''
+                    if (state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor) {
+                        useSettings.setState({ localFolderExternalEditor: normalizedLocalFolderExternalEditor })
+                    }
+                }
+
+                // 标记 hydration 完成
+                useSettings.setState({ _hasHydrated: true })
+            },
+        }
+    )
+)
+
+// 监听系统主题变化
+if (typeof window !== 'undefined') {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQuery.addEventListener('change', () => {
+        const { theme, codeStyle } = useSettings.getState()
+        if (theme === 'system') {
+            applyTheme('system')
+        }
+        applyCodeStyle(codeStyle)
+    })
+
+    // 立即初始化主题（确保在 DOM 加载后立即应用）
+    const initThemes = () => {
+        const state = useSettings.getState()
+        applyTheme(state.theme)
+        applyCodeStyle(state.codeStyle)
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initThemes)
+    } else {
+        initThemes()
+    }
+}
+
+// Re-export all types from types.ts for backward compatibility
+export type {
+    SearchProvider,
+    Theme,
+    CodeStyle,
+    UToolsSettings,
+    AISettings,
+    DesktopHotkeyStatusState,
+    DesktopHotkeyStatus,
+    DesktopSettings,
+    PrivacySettings,
+    FontConfig,
+    CustomFonts,
+    CustomAction,
+    UIFontSize,
+} from './types'
+
+export {
+    EDITOR_FONT_SIZE_MIN,
+    EDITOR_FONT_SIZE_MAX,
+    EDITOR_FONT_SIZE_DEFAULT,
+    DEFAULT_WAKE_HOTKEY,
+    DEFAULT_SEARCH_HOTKEY,
+    DEFAULT_CLOSE_TAB_SHORTCUT,
+    DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
+    UTOOLS_WINDOW_HEIGHT_MIN,
+    UTOOLS_WINDOW_HEIGHT_MAX,
+    UTOOLS_WINDOW_HEIGHT_DEFAULT,
+    DEFAULT_SEARCH_PROVIDERS,
+} from './types'
+
+export { DEFAULT_APP_SHORTCUTS } from './slices/shortcutsSlice'

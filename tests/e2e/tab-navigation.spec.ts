@@ -1,0 +1,217 @@
+import { expect, test } from "playwright/test";
+
+async function waitForHydration(page: import("playwright/test").Page) {
+  await page.waitForFunction(() => {
+    const bridge = (window as Window & { __GOOSE_TEST__?: { getPagesState: () => { hydrated: boolean } } })
+      .__GOOSE_TEST__;
+    return Boolean(bridge?.getPagesState().hydrated);
+  });
+}
+
+async function seedTwoPages(page: import("playwright/test").Page) {
+  await page.evaluate(() => {
+    const bridge = (window as Window & {
+      __GOOSE_TEST__?: {
+        resetTabs: () => void;
+        createPage: (parentId?: string, workspaceId?: string) => string;
+        getNotebooksState: () => { activeNotebookId: string | null };
+      };
+    }).__GOOSE_TEST__;
+    if (!bridge) throw new Error("Test bridge unavailable");
+    bridge.resetTabs();
+  });
+
+  return page.evaluate(() => {
+    const bridge = (window as Window & {
+      __GOOSE_TEST__?: {
+        createPage: (parentId?: string, workspaceId?: string) => string;
+        getNotebooksState: () => { activeNotebookId: string | null };
+      };
+    }).__GOOSE_TEST__;
+    if (!bridge) throw new Error("Test bridge unavailable");
+    const notebookId =
+      bridge.getNotebooksState().activeNotebookId ?? "default-notebook";
+    const a = bridge.createPage(undefined, notebookId);
+    const b = bridge.createPage(undefined, notebookId);
+    return { a, b };
+  });
+}
+
+test.describe("VSCode-style tab navigation", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__ = true;
+    });
+    await page.goto("/");
+    await waitForHydration(page);
+  });
+
+  test("pinned tab stays intact when preview-opening another page", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+
+    await page.evaluate(
+      ({ pageA, pageB }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string, pin?: boolean) => void;
+            openPreviewTab: (pageId: string) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPermanentTab(pageA, true);
+        bridge.openPreviewTab(pageB);
+      },
+      { pageA: a, pageB: b },
+    );
+
+    const tabs = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{
+              id: string;
+              pageId: string;
+              pinned?: boolean;
+              preview?: boolean;
+            }>;
+            activeTabId: string | null;
+          };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return bridge.getTabsState();
+    });
+
+    expect(tabs.openTabs).toHaveLength(2);
+    const pinned = tabs.openTabs.find((tab) => tab.pageId === a);
+    const preview = tabs.openTabs.find((tab) => tab.pageId === b);
+    expect(pinned?.pinned).toBe(true);
+    expect(preview?.preview).toBe(true);
+    expect(preview?.id).toBe(tabs.activeTabId);
+    expect(pinned?.pageId).toBe(a);
+  });
+
+  test("preview slot is reused for subsequent preview opens", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+    const c = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          createPage: (parentId?: string, workspaceId?: string) => string;
+          getNotebooksState: () => { activeNotebookId: string | null };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      const notebookId =
+        bridge.getNotebooksState().activeNotebookId ?? "default-notebook";
+      return bridge.createPage(undefined, notebookId);
+    });
+
+    await page.evaluate(
+      ({ pageA, pageB, pageC }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string) => void;
+            openPreviewTab: (pageId: string) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPermanentTab(pageA);
+        bridge.openPreviewTab(pageB);
+        bridge.openPreviewTab(pageC);
+      },
+      { pageA: a, pageB: b, pageC: c },
+    );
+
+    const state = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{ preview?: boolean; pageId: string }>;
+          };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return bridge.getTabsState();
+    });
+
+    expect(state.openTabs).toHaveLength(2);
+    expect(state.openTabs.filter((tab) => tab.preview)).toHaveLength(1);
+    const preview = state.openTabs.find((tab) => tab.preview);
+    expect(preview?.pageId).toBe(c);
+  });
+
+  test("sidebar single click opens preview without replacing pinned tab", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+
+    await page.evaluate(
+      ({ pageA }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string, pin?: boolean) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPermanentTab(pageA, true);
+      },
+      { pageA: a },
+    );
+
+    const rowB = page.locator(`[data-rct-item-id="${b}"]`).first();
+    await expect(rowB).toBeVisible({ timeout: 15_000 });
+    await rowB.click();
+
+    const state = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{
+              id: string;
+              pageId: string;
+              pinned?: boolean;
+              preview?: boolean;
+            }>;
+            activeTabId: string | null;
+          };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return bridge.getTabsState();
+    });
+
+    const pinned = state.openTabs.find((tab) => tab.pageId === a);
+    const preview = state.openTabs.find((tab) => tab.pageId === b);
+    expect(pinned?.pinned).toBe(true);
+    expect(pinned?.pageId).toBe(a);
+    expect(preview?.preview).toBe(true);
+    expect(state.activeTabId).toBe(preview?.id);
+  });
+
+  test("preview tab shows italic marker in tab bar", async ({ page }) => {
+    const { a } = await seedTwoPages(page);
+
+    await page.evaluate(
+      ({ pageA }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPreviewTab: (pageId: string) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPreviewTab(pageA);
+      },
+      { pageA: a },
+    );
+
+    const previewTab = page.locator(
+      `[data-tab-page-id="${a}"][data-tab-preview="true"]`,
+    );
+    await expect(previewTab).toBeVisible();
+    await expect(previewTab.locator("span.truncate")).toHaveClass(/italic/);
+  });
+});

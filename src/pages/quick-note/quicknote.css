@@ -1,0 +1,97 @@
+/* 速记小窗专属样式（仅 quicknote.html 入口加载）。 */
+
+/* 无边框窗口：根容器填满。窗口圆角交给系统（createBrowserWindow roundedCorners）。 */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  /* 背景兜底：setSize 放大窗口的瞬间，web 内容若尚未重绘到新尺寸，
+     会露出窗口底层（表现为右侧/底部一条灰边）。让 html/body 与编辑器同色，
+     任何未绘制区域都是同一底色，消除灰色残影。 */
+  background: hsl(var(--goose-editor-bg));
+}
+
+.quicknote-root {
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* 顶部标题栏：浮层化——默认隐藏，鼠标进入窗口才淡入（不占布局高度，
+   编辑区因此能填满整个窗口）。仍作为拖动区；按钮单独 no-drag（见组件内联 style）。 */
+.quicknote-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  -webkit-user-select: none;
+  user-select: none;
+  /* 顶栏下方拉一层与编辑器同色的渐变，避免浮现时直接压住正文造成割裂感。 */
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--goose-editor-bg)) 60%,
+    hsl(var(--goose-editor-bg) / 0)
+  );
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+/* 鼠标进入整个窗口 → 顶栏淡入；移出 → 淡出。 */
+.quicknote-root:hover .quicknote-titlebar,
+.quicknote-titlebar:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.quicknote-titlebar-btn {
+  cursor: default;
+}
+
+/* 速记编辑区内边距：左右收窄贴近窗口（仍保留块手柄热区）；顶部给浮动顶栏让位，
+   底部留足呼吸空间，避免内容贴底。 */
+.quicknote-editor-surface {
+  padding-inline: 4px;
+  padding-top: 8px;
+  padding-bottom: 48px;
+}
+.quicknote-editor-surface .bn-editor {
+  padding-inline: 18px; /* 左侧容纳手柄热区，右侧对称，整体比原先更贴边 */
+}
+
+.quicknote-toaster[data-sonner-toaster] {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  transform: none !important;
+}
+
+.quicknote-toaster[data-sonner-toaster] [data-sonner-toast] {
+  position: fixed !important;
+  left: 24px !important;
+  right: 24px !important;
+  top: auto !important;
+  bottom: 30px !important;
+  width: min(420px, calc(100vw - 48px)) !important;
+  margin-inline: auto !important;
+  transform: none !important;
+}
+
+
+/* 速记滚动区：隐藏滚动条占位，保持极简（悬浮时才隐约可见）。 */
+.quicknote-root .page-scroll-container {
+  scrollbar-width: thin;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 3px;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}

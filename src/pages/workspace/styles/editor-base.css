@@ -1,0 +1,834 @@
+.goose-blocknote-editor,
+.bn-editor {
+  min-height: 320px;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  overflow-anchor: none;
+  font-size: var(--editor-font-size);
+  line-height: 1.7;
+}
+
+.goose-blocknote-editor ::selection,
+.bn-editor ::selection {
+  background-color: rgba(35, 131, 226, 0.28);
+  color: inherit;
+}
+
+.dark .goose-blocknote-editor ::selection,
+.dark .bn-editor ::selection {
+  background-color: rgba(35, 131, 226, 0.4);
+  color: inherit;
+}
+
+/* 隐藏空折叠块展开后的「点击添加区块」提示按钮；
+   空标题按 Enter 会退出折叠块（原生行为），无需此按钮。 */
+/* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈、像没展开），
+   文案在 Editor.tsx dictionary 覆盖，这里只调淡样式不喧宾夺主 */
+.bn-editor .bn-toggle-add-block-button {
+  opacity: 0.45;
+  font-size: 14px;
+  /* 与 children 缩进对齐（见下方 .bn-block-group 规则），读作「子内容占位行」，
+     而不是顶格另起一行盖在标题正下方 */
+  margin-left: 22px;
+}
+
+/* 折叠箭头换成与侧栏一致的 Lucide ChevronRight（描边 1.75）：
+   BlockNote 内置的是 Material 实心箭头，与整体图标风格不符。
+   用 mask + currentColor 适配深浅模式；展开旋转沿用 BlockNote 原有
+   .bn-toggle-wrapper[data-show-children=true] 的 rotate(90deg)。 */
+.bn-editor .bn-toggle-button svg {
+  display: none;
+}
+.bn-editor .bn-toggle-button {
+  transition: transform 0.2s ease-out;
+}
+.bn-editor .bn-toggle-button::before {
+  content: "";
+  /* 随块字号缩放：折叠标题(H1~H3)箭头跟着标题变大，普通折叠列表(16px)约等于原 16px */
+  width: 1em;
+  height: 1em;
+  min-width: 16px;
+  min-height: 16px;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* 折叠标题的箭头悬挂到左侧 gutter（Notion 手感）：
+   chevron 按钮默认是行内 flex item，会把标题文字/placeholder 往右推一个按钮宽，
+   视觉上像「标题前面多了空格」。改为绝对定位挂在 wrapper 左外侧，
+   标题文字与普通标题左对齐；editor 自带 54px padding-inline，gutter 放得下。
+   普通折叠列表(toggleListItem)的箭头充当列表 marker，保持行内不动。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper {
+  position: relative;
+}
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+  position: absolute;
+  /* 用 left 负偏移代替 right:100% 把箭头挂到标题左外侧 gutter。
+     uTools 旧 Chromium 内核下 absolute 子项的 right:100%（相对父
+     relative 宽度反推右外侧）与 fit-content 高度关键字解析不稳，
+     箭头会退回占位把标题推右；left 负值 + 固定高度是旧内核必稳的
+     基础写法，web/uTools 行为一致。约 1 个箭头宽(1em)+4px 间距。 */
+  left: calc(-1em - 4px);
+  /* 垂直居中用 inset+margin，不占用 transform——展开态旋转
+     (.bn-toggle-wrapper[data-show-children=true] .bn-toggle-button { transform: rotate(90deg) })
+     还要用它。height 用具体值而非 fit-content（旧内核不识别）。 */
+  top: 0;
+  bottom: 0;
+  height: 1em;
+  margin: auto 0;
+}
+/* BlockNote 默认给 .bn-toggle-button:hover 上 hovered-background 底色。
+   折叠标题的箭头悬挂在标题左外侧、字号大，hover 底色一块很突兀——去掉。
+   仅作用于折叠标题；普通折叠列表(toggleListItem)的箭头 hover 底色保持不变。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button:hover {
+  background: transparent;
+}
+
+/* 普通折叠列表(toggleListItem)的箭头统一手感：
+   箭头不再参与 flex 流（默认它是行内 flex item，多行/空块时会整块垂直居中、
+   把空块的占位行挤到下一行），改为绝对定位钉在首行左侧 marker 位；
+   wrapper 用 padding-left 保留 22px marker 空间，文字 x 在收起/展开/换行
+   三态下恒定不动。 */
+.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper {
+  position: relative;
+  padding-left: 22px;
+}
+.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* 钉在首行：高度=正文行高(1.5em)，图标在其内垂直居中；
+     不用 transform——展开态旋转 rotate(90deg) 还要用它 */
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+
+/* 折叠块 children 缩进与标题文字精确对齐（marker 22px），
+   默认 .bn-block-group 的 24px 会比标题文字多出 2px */
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group {
+  margin-left: 22px;
+}
+
+/* 折叠块 children 缩进引用线：连续空行没有任何文字时，没这条线
+   完全看不出这些行还在折叠块里（像内容跑到了折叠块外面）。
+   线挂在箭头列正下方，两种折叠块（toggleListItem / 折叠标题）都画。 */
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group {
+  position: relative;
+}
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group::before,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group::before {
+  content: "";
+  position: absolute;
+  /* children group 相对标题文字缩进 22px，箭头列中心 ≈ 文字左缘往左 14px */
+  left: -14px;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  border-radius: 1px;
+  background: hsl(var(--border));
+}
+
+.goose-find-match {
+  background-color: rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* 搜索定位高亮淡出：到点后加此 class，背景与描边过渡到透明 */
+.goose-find-match--fading,
+.goose-find-match--fading.goose-find-match--current {
+  background-color: transparent;
+  box-shadow: 0 0 0 1px transparent;
+}
+
+.goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
+  color: inherit;
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+.dark .goose-find-match {
+  background-color: rgba(250, 204, 21, 0.32);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45);
+}
+
+.dark .goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.85);
+}
+
+.workspace-editor-surface .bn-container,
+.workspace-editor-surface .bn-root {
+  flex: 1 1 100% !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  background: transparent;
+}
+
+.workspace-editor-surface .tiptap {
+  width: 100% !important;
+}
+
+.workspace-editor-surface .bn-editor {
+  min-height: 100%;
+  background: transparent;
+  padding-inline: 0;
+  width: 100%;
+}
+
+/* 全宽态（uTools 主窗默认铺满 / 用户手动开全宽）左右留白：
+   全宽态内容铺满窗口、左缘贴边，side menu(+/把手)绝对定位在内容左缘 -40px 会贴着
+   窗口左边甚至溢出。补 ~56px gutter 让 side menu 落进留白区不溢出窗口；右侧对称留白。
+   注：折叠标题箭头与 side menu 同锚内容左缘、向同侧展开，留白只整体右移、消不掉两者
+   重叠——那由折叠标题专门处理（见下方 toggle 列覆盖规则）。 */
+.workspace-editor-surface.max-w-none .bn-editor {
+  padding-inline: 56px;
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {
+  margin-top: 0;
+}
+
+/* BlockNote 块间距全局优化 */
+.workspace-editor-surface .bn-block-outer {
+  margin-bottom: 0.5em;
+}
+
+.workspace-editor-surface .bn-block-outer:last-child {
+  margin-bottom: 0;
+}
+
+/*
+ * 有序列表编号：直接采用 BlockNote 算好的 data-index（1-based，已正确处理
+ * start 属性 + 被 divider/标题等非列表块打断后的重新计数），不要再用自增
+ * CSS counter——counter 会无视 data-index、整篇文档连续累加，导致用户输入
+ * 「1.」却延续上文显示「3.」、无法新起列表。
+ */
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="numberedListItem"])
+  > .bn-block
+  > .bn-block-content[data-content-type="numberedListItem"]::before {
+  content: attr(data-index) "." !important;
+}
+
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
+  margin-bottom: 0.6em;
+}
+
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="table"]) {
+  margin-bottom: 0.6em;
+}
+
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-block-outer:has(.bn-block-content[data-content-type="table"]),
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-block-outer:has(.bn-block-content[data-content-type="table"])
+  > .bn-block,
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-block-outer:has(.bn-block-content[data-content-type="table"])
+  > .bn-block
+  > .bn-block-content[data-content-type="table"] {
+  width: 100%;
+  max-width: 100%;
+}
+
+.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] th,
+.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] td {
+  width: auto;
+  overflow-wrap: anywhere;
+}
+
+/* 注意：BlockNote 在编辑器内部把 --foreground/--muted 覆盖成 oklch(...) 整色值，
+   不再是 HSL 三元组，所以这里不能用 hsl(var(--foreground) / a)，会解析失败导致透明。
+   标题行底色改用字面 rgba。 */
+.workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  background-color: rgba(0, 0, 0, 0.045);
+  font-weight: 600;
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td {
+  border-color: hsl(var(--border) / 0.55);
+}
+
+.workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.55);
+}
+
+.dark .workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.4);
+}
+
+/* ===== 链接样式：始终蓝色 + 下划线（含表格单元格内） ===== */
+.workspace-editor-surface a[data-inline-content-type="link"] {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: text;
+  transition: color 0.15s ease;
+}
+
+.workspace-editor-surface a[data-inline-content-type="link"]:hover {
+  color: #1d4ed8;
+}
+
+.dark .workspace-editor-surface a[data-inline-content-type="link"] {
+  color: #60a5fa;
+}
+
+.dark .workspace-editor-surface a[data-inline-content-type="link"]:hover {
+  color: #93c5fd;
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: visible;
+}
+
+.workspace-editor-surface .bn-block-outer:has([data-callout="true"]),
+.workspace-editor-surface .bn-block:has([data-callout="true"]),
+.workspace-editor-surface .bn-block-content[data-content-type="callout"],
+.workspace-editor-surface .bn-block-content:has([data-callout="true"]),
+.workspace-editor-surface .react-renderer.node-callout {
+  width: 100%;
+}
+
+/* ===== 表格扩展按钮（+） ===== */
+.goose-table-extend-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.72);
+  box-shadow: none;
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.goose-table-extend-button > svg {
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 2px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow:
+    0 0 0 1px hsl(var(--border) / 0.76),
+    0 2px 6px hsl(var(--foreground) / 0.06);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.goose-table-extend-button:hover,
+.goose-table-extend-button.is-editing {
+  color: hsl(var(--foreground));
+}
+
+.goose-table-extend-button:hover > svg,
+.goose-table-extend-button.is-editing > svg {
+  background: transparent;
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.34),
+    0 3px 8px hsl(var(--foreground) / 0.08);
+}
+
+.goose-table-extend-button:active {
+  transform: scale(0.96);
+}
+
+.goose-table-extend-button-columns {
+  inline-size: 18px;
+  block-size: 100%;
+  min-block-size: 100%;
+  cursor: col-resize;
+}
+
+/* 行扩展按钮：占满 popover 宽度，+ 居中 */
+.goose-table-extend-button-rows {
+  inline-size: 100%;
+  block-size: 18px;
+  cursor: row-resize;
+}
+
+.workspace-editor-surface .bn-table-drop-cursor {
+  background-color: hsl(var(--primary) / 0.72);
+  border-radius: 999px;
+}
+
+
+/* ===== 表格拖拽手柄按钮 ===== */
+.goose-table-handle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.6);
+  cursor: grab;
+  padding: 2px;
+  opacity: 0.72;
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.goose-table-handle-btn:hover {
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--foreground));
+  opacity: 1;
+}
+
+/* ===== 表格拖拽手柄美化 ===== */
+.workspace-editor-surface .bn-table-handle {
+  border-radius: 4px;
+  opacity: 0.5;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.workspace-editor-surface .bn-table-handle:hover {
+  opacity: 1;
+  background: hsl(var(--accent) / 0.5);
+}
+
+.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="image"]) {
+  margin-bottom: 0.5em;
+}
+
+/* ===== 行内代码样式（Notion 风格：红字 + 浅灰底） ===== */
+.workspace-editor-surface .bn-inline-content code {
+  background-color: rgba(135, 131, 120, 0.15);
+  color: #eb5757;
+  padding: var(--editor-inline-code-padding-y, 0.15em) var(--editor-inline-code-padding-x, 0.4em);
+  border-radius: var(--editor-inline-code-radius, 4px);
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
+  font-size: 0.92em;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+.dark .workspace-editor-surface .bn-inline-content code {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ff7b7b;
+}
+
+/* 表格单元格内的行内代码：BlockNote 给 th/td 设了单元格文字色，优先级高于上面的
+   .bn-inline-content code，把红字盖成默认色。这里显式补回，让表格内外的行内代码一致变红。 */
+.workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
+.workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+  color: #eb5757;
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+  color: #ff7b7b;
+}
+
+/* ===== 行内代码假光标（飞书 / Notion 式边界光标） =====
+   当光标逻辑上「在 code 内」但贴着边界时，浏览器真 caret 会被画到 code 外。
+   inlineCodeEscapeExtension 此时隐藏真 caret，并在 code 内沿渲染这个零宽假光标。 */
+.workspace-editor-surface .goose-inline-code-fake-cursor {
+  display: inline-block;
+  width: 0;
+  margin-right: -1px;
+  border-left: 1.5px solid currentColor;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  pointer-events: none;
+  animation: goose-inline-code-caret-blink 1.06s steps(1) infinite;
+}
+
+@keyframes goose-inline-code-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* 假光标可见时隐藏真 caret，避免双光标。class 由插件加在 ProseMirror 根
+   contenteditable 上(view.dom)，故直接用类选择器命中，不依赖外层容器。 */
+.goose-inline-code-hide-caret {
+  caret-color: transparent;
+}
+
+/* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
+  .bn-inline-content {
+  text-decoration: none;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ===== CheckListItem 对齐：单行时复选框与文字垂直居中，多行时对齐第一行 =====
+   原理：复选框包裹盒高度 = 一行行高（line-height 1.5em），盒内 input 垂直居中。
+   单行 → 盒高等于唯一一行 → 视觉居中；
+   多行 → 盒高仍只占第一行高度 → 复选框对齐第一行（顶部对齐效果）。
+   覆盖 BlockNote 内置的固定 height:24px，避免换字体后行高变化导致错位。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div:has(> input) {
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div > input {
+  height: auto;
+  margin-block: 0;
+}
+
+/* ===== BlockNote children 缩进优化 ===== */
+/* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
+.workspace-editor-surface .bn-block:has(> .bn-block-content[data-content-type="heading"]) > .bn-block-children {
+  padding-left: 0.5em;
+}
+
+/* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
+.workspace-editor-surface[data-font-family="default"] .bn-default-styles {
+  font-family: var(--font-default);
+}
+
+.workspace-editor-surface[data-font-family="serif"] .bn-default-styles {
+  font-family: var(--font-serif);
+}
+
+.workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
+  font-family: var(--font-mono);
+}
+
+/* ===== 自定义代码块增强（DOM 注入方案） ===== */
+
+/* 内置 codeBlock 容器：中性化 BlockNote 默认 chrome（#161616 黑底/白字/圆角），
+   视觉统一交给内层 .goose-code-block-node */
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  background-color: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 隐藏内置 language select（工具栏替代） */
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] > div > select {
+  display: none !important;
+}
+
+/* 内置 pre 样式覆盖 */
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] > pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 0.85em;
+  line-height: 1.7;
+  position: relative;
+}
+
+/* 注入的工具栏宿主 */
+.goose-code-toolbar-host {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--code-border, hsl(var(--border) / 0.3));
+  background: var(--code-bg, hsl(var(--muted) / 0.3));
+  color: var(--code-fg, hsl(var(--foreground)));
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"]:hover .goose-code-toolbar-host,
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"]:focus-within .goose-code-toolbar-host {
+  opacity: 1;
+}
+
+.goose-code-floating-toolbar {
+  display: flex;
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--background) / 0.92);
+  padding: 2px;
+  box-shadow: 0 6px 18px hsl(var(--foreground) / 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* 自定义 codeBlockSpec 容器 */
+.goose-code-block-node {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  background-color: var(--code-bg, hsl(var(--muted) / 0.55));
+  color: var(--code-fg, hsl(var(--foreground)));
+  /* 外壳边框与文件块统一，不随代码主题走（--code-border 仅供内部分隔线使用） */
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: var(--editor-code-block-radius, 8px);
+  overflow: hidden;
+}
+
+.goose-code-block-node[data-collapsed="true"] {
+  min-height: 42px;
+}
+
+.goose-code-toolbar-row {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+  color: var(--code-fg, hsl(var(--foreground)));
+}
+
+.goose-code-toolbar-left,
+.goose-code-toolbar-actions {
+  pointer-events: auto;
+}
+
+.goose-code-toolbar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.goose-code-toolbar-actions {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  flex-shrink: 0;
+}
+
+.goose-code-toolbar-actions button,
+.goose-code-toolbar-actions .goose-code-lang-trigger {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground) / 0.7) !important;
+  box-shadow: none !important;
+}
+
+.goose-code-toolbar-actions button:hover,
+.goose-code-toolbar-actions .goose-code-lang-trigger:hover {
+  background: hsl(var(--muted) / 0.5) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.goose-code-toolbar-actions button:disabled {
+  opacity: 0.4;
+}
+
+.goose-code-toolbar-left input {
+  background: transparent !important;
+  color: var(--code-fg, hsl(var(--foreground))) !important;
+  width: 100%;
+}
+
+.goose-code-toolbar-left input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.45) !important;
+}
+
+.goose-code-toolbar-left input:focus {
+  background: hsl(var(--muted) / 0.28) !important;
+}
+
+.goose-code-content-wrapper {
+  position: relative;
+  padding-top: 36px;
+}
+
+.goose-code-pre {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 0.85em;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.goose-code-content-wrapper:has(.goose-code-line-numbers) .goose-code-pre {
+  padding-left: 16px;
+}
+
+.goose-code-content {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* 行号 */
+.goose-code-line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  padding: 12px 8px 12px 0;
+  text-align: right;
+  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 11px;
+  line-height: 1.7;
+  display: none;
+  color: var(--code-line-number, hsl(var(--muted-foreground) / 0.4));
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.goose-code-line-numbers > div {
+  height: calc(1em * 1.7);
+}
+
+/* math/mermaid 预览 */
+.goose-code-preview-host .goose-code-preview {
+  padding: 8px 16px;
+  border-top: 1px solid var(--code-border, hsl(var(--border) / 0.2));
+  background: transparent;
+}
+
+/* ===== 自定义文件块（带下载/删除按钮） ===== */
+.goose-file-block-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background-color: hsl(var(--muted) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.4);
+  transition: border-color 150ms ease, background-color 150ms ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.goose-file-block-content:hover {
+  background-color: hsl(var(--muted) / 0.55);
+  border-color: hsl(var(--border) / 0.6);
+}
+
+/* 确保 BlockNote wrapper 不收缩 */
+.workspace-editor-surface .bn-block-content[data-content-type="file"] .bn-file-block-content-wrapper {
+  width: 100%;
+}
+
+.goose-file-block-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  color: hsl(var(--foreground));
+}
+
+.goose-file-block-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.8);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.goose-file-block-icon-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.goose-file-block-name {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(var(--foreground));
+}
+
+.goose-file-block-name-input {
+  font-size: 14px;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  background: hsl(var(--muted) / 0.28);
+  color: hsl(var(--foreground));
+  border: none;
+  outline: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.goose-file-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.goose-file-block-content:hover .goose-file-block-actions,
+.goose-file-block-content:focus-within .goose-file-block-actions {
+  opacity: 1;
+}
+
+.goose-file-block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.7);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.goose-file-block-action-btn:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
