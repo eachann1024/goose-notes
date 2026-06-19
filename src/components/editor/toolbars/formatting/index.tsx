@@ -39,7 +39,10 @@ export { shouldRenderFormattingToolbar };
 
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
-  const aiExtension = useExtension(AIExtension);
+  // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展，跳过 useExtension（避免对空壳 AIExtension 取键）。
+  // __GOOSE_LITE__ 是编译期常量，同一构建内分支固定，不违反 hooks 调用一致性。
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const aiExtension = __GOOSE_LITE__ ? undefined : useExtension(AIExtension);
   const { ai: aiSettings } = useEditorSettings();
   const { page } = useEditorPageContext();
   const isLocalFolderPage = Boolean(page?.localFilePath);
@@ -302,7 +305,7 @@ export function EditorFormattingToolbar() {
         }}
       >
         <div className="flex items-center gap-0.5 p-1">
-          {aiSettings.enabled && (
+          {!__GOOSE_LITE__ && aiSettings.enabled && (
             <>
               <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
               <Separator

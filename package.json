@@ -19,8 +19,8 @@
   },
   "scripts": {
     "dev": "vite  --port 6001",
-    "build": "tsc -b && vite build && node scripts/utools-build.js",
-    "build:debug": "GOOSE_DEBUG=1 tsc -b && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/utools-build.js",
+    "build": "tsc -b && vite build && GOOSE_BUILD_TARGET=quicknote vite build && node scripts/utools-build.js",
+    "build:debug": "GOOSE_DEBUG=1 tsc -b && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 GOOSE_BUILD_TARGET=quicknote vite build && GOOSE_DEBUG=1 node scripts/utools-build.js",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "E2E_AUTO_START=1 playwright test",
@@ -84,6 +84,7 @@
     "lucide-react": "1.17.0",
     "markdown-it": "14.2.0",
     "mermaid": "11.15.0",
+    "minisearch": "^7.2.0",
     "pinyin-pro": "^3.28.1",
     "prettier": "3.8.3",
     "prosemirror-highlight": "^0.15.1",

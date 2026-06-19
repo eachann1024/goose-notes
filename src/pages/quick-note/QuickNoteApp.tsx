@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { X, Save, HelpCircle } from "lucide-react";
+import { X, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   useQuickNote,
@@ -59,6 +59,8 @@ export function QuickNoteApp() {
   };
 
   // 保存到笔记本：B 插件(standalone)→ redirect 回传 A 落库；A 插件 → 原本地落库。
+  // 注：保存按钮当前已隐藏，此函数暂时无调用方，保留逻辑以便后续恢复。
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSave = () => {
     const isStandalone =
       typeof window !== "undefined" && window.__GOOSE_QUICKNOTE_STANDALONE__ === true;
@@ -147,6 +149,31 @@ export function QuickNoteApp() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // 窗口位置记忆：用户拖动窗口移动 → 停下后记住最终位置，下次开窗沿用。
+  // window 无原生 move 事件，故低频轮询 screenX/screenY；坐标变化即重置「停下」计时，
+  // 停稳 280ms 后把当前屏幕坐标上报父窗持久化（移动不触发 resize，必须独立记忆）。
+  useEffect(() => {
+    let lastX = window.screenX;
+    let lastY = window.screenY;
+    let settleTimer: number | null = null;
+    const poll = window.setInterval(() => {
+      const x = window.screenX;
+      const y = window.screenY;
+      if (x === lastX && y === lastY) return;
+      lastX = x;
+      lastY = y;
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        settleTimer = null;
+        quickNoteWindow.persistPosition(window.screenX, window.screenY);
+      }, 280);
+    }, 300);
+    return () => {
+      window.clearInterval(poll);
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+    };
+  }, []);
+
   // 窗口尺寸记忆：用户拖动窗口边框改宽高 → 停下后记住最终尺寸，下次开窗沿用。
   useEffect(() => {
     const onResize = () => {
@@ -186,16 +213,7 @@ export function QuickNoteApp() {
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="保存到笔记本"
-            title="保存到笔记本"
-            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-            onClick={handleSave}
-          >
-            <Save className="h-3.5 w-3.5" />
-          </button>
+          {/* 保存按钮暂时隐藏（保留 handleSave 逻辑，后续可恢复）。 */}
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -218,10 +236,6 @@ export function QuickNoteApp() {
                 <li>
                   <b className="text-foreground">草稿模式</b>
                   ：这里写的内容是临时草稿，不会自动成为笔记，也不写入文件。
-                </li>
-                <li>
-                  <b className="text-foreground">保存到笔记本</b>
-                  （左上角 <Save className="inline h-3 w-3 align-text-bottom" />）：把当前草稿存为一条正式笔记，随后清空便签。
                 </li>
                 <li>
                   <b className="text-foreground">始终置顶</b>
@@ -291,7 +305,8 @@ export function QuickNoteApp() {
           classNames: {
             toast:
               "!min-w-0 !pr-10",
-            closeButton: "!right-2.5 !top-2.5",
+            // 不再覆盖 top：保留 sonner.tsx 默认的 !top-1/2 !-translate-y-1/2 垂直居中。
+            closeButton: "!right-2.5",
           },
         }}
       />

@@ -7,6 +7,37 @@ import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 
 const hostTarget = "utools";
 
+// 构建目标区分：
+// - 默认（app）：input=index.html → dist/，完整功能（plugin A 鹅的笔记）。行为与改动前一致。
+// - GOOSE_BUILD_TARGET=quicknote：input=quicknote.html → dist-quicknote/，精简（plugin B 鹅的小窗）。
+//   通过 __GOOSE_LITE__ 标志 + 重型依赖 alias 到空壳，把 katex/mermaid/prettier/PDF/echarts
+//   等「文档级」代码排除出小窗包（约省 9MB），小窗只保留快速记文字/标题/清单/代码高亮等。
+const isQuicknoteBuild = process.env.GOOSE_BUILD_TARGET === "quicknote";
+
+// 小窗精简构建专用：把这些「仅经动态 import 进入图」的重型 JS 依赖 alias 到极小空壳，
+// 确保它们不被打进 dist-quicknote（消费点已被 __GOOSE_LITE__ 短路，运行时不会真正调用）。
+//
+// 必须用「精确正则」只匹配裸包名 / 精确子路径的 JS import，不能用字符串前缀别名——
+// 否则会误伤 index.css 里的 `@import "katex/dist/katex.min.css"`（被改写成空壳目录下的
+// 不存在路径而构建失败）。katex CSS（~23KB）保留无妨，这里只剥离 katex 的 JS（~256KB）。
+const liteEmptyModule = path.resolve(__dirname, "./src/lib/build/lite-empty.ts");
+const liteStubAliases: { find: RegExp; replacement: string }[] = isQuicknoteBuild
+  ? [
+      { find: /^katex$/, replacement: liteEmptyModule },
+      { find: /^mermaid$/, replacement: liteEmptyModule },
+      { find: /^echarts$/, replacement: liteEmptyModule },
+      { find: /^@react-pdf\/renderer$/, replacement: liteEmptyModule },
+      { find: /^@blocknote\/xl-pdf-exporter$/, replacement: liteEmptyModule },
+      { find: /^prettier\/standalone$/, replacement: liteEmptyModule },
+      { find: /^prettier\/plugins\/.+$/, replacement: liteEmptyModule },
+      // AI（小窗砍掉「向 AI 提问」）：精确匹配包名，不碰 `@blocknote/xl-ai/style.css`（CSS 保留）。
+      { find: /^@blocknote\/xl-ai$/, replacement: liteEmptyModule },
+      { find: /^@blocknote\/xl-ai\/locales$/, replacement: liteEmptyModule },
+      { find: /^@ai-sdk\/openai-compatible$/, replacement: liteEmptyModule },
+      { find: /^@ai-sdk\/anthropic$/, replacement: liteEmptyModule },
+    ]
+  : [];
+
 const logger = createLogger();
 const originalWarnOnce = logger.warnOnce.bind(logger);
 const originalWarn = logger.warn.bind(logger);
@@ -158,6 +189,7 @@ export default defineConfig({
   base: "./", // utools 需要相对路径
   define: {
     __HOST_TARGET__: JSON.stringify(hostTarget),
+    __GOOSE_LITE__: JSON.stringify(isQuicknoteBuild),
   },
   plugins: [
     codeInspectorPlugin({
@@ -247,10 +279,13 @@ export default defineConfig({
       "prosemirror-view",
       "prosemirror-tables",
     ],
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@host-runtime": path.resolve(__dirname, "./src/lib/host/runtime.utools.ts"),
-    },
+    // 数组形式（含正则项）：小窗精简构建的空壳 alias 放最前，精确匹配重型包名；
+    // 非小窗构建 liteStubAliases 为空数组，主应用解析与改动前完全一致。
+    alias: [
+      ...liteStubAliases,
+      { find: "@host-runtime", replacement: path.resolve(__dirname, "./src/lib/host/runtime.utools.ts") },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
   // dev 依赖预构建（esbuild）。显式 include 整条 BlockNote + AI SDK 链，
   // 让它们与主体在同一次预构建里共享同一份 react，杜绝"第二份 React 实例"导致的
@@ -278,15 +313,18 @@ export default defineConfig({
   },
 
   build: {
+    // app → dist/；quicknote → dist-quicknote/（两个 uTools 插件各自独立打包，互不共享 chunk）。
+    outDir: isQuicknoteBuild ? "dist-quicknote" : "dist",
     // 正式 'hidden'（写盘后由 utools-build 删）；GOOSE_DEBUG=1 时 true（保留，供 DevTools 还原 src/）
     sourcemap: debugSourcemap,
     minify: debugMinify,
     rolldownOptions: {
-      // 多入口：主窗口 index.html + 速记小窗 quicknote.html（独立 browser 窗口加载）
-      input: {
-        index: path.resolve(__dirname, "index.html"),
-        quicknote: path.resolve(__dirname, "quicknote.html"),
-      },
+      // 单入口按构建目标切换：主应用打 index.html，小窗只打 quicknote.html。
+      // 分开构建让 rolldown 各自按入口可达性裁剪——小窗图不含 workspace <App/>，
+      // 自动甩掉 echarts / PDF 导出 / AI 图表等仅主应用需要的代码。
+      input: isQuicknoteBuild
+        ? { quicknote: path.resolve(__dirname, "quicknote.html") }
+        : { index: path.resolve(__dirname, "index.html") },
       output: {
         // rolldown 原生分包；不用废弃的 manualChunks
         codeSplitting: {

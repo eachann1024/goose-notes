@@ -8,6 +8,15 @@ interface ImportMetaEnv {
 declare global {
   const __HOST_TARGET__: "utools";
 
+  /**
+   * 速记小窗（plugin B / dist-quicknote）精简构建标志。
+   * GOOSE_BUILD_TARGET=quicknote 的构建里为 true（见 vite.config.ts define），
+   * 编辑器据此把 math/mermaid 退化为纯代码块、隐藏代码格式化按钮，
+   * 配合 alias 把 katex/mermaid/prettier 等重型依赖排除出小窗包。
+   * 主应用（plugin A）构建恒为 false，行为完全不变。
+   */
+  const __GOOSE_LITE__: boolean;
+
   interface GooseFs {
     readDir: (dir: string) => any[];
     readDirAsync?: (dir: string) => Promise<any[]>;

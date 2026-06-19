@@ -1,4 +1,3 @@
-import { importFromMarkdown } from "@/lib/export";
 import {
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
@@ -141,11 +140,11 @@ export interface ParsedLocalMarkdown {
 }
 
 // 把磁盘上的 markdown 解析成编辑器内容（供初次扫描和外部变更后重新读取复用）。
-export function parseLocalMarkdownContent(
+export async function parseLocalMarkdownContent(
   markdown: string | null,
   fallbackTitle: string,
   readError?: string,
-): ParsedLocalMarkdown {
+): Promise<ParsedLocalMarkdown> {
   if (markdown === null) {
     return {
       content: [] as unknown as JSONContent,
@@ -162,6 +161,7 @@ export function parseLocalMarkdownContent(
   //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
   const { frontmatter, body } = extractFrontmatter(markdown);
   const encodedBody = encodeUnsupportedMarkdownForEditor(body);
+  const { importFromMarkdown } = await import("@/lib/export");
   const imported = importFromMarkdown(encodedBody, fallbackTitle, {
     preserveStructure: true,
   });
@@ -180,17 +180,17 @@ export function localFileTitleFromPath(filePath: string): string {
   return normalizeLocalFileTitle(name);
 }
 
-function buildMarkdownPage(
+async function buildMarkdownPage(
   notebookId: string,
   basePath: string,
   entry: LocalFolderEntry,
   readResult: { content: string | null; error?: string },
   now: number,
   resolvedId?: string,
-): Page {
+): Promise<Page> {
   const fallbackTitle = normalizeLocalFileTitle(entry.name);
   const fileId = resolvedId ?? buildLocalPageId(notebookId, basePath, entry.path);
-  const parsed = parseLocalMarkdownContent(
+  const parsed = await parseLocalMarkdownContent(
     readResult.content,
     fallbackTitle,
     readResult.error,
@@ -245,6 +245,13 @@ export async function scanLocalFolderPages({
 
     const pages: Page[] = [];
 
+    // 收集待并发处理的文件项（目录仍串行，子树递归需有序）
+    interface PendingFileEntry {
+      entry: LocalFolderEntry;
+      fileId: string;
+    }
+    const pendingFiles: PendingFileEntry[] = [];
+
     for (const entry of entries) {
       if (shouldIgnoreEntry(entry.name)) continue;
 
@@ -278,18 +285,36 @@ export async function scanLocalFolderPages({
       );
       if (dirty) idMapDirty = true;
 
-      const now = Date.now();
-      const readResult = await readMarkdownFile(gooseFs, entry.path);
-      const page = buildMarkdownPage(
-        notebookId,
-        basePath,
-        entry,
-        readResult,
-        now,
-        fileId,
+      pendingFiles.push({ entry, fileId });
+    }
+
+    // 并发批处理读文件+解析，每批最多 8 个，防 EMFILE，保持顺序
+    const BATCH_SIZE = 8;
+    const now = Date.now();
+    for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
+      const batch = pendingFiles.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.allSettled(
+        batch.map(async ({ entry, fileId }) => {
+          const readResult = await readMarkdownFile(gooseFs, entry.path);
+          const page = await buildMarkdownPage(
+            notebookId,
+            basePath,
+            entry,
+            readResult,
+            now,
+            fileId,
+          );
+          page.parentId = parentId;
+          return page;
+        }),
       );
-      page.parentId = parentId;
-      pages.push(page);
+      for (const result of batchResults) {
+        if (result.status === "fulfilled") {
+          pages.push(result.value);
+        } else {
+          console.error("[local-folder-scanner] 跳过文件解析失败:", result.reason);
+        }
+      }
     }
 
     return pages;

@@ -6,6 +6,7 @@ import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
 import type { SettingsTab, SettingsTabConfig } from "./settings/types";
+import { useShallow } from "zustand/react/shallow";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { clearLocalPageMetadataCache, usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
@@ -13,11 +14,7 @@ import { clearPersistedPages } from "@/lib/storage/pageRepository";
 import { clearLegacyStorage } from "@/lib/storage/migrateLegacyStorage";
 import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
 import { UToolsAdapter } from "@/lib/utools";
-import {
-  exportNotebooks,
-  importNotebooksFromZip,
-  type ExportOptions,
-} from "@/lib/export";
+import type { ExportOptions } from "@/lib/export";
 import { uToolsStorage as dataStorage } from "@/lib/storage";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
@@ -102,9 +99,57 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setSidebarClickBehavior,
     localFolderExternalEditor,
     setLocalFolderExternalEditor,
-  } = useSettings();
-  const { notebooks } = useNotebooks();
-  const { pages } = usePages();
+  } = useSettings(useShallow((s) => ({
+    theme: s.theme,
+    setTheme: s.setTheme,
+    codeStyle: s.codeStyle,
+    setCodeStyle: s.setCodeStyle,
+    globalEditorFullWidth: s.globalEditorFullWidth,
+    setGlobalEditorFullWidth: s.setGlobalEditorFullWidth,
+    tableEvenColumnWidth: s.tableEvenColumnWidth,
+    setTableEvenColumnWidth: s.setTableEvenColumnWidth,
+    searchProviders: s.searchProviders,
+    toggleSearchProvider: s.toggleSearchProvider,
+    reorderSearchProviders: s.reorderSearchProviders,
+    utools: s.utools,
+    ai: s.ai,
+    setOpenSearchInUtools: s.setOpenSearchInUtools,
+    setAIEnabled: s.setAIEnabled,
+    setAISelectedModelId: s.setAISelectedModelId,
+    setAICustomProviderEnabled: s.setAICustomProviderEnabled,
+    saveAICustomConfig: s.saveAICustomConfig,
+    setUToolsWindowHeight: s.setUToolsWindowHeight,
+    privacy: s.privacy,
+    setAutoOpenLastNote: s.setAutoOpenLastNote,
+    showRecentInSearch: s.showRecentInSearch,
+    setShowRecentInSearch: s.setShowRecentInSearch,
+    closeTabShortcut: s.closeTabShortcut,
+    setCloseTabShortcut: s.setCloseTabShortcut,
+    searchPanelCloseShortcut: s.searchPanelCloseShortcut,
+    setSearchPanelCloseShortcut: s.setSearchPanelCloseShortcut,
+    appShortcuts: s.appShortcuts,
+    setAppShortcut: s.setAppShortcut,
+    resetAppShortcuts: s.resetAppShortcuts,
+    customFonts: s.customFonts,
+    setCustomLabel: s.setCustomLabel,
+    setCustomFont: s.setCustomFont,
+    uiFontSize: s.uiFontSize,
+    setUIFontSize: s.setUIFontSize,
+    hideExpandArrows: s.hideExpandArrows,
+    setHideExpandArrows: s.setHideExpandArrows,
+    customActions: s.customActions,
+    addCustomAction: s.addCustomAction,
+    updateCustomAction: s.updateCustomAction,
+    removeCustomAction: s.removeCustomAction,
+    notebookDropdownHoverExpand: s.notebookDropdownHoverExpand,
+    setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
+    sidebarClickBehavior: s.sidebarClickBehavior,
+    setSidebarClickBehavior: s.setSidebarClickBehavior,
+    localFolderExternalEditor: s.localFolderExternalEditor,
+    setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
+  })));
+  const { notebooks } = useNotebooks(useShallow((s) => ({ notebooks: s.notebooks })));
+  const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   useEffect(() => {
@@ -134,8 +179,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const notebookList = Object.values(notebooks).filter(
     (n) => n.source !== "local-folder",
   );
-  const { createNotebook } = useNotebooks();
-  const { createPage, updatePage } = usePages();
+  const { createNotebook } = useNotebooks(useShallow((s) => ({ createNotebook: s.createNotebook })));
+  const { createPage, updatePage } = usePages(useShallow((s) => ({ createPage: s.createPage, updatePage: s.updatePage })));
   const resetPhrase = "我已知晓风险";
   const canReset = resetInput.trim() === resetPhrase;
 
@@ -157,6 +202,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (selectedIds.length === 0) return;
     setExporting(true);
     try {
+      const { exportNotebooks } = await import("@/lib/export");
       await exportNotebooks(
         {
           format,
@@ -191,6 +237,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         let notebookCount = 0;
         let pageCount = 0;
 
+        const { importNotebooksFromZip } = await import("@/lib/export");
         await importNotebooksFromZip(
           file,
           (name) => {

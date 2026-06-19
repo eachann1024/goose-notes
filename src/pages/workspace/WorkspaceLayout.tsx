@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef } from "react";
 import * as LucideIcons from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { cn } from "@/lib/utils";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -47,8 +48,8 @@ export function WorkspaceLayout({
   editorRef,
   scrollContainerRef,
 }: WorkspaceLayoutProps) {
-  const { activePageId, updatePage, getPage } = usePages();
-  const { openTabs, activeTabId, openWelcomeTab } = useTabs();
+  const { activePageId, updatePage, getPage } = usePages(useShallow((s) => ({ activePageId: s.activePageId, updatePage: s.updatePage, getPage: s.getPage })));
+  const { openTabs, activeTabId, openWelcomeTab } = useTabs(useShallow((s) => ({ openTabs: s.openTabs, activeTabId: s.activeTabId, openWelcomeTab: s.openWelcomeTab })));
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isWelcomeTab = activeTab?.type === "welcome";
   const openWelcomeTabHandler = () => {
@@ -65,8 +66,8 @@ export function WorkspaceLayout({
   const setHandledSearchHighlightNonce = usePages(
     (s) => s.setHandledSearchHighlightNonce,
   );
-  const { activeNotebookId, notebooks } = useNotebooks();
-  const { globalEditorFullWidth } = useSettings();
+  const { activeNotebookId, notebooks } = useNotebooks(useShallow((s) => ({ activeNotebookId: s.activeNotebookId, notebooks: s.notebooks })));
+  const globalEditorFullWidth = useSettings((s) => s.globalEditorFullWidth);
   const historyActivePageId = useHistoryView((s) => s.active);
   const inHistoryMode =
     !!historyActivePageId && historyActivePageId === activePageId;

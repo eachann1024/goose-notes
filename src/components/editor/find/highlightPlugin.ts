@@ -95,12 +95,15 @@ export function createHighlightPlugin({
     },
     view: (view) => {
       const promises = new Set<Promise<any>>();
+      let destroyed = false;
       const refresh = () => {
+        if (destroyed) return;
         if (promises.size > 0) return;
         const tr = view.state.tr.setMeta("prosemirror-highlight-refresh", true);
         view.dispatch(tr);
       };
       const check = () => {
+        if (destroyed) return;
         const state = key.getState(view.state) as any;
         for (const promise of state?.promises ?? []) {
           promises.add(promise);
@@ -116,7 +119,13 @@ export function createHighlightPlugin({
         }
       };
       check();
-      return { update: () => check() };
+      return {
+        update: () => check(),
+        destroy: () => {
+          destroyed = true;
+          promises.clear();
+        },
+      };
     },
     props: {
       decorations(state) {

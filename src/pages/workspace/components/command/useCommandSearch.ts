@@ -1,9 +1,10 @@
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { pinyinMatchIndices } from "@/lib/pinyin-search";
+import { syncIndex, searchIndex } from "./pageSearchIndex";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
@@ -44,9 +45,16 @@ function getContentSnippet(
 
   const lowerContent = contentText.toLowerCase();
   const lowerQuery = query.toLowerCase();
-  const matchIndex = lowerContent.indexOf(lowerQuery);
+  let matchIndex = lowerContent.indexOf(lowerQuery);
 
-  if (matchIndex === -1) return undefined;
+  // CJK 逐字 token AND 命中时原文无连续子串，用 query 首字符兜底定位
+  if (matchIndex === -1) {
+    const firstChar = lowerQuery[0];
+    if (firstChar) {
+      matchIndex = lowerContent.indexOf(firstChar);
+    }
+    if (matchIndex === -1) return undefined;
+  }
 
   // 计算片段的起始和结束位置
   const start = Math.max(0, matchIndex - contextLength);
@@ -108,6 +116,19 @@ export function useCommandSearch({
     return allPagesArray.filter((p) => p.workspaceId === currentNotebookId);
   }, [pages, searchAllNotebooks, activeNotebookId]);
 
+  // 与搜索 useMemo 解耦：filteredPages 变化时独立同步索引，避免每次击键全量 diff
+  useEffect(() => {
+    const notebooks = useNotebooks.getState().notebooks;
+    const filteredPagesRecord: Record<string, Page> = {};
+    for (const page of filteredPages) {
+      if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) {
+        continue;
+      }
+      filteredPagesRecord[page.id] = page;
+    }
+    syncIndex(filteredPagesRecord);
+  }, [filteredPages]);
+
   const getPageBreadcrumb = useCallback(
     (page: Page): string[] => {
       const breadcrumb: string[] = [];
@@ -153,37 +174,54 @@ export function useCommandSearch({
       return { recent, all, allDisplay: all.slice(0, 30), hasQuery: false };
     }
 
-    const matched: SearchResultPage[] = [];
-    
     const notebooks = useNotebooks.getState().notebooks;
 
+    // 构建 filteredPages 的 id 集合（已按 notebook/trash 过滤）
+    const filteredSet = new Map<string, Page>();
     for (const page of filteredPages) {
-      // 如果是本地文件夹，排除文件夹本身（isFolder=true），只搜索文件
+      // 本地文件夹：排除文件夹本身，只搜文件
       if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) {
         continue;
       }
+      filteredSet.set(page.id, page);
+    }
 
-      const title = getPageTitle(page);
-      const titleMatch =
-        title.toLowerCase().includes(query) ||
-        pinyinMatchIndices(title, deferredQuery.trim()) !== null;
-      const contentText = getCachedText(page);
-      const contentMatch = contentText.toLowerCase().includes(query);
-      
-      if (titleMatch || contentMatch) {
-        const resultPage: SearchResultPage = { ...page };
-        
-        // 如果是内容匹配，提取上下文片段
-        if (contentMatch) {
-          const snippetResult = getContentSnippet(contentText, query);
-          if (snippetResult) {
-            resultPage.contentSnippet = snippetResult.snippet;
-            resultPage.snippetMatchIndex = snippetResult.matchIndex;
-          }
+    // 倒排索引查询，返回按相关度排序的 id 列表
+    const indexHitIds = new Set(searchIndex(deferredQuery.trim()));
+
+    // pinyin 补充命中（倒排索引不含拼音，需额外一轮）
+    const pinyinHitIds = new Set<string>();
+    for (const [id, page] of filteredSet) {
+      if (!indexHitIds.has(id)) {
+        const title = getPageTitle(page);
+        if (pinyinMatchIndices(title, deferredQuery.trim()) !== null) {
+          pinyinHitIds.add(id);
         }
-        
-        matched.push(resultPage);
       }
+    }
+
+    // 合并命中集（索引在前，拼音补充在后）
+    const matched: SearchResultPage[] = [];
+
+    // 先按索引顺序添加
+    for (const id of indexHitIds) {
+      const page = filteredSet.get(id);
+      if (!page) continue;
+      const resultPage: SearchResultPage = { ...page };
+      const contentText = getCachedText(page);
+      const snippetResult = getContentSnippet(contentText, query);
+      if (snippetResult) {
+        resultPage.contentSnippet = snippetResult.snippet;
+        resultPage.snippetMatchIndex = snippetResult.matchIndex;
+      }
+      matched.push(resultPage);
+    }
+
+    // 再追加 pinyin 专属命中
+    for (const id of pinyinHitIds) {
+      const page = filteredSet.get(id);
+      if (!page) continue;
+      matched.push({ ...page });
     }
 
     const recent = matched

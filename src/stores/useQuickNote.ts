@@ -178,6 +178,34 @@ const isBlankSingleBlockDraft = (content: JSONContent | null): boolean => {
   return false;
 };
 
+/**
+ * 把草稿首块的 heading 降级为 paragraph（保留 inline 文字与通用排版属性，仅去掉 level）。
+ *
+ * 「小窗首块永远从正文起手、绝不是标题一」是产品红线（[[title-heading-is-sacred]] 的反面：
+ * 主窗首块恒 H1，小窗首块恒非标题）。运行期路径（normalize/firstTitleGuard）已全部豁免草稿页，
+ * 不会再主动把首块转 H1；但**存量持久化**里可能残留早期被强转的 H1 首块——用户在那个 H1 块里
+ * 继续编辑，onChange 又原样存回 H1，形成「重开即标题1」的死循环（isBlankSingleBlockDraft 只清
+ * 空白块、清不掉有内容的 H1）。这里在加载构造 draftPage 时一次性把首块掰回正文，打破循环。
+ *
+ * 只动**首块**、只把 **heading→paragraph**：第二行起的标题、其它块类型一律原样保留。
+ */
+function demoteFirstHeadingToParagraph(content: JSONContent): JSONContent {
+  if (!Array.isArray(content) || content.length === 0) return content;
+  const first = content[0] as {
+    type?: string;
+    props?: Record<string, unknown>;
+  };
+  if (first?.type !== "heading") return content;
+  const props = first.props ?? {};
+  // paragraph 仅保留通用排版属性（颜色/对齐），丢弃 heading 专属的 level / isToggleable。
+  const paragraphProps: Record<string, unknown> = {};
+  for (const key of ["textColor", "backgroundColor", "textAlignment"]) {
+    if (props[key] !== undefined) paragraphProps[key] = props[key];
+  }
+  const demoted = { ...first, type: "paragraph", props: paragraphProps };
+  return [demoted, ...content.slice(1)] as JSONContent;
+}
+
 /** 造一个用于驱动编辑器的草稿 page（不入 pages map、不持久化为 page 快照）。 */
 export function buildQuickNoteDraftPage(content: JSONContent | null): Page {
   const now = Date.now();
@@ -186,9 +214,10 @@ export function buildQuickNoteDraftPage(content: JSONContent | null): Page {
   // 未豁免时把空段落强转空 H1 回写持久化所留下的存量脏数据）统一归一成空段落：
   // 既保证新草稿不冒空标题1，也清掉存量脏数据。注意此处用结构化判空而非 isDraftEmpty
   // ——后者按 JSON 文本糊匹配，块 props 里的 "default"/"left" 等值含拉丁字母会被误判为非空。
+  // 非空草稿再额外把「有内容的 H1 首块」降级为正文：覆盖存量脏数据，确保小窗首行永不是标题一。
   const draftContent = isBlankSingleBlockDraft(content)
     ? createEmptyLocalPageContent()
-    : (content as JSONContent);
+    : demoteFirstHeadingToParagraph(content as JSONContent);
   return {
     id: "__quicknote_draft__",
     workspaceId: DEFAULT_NOTEBOOK,

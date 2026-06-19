@@ -315,7 +315,8 @@ export function EditorComposer({
             }
           }}
         />
-        <AIMenuController />
+        {/* 速记小窗（__GOOSE_LITE__）不挂 AI 菜单。 */}
+        {!__GOOSE_LITE__ && <AIMenuController />}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div

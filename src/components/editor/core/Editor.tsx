@@ -210,14 +210,19 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseToggleHeadingInputRuleExtension,
         gooseInlineCodeEscapeExtension,
         gooseFindInPageExtension,
-        AIExtension({
-          transport: createGooseAITransport({
-            getSettings: () => aiSettingsRef.current,
-            getModelId: () =>
-              aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
-            getCustomFetch: () => platformRef.current.ai.customFetch,
-          }),
-        }),
+        // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展：省去 @blocknote/xl-ai + @ai-sdk（~488K）解析。
+        ...(__GOOSE_LITE__
+          ? []
+          : [
+              AIExtension({
+                transport: createGooseAITransport({
+                  getSettings: () => aiSettingsRef.current,
+                  getModelId: () =>
+                    aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
+                  getCustomFetch: () => platformRef.current.ai.customFetch,
+                }),
+              }),
+            ]),
       ],
       dictionary: {
         ...zh,
@@ -228,7 +233,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         },
         // 空折叠块展开后的提示行（默认「空的切换区。点击添加区块。」太生硬）
         toggle_blocks: { add_block_button: "空的折叠块，点击添加内容" },
-        ai: aiZh,
+        // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
+        ...(__GOOSE_LITE__ ? {} : { ai: aiZh }),
       },
       domAttributes: {
         editor: {

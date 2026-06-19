@@ -49,7 +49,7 @@ export const reloadLocalPageFromDiskAction = async (
     return;
   }
 
-  const parsed = parseLocalMarkdownContent(
+  const parsed = await parseLocalMarkdownContent(
     markdown,
     localFileTitleFromPath(filePath),
     readError,
@@ -366,7 +366,7 @@ export const addSingleLocalPageAction = async (
     return;
   }
 
-  const parsed = parseLocalMarkdownContent(markdown, fallbackTitle, readError);
+  const parsed = await parseLocalMarkdownContent(markdown, fallbackTitle, readError);
 
   // 记录快照
   if (typeof markdown === "string") {

@@ -18,7 +18,10 @@ const send = (channel: string, ...args: unknown[]) => {
 };
 
 export const quickNoteWindow = {
-  /** 关闭小窗。优先请求主窗关闭（win.close），兜底 window.close()。 */
+  /**
+   * 收起小窗。请求主窗把窗口「隐藏」（常驻后台，下次唤起秒显，不销毁），
+   * 兜底 window.close()。主窗侧 quicknote:close → hideQuickNoteWindow。
+   */
   close(): void {
     if (!send("quicknote:close")) {
       try {
@@ -49,6 +52,15 @@ export const quickNoteWindow = {
   },
 
   /**
+   * 用户拖动窗口移动停下后调用：把子窗当前屏幕坐标（screenX/screenY）上报父窗，
+   * 由父窗直接写回 dbStorage。移动不触发 resize，且关窗时父窗 getBounds() 在窗口
+   * 销毁瞬间可能取到旧值，故移动停下就主动上报，确保最后位置可靠落库。
+   */
+  persistPosition(x: number, y: number): void {
+    send("quicknote:persist-position", { x: Math.round(x), y: Math.round(y) });
+  },
+
+  /**
    * B 插件保存：通过 utools.redirect 把草稿内容回传 A 插件落库。
    * A 插件 pluginName="鹅的笔记"，feature cmds=["速记入库"]。
    * blocks 直接传 PartialBlock[] 原值，A 侧落库时自行 normalize。
@@ -65,8 +77,8 @@ export const quickNoteWindow = {
   },
 
   /**
-   * 请求隐藏（hide 现等价于 close：速记窗改为每次销毁重建，不再常驻）。
-   * 保留此导出名以维持外部调用兼容性，内部统一走 close 语义。
+   * 请求隐藏（与 close 同走 quicknote:close → 主窗 hideQuickNoteWindow）：
+   * 窗口常驻后台、下次秒显。保留此导出名以维持外部调用兼容性。
    */
   hide(): void {
     if (!send("quicknote:close")) {

@@ -83,15 +83,18 @@ body,
   transform: none !important;
 }
 
+/* toast 在窗口正中弹出（不贴底）：定位到视口垂直 / 水平居中，宽度按内容自适应
+   成一颗小胶囊，而非横贯整窗。 */
 .quicknote-toaster[data-sonner-toaster] [data-sonner-toast] {
   position: fixed !important;
-  left: 24px !important;
-  right: 24px !important;
-  top: auto !important;
-  bottom: 30px !important;
-  width: min(420px, calc(100vw - 48px)) !important;
-  margin-inline: auto !important;
-  transform: none !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: max-content !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-inline: 0 !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 

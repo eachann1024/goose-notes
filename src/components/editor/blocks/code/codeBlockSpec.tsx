@@ -4,7 +4,7 @@ import { createExtension, defaultProps } from "@blocknote/core";
 import { createHighlightPlugin, type Parser } from "@/components/editor/find/highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
-import { all, createLowlight } from "lowlight";
+import { common, createLowlight } from "lowlight";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,23 +14,63 @@ import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
 
-const lowlight = createLowlight(all);
+// 主应用与速记小窗均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
+// 把语法包从 ~1MB（all 全量）降到 ~300KB（vendor-markdown 1257KB→530KB）。
+// 注意：不做小众语言运行时按需加载——vite/rolldown 对 node_modules 既无法 code-split
+// 裸包模板字符串，import.meta.glob 又会把全部 192 种语言 eager 内联进首屏（体积反弹到
+// 1.4MB，是负优化）。故 common 外语言一律同步降级为无高亮纯文本（不报错），由 failedSet 记录。
+const lowlight = createLowlight(common);
 const lowlightParser = createLowlightParser(lowlight);
 const loadedLanguagesSet = new Set(lowlight.listLanguages());
 
+// common 外语言加入 failedSet → 走同步纯文本降级，不返回 Promise，
+// 杜绝「Promise → refresh → dispatch → 重算」的无限循环。
+const failedLangsSet = new Set<string>();
+
 const LANGUAGE_ALIASES: Record<string, string> = {
-  docker: "dockerfile",
+  // 常见 shell 别名
+  sh: "bash",
+  shell: "bash",
+  // C/C++
+  "c++": "cpp",
+  // C#
+  "c#": "csharp",
+  cs: "csharp",
+  // Go
+  golang: "go",
+  // LaTeX
+  tex: "latex",
   math: "latex",
-  objectc: "objectivec",
+  // YAML
+  yml: "yaml",
+  // Markdown
   md: "markdown",
   mkdown: "markdown",
   mkd: "markdown",
-  js: "javascript",
-  jsx: "javascript",
+  // Python
+  py: "python",
+  // TypeScript
   ts: "typescript",
   tsx: "typescript",
-  py: "python",
-  yml: "yaml",
+  // JavaScript
+  js: "javascript",
+  jsx: "javascript",
+  // Rust
+  rs: "rust",
+  // Ruby
+  rb: "ruby",
+  // Objective-C
+  objc: "objectivec",
+  objectc: "objectivec",
+  // CoffeeScript
+  coffee: "coffeescript",
+  // PowerShell
+  ps1: "powershell",
+  ps: "powershell",
+  // Kotlin
+  kt: "kotlin",
+  // Dockerfile
+  docker: "dockerfile",
 };
 
 const SKIP_HIGHLIGHT_LANGUAGES = new Set([
@@ -91,6 +131,23 @@ const codeBlockHighlightParser: Parser = (options) => {
 
   if (SKIP_HIGHLIGHT_LANGUAGES.has(language)) return [];
   if (language === "mermaid") return mermaidParser(options);
+
+  // failedSet 里的语言（加载失败/vite 无法解析/别名缺失）→ 同步降级纯文本，不返回 Promise，
+  // 彻底断掉「Promise → refresh → dispatch → 重算」的无限循环。
+  if (failedLangsSet.has(language)) {
+    return lowlightParser({ ...options, language: undefined }) as any;
+  }
+
+  // common 外语言（不在 loadedLanguagesSet 内）→ 加入 failedSet 同步降级纯文本。
+  // 不返回 Promise，避免触发 highlightPlugin 的 refresh 重算循环。
+  if (
+    !AUTO_HIGHLIGHT_LANGUAGES.has(language) &&
+    !loadedLanguagesSet.has(language) &&
+    language !== "text"
+  ) {
+    failedLangsSet.add(language);
+    return lowlightParser({ ...options, language: undefined }) as any;
+  }
 
   try {
     const useLanguage =
@@ -246,7 +303,10 @@ function CodeBlockComponent({
 
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
-  const isMathOrMermaid = language === "math" || language === "mermaid";
+  // 速记小窗精简构建（__GOOSE_LITE__）不渲染 math/mermaid 预览——退化为纯代码块
+  // （源码可见、带行号），以甩掉 katex / mermaid 重型依赖。主应用恒为 false，行为不变。
+  const isMathOrMermaid =
+    !__GOOSE_LITE__ && (language === "math" || language === "mermaid");
   const showLineNumbers = !isMathOrMermaid && !wrap;
 
   useEffect(() => {
@@ -334,7 +394,7 @@ function CodeBlockComponent({
           language={language}
           onLanguageChange={handleLanguageChange}
           getCodeContent={getCodeContent}
-          onFormat={handleFormat}
+          onFormat={__GOOSE_LITE__ ? undefined : handleFormat}
           wrap={wrap}
           onWrapChange={handleWrapChange}
           editable={isEditable}
