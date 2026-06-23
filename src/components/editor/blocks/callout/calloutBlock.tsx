@@ -74,7 +74,7 @@ function CalloutIconPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-[1.625rem] w-6 shrink-0 select-none items-center justify-center rounded transition-colors hover:bg-[var(--goose-interactive-hover)]"
+          className="flex h-[1lh] w-6 shrink-0 select-none items-center justify-center rounded text-[calc(var(--editor-font-size)+1px)] leading-relaxed transition-colors hover:bg-[var(--goose-interactive-hover)]"
           onClick={() => setOpen(true)}
           data-callout-icon-trigger
         >
@@ -133,13 +133,13 @@ export const calloutBlock = createReactBlockSpec(
 
       return (
         <div
-          className="callout-block group flex w-full items-start gap-2.5 rounded-r-lg border-l-[3px] border-l-[var(--goose-callout-accent)] bg-[var(--goose-block-subtle-bg)] px-3.5 py-2.5"
+          className="callout-block group flex w-full items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
           data-callout="true"
         >
           <CalloutIconPicker icon={icon} onPick={handleIconPick} />
           <div
             ref={contentRef}
-            className="min-w-0 flex-1 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
+            className="callout-content min-w-0 flex-1"
           />
         </div>
       );
@@ -147,17 +147,17 @@ export const calloutBlock = createReactBlockSpec(
     toExternalHTML: ({ block, contentRef }) => {
       return (
         <div
-          className="flex items-start gap-2 rounded-r-md border-l-[3px] border-l-[var(--goose-callout-accent)] bg-[var(--goose-block-subtle-bg)] px-4 py-3"
+          className="flex items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
           data-callout="true"
         >
-              <span className="flex h-[1.625rem] w-6 shrink-0 select-none items-center justify-center">
+              <span className="flex h-[1lh] w-6 shrink-0 select-none items-center justify-center text-[calc(var(--editor-font-size)+1px)] leading-relaxed">
               {renderCalloutIcon(
                 (block.props.icon as string) || DEFAULT_CALLOUT_ICON,
               )}
             </span>
           <div
             ref={contentRef}
-            className="min-w-0 flex-1 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
+            className="callout-content min-w-0 flex-1"
           />
         </div>
       );

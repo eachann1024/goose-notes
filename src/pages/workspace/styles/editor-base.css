@@ -71,19 +71,38 @@
      箭头会退回占位把标题推右；left 负值 + 固定高度是旧内核必稳的
      基础写法，web/uTools 行为一致。约 1 个箭头宽(1em)+4px 间距。 */
   left: calc(-1em - 4px);
-  /* 垂直居中用 inset+margin，不占用 transform——展开态旋转
-     (.bn-toggle-wrapper[data-show-children=true] .bn-toggle-button { transform: rotate(90deg) })
-     还要用它。height 用具体值而非 fit-content（旧内核不识别）。 */
+  /* 与标题同字号（--level 在 [data-content-type=heading] 上），1.5em = 首行行高 */
+  font-size: var(--level, 1.5em);
+  line-height: 1;
   top: 0;
-  bottom: 0;
-  height: 1em;
-  margin: auto 0;
+  height: 1.5em;
+  min-height: 1em;
+  width: 1em;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  transition: opacity 0.15s ease-out;
 }
 /* BlockNote 默认给 .bn-toggle-button:hover 上 hovered-background 底色。
    折叠标题的箭头悬挂在标题左外侧、字号大，hover 底色一块很突兀——去掉。
    仅作用于折叠标题；普通折叠列表(toggleListItem)的箭头 hover 底色保持不变。 */
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button:hover {
   background: transparent;
+}
+
+/* 折叠标题展开态（Notion）：gutter 箭头默认隐藏，hover / focus-within 再显示；
+   收起态始终可见。直接命中 .bn-toggle-wrapper[data-show-children]，
+   避免 .bn-block-outer:has() 在 uTools 旧 Chromium 上不生效导致展开时箭头常显。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
+  opacity: 0;
+  pointer-events: none;
+}
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* 普通折叠列表(toggleListItem)的箭头统一手感：
