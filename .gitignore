@@ -22,6 +22,10 @@ node_modules
 dist
 dist-ssr
 dist-quicknote/
+# src/lib/build/ contains source (lite-empty.ts is the quicknote alias target),
+# NOT build output. Global ~/.gitignore_global has `build/` which would hide it.
+!src/lib/build/
+!src/lib/build/*
 *.local
 
 # Editor directories and files
