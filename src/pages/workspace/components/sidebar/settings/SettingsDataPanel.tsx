@@ -305,13 +305,11 @@ export function SettingsDataPanel({
   };
 
   const toggleRemoteList = () => {
-    setIsRemoteListOpen((prev) => {
-      const next = !prev;
-      if (next && hasSavedConfig) {
-        void fetchRemoteList();
-      }
-      return next;
-    });
+    const next = !isRemoteListOpen;
+    setIsRemoteListOpen(next);
+    if (next && hasSavedConfig) {
+      void fetchRemoteList();
+    }
   };
 
   const handleRestore = async (file: WebdavBackupFile) => {
