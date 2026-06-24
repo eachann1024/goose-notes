@@ -55,12 +55,12 @@ const TABS_PERSIST_KEY = "goose-note:open-tabs:v1";
 const getWorkspaceIdForPage = (pageId: string): string | undefined =>
   usePages.getState().getPage(pageId)?.workspaceId;
 
-// 固定 → 预览（单槽）→ 普通永久；组内保持相对顺序。
+// 固定标签恒在最左；其余（预览/普通）一律保持插入顺序追加到右侧。
+// 新建/新打开的标签因此始终落在最右边。
 const orderTabs = (tabs: TabItem[]): TabItem[] => {
   const pinned = tabs.filter((t) => t.pinned);
-  const preview = tabs.filter((t) => t.preview && !t.pinned);
-  const rest = tabs.filter((t) => !t.pinned && !t.preview);
-  return [...pinned, ...preview, ...rest];
+  const rest = tabs.filter((t) => !t.pinned);
+  return [...pinned, ...rest];
 };
 
 const applyPinnedOrder = orderTabs;
@@ -276,7 +276,6 @@ export const useTabs = create<TabsState>()((set, get) => {
 
       commitActiveEditor();
       const activeTab = openTabs.find((tab) => tab.id === activeTabId);
-      const previewTab = openTabs.find((tab) => tab.preview);
       const workspaceId = getWorkspaceIdForPage(pageId);
 
       const activateTab = (tabId: string) => {
@@ -286,6 +285,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         void scheduleSetActivePage(pageId);
       };
 
+      // replace-current 模式：就地把当前普通标签的内容换成新页面（固定/预览/欢迎标签不替换）。
       if (
         behavior === "replace-current" &&
         activeTab &&
@@ -308,59 +308,21 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
-      if (activeTab?.preview) {
-        const nextTabs = openTabs.map((tab) =>
-          tab.id === activeTab.id
-            ? { ...tab, pageId, workspaceId, preview: true }
-            : tab,
-        );
-        set({ openTabs: orderTabs(nextTabs) });
-        activateTab(activeTab.id);
-        return;
-      }
-
-      if (previewTab) {
-        const nextTabs = openTabs.map((tab) =>
-          tab.id === previewTab.id
-            ? { ...tab, pageId, workspaceId, preview: true }
-            : tab,
-        );
-        set({ openTabs: orderTabs(nextTabs) });
-        activateTab(previewTab.id);
-        return;
-      }
-
-      if (activeTab?.type === "welcome") {
-        const nextTabs = openTabs.map((tab) =>
-          tab.id === activeTab.id
-            ? {
-                ...tab,
-                pageId,
-                workspaceId,
-                type: undefined,
-                preview: true,
-              }
-            : tab,
-        );
-        set({ openTabs: orderTabs(nextTabs) });
-        activateTab(activeTab.id);
-        return;
-      }
-
+      // preview 模式（VSCode 式预览标签）：同时只保留一个预览标签，但它始终在最右新建，
+      // 不复用某个固定位置的旧槽。打开新预览时，丢弃上一个未晋升的预览标签 + 占位的欢迎标签。
       const newTab: TabItem = {
         id: createTabId(pageId),
         pageId,
         workspaceId,
         preview: true,
       };
-      const pinnedCount = openTabs.filter((tab) => tab.pinned).length;
-      const nextOpenTabs = orderTabs([
-        ...openTabs.slice(0, pinnedCount),
-        newTab,
-        ...openTabs.slice(pinnedCount),
-      ]);
+      const survivingTabs = openTabs.filter(
+        (tab) => !tab.preview && tab.type !== "welcome",
+      );
+      const nextOpenTabs = orderTabs([...survivingTabs, newTab]);
       set({
         openTabs: nextOpenTabs,
+        ...syncHistoryWithOpenTabs(nextOpenTabs),
         activeTabId: newTab.id,
       });
       pushTabHistory(newTab.id);
@@ -429,6 +391,14 @@ export const useTabs = create<TabsState>()((set, get) => {
       }
 
       const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
+
+      // 关闭最后一个标签后，自动补一个 welcome 占位标签，保持标签栏不消失（对齐浏览器/VSCode）。
+      if (nextTabs.length === 0) {
+        set({ openTabs: [], activeTabId: null });
+        get().openWelcomeTab();
+        return;
+      }
+
       let nextActiveId: string | null = null;
       if (activeTabId === tabId && nextTabs.length > 0) {
         nextActiveId = nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;

@@ -422,7 +422,6 @@ export function HistoryReader() {
 
   return (
     <HistoryReadOnlyEditor
-      key={selectedVersionId}
       content={selectedContent}
       versionKey={selectedVersionId}
     />

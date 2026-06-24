@@ -90,7 +90,7 @@ export function useDragEnd({
     if (!activeItem || !overItem || !activePage) return;
 
     let nextParentId: string | undefined;
-    let nextOrderIds: string[] | null = null;
+    let nextOrderIds: string[] | null;
 
     if (finalIntent.kind === "nest") {
       const canNestIntoOver =

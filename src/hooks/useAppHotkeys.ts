@@ -369,25 +369,28 @@ export function useAppHotkeys() {
           void usePages.getState().setActivePage(null);
         },
       },
-      // Alt+1~9 / Alt+0 switch tab by index — based on event.code (special entry)
+      // Cmd/Ctrl+1~8 跳到对应序号标签，Cmd/Ctrl+9 跳到最后一个标签（对齐 VSCode/浏览器）。
+      // 不绑定 Cmd+0（已被字体缩放重置占用）。使用 event.code 兼容非美式键盘布局。
       {
         id: "switch-tab-by-number",
         match: (event) => {
           if (event.defaultPrevented) return false;
           if (
-            !event.altKey ||
-            event.ctrlKey ||
-            event.metaKey ||
+            !(event.metaKey || event.ctrlKey) ||
+            event.altKey ||
             event.shiftKey
           ) {
             return false;
           }
-          return event.code === "Digit0" || /^Digit[1-9]$/.test(event.code);
+          return /^Digit[1-9]$/.test(event.code);
         },
         handler: (event) => {
           const code = event.code;
-          const targetIndex = code === "Digit0" ? 9 : Number(code.slice(-1)) - 1;
-          const targetTab = openTabsRef.current[targetIndex];
+          const digit = Number(code.slice(-1)); // 1~9
+          const tabs = openTabsRef.current;
+          // Cmd+9 → 最后一个标签；Cmd+1~8 → 对应序号（0-based index）
+          const targetTab =
+            digit === 9 ? tabs[tabs.length - 1] : tabs[digit - 1];
           if (!targetTab) return;
           event.preventDefault();
           useTabs.getState().setActiveTab(targetTab.id);

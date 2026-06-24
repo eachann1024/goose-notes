@@ -131,7 +131,7 @@ export interface AgentPlanBuildResult {
   artifact?: AgentArtifact;
 }
 
-export interface AgentCapabilityMatchResult extends AgentIntent {}
+export type AgentCapabilityMatchResult = AgentIntent;
 
 export interface AgentCapabilityBuildPlanParams {
   context: AgentInputContext;

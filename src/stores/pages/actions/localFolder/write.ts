@@ -1,5 +1,4 @@
 import type { JSONContent } from "@/types";
-import { blocksToMarkdown } from "@/lib/export";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
   extractFrontmatter,
@@ -240,6 +239,7 @@ export const saveLocalPageContentAction = async (
     );
   }
 
+  const { blocksToMarkdown } = await import("@/lib/export");
   const markdownContent = await blocksToMarkdown(processedContent as any);
 
   // scanner 抽出 frontmatter 后不入编辑器，保存时由这里 prepend 回去
@@ -253,7 +253,7 @@ export const saveLocalPageContentAction = async (
     try { exists = window.gooseFs?.exists(filePath) ?? false; } catch {}
 
     if (exists) {
-      let oldContent = "";
+      let oldContent: string;
       if (window.gooseFs?.readFileAsync) {
         oldContent = await window.gooseFs.readFileAsync(filePath) || "";
       } else {

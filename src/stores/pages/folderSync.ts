@@ -40,9 +40,20 @@ export const flushPendingLocalSaveByPageIdInternal = (
     .then(async () => {
       while (pendingLocalSaveContents.has(pageId)) {
         const latestContent = pendingLocalSaveContents.get(pageId);
+        if (!latestContent) {
+          pendingLocalSaveContents.delete(pageId);
+          continue;
+        }
         pendingLocalSaveContents.delete(pageId);
-        if (!latestContent) continue;
-        await getState().saveLocalPageContent(pageId, cloneJSONContent(latestContent));
+        try {
+          await getState().saveLocalPageContent(pageId, cloneJSONContent(latestContent));
+        } catch (err) {
+          // save 失败：把内容重新放回 pending，下次 flush 可重试
+          if (!pendingLocalSaveContents.has(pageId)) {
+            pendingLocalSaveContents.set(pageId, latestContent);
+          }
+          throw err;
+        }
       }
     });
 
@@ -61,7 +72,7 @@ export const queueLocalPageSave = (
   content: JSONContent,
   getState: () => PagesState,
 ) => {
-  pendingLocalSaveContents.set(pageId, cloneJSONContent(content));
+  pendingLocalSaveContents.set(pageId, content);
 
   const existingDebounceTimer = localSaveDebounceTimers.get(pageId);
   if (existingDebounceTimer) {

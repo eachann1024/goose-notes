@@ -346,13 +346,11 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
           </div>
         ) : null}
 
-        {/* eslint-disable-next-line jsx-a11y/aria-role */}
         <div
           ref={editorRef}
           role="textbox"
           aria-label="AI 输入"
           aria-multiline="true"
-          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
           contentEditable
           suppressContentEditableWarning
           data-ai-composer-editor="true"

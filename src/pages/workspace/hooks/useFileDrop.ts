@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
-import { importFromMarkdown } from "@/lib/export";
 
 type WorkspaceDragIntent = "folder" | "text-file" | "file";
 
@@ -118,10 +117,18 @@ export function useFileDrop() {
         : DEFAULT_NOTEBOOK;
     const createdPageIds: string[] = [];
 
+    let importFromMarkdown: ((text: string, filename: string) => any) | undefined;
+    try {
+      ({ importFromMarkdown } = await import("@/lib/export"));
+    } catch {
+      toast.error("导入失败", { description: "导入模块加载失败，请重试。" });
+      return;
+    }
+
     for (const file of files) {
       const text = await file.text();
       const filename = file.name.replace(/\.[^/.]+$/, "");
-      const result = importFromMarkdown(text, filename);
+      const result = importFromMarkdown!(text, filename);
       if (!result.success) continue;
 
       const pageId = usePages.getState().createPage(undefined, targetNotebookId);

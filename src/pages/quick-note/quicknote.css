@@ -51,15 +51,29 @@ body,
   cursor: default;
 }
 
-/* 速记编辑区内边距：左右收窄贴近窗口（仍保留块手柄热区）；顶部给浮动顶栏让位，
-   底部留足呼吸空间，避免内容贴底。 */
+/* 速记编辑区内边距：不显示侧边菜单（无把手/加号），左右无需为手柄热区让位，
+   直接贴近窗口。
+   上下「视觉留白」要一致：顶部有浮动顶栏(h-9=36px)盖着，故顶部 padding 必须
+   比底部多出顶栏那 36px，才能让「首块距顶栏底」≈「末块距窗口底」。
+   顶栏(36px)是浮层、不占布局，首块本就藏在它下方；实测顶部不必为它整段让位，
+   收到 32px（在原 52 基础上再减 20）顶部更紧凑、不显空旷，底部维持 16px 呼吸。 */
 .quicknote-editor-surface {
   padding-inline: 4px;
-  padding-top: 8px;
-  padding-bottom: 48px;
+  padding-top: 32px;
+  padding-bottom: 16px;
 }
-.quicknote-editor-surface .bn-editor {
-  padding-inline: 18px; /* 左侧容纳手柄热区，右侧对称，整体比原先更贴边 */
+/* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
+   距离的，但首块前面没有内容，叠加 surface padding 后顶部会显出一大段死空白。
+   仅作用于首块，不影响文中其它 heading 的上间距。 */
+.quicknote-editor-surface .bn-block-group > .bn-block-outer:first-child .bn-block-content[data-content-type="heading"] {
+  padding-top: 0;
+}
+/* 无侧边菜单（无把手/加号），收窄左右留白让正文贴近窗口。
+   需压过 editor-base.css 的 `.workspace-editor-surface.max-w-none .bn-editor`
+   (该 56px 是主窗为 side menu 预留的 gutter)——小窗内层仍带 workspace-editor-surface
+   全宽容器，故选择器要叠到同级或更高特异度才生效。 */
+.quicknote-editor-surface .workspace-editor-surface.max-w-none .bn-editor {
+  padding-inline: 8px;
 }
 
 .quicknote-toaster[data-sonner-toaster] {
@@ -69,15 +83,18 @@ body,
   transform: none !important;
 }
 
+/* toast 在窗口正中弹出（不贴底）：定位到视口垂直 / 水平居中，宽度按内容自适应
+   成一颗小胶囊，而非横贯整窗。 */
 .quicknote-toaster[data-sonner-toaster] [data-sonner-toast] {
   position: fixed !important;
-  left: 24px !important;
-  right: 24px !important;
-  top: auto !important;
-  bottom: 30px !important;
-  width: min(420px, calc(100vw - 48px)) !important;
-  margin-inline: auto !important;
-  transform: none !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: max-content !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-inline: 0 !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 

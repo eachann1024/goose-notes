@@ -60,7 +60,7 @@ import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extension
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
-import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
+import { gooseInlineCodeMarkExtension } from "@/components/editor/extensions/inlineCodeMarkExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { EditorComposer, editorSchema, getSelectedCellPlainText, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
 import { isLinkworthyText } from "@/components/editor/utils/clipboard";
@@ -208,16 +208,21 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseToggleHeadingInputRuleExtension,
-        gooseInlineCodeEscapeExtension,
+        gooseInlineCodeMarkExtension,
         gooseFindInPageExtension,
-        AIExtension({
-          transport: createGooseAITransport({
-            getSettings: () => aiSettingsRef.current,
-            getModelId: () =>
-              aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
-            getCustomFetch: () => platformRef.current.ai.customFetch,
-          }),
-        }),
+        // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展：省去 @blocknote/xl-ai + @ai-sdk（~488K）解析。
+        ...(__GOOSE_LITE__
+          ? []
+          : [
+              AIExtension({
+                transport: createGooseAITransport({
+                  getSettings: () => aiSettingsRef.current,
+                  getModelId: () =>
+                    aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
+                  getCustomFetch: () => platformRef.current.ai.customFetch,
+                }),
+              }),
+            ]),
       ],
       dictionary: {
         ...zh,
@@ -228,7 +233,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         },
         // 空折叠块展开后的提示行（默认「空的切换区。点击添加区块。」太生硬）
         toggle_blocks: { add_block_button: "空的折叠块，点击添加内容" },
-        ai: aiZh,
+        // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
+        ...(__GOOSE_LITE__ ? {} : { ai: aiZh }),
       },
       domAttributes: {
         editor: {
@@ -295,8 +301,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const p = pageRef.current;
     pageIdForUpdateRef.current = p?.id ?? null;
 
-    // local-folder 页面跳过 normalizePageContent（不触发 ensureFirstTitleHeading）
-    const isLocalPage = Boolean(p?.localFilePath);
+    // local-folder 页面跳过 normalizePageContent（不触发 ensureFirstTitleHeading）。
+    // 须与本文件 :135 的 isLocalFolderPage 及 EditorComposer.onChange 的判断一致：
+    // 小窗草稿页(__quicknote_draft__)同样豁免，否则切页/重开时此处 replaceBlocks 会把
+    // 首块强转 H1 并刷新签名基线，导致草稿首块每次重开都变「标题1」。
+    const isLocalPage =
+      Boolean(p?.localFilePath) || p?.id === "__quicknote_draft__";
     const nextContent = isLocalPage
       ? toEditorBlocks(p?.content)
       : normalizePageContent(p?.content);
@@ -465,8 +475,27 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const container = editorContainerRef.current;
     if (!container) return;
 
+    // cut 时序陷阱：ProseMirror 的 cut handler 在写入 clipboardData 后会同步
+    // dispatch deleteSelection，等事件冒泡到 container（我们的 patch handler）时
+    // DOM 选区已塌缩 / CellSelection 已删除——getSelectedPlainTextContext 与
+    // getSelectedCellPlainText 都拿不到内容，patch 直接 return，markdown 软换行
+    // 残留的反斜杠 "\" 清理不掉（copy 不删选区故无此问题，于是表现为「复制干净、
+    // 剪切带 \」）。故在 capture 阶段（PM handler 之前、选区尚在时）先快照选区
+    // 上下文，bubble 阶段的 patch handler 再消费快照。
+    let cellTextSnapshot: string | null = null;
+    let selectionSnapshot: ReturnType<typeof getSelectedPlainTextContext> = null;
+
+    const snapshotSelection = () => {
+      cellTextSnapshot = getSelectedCellPlainText(editor.prosemirrorState);
+      selectionSnapshot = getSelectedPlainTextContext(container);
+    };
+
     const patchClipboardPlainText = (event: ClipboardEvent) => {
       const clipboardData = event.clipboardData;
+      const cellText = cellTextSnapshot;
+      const selectionContext = selectionSnapshot;
+      cellTextSnapshot = null;
+      selectionSnapshot = null;
       if (!clipboardData) return;
 
       // 表格单元格选区（CellSelection）原生 DOM 选区是塌缩的，下方
@@ -475,7 +504,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       // 「名称/Key/说明」整表结构。这里优先处理 CellSelection——只取选中单元格
       // 的纯文本（单格即单格内容，多格按行/Tab 拼接），并清空 text/html，
       // 避免内核再写整表 HTML。
-      const cellText = getSelectedCellPlainText(editor.prosemirrorState);
       if (cellText != null) {
         event.preventDefault();
         clipboardData.setData("text/plain", cellText);
@@ -483,7 +511,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         return;
       }
 
-      const selectionContext = getSelectedPlainTextContext(container);
       if (!selectionContext) return;
 
       const clipboardText = normalizeClipboardLineEndings(clipboardData.getData("text/plain"));
@@ -506,10 +533,14 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       }
     };
 
+    container.addEventListener("copy", snapshotSelection, true);
+    container.addEventListener("cut", snapshotSelection, true);
     container.addEventListener("copy", patchClipboardPlainText);
     container.addEventListener("cut", patchClipboardPlainText);
 
     return () => {
+      container.removeEventListener("copy", snapshotSelection, true);
+      container.removeEventListener("cut", snapshotSelection, true);
       container.removeEventListener("copy", patchClipboardPlainText);
       container.removeEventListener("cut", patchClipboardPlainText);
     };

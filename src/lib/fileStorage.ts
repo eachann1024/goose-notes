@@ -28,6 +28,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export function sanitizeFileName(fileName: string): string {
   const trimmed = fileName.trim();
   const normalized = trimmed.length > 0 ? trimmed : "attachment";
+  // eslint-disable-next-line no-control-regex -- 有意匹配控制字符以清洗文件名
   return normalized.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").slice(0, 180);
 }
 

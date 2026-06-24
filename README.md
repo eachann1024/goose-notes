@@ -1,5 +1,8 @@
 # 鹅的笔记 · goose-note
 
+[![CI](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
 
 本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 uTools 插件运行，也支持浏览器端使用。
@@ -39,6 +42,19 @@ bun run build
 
 `bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。
 
+提交前请确保以下检查通过（CI 也会跑这些）：
+
+```bash
+bun run typecheck   # tsc -b --noEmit
+bun run lint        # eslint .
+bun run build
+```
+
+## 🤝 贡献
+
+欢迎贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解开发流程与规范，并遵守
+[行为准则](./CODE_OF_CONDUCT.md)。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
+
 ## 📄 许可证
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © eachann

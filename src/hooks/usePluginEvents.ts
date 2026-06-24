@@ -5,7 +5,6 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { fs } from "@/lib/utools/fs";
-import { importMarkdownFragment } from "@/lib/export";
 
 const DEFAULT_NOTEBOOK = "default-notebook";
 
@@ -99,7 +98,7 @@ export function usePluginEvents() {
     };
 
     // new_page 唤起：用选中文字新建笔记并打开（不触碰任何已存在页面）。
-    const handleNewPage = (event: Event) => {
+    const handleNewPage = async (event: Event) => {
       if (!usePages.getState().hydrated) return;
       const customEvent = event as CustomEvent<{ text?: string }>;
       const text = customEvent.detail?.text ?? "";
@@ -109,10 +108,11 @@ export function usePluginEvents() {
         useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
 
       let newId: string;
-      const content =
-        typeof text === "string" && text.trim().length > 0
-          ? importMarkdownFragment(text)
-          : null;
+      let content = null;
+      if (typeof text === "string" && text.trim().length > 0) {
+        const { importMarkdownFragment } = await import("@/lib/export");
+        content = importMarkdownFragment(text);
+      }
       if (content) {
         newId = pagesStore.createPageRecord({ workspaceId: nbId, content });
       } else {

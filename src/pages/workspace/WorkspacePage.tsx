@@ -1,5 +1,6 @@
 import "./styles/index.css";
 import { useEffect, useMemo, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { type EditorRef } from "@/components/editor/core/Editor";
@@ -12,8 +13,8 @@ import { getContentSignature } from "@/components/editor/utils/blocknote-content
 import { WorkspaceLayout } from "./WorkspaceLayout";
 
 export function WorkspacePage() {
-  const { activePageId, getPage } = usePages();
-  const { activeNotebookId, notebooks } = useNotebooks();
+  const { activePageId, getPage } = usePages(useShallow((s) => ({ activePageId: s.activePageId, getPage: s.getPage })));
+  const { activeNotebookId, notebooks } = useNotebooks(useShallow((s) => ({ activeNotebookId: s.activeNotebookId, notebooks: s.notebooks })));
 
   const page = activePageId ? getPage(activePageId) : undefined;
   const notebook = activeNotebookId ? notebooks[activeNotebookId] : undefined;

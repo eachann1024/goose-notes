@@ -21,20 +21,6 @@ const removeMapFiles = (dir) => {
   }
 };
 
-// 递归拷贝目录。
-const copyDirRecursive = (src, dest) => {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-};
-
 try {
   const preloadSrc = path.join(rootDir, 'preload/preload.cjs');
   if (fs.existsSync(preloadSrc)) {
@@ -76,14 +62,20 @@ try {
   process.exit(1);
 }
 
-// ── B 插件（鹅的速记）产物：dist-quicknote/ ──────────────────────────────
+// ── B 插件（鹅的小窗）产物：dist-quicknote/ ──────────────────────────────
+// dist-quicknote/ 由独立的 quicknote 构建（GOOSE_BUILD_TARGET=quicknote vite build）直接产出，
+// 仅含 quicknote.html 可达的精简 chunk。此处只做收尾（注入 preload / plugin.json / package.json，
+// 删 .map），不再从 dist/ 整目录拷贝——那会把主应用的全部重型 chunk（PDF/echarts/mermaid…）
+// 带进小窗包，正是体积膨胀到 5MB+ 的根因。
 const distQuicknoteDir = path.resolve('dist-quicknote');
 
 try {
-  // 递归拷贝整个 dist/ 到 dist-quicknote/（共享 vite 打包的 quicknote.html 及 chunk）。
-  copyDirRecursive(distDir, distQuicknoteDir);
+  if (!fs.existsSync(distQuicknoteDir)) {
+    console.error('dist-quicknote 目录不存在——请先执行 quicknote 构建：GOOSE_BUILD_TARGET=quicknote vite build');
+    process.exit(1);
+  }
 
-  // 覆盖 B 专属 preload。
+  // 注入 B 专属 preload。
   const preloadQnSrc = path.join(rootDir, 'preload/preload-quicknote.cjs');
   if (fs.existsSync(preloadQnSrc)) {
     fs.copyFileSync(preloadQnSrc, path.join(distQuicknoteDir, 'preload-quicknote.js'));

@@ -18,7 +18,7 @@ type LocalPageMetaFields = Pick<
   "isFavorite" | "favoriteOrder" | "icon" | "isPinned" | "pinnedAt"
 >;
 
-export interface PersistedPageDoc extends Page {}
+export type PersistedPageDoc = Page;
 
 export interface PersistedLocalPageMetaDoc extends LocalPageMetaFields {
   pageId: string;

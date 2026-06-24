@@ -26,6 +26,8 @@ if (!(Array.prototype as any).toReversed) {
     };
 
     define("filter", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => boolean) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {
@@ -35,6 +37,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("map", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => unknown) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {
@@ -42,6 +46,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("take", function (this: Iterator<unknown>, limit: number) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       return (function* () {
         let n = 0;
@@ -53,6 +59,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("drop", function (this: Iterator<unknown>, limit: number) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       return (function* () {
         let n = 0;
@@ -63,6 +71,8 @@ if (!(Array.prototype as any).toReversed) {
       })();
     });
     define("flatMap", function (this: Iterator<unknown>, fn: (v: unknown, i: number) => unknown) {
+      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const it = this;
       let i = 0;
       return (function* () {
@@ -123,7 +133,6 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import "./index.css";
 import "./fonts.css";
-import App from "./App.tsx";
 import { applyFontVariables } from "./lib/fontLoader";
 import {
   migrateCodeStyleTo2026,
@@ -270,12 +279,23 @@ const initHostFs = async () => {
   }
 };
 
-// 渲染目标可被覆盖：主窗口渲染 <App/>，速记小窗（quicknote.tsx）复用同一套
-// host fs / 迁移 / hydration / guard 流程，仅把渲染根换成 <QuickNoteApp/>，
+// 渲染目标由调用方传入：主窗口（index-entry.tsx）渲染 <App/>，速记小窗（quicknote.tsx）
+// 渲染 <QuickNoteApp/>，但两者复用同一套 host fs / 迁移 / hydration / guard 流程，
 // 保证两个窗口进程的数据层初始化完全一致（共享 uTools db）。
+//
+// 注意：renderRoot 必须显式传入、本模块不再 import App。这是刻意的解耦——
+// 小窗（quicknote.tsx → 本模块）不再经默认参数把整个 workspace <App/> 拖进依赖图，
+// 使 quicknote 构建能甩掉 echarts / PDF 导出 / AI 图表等仅主应用需要的重型代码。
 export const bootstrap = async (
-  renderRoot: () => ReactNode = () => <App />,
+  renderRoot: () => ReactNode,
+  options: { lean?: boolean } = {},
 ) => {
+  // lean=true（速记小窗）：跳过主应用专属的重活——加载+修复全部笔记、AI 聊天记录水合、
+  // 缺失笔记本恢复、代码风格全量迁移、legacy 迁移、收件箱消费。这些与「草稿便签」无关，
+  // 且 hydrateFromStorage 随笔记数线性变慢，是小窗冷启动的最大开销。
+  // 仍保留：initHostFs（编辑器文件能力）、设置/字体（主题）、保存守卫（关窗 flush 草稿）。
+  const { lean = false } = options;
+
   // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
   // saveLocalPageContent 走与 uTools 相同的 gooseFs 接口）。
   // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
@@ -285,52 +305,61 @@ export const bootstrap = async (
   }
 
   await initHostFs();
-  await migrateLegacyStorage();
+  if (!lean) {
+    await migrateLegacyStorage();
+  }
   await Promise.all([
     useSettings.persist.rehydrate(),
     useNotebooks.persist.rehydrate(),
   ]);
-  // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）
-  const { useNotebookAiChats } = await import("@/stores/useNotebookAiChats");
-  useNotebookAiChats.persist.rehydrate();
-  await usePages.getState().hydrateFromStorage();
+  if (!lean) {
+    // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）。主应用 AI 聊天记录，小窗不需要。
+    const { useNotebookAiChats } = await import("@/stores/useNotebookAiChats");
+    useNotebookAiChats.persist.rehydrate();
+    // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
+    await usePages.getState().hydrateFromStorage();
+  }
   if (import.meta.env.DEV) {
     const { installTestBridge } = await import("@/testBridge");
     installTestBridge();
   }
-  const pagesStore = usePages.getState();
-  const notebooksStore = useNotebooks.getState();
-  const recoveredNotebooks = recoverMissingNotebooksFromPages({
-    notebooks: notebooksStore.notebooks,
-    pages: pagesStore.pages,
-  });
-
-  if (recoveredNotebooks) {
-    const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
-      notebooksStore.activeNotebookId,
-      pagesStore.pages,
-    );
-    useNotebooks.setState({
-      notebooks: recoveredNotebooks.notebooks,
-      ...(shouldFocusRecoveredNotebook
-        ? { activeNotebookId: recoveredNotebooks.recoveredNotebookIds[0] ?? null }
-        : {}),
+  if (!lean) {
+    const pagesStore = usePages.getState();
+    const notebooksStore = useNotebooks.getState();
+    const recoveredNotebooks = recoverMissingNotebooksFromPages({
+      notebooks: notebooksStore.notebooks,
+      pages: pagesStore.pages,
     });
-    console.warn(
-      `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
-    );
-  }
 
-  const nextNotebooksStore = useNotebooks.getState();
-  if (
-    !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
-  ) {
-    const firstNotebookId =
-      Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
-    useNotebooks.setState({ activeNotebookId: firstNotebookId });
+    if (recoveredNotebooks) {
+      const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
+        notebooksStore.activeNotebookId,
+        pagesStore.pages,
+      );
+      useNotebooks.setState({
+        notebooks: recoveredNotebooks.notebooks,
+        ...(shouldFocusRecoveredNotebook
+          ? { activeNotebookId: recoveredNotebooks.recoveredNotebookIds[0] ?? null }
+          : {}),
+      });
+      console.warn(
+        `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
+      );
+    }
+
+    const nextNotebooksStore = useNotebooks.getState();
+    if (
+      !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
+    ) {
+      const firstNotebookId =
+        Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
+      useNotebooks.setState({ activeNotebookId: firstNotebookId });
+    }
   }
   setupSaveGuards();
-  await runCodeStyleMigration2026();
+  if (!lean) {
+    await runCodeStyleMigration2026();
+  }
 
   const settingsStore = useSettings.getState();
   const migratedCodeStyle = migrateCodeStyleTo2026(settingsStore.codeStyle);
@@ -343,7 +372,10 @@ export const bootstrap = async (
 
   createRoot(rootElement).render(renderRoot());
 
-  // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。
+  // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。由主应用（plugin A）消费；
+  // 速记小窗自身（lean）是发送方，不接收，故跳过。
+  if (lean) return;
+
   // 冷启动时 preload 已 push 进 window.__gooseQuickNoteInbox，mount 后在此消费；
   // 热场景（A 已在运行）通过 "goose-note:quicknote-inbox" 事件触发消费。
   const consumeQuickNoteInbox = () => {
@@ -391,8 +423,7 @@ export const bootstrap = async (
   }
 };
 
-// 入口区分：index.html 把 #root 标记为 data-entry="main" → 自动以 <App/> 启动；
-// quicknote.html 不带该标记，由 quicknote.tsx 显式调用 bootstrap(<QuickNoteApp/>)。
-if (rootElement.dataset.entry !== "quicknote") {
-  void bootstrap();
-}
+// 入口区分（两个独立 HTML 入口各自显式启动，本模块不再自动启动）：
+// - index.html → src/index-entry.tsx：import App + 调用 bootstrap(() => <App/>)
+// - quicknote.html → src/quicknote.tsx：调用 bootstrap(() => <QuickNoteApp/>)
+// 自动启动逻辑下沉到 index-entry.tsx，避免本共享模块静态引用 <App/>（详见 bootstrap 注释）。

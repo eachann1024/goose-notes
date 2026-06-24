@@ -107,7 +107,8 @@ export function getBlockNoteSlashMenuItems(
 
   const items: SlashMenuItem[] = [];
 
-  if (aiEnabled) {
+  // 速记小窗（__GOOSE_LITE__）无 AI：不加「生成」斜杠项（其 handler 依赖 AIExtension）。
+  if (aiEnabled && !__GOOSE_LITE__) {
     items.push({
       title: "生成",
       description: "接着写点什么...",

@@ -237,7 +237,11 @@ export function EditorComposer({
           // 与 Editor.tsx 切页/commit 路径保持一致：否则 normalize 改写让签名与基线
           // 永不一致，打开后首个 onChange 即触发非 silent 保存（打开即写盘）。
           // 用户真实输入仍会让文档签名偏离基线，照常走 debouncedUpdate 保存。
-          const isLocalPage = Boolean(page?.localFilePath);
+          // 须与 Editor.tsx 的 isLocalFolderPage 判断保持一致：草稿页(__quicknote_draft__)
+          // 同样豁免 normalize，否则 onChange 在此把首块强转 H1 并回写持久化，
+          // 导致小窗重开后首块永久变成「标题1」。
+          const isLocalPage =
+            Boolean(page?.localFilePath) || page?.id === "__quicknote_draft__";
           const rawContent = clonePageContent(editor.document as BlockNoteContent);
           const nextContent = isLocalPage
             ? rawContent
@@ -311,7 +315,8 @@ export function EditorComposer({
             }
           }}
         />
-        <AIMenuController />
+        {/* 速记小窗（__GOOSE_LITE__）不挂 AI 菜单。 */}
+        {!__GOOSE_LITE__ && <AIMenuController />}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div
