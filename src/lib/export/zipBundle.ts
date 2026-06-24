@@ -290,7 +290,10 @@ export async function generateExportZip(
 
   const exportNotebooksList = Object.keys(notebooksMap)
     .filter((id) => notebookIds.includes(id))
-    .map((id) => (useNotebooks.getState().notebooks as any)[id])
+    .map((id) => {
+      const nb = notebooksMap[id];
+      return nb ? { id, name: nb.name, icon: (nb as any).icon || "BookOpen" } : null;
+    })
     .filter(Boolean);
 
   const exportPagesList = allPages.filter((p) => notebookIds.includes(p.workspaceId));
@@ -390,7 +393,7 @@ export async function importNotebooksFromZip(
     workspaceId: string,
     parentId?: string,
     id?: string,
-  ) => string,
+  ) => string | Promise<string>,
 ) {
   const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(zipBlob);
@@ -451,7 +454,9 @@ export async function importNotebooksFromZip(
 
         const notebookAssetMaps = new Map<string, Map<string, string>>();
         for (const nb of meta.notebooks) {
-          const assetMap = await loadAssetsFromFolder(zip.folder(`${nb.name}/assets`));
+          const assetMap = await loadAssetsFromFolder(
+            zip.folder(`${sanitizeFileName(nb.name)}/assets`),
+          );
           notebookAssetMaps.set(nb.id, assetMap);
         }
 
@@ -461,7 +466,7 @@ export async function importNotebooksFromZip(
           if (pageData.content && assetMap) {
             restoreImages(pageData.content, assetMap);
           }
-          onCreatePage(pageData, page.workspaceId, page.parentId, page.id);
+          await onCreatePage(pageData, page.workspaceId, page.parentId, page.id);
         }
 
         // 还原并合并历史记录数据到本地数据库
@@ -631,7 +636,7 @@ export async function importNotebooksFromZip(
         if (pageData.content) restoreImages(pageData.content, notebookAssetMap);
       }
 
-      const newId = onCreatePage(pageData, workspaceId, parentId);
+      const newId = await onCreatePage(pageData, workspaceId, parentId);
       pathIdMap.set(nameWithoutExt, newId);
     }
   }
