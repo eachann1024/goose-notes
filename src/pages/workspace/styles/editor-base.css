@@ -65,31 +65,32 @@
 }
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button {
   position: absolute;
-  /* 用 left 负偏移代替 right:100% 把箭头挂到标题左外侧 gutter。
-     uTools 旧 Chromium 内核下 absolute 子项的 right:100%（相对父
-     relative 宽度反推右外侧）与 fit-content 高度关键字解析不稳，
-     箭头会退回占位把标题推右；left 负值 + 固定高度是旧内核必稳的
-     基础写法，web/uTools 行为一致。约 1 个箭头宽(1em)+4px 间距。 */
-  left: calc(-1em - 4px);
-  /* 与标题同字号（--level 在 [data-content-type=heading] 上），1.5em = 首行行高 */
-  font-size: var(--level, 1.5em);
-  line-height: 1;
+  /* left 偏移与宽度都固定(不再随标题 --level 缩放)：
+     H1 的 --level=3em 会让旧写法 width/left 撑到 48px、箭头顶出 54px gutter
+     被窗口边遮挡；固定后 H1~H6 箭头都落在同一 gutter 位、同尺寸（≈H3 视觉）。 */
+  left: -28px;
   top: 0;
+  /* 垂直居中关键：按钮盒子高度 = 标题首行行高。font-size 继承标题 --level
+     （不钉死 16px），故 1.5em 自动 = H1(72px)/H2(48px)/H3(31px) 各级行高；
+     top:0 让盒子覆盖整个首行，内部 20px 图标 flex 居中 → 各级箭头都垂直居中。
+     （钉死 font-size 会让 height 塌成固定 24px，在 H1 大行高里偏上——本次修复点） */
   height: 1.5em;
-  min-height: 1em;
-  width: 1em;
+  width: 24px;
+  line-height: 1;
   padding: 0;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0;
   transition: opacity 0.15s ease-out;
 }
-/* BlockNote 默认给 .bn-toggle-button:hover 上 hovered-background 底色。
-   折叠标题的箭头悬挂在标题左外侧、字号大，hover 底色一块很突兀——去掉。
-   仅作用于折叠标题；普通折叠列表(toggleListItem)的箭头 hover 底色保持不变。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button:hover {
-  background: transparent;
+/* 箭头图标统一固定 20px（≈H3 视觉大小），覆盖全局 ::before 的 1em（会随 --level 变大）。
+   所有级别折叠标题箭头视觉一致。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button::before {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
 }
 
 /* 折叠标题展开态（Notion）：gutter 箭头默认隐藏，hover / focus-within 再显示；
@@ -103,6 +104,22 @@
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* 折叠标题模块（把手 + children）与上下正文拉开间距，避免误触、强化视觉分隔：
+   上方 = 标题行 margin-top（两态通用，撑大本块顶部空白）；
+   下方 = 展开态 children group margin-bottom（收起态仅一行标题，下方间距交由
+   .bn-block-outer 默认 margin-bottom，无需额外）。em 随标题字号缩放；
+   .bn-block 是 flex column，其内 margin 不发生合并，与相邻块 margin 叠加生效。
+   仅主编辑区生效，速记小窗保持紧凑。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"] {
+  margin-top: 0.4em;
+}
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  ~ .bn-block-group {
+  margin-bottom: 0.4em;
 }
 
 /* 普通折叠列表(toggleListItem)的箭头统一手感：
@@ -334,6 +351,65 @@
   width: 100%;
 }
 
+/* ===== 标注（callout）图标与首行文字垂直居中 =====
+   与 checklist 同原理：图标槽高度 = 1.5em（一行行高），槽内 flex 居中；
+   多行时槽仍只占首行高度，图标对齐第一行。 */
+.workspace-editor-surface [data-callout="true"],
+.quicknote-editor-surface [data-callout="true"] {
+  align-items: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot,
+.workspace-editor-surface [data-callout="true"] button[data-callout-icon-trigger],
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot,
+.quicknote-editor-surface [data-callout="true"] button[data-callout-icon-trigger] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  padding: 0;
+  line-height: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot > *,
+.quicknote-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-content.bn-inline-content,
+.quicknote-editor-surface [data-callout="true"] .callout-content.bn-inline-content {
+  line-height: 1.5;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.workspace-editor-surface [data-callout="true"] button[data-callout-icon-trigger] svg,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.quicknote-editor-surface [data-callout="true"] button[data-callout-icon-trigger] svg {
+  display: block;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-content .bn-block-outer:first-child,
+.workspace-editor-surface [data-callout="true"] .callout-content > .bn-block-group > .bn-block-outer:first-child,
+.quicknote-editor-surface [data-callout="true"] .callout-content .bn-block-outer:first-child,
+.quicknote-editor-surface [data-callout="true"] .callout-content > .bn-block-group > .bn-block-outer:first-child {
+  margin-top: 0 !important;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-content .bn-block-content[data-content-type="paragraph"],
+.quicknote-editor-surface [data-callout="true"] .callout-content .bn-block-content[data-content-type="paragraph"] {
+  line-height: 1.5;
+}
+
 /* ===== 表格扩展按钮（+） ===== */
 .goose-table-extend-button {
   position: relative;
@@ -441,48 +517,42 @@
   margin-bottom: 0.5em;
 }
 
-/* ===== 行内代码样式（Notion 风格：红字 + 浅灰底） ===== */
-.workspace-editor-surface .bn-inline-content code {
-  background-color: rgba(135, 131, 120, 0.15);
-  color: #eb5757;
-  padding: var(--editor-inline-code-padding-y, 0.15em) var(--editor-inline-code-padding-x, 0.4em);
+/* ===== 行内代码（Notion 红字 + 浅灰底；变量见 index.css，含深色） ===== */
+.workspace-editor-surface .bn-inline-content code,
+.quicknote-editor-surface .bn-inline-content code {
+  background-color: var(--goose-inline-code-bg);
+  color: var(--goose-inline-code-fg);
+  padding: var(--editor-inline-code-padding-y, 1px) var(--editor-inline-code-padding-x, 4px);
   border-radius: var(--editor-inline-code-radius, 4px);
+  border: 1px solid transparent;
   font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
-  font-size: 0.92em;
-  line-height: inherit;
-  vertical-align: baseline;
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: middle;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
-.dark .workspace-editor-surface .bn-inline-content code {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #ff7b7b;
+.workspace-editor-surface .bn-inline-content code:hover,
+.quicknote-editor-surface .bn-inline-content code:hover {
+  border-color: var(--goose-inline-code-border-hover);
 }
 
-/* 表格单元格内的行内代码：BlockNote 给 th/td 设了单元格文字色，优先级高于上面的
-   .bn-inline-content code，把红字盖成默认色。这里显式补回，让表格内外的行内代码一致变红。 */
 .workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
-.workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
-  color: #eb5757;
+.workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code,
+.quicknote-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
+.quicknote-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+  color: var(--goose-inline-code-fg);
 }
 
-.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
-.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
-  color: #ff7b7b;
-}
-
-/* ===== 行内代码假光标（飞书 / Notion 式边界光标） =====
-   当光标逻辑上「在 code 内」但贴着边界时，浏览器真 caret 会被画到 code 外。
-   inlineCodeEscapeExtension 此时隐藏真 caret，并在 code 内沿渲染这个零宽假光标。
-   class 全局唯一，不限定外层 surface —— 主窗口（.workspace-editor-surface）与
-   速记小窗（.quicknote-editor-surface）共用同一假光标，否则小窗里真 caret 被
-   隐藏、假 caret 又不命中，导致 code 边界光标整个消失（要反复按方向键试探落点）。 */
+/* 行内 code 边界假光标：inlineCodeMarkExtension 在 view.dom 切换 hide-caret */
 .goose-inline-code-fake-cursor {
   display: inline-block;
   width: 0;
   margin-right: -1px;
   border-left: 1.5px solid currentColor;
   height: 1.1em;
-  vertical-align: text-bottom;
+  vertical-align: middle;
   pointer-events: none;
   animation: goose-inline-code-caret-blink 1.06s steps(1) infinite;
 }
@@ -492,8 +562,6 @@
   50%, 100% { opacity: 0; }
 }
 
-/* 假光标可见时隐藏真 caret，避免双光标。class 由插件加在 ProseMirror 根
-   contenteditable 上(view.dom)，故直接用类选择器命中，不依赖外层容器。 */
 .goose-inline-code-hide-caret {
   caret-color: transparent;
 }

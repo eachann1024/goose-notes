@@ -49,12 +49,12 @@ function renderCalloutIcon(iconStr: string, className?: string) {
     const IconComp = (LucideIcons as any)[resolved] as React.ElementType;
     return (
       <IconComp
-        className={cn("h-[18px] w-[18px] stroke-[1.75]", className)}
+        className={cn("h-[1em] w-[1em] stroke-[1.75]", className)}
       />
     );
   }
   return (
-    <span className={cn("text-base leading-none", className)}>
+    <span className={cn("text-[1em] leading-none", className)}>
       {resolved}
     </span>
   );
@@ -74,7 +74,7 @@ function CalloutIconPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-[1lh] w-6 shrink-0 select-none items-center justify-center rounded text-[calc(var(--editor-font-size)+1px)] leading-relaxed transition-colors hover:bg-[var(--goose-interactive-hover)]"
+          className="callout-icon-slot shrink-0 rounded transition-colors hover:bg-[var(--goose-interactive-hover)]"
           onClick={() => setOpen(true)}
           data-callout-icon-trigger
         >
@@ -133,7 +133,7 @@ export const calloutBlock = createReactBlockSpec(
 
       return (
         <div
-          className="callout-block group flex w-full items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
+          className="callout-block group flex w-full items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[length:var(--editor-module-sm-font-size)] leading-[1.5]"
           data-callout="true"
         >
           <CalloutIconPicker icon={icon} onPick={handleIconPick} />
@@ -147,10 +147,10 @@ export const calloutBlock = createReactBlockSpec(
     toExternalHTML: ({ block, contentRef }) => {
       return (
         <div
-          className="flex items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[calc(var(--editor-font-size)+1px)] leading-relaxed"
+          className="flex items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[length:var(--editor-module-sm-font-size)] leading-[1.5]"
           data-callout="true"
         >
-              <span className="flex h-[1lh] w-6 shrink-0 select-none items-center justify-center text-[calc(var(--editor-font-size)+1px)] leading-relaxed">
+          <span className="callout-icon-slot shrink-0">
               {renderCalloutIcon(
                 (block.props.icon as string) || DEFAULT_CALLOUT_ICON,
               )}

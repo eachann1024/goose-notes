@@ -41,10 +41,9 @@ CHANGELOG.md
 
 # ---- AI assistant / tooling artifacts ----
 # Claude Code: keep shared agents/skills & project specs, ignore local-only noise
-.claude/worktrees/
-.claude/launch.json
-.claude/settings.local.json
-.claude/.DS_Store
+.claude/
+# Skill/MCP tool lock files
+skills-lock.json
 # Other AI coding tools (Codex / Cursor / Zed / Trae / agent runners)
 .codex
 .cursor

@@ -60,7 +60,7 @@ import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extension
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
-import { gooseInlineCodeEscapeExtension } from "@/components/editor/extensions/inlineCodeEscapeExtension";
+import { gooseInlineCodeMarkExtension } from "@/components/editor/extensions/inlineCodeMarkExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { EditorComposer, editorSchema, getSelectedCellPlainText, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
 import { isLinkworthyText } from "@/components/editor/utils/clipboard";
@@ -208,7 +208,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseToggleHeadingInputRuleExtension,
-        gooseInlineCodeEscapeExtension,
+        gooseInlineCodeMarkExtension,
         gooseFindInPageExtension,
         // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展：省去 @blocknote/xl-ai + @ai-sdk（~488K）解析。
         ...(__GOOSE_LITE__
