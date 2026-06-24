@@ -50,26 +50,25 @@ const RECOMMENDED_APPS = [
 const FEEDBACK_URL = "https://wj.qq.com/s2/25958121/2d2e/";
 const SETTINGS_APPS_BANNER_ID = "settings:recommended-apps-banner";
 
-const recordPreOverwriteHistory = (id: string | undefined) => {
+const recordPreOverwriteHistory = async (id: string | undefined) => {
   if (!id) return;
   const existingPage = usePages.getState().pages[id];
   if (existingPage && existingPage.content) {
     const oldContent = existingPage.content;
     const oldWorkspaceId = existingPage.workspaceId;
-    import("@/lib/history/snapshot")
-      .then(({ recordHistorySnapshot }) => {
-        return recordHistorySnapshot({
-          pageId: id,
-          workspaceId: oldWorkspaceId,
-          content: oldContent,
-          trigger: "manual",
-          isMilestone: true,
-          label: "备份覆盖前本地版本",
-        });
-      })
-      .catch((err) => {
-        console.error("[history] Failed to save pre-overwrite history", err);
+    try {
+      const { recordHistorySnapshot } = await import("@/lib/history/snapshot");
+      await recordHistorySnapshot({
+        pageId: id,
+        workspaceId: oldWorkspaceId,
+        content: oldContent,
+        trigger: "manual",
+        isMilestone: true,
+        label: "备份覆盖前本地版本",
       });
+    } catch (err) {
+      console.error("[history] Failed to save pre-overwrite history", err);
+    }
   }
 };
 
@@ -269,9 +268,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             if (!firstWorkspaceId) firstWorkspaceId = newId;
             return newId;
           },
-          (data, workspaceId, parentId, id) => {
+          async (data, workspaceId, parentId, id) => {
             pageCount++;
-            recordPreOverwriteHistory(id);
+            await recordPreOverwriteHistory(id);
             const pageId = usePages.getState().createPageRecord({
               ...data,
               id,
@@ -323,8 +322,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           if (!firstWorkspaceId) firstWorkspaceId = newId;
           return newId;
         },
-        (data, workspaceId, parentId, id) => {
-          recordPreOverwriteHistory(id);
+        async (data, workspaceId, parentId, id) => {
+          await recordPreOverwriteHistory(id);
           const pageId = usePages.getState().createPageRecord({
             ...data,
             id,
@@ -357,6 +356,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     clearLegacyStorage();
     clearLocalPageMetadataCache();
     if (zipBlob) {
+      // 恢复前先清空 Zustand live 内存状态，防止导入数据和当前内存数据混合
+      useNotebooks.setState({
+        notebooks: {},
+        activeNotebookId: null,
+        lastActivePageByNotebook: {},
+      });
+      usePages.setState({
+        pages: {},
+        activePageId: null,
+        pendingNavigatePageId: null,
+        expandPageId: null,
+        searchHighlightQuery: null,
+        searchHighlightPageId: null,
+        searchHighlightNonce: 0,
+        handledSearchHighlightNonce: 0,
+        hydrated: true,
+        lastSavedAt: null,
+        onboardingCompleted: false,
+      });
       try {
         let firstWorkspaceId: string | null = null;
         let firstPageId: string | null = null;
@@ -368,8 +386,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             if (!firstWorkspaceId) firstWorkspaceId = newId;
             return newId;
           },
-          (data, workspaceId, parentId, id) => {
-            recordPreOverwriteHistory(id);
+          async (data, workspaceId, parentId, id) => {
+            await recordPreOverwriteHistory(id);
             const pageId = usePages.getState().createPageRecord({
               ...data,
               id,
