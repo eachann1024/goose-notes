@@ -91,6 +91,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     customActions,
     tableEvenColumnWidth,
     ai: aiSettings,
+    utools,
   } = useEditorSettings();
   const {
     page,
@@ -126,6 +127,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   // 同 aiSettingsRef 模式，避免闭包捕获旧 platform 引用。
   const platformRef = useRef(platform);
   platformRef.current = platform;
+  // utoolsRef 供 useCreateBlockNote 闭包（deps=[]）调用平台设置，避免闭包捕获旧配置
+  const utoolsRef = useRef(utools);
+  utoolsRef.current = utools;
 
   // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
   // 内容保持磁盘解析原样，避免 normalize 引发的结构变化误触写盘。
@@ -261,7 +265,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           if (link) {
             const href = link.getAttribute("href");
             if (href) {
-              platformRef.current.shell.openUrl(href);
+              const useInternalBrowser = utoolsRef.current?.openSearchInUtools ?? false;
+              platformRef.current.shell.openUrl(href, useInternalBrowser);
             }
           }
           return true;

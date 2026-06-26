@@ -1,5 +1,6 @@
 import { createExtension } from "@blocknote/core";
 import { getEditorPlatform } from "@/components/editor/platform/context";
+import { getEditorSettings } from "@/components/editor/platform/hostContext";
 
 function normalizeExternalUrl(url: string): string {
   const trimmed = url.trim();
@@ -28,7 +29,10 @@ export const gooseLinkKeyboardExtension = createExtension({
       const url = editor.getSelectedLinkUrl();
       if (url) {
         const target = normalizeExternalUrl(url);
-        if (target) void getEditorPlatform().shell.openUrl(target, false);
+        if (target) {
+          const useInternalBrowser = getEditorSettings()?.utools?.openSearchInUtools ?? false;
+          void getEditorPlatform().shell.openUrl(target, useInternalBrowser);
+        }
         return true;
       }
       return false;

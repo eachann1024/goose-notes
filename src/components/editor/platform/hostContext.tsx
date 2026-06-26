@@ -11,7 +11,7 @@
  *
  * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §3
  */
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type {
@@ -42,7 +42,7 @@ export interface EditorSettings {
   /** uTools 端有值，Tauri 端 null */
   utools: UToolsSettings | null;
   customActions: CustomAction[];
-  /** 宿主提供的 redirect 能力（uTools 端：UToolsAdapter.redirect；Tauri 端：noop） */
+  /** 宿主提供的 redirect capability（uTools 端：UToolsAdapter.redirect；Tauri 端：noop） */
   redirectAction?: (label: string | [string, string], payload?: unknown) => void;
 }
 
@@ -76,6 +76,14 @@ export interface EditorProps {
 const EditorSettingsContext = createContext<EditorSettings | null>(null);
 const EditorPageContextContext = createContext<EditorPageContext | null>(null);
 
+// 模块级单例：供非 React 调用点读取
+let currentSettings: EditorSettings | null = null;
+
+/** 非 React 调用点取编辑器设置 */
+export function getEditorSettings(): EditorSettings | null {
+  return currentSettings;
+}
+
 export function EditorHostProvider({
   settings,
   pageContext,
@@ -85,6 +93,16 @@ export function EditorHostProvider({
   pageContext: EditorPageContext;
   children: ReactNode;
 }) {
+  // render 阶段同步赋值，确保非 React 调用点能拿到最新设置
+  currentSettings = settings;
+
+  useEffect(() => {
+    currentSettings = settings;
+    return () => {
+      currentSettings = null;
+    };
+  }, [settings]);
+
   return (
     <EditorSettingsContext.Provider value={settings}>
       <EditorPageContextContext.Provider value={pageContext}>
