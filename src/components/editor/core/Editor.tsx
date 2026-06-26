@@ -42,7 +42,7 @@ function getCachedContentSignature(content: unknown): string {
 }
 import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
-import { gooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
+import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
@@ -85,6 +85,7 @@ interface EditorProps {
 }
 
 export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true, hiddenSlashItemTitles, showSideMenu = true }, ref) {
+  const settings = useEditorSettings();
   const {
     theme,
     searchProviders,
@@ -92,7 +93,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     tableEvenColumnWidth,
     ai: aiSettings,
     utools,
-  } = useEditorSettings();
+  } = settings;
   const {
     page,
     isEditorFullWidth,
@@ -130,6 +131,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   // utoolsRef 供 useCreateBlockNote 闭包（deps=[]）调用平台设置，避免闭包捕获旧配置
   const utoolsRef = useRef(utools);
   utoolsRef.current = utools;
+  // settingsRef 供 useCreateBlockNote 闭包（deps=[]）调用平台设置，避免闭包捕获旧配置
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
   // 内容保持磁盘解析原样，避免 normalize 引发的结构变化误触写盘。
@@ -197,7 +201,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseHeadingMarkSuppressExtension,
         gooseTabBehaviorExtension,
         gooseSelectAllExtension,
-        gooseLinkKeyboardExtension,
+        createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,

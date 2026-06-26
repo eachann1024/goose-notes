@@ -76,14 +76,6 @@ export interface EditorProps {
 const EditorSettingsContext = createContext<EditorSettings | null>(null);
 const EditorPageContextContext = createContext<EditorPageContext | null>(null);
 
-// 模块级单例：供非 React 调用点读取
-let currentSettings: EditorSettings | null = null;
-
-/** 非 React 调用点取编辑器设置 */
-export function getEditorSettings(): EditorSettings | null {
-  return currentSettings;
-}
-
 export function EditorHostProvider({
   settings,
   pageContext,
@@ -93,16 +85,6 @@ export function EditorHostProvider({
   pageContext: EditorPageContext;
   children: ReactNode;
 }) {
-  // render 阶段同步赋值，确保非 React 调用点能拿到最新设置
-  currentSettings = settings;
-
-  useEffect(() => {
-    currentSettings = settings;
-    return () => {
-      currentSettings = null;
-    };
-  }, [settings]);
-
   return (
     <EditorSettingsContext.Provider value={settings}>
       <EditorPageContextContext.Provider value={pageContext}>
