@@ -98,6 +98,11 @@ export function WorkspaceLayout({
       window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
   }, [aiEnabled, toggleAiPanel]);
 
+  // AI 功能关闭时强制收起侧栏面板，避免 localStorage 仍为 true 导致下次开启后误展开
+  useEffect(() => {
+    if (!aiEnabled) closeAiPanel();
+  }, [aiEnabled, closeAiPanel]);
+
   useEffect(() => {
     if (locateRetryRef.current) {
       clearTimeout(locateRetryRef.current);
@@ -217,7 +222,7 @@ export function WorkspaceLayout({
                     <div
                       className={cn(
                         "flex min-h-full flex-col pt-0",
-                        isEditorFullWidth ? "px-6 md:px-8 lg:px-10" : "px-8",
+                        isEditorFullWidth ? "px-14" : "px-8",
                       )}
                     >
                       <HistoryReader />
@@ -265,9 +270,7 @@ export function WorkspaceLayout({
                         <div
                           className={cn(
                             "flex min-h-full flex-col",
-                            isEditorFullWidth
-                              ? "px-6 md:px-8 lg:px-10"
-                              : "px-8",
+                            isEditorFullWidth ? "px-14" : "px-8",
                             page.icon ? "pt-4" : "pt-0",
                           )}
                         >
