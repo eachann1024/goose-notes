@@ -15,6 +15,7 @@ import {
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { clonePageContent, getContentSignature, normalizePageContent, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { markUserInteraction } from "@/lib/editor-interaction-signal";
+import { normalizeExternalUrl } from "@/lib/openExternalUrl";
 import { usePages as usePagesStore } from "@/stores/usePages";
 
 /**
@@ -294,8 +295,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           if (link) {
             const href = link.getAttribute("href");
             if (href) {
-              const useInternalBrowser = utoolsRef.current?.openSearchInUtools ?? false;
-              platformRef.current.shell.openUrl(href, useInternalBrowser);
+              const normalizedHref = normalizeExternalUrl(href);
+              if (normalizedHref) {
+                const useInternalBrowser = utoolsRef.current?.openSearchInUtools ?? false;
+                platformRef.current.shell.openUrl(normalizedHref, useInternalBrowser);
+              }
             }
           }
           return true;
