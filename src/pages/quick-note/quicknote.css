@@ -62,6 +62,12 @@ body,
   padding-top: 32px;
   padding-bottom: 16px;
 }
+
+.quicknote-editor-scale {
+  --quicknote-editor-zoom: 1;
+  transform: scale(var(--quicknote-editor-zoom));
+  transform-origin: top left;
+}
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
    距离的，但首块前面没有内容，叠加 surface padding 后顶部会显出一大段死空白。
    仅作用于首块，不影响文中其它 heading 的上间距。 */

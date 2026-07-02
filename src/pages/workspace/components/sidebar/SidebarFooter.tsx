@@ -46,6 +46,7 @@ export function SidebarFooter({
                 type="button"
                 className={cn(btnClass, sidebarCollapsed && activeClass)}
                 aria-label="收起侧栏"
+                aria-pressed={sidebarCollapsed}
                 onClick={toggleSidebarCollapsed}
               >
                 <LucideIcons.PanelLeft className="h-4 w-4" />

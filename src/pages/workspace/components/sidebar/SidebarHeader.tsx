@@ -299,54 +299,50 @@ export function SidebarHeader({
       </div>
 
       <div className="pl-0 pr-[9px] pb-2 pt-0">
-        <div className="group/pinned relative overflow-hidden rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)] px-1 py-1">
-          {dragGuide && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
-              {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
-              {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
-            </div>
-          )}
-          {pinnedPages.length === 0 ? (
-            <div className="h-8 px-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground/80">
-              <LucideIcons.Pin className="h-3.5 w-3.5" />
-              <span>暂无置顶页面</span>
-            </div>
-          ) : (
-            <div
-              ref={pinnedScrollerRef}
-              className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              onWheel={handlePinnedWheel}
-            >
-              {pinnedPages.map((page) => {
-                const isActive = highlightedPageId === page.id;
-                const title = getPageTitle(page);
-                return (
-                  <TooltipProvider key={page.id} delayDuration={600}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          ref={isActive ? activePinnedRef : null}
-                          type="button"
-                          className={cn(
-                            "h-8 w-8 shrink-0 rounded-full inline-flex items-center justify-center transition-all duration-200",
-                            "animate-in fade-in-0 zoom-in-95",
-                            // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
-                            isActive
-                              ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-sm"
-                              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-                          )}
-                          onClick={() => handleOpenPinnedPage(page.id)}
-                        >
-                          {renderPinnedIcon(page, isActive)}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">{title}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              })}
-            </div>
-          )}
+        {(pinnedPages.length > 0 || dragGuide) && (
+          <div className="group/pinned relative min-h-10 overflow-hidden rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)] px-1 py-1">
+            {dragGuide && (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
+                {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
+                {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
+              </div>
+            )}
+            {pinnedPages.length > 0 && (
+              <div
+                ref={pinnedScrollerRef}
+                className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onWheel={handlePinnedWheel}
+              >
+                {pinnedPages.map((page) => {
+                  const isActive = highlightedPageId === page.id;
+                  const title = getPageTitle(page);
+                  return (
+                    <TooltipProvider key={page.id} delayDuration={600}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            ref={isActive ? activePinnedRef : null}
+                            type="button"
+                            className={cn(
+                              "h-8 w-8 shrink-0 rounded-full inline-flex items-center justify-center transition-all duration-200",
+                              "animate-in fade-in-0 zoom-in-95",
+                              // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
+                              isActive
+                                ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-sm"
+                                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                            )}
+                            onClick={() => handleOpenPinnedPage(page.id)}
+                          >
+                            {renderPinnedIcon(page, isActive)}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">{title}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
+              </div>
+            )}
 
           {pinnedPages.length > 0 && (
             <>
@@ -406,7 +402,8 @@ export function SidebarHeader({
               </button>
             </>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );
