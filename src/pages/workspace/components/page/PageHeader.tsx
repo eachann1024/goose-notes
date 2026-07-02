@@ -38,7 +38,6 @@ interface SortableTabItemProps {
   onCloseRight: () => void;
   onTogglePin: () => void;
   onPromotePreview: () => void;
-  onLocateInTree?: () => void;
 }
 
 function SortableTabItem({
@@ -57,7 +56,6 @@ function SortableTabItem({
   onCloseRight,
   onTogglePin,
   onPromotePreview,
-  onLocateInTree,
 }: SortableTabItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: tab.id });
@@ -166,14 +164,6 @@ function SortableTabItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-[200px]">
-        {tab.type !== "welcome" && onLocateInTree && (
-          <>
-            <ContextMenuItem onSelect={onLocateInTree}>
-              在文件树中定位
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
-        )}
         <ContextMenuItem onSelect={onTogglePin}>
           {tab.pinned ? "取消固定" : "固定标签"}
         </ContextMenuItem>
@@ -202,8 +192,6 @@ function SortableTabItem({
 interface PageHeaderProps {
   page?: Page;
   onOpenSearch: () => void;
-  onToggleFavorite?: () => void;
-  onTogglePinned?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
   /** AI 面板当前是否打开 */
@@ -215,8 +203,6 @@ interface PageHeaderProps {
 export function PageHeader({
   page,
   onOpenSearch,
-  onToggleFavorite,
-  onTogglePinned,
   onRestore,
   onDelete,
   aiPanelOpen,
@@ -240,16 +226,7 @@ export function PageHeader({
     reorderTabs,
     togglePinTab,
     promotePreviewTab,
-    syncNotebookForPage,
   } = useTabs();
-  const setExpandPageId = usePages((s) => s.setExpandPageId);
-  const setSidebarCollapsedView = useSidebarView((s) => s.setSidebarCollapsed);
-  const locateInTree = (pageId: string) => {
-    // 侧栏若已折叠，先展开，否则定位无处可见
-    setSidebarCollapsedView(false);
-    syncNotebookForPage(pageId);
-    setExpandPageId(pageId);
-  };
   const { closeTabShortcut } = useSettings();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -406,7 +383,6 @@ export function PageHeader({
                     onCloseRight={() => closeTabsToRight(tab.id)}
                     onTogglePin={() => togglePinTab(tab.id)}
                     onPromotePreview={() => promotePreviewTab(tab.id)}
-                    onLocateInTree={() => locateInTree(tab.pageId)}
                   />
                 );
               })}
@@ -596,72 +572,6 @@ export function PageHeader({
               </Tooltip>
             </TooltipProvider>
           </>
-        )}
-
-        {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onToggleFavorite}
-                  className={actionButtonClass}
-                  aria-label={
-                    page.isFavorite
-                      ? "取消收藏"
-                      : isLocalItem
-                        ? "收藏文件"
-                        : "收藏页面"
-                  }
-                >
-                  <LucideIcons.Star
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      page.isFavorite
-                        ? "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]"
-                        : "text-muted-foreground/70 dark:text-muted-foreground/55",
-                    )}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {page.isFavorite
-                  ? "取消收藏"
-                  : isLocalItem
-                    ? "收藏文件"
-                    : "收藏页面"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-
-        {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onTogglePinned}
-                  className={cn(
-                    actionButtonClass,
-                    page.isPinned &&
-                      "bg-[var(--goose-interactive-selected)] text-foreground",
-                  )}
-                  aria-label={page.isPinned ? "取消置顶" : "置顶页面"}
-                >
-                  <LucideIcons.Pin
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      page.isPinned
-                        ? "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]"
-                        : "text-muted-foreground/70 dark:text-muted-foreground/55",
-                    )}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {page.isPinned ? "取消置顶" : "置顶页面"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         )}
 
         {page && !page.trashedAt && <PageMenu />}

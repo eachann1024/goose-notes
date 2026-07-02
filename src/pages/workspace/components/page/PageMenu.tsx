@@ -7,6 +7,7 @@ import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-content";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
+import { cn } from "@/lib/utils";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -39,6 +40,7 @@ export function PageMenu() {
   const notebook = page ? notebooks[page.workspaceId] : undefined;
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
+  const isLocalItem = Boolean(page?.localFilePath);
 
   const handleImport = async () => {
     const result = await importFile();
@@ -105,6 +107,46 @@ export function PageMenu() {
         </div>
 
         <DropdownMenuGroup>
+          <DropdownMenuItem
+            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+            onSelect={() => {
+              updatePage(activePageId, { isFavorite: !page.isFavorite });
+            }}
+          >
+            <LucideIcons.Star
+              className={cn(
+                "h-3.5 w-3.5 text-muted-foreground",
+                page.isFavorite &&
+                  "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+              )}
+            />
+            <span className="min-w-0 truncate">
+              {page.isFavorite
+                ? "取消收藏"
+                : isLocalItem
+                  ? "收藏文件"
+                  : "收藏页面"}
+            </span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+            onSelect={() => {
+              updatePage(activePageId, { isPinned: !page.isPinned });
+            }}
+          >
+            <LucideIcons.Pin
+              className={cn(
+                "h-3.5 w-3.5 text-muted-foreground",
+                page.isPinned &&
+                  "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+              )}
+            />
+            <span className="min-w-0 truncate">
+              {page.isPinned ? "取消置顶" : "置顶页面"}
+            </span>
+          </DropdownMenuItem>
+
           <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
             <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="min-w-0 truncate">锁定页面</span>

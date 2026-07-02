@@ -277,12 +277,28 @@ export const useSettings = create<SettingsState>()(
                 }
 
                 if (state) {
+                    const normalizedLocalFolderFileManager =
+                        typeof state.localFolderFileManager === 'string'
+                            ? state.localFolderFileManager.trim()
+                            : ''
                     const normalizedLocalFolderExternalEditor =
                         typeof state.localFolderExternalEditor === 'string'
-                            ? state.localFolderExternalEditor
+                            ? state.localFolderExternalEditor.trim()
                             : ''
-                    if (state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor) {
-                        useSettings.setState({ localFolderExternalEditor: normalizedLocalFolderExternalEditor })
+                    const normalizedLocalFolderTerminal =
+                        typeof state.localFolderTerminal === 'string'
+                            ? state.localFolderTerminal.trim()
+                            : ''
+                    if (
+                        state.localFolderFileManager !== normalizedLocalFolderFileManager ||
+                        state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor ||
+                        state.localFolderTerminal !== normalizedLocalFolderTerminal
+                    ) {
+                        useSettings.setState({
+                            localFolderFileManager: normalizedLocalFolderFileManager,
+                            localFolderExternalEditor: normalizedLocalFolderExternalEditor,
+                            localFolderTerminal: normalizedLocalFolderTerminal,
+                        })
                     }
                 }
                 // 标记 hydration 完成

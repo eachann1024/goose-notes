@@ -79,6 +79,9 @@ declare global {
   const Input: typeof import('./components/ui/input').Input
   const Kbd: typeof import('./components/ui/kbd').Kbd
   const LEGACY_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').LEGACY_BLOCK_TYPES
+  const LOCAL_FOLDER_EDITOR_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_EDITOR_CANDIDATES
+  const LOCAL_FOLDER_FILE_MANAGER_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_FILE_MANAGER_CANDIDATES
+  const LOCAL_FOLDER_TERMINAL_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_TERMINAL_CANDIDATES
   const Label: typeof import('./components/ui/label').Label
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
@@ -210,6 +213,7 @@ declare global {
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
+  const formatLocalFolderOpenAppName: typeof import('./lib/local-folder-open-apps').formatLocalFolderOpenAppName
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
@@ -432,6 +436,9 @@ declare global {
   // @ts-ignore
   export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
+  // @ts-ignore
+  export type { LocalFolderOpenAppKind, LocalFolderOpenAppCandidate } from './lib/local-folder-open-apps'
+  import('./lib/local-folder-open-apps')
   // @ts-ignore
   export type { ParsedLocalMarkdown } from './lib/local-folder-scanner'
   import('./lib/local-folder-scanner')

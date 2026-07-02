@@ -145,6 +145,12 @@
 /* class 模式暗色：等价 v3 darkMode: ["class"] */
 @custom-variant dark (&:is(.dark *));
 
+.goose-sidebar-context-menu [role="menuitem"],
+.goose-sidebar-context-menu [role="menuitemcheckbox"],
+.goose-sidebar-context-menu [role="menuitemradio"] {
+  column-gap: 12px;
+}
+
 /* ── Tailwind v4 CSS-first 主题映射 ──────────────────────────────
  * 用 @theme inline：颜色值保持 hsl(var(--xxx)) 引用，
  * 真正的色值仍由下方 :root/.dark 里的 CSS 变量驱动（与 shadcn v4 一致）。

@@ -177,6 +177,22 @@ export function renderItem({
     }
   };
 
+  const toggleLocalFolderRow = () => {
+    if (hasChildren) {
+      context.toggleExpandedState();
+      return;
+    }
+    toast.info("这个文件夹是空的", { position: "top-right" });
+  };
+
+  const handleRowClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    (interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined)?.(e);
+    if (e.defaultPrevented) return;
+    if (isLocalFolder && page?.isFolder) {
+      toggleLocalFolderRow();
+    }
+  };
+
   const row = (
     <div
       {...withoutChildren}
@@ -203,16 +219,13 @@ export function renderItem({
           标题文字给 pointer-events-none 透传给底层 interactive；占位 arrow 已 pointer-events-none。 */}
       <div
         {...interactive}
+        onClick={handleRowClick}
         onDragStart={handleDragStart}
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           if (isLocalFolder && page?.isFolder) {
-            if (hasChildren) {
-              context.toggleExpandedState();
-            } else {
-              toast.info("这个文件夹是空的", { position: "top-right" });
-            }
+            toggleLocalFolderRow();
             return;
           }
           openPageFromSidebar(String(item.index), "permanent");

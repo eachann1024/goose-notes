@@ -1,15 +1,21 @@
 export interface LocalFolderSliceState {
+    localFolderFileManager: string
     localFolderExternalEditor: string
+    localFolderTerminal: string
 }
 
 export interface LocalFolderSliceActions {
+    setLocalFolderFileManager: (fileManager: string) => void
     setLocalFolderExternalEditor: (editor: string) => void
+    setLocalFolderTerminal: (terminal: string) => void
 }
 
 export type LocalFolderSlice = LocalFolderSliceState & LocalFolderSliceActions
 
 export const LOCAL_FOLDER_INITIAL_STATE: LocalFolderSliceState = {
+    localFolderFileManager: '',
     localFolderExternalEditor: '',
+    localFolderTerminal: '',
 }
 
 type SetFn = (updater: Partial<LocalFolderSlice> | ((state: LocalFolderSlice) => Partial<LocalFolderSlice>)) => void
@@ -17,6 +23,8 @@ type SetFn = (updater: Partial<LocalFolderSlice> | ((state: LocalFolderSlice) =>
 export function createLocalFolderSlice(set: SetFn): LocalFolderSlice {
     return {
         ...LOCAL_FOLDER_INITIAL_STATE,
+        setLocalFolderFileManager: (fileManager) => set({ localFolderFileManager: fileManager }),
         setLocalFolderExternalEditor: (editor) => set({ localFolderExternalEditor: editor }),
+        setLocalFolderTerminal: (terminal) => set({ localFolderTerminal: terminal }),
     }
 }

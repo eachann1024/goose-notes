@@ -9,6 +9,9 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
 import { shell } from "@/lib/utools/shell";
+import { fs as gooseFs } from "@/lib/utools/fs";
+import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
+import { normalizeLocalFilePathKey } from "@/stores/pages/actions/localFolder/pathGuards";
 import { toast } from "sonner";
 
 const _platform = navigator.platform || navigator.userAgent;
@@ -19,6 +22,48 @@ function getFinderLabel(isFolder: boolean) {
   if (_isMac) return `在访达中${action}`;
   if (_isWin) return `在资源管理器中${action}`;
   return `在文件管理器中${action}`;
+}
+
+function getParentPath(targetPath: string): string {
+  return targetPath.replace(/[\\/][^\\/]*$/, "");
+}
+
+function joinLocalPath(parentPath: string, childName: string): string {
+  const normalizedParent = parentPath.replace(/[\\/]+$/, "");
+  const separator = parentPath.includes("\\") ? "\\" : "/";
+  return `${normalizedParent}${separator}${childName}`;
+}
+
+function sanitizeFolderName(name: string): string {
+  return (name.trim() || "新建文件夹").replace(/[\\/:*?"<>|]/g, "_");
+}
+
+async function buildUniqueFolderPath(parentPath: string, baseName: string): Promise<string> {
+  const normalizedBaseName = sanitizeFolderName(baseName);
+  let candidate = joinLocalPath(parentPath, normalizedBaseName);
+  if (!(await gooseFs.existsAsync(candidate))) return candidate;
+
+  let suffix = 1;
+  while (await gooseFs.existsAsync(joinLocalPath(parentPath, `${normalizedBaseName} ${suffix}`))) {
+    suffix++;
+  }
+  candidate = joinLocalPath(parentPath, `${normalizedBaseName} ${suffix}`);
+  return candidate;
+}
+
+function getExternalAppLabel(app: string): string {
+  if (!app.trim()) return "用系统默认打开";
+  return `用 ${formatLocalFolderOpenAppName(app, "外部应用")} 打开`;
+}
+
+function getFileManagerLabel(isFolder: boolean, fileManager: string): string {
+  if (!fileManager.trim()) return getFinderLabel(isFolder);
+  return `用 ${formatLocalFolderOpenAppName(fileManager, "文件管理器")} 打开`;
+}
+
+function getTerminalLabel(terminal: string): string {
+  if (!terminal.trim()) return "在终端中打开";
+  return `在 ${formatLocalFolderOpenAppName(terminal, "终端")} 中打开`;
 }
 
 interface SidebarContextMenuProps {
@@ -39,11 +84,6 @@ export function SidebarContextMenu({
   const notebook = notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";
   const isTrashed = !!page.trashedAt;
-  const menuLabel = isLocalFolder
-    ? page.isFolder
-      ? "本地文件夹"
-      : "本地文件"
-    : "页面";
   const movableNotebooks = Object.values(notebooks).filter(
     (item) => item.id !== page.workspaceId && item.source !== "local-folder",
   );
@@ -96,8 +136,58 @@ export function SidebarContextMenu({
     });
   };
 
+  const localFolderFileManager = useSettings((s) => s.localFolderFileManager);
   const localFolderExternalEditor = useSettings((s) => s.localFolderExternalEditor);
+  const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
   const hasParent = !!page.parentId;
+
+  const handleCreateLocalFolder = async () => {
+    if (!isLocalFolder || !notebook?.localPath || !page.localFilePath) return;
+
+    const parentPath = page.isFolder
+      ? page.localFilePath
+      : getParentPath(page.localFilePath) || notebook.localPath;
+    const targetPath = await buildUniqueFolderPath(parentPath, "新建文件夹");
+    const ok = await gooseFs.mkdir(targetPath);
+    if (!ok) {
+      toast.error("新建文件夹失败");
+      return;
+    }
+
+    await usePages.getState().loadLocalFolderPages(notebook.id, notebook.localPath);
+    const createdFolder = Object.values(usePages.getState().pages).find(
+      (item) =>
+        item.workspaceId === notebook.id &&
+        item.isFolder &&
+        item.localFilePath &&
+        normalizeLocalFilePathKey(item.localFilePath) === normalizeLocalFilePathKey(targetPath),
+    );
+
+    if (page.isFolder) {
+      usePages.getState().setExpandPageId(page.id);
+    }
+    if (createdFolder) {
+      usePages.getState().setExpandPageId(createdFolder.id);
+    }
+    toast.success("已新建文件夹");
+  };
+
+  const handleOpenInFileManager = async () => {
+    if (!page.localFilePath) return;
+    const ok = localFolderFileManager.trim()
+      ? await shell.openWithApp(page.localFilePath, localFolderFileManager)
+      : page.isFolder
+        ? await shell.openPath(page.localFilePath)
+        : await shell.showItemInFolder(page.localFilePath);
+    if (!ok) toast.error("打开失败，请检查文件管理器设置");
+  };
+
+  const handleOpenInTerminal = async () => {
+    if (!page.localFilePath) return;
+    const targetPath = page.isFolder ? page.localFilePath : getParentPath(page.localFilePath);
+    const ok = await shell.openTerminalAtPath(targetPath, localFolderTerminal);
+    if (!ok) toast.error("打开失败，请检查终端设置");
+  };
 
   return (
     <>
@@ -107,10 +197,7 @@ export function SidebarContextMenu({
             {children}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-60 !border-0">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/50">
-            {menuLabel}
-          </div>
+        <ContextMenuContent className="goose-sidebar-context-menu w-60 !border-0">
           <ContextMenuItem
             onSelect={() => {
               if (isTrashed) return;
@@ -124,30 +211,34 @@ export function SidebarContextMenu({
               {formatShortcut("Mod")}+点击
             </span>
           </ContextMenuItem>
-          {isLocalFolder && !isTrashed && page.localFilePath && !page.isFolder && (
-            <ContextMenuItem
-              onSelect={() => {
-                void shell.openWithEditor(page.localFilePath!, localFolderExternalEditor).then((ok) => {
-                  if (!ok) toast.error("打开失败，请检查外部编辑器设置");
-                });
-              }}
-            >
-              <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
-              <span>用外部编辑器打开</span>
+          {isLocalFolder && !isTrashed && page.localFilePath && (
+            <ContextMenuItem onSelect={() => void handleCreateLocalFolder()}>
+              <LucideIcons.FolderPlus className="h-4 w-4" />
+              <span>新建文件夹</span>
             </ContextMenuItem>
           )}
           {isLocalFolder && !isTrashed && page.localFilePath && (
             <ContextMenuItem
               onSelect={() => {
-                if (page.isFolder) {
-                  void shell.openPath(page.localFilePath!);
-                } else {
-                  void shell.showItemInFolder(page.localFilePath!);
-                }
+                void shell.openWithEditor(page.localFilePath!, localFolderExternalEditor).then((ok) => {
+                  if (!ok) toast.error("打开失败，请检查外部应用设置");
+                });
               }}
             >
+              <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
+              <span>{getExternalAppLabel(localFolderExternalEditor)}</span>
+            </ContextMenuItem>
+          )}
+          {isLocalFolder && !isTrashed && page.localFilePath && (
+            <ContextMenuItem onSelect={() => void handleOpenInFileManager()}>
               <LucideIcons.FolderOpen className="h-4 w-4" />
-              <span>{getFinderLabel(!!page.isFolder)}</span>
+              <span>{getFileManagerLabel(!!page.isFolder, localFolderFileManager)}</span>
+            </ContextMenuItem>
+          )}
+          {isLocalFolder && !isTrashed && page.localFilePath && (
+            <ContextMenuItem onSelect={() => void handleOpenInTerminal()}>
+              <LucideIcons.Terminal className="h-4 w-4" />
+              <span>{getTerminalLabel(localFolderTerminal)}</span>
             </ContextMenuItem>
           )}
           {!isTrashed && !isLocalFolder && (

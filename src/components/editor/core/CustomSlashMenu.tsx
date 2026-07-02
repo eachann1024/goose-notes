@@ -296,12 +296,18 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       key={item.title ?? index}
                       variant="ghost"
                       data-index={index}
+                      data-goose-slash-item={lite ? "" : undefined}
+                      data-goose-slash-selected={lite && index === selectedIndex ? "true" : undefined}
                       className={cn(
                         "relative flex h-auto w-full items-center justify-start text-left outline-none transition-colors whitespace-normal",
                         lite
-                          ? "min-h-[34px] rounded-lg px-2 py-1.5"
+                          ? "min-h-[34px] rounded-lg px-2 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]"
                           : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2",
-                        index === selectedIndex ? "bg-accent" : "bg-transparent",
+                        index === selectedIndex
+                          ? lite
+                            ? "bg-transparent text-[hsl(var(--foreground))]"
+                            : "bg-accent"
+                          : "bg-transparent",
                       )}
                       onMouseEnter={() => {
                         if (suppressItemHover) return;
@@ -320,7 +326,11 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                           <span
                             className={cn(
                               "text-xs",
-                              index === selectedIndex ? "text-accent-foreground" : "text-muted-foreground",
+                              index === selectedIndex
+                                ? lite
+                                  ? "text-[hsl(var(--foreground))]"
+                                  : "text-accent-foreground"
+                                : "text-muted-foreground",
                             )}
                           >
                             {item.icon}
@@ -338,7 +348,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                             item.disabled
                               ? "text-muted-foreground/55"
                               : index === selectedIndex
-                                ? "text-accent-foreground"
+                                ? lite
+                                  ? "text-[hsl(var(--foreground))]"
+                                  : "text-accent-foreground"
                                 : "text-foreground",
                           )}
                         >

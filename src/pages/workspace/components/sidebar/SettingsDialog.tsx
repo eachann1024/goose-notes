@@ -119,8 +119,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setNotebookDropdownHoverExpand,
     sidebarClickBehavior,
     setSidebarClickBehavior,
+    localFolderFileManager,
+    setLocalFolderFileManager,
     localFolderExternalEditor,
     setLocalFolderExternalEditor,
+    localFolderTerminal,
+    setLocalFolderTerminal,
   } = useSettings(useShallow((s) => ({
     theme: s.theme,
     setTheme: s.setTheme,
@@ -167,8 +171,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
     sidebarClickBehavior: s.sidebarClickBehavior,
     setSidebarClickBehavior: s.setSidebarClickBehavior,
+    localFolderFileManager: s.localFolderFileManager,
+    setLocalFolderFileManager: s.setLocalFolderFileManager,
     localFolderExternalEditor: s.localFolderExternalEditor,
     setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
+    localFolderTerminal: s.localFolderTerminal,
+    setLocalFolderTerminal: s.setLocalFolderTerminal,
   })));
   const { notebooks } = useNotebooks(useShallow((s) => ({ notebooks: s.notebooks })));
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
@@ -549,8 +557,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "local-folder" && (
             <div>
               <SettingsLocalFolder
+                localFolderFileManager={localFolderFileManager}
+                setLocalFolderFileManager={setLocalFolderFileManager}
                 localFolderExternalEditor={localFolderExternalEditor}
                 setLocalFolderExternalEditor={setLocalFolderExternalEditor}
+                localFolderTerminal={localFolderTerminal}
+                setLocalFolderTerminal={setLocalFolderTerminal}
               />
             </div>
           )}

@@ -258,12 +258,6 @@ export function WorkspaceLayout({
                 <PageHeader
                   page={page}
                   onOpenSearch={openWelcomeTabHandler}
-                  onToggleFavorite={() =>
-                    updatePage(activePageId, { isFavorite: !page.isFavorite })
-                  }
-                  onTogglePinned={() =>
-                    updatePage(activePageId, { isPinned: !page.isPinned })
-                  }
                   onRestore={() => restorePageWithToast(activePageId)}
                   onDelete={() =>
                     void permanentlyDeletePageWithCleanup(activePageId)

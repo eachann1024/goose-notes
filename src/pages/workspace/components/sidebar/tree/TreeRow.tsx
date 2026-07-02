@@ -214,6 +214,14 @@ export function SortablePageRow({
     }
   };
 
+  const toggleLocalFolderRow = () => {
+    if (hasChildren) {
+      onToggleOpen(page.id);
+      return;
+    }
+    toast.info("这个文件夹是空的", { position: "top-right" });
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -256,6 +264,7 @@ export function SortablePageRow({
           onClick={(e) => {
             e.stopPropagation();
             if (isLocalFolder && page.isFolder) {
+              toggleLocalFolderRow();
               return;
             }
             if (rowClickTimerRef.current !== null) {
@@ -279,11 +288,7 @@ export function SortablePageRow({
               rowClickTimerRef.current = null;
             }
             if (isLocalFolder && page.isFolder) {
-              if (hasChildren) {
-                onToggleOpen(page.id);
-              } else {
-                toast.info("这个文件夹是空的", { position: "top-right" });
-              }
+              toggleLocalFolderRow();
               return;
             }
             openPageFromSidebar(page.id, "permanent");
