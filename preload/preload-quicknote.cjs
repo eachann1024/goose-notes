@@ -18,6 +18,20 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   const QUICKNOTE_DB_KEY = "goose-note:quicknote";
 
+  const clearHostQuickNoteEntryOnce = () => {
+    try { utools.removeSubInput?.(); } catch { /* noop */ }
+    try { utools.hideMainWindow?.(); } catch { /* noop */ }
+  };
+
+  const clearHostQuickNoteEntry = () => {
+    clearHostQuickNoteEntryOnce();
+    // uTools 可能在 feature enter 回调结束后重新绘制命中条。
+    // 后续几拍继续清理，确保打开/关闭 toggle 都不残留宿主搜索框。
+    [0, 16, 80, 180].forEach((delay) => {
+      try { setTimeout(clearHostQuickNoteEntryOnce, delay); } catch { /* noop */ }
+    });
+  };
+
   // 从 uTools dbStorage 读速记持久化偏好（与 A 插件共享同一 key，数据共通）。
   // 位置 windowX/windowY 可缺省（首次开窗或老数据）：缺省时回退到「光标屏右上角」。
   const readQuickNotePrefs = () => {
@@ -115,6 +129,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 隐藏前持久化 bounds；保留 quickNoteWin 引用、仅置 visible=false。
   // 若窗口已被宿主销毁（isDestroyed），清空引用走下次新建路径。
   const hideQuickNoteWindow = () => {
+    clearHostQuickNoteEntry();
     if (!quickNoteWin || quickNoteWin.isDestroyed?.()) {
       quickNoteWin = null;
       quickNoteVisible = false;
@@ -125,11 +140,13 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     try { quickNoteWin.hide?.(); } catch { /* noop */ }
     quickNoteVisible = false;
     quickNoteActiveMode = null;
+    clearHostQuickNoteEntry();
   };
 
   // 复用已隐藏的窗口：show + focus + 置顶，并推 enter 让子窗重新聚焦光标（草稿延续，不重解析）。
   const showExistingQuickNoteWindow = (mode) => {
     if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return false;
+    clearHostQuickNoteEntry();
     try {
       quickNoteWin.show?.();
       quickNoteWin.focus?.();
@@ -218,6 +235,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // ── 打开速记小窗 ──────────────────────────────────────────────
   const openQuickNoteWindow = (mode) => {
+    clearHostQuickNoteEntry();
     // 窗口常驻：再次触发 = toggle。可见 → 隐藏；已隐藏 → 秒显（复用已加载的窗口）。
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
       if (quickNoteVisible) {
@@ -313,10 +331,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       try {
         triggerQuickNote(mode);
       } catch { /* noop */ }
+      clearHostQuickNoteEntry();
       // ⚠️ 关键：不要 outPlugin！B 进程要常驻持有 quickNoteWin 引用，
       // 否则第二次按速记键的 toggle 关窗会失效（引用丢了变成又开一个新窗）。
-      // mode:"none" + 删了 main 后，uTools 不会再渲染空白主窗，无需 hideMainWindow。
-      // （若真机仍残留 uTools 输入框，再视情况在此加 utools.hideMainWindow()，先不加。）
+      // mode:"none" 在真机仍可能短暂留下宿主命中条；这里显式隐藏主窗并移除 subInput。
     };
     window.exports = {
       quicknote_new: {
@@ -332,5 +350,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         },
       },
     };
+
+    if (typeof utools.onPluginOut === "function") {
+      utools.onPluginOut(() => {
+        clearHostQuickNoteEntry();
+      });
+    }
   }
 }

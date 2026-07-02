@@ -263,7 +263,8 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
         <div
           data-notion-slash-surface="true"
           className={cn(
-            "z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
+            "z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
+            !lite && "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
             lite
               ? "max-h-[inherit] w-[248px] rounded-xl p-1"
               : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
