@@ -5,7 +5,6 @@
  *  - EdgeDropZone：顶/底边缘拖放区
  *  - PlaceholderRow：空文件夹占位行
  */
-import { toast } from "sonner";
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -152,6 +151,7 @@ export function SortablePageRow({
     : virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
   const rowClickTimerRef = useRef<number | null>(null);
+  const [emptyFolderShakeKey, setEmptyFolderShakeKey] = useState(0);
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
@@ -219,7 +219,7 @@ export function SortablePageRow({
       onToggleOpen(page.id);
       return;
     }
-    toast.info("这个文件夹是空的", { position: "top-right" });
+    setEmptyFolderShakeKey((key) => key + 1);
   };
 
   return (
@@ -338,10 +338,16 @@ export function SortablePageRow({
               {isLocalFolder ? (
                 <div className="flex items-center justify-center w-5 h-5">
                   <LocalFileIcon
+                    key={emptyFolderShakeKey}
                     page={page}
                     iconName={iconName}
                     isLocalFolder={isLocalFolder}
                     hasChildren={hasChildren}
+                    className={
+                      page.isFolder && !hasChildren && emptyFolderShakeKey > 0
+                        ? "goose-empty-folder-shake"
+                        : undefined
+                    }
                   />
                 </div>
               ) : (

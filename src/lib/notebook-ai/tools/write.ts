@@ -76,9 +76,9 @@ export const createPage = tool({
 // ----------------------------------------------------------------
 export const updatePage = tool({
   description:
-    "用新 Markdown 内容整体替换指定页面的正文（保留页面标题）。markdown 参数为完整正文，首行不要包含标题。",
+    "用新 Markdown 内容整体替换页面正文（保留页面标题）。用于精简、润色、总结、删除当前页区块等当前页编辑任务；这类任务不要先搜索笔记。pageId 省略时默认更新当前打开页面。markdown 参数为完整正文，首行不要包含标题。",
   inputSchema: z.object({
-    pageId: z.string().describe("要更新的页面 id"),
+    pageId: z.string().optional().describe("要更新的页面 id；省略则更新当前打开页面"),
     markdown: z
       .string()
       .describe(
@@ -86,19 +86,28 @@ export const updatePage = tool({
       ),
   }),
   execute: async (input) => {
-    const page = usePages.getState().pages[input.pageId];
-    if (!page) return { error: `页面 ${input.pageId} 不存在` };
+    const pageId = input.pageId ?? usePages.getState().activePageId ?? "";
+    const page = usePages.getState().pages[pageId];
+    if (!page) return { error: pageId ? `页面 ${pageId} 不存在` : "当前没有打开页面" };
+    if (!input.markdown.trim()) {
+      return {
+        pageId,
+        ok: false,
+        needsMarkdown: true,
+        message: "缺少新的页面正文。请先 readPage，再用完整 markdown 调用 updatePage。",
+      };
+    }
 
     const title = getPageTitle(page);
     const content = buildAiPageContent(title, input.markdown);
 
     await usePages.getState().writePageContent(
-      input.pageId,
+      pageId,
       content as JSONContent,
       "replace",
     );
 
-    return { pageId: input.pageId, ok: true };
+    return { pageId, ok: true };
   },
 });
 
@@ -107,32 +116,41 @@ export const updatePage = tool({
 // ----------------------------------------------------------------
 export const replaceInPage = tool({
   description:
-    "在指定页面中精确替换所有匹配文本。找不到时返回 replacedCount=0 而非报错。批量修改任务应逐页调用，并汇报每页替换结果。",
+    "在页面中精确替换所有匹配文本。pageId 省略时默认修改当前打开页面。找不到时返回 replacedCount=0 而非报错。批量修改任务应逐页调用，并汇报每页替换结果。",
   inputSchema: z.object({
-    pageId: z.string().describe("要修改的页面 id"),
-    find: z.string().describe("要查找的原始文本（精确匹配）"),
-    replace: z.string().describe("替换后的文本"),
+    pageId: z.string().optional().describe("要修改的页面 id；省略则修改当前打开页面"),
+    find: z.string().optional().default("").describe("要查找的原始文本（精确匹配）"),
+    replace: z.string().optional().default("").describe("替换后的文本；省略表示删除匹配文本"),
   }),
   execute: async (input) => {
-    const page = usePages.getState().pages[input.pageId];
-    if (!page) return { pageId: input.pageId, replacedCount: 0 };
+    const pageId = input.pageId ?? usePages.getState().activePageId ?? "";
+    const page = usePages.getState().pages[pageId];
+    if (!page) return { pageId, replacedCount: 0 };
+    if (!input.find.trim()) {
+      return {
+        pageId,
+        replacedCount: 0,
+        skipped: true,
+        message: "缺少要精确替换的 find 文本。结构性编辑当前页时，请先 readPage，再调用 updatePage 写入完整正文。",
+      };
+    }
 
     // 先序列化为 markdown，做字符串替换，再写回
     const currentMd = await blocksToMarkdown(page.content as BlockNoteContent);
     const count = (currentMd.split(input.find).length - 1);
-    if (count === 0) return { pageId: input.pageId, replacedCount: 0 };
+    if (count === 0) return { pageId, replacedCount: 0 };
 
     const newMd = currentMd.split(input.find).join(input.replace);
     const title = getPageTitle(page);
     const newContent = buildAiPageContent(title, newMd);
 
     await usePages.getState().writePageContent(
-      input.pageId,
+      pageId,
       newContent as JSONContent,
       "replace",
     );
-    reloadEditorIfActive(input.pageId);
+    reloadEditorIfActive(pageId);
 
-    return { pageId: input.pageId, replacedCount: count };
+    return { pageId, replacedCount: count };
   },
 });

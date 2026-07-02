@@ -9,9 +9,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
 import { shell } from "@/lib/utools/shell";
-import { fs as gooseFs } from "@/lib/utools/fs";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
-import { normalizeLocalFilePathKey } from "@/stores/pages/actions/localFolder/pathGuards";
 import { toast } from "sonner";
 
 const _platform = navigator.platform || navigator.userAgent;
@@ -26,29 +24,6 @@ function getFinderLabel(isFolder: boolean) {
 
 function getParentPath(targetPath: string): string {
   return targetPath.replace(/[\\/][^\\/]*$/, "");
-}
-
-function joinLocalPath(parentPath: string, childName: string): string {
-  const normalizedParent = parentPath.replace(/[\\/]+$/, "");
-  const separator = parentPath.includes("\\") ? "\\" : "/";
-  return `${normalizedParent}${separator}${childName}`;
-}
-
-function sanitizeFolderName(name: string): string {
-  return (name.trim() || "新建文件夹").replace(/[\\/:*?"<>|]/g, "_");
-}
-
-async function buildUniqueFolderPath(parentPath: string, baseName: string): Promise<string> {
-  const normalizedBaseName = sanitizeFolderName(baseName);
-  let candidate = joinLocalPath(parentPath, normalizedBaseName);
-  if (!(await gooseFs.existsAsync(candidate))) return candidate;
-
-  let suffix = 1;
-  while (await gooseFs.existsAsync(joinLocalPath(parentPath, `${normalizedBaseName} ${suffix}`))) {
-    suffix++;
-  }
-  candidate = joinLocalPath(parentPath, `${normalizedBaseName} ${suffix}`);
-  return candidate;
 }
 
 function getExternalAppLabel(app: string): string {
@@ -69,11 +44,13 @@ function getTerminalLabel(terminal: string): string {
 interface SidebarContextMenuProps {
   page: Page;
   children: React.ReactNode;
+  onCreateLocalFolder?: (parentId?: string) => void;
 }
 
 export function SidebarContextMenu({
   page,
   children,
+  onCreateLocalFolder,
 }: SidebarContextMenuProps) {
   const {
     updatePage,
@@ -141,37 +118,6 @@ export function SidebarContextMenu({
   const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
   const hasParent = !!page.parentId;
 
-  const handleCreateLocalFolder = async () => {
-    if (!isLocalFolder || !notebook?.localPath || !page.localFilePath) return;
-
-    const parentPath = page.isFolder
-      ? page.localFilePath
-      : getParentPath(page.localFilePath) || notebook.localPath;
-    const targetPath = await buildUniqueFolderPath(parentPath, "新建文件夹");
-    const ok = await gooseFs.mkdir(targetPath);
-    if (!ok) {
-      toast.error("新建文件夹失败");
-      return;
-    }
-
-    await usePages.getState().loadLocalFolderPages(notebook.id, notebook.localPath);
-    const createdFolder = Object.values(usePages.getState().pages).find(
-      (item) =>
-        item.workspaceId === notebook.id &&
-        item.isFolder &&
-        item.localFilePath &&
-        normalizeLocalFilePathKey(item.localFilePath) === normalizeLocalFilePathKey(targetPath),
-    );
-
-    if (page.isFolder) {
-      usePages.getState().setExpandPageId(page.id);
-    }
-    if (createdFolder) {
-      usePages.getState().setExpandPageId(createdFolder.id);
-    }
-    toast.success("已新建文件夹");
-  };
-
   const handleOpenInFileManager = async () => {
     if (!page.localFilePath) return;
     const ok = localFolderFileManager.trim()
@@ -212,7 +158,11 @@ export function SidebarContextMenu({
             </span>
           </ContextMenuItem>
           {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem onSelect={() => void handleCreateLocalFolder()}>
+            <ContextMenuItem
+              onSelect={() => {
+                onCreateLocalFolder?.(page.isFolder ? page.id : page.parentId);
+              }}
+            >
               <LucideIcons.FolderPlus className="h-4 w-4" />
               <span>新建文件夹</span>
             </ContextMenuItem>

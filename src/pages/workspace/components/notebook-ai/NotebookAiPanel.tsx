@@ -167,18 +167,18 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
   return (
     <div
       ref={panelRef}
-      className="relative flex h-full flex-col border-l border-border bg-[hsl(var(--goose-editor-bg))]"
+      className="relative flex h-full flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]"
       style={{ width }}
     >
       {/* 拖拽手柄 */}
       <div
-        className="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-[var(--goose-interactive-hover)] transition-colors z-10"
+        className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-[var(--goose-interactive-hover)]"
         onMouseDown={onDragHandleMouseDown}
         aria-hidden="true"
       />
 
       {/* 头部 */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
         <Bot className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
           {notebookName}

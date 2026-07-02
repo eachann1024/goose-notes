@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
   type DragEvent,
   type HTMLProps,
@@ -6,7 +8,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
 import type {
   DraggingPosition,
   TreeInformation,
@@ -55,7 +56,7 @@ function TreeRowIcon({
 
   if (isLocalFolder) {
     return (
-      <div className="flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
+      <div className="main-tree-local-folder-icon flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
         <LocalFileIcon page={page} iconName={iconName} isLocalFolder hasChildren={hasChildren} />
       </div>
     );
@@ -109,6 +110,69 @@ interface RenderItemArgs {
   arrow: ReactNode;
   context: TreeItemRenderContext<never>;
   info: TreeInformation;
+  onCreateLocalFolder?: (parentId?: string) => void;
+  onCommitPendingFolder?: (id: string, name: string) => void;
+  onCancelPendingFolder?: (id: string) => void;
+}
+
+function PendingFolderNameInput({
+  id,
+  initialValue,
+  onCommit,
+  onCancel,
+}: {
+  id: string;
+  initialValue: string;
+  onCommit?: (id: string, name: string) => void;
+  onCancel?: (id: string) => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const readyToCommitBlurRef = useRef(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      readyToCommitBlurRef.current = true;
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const commit = () => {
+    const next = value.trim();
+    if (!next) {
+      onCancel?.(id);
+      return;
+    }
+    onCommit?.(id, next);
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      className="relative z-20 h-6 min-w-0 flex-1 rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-[13px] leading-none text-foreground outline-none focus:border-[hsl(var(--ring))]"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        if (!readyToCommitBlurRef.current) return;
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel?.(id);
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      aria-label="文件夹名称"
+    />
+  );
 }
 
 export function renderItem({
@@ -117,6 +181,9 @@ export function renderItem({
   children,
   arrow,
   context,
+  onCreateLocalFolder,
+  onCommitPendingFolder,
+  onCancelPendingFolder,
 }: RenderItemArgs) {
   const hideExpandArrows = useSettings.getState().hideExpandArrows;
   const page = item.data;
@@ -135,6 +202,7 @@ export function renderItem({
     : undefined;
   const isLocalFolder = notebook?.source === "local-folder";
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+  const isPendingFolder = page.localPendingCreate === "folder";
 
   const iconNode = (
     <TreeRowIcon
@@ -177,19 +245,27 @@ export function renderItem({
     }
   };
 
-  const toggleLocalFolderRow = () => {
+  const triggerEmptyFolderShake = (rowEl: HTMLElement | null | undefined) => {
+    const icon = rowEl?.querySelector(".main-tree-local-folder-icon svg");
+    if (!(icon instanceof SVGElement)) return;
+    icon.classList.remove("goose-empty-folder-shake");
+    void icon.getBoundingClientRect();
+    icon.classList.add("goose-empty-folder-shake");
+  };
+
+  const toggleLocalFolderRow = (rowEl?: HTMLElement | null) => {
     if (hasChildren) {
       context.toggleExpandedState();
       return;
     }
-    toast.info("这个文件夹是空的", { position: "top-right" });
+    triggerEmptyFolderShake(rowEl);
   };
 
   const handleRowClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
     (interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined)?.(e);
     if (e.defaultPrevented) return;
     if (isLocalFolder && page?.isFolder) {
-      toggleLocalFolderRow();
+      toggleLocalFolderRow(e.currentTarget.closest(".main-tree-row"));
     }
   };
 
@@ -205,7 +281,9 @@ export function renderItem({
         "text-[13px] font-medium leading-none cursor-pointer select-none",
         "transition-colors duration-150",
         "outline-none",
-        isActive
+        isPendingFolder
+          ? "bg-[var(--goose-interactive-selected)] text-foreground"
+          : isActive
           ? "bg-[var(--goose-interactive-selected)] text-foreground"
           : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
         // drop 高亮：使用 workspace-drag-line token 调性，更克制
@@ -225,27 +303,44 @@ export function renderItem({
           e.preventDefault();
           e.stopPropagation();
           if (isLocalFolder && page?.isFolder) {
-            toggleLocalFolderRow();
+            toggleLocalFolderRow(e.currentTarget.closest(".main-tree-row"));
             return;
           }
           openPageFromSidebar(String(item.index), "permanent");
         }}
         aria-label={title}
-        className="absolute inset-0 rounded-[8px] outline-none"
+        className={cn(
+          "absolute inset-0 rounded-[8px] outline-none",
+          isPendingFolder && "pointer-events-none",
+        )}
       />
       {hideExpandArrows ? null : arrow}
       {iconNode}
       {/* leading-snug 抵消行容器的 leading-none：truncate(overflow hidden) 配 1 倍行高
           会把 g/y/p 等字母的降部裁掉 */}
-      <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
-        {title}
-      </span>
+      {isPendingFolder ? (
+        <PendingFolderNameInput
+          id={String(item.index)}
+          initialValue={title || "新建文件夹"}
+          onCommit={onCommitPendingFolder}
+          onCancel={onCancelPendingFolder}
+        />
+      ) : (
+        <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
+          {title}
+        </span>
+      )}
     </div>
   );
 
   return (
     <li {...withChildren} className="list-none">
-      <SidebarContextMenu page={page}>{row}</SidebarContextMenu>
+      <SidebarContextMenu
+        page={page}
+        onCreateLocalFolder={onCreateLocalFolder}
+      >
+        {row}
+      </SidebarContextMenu>
       {children}
     </li>
   );

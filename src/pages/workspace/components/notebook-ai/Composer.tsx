@@ -1,5 +1,5 @@
 /**
- * 消息输入框：自动扩高，Cmd+Enter 发送，流式中显示停止按钮
+ * 消息输入框：自动扩高，Enter 发送，流式中显示停止按钮
  */
 import { useRef, useCallback, useEffect } from "react";
 import { Send, Square } from "lucide-react";
@@ -22,7 +22,7 @@ export function Composer({
   onStop,
   isStreaming,
   disabled,
-  placeholder = "向 AI 提问…",
+  placeholder = "向 AI 提问… 回车发送，Shift+回车换行",
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -38,11 +38,16 @@ export function Composer({
   }, [value, autoResize]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !e.nativeEvent.isComposing
+    ) {
       e.preventDefault();
       if (!isStreaming && !disabled && value.trim()) {
         onSend();
       }
+      return;
     }
     // 阻止 Esc 冒泡到编辑器
     if (e.key === "Escape") {
@@ -53,7 +58,7 @@ export function Composer({
   const canSend = !isStreaming && !disabled && value.trim().length > 0;
 
   return (
-    <div className="shrink-0 border-t border-border px-3 py-2.5">
+    <div className="shrink-0 px-3 py-2.5">
       <div
         className={cn(
           "flex items-end gap-2 rounded-[10px] border border-border bg-background px-3 py-2",
@@ -111,9 +116,6 @@ export function Composer({
           </button>
         )}
       </div>
-      <p className="mt-1.5 text-center text-[10px] text-muted-foreground opacity-50">
-        ⌘↵ 发送
-      </p>
     </div>
   );
 }

@@ -260,12 +260,10 @@ export async function handleStreamingWritePart(
     const session = sessions.get(toolCallId);
     if (!session) return;
 
-    // 非 createPage（即 updatePage）直接存 lastMarkdown 待节流写入
-    if (!isCreatePage) {
-      session.lastMarkdown = markdown ?? "";
-    } else {
-      session.lastMarkdown = markdown ?? "";
-    }
+    // updatePage 的 markdown 可能因为工具调用修复/兜底暂时缺失；
+    // 缺正文时不能写空帧，否则会把当前页清空。
+    if (!isCreatePage && markdown === undefined) return;
+    session.lastMarkdown = markdown ?? "";
 
     // 节流调度写入
     const now = Date.now();
@@ -316,10 +314,12 @@ export async function handleStreamingWritePart(
         input && typeof input === "object"
           ? ((input as any).pageId as string | undefined)
           : undefined;
-      if (!pageId) return;
+      const targetPageId = pageId ?? usePages.getState().activePageId;
+      if (!targetPageId) return;
 
       const md = inputMarkdown ?? "";
-      const page = usePages.getState().pages[pageId];
+      if (!md.trim()) return;
+      const page = usePages.getState().pages[targetPageId];
       if (!page) return;
 
       const { getPageTitle } = await import(
@@ -328,7 +328,7 @@ export async function handleStreamingWritePart(
       const title = getPageTitle(page);
       // updatePage 没有对应 session，用临时 session 对象（follow 默认 true）
       const tmpSession: WriterSession = {
-        pageId,
+        pageId: targetPageId,
         title,
         lastScheduled: 0,
         throttleTimer: null,
@@ -336,7 +336,7 @@ export async function handleStreamingWritePart(
         follow: true,
         wheelCleanup: null,
       };
-      await writeFinalFrame(pageId, md, title, tmpSession);
+      await writeFinalFrame(targetPageId, md, title, tmpSession);
     }
 
     // 解绑 wheel 监听，清理 session 和 registry

@@ -188,9 +188,27 @@ export function ChatMessages({
                   state: string;
                   input?: unknown;
                   output?: unknown;
+                  errorText?: string;
                 };
                 const state = toolPart.state ?? "";
                 const output = toolPart.output;
+                const isInputOnlyState =
+                  state === "call" ||
+                  state === "partial-call" ||
+                  state === "input-streaming" ||
+                  state === "input-available";
+                const hasTerminalPayload =
+                  state === "output-available" ||
+                  state === "output-error" ||
+                  output !== undefined ||
+                  !!toolPart.errorText;
+
+                // AI SDK sometimes leaves an input-only tool part after a repaired
+                // call has completed. Once streaming is over, hide that stale shell
+                // instead of showing a confusing "未完成" card.
+                if (!isStreaming && isInputOnlyState && !hasTerminalPayload) {
+                  return null;
+                }
 
                 // showTable: output-available 渲染 TableCard
                 if (partType === "tool-showTable" && state === "output-available" && output) {
@@ -205,6 +223,8 @@ export function ChatMessages({
                         toolName={partType}
                         state={state}
                         input={toolPart.input}
+                        errorText={toolPart.errorText}
+                        isMessageStreaming={isStreaming}
                       />
                       <TableCard
                         title={tableData.title}
@@ -229,6 +249,8 @@ export function ChatMessages({
                         toolName={partType}
                         state={state}
                         input={toolPart.input}
+                        errorText={toolPart.errorText}
+                        isMessageStreaming={isStreaming}
                       />
                       <ChartCard
                         type={chartData.type}
@@ -247,6 +269,8 @@ export function ChatMessages({
                     state={state}
                     input={toolPart.input}
                     output={output}
+                    errorText={toolPart.errorText}
+                    isMessageStreaming={isStreaming}
                   />
                 );
               }

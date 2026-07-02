@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ControlledTreeEnvironment,
   InteractionMode,
@@ -45,6 +45,8 @@ interface SidebarMainTreeProps {
   onCreatePage: () => void;
 }
 
+const PENDING_FOLDER_ID_PREFIX = "local-pending-folder-";
+
 export function SidebarMainTree({
   activeNotebookId,
   selectedPageId,
@@ -56,9 +58,11 @@ export function SidebarMainTree({
   const activePageId = usePages((s) => s.activePageId);
   const reorderPages = usePages((s) => s.reorderPages);
   const moveLocalPage = usePages((s) => s.moveLocalPage);
+  const createLocalFolderRecord = usePages((s) => s.createLocalFolderRecord);
   const getChildren = usePages((s) => s.getChildren);
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
+  const [pendingFolder, setPendingFolder] = useState<Page | null>(null);
 
   const notebook = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]
@@ -87,6 +91,85 @@ export function SidebarMainTree({
   const highlightedPageId =
     selectedPageId !== undefined ? selectedPageId : activePageId;
 
+  const startCreateLocalFolder = useCallback((parentId?: string) => {
+    if (!activeNotebookId || !isLocalFolder) return;
+    const parentPage = parentId ? pages[parentId] : undefined;
+    const safeParentId = parentPage?.isFolder ? parentId : undefined;
+    const pendingId = `${PENDING_FOLDER_ID_PREFIX}${Date.now()}`;
+    const now = Date.now();
+    setPendingFolder({
+      id: pendingId,
+      workspaceId: activeNotebookId,
+      parentId: safeParentId,
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "新建文件夹" }],
+          },
+        ],
+      },
+      isFolder: true,
+      localPendingCreate: "folder",
+      isLocked: false,
+      isFullWidth: false,
+      fontSize: "default",
+      fontFamily: "default",
+      createdAt: now,
+      updatedAt: now,
+      order: now,
+    });
+    if (safeParentId && !expandedIds.includes(safeParentId)) {
+      expandView(activeNotebookId, safeParentId);
+    }
+  }, [activeNotebookId, expandedIds, expandView, isLocalFolder, pages]);
+
+  const cancelPendingFolder = useCallback((id: string) => {
+    setPendingFolder((current) => current?.id === id ? null : current);
+  }, []);
+
+  const commitPendingFolder = useCallback((id: string, name: string) => {
+    const current = pendingFolder;
+    if (!current || current.id !== id || !activeNotebookId) return;
+    setPendingFolder(null);
+    void (async () => {
+      const createdId = await createLocalFolderRecord({
+        workspaceId: activeNotebookId,
+        parentId: current.parentId,
+        title: name,
+      });
+      if (!createdId) {
+        toast.error("新建文件夹失败：名称冲突或文件系统错误");
+        return;
+      }
+      if (current.parentId) {
+        expandView(activeNotebookId, current.parentId);
+      }
+      setExpandPageId(createdId);
+      toast.success("已新建文件夹");
+    })();
+  }, [
+    activeNotebookId,
+    createLocalFolderRecord,
+    expandView,
+    pendingFolder,
+    setExpandPageId,
+  ]);
+
+  const scopedPages = useMemo(() => {
+    const list = Object.values(pages);
+    if (
+      pendingFolder &&
+      activeNotebookId &&
+      pendingFolder.workspaceId === activeNotebookId
+    ) {
+      return [...list, pendingFolder];
+    }
+    return list;
+  }, [activeNotebookId, pages, pendingFolder]);
+
   const items = useMemo<Record<TreeItemIndex, TreeItem<Page>>>(() => {
     if (!activeNotebookId) {
       return {
@@ -101,11 +184,11 @@ export function SidebarMainTree({
       };
     }
     return pagesToTreeItems(
-      Object.values(pages),
+      scopedPages,
       activeNotebookId,
       isLocalFolder,
     );
-  }, [pages, activeNotebookId, isLocalFolder]);
+  }, [scopedPages, activeNotebookId, isLocalFolder]);
 
   const rootChildren = items.root?.children ?? [];
   const hasPages = rootChildren.length > 0;
@@ -205,12 +288,32 @@ export function SidebarMainTree({
     return <LocalFolderLoadingSkeleton />;
   }
   if (!activeNotebookId || !hasPages) {
-    return (
+    const emptyState = (
       <TreeEmptyState
         isLocalNotebook={isLocalFolder}
         width={width}
         onCreatePage={onCreatePage}
       />
+    );
+    if (!isLocalFolder || !activeNotebookId) return emptyState;
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="flex-1 min-h-0">
+            {emptyState}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="goose-sidebar-context-menu w-48 !border-0">
+          <ContextMenuItem onSelect={() => startCreateLocalFolder(undefined)}>
+            <LucideIcons.FolderPlus className="h-4 w-4" />
+            <span>新建文件夹</span>
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={onCreatePage}>
+            <LucideIcons.FilePlus2 className="h-4 w-4" />
+            <span>新建文件</span>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     );
   }
 
@@ -291,26 +394,28 @@ export function SidebarMainTree({
   };
 
   return (
-    <div
-      className="flex-1 min-h-0 overflow-auto"
-      style={{ width, height: viewportHeight || undefined }}
-      onMouseDown={(e) => {
-        lastClickModRef.current = { meta: e.metaKey, ctrl: e.ctrlKey };
-      }}
-      onAuxClick={(e) => {
-        if (e.button !== 1) return;
-        const target = e.target as HTMLElement;
-        const row = target.closest("[data-rct-item-id]");
-        if (!row) return;
-        const pageId = row.getAttribute("data-rct-item-id");
-        if (!pageId || pageId === "root") return;
-        const page = pages[pageId];
-        if (!page || (isLocalFolder && page.isFolder)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        openPageFromSidebar(pageId, "permanent");
-      }}
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          className="flex-1 min-h-0 overflow-auto"
+          style={{ width, height: viewportHeight || undefined }}
+          onMouseDown={(e) => {
+            lastClickModRef.current = { meta: e.metaKey, ctrl: e.ctrlKey };
+          }}
+          onAuxClick={(e) => {
+            if (e.button !== 1) return;
+            const target = e.target as HTMLElement;
+            const row = target.closest("[data-rct-item-id]");
+            if (!row) return;
+            const pageId = row.getAttribute("data-rct-item-id");
+            if (!pageId || pageId === "root") return;
+            const page = pages[pageId];
+            if (!page || (isLocalFolder && page.isFolder)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openPageFromSidebar(pageId, "permanent");
+          }}
+        >
       <ControlledTreeEnvironment<Page>
         items={items}
         getItemTitle={(item) =>
@@ -381,7 +486,14 @@ export function SidebarMainTree({
           openPageFromSidebar(id, "preview");
         }}
         onDrop={handleDrop}
-        renderItem={renderItem}
+        renderItem={(args) =>
+          renderItem({
+            ...args,
+            onCreateLocalFolder: startCreateLocalFolder,
+            onCommitPendingFolder: commitPendingFolder,
+            onCancelPendingFolder: cancelPendingFolder,
+          })
+        }
         renderItemArrow={renderItemArrow}
         renderItemsContainer={renderItemsContainer}
         renderTreeContainer={renderTreeContainer}
@@ -389,6 +501,20 @@ export function SidebarMainTree({
       >
         <Tree treeId="main" rootItem="root" treeLabel="页面" ref={treeRef} />
       </ControlledTreeEnvironment>
-    </div>
+        </div>
+      </ContextMenuTrigger>
+      {isLocalFolder && activeNotebookId && (
+        <ContextMenuContent className="goose-sidebar-context-menu w-48 !border-0">
+          <ContextMenuItem onSelect={() => startCreateLocalFolder(undefined)}>
+            <LucideIcons.FolderPlus className="h-4 w-4" />
+            <span>新建文件夹</span>
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={onCreatePage}>
+            <LucideIcons.FilePlus2 className="h-4 w-4" />
+            <span>新建文件</span>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      )}
+    </ContextMenu>
   );
 }
