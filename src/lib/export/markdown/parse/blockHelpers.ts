@@ -70,9 +70,28 @@ export function parseTableBlock(
     return /^\|?(\s*:?-+:?\s*\|?)+$/.test(v) && v.includes("-");
   };
 
+  const isEscaped = (value: string, index: number) => {
+    let slashCount = 0;
+    for (let cursor = index - 1; cursor >= 0 && value[cursor] === "\\"; cursor -= 1) {
+      slashCount += 1;
+    }
+    return slashCount % 2 === 1;
+  };
+
+  const trimRowDelimiters = (value: string) => {
+    let content = value.trim();
+    if (content.startsWith("|")) {
+      content = content.slice(1);
+    }
+    const lastIndex = content.length - 1;
+    if (lastIndex >= 0 && content[lastIndex] === "|" && !isEscaped(content, lastIndex)) {
+      content = content.slice(0, lastIndex);
+    }
+    return content;
+  };
+
   const splitTableRow = (value: string) => {
-    const trimmed = value.trim();
-    const content = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+    const content = trimRowDelimiters(value);
     const cells: string[] = [];
     let current = "";
 

@@ -32,3 +32,18 @@ test("markdown table parser keeps escaped trailing pipes without row delimiters"
     },
   ]);
 });
+
+test("markdown table parser keeps escaped pipes at the end of the final cell", () => {
+  expect(markdownToJsonContent("Name | Value\n--- | ---\nA | kept \\|")).toEqual([
+    {
+      type: "table",
+      content: {
+        type: "tableContent",
+        rows: [
+          { cells: [["Name"], ["Value"]] },
+          { cells: [["A"], ["kept |"]] },
+        ],
+      },
+    },
+  ]);
+});
