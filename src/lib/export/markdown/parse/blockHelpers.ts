@@ -73,7 +73,27 @@ export function parseTableBlock(
   const splitTableRow = (value: string) => {
     const trimmed = value.trim();
     const content = trimmed.replace(/^\|/, "").replace(/\|$/, "");
-    return content.split("|").map((cell: any) => cell.trim());
+    const cells: string[] = [];
+    let current = "";
+
+    for (let index = 0; index < content.length; index += 1) {
+      const char = content[index];
+      const next = content[index + 1];
+      if (char === "\\" && next === "|") {
+        current += "|";
+        index += 1;
+        continue;
+      }
+      if (char === "|") {
+        cells.push(current.trim());
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+
+    cells.push(current.trim());
+    return cells;
   };
 
   const line = lines[i];
@@ -95,7 +115,7 @@ export function parseTableBlock(
       index++;
     }
 
-    const toCellContent = (text: string) => parseInline(text.replace(/\\\|/g, "|"));
+    const toCellContent = (text: string) => parseInline(text);
 
     return {
       block: {

@@ -92,6 +92,7 @@ import {
   shouldPreferVisibleSelectionText,
   stripMarkdownHardBreaks,
 } from "./EditorComposer";
+import { shouldUseRawEditorContent } from "./editorContentMode";
 import { isLinkworthyText } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
@@ -184,8 +185,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   // 内容保持磁盘解析原样，避免 normalize 引发的结构变化误触写盘。
   // 内部笔记本仍走完整 normalizePageContent，首块 H1 约束不受影响。
   // 小窗草稿页(id 恒为 __quicknote_draft__)同样豁免首块 H1 约束,从正文开始
-  const isLocalFolderPage =
-    Boolean(page?.localFilePath) || page?.id === "__quicknote_draft__";
+  const isLocalFolderPage = shouldUseRawEditorContent(page);
   const isLocalFolderPageRef = useRef(isLocalFolderPage);
   isLocalFolderPageRef.current = isLocalFolderPage;
   const normalizeContent = (c: unknown): BlockNoteContent =>
@@ -399,8 +399,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     // 须与本文件 :135 的 isLocalFolderPage 及 EditorComposer.onChange 的判断一致：
     // 小窗草稿页(__quicknote_draft__)同样豁免，否则切页/重开时此处 replaceBlocks 会把
     // 首块强转 H1 并刷新签名基线，导致草稿首块每次重开都变「标题1」。
-    const isLocalPage =
-      Boolean(p?.localFilePath) || p?.id === "__quicknote_draft__";
+    const isLocalPage = shouldUseRawEditorContent(p);
     const nextContent = isLocalPage
       ? toEditorBlocks(p?.content)
       : normalizePageContent(p?.content);
@@ -690,7 +689,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       if (!safePageId) return;
       // local-folder 页面不走 normalizePageContent（避免 ensureFirstTitleHeading）
       const rawContent = clonePageContent(editor.document as BlockNoteContent);
-      const nextContent = pageRef.current?.localFilePath
+      const nextContent = shouldUseRawEditorContent(pageRef.current)
         ? rawContent
         : normalizePageContent(rawContent);
       debouncedUpdate.cancel();
@@ -740,7 +739,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       const livePage = usePagesStore.getState().pages[targetId];
       if (!livePage) return;
       // local-folder 外部变更重载同样跳过 normalizePageContent
-      const isLocalPage = Boolean(livePage.localFilePath);
+      const isLocalPage = shouldUseRawEditorContent(livePage);
       const nextContent = isLocalPage
         ? toEditorBlocks(livePage.content)
         : normalizePageContent(livePage.content);
