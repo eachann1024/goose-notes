@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import type { ComponentProps } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
-import { Check } from "lucide-react";
+import { Check, MessageSquareText, Sparkles } from "lucide-react";
 import { ToolCallCard } from "./ToolCallCard";
 import { TableCard } from "./TableCard";
 import { ChartCard } from "./ChartCard";
@@ -119,11 +119,21 @@ export function ChatMessages({
     return (
       <div
         ref={containerRef}
-        className="flex flex-1 items-center justify-center overflow-y-auto px-4"
+        className="flex flex-1 items-center justify-center overflow-y-auto px-5"
       >
-        <p className="text-center text-sm text-muted-foreground leading-relaxed">
-          向 AI 提问，让它帮你整理、搜索、创作笔记
-        </p>
+        <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
+          <div className="relative flex h-11 w-11 items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
+            <MessageSquareText className="h-5 w-5" strokeWidth={1.75} />
+            <Sparkles
+              className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+          </div>
+          <p className="text-sm font-medium text-foreground">开始和 AI 对话</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            让它帮你整理、搜索、创作笔记。
+          </p>
+        </div>
       </div>
     );
   }

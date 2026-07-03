@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { X, Trash2, Bot } from "lucide-react";
+import { X, Trash2, Bot, CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
@@ -206,9 +206,15 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
       {/* 消息区 / 引导区 */}
       {unavailableReason ? (
         <div className="flex flex-1 items-center justify-center px-6">
-          <p className="text-center text-sm text-muted-foreground leading-relaxed">
-            {unavailableReason}
-          </p>
+          <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
+              <CircleAlert className="h-5 w-5" strokeWidth={1.75} />
+            </div>
+            <p className="text-sm font-medium text-foreground">AI 暂不可用</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {unavailableReason}
+            </p>
+          </div>
         </div>
       ) : (
         <ChatMessages

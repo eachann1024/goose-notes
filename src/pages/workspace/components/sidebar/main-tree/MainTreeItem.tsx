@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type DragEvent,
@@ -117,31 +118,48 @@ interface RenderItemArgs {
 
 function PendingFolderNameInput({
   id,
-  initialValue,
   onCommit,
   onCancel,
 }: {
   id: string;
-  initialValue: string;
   onCommit?: (id: string, name: string) => void;
   onCancel?: (id: string) => void;
 }) {
-  const [value, setValue] = useState(initialValue);
+  const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const readyToCommitBlurRef = useRef(false);
+  const touchedRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const focusInput = (shouldSelect: boolean) => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      if (shouldSelect) input.select();
+    };
+
+    focusInput(true);
+    const raf = window.requestAnimationFrame(() => {
+      if (document.activeElement !== inputRef.current) {
+        focusInput(!touchedRef.current);
+      }
+      readyToCommitBlurRef.current = true;
+    });
     const timer = window.setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
+      if (document.activeElement !== inputRef.current) {
+        focusInput(!touchedRef.current);
+      }
       readyToCommitBlurRef.current = true;
     }, 80);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
   }, []);
 
   const commit = () => {
     const next = value.trim();
-    if (!next) {
+    if (!touchedRef.current || !next) {
       onCancel?.(id);
       return;
     }
@@ -149,29 +167,37 @@ function PendingFolderNameInput({
   };
 
   return (
-    <input
-      ref={inputRef}
-      className="relative z-20 h-6 min-w-0 flex-1 rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-[13px] leading-none text-foreground outline-none focus:border-[hsl(var(--ring))]"
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => {
-        if (!readyToCommitBlurRef.current) return;
-        commit();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
+    <span className="relative z-20 flex min-w-0 flex-1 items-center">
+      <input
+        ref={inputRef}
+        className="h-[22px] w-full min-w-0 rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-[13px] leading-[20px] text-foreground outline-none focus:border-[hsl(var(--ring))]"
+        value={value}
+        placeholder="新建文件夹"
+        draggable={false}
+        onChange={(e) => {
+          touchedRef.current = true;
+          setValue(e.target.value);
+        }}
+        onBlur={() => {
+          if (!readyToCommitBlurRef.current) return;
           commit();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          onCancel?.(id);
-        }
-      }}
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      aria-label="文件夹名称"
-    />
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel?.(id);
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label="文件夹名称"
+      />
+    </span>
   );
 }
 
@@ -321,7 +347,6 @@ export function renderItem({
       {isPendingFolder ? (
         <PendingFolderNameInput
           id={String(item.index)}
-          initialValue={title || "新建文件夹"}
           onCommit={onCommitPendingFolder}
           onCancel={onCancelPendingFolder}
         />

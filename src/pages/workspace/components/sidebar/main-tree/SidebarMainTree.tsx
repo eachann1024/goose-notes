@@ -133,7 +133,6 @@ export function SidebarMainTree({
   const commitPendingFolder = useCallback((id: string, name: string) => {
     const current = pendingFolder;
     if (!current || current.id !== id || !activeNotebookId) return;
-    setPendingFolder(null);
     void (async () => {
       const createdId = await createLocalFolderRecord({
         workspaceId: activeNotebookId,
@@ -144,6 +143,7 @@ export function SidebarMainTree({
         toast.error("新建文件夹失败：名称冲突或文件系统错误");
         return;
       }
+      setPendingFolder((latest) => latest?.id === id ? null : latest);
       if (current.parentId) {
         expandView(activeNotebookId, current.parentId);
       }
@@ -428,6 +428,8 @@ export function SidebarMainTree({
         canDropOnFolder={true}
         canDropOnNonFolder={false}
         canRename={false}
+        canSearch={false}
+        canSearchByStartingTyping={false}
         canDropAt={(dragItems, target) => {
           const targetId =
             target.targetType === "between-items"
