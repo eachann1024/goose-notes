@@ -6,6 +6,9 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN
   const Activity: typeof import('react').Activity
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
   const Badge: typeof import('./components/ui/badge').Badge
@@ -275,6 +278,7 @@ declare global {
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
+  const looksLikeMermaidDiagram: typeof import('./components/editor/utils/clipboard').looksLikeMermaidDiagram
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
   const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction

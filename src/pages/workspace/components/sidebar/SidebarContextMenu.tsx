@@ -52,11 +52,7 @@ export function SidebarContextMenu({
   children,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
-  const {
-    updatePage,
-    movePageTreeToNotebook,
-    undoMovePageTree,
-  } = usePages();
+  const { updatePage, movePageTreeToNotebook, undoMovePageTree } = usePages();
   const notebooks = useNotebooks((state) => state.notebooks);
   const notebook = notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";
@@ -114,7 +110,9 @@ export function SidebarContextMenu({
   };
 
   const localFolderFileManager = useSettings((s) => s.localFolderFileManager);
-  const localFolderExternalEditor = useSettings((s) => s.localFolderExternalEditor);
+  const localFolderExternalEditor = useSettings(
+    (s) => s.localFolderExternalEditor,
+  );
   const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
   const hasParent = !!page.parentId;
 
@@ -130,7 +128,9 @@ export function SidebarContextMenu({
 
   const handleOpenInTerminal = async () => {
     if (!page.localFilePath) return;
-    const targetPath = page.isFolder ? page.localFilePath : getParentPath(page.localFilePath);
+    const targetPath = page.isFolder
+      ? page.localFilePath
+      : getParentPath(page.localFilePath);
     const ok = await shell.openTerminalAtPath(targetPath, localFolderTerminal);
     if (!ok) toast.error("打开失败，请检查终端设置");
   };
@@ -170,9 +170,14 @@ export function SidebarContextMenu({
           {isLocalFolder && !isTrashed && page.localFilePath && (
             <ContextMenuItem
               onSelect={() => {
-                void shell.openWithEditor(page.localFilePath!, localFolderExternalEditor).then((ok) => {
-                  if (!ok) toast.error("打开失败，请检查外部应用设置");
-                });
+                void shell
+                  .openWithEditor(
+                    page.localFilePath!,
+                    localFolderExternalEditor,
+                  )
+                  .then((ok) => {
+                    if (!ok) toast.error("打开失败，请检查外部应用设置");
+                  });
               }}
             >
               <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
@@ -182,7 +187,9 @@ export function SidebarContextMenu({
           {isLocalFolder && !isTrashed && page.localFilePath && (
             <ContextMenuItem onSelect={() => void handleOpenInFileManager()}>
               <LucideIcons.FolderOpen className="h-4 w-4" />
-              <span>{getFileManagerLabel(!!page.isFolder, localFolderFileManager)}</span>
+              <span>
+                {getFileManagerLabel(!!page.isFolder, localFolderFileManager)}
+              </span>
             </ContextMenuItem>
           )}
           {isLocalFolder && !isTrashed && page.localFilePath && (
@@ -196,7 +203,8 @@ export function SidebarContextMenu({
               <LucideIcons.Star
                 className={cn(
                   "h-4 w-4",
-                  page.isFavorite && "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                  page.isFavorite &&
+                    "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
                 )}
               />
               <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
@@ -207,7 +215,8 @@ export function SidebarContextMenu({
               <LucideIcons.Pin
                 className={cn(
                   "h-4 w-4",
-                  page.isPinned && "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+                  page.isPinned &&
+                    "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
                 )}
               />
               <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
@@ -217,7 +226,7 @@ export function SidebarContextMenu({
           <ContextMenuSeparator className="bg-transparent" />
 
           {/* 只有当页面有父级时才显示"移至顶层"选项 */}
-          {hasParent && !isTrashed && (
+          {hasParent && !isTrashed && !isLocalFolder && (
             <ContextMenuItem onSelect={handleMoveToTopLevel}>
               <LucideIcons.ArrowUpToLine className="h-4 w-4" />
               <span>移至顶层</span>
@@ -277,9 +286,15 @@ export function SidebarContextMenu({
               onSelect={() => void deletePageWithUndo(page.id)}
               className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-destructive/10"
             >
-              <LucideIcons.Trash2 className="h-4 w-4" />
-              <span>移至垃圾箱</span>
-              <span className="ml-auto text-xs text-muted-foreground">{formatShortcut("Mod+Backspace")}</span>
+              {isLocalFolder ? (
+                <LucideIcons.FileX className="h-4 w-4" />
+              ) : (
+                <LucideIcons.Trash2 className="h-4 w-4" />
+              )}
+              <span>{isLocalFolder ? "移到系统回收站" : "移至垃圾箱"}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {formatShortcut("Mod+Backspace")}
+              </span>
             </ContextMenuItem>
           )}
         </ContextMenuContent>

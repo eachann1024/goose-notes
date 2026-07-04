@@ -6,6 +6,7 @@ import type { Theme, CodeStyle, AISettings, UToolsSettings, DesktopSettings } fr
 import {
     normalizeCodeStyle,
     normalizeUIFontSize,
+    normalizeAutoCloseInactiveTabsHours,
     normalizeAISettings,
     normalizeDesktopHotkeyStatus,
     mergeSearchProvidersWithDefaults,
@@ -221,6 +222,22 @@ export const useSettings = create<SettingsState>()(
                     if (typeof state.showRecentInSearch !== 'boolean') {
                         useSettings.setState({ showRecentInSearch: true })
                     }
+                    const normalizedPrivacy = {
+                        autoOpenLastNote:
+                            typeof state.privacy?.autoOpenLastNote === 'boolean'
+                                ? state.privacy.autoOpenLastNote
+                                : true,
+                        autoCloseInactiveTabs:
+                            typeof state.privacy?.autoCloseInactiveTabs === 'boolean'
+                                ? state.privacy.autoCloseInactiveTabs
+                                : false,
+                        autoCloseInactiveTabsHours: normalizeAutoCloseInactiveTabsHours(
+                            state.privacy?.autoCloseInactiveTabsHours,
+                        ),
+                    }
+                    if (JSON.stringify(state.privacy ?? null) !== JSON.stringify(normalizedPrivacy)) {
+                        useSettings.setState({ privacy: normalizedPrivacy })
+                    }
 
                     const normalizedCloseTabShortcut =
                         typeof state.closeTabShortcut === 'string'
@@ -358,6 +375,9 @@ export {
     DEFAULT_SEARCH_HOTKEY,
     DEFAULT_CLOSE_TAB_SHORTCUT,
     DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
+    AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN,
+    AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX,
+    AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT,
     UTOOLS_WINDOW_HEIGHT_MIN,
     UTOOLS_WINDOW_HEIGHT_MAX,
     UTOOLS_WINDOW_HEIGHT_DEFAULT,

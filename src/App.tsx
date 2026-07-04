@@ -81,6 +81,24 @@ function App() {
   }, [hydrated, privacy.autoOpenLastNote, restoreLastNoteIfNeeded, clearActivePageForBlankEntry]);
 
   useEffect(() => {
+    if (!hydrated || !privacy.autoCloseInactiveTabs) return;
+
+    const closeExpiredTabs = () => {
+      useTabs.getState().closeExpiredTabs();
+    };
+
+    closeExpiredTabs();
+    const timer = window.setInterval(closeExpiredTabs, 15 * 60 * 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    hydrated,
+    privacy.autoCloseInactiveTabs,
+    privacy.autoCloseInactiveTabsHours,
+  ]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const targetSize = UI_FONT_SIZE_MAP[uiFontSize] ?? UI_FONT_SIZE_MAP.small;

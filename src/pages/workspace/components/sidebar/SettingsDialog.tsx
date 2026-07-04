@@ -95,6 +95,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
+    setAutoCloseInactiveTabs,
+    setAutoCloseInactiveTabsHours,
     showRecentInSearch,
     setShowRecentInSearch,
     closeTabShortcut,
@@ -147,6 +149,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight: s.setUToolsWindowHeight,
     privacy: s.privacy,
     setAutoOpenLastNote: s.setAutoOpenLastNote,
+    setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
+    setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
     showRecentInSearch: s.showRecentInSearch,
     setShowRecentInSearch: s.setShowRecentInSearch,
     closeTabShortcut: s.closeTabShortcut,
@@ -526,6 +530,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
+                autoCloseInactiveTabs={privacy.autoCloseInactiveTabs}
+                setAutoCloseInactiveTabs={setAutoCloseInactiveTabs}
+                autoCloseInactiveTabsHours={privacy.autoCloseInactiveTabsHours}
+                setAutoCloseInactiveTabsHours={setAutoCloseInactiveTabsHours}
                 showRecentInSearch={showRecentInSearch}
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}

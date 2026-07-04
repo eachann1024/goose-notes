@@ -410,7 +410,7 @@ export function SidebarMainTree({
             const pageId = row.getAttribute("data-rct-item-id");
             if (!pageId || pageId === "root") return;
             const page = pages[pageId];
-            if (!page || (isLocalFolder && page.isFolder)) return;
+            if (!page) return;
             e.preventDefault();
             e.stopPropagation();
             openPageFromSidebar(pageId, "permanent");
@@ -464,7 +464,6 @@ export function SidebarMainTree({
           if (shouldSuppressSidebarSelect()) return;
           const page = pages[last];
           if (!page) return;
-          if (isLocalFolder && page.isFolder) return;
           const { meta, ctrl } = lastClickModRef.current;
           if (meta || ctrl) {
             openPageFromSidebar(last, "permanent");
@@ -475,16 +474,6 @@ export function SidebarMainTree({
         onPrimaryAction={(item) => {
           const id = String(item.index);
           if (id === "root") return;
-          const page = item.data;
-          if (isLocalFolder && page?.isFolder) {
-            if (!activeNotebookId) return;
-            if (expandedIds.includes(id)) {
-              collapseView(activeNotebookId, id);
-            } else {
-              expandView(activeNotebookId, id);
-            }
-            return;
-          }
           openPageFromSidebar(id, "preview");
         }}
         onDrop={handleDrop}

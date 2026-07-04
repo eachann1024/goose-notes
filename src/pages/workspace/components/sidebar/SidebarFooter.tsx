@@ -10,6 +10,7 @@ import { useSidebarView } from "@/stores/useSidebarView";
 interface SidebarFooterProps {
   currentView: "pages" | "trash" | "outline";
   isSettingsOpen: boolean;
+  hideTrash?: boolean;
   onSwitchToTrash: () => void;
   onOpenSettings: () => void;
 }
@@ -17,13 +18,16 @@ interface SidebarFooterProps {
 export function SidebarFooter({
   currentView,
   isSettingsOpen,
+  hideTrash = false,
   onSwitchToTrash,
   onOpenSettings,
 }: SidebarFooterProps) {
   const theme = useSettings((s) => s.theme);
   const toggleDarkMode = useSettings((s) => s.toggleDarkMode);
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
-  const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
+  const toggleSidebarCollapsed = useSidebarView(
+    (s) => s.toggleSidebarCollapsed,
+  );
   const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
 
   const isDark =
@@ -62,17 +66,19 @@ export function SidebarFooter({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <button
-          type="button"
-          className={cn(
-            btnClass,
-            !isSettingsOpen && currentView === "trash" && activeClass,
-          )}
-          aria-label="垃圾箱"
-          onClick={onSwitchToTrash}
-        >
-          <LucideIcons.Trash2 className="h-4 w-4" />
-        </button>
+        {!hideTrash && (
+          <button
+            type="button"
+            className={cn(
+              btnClass,
+              !isSettingsOpen && currentView === "trash" && activeClass,
+            )}
+            aria-label="垃圾箱"
+            onClick={onSwitchToTrash}
+          >
+            <LucideIcons.Trash2 className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           className={cn(btnClass, isSettingsOpen && activeClass)}

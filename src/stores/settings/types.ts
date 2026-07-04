@@ -50,6 +50,8 @@ export interface DesktopSettings {
 
 export interface PrivacySettings {
     autoOpenLastNote: boolean
+    autoCloseInactiveTabs: boolean
+    autoCloseInactiveTabsHours: number
 }
 
 export interface FontConfig {
@@ -85,6 +87,9 @@ export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = ""
 export const UTOOLS_WINDOW_HEIGHT_MIN = 600
 export const UTOOLS_WINDOW_HEIGHT_MAX = 1200
 export const UTOOLS_WINDOW_HEIGHT_DEFAULT = 800
+export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN = 1
+export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX = 720
+export const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT = 24
 
 export const DEFAULT_UI_FONT_SIZE: UIFontSize = 'small'
 export const LEGACY_DEFAULT_CUSTOM_ACTION_ID = 'default-translate'
@@ -191,6 +196,17 @@ export function normalizeUIFontSize(uiFontSize: string | undefined): UIFontSize 
     if (uiFontSize === 'small') return 'small'
     if (uiFontSize === 'normal' || uiFontSize === 'large') return 'normal'
     return DEFAULT_UI_FONT_SIZE
+}
+
+export function normalizeAutoCloseInactiveTabsHours(hours: unknown): number {
+    if (typeof hours !== 'number' || !Number.isFinite(hours)) {
+        return AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT
+    }
+
+    return Math.min(
+        AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX,
+        Math.max(AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN, Math.round(hours)),
+    )
 }
 
 export function mergeSearchProvidersWithDefaults(searchProviders: SearchProvider[] | undefined): SearchProvider[] {

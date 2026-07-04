@@ -86,14 +86,16 @@ export function NotebookSwitcher() {
 
   const handleOpenLocalFolder = async () => {
     try {
-      const utools = (window as Window & {
-        utools?: {
-          showOpenDialog?: (options: {
-            title?: string;
-            properties: string[];
-          }) => Promise<string[] | null>;
-        };
-      }).utools;
+      const utools = (
+        window as Window & {
+          utools?: {
+            showOpenDialog?: (options: {
+              title?: string;
+              properties: string[];
+            }) => Promise<string[] | null>;
+          };
+        }
+      ).utools;
       if (typeof utools?.showOpenDialog === "function") {
         const result = await utools.showOpenDialog({
           title: "选择 Markdown 文件夹",
@@ -115,11 +117,9 @@ export function NotebookSwitcher() {
         if (path) {
           const folderName = path.split(/[\\/]/).pop() || "Unknown";
           const notebookId = createLocalFolderNotebook(folderName, path);
-          await usePages
-            .getState()
-            .loadLocalFolderPages(notebookId, path, {
-              showWelcome: true,
-            });
+          await usePages.getState().loadLocalFolderPages(notebookId, path, {
+            showWelcome: true,
+          });
           setActiveNotebook(notebookId);
           setActivePage(null);
         }
@@ -140,7 +140,9 @@ export function NotebookSwitcher() {
       id,
       name: notebook.name,
       confirmName: notebook.name,
-      icon: notebook.icon || (notebook.source === "local-folder" ? "FolderOpen" : "BookOpen"),
+      icon:
+        notebook.icon ||
+        (notebook.source === "local-folder" ? "FolderOpen" : "BookOpen"),
       openDeleteConfirm: false,
       isLocalFolder: notebook.source === "local-folder",
     });
@@ -187,7 +189,10 @@ export function NotebookSwitcher() {
               <div className="flex items-center gap-2 truncate min-w-0">
                 {activeNotebook && (
                   <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-foreground/70 text-[16px] leading-none">
-                    {renderNotebookIcon(activeNotebook.icon || "BookOpen", "h-[18px] w-[18px] leading-none")}
+                    {renderNotebookIcon(
+                      activeNotebook.icon || "BookOpen",
+                      "h-[18px] w-[18px] leading-none",
+                    )}
                   </span>
                 )}
                 {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
@@ -228,6 +233,11 @@ export function NotebookSwitcher() {
               onClick={() => {
                 if (notebook.localPathMissing) return;
                 setActiveNotebook(notebook.id);
+                if (notebook.source === "local-folder") {
+                  setActivePage(null);
+                  setIsOpen(false);
+                  return;
+                }
                 const lastPageId = getLastActivePage(notebook.id);
                 const { pages } = usePages.getState();
                 const lastPage = lastPageId ? pages[lastPageId] : null;
@@ -258,7 +268,9 @@ export function NotebookSwitcher() {
                 >
                   {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
                 </span>
-                <span className="truncate text-sm font-medium leading-snug">{notebook.name}</span>
+                <span className="truncate text-sm font-medium leading-snug">
+                  {notebook.name}
+                </span>
                 {notebook.localPathMissing && (
                   <span className="text-xs text-destructive">路径失效</span>
                 )}
@@ -276,12 +288,14 @@ export function NotebookSwitcher() {
                             e.stopPropagation();
                             deleteNotebook(notebook.id);
                           }}
-                          aria-label="删除本地记事本"
+                          aria-label="移除本地文件夹"
                         >
-                          <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+                          <LucideIcons.FolderX className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">删除本地记事本</TooltipContent>
+                      <TooltipContent side="bottom">
+                        移除本地文件夹
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 )}
@@ -359,7 +373,8 @@ export function NotebookSwitcher() {
           onIconChange={(icon) => setCreateDialog({ ...createDialog, icon })}
           onCreate={handleConfirmCreate}
           onClearError={() =>
-            createDialog.error && setCreateDialog({ ...createDialog, error: "" })
+            createDialog.error &&
+            setCreateDialog({ ...createDialog, error: "" })
           }
         />
       )}

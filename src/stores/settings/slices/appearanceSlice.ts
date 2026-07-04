@@ -20,7 +20,7 @@ export interface AppearanceSliceState {
     imageExportWatermark: WatermarkConfig
     /** 导出图片上次选择的卡片主题 */
     imageExportThemeId: CardThemeId
-    /** 隐藏侧栏展开箭头，减少占位；展开/收起改用双击条目 */
+    /** 隐藏侧栏常驻展开箭头，hover 行时用图标位临时展开/收起 */
     hideExpandArrows: boolean
     /** 侧栏单击打开方式：预览标签（VSCode 风格）或替换当前普通标签 */
     sidebarClickBehavior: SidebarClickBehavior

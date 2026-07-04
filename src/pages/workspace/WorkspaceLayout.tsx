@@ -96,8 +96,13 @@ export function WorkspaceLayout({
     !!historyActivePageId && historyActivePageId === activePageId;
 
   const page = activePageId ? getPage(activePageId) : undefined;
+  const activeNotebook = activeNotebookId
+    ? notebooks[activeNotebookId]
+    : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
+  const isActiveLocalFolder = activeNotebook?.source === "local-folder";
   const isLocalFolderPage = pageNotebook?.source === "local-folder";
+  const aiAvailableForNotebook = aiEnabled && !isActiveLocalFolder;
   const isEditorFullWidth = Boolean(
     pageNotebook?.editorFullWidth ?? globalEditorFullWidth,
   );
@@ -113,18 +118,18 @@ export function WorkspaceLayout({
   // Mod+J 快捷键（useAppHotkeys 派发）→ 开关 AI 面板，与 UI 按钮门控一致：未启用 AI 时不响应
   useEffect(() => {
     const onToggle = () => {
-      if (!aiEnabled) return;
+      if (!aiAvailableForNotebook) return;
       toggleAiPanel();
     };
     window.addEventListener("goose-note:toggle-ai-panel", onToggle);
     return () =>
       window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
-  }, [aiEnabled, toggleAiPanel]);
+  }, [aiAvailableForNotebook, toggleAiPanel]);
 
-  // AI 功能关闭时强制收起侧栏面板，避免 localStorage 仍为 true 导致下次开启后误展开
+  // AI 功能不可用时强制收起侧栏面板，避免 localStorage 仍为 true 导致下次误展开
   useEffect(() => {
-    if (!aiEnabled) closeAiPanel();
-  }, [aiEnabled, closeAiPanel]);
+    if (!aiAvailableForNotebook) closeAiPanel();
+  }, [aiAvailableForNotebook, closeAiPanel]);
 
   useEffect(() => {
     if (locateRetryRef.current) {
@@ -228,8 +233,10 @@ export function WorkspaceLayout({
               <>
                 <PageHeader
                   onOpenSearch={openWelcomeTabHandler}
-                  aiPanelOpen={aiEnabled && aiPanelOpen}
-                  onToggleAiPanel={aiEnabled ? toggleAiPanel : undefined}
+                  aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                  onToggleAiPanel={
+                    aiAvailableForNotebook ? toggleAiPanel : undefined
+                  }
                 />
                 <PageEmptyState />
               </>
@@ -268,8 +275,10 @@ export function WorkspaceLayout({
                         onDelete={() =>
                           void permanentlyDeletePageWithCleanup(activePageId)
                         }
-                        aiPanelOpen={aiEnabled && aiPanelOpen}
-                        onToggleAiPanel={aiEnabled ? toggleAiPanel : undefined}
+                        aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                        onToggleAiPanel={
+                          aiAvailableForNotebook ? toggleAiPanel : undefined
+                        }
                       />
                       <div
                         ref={scrollContainerRef}
@@ -396,12 +405,14 @@ export function WorkspaceLayout({
                       </div>
                     </div>
                     {/* NotebookAiPanel 接线 */}
-                    {aiEnabled && aiPanelOpen && activeNotebookId && (
-                      <NotebookAiPanel
-                        notebookId={activeNotebookId}
-                        onClose={closeAiPanel}
-                      />
-                    )}
+                    {aiAvailableForNotebook &&
+                      aiPanelOpen &&
+                      activeNotebookId && (
+                        <NotebookAiPanel
+                          notebookId={activeNotebookId}
+                          onClose={closeAiPanel}
+                        />
+                      )}
                   </div>
                 </EditorHostBridge>
               </>

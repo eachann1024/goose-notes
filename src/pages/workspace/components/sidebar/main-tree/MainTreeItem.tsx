@@ -33,14 +33,28 @@ function TreeRowIcon({
   isLocalFolder,
   isRenaming,
   hasChildren,
+  hideExpandArrows,
+  isExpanded,
+  onToggleExpanded,
 }: {
   page: Page;
   isLocalFolder: boolean;
   isRenaming: boolean;
   hasChildren: boolean;
+  hideExpandArrows: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const iconName = page?.icon;
+  const renderedIcon = (
+    <LocalFileIcon
+      page={page}
+      iconName={iconName}
+      isLocalFolder={isLocalFolder}
+      hasChildren={hasChildren}
+    />
+  );
 
   const stopBubble = {
     onPointerDown: (e: PointerEvent) => {
@@ -55,10 +69,61 @@ function TreeRowIcon({
     },
   };
 
+  if (hideExpandArrows) {
+    if (!hasChildren || isRenaming) {
+      return (
+        <div className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5">
+          <div className="flex h-4 w-4 items-center justify-center">
+            {renderedIcon}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
+        draggable={false}
+        aria-label={isExpanded ? "折叠子项" : "展开子项"}
+        aria-expanded={isExpanded}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.button !== 0 || e.ctrlKey) return;
+          onToggleExpanded();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.detail === 0) onToggleExpanded();
+        }}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onDragStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-150 group-hover/main-row:opacity-0 group-focus-visible/hidden-toggle:opacity-0">
+          {renderedIcon}
+        </span>
+        <LucideIcons.ChevronRight
+          className={cn(
+            "pointer-events-none absolute h-3.5 w-3.5 text-muted-foreground/80 opacity-0 transition-[opacity,transform] duration-150 group-hover/main-row:opacity-100 group-focus-visible/hidden-toggle:opacity-100",
+            isExpanded && "rotate-90",
+          )}
+        />
+      </button>
+    );
+  }
+
   if (isLocalFolder) {
     return (
       <div className="main-tree-local-folder-icon flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
-        <LocalFileIcon page={page} iconName={iconName} isLocalFolder hasChildren={hasChildren} />
+        {renderedIcon}
       </div>
     );
   }
@@ -70,7 +135,7 @@ function TreeRowIcon({
         aria-disabled="true"
       >
         <div className="flex h-4 w-4 items-center justify-center">
-          <LocalFileIcon page={page} iconName={iconName} isLocalFolder={false} hasChildren={hasChildren} />
+          {renderedIcon}
         </div>
       </div>
     );
@@ -96,7 +161,7 @@ function TreeRowIcon({
         }}
       >
         <div className="flex h-4 w-4 items-center justify-center">
-          <LocalFileIcon page={page} iconName={iconName} isLocalFolder={false} hasChildren={hasChildren} />
+          {renderedIcon}
         </div>
       </button>
     </IconSelector>
@@ -236,6 +301,9 @@ export function renderItem({
       isLocalFolder={isLocalFolder}
       isRenaming={!!context.isRenaming}
       hasChildren={hasChildren}
+      hideExpandArrows={hideExpandArrows}
+      isExpanded={!!context.isExpanded}
+      onToggleExpanded={context.toggleExpandedState}
     />
   );
 
@@ -271,28 +339,8 @@ export function renderItem({
     }
   };
 
-  const triggerEmptyFolderShake = (rowEl: HTMLElement | null | undefined) => {
-    const icon = rowEl?.querySelector(".main-tree-local-folder-icon svg");
-    if (!(icon instanceof SVGElement)) return;
-    icon.classList.remove("goose-empty-folder-shake");
-    void icon.getBoundingClientRect();
-    icon.classList.add("goose-empty-folder-shake");
-  };
-
-  const toggleLocalFolderRow = (rowEl?: HTMLElement | null) => {
-    if (hasChildren) {
-      context.toggleExpandedState();
-      return;
-    }
-    triggerEmptyFolderShake(rowEl);
-  };
-
   const handleRowClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
     (interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined)?.(e);
-    if (e.defaultPrevented) return;
-    if (isLocalFolder && page?.isFolder) {
-      toggleLocalFolderRow(e.currentTarget.closest(".main-tree-row"));
-    }
   };
 
   const row = (
@@ -328,10 +376,6 @@ export function renderItem({
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (isLocalFolder && page?.isFolder) {
-            toggleLocalFolderRow(e.currentTarget.closest(".main-tree-row"));
-            return;
-          }
           openPageFromSidebar(String(item.index), "permanent");
         }}
         aria-label={title}
