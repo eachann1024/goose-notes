@@ -314,7 +314,7 @@ export async function handleStreamingWritePart(
         input && typeof input === "object"
           ? ((input as any).pageId as string | undefined)
           : undefined;
-      const targetPageId = pageId ?? usePages.getState().activePageId;
+      const targetPageId = pageId ?? ctx.currentPageId ?? usePages.getState().activePageId;
       if (!targetPageId) return;
 
       const md = inputMarkdown ?? "";

@@ -294,6 +294,7 @@ export function renderItem({
   const isLocalFolder = notebook?.source === "local-folder";
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
   const isPendingFolder = page.localPendingCreate === "folder";
+  const isLocalDirectory = isLocalFolder && !!page.isFolder;
 
   const iconNode = (
     <TreeRowIcon
@@ -339,7 +340,18 @@ export function renderItem({
     }
   };
 
+  const toggleLocalDirectory = () => {
+    if (!hasChildren) return;
+    context.toggleExpandedState();
+  };
+
   const handleRowClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    if (isLocalDirectory) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.detail <= 1) toggleLocalDirectory();
+      return;
+    }
     (interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined)?.(e);
   };
 
@@ -376,6 +388,7 @@ export function renderItem({
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (isLocalDirectory) return;
           openPageFromSidebar(String(item.index), "permanent");
         }}
         aria-label={title}

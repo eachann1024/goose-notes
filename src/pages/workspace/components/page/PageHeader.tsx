@@ -26,7 +26,6 @@ interface SortableTabItemProps {
   tab: TabItem;
   tabPage?: Page;
   isActive: boolean;
-  isDirty: boolean;
   hasLeftTabs: boolean;
   hasRightTabs: boolean;
   hasOtherTabs: boolean;
@@ -44,7 +43,6 @@ function SortableTabItem({
   tab,
   tabPage,
   isActive,
-  isDirty,
   hasLeftTabs,
   hasRightTabs,
   hasOtherTabs,
@@ -111,18 +109,10 @@ function SortableTabItem({
               className="h-3 w-3 shrink-0 text-primary"
             />
           )}
-          {isDirty && (
-            <span
-              aria-label="未保存"
-              className="h-2 w-2 shrink-0 rounded-full bg-[var(--goose-color-unsaved)]"
-            />
-          )}
           <span
             className={cn(
               "min-w-0 flex-1 truncate",
               tab.preview && "italic text-muted-foreground",
-              isDirty && "font-medium",
-              isDirty && !tab.preview && "italic",
             )}
           >
             {tab.type === "welcome" ? "新标签页" : (tabPage ? getPageTitle(tabPage) : "")}
@@ -210,11 +200,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
-  const isLocalItem = !!page?.localFilePath;
-  const { lastSavedAt, getPage } = usePages();
-  const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
-  const isTabDirty = (tabPageId: string) =>
-    Boolean(dirtyLocalPageIds?.[tabPageId]);
+  const { getPage } = usePages();
   const {
     openTabs,
     activeTabId,
@@ -244,7 +230,6 @@ export function PageHeader({
     const tabPage = getPage(tab.pageId);
     return tabPage && !tabPage.trashedAt;
   });
-  const [showSaved, setShowSaved] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
   const closeTabShortcutLabel = closeTabShortcut
@@ -257,14 +242,6 @@ export function PageHeader({
   const toggleAiPanelShortcutLabel = formatShortcut("Mod+J");
   const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
   const [sidebarExpandAttention, setSidebarExpandAttention] = useState(false);
-
-  useEffect(() => {
-    if (lastSavedAt && isLocalItem) {
-      setShowSaved(true);
-      const timer = setTimeout(() => setShowSaved(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastSavedAt, isLocalItem]);
 
   useEffect(() => {
     if (!prevSidebarCollapsedRef.current && sidebarCollapsed) {
@@ -369,7 +346,6 @@ export function PageHeader({
                     tab={tab}
                     tabPage={tabPage}
                     isActive={activeTabId === tab.id}
-                    isDirty={isTabDirty(tab.pageId)}
                     hasLeftTabs={originalIndex > 0}
                     hasRightTabs={originalIndex < openTabs.length - 1}
                     hasOtherTabs={openTabs.length > 1}
@@ -489,9 +465,6 @@ export function PageHeader({
           )}
         </div>
 
-        {showSaved && (
-          <LucideIcons.Check className="h-3.5 w-3.5 text-[var(--goose-color-success)] animate-in fade-in duration-200" />
-        )}
         {page?.isLocked && (
           <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">已锁定</span>
         )}

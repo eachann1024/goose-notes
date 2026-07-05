@@ -5,17 +5,23 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import { buildLanguageModel } from "./model";
 import { notebookAiTools } from "./tools";
+import { getCurrentNotebookAiPageId } from "./context";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { LanguageModel } from "ai";
 import type { ModelAvailability } from "./model";
+import type { NotebookAiAgentContext } from "./types";
 
 /** 构建注入了笔记本上下文的 system prompt */
-function buildSystemPrompt(notebookId: string): string {
+function buildSystemPrompt(
+  notebookId: string,
+  currentPageId?: string | null,
+): string {
   const notebook = useNotebooks.getState().notebooks[notebookId];
   const notebookName = notebook?.name ?? "未知笔记本";
 
   const pages = usePages.getState().pages;
-  const activePageId = usePages.getState().activePageId;
+  const activePageId =
+    currentPageId ?? getCurrentNotebookAiPageId(notebookId);
   const activePage =
     activePageId && pages[activePageId]?.workspaceId === notebookId
       ? pages[activePageId]
@@ -52,7 +58,7 @@ ${pageList}
 
 ## 工具使用守则
 
-1. **当前页面优先**：用户说“这个页面 / 当前页面 / 本文 / 这篇”时，直接对“当前打开页面”使用 readPage；不要先 searchNotes，也不要 listPages。用户要求精简、润色、总结、改写当前页时，禁止 searchNotes。
+1. **当前页面优先**：用户说“这个页面 / 当前页面 / 本文 / 这篇”时，直接对“当前打开页面”使用 readPage；不要先 searchNotes，也不要 listPages。用户要求精简、润色、总结、改写当前页时，禁止 searchNotes。当前页面来自用户发送本轮消息时的活动页签，不要被后续新建页面或切换页面影响。
 2. **搜索必须克制**：只有用户明确要求跨页搜索，或目标页面不明确时才用 searchNotes。一次请求默认最多调用 1 次 searchNotes；只有搜索结果明显不够且查询词实质不同，才允许再搜一次。
 3. **读取必须克制**：只读取实际需要回答或修改的页面。不要批量读取页面；不要为了润色当前页去读其它笔记。
 4. **写作类任务必须用 createPage**：创建新文章时调用 createPage 工具，markdown 参数输出完整正文，首行不要重复标题。
@@ -167,8 +173,9 @@ async function repairUpdatePageToolCall(options: {
   };
   messages: unknown[];
   model: LanguageModel;
+  currentPageId?: string | null;
 }) {
-  const activePageId = usePages.getState().activePageId;
+  const activePageId = options.currentPageId ?? usePages.getState().activePageId;
   const page = activePageId ? usePages.getState().pages[activePageId] : undefined;
   if (!activePageId || !page) return null;
 
@@ -218,8 +225,9 @@ async function repairReplaceInPageToolCall(options: {
     [key: string]: unknown;
   };
   messages: unknown[];
+  currentPageId?: string | null;
 }) {
-  const activePageId = usePages.getState().activePageId;
+  const activePageId = options.currentPageId ?? usePages.getState().activePageId;
   const page = activePageId ? usePages.getState().pages[activePageId] : undefined;
   if (!activePageId || !page) return null;
 
@@ -247,18 +255,26 @@ export type BuildAgentResult =
  * 构建绑定指定笔记本的 ToolLoopAgent。
  * 每次调用都会重新构建以获取最新的笔记本上下文。
  */
-export function buildNotebookAgent(notebookId: string): BuildAgentResult {
+export function buildNotebookAgent(
+  notebookId: string,
+  currentPageId?: string | null,
+): BuildAgentResult {
   const modelResult: ModelAvailability = buildLanguageModel();
   if (!modelResult.ok) {
     return { ok: false, reason: modelResult.reason };
   }
 
+  const agentContext: NotebookAiAgentContext = {
+    notebookId,
+    currentPageId: currentPageId ?? getCurrentNotebookAiPageId(notebookId),
+  };
+
   const agent = new ToolLoopAgent({
     model: modelResult.model,
     tools: notebookAiTools,
-    instructions: buildSystemPrompt(notebookId),
+    instructions: buildSystemPrompt(notebookId, agentContext.currentPageId),
     stopWhen: stepCountIs(6),
-    experimental_context: { notebookId },
+    experimental_context: agentContext,
     prepareStep: ({ steps }) => {
       if (hasCompletedWriteTool(steps)) {
         return { activeTools: [] };
@@ -282,6 +298,7 @@ export function buildNotebookAgent(notebookId: string): BuildAgentResult {
           toolCall: options.toolCall,
           messages: options.messages,
           model: modelResult.model,
+          currentPageId: agentContext.currentPageId,
         });
       }
 
@@ -300,6 +317,7 @@ export function buildNotebookAgent(notebookId: string): BuildAgentResult {
         return repairReplaceInPageToolCall({
           toolCall: options.toolCall,
           messages: options.messages,
+          currentPageId: agentContext.currentPageId,
         });
       }
 

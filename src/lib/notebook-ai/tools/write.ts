@@ -8,6 +8,7 @@ import { lookupCreatedPage, reloadEditorIfActive } from "@/lib/notebook-ai/liveW
 import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import type { NotebookAiAgentContext } from "../types";
 import type { JSONContent } from "@/types";
 
 // ----------------------------------------------------------------
@@ -25,7 +26,7 @@ export const createPage = tool({
       ),
   }),
   execute: async (input, { experimental_context, toolCallId }) => {
-    const { notebookId } = experimental_context as { notebookId: string };
+    const { notebookId } = experimental_context as NotebookAiAgentContext;
 
     // 检查 liveWriter 是否已在流式阶段建过该页面（bug 1 fix：避免双重建页）
     const existingPageId = lookupCreatedPage(toolCallId);
@@ -37,7 +38,7 @@ export const createPage = tool({
         content as JSONContent,
         "replace",
       );
-      return { pageId: existingPageId };
+      return { pageId: existingPageId, title: input.title };
     }
 
     // liveWriter 没有预建页（流式未触发或直接调用），走正常新建路径
@@ -67,7 +68,7 @@ export const createPage = tool({
     useTabs.getState().openTab(pageId);
     useNotebooks.getState().setLastActivePage(notebookId, pageId);
 
-    return { pageId };
+    return { pageId, title: input.title };
   },
 });
 
@@ -85,8 +86,9 @@ export const updatePage = tool({
         "新的正文内容（Markdown），首行不要包含 # 标题。待办/进度/清单类内容必须用任务列表语法：`- [ ] 内容` / `- [x] 内容`，列表项之间不留空行；禁止使用 emoji 和裸 `[x]` 文本。",
       ),
   }),
-  execute: async (input) => {
-    const pageId = input.pageId ?? usePages.getState().activePageId ?? "";
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId } = experimental_context as NotebookAiAgentContext;
+    const pageId = input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
     const page = usePages.getState().pages[pageId];
     if (!page) return { error: pageId ? `页面 ${pageId} 不存在` : "当前没有打开页面" };
     if (!input.markdown.trim()) {
@@ -107,7 +109,7 @@ export const updatePage = tool({
       "replace",
     );
 
-    return { pageId, ok: true };
+    return { pageId, title, ok: true };
   },
 });
 
@@ -122,13 +124,16 @@ export const replaceInPage = tool({
     find: z.string().optional().default("").describe("要查找的原始文本（精确匹配）"),
     replace: z.string().optional().default("").describe("替换后的文本；省略表示删除匹配文本"),
   }),
-  execute: async (input) => {
-    const pageId = input.pageId ?? usePages.getState().activePageId ?? "";
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId } = experimental_context as NotebookAiAgentContext;
+    const pageId = input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
     const page = usePages.getState().pages[pageId];
     if (!page) return { pageId, replacedCount: 0 };
+    const title = getPageTitle(page);
     if (!input.find.trim()) {
       return {
         pageId,
+        title,
         replacedCount: 0,
         skipped: true,
         message: "缺少要精确替换的 find 文本。结构性编辑当前页时，请先 readPage，再调用 updatePage 写入完整正文。",
@@ -138,10 +143,9 @@ export const replaceInPage = tool({
     // 先序列化为 markdown，做字符串替换，再写回
     const currentMd = await blocksToMarkdown(page.content as BlockNoteContent);
     const count = (currentMd.split(input.find).length - 1);
-    if (count === 0) return { pageId, replacedCount: 0 };
+    if (count === 0) return { pageId, title, replacedCount: 0 };
 
     const newMd = currentMd.split(input.find).join(input.replace);
-    const title = getPageTitle(page);
     const newContent = buildAiPageContent(title, newMd);
 
     await usePages.getState().writePageContent(
@@ -151,6 +155,6 @@ export const replaceInPage = tool({
     );
     reloadEditorIfActive(pageId);
 
-    return { pageId, replacedCount: count };
+    return { pageId, title, replacedCount: count };
   },
 });

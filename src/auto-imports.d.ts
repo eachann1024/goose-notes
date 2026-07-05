@@ -264,6 +264,7 @@ declare global {
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
+  const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile

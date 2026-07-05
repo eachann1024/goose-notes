@@ -8,6 +8,7 @@ import {
 } from "@/components/editor/utils/content-text-extractor";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import type { NotebookAiAgentContext } from "../types";
 
 // ----------------------------------------------------------------
 // listNotebooks
@@ -16,7 +17,8 @@ export const listNotebooks = tool({
   description: "列出所有笔记本，包含 id、名称和是否为当前笔记本。",
   inputSchema: z.object({}),
   execute: async (_input, { experimental_context }) => {
-    const { notebookId: currentNotebookId } = experimental_context as { notebookId: string };
+    const { notebookId: currentNotebookId } =
+      experimental_context as NotebookAiAgentContext;
     const notebooks = useNotebooks.getState().notebooks;
     return Object.values(notebooks).map((nb) => ({
       id: nb.id,
@@ -39,7 +41,8 @@ export const listPages = tool({
       .describe("指定笔记本 id；省略则使用当前绑定笔记本"),
   }),
   execute: async (input, { experimental_context }) => {
-    const { notebookId: boundNotebookId } = experimental_context as { notebookId: string };
+    const { notebookId: boundNotebookId } =
+      experimental_context as NotebookAiAgentContext;
     const targetId = input.notebookId ?? boundNotebookId;
     const pages = usePages.getState().pages;
     return Object.values(pages)
@@ -67,7 +70,8 @@ export const searchNotes = tool({
       .describe("搜索范围：notebook=当前笔记本，all=所有笔记本"),
   }),
   execute: async (input, { experimental_context }) => {
-    const { notebookId: boundNotebookId } = experimental_context as { notebookId: string };
+    const { notebookId: boundNotebookId } =
+      experimental_context as NotebookAiAgentContext;
     const query = input.query.trim();
     if (!query) return [];
 
@@ -180,8 +184,9 @@ export const readPage = tool({
   inputSchema: z.object({
     pageId: z.string().optional().describe("页面 id；省略则读取当前打开页面"),
   }),
-  execute: async (input) => {
-    const pageId = input.pageId ?? usePages.getState().activePageId ?? "";
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId } = experimental_context as NotebookAiAgentContext;
+    const pageId = input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
     const page = usePages.getState().pages[pageId];
     if (!page) {
       return { error: pageId ? `页面 ${pageId} 不存在` : "当前没有打开页面" };

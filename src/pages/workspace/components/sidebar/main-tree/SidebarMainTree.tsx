@@ -30,6 +30,7 @@ import {
   renderDragBetweenLine,
 } from "./MainTreeItem";
 import {
+  isLocalFolderDirectoryPage,
   openPageFromSidebar,
   shouldSuppressSidebarSelect,
 } from "@/lib/sidebarPageNavigation";
@@ -284,6 +285,32 @@ export function SidebarMainTree({
     return () => window.clearTimeout(timer);
   }, [activePageId, activeNotebookId, pages, expandedIds, setExpanded]);
 
+  const localDirectoryHasChildren = useCallback(
+    (pageId: string) => {
+      const children = items[pageId]?.children;
+      return Array.isArray(children) && children.length > 0;
+    },
+    [items],
+  );
+
+  const toggleLocalDirectory = useCallback(
+    (pageId: string) => {
+      if (!activeNotebookId || !localDirectoryHasChildren(pageId)) return;
+      if (expandedIds.includes(pageId)) {
+        collapseView(activeNotebookId, pageId);
+      } else {
+        expandView(activeNotebookId, pageId);
+      }
+    },
+    [
+      activeNotebookId,
+      collapseView,
+      expandView,
+      expandedIds,
+      localDirectoryHasChildren,
+    ],
+  );
+
   if (shouldShowLocalSkeleton) {
     return <LocalFolderLoadingSkeleton />;
   }
@@ -413,6 +440,7 @@ export function SidebarMainTree({
             if (!page) return;
             e.preventDefault();
             e.stopPropagation();
+            if (isLocalFolderDirectoryPage(pageId)) return;
             openPageFromSidebar(pageId, "permanent");
           }}
         >
@@ -464,6 +492,10 @@ export function SidebarMainTree({
           if (shouldSuppressSidebarSelect()) return;
           const page = pages[last];
           if (!page) return;
+          if (isLocalFolderDirectoryPage(last)) {
+            toggleLocalDirectory(last);
+            return;
+          }
           const { meta, ctrl } = lastClickModRef.current;
           if (meta || ctrl) {
             openPageFromSidebar(last, "permanent");
@@ -474,6 +506,10 @@ export function SidebarMainTree({
         onPrimaryAction={(item) => {
           const id = String(item.index);
           if (id === "root") return;
+          if (isLocalFolderDirectoryPage(id)) {
+            toggleLocalDirectory(id);
+            return;
+          }
           openPageFromSidebar(id, "preview");
         }}
         onDrop={handleDrop}
