@@ -1,5 +1,6 @@
 import { UToolsAdapter } from "@/lib/utools";
 import type { HistoryIndex, HistoryVersion } from "./types";
+import { normalizeHistoryIndex, normalizeHistoryVersion } from "./guards";
 
 const VERSION_PREFIX = "gn:hist:";
 const INDEX_PREFIX = "gn:hist-idx:";
@@ -11,10 +12,7 @@ const indexKey = (pageId: string) => `${INDEX_PREFIX}${pageId}`;
 export const historyRepository = {
   loadIndex(pageId: string): HistoryIndex {
     const doc = UToolsAdapter.db.get<HistoryIndex>(indexKey(pageId));
-    if (doc?.data && Array.isArray(doc.data.versions)) {
-      return doc.data;
-    }
-    return { pageId, versions: [], lastVersionCharCount: 0 };
+    return normalizeHistoryIndex(doc?.data, pageId);
   },
 
   saveIndex(index: HistoryIndex): void {
@@ -25,7 +23,7 @@ export const historyRepository = {
 
   loadVersion(pageId: string, versionId: string): HistoryVersion | null {
     const doc = UToolsAdapter.db.get<HistoryVersion>(versionKey(pageId, versionId));
-    return doc?.data ?? null;
+    return normalizeHistoryVersion(doc?.data, pageId, versionId);
   },
 
   saveVersion(version: HistoryVersion): void {

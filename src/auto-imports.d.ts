@@ -6,6 +6,9 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX
+  const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN
   const Activity: typeof import('react').Activity
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
   const Badge: typeof import('./components/ui/badge').Badge
@@ -79,6 +82,9 @@ declare global {
   const Input: typeof import('./components/ui/input').Input
   const Kbd: typeof import('./components/ui/kbd').Kbd
   const LEGACY_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').LEGACY_BLOCK_TYPES
+  const LOCAL_FOLDER_EDITOR_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_EDITOR_CANDIDATES
+  const LOCAL_FOLDER_FILE_MANAGER_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_FILE_MANAGER_CANDIDATES
+  const LOCAL_FOLDER_TERMINAL_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_TERMINAL_CANDIDATES
   const Label: typeof import('./components/ui/label').Label
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
@@ -140,6 +146,7 @@ declare global {
   const UnderlineType: typeof import('./lib/docxExport/docxStyles').UnderlineType
   const VALID_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').VALID_BLOCK_TYPES
   const WELCOME_TAB_PAGE_ID: typeof import('./stores/useTabs').WELCOME_TAB_PAGE_ID
+  const activateNotebook: typeof import('./lib/notebookNavigation').activateNotebook
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
   const applyTrailingNewlineStyle: typeof import('./lib/local-md-snapshot').applyTrailingNewlineStyle
@@ -210,6 +217,7 @@ declare global {
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
+  const formatLocalFolderOpenAppName: typeof import('./lib/local-folder-open-apps').formatLocalFolderOpenAppName
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
@@ -257,6 +265,7 @@ declare global {
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
+  const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile
@@ -271,6 +280,7 @@ declare global {
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
+  const looksLikeMermaidDiagram: typeof import('./components/editor/utils/clipboard').looksLikeMermaidDiagram
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
   const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction
@@ -316,6 +326,7 @@ declare global {
   const resolveAiTargetSelection: typeof import('./lib/ai-write/index').resolveAiTargetSelection
   const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
+  const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const restorePageWithToast: typeof import('./lib/page-delete-actions').restorePageWithToast
@@ -433,6 +444,9 @@ declare global {
   // @ts-ignore
   export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
+  // @ts-ignore
+  export type { LocalFolderOpenAppKind, LocalFolderOpenAppCandidate } from './lib/local-folder-open-apps'
+  import('./lib/local-folder-open-apps')
   // @ts-ignore
   export type { ParsedLocalMarkdown } from './lib/local-folder-scanner'
   import('./lib/local-folder-scanner')

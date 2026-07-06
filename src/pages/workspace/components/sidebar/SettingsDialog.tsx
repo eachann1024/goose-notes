@@ -95,6 +95,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
+    setAutoCloseInactiveTabs,
+    setAutoCloseInactiveTabsHours,
     showRecentInSearch,
     setShowRecentInSearch,
     closeTabShortcut,
@@ -119,10 +121,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setNotebookDropdownHoverExpand,
     sidebarClickBehavior,
     setSidebarClickBehavior,
+    localFolderFileManager,
+    setLocalFolderFileManager,
     localFolderExternalEditor,
     setLocalFolderExternalEditor,
-    enterKeyBehavior,
-    setEnterKeyBehavior,
+    localFolderTerminal,
+    setLocalFolderTerminal,
   } = useSettings(useShallow((s) => ({
     theme: s.theme,
     setTheme: s.setTheme,
@@ -145,6 +149,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight: s.setUToolsWindowHeight,
     privacy: s.privacy,
     setAutoOpenLastNote: s.setAutoOpenLastNote,
+    setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
+    setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
     showRecentInSearch: s.showRecentInSearch,
     setShowRecentInSearch: s.setShowRecentInSearch,
     closeTabShortcut: s.closeTabShortcut,
@@ -169,10 +175,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
     sidebarClickBehavior: s.sidebarClickBehavior,
     setSidebarClickBehavior: s.setSidebarClickBehavior,
+    localFolderFileManager: s.localFolderFileManager,
+    setLocalFolderFileManager: s.setLocalFolderFileManager,
     localFolderExternalEditor: s.localFolderExternalEditor,
     setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
-    enterKeyBehavior: s.enterKeyBehavior,
-    setEnterKeyBehavior: s.setEnterKeyBehavior,
+    localFolderTerminal: s.localFolderTerminal,
+    setLocalFolderTerminal: s.setLocalFolderTerminal,
   })));
   const { notebooks } = useNotebooks(useShallow((s) => ({ notebooks: s.notebooks })));
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
@@ -522,14 +530,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
+                autoCloseInactiveTabs={privacy.autoCloseInactiveTabs}
+                setAutoCloseInactiveTabs={setAutoCloseInactiveTabs}
+                autoCloseInactiveTabsHours={privacy.autoCloseInactiveTabsHours}
+                setAutoCloseInactiveTabsHours={setAutoCloseInactiveTabsHours}
                 showRecentInSearch={showRecentInSearch}
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
                 sidebarClickBehavior={sidebarClickBehavior}
                 setSidebarClickBehavior={setSidebarClickBehavior}
-                enterKeyBehavior={enterKeyBehavior}
-                setEnterKeyBehavior={setEnterKeyBehavior}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}
@@ -555,8 +565,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "local-folder" && (
             <div>
               <SettingsLocalFolder
+                localFolderFileManager={localFolderFileManager}
+                setLocalFolderFileManager={setLocalFolderFileManager}
                 localFolderExternalEditor={localFolderExternalEditor}
                 setLocalFolderExternalEditor={setLocalFolderExternalEditor}
+                localFolderTerminal={localFolderTerminal}
+                setLocalFolderTerminal={setLocalFolderTerminal}
               />
             </div>
           )}

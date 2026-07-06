@@ -20,8 +20,7 @@ import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
-// AI 按钮现已接通 NotebookAiPanel，由 WorkspaceLayout 传入 onToggleAiPanel
-// 当 onToggleAiPanel 存在时显示按钮
+// AI 按钮由 WorkspaceLayout 按 ai.enabled 门控后传入 onToggleAiPanel。
 
 interface SortableTabItemProps {
   tab: TabItem;
@@ -100,8 +99,8 @@ function SortableTabItem({
             }
           }}
           className={cn(
-            // Chrome 式收缩：空间不足时所有标签等比变窄，活动标签保留更大下限，永不被挤出可视区
-            "group flex h-8 min-w-12 max-w-[150px] flex-[1_1_150px] @container items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
+            // Chrome 式收缩：默认宽度 120px，空间不足时等比变窄，活动标签保留更大下限
+            "group flex h-8 min-w-12 max-w-[120px] flex-[0_1_120px] @container items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
             isDragging && "opacity-60",
             isActive
               ? "min-w-24 bg-[var(--goose-interactive-selected)] text-foreground"
@@ -279,6 +278,8 @@ export function PageHeader({
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const toggleSidebarShortcutLabel = formatShortcut("Alt+B");
   const toggleAiPanelShortcutLabel = formatShortcut("Mod+J");
+  const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
+  const [sidebarExpandAttention, setSidebarExpandAttention] = useState(false);
 
   useEffect(() => {
     if (lastSavedAt && isLocalItem) {
@@ -287,6 +288,18 @@ export function PageHeader({
       return () => clearTimeout(timer);
     }
   }, [lastSavedAt, isLocalItem]);
+
+  useEffect(() => {
+    if (!prevSidebarCollapsedRef.current && sidebarCollapsed) {
+      setSidebarExpandAttention(true);
+      const timer = window.setTimeout(() => {
+        setSidebarExpandAttention(false);
+      }, 4000);
+      prevSidebarCollapsedRef.current = sidebarCollapsed;
+      return () => window.clearTimeout(timer);
+    }
+    prevSidebarCollapsedRef.current = sidebarCollapsed;
+  }, [sidebarCollapsed]);
 
   // 切换标签或窗口缩放导致溢出时，保证活动标签始终在可视区内
   // （inline: "nearest" 已可见时零移动，不会打断用户的手动横向滚动）
@@ -328,7 +341,10 @@ export function PageHeader({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                    sidebarExpandAttention && "sidebar-expand-attention",
+                  )}
                   onClick={toggleSidebarCollapsed}
                   aria-label="展开侧栏"
                 >
@@ -346,48 +362,9 @@ export function PageHeader({
             </Tooltip>
           </TooltipProvider>
         ) : null}
-        {/* AI 面板入口按钮（onToggleAiPanel 存在且 AI 已启用时渲染） */}
-        {onToggleAiPanel ? (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "ai-icon-button h-8 w-8 shrink-0 rounded-[8px] border transition-colors",
-                    aiPanelOpen
-                      ? "border-border/60 bg-[var(--goose-interactive-selected)]"
-                      : "border-transparent hover:bg-[var(--goose-interactive-hover)]",
-                  )}
-                  data-ai-state={aiPhase}
-                  onClick={onToggleAiPanel}
-                  aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
-                  aria-pressed={aiPanelOpen}
-                >
-                  <AiGradientIcon
-                    key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
-                    className="h-4 w-4"
-                    state={aiPhase}
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <div className="flex items-center gap-2">
-                  <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {toggleAiPanelShortcutLabel}
-                  </span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : null}
-
         <div
           ref={tabsScrollerRef}
-          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scroll-padding-right:32px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="group/tabs flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scroll-padding-right:40px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onWheel={handleTabsWheel}
           onDoubleClick={(e) => {
             // 只在点击容器自身空白区域时触发（非标签项、非按钮）
@@ -442,9 +419,9 @@ export function PageHeader({
             </span>
           )}
 
-          {/* sticky：平时紧跟最后一个标签；极端溢出滚动时钉在右缘，不被挤出可视区 */}
+          {/* 平时 hover 标签栏才显形；极端溢出滚动时仍钉在右缘，不被挤出可视区 */}
           {!page?.trashedAt && (
-            <div className="sticky right-0 shrink-0 flex items-center gap-0.5 rounded-[7px] bg-[hsl(var(--goose-editor-bg))]">
+            <div className="pointer-events-none sticky right-0 flex shrink-0 items-center gap-0.5 rounded-[8px] bg-[hsl(var(--goose-editor-bg))] opacity-0 transition-opacity duration-150 group-hover/tabs:pointer-events-auto group-hover/tabs:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 motion-reduce:transition-none">
               <TooltipProvider delayDuration={600}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -452,7 +429,7 @@ export function PageHeader({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 rounded-[7px] text-muted-foreground/70 hover:bg-muted/65 hover:text-foreground"
+                      className="h-[36px] w-[36px] shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                       onClick={onOpenSearch}
                     >
                       <LucideIcons.Plus className="h-4 w-4" />
@@ -536,9 +513,6 @@ export function PageHeader({
           )}
         </div>
 
-        {showSaved && (
-          <LucideIcons.Check className="h-3.5 w-3.5 text-[var(--goose-color-success)] animate-in fade-in duration-200" />
-        )}
         {page?.isLocked && (
           <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">已锁定</span>
         )}
@@ -549,6 +523,57 @@ export function PageHeader({
         )}
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1">
+        {page && !page.trashedAt && (
+          <span
+            className={cn(
+              "inline-flex h-8 w-5 shrink-0 items-center justify-center text-muted-foreground/55 transition-opacity duration-200",
+              showSaved
+                ? "opacity-100 animate-in fade-in zoom-in-95"
+                : "pointer-events-none opacity-0",
+            )}
+            aria-hidden={!showSaved}
+            title={showSaved ? "已保存" : undefined}
+          >
+            <LucideIcons.Check className="h-3.5 w-3.5" strokeWidth={1.8} />
+          </span>
+        )}
+
+        {page && !page.trashedAt && onToggleAiPanel && (
+          <TooltipProvider delayDuration={600}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "ai-icon-button",
+                    actionButtonClass,
+                    aiPanelOpen &&
+                      "bg-[var(--goose-interactive-selected)] text-foreground",
+                  )}
+                  data-ai-state={aiPhase}
+                  onClick={onToggleAiPanel}
+                  aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
+                  aria-pressed={aiPanelOpen}
+                >
+                  <AiGradientIcon
+                    key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
+                    className="h-4 w-4"
+                    state={aiPhase}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {toggleAiPanelShortcutLabel}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
         {page?.trashedAt && onRestore && onDelete && (
           <>
             <TooltipProvider delayDuration={600}>

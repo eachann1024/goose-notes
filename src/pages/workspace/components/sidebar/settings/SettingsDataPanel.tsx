@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Download, FileText, Globe, RotateCcw, Upload, Cloud, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
+import { Download, FileText, Globe, RotateCcw, Upload, Cloud, CloudOff, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
@@ -666,10 +666,14 @@ export function SettingsDataPanel({
             {isRemoteListOpen && (
               <div className="space-y-3 pt-2">
                 {remoteLoading ? (
-                  <p className="text-center text-xs text-muted-foreground py-4">加载中...</p>
+                  <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>正在加载远端备份</span>
+                  </div>
                 ) : remoteFiles.length === 0 ? (
-                  <div className="text-center py-6 border border-dashed rounded-[12px] border-muted">
-                    <p className="text-xs text-muted-foreground">暂无远端备份</p>
+                  <div className="flex flex-col items-center gap-2 border border-dashed rounded-[12px] border-muted py-6 text-center">
+                    <CloudOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                    <p className="text-xs font-medium text-foreground">暂无远端备份</p>
                     <p className="text-[11px] text-muted-foreground/70 mt-1">
                       保存连接配置后，点击“生成并上传”创建您的第一份云端备份
                     </p>

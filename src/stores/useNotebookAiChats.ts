@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uToolsStorage } from "@/lib/storage";
+import { sanitizeNotebookAiMessages } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage, NotebookAiChatState } from "@/lib/notebook-ai/types";
 
 /** 每个笔记本最多保留的消息条数 */
@@ -28,13 +29,15 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
       chats: {},
 
       getMessages: (notebookId) => {
-        return get().chats[notebookId]?.messages ?? [];
+        return sanitizeNotebookAiMessages(get().chats[notebookId]?.messages ?? []);
       },
 
       setMessages: (notebookId, messages) => {
         set((state) => {
           // 截断到最大条数
-          const trimmed = messages.slice(-MAX_MESSAGES_PER_NOTEBOOK);
+          const trimmed = sanitizeNotebookAiMessages(messages).slice(
+            -MAX_MESSAGES_PER_NOTEBOOK,
+          );
 
           const updatedChats: Record<string, NotebookAiChatState> = {
             ...state.chats,
