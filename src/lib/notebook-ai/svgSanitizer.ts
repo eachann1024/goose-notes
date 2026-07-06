@@ -18,6 +18,7 @@ const ALLOWED_SVG_TAGS = [
   "stop",
   "clipPath",
   "mask",
+  "marker",
   "pattern",
   "title",
   "desc",
@@ -44,12 +45,21 @@ const ALLOWED_SVG_ATTRS = [
   "gradientUnits",
   "height",
   "id",
+  "marker-end",
+  "marker-height",
+  "marker-mid",
+  "marker-start",
+  "marker-units",
+  "marker-width",
   "mask",
   "offset",
   "opacity",
+  "orient",
   "points",
   "preserveAspectRatio",
   "r",
+  "refX",
+  "refY",
   "role",
   "rx",
   "ry",
@@ -71,6 +81,7 @@ const ALLOWED_SVG_ATTRS = [
   "x",
   "x1",
   "x2",
+  "xmlns",
   "y",
   "y1",
   "y2",
@@ -115,7 +126,47 @@ function sanitizeWithDomPurify(svg: string): string {
 }
 
 export function sanitizeSvgMarkup(svg: string): string {
-  return stripExternalUrlReferences(sanitizeWithDomPurify(svg)).trim();
+  return normalizeRenderableSvgMarkup(
+    stripExternalUrlReferences(sanitizeWithDomPurify(svg)),
+  );
+}
+
+function parseSvgLength(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = value.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/i);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function ensureRenderableSvg(svg: string): string {
+  if (!/^<svg\b/i.test(svg)) return svg;
+
+  let next = svg;
+  if (!/\sxmlns=/.test(next)) {
+    next = next.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  if (!/\sviewBox=/.test(next)) {
+    const width = parseSvgLength(next.match(/\swidth="([^"]+)"/)?.[1]);
+    const height = parseSvgLength(next.match(/\sheight="([^"]+)"/)?.[1]);
+    if (width && height) {
+      next = next.replace(/<svg\b/i, `<svg viewBox="0 0 ${width} ${height}"`);
+    }
+  }
+
+  if (!/\sviewBox=/.test(next) && !/\swidth=/.test(next) && !/\sheight=/.test(next)) {
+    next = next.replace(
+      /<svg\b/i,
+      '<svg viewBox="0 0 640 360" width="640" height="360"',
+    );
+  }
+
+  return next;
+}
+
+export function normalizeRenderableSvgMarkup(svg: string): string {
+  return ensureRenderableSvg(svg.trim());
 }
 
 export function svgToDataUrl(svg: string): string {

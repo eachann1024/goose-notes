@@ -417,6 +417,7 @@ export function WorkspaceLayout({
                         <NotebookAiPanel
                           notebookId={activeNotebookId}
                           onClose={closeAiPanel}
+                          editorRef={editorRef}
                         />
                       )}
                   </div>

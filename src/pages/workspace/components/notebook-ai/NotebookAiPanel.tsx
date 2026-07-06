@@ -6,9 +6,11 @@
  * - 每轮发送绑定当前活动页签 pageId，避免新建/切换页面影响当前请求
  * - 流式写入页面：handleStreamingWritePart + cleanupWriterSession
  */
-import { useEffect, useRef, useCallback, useMemo, type KeyboardEvent } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState, type KeyboardEvent } from "react";
 import { useChat } from "@ai-sdk/react";
 import { X, Trash2, Bot, CircleAlert } from "lucide-react";
+import type { RefObject } from "react";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import { buildTransport } from "@/lib/notebook-ai/transport";
@@ -34,20 +36,34 @@ import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 interface NotebookAiPanelProps {
   notebookId: string;
   onClose: () => void;
+  editorRef?: RefObject<EditorRef | null>;
 }
+
+const NOTEBOOK_AI_PLACEHOLDER_HINTS = [
+  "向 AI 提问，输入 @ 引用当前笔记本页面…",
+  "让 AI 根据当前笔记生成一张趋势图…",
+  "让 AI 画一个流程图或架构图…",
+  "让 AI 生成 SVG 图标或矢量示意图…",
+  "试试：总结 @页面，并画出要点关系图…",
+];
 
 function formatChatError(error: Error): string {
   const message = error.message?.trim();
   return message || "本轮请求失败，请稍后重试。";
 }
 
-export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
+export function NotebookAiPanel({
+  notebookId,
+  onClose,
+  editorRef,
+}: NotebookAiPanelProps) {
   const { notebooks } = useNotebooks();
   const notebook = notebooks[notebookId];
   const notebookName = notebook?.name ?? "AI 助手";
 
   const { width, onDragHandleMouseDown } = usePanelWidth();
   const requestCurrentPageIdRef = useRef<string | null>(null);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   // 检查模型是否可用（用于引导文案）
   const modelCheck = buildLanguageModel();
@@ -110,6 +126,19 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const unavailableReason = !modelCheck.ok ? modelCheck.reason : undefined;
+
+  useEffect(() => {
+    if (unavailableReason || isStreaming) return;
+
+    const timer = window.setInterval(() => {
+      setPlaceholderIndex((index) => (
+        (index + 1) % NOTEBOOK_AI_PLACEHOLDER_HINTS.length
+      ));
+    }, 4500);
+
+    return () => window.clearInterval(timer);
+  }, [unavailableReason, isStreaming]);
 
   // 流式写入页面
   useEffect(() => {
@@ -157,7 +186,11 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
     [onClose],
   );
 
-  const unavailableReason = !modelCheck.ok ? modelCheck.reason : undefined;
+  const composerPlaceholder = unavailableReason
+    ? "请先在设置中配置 AI 模型"
+    : isStreaming
+      ? "正在生成结果…"
+      : NOTEBOOK_AI_PLACEHOLDER_HINTS[placeholderIndex];
 
   const handleSend = useCallback(
     (payload: AiComposerPayload) => {
@@ -271,6 +304,7 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
         <ChatMessages
           messages={messages}
           streamingMessageId={streamingMessageId}
+          editorRef={editorRef}
         />
       )}
 
@@ -292,11 +326,7 @@ export function NotebookAiPanel({ notebookId, onClose }: NotebookAiPanelProps) {
         onStop={stop}
         isStreaming={isStreaming}
         disabled={!!unavailableReason}
-        placeholder={
-          unavailableReason
-            ? "请先在设置中配置 AI 模型"
-            : "向 AI 提问，输入 @ 引用当前笔记本页面…"
-        }
+        placeholder={composerPlaceholder}
         searchPages={searchPages}
         onEscape={onClose}
       />

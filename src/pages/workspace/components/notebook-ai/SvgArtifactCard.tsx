@@ -1,25 +1,16 @@
-import { useMemo } from "react";
-import { importMarkdownFragment } from "@/lib/export";
-import { sanitizeSvgMarkup, svgToDataUrl } from "@/lib/notebook-ai/svgSanitizer";
-import { usePages } from "@/stores/usePages";
+import { useMemo, type RefObject } from "react";
+import type { EditorRef } from "@/components/editor/core/Editor";
+import { sanitizeSvgMarkup } from "@/lib/notebook-ai/svgSanitizer";
 import { ArtifactActions } from "./ArtifactActions";
+import { createSvgArtifactBlocks, insertArtifactBlocks } from "./insertArtifact";
 
 interface SvgArtifactCardProps {
   title?: string;
   svg: string;
+  editorRef?: RefObject<EditorRef | null>;
 }
 
-async function appendSvgToCurrentPage(title: string | undefined, sanitizedSvg: string) {
-  const pageId = usePages.getState().activePageId;
-  if (!pageId || !sanitizedSvg) return false;
-
-  const markdown = `${title ? `### ${title}\n\n` : ""}![${title ?? "SVG"}](${svgToDataUrl(sanitizedSvg)})`;
-  const blocks = importMarkdownFragment(markdown);
-  if (!blocks) return false;
-  return usePages.getState().appendPageContent(pageId, blocks);
-}
-
-export function SvgArtifactCard({ title, svg }: SvgArtifactCardProps) {
+export function SvgArtifactCard({ title, svg, editorRef }: SvgArtifactCardProps) {
   const sanitizedSvg = useMemo(() => sanitizeSvgMarkup(svg), [svg]);
 
   return (
@@ -29,7 +20,10 @@ export function SvgArtifactCard({ title, svg }: SvgArtifactCardProps) {
         downloadSource={sanitizedSvg}
         filename="artifact.svg"
         mimeType="image/svg+xml;charset=utf-8"
-        onInsert={() => appendSvgToCurrentPage(title, sanitizedSvg)}
+        onInsert={() => insertArtifactBlocks(
+          editorRef,
+          createSvgArtifactBlocks(title, sanitizedSvg),
+        )}
       />
       {title ? (
         <div className="border-b border-border/70 px-3 py-2 text-xs font-medium text-foreground">
@@ -40,7 +34,7 @@ export function SvgArtifactCard({ title, svg }: SvgArtifactCardProps) {
         {sanitizedSvg ? (
           <div
             aria-hidden="true"
-            className="mx-auto flex min-w-max justify-center [&>svg]:max-h-[420px]"
+            className="notebook-ai-artifact-svg mx-auto flex min-w-full w-max justify-center"
             // Model SVG is allowlisted by sanitizeSvgMarkup before rendering.
             // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: sanitizedSvg }}

@@ -2,7 +2,7 @@
  * 消息列表组件 — Streamdown 渲染 text part，自动吸底，用户上滚暂停
  */
 import { Fragment, useEffect, useRef, useCallback } from "react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, RefObject } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import { Check, MessageSquareText, Sparkles } from "lucide-react";
@@ -12,6 +12,7 @@ import { ChartCard } from "./ChartCard";
 import { DiagramCard } from "./DiagramCard";
 import { SvgArtifactCard } from "./SvgArtifactCard";
 import { shouldShowToolProgress, type ToolDisplayPart } from "./toolProgressVisibility";
+import type { EditorRef } from "@/components/editor/core/Editor";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 
@@ -46,6 +47,7 @@ interface ChatMessagesProps {
   messages: NotebookAiMessage[];
   /** 正在流式输出的消息 id（最后一条 assistant msg id）*/
   streamingMessageId?: string;
+  editorRef?: RefObject<EditorRef | null>;
 }
 
 const INPUT_ONLY_STATES = new Set([
@@ -89,7 +91,11 @@ function shouldShowToolPart(part: ToolDisplayPart, isMessageStreaming: boolean) 
   return isMessageStreaming || !INPUT_ONLY_STATES.has(state) || hasTerminalPayload;
 }
 
-function renderToolVisual(part: ToolDisplayPart, key: string | number) {
+function renderToolVisual(
+  part: ToolDisplayPart,
+  key: string | number,
+  editorRef: RefObject<EditorRef | null> | undefined,
+) {
   if (part.type === "tool-showTable" && part.state === "output-available" && part.output) {
     const tableData = part.output as {
       title?: string;
@@ -135,6 +141,7 @@ function renderToolVisual(part: ToolDisplayPart, key: string | number) {
         key={key}
         title={diagramData.title}
         source={diagramData.source}
+        editorRef={editorRef}
       />
     );
   }
@@ -149,6 +156,7 @@ function renderToolVisual(part: ToolDisplayPart, key: string | number) {
         key={key}
         title={svgData.title}
         svg={svgData.svg}
+        editorRef={editorRef}
       />
     );
   }
@@ -159,6 +167,7 @@ function renderToolVisual(part: ToolDisplayPart, key: string | number) {
 export function ChatMessages({
   messages,
   streamingMessageId,
+  editorRef,
 }: ChatMessagesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isUserScrolled = useRef(false);
@@ -229,7 +238,7 @@ export function ChatMessages({
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto px-3 py-3 space-y-3 [scrollbar-width:thin]"
+      className="notebook-ai-messages flex-1 overflow-y-auto px-3 py-3 space-y-3 [scrollbar-width:thin]"
     >
       {messages.map((msg) => {
         const isUser = msg.role === "user";
@@ -239,7 +248,7 @@ export function ChatMessages({
           const text = getUserDisplayText(msg);
           return (
             <div key={msg.id} className="flex justify-end">
-              <div className="max-w-[85%] rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
+              <div className="notebook-ai-message-text max-w-[85%] rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
                 {text}
               </div>
             </div>
@@ -261,7 +270,7 @@ export function ChatMessages({
               if (partType === "text") {
                 const textContent = (part as { text: string }).text;
                 return (
-                  <div key={pi} className="ai-md text-sm text-foreground">
+                  <div key={pi} className="ai-md notebook-ai-message-text text-sm text-foreground">
                     <Streamdown
                       className="space-y-2"
                       components={MD_COMPONENTS}
@@ -285,7 +294,7 @@ export function ChatMessages({
                 const toolPart = part as ToolDisplayPart;
                 if (!shouldShowToolPart(toolPart, isStreaming)) return null;
 
-                const visual = renderToolVisual(toolPart, `visual-${pi}`);
+                const visual = renderToolVisual(toolPart, `visual-${pi}`, editorRef);
                 if (showToolProgress && !renderedToolProgress) {
                   renderedToolProgress = true;
                   return (

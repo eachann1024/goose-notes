@@ -128,17 +128,15 @@ export function SettingsAI({
       setUToolsLoadError(null);
 
       try {
-        const nextModels = await getAvailableAIModelOptions(ai);
+        const nextModels = await getAvailableAIModelOptions({
+          useCustomProvider: false,
+          customModelOptions: [],
+        });
         if (!active) return;
 
         setUToolsModels(nextModels);
         if (nextModels.length === 0) {
           setUToolsLoadError("未读取到可用模型");
-          return;
-        }
-
-        if (!selectedModelId || !nextModels.some((item) => item.id === selectedModelId)) {
-          setSelectedModelId(nextModels[0].id);
         }
       } catch (error) {
         if (!active) return;
@@ -157,7 +155,25 @@ export function SettingsAI({
     return () => {
       active = false;
     };
-  }, [ai, aiSupported, enabled, selectedModelId, setSelectedModelId, usingCustomProvider]);
+  }, [aiSupported, enabled, usingCustomProvider]);
+
+  useEffect(() => {
+    if (!enabled || usingCustomProvider || loadingUToolsModels || utoolsLoadError || utoolsModels.length === 0) {
+      return;
+    }
+
+    if (!selectedModelId || !utoolsModels.some((item) => item.id === selectedModelId)) {
+      setSelectedModelId(utoolsModels[0].id);
+    }
+  }, [
+    enabled,
+    loadingUToolsModels,
+    selectedModelId,
+    setSelectedModelId,
+    usingCustomProvider,
+    utoolsLoadError,
+    utoolsModels,
+  ]);
 
   useEffect(() => {
     if (!usingCustomProvider || customModels.length === 0) {
@@ -465,7 +481,11 @@ export function SettingsAI({
                           <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[280px]">
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-[280px]"
+                        style={{ maxHeight: "min(360px, var(--radix-dropdown-menu-content-available-height))" }}
+                      >
                         <DropdownMenuRadioGroup
                           value={selectedModelId ?? ""}
                           onValueChange={(value) => setSelectedModelId(value)}
