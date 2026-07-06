@@ -1,6 +1,7 @@
 import { useTabs } from "@/stores/useTabs";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
+import { useSettings } from "@/stores/useSettings";
 
 export function installTestBridge() {
   if (!import.meta.env.DEV) return;
@@ -9,6 +10,8 @@ export function installTestBridge() {
       getTabsState: () => useTabs.getState(),
       getPagesState: () => usePages.getState(),
       getNotebooksState: () => useNotebooks.getState(),
+      setCloseTabShortcut: (shortcut: string) =>
+        useSettings.getState().setCloseTabShortcut(shortcut),
       openPreviewTab: (pageId: string) =>
         useTabs.getState().openPreviewTab(pageId),
       openPermanentTab: (pageId: string, pin?: boolean) =>

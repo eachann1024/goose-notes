@@ -24,6 +24,13 @@ function isModifierToken(token: string) {
   return token === "ctrl" || token === "meta" || token === "alt" || token === "shift";
 }
 
+export function shortcutHasModifier(shortcut: string) {
+  return shortcut
+    .split("+")
+    .map(normalizeShortcutToken)
+    .some(isModifierToken);
+}
+
 export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   const trimmed = shortcut.trim();
   if (!trimmed) return false;

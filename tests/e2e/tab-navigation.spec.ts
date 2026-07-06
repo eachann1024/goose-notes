@@ -15,10 +15,12 @@ async function seedTwoPages(page: import("playwright/test").Page) {
         resetTabs: () => void;
         createPage: (parentId?: string, workspaceId?: string) => string;
         getNotebooksState: () => { activeNotebookId: string | null };
+        setCloseTabShortcut: (shortcut: string) => void;
       };
     }).__GOOSE_TEST__;
     if (!bridge) throw new Error("Test bridge unavailable");
     bridge.resetTabs();
+    bridge.setCloseTabShortcut("Alt+W");
   });
 
   return page.evaluate(() => {
@@ -213,5 +215,61 @@ test.describe("VSCode-style tab navigation", () => {
     );
     await expect(previewTab).toBeVisible();
     await expect(previewTab.locator("span.truncate")).toHaveClass(/italic/);
+  });
+
+  test("configured close-tab shortcut works while editor content is focused", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+
+    await page.evaluate(
+      ({ pageA, pageB }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string) => void;
+            setCloseTabShortcut: (shortcut: string) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.setCloseTabShortcut("Ctrl+W");
+        bridge.openPermanentTab(pageA);
+        bridge.openPermanentTab(pageB);
+      },
+      { pageA: a, pageB: b },
+    );
+
+    await page.evaluate(() => {
+      const editorTarget = document.createElement("div");
+      editorTarget.className = "bn-editor";
+      editorTarget.contentEditable = "true";
+      editorTarget.tabIndex = 0;
+      document.body.appendChild(editorTarget);
+      editorTarget.focus();
+      editorTarget.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "w",
+          code: "KeyW",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    const state = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{ pageId: string }>;
+            activeTabId: string | null;
+          };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return bridge.getTabsState();
+    });
+
+    expect(state.openTabs).toHaveLength(1);
+    expect(state.openTabs[0].pageId).toBe(a);
   });
 });

@@ -6,7 +6,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
-import { matchShortcut } from "@/lib/shortcut-match";
+import { matchShortcut, shortcutHasModifier } from "@/lib/shortcut-match";
 
 type HotkeyEntry = {
   id: string;
@@ -351,13 +351,16 @@ export function useAppHotkeys() {
             '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
           );
           if (hasToast || hasDialog) return true;
-          // Otherwise use original input guard
-          const isInInput =
+          // Modified close shortcuts should work from the editor too; bare keys
+          // stay blocked so normal typing cannot close a tab by accident.
+          const isInEditableTarget =
             !!target &&
             (target.tagName === "INPUT" ||
+              target.tagName === "SELECT" ||
               target.tagName === "TEXTAREA" ||
-              target.isContentEditable);
-          return !isInInput;
+              target.isContentEditable ||
+              !!target.closest?.(".bn-editor"));
+          return !isInEditableTarget || shortcutHasModifier(closeTabShortcutRef.current);
         },
         handler: (event) => {
           event.preventDefault();
