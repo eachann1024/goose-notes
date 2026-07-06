@@ -336,7 +336,7 @@ export async function generateExportZip(
         assetsFolder,
         imageMap,
         usedAssetNames,
-        getPageDepth(page, pageMap),
+        getPageDepth(page, visiblePageMap),
         notebookPath,
         page.localFilePath,
       );

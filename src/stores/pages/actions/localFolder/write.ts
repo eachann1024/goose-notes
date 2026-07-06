@@ -278,21 +278,7 @@ export const saveLocalPageContentAction = async (
 
   processImages(processedContent);
 
-  if (pendingImageWrites.length > 0) {
-    try {
-      if (window.gooseFs.mkdir) {
-        await window.gooseFs.mkdir(assetsDir);
-      }
-    } catch {}
-    await Promise.all(
-      pendingImageWrites.map(({ imagePath, base64Data }) => {
-        if (window.gooseFs?.writeFileAsync) {
-          return window.gooseFs.writeFileAsync(imagePath, base64Data, "base64");
-        }
-        return Promise.resolve(window.gooseFs?.writeFile(imagePath, base64Data));
-      }),
-    );
-  }
+
 
   const { blocksToMarkdown } = await import("@/lib/export");
   const markdownContent = await blocksToMarkdown(processedContent as any);
@@ -379,6 +365,22 @@ export const saveLocalPageContentAction = async (
     }
   }
   // ────────────────────────────────────────────────────────────────────────────
+
+  if (pendingImageWrites.length > 0) {
+    try {
+      if (window.gooseFs.mkdir) {
+        await window.gooseFs.mkdir(assetsDir);
+      }
+    } catch {}
+    await Promise.all(
+      pendingImageWrites.map(({ imagePath, base64Data }) => {
+        if (window.gooseFs?.writeFileAsync) {
+          return window.gooseFs.writeFileAsync(imagePath, base64Data, "base64");
+        }
+        return Promise.resolve(window.gooseFs?.writeFile(imagePath, base64Data));
+      }),
+    );
+  }
 
   // 写盘前标记自写：fs.watch 对本次写入触发的 change 事件（自写回声）
   // 由 useLocalFolderWatch 据此忽略，不会误判成外部修改弹冲突提示。

@@ -1,7 +1,7 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { countWords } from "@/components/editor/utils/content-text-extractor";
-import { resolveHistoryBackend } from "./backend";
+import { resolveHistoryBackend, type HistoryBackend } from "./backend";
 import { usePages } from "@/stores/usePages";
 import type {
   HistoryIndexEntry,
@@ -28,10 +28,10 @@ async function isSameAsLatestVersion(
   pageId: string,
   index: { versions: Array<{ versionId: string }> },
   content: BlockNoteContent,
+  backend: HistoryBackend,
 ): Promise<boolean> {
   const latestEntry = index.versions[index.versions.length - 1];
   if (!latestEntry) return false;
-  const backend = resolveHistoryBackend(pageId);
   const latest = await backend.loadVersion(pageId, latestEntry.versionId);
   if (!latest) return false;
   return getContentSignature(latest.content) === getContentSignature(content);
@@ -61,7 +61,7 @@ export async function recordHistorySnapshot(
   const charDelta = charCount - index.lastVersionCharCount;
 
   if (trigger === "idle" && charDelta === 0 && !isMilestone) {
-    if (await isSameAsLatestVersion(pageId, index, content)) {
+    if (await isSameAsLatestVersion(pageId, index, content, backend)) {
       return null;
     }
   }

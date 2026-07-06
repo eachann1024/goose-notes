@@ -20,4 +20,7 @@ test("quicknote drafts and local files keep raw editor content when syncing", ()
       id: "internal-page",
     }),
   ).toBe(false);
+
+  expect(shouldUseRawEditorContent(null)).toBe(false);
+  expect(shouldUseRawEditorContent(undefined)).toBe(false);
 });
