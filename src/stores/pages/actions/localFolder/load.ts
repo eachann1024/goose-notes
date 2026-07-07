@@ -1,6 +1,7 @@
 import type { Page } from "@/types";
 import { useNotebooks } from "../../../useNotebooks";
 import { useTabs } from "../../../useTabs";
+import { useSettings } from "@/stores/useSettings";
 import {
   scanLocalFolderPages,
   parseLocalMarkdownContent,
@@ -143,6 +144,7 @@ export const loadLocalFolderPagesAction = async (
       notebookId,
       basePath,
       gooseFs: window.gooseFs,
+      hiddenFolders: useSettings.getState().localFolderHiddenFolders,
     });
 
     set((state) => {
@@ -244,7 +246,6 @@ export const loadLocalFolderPagesAction = async (
       if (activeNotebookId === notebookId && currentActive) {
         useNotebooks.getState().setLastActivePage(notebookId, currentActive);
       }
-
       return result;
     });
   } finally {

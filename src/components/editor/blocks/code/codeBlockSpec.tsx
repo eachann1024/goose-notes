@@ -5,6 +5,8 @@ import { createExtension, defaultProps } from "@blocknote/core";
 import { createHighlightPlugin, type Parser } from "@/components/editor/find/highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
+import { Fragment } from "prosemirror-model";
+import { Plugin, TextSelection } from "prosemirror-state";
 import { common, createLowlight } from "lowlight";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { renderMermaidSvgForExport } from "@/lib/imageExport/mermaid";
+import { indentCodeSelection } from "./codeBlockIndent";
 
 // 主应用与速记小窗均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
 // 把语法包从 ~1MB（all 全量）降到 ~300KB（vendor-markdown 1257KB→530KB）。
@@ -242,6 +245,57 @@ const codeBlockHighlightExtension = createExtension({
   ],
 });
 
+const codeBlockTabIndentExtension = createExtension(({ editor }) => ({
+  key: "goose-code-block-tab-indent",
+  runsBefore: ["code-block-keyboard-shortcuts"],
+  mount: ({ dom, root, signal }) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || event.isComposing) return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection) return;
+      const { block } = editor.getTextCursorPosition();
+      if (block.type !== "codeBlock") return;
+
+      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
+        outdent: event.shiftKey,
+      });
+      editor.updateBlock(block.id, { content: next.text } as any);
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    const target = root instanceof Document ? root : dom.ownerDocument;
+    target.addEventListener("keydown", handleKeyDown, { capture: true, signal });
+  },
+  keyboardShortcuts: {
+    Tab: ({ editor }) => editor.transact((tr) => applyCodeBlockIndentTransaction(tr, false)),
+    "Shift-Tab": ({ editor }) =>
+      editor.transact((tr) => applyCodeBlockIndentTransaction(tr, true)),
+  },
+  prosemirrorPlugins: [
+    new Plugin({
+      props: {
+        handleKeyDown(view, event) {
+          if (event.key !== "Tab" || event.isComposing || !view.editable) {
+            return false;
+          }
+
+          const { state, dispatch } = view;
+          const tr = state.tr;
+          if (!applyCodeBlockIndentTransaction(tr, event.shiftKey)) {
+            return false;
+          }
+
+          event.preventDefault();
+          dispatch(tr);
+          return true;
+        },
+      },
+    }),
+  ],
+}))();
+
 const LATEX_SNIPPETS = [
   { label: "分数", code: "\\frac{a}{b}" },
   { label: "上标", code: "x^{n}" },
@@ -275,6 +329,174 @@ function downloadTextFile(content: string, filename: string, type: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function codeTextToInlineFragment(schema: any, text: string) {
+  if (!text) return Fragment.empty;
+  const hardBreakType = schema.nodes.hardBreak;
+  const nodes: any[] = [];
+
+  text.split("\n").forEach((line, index) => {
+    if (index > 0 && hardBreakType) nodes.push(hardBreakType.create());
+    if (line) nodes.push(schema.text(line));
+  });
+
+  return nodes.length > 0 ? Fragment.fromArray(nodes) : Fragment.empty;
+}
+
+function getClosestElement(node: Node | null) {
+  if (!node) return null;
+  return node instanceof HTMLElement ? node : node.parentElement;
+}
+
+function nodeListToCodeText(nodes: ChildNode[]) {
+  let text = "";
+  nodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent ?? "";
+      return;
+    }
+    if (node instanceof HTMLBRElement) {
+      text += "\n";
+      return;
+    }
+    text += nodeListToCodeText(Array.from(node.childNodes));
+  });
+  return text;
+}
+
+function getCodeDomSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  const codeElement =
+    getClosestElement(range.commonAncestorContainer)?.closest<HTMLElement>(".goose-code-content") ??
+    getClosestElement(range.startContainer)?.closest<HTMLElement>(".goose-code-content") ??
+    getClosestElement(range.endContainer)?.closest<HTMLElement>(".goose-code-content");
+
+  if (!codeElement) return null;
+
+  if (
+    !codeElement.contains(range.startContainer) ||
+    !codeElement.contains(range.endContainer)
+  ) {
+    return null;
+  }
+
+  const beforeStart = document.createRange();
+  beforeStart.selectNodeContents(codeElement);
+  beforeStart.setEnd(range.startContainer, range.startOffset);
+
+  const beforeEnd = document.createRange();
+  beforeEnd.selectNodeContents(codeElement);
+  beforeEnd.setEnd(range.endContainer, range.endOffset);
+
+  return {
+    codeElement,
+    text: nodeListToCodeText(Array.from(codeElement.childNodes)),
+    start: nodeListToCodeText(Array.from(beforeStart.cloneContents().childNodes)).length,
+    end: nodeListToCodeText(Array.from(beforeEnd.cloneContents().childNodes)).length,
+  };
+}
+
+function isComposingKeyboardEvent(event: KeyboardEvent | React.KeyboardEvent) {
+  return Boolean(
+    (event as KeyboardEvent).isComposing ||
+      (event as React.KeyboardEvent).nativeEvent?.isComposing,
+  );
+}
+
+function setCodeDomSelectionOffsets(codeElement: HTMLElement, start: number, end: number) {
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  let position = 0;
+
+  const findBoundary = (
+    parent: Node,
+    target: number,
+  ): { node: Node; offset: number } | null => {
+    const childNodes = Array.from(parent.childNodes);
+    for (let index = 0; index < childNodes.length; index += 1) {
+      const child = childNodes[index];
+      if (child.nodeType === Node.TEXT_NODE) {
+        const length = child.textContent?.length ?? 0;
+        if (target <= position + length) {
+          return { node: child, offset: Math.max(0, target - position) };
+        }
+        position += length;
+        continue;
+      }
+      if (child instanceof HTMLBRElement) {
+        if (target <= position + 1) {
+          return { node: parent, offset: index + 1 };
+        }
+        position += 1;
+        continue;
+      }
+      const nested = findBoundary(child, target);
+      if (nested) return nested;
+    }
+    return null;
+  };
+
+  const startBoundary = findBoundary(codeElement, start) ?? {
+    node: codeElement,
+    offset: codeElement.childNodes.length,
+  };
+  position = 0;
+  const endBoundary = findBoundary(codeElement, end) ?? {
+    node: codeElement,
+    offset: codeElement.childNodes.length,
+  };
+
+  const range = document.createRange();
+  range.setStart(startBoundary.node, startBoundary.offset);
+  range.setEnd(endBoundary.node, endBoundary.offset);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function findCodeBlockDepth($pos: any) {
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    if ($pos.node(depth)?.type?.name === "codeBlock") return depth;
+  }
+  return null;
+}
+
+function applyCodeBlockIndentTransaction(tr: any, outdent: boolean) {
+  const { $from, $to } = tr.selection;
+  const fromCodeDepth = findCodeBlockDepth($from);
+  const toCodeDepth = findCodeBlockDepth($to);
+  if (
+    fromCodeDepth == null ||
+    toCodeDepth == null ||
+    $from.before(fromCodeDepth) !== $to.before(toCodeDepth)
+  ) {
+    return false;
+  }
+
+  const codeBlockNode = $from.node(fromCodeDepth);
+  const contentStart = $from.start(fromCodeDepth);
+  const domSelection = getCodeDomSelection();
+  const currentText =
+    domSelection?.text ?? codeBlockNode.textBetween(0, codeBlockNode.content.size, "\n", "\n");
+  const selectionStart = domSelection?.start ?? $from.pos - contentStart;
+  const selectionEnd = domSelection?.end ?? $to.pos - contentStart;
+  const next = indentCodeSelection(currentText, selectionStart, selectionEnd, {
+    outdent,
+  });
+  const replacement = codeTextToInlineFragment(tr.doc.type.schema, next.text);
+
+  tr.replaceWith(contentStart, contentStart + codeBlockNode.content.size, replacement);
+  tr.setSelection(
+    TextSelection.create(
+      tr.doc,
+      contentStart + next.selectionStart,
+      contentStart + next.selectionEnd,
+    ),
+  );
+  return true;
 }
 
 function CodeBlockPreviewLightbox({
@@ -358,13 +580,13 @@ function CodeBlockComponent({
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
   const summaryInputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [showLatexHint, setShowLatexHint] = useState(false);
   const [previewMode, setPreviewMode] = useState<CodePreviewMode>("code");
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
 
   const getCodeContent = useCallback(() => {
-    let text = "";
     const content = block.content;
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
@@ -444,6 +666,69 @@ function CodeBlockComponent({
     [insertTextAtCursor],
   );
 
+  useEffect(() => {
+    if (!isEditable) return;
+
+    const applyTabIndent = (event: KeyboardEvent | React.KeyboardEvent) => {
+      if (event.key !== "Tab" || isComposingKeyboardEvent(event)) return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement)) return;
+
+      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
+        outdent: event.shiftKey,
+      });
+      event.preventDefault();
+      event.stopPropagation();
+      editor.updateBlock(block.id, { content: next.text });
+      window.requestAnimationFrame(() => {
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(".goose-code-content");
+        if (codeElement) {
+          setCodeDomSelectionOffsets(codeElement, next.selectionStart, next.selectionEnd);
+        }
+      });
+      if ("stopImmediatePropagation" in event) {
+        event.stopImmediatePropagation();
+      }
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      applyTabIndent(event);
+    };
+
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      applyTabIndent(event);
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown, true);
+    document.addEventListener("keydown", handleDocumentKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown, true);
+      document.removeEventListener("keydown", handleDocumentKeyDown, true);
+    };
+  }, [block.id, editor, isEditable]);
+
+  const handleCodeKeyDownCapture = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Tab" || isComposingKeyboardEvent(event) || !isEditable) return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement)) return;
+
+      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
+        outdent: event.shiftKey,
+      });
+      event.preventDefault();
+      event.stopPropagation();
+      editor.updateBlock(block.id, { content: next.text });
+      window.requestAnimationFrame(() => {
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(".goose-code-content");
+        if (codeElement) {
+          setCodeDomSelectionOffsets(codeElement, next.selectionStart, next.selectionEnd);
+        }
+      });
+    },
+    [block.id, editor, isEditable],
+  );
+
   const handleDownloadPreview = useCallback(async () => {
     const text = getCodeContent().trim();
     if (!text || typeof document === "undefined") return;
@@ -500,9 +785,11 @@ function CodeBlockComponent({
 
   return (
     <div
+      ref={rootRef}
       className="goose-code-block-node relative"
       data-collapsed={collapsed ? "true" : "false"}
       data-visual-preview={isMathOrMermaid ? "true" : undefined}
+      onKeyDownCapture={handleCodeKeyDownCapture}
     >
       {/* Toolbar row */}
       <div className="goose-code-toolbar-row" contentEditable={false}>
@@ -743,5 +1030,5 @@ export const codeBlockSpec = createReactBlockSpec(
       );
     },
   },
-  [codeBlockHighlightExtension],
+  [codeBlockHighlightExtension, codeBlockTabIndentExtension],
 )();

@@ -306,15 +306,23 @@ export const useSettings = create<SettingsState>()(
                         typeof state.localFolderTerminal === 'string'
                             ? state.localFolderTerminal.trim()
                             : ''
+                    const normalizedLocalFolderHiddenFolders =
+                        Array.isArray(state.localFolderHiddenFolders)
+                            ? state.localFolderHiddenFolders.filter(
+                                (item: unknown): item is string => typeof item === 'string' && item.length > 0
+                            )
+                            : ['assets']
                     if (
                         state.localFolderFileManager !== normalizedLocalFolderFileManager ||
                         state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor ||
-                        state.localFolderTerminal !== normalizedLocalFolderTerminal
+                        state.localFolderTerminal !== normalizedLocalFolderTerminal ||
+                        state.localFolderHiddenFolders !== normalizedLocalFolderHiddenFolders
                     ) {
                         useSettings.setState({
                             localFolderFileManager: normalizedLocalFolderFileManager,
                             localFolderExternalEditor: normalizedLocalFolderExternalEditor,
                             localFolderTerminal: normalizedLocalFolderTerminal,
+                            localFolderHiddenFolders: normalizedLocalFolderHiddenFolders,
                         })
                     }
                 }

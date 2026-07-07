@@ -127,6 +127,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setLocalFolderExternalEditor,
     localFolderTerminal,
     setLocalFolderTerminal,
+    localFolderHiddenFolders,
+    setLocalFolderHiddenFolders,
   } = useSettings(useShallow((s) => ({
     theme: s.theme,
     setTheme: s.setTheme,
@@ -181,6 +183,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
     localFolderTerminal: s.localFolderTerminal,
     setLocalFolderTerminal: s.setLocalFolderTerminal,
+    localFolderHiddenFolders: s.localFolderHiddenFolders,
+    setLocalFolderHiddenFolders: s.setLocalFolderHiddenFolders,
   })));
   const { notebooks } = useNotebooks(useShallow((s) => ({ notebooks: s.notebooks })));
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
@@ -571,6 +575,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setLocalFolderExternalEditor={setLocalFolderExternalEditor}
                 localFolderTerminal={localFolderTerminal}
                 setLocalFolderTerminal={setLocalFolderTerminal}
+                localFolderHiddenFolders={localFolderHiddenFolders}
+                setLocalFolderHiddenFolders={setLocalFolderHiddenFolders}
               />
             </div>
           )}
