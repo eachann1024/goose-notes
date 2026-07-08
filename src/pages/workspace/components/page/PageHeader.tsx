@@ -226,6 +226,7 @@ export function PageHeader({
   const aiDoneToken = useAiStatus((state) => state.doneToken);
   const isLocalItem = !!page?.localFilePath;
   const { lastSavedAt, getPage } = usePages();
+  const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
   const isTabDirty = (tabPageId: string) =>
     Boolean(dirtyLocalPageIds?.[tabPageId]);
@@ -234,9 +235,6 @@ export function PageHeader({
     activeTabId,
     setActiveTab,
     closeTab,
-    closeOtherTabs,
-    closeTabsToLeft,
-    closeTabsToRight,
     reorderTabs,
     togglePinTab,
     promotePreviewTab,
@@ -265,7 +263,11 @@ export function PageHeader({
   const visibleTabs = openTabs.filter((tab) => {
     if (tab.type === "welcome") return true;
     const tabPage = getPage(tab.pageId);
-    return tabPage && !tabPage.trashedAt;
+    return (
+      tabPage &&
+      !tabPage.trashedAt &&
+      (!activeNotebookId || tabPage.workspaceId === activeNotebookId)
+    );
   });
   const [showSaved, setShowSaved] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -385,7 +387,7 @@ export function PageHeader({
               {visibleTabs.map((tab) => {
                 const tabPage = tab.type === "welcome" ? undefined : getPage(tab.pageId);
                 if (tab.type !== "welcome" && !tabPage) return null;
-                const originalIndex = openTabs.findIndex((t) => t.id === tab.id);
+                const visibleIndex = visibleTabs.findIndex((t) => t.id === tab.id);
                 return (
                   <SortableTabItem
                     key={tab.id}
@@ -393,17 +395,29 @@ export function PageHeader({
                     tabPage={tabPage}
                     isActive={activeTabId === tab.id}
                     isDirty={isTabDirty(tab.pageId)}
-                    hasLeftTabs={originalIndex > 0}
-                    hasRightTabs={originalIndex < openTabs.length - 1}
-                    hasOtherTabs={openTabs.length > 1}
+                    hasLeftTabs={visibleIndex > 0}
+                    hasRightTabs={visibleIndex < visibleTabs.length - 1}
+                    hasOtherTabs={visibleTabs.length > 1}
                     closeTabShortcutLabel={closeTabShortcutLabel}
                     onActivate={() => {
                       setActiveTab(tab.id);
                     }}
                     onClose={() => closeTab(tab.id)}
-                    onCloseOthers={() => closeOtherTabs(tab.id)}
-                    onCloseLeft={() => closeTabsToLeft(tab.id)}
-                    onCloseRight={() => closeTabsToRight(tab.id)}
+                    onCloseOthers={() => {
+                      visibleTabs
+                        .filter((item) => item.id !== tab.id)
+                        .forEach((item) => closeTab(item.id));
+                    }}
+                    onCloseLeft={() => {
+                      visibleTabs
+                        .slice(0, visibleIndex)
+                        .forEach((item) => closeTab(item.id));
+                    }}
+                    onCloseRight={() => {
+                      visibleTabs
+                        .slice(visibleIndex + 1)
+                        .forEach((item) => closeTab(item.id));
+                    }}
                     onTogglePin={() => togglePinTab(tab.id)}
                     onPromotePreview={() => promotePreviewTab(tab.id)}
                     onLocateInTree={() => locateInTree(tab.pageId)}

@@ -1,5 +1,6 @@
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { useTabs } from "@/stores/useTabs";
 import type { Page } from "@/types";
 
 const compareBySidebarOrder = (a: Page, b: Page) =>
@@ -40,5 +41,6 @@ export async function activateNotebook(
   notebooksStore.setActiveNotebook(notebookId);
   const landingPageId = resolveNotebookLandingPageId(notebookId);
   await usePages.getState().setActivePage(landingPageId);
+  useTabs.getState().syncActiveTabForPage(landingPageId);
   return landingPageId;
 }

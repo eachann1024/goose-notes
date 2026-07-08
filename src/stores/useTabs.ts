@@ -27,6 +27,7 @@ interface TabsState {
   isHistoryNavigating: boolean;
   recentlyClosedPageIds: string[];
   syncNotebookForPage: (pageId: string | null) => void;
+  syncActiveTabForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
   openWelcomeTab: () => void;
   openPreviewTab: (pageId: string) => void;
@@ -245,6 +246,20 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (notebookStore.activeNotebookId !== page.workspaceId) {
         notebookStore.setActiveNotebook(page.workspaceId);
       }
+    },
+
+    syncActiveTabForPage: (pageId: string | null) => {
+      if (!pageId) return;
+      const { openTabs, activeTabId } = get();
+      const existingTab = findTabByPageId(openTabs, pageId);
+      if (existingTab) {
+        if (existingTab.id !== activeTabId) {
+          get().setActiveTab(existingTab.id);
+        }
+        return;
+      }
+
+      get().openPermanentTab(pageId);
     },
 
     openTab: (pageId: string) => {
