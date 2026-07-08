@@ -540,7 +540,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "doc.md-preview.quick-look.dev";
+				PRODUCT_BUNDLE_IDENTIFIER = "doc.md-preview.dev.quick-look";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
