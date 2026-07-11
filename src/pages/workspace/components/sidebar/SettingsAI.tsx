@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,10 @@ import {
   DEFAULT_CLAUDE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
   fetchCustomAIModels,
-  getAvailableAIModelOptions,
   getStoredAIModelOptions,
   type AIModelOption,
   type CustomAIProtocol,
 } from "@/lib/ai-provider";
-import { isUToolsAiSupported } from "@/lib/utools-ai";
 import type { AISettings } from "@/stores/useSettings";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { cn } from "@/lib/utils";
@@ -39,7 +37,6 @@ interface SettingsAIProps {
   setEnabled: (enabled: boolean) => void;
   selectedModelId: string | null;
   setSelectedModelId: (modelId: string | null) => void;
-  setCustomProviderEnabled: (enabled: boolean) => void;
   saveCustomConfig: (config: {
     protocol: CustomAIProtocol;
     baseURL: string;
@@ -76,13 +73,8 @@ export function SettingsAI({
   setEnabled,
   selectedModelId,
   setSelectedModelId,
-  setCustomProviderEnabled,
   saveCustomConfig,
 }: SettingsAIProps) {
-  const [utoolsModels, setUToolsModels] = useState<AIModelOption[]>([]);
-  const [loadingUToolsModels, setLoadingUToolsModels] = useState(false);
-  const [utoolsLoadError, setUToolsLoadError] = useState<string | null>(null);
-  const [utoolsReloadNonce, setUToolsReloadNonce] = useState(0);
   const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(ai.customProtocol);
   const [customOpenAIBaseURL, setCustomOpenAIBaseURL] = useState(ai.customOpenAIBaseURL);
   const [customClaudeBaseURL, setCustomClaudeBaseURL] = useState(ai.customClaudeBaseURL);
@@ -91,9 +83,7 @@ export function SettingsAI({
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
 
-  const aiSupported = useMemo(() => isUToolsAiSupported(), []);
   const customModels = getStoredAIModelOptions(ai);
-  const usingCustomProvider = ai.useCustomProvider;
 
   useEffect(() => {
     setCustomProtocol(ai.customProtocol);
@@ -116,78 +106,16 @@ export function SettingsAI({
   }, [ai.customClaudeApiKey]);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadUToolsModels() {
-      if (!enabled || usingCustomProvider || !aiSupported) {
-        setUToolsModels([]);
-        setUToolsLoadError(aiSupported ? null : "当前 uTools 版本未提供 AI 能力");
-        return;
-      }
-
-      setLoadingUToolsModels(true);
-      setUToolsLoadError(null);
-
-      try {
-        const nextModels = await getAvailableAIModelOptions({
-          useCustomProvider: false,
-          customModelOptions: [],
-        });
-        if (!active) return;
-
-        setUToolsModels(nextModels);
-        if (nextModels.length === 0) {
-          setUToolsLoadError("未读取到可用模型");
-        }
-      } catch (error) {
-        if (!active) return;
-        const message = error instanceof Error ? error.message : "读取模型列表失败";
-        setUToolsLoadError(message);
-        setUToolsModels([]);
-      } finally {
-        if (active) {
-          setLoadingUToolsModels(false);
-        }
-      }
-    }
-
-    void loadUToolsModels();
-
-    return () => {
-      active = false;
-    };
-  }, [aiSupported, enabled, usingCustomProvider, utoolsReloadNonce]);
-
-  useEffect(() => {
-    if (!enabled || usingCustomProvider || loadingUToolsModels || utoolsLoadError || utoolsModels.length === 0) {
-      return;
-    }
-
-    if (!selectedModelId || !utoolsModels.some((item) => item.id === selectedModelId)) {
-      setSelectedModelId(utoolsModels[0].id);
-    }
-  }, [
-    enabled,
-    loadingUToolsModels,
-    selectedModelId,
-    setSelectedModelId,
-    usingCustomProvider,
-    utoolsLoadError,
-    utoolsModels,
-  ]);
-
-  useEffect(() => {
-    if (!usingCustomProvider || customModels.length === 0) {
+    if (customModels.length === 0) {
       return;
     }
 
     if (!selectedModelId || !customModels.some((item) => item.id === selectedModelId)) {
       setSelectedModelId(customModels[0].id);
     }
-  }, [customModels, selectedModelId, setSelectedModelId, usingCustomProvider]);
+  }, [customModels, selectedModelId, setSelectedModelId]);
 
-  const currentModels = usingCustomProvider ? customModels : utoolsModels;
-  const currentModel = currentModels.find((item) => item.id === selectedModelId) ?? null;
+  const currentModel = customModels.find((item) => item.id === selectedModelId) ?? null;
   const selectedProtocol = CUSTOM_PROTOCOL_OPTIONS.find((item) => item.id === customProtocol) ?? CUSTOM_PROTOCOL_OPTIONS[0];
   const customBaseURL = customProtocol === "openai" ? customOpenAIBaseURL : customClaudeBaseURL;
   const customApiKey = customProtocol === "openai" ? customOpenAIApiKey : customClaudeApiKey;
@@ -199,26 +127,17 @@ export function SettingsAI({
       ? CUSTOM_AI_KEY_HINT
       : null;
 
-  const modelButtonDisabled = !enabled
-    || (usingCustomProvider
-      ? savingCustomConfig || customModels.length === 0
-      : !aiSupported || loadingUToolsModels || Boolean(utoolsLoadError) || utoolsModels.length === 0);
+  const modelButtonDisabled = !enabled || savingCustomConfig || customModels.length === 0;
 
   const modelButtonReason = !enabled
     ? "先打开 AI 助手开关后才能选择模型"
-    : usingCustomProvider
-      ? savingCustomConfig
-        ? "模型列表读取中，请稍候"
-        : customSaveError
-          ? customSaveError
-          : customModels.length === 0
-            ? "请先填写并保存自定义 AI 配置"
-            : null
-      : !aiSupported
-        ? "当前 uTools 版本未提供 AI 能力"
-        : loadingUToolsModels
-          ? "模型列表读取中，请稍候"
-          : utoolsLoadError || (utoolsModels.length === 0 ? "暂无可选模型" : null);
+    : savingCustomConfig
+      ? "模型列表读取中，请稍候"
+      : customSaveError
+        ? customSaveError
+        : customModels.length === 0
+          ? "请先填写并保存自定义 AI 配置"
+          : null;
 
   const handleSaveCustomConfig = async () => {
     if (saveButtonReason) {
@@ -265,7 +184,7 @@ export function SettingsAI({
 
       <SettingsSectionCard
         title={<span className="flex items-center gap-2"><LucideIcons.Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 开关</span>}
-        description="开启后页头出现 AI 入口；空白段落按空格可唤起 AI。uTools 内置模型打开右侧面板，自定义模型打开编辑器工具栏。"
+        description="开启后页头出现 AI 入口；空白段落按空格可唤起 AI。"
       >
         <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
           <div className="space-y-1.5">
@@ -284,32 +203,11 @@ export function SettingsAI({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Bot className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 来源</span>}
-        description="默认使用 uTools 内置 AI；关掉后可接入自己的 API。"
+        title={<span className="flex items-center gap-2"><LucideIcons.Bot className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />自定义 AI</span>}
+        description="接入你自己的 AI 服务。"
       >
         <div className="space-y-3">
-          <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-            <div>
-              <div className="flex items-center gap-3">
-                <LucideIcons.Cable className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-                <Label htmlFor="ai-custom-enabled" className="cursor-pointer text-sm font-medium text-foreground">
-                  关闭 utoolsAI 使用自定义 AI
-                </Label>
-              </div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">关闭 uTools 内置 AI，改用你自己填写的 API 地址和密钥。</p>
-            </div>
-            <Switch
-              id="ai-custom-enabled"
-              checked={usingCustomProvider}
-              onCheckedChange={(checked) => {
-                setCustomSaveError(null);
-                setCustomProviderEnabled(checked);
-              }}
-            />
-          </div>
-
-          {usingCustomProvider ? (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
                 <div className="flex items-center gap-3">
                   <LucideIcons.Server className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
@@ -425,8 +323,7 @@ export function SettingsAI({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-            </div>
-          ) : null}
+          </div>
         </div>
       </SettingsSectionCard>
 
@@ -434,29 +331,15 @@ export function SettingsAI({
         title={<span className="flex items-center gap-2"><LucideIcons.Brain className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />AI 模型</span>}
         description="选择全局默认模型；笔记本 AI 如设置了工作区模型，会优先使用工作区模型。"
         actions={
-          usingCustomProvider ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                void handleSaveCustomConfig();
-              }}
-            >
-              重新获取模型
-            </Button>
-          ) : enabled && aiSupported ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={loadingUToolsModels}
-              onClick={() => {
-                setSelectedModelId(null);
-                setUToolsReloadNonce((value) => value + 1);
-              }}
-            >
-              刷新并重选
-            </Button>
-          ) : null
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              void handleSaveCustomConfig();
+            }}
+          >
+            重新获取模型
+          </Button>
         }
       >
         <div className="space-y-3">
@@ -483,9 +366,7 @@ export function SettingsAI({
                           )}
                         >
                           <span className="truncate">
-                            {!usingCustomProvider && loadingUToolsModels
-                              ? "正在读取模型..."
-                              : currentModel?.label ?? modelButtonReason ?? "请选择模型"}
+                            {currentModel?.label ?? modelButtonReason ?? "请选择模型"}
                           </span>
                           <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                         </Button>
@@ -499,7 +380,7 @@ export function SettingsAI({
                           value={selectedModelId ?? ""}
                           onValueChange={(value) => setSelectedModelId(value)}
                         >
-                          {currentModels.map((model) => (
+                          {customModels.map((model) => (
                             <DropdownMenuRadioItem key={model.id} value={model.id} className="items-start gap-2">
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-medium text-foreground">{model.label}</div>

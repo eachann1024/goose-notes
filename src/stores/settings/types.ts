@@ -341,7 +341,7 @@ export function normalizeAISettings(ai: Partial<AISettings> | undefined): AISett
         selectedModelId,
         workspaceSelectedModelId,
         workspaceReasoningLevel: normalizeAIReasoningLevel(ai?.workspaceReasoningLevel),
-        useCustomProvider: Boolean(ai?.useCustomProvider),
+        useCustomProvider: true,
         customProtocol,
         customOpenAIBaseURL: normalizeAIBaseURL(
             ai?.customOpenAIBaseURL,

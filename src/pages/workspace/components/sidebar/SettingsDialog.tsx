@@ -111,7 +111,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setOpenSearchInUtools,
     setAIEnabled,
     setAISelectedModelId,
-    setAICustomProviderEnabled,
     saveAICustomConfig,
     setUToolsWindowHeight,
     privacy,
@@ -167,7 +166,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setOpenSearchInUtools: s.setOpenSearchInUtools,
     setAIEnabled: s.setAIEnabled,
     setAISelectedModelId: s.setAISelectedModelId,
-    setAICustomProviderEnabled: s.setAICustomProviderEnabled,
     saveAICustomConfig: s.saveAICustomConfig,
     setUToolsWindowHeight: s.setUToolsWindowHeight,
     privacy: s.privacy,
@@ -741,7 +739,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setEnabled={setAIEnabled}
                 selectedModelId={ai.selectedModelId}
                 setSelectedModelId={setAISelectedModelId}
-                setCustomProviderEnabled={setAICustomProviderEnabled}
                 saveCustomConfig={saveAICustomConfig}
               />
             </div>
