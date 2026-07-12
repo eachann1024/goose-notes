@@ -103,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let markdownFileExtensions = ["md", "markdown", "mdown", "txt"]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        CrashReporter.start()
         applyAppearanceMode(AppAppearanceMode.current, reloadPreviews: false)
         installAppearanceMenuItems()
         installContentWidthMenuItems()
@@ -191,6 +192,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updaterController.updater.checkForUpdates()
     }
 
+    @IBAction func toggleCrashReporting(_ sender: NSMenuItem) {
+        CrashReporter.isEnabled.toggle()
+        sender.state = CrashReporter.isEnabled ? .on : .off
+    }
+
     @objc private func installCommandLineTools(_ sender: Any?) {
         do {
             let installerScriptURL = try writeCommandLineToolInstallerScript()
@@ -260,6 +266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return activeDocumentWindowController != nil
         case #selector(selectAppearanceMode(_:)),
              #selector(selectContentWidthSetting(_:)):
+            return true
+        case #selector(toggleCrashReporting(_:)):
+            menuItem.state = CrashReporter.isEnabled ? .on : .off
             return true
         case #selector(toggleEditModeFromMenu(_:)):
             return activeDocumentWindowController?.canToggleEditMode ?? false
