@@ -2,6 +2,7 @@ import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
 import { createHeadingBlockSpec } from "@blocknote/core";
 import { calloutBlock } from "@/components/editor/blocks/callout/calloutBlock";
 import { customFileBlock } from "../blocks/file/customFileBlock";
+import { customImageBlock } from "../blocks/image/customImageBlock";
 import { codeBlockSpec } from "@/components/editor/blocks/code/codeBlockSpec";
 
 export const editorSchema = BlockNoteSchema.create({
@@ -14,6 +15,7 @@ export const editorSchema = BlockNoteSchema.create({
       allowToggleHeadings: true,
     }),
     callout: calloutBlock,
+    image: customImageBlock,
     file: customFileBlock,
     codeBlock: codeBlockSpec,
   },

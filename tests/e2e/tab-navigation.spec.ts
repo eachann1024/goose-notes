@@ -345,4 +345,43 @@ test.describe("VSCode-style tab navigation", () => {
     expect(state.openTabs).toHaveLength(1);
     expect(state.openTabs[0].pageId).toBe(a);
   });
+
+  test("global search shortcut works repeatedly while editor content is focused", async ({
+    page,
+  }) => {
+    const openCount = await page.evaluate(() => {
+      let count = 0;
+      window.addEventListener("goose-note:open-search", () => {
+        count += 1;
+      });
+
+      const editorTarget = document.createElement("div");
+      editorTarget.className = "bn-editor";
+      editorTarget.contentEditable = "true";
+      editorTarget.tabIndex = 0;
+      document.body.appendChild(editorTarget);
+      editorTarget.focus();
+
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+      const pressSearchShortcut = () => {
+        editorTarget.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "k",
+            code: "KeyK",
+            ctrlKey: !isMac,
+            metaKey: isMac,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      };
+
+      pressSearchShortcut();
+      pressSearchShortcut();
+      return count;
+    });
+
+    expect(openCount).toBe(2);
+  });
 });

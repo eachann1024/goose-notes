@@ -4,6 +4,10 @@ import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { toast } from "sonner";
 import { fileStorage } from "@/lib/fileStorage";
+import {
+  MediaLoadingPreview,
+  MediaPlaceholder,
+} from "@/components/editor/blocks/shared/MediaPlaceholder";
 
 function triggerDownload(url: string, name: string): void {
   const link = document.createElement("a");
@@ -90,19 +94,19 @@ function CustomFileBlockContent({
   );
 
   if (showLoader) {
-    return (
-      <div className="bn-file-loading-preview">Loading...</div>
-    );
+    return <MediaLoadingPreview />;
   }
 
   if (!block.props.url) {
     return (
-      <div className="bn-add-file-button" onClick={handleAddFile}>
-        <div className="bn-add-file-button-icon">
-          <LucideIcons.FileUp size={24} />
-        </div>
-        <div className="bn-add-file-button-text">添加文件</div>
-      </div>
+      <MediaPlaceholder
+        variant="file"
+        blockId={block.id}
+        editor={editor}
+        title="添加文件"
+        hint="点击选择，或直接拖入编辑器"
+        icon={<LucideIcons.FileUp size={18} strokeWidth={1.75} />}
+      />
     );
   }
 

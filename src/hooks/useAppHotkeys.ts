@@ -43,18 +43,18 @@ export function useAppHotkeys() {
   }, [activeTabId]);
 
   useEffect(() => {
-    const isEditableInput = () => {
-      const target = document.activeElement;
+    const isEditableEventTarget = (event: KeyboardEvent) => {
+      const target =
+        event.target instanceof HTMLElement
+          ? event.target
+          : document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
       return (
-        target instanceof HTMLElement &&
-        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-      );
-    };
-    const isRichTextEditing = () => {
-      const target = document.activeElement;
-      return (
-        target instanceof HTMLElement &&
-        (target.isContentEditable || !!target.closest(".bn-editor"))
+        !!target &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+          target.isContentEditable ||
+          !!target.closest(".bn-editor"))
       );
     };
 
@@ -75,7 +75,10 @@ export function useAppHotkeys() {
     const hasPrimaryModifier = (event: KeyboardEvent) =>
       (event.metaKey || event.ctrlKey) && !event.altKey && !event.repeat;
 
-    const matchesConfiguredShortcut = (event: KeyboardEvent, shortcut: string) =>
+    const matchesConfiguredShortcut = (
+      event: KeyboardEvent,
+      shortcut: string,
+    ) =>
       matchShortcut(
         event.key === " "
           ? ({
@@ -88,7 +91,8 @@ export function useAppHotkeys() {
             } as KeyboardEvent)
           : event,
         shortcut,
-      );
+      ) &&
+      (!isEditableEventTarget(event) || shortcutHasModifier(shortcut));
 
     const entries: HotkeyEntry[] = [
       // F3 → editor find navigation
@@ -135,7 +139,6 @@ export function useAppHotkeys() {
           const s = appShortcutsRef.current.openSearch;
           return !!s && matchesConfiguredShortcut(event, s);
         },
-        when: () => !isEditableInput() && !isRichTextEditing(),
         handler: (event) => {
           event.preventDefault();
           closeAllOverlays();
@@ -233,7 +236,6 @@ export function useAppHotkeys() {
           const s = appShortcutsRef.current.saveNote;
           return !!s && matchesConfiguredShortcut(event, s);
         },
-        when: () => !isEditableInput(),
         handler: (event) => {
           event.preventDefault();
           void (async () => {
@@ -254,7 +256,6 @@ export function useAppHotkeys() {
           const s = appShortcutsRef.current.newNote;
           return !!s && matchesConfiguredShortcut(event, s);
         },
-        when: () => !isEditableInput(),
         handler: (event) => {
           event.preventDefault();
           void (async () => {
@@ -353,7 +354,19 @@ export function useAppHotkeys() {
         id: "unified-close",
         match: (event) =>
           !event.defaultPrevented &&
-          matchesConfiguredShortcut(event, closeTabShortcutRef.current),
+          matchShortcut(
+            event.key === " "
+              ? ({
+                  key: "Space",
+                  code: event.code,
+                  ctrlKey: event.ctrlKey,
+                  metaKey: event.metaKey,
+                  altKey: event.altKey,
+                  shiftKey: event.shiftKey,
+                } as KeyboardEvent)
+              : event,
+            closeTabShortcutRef.current,
+          ),
         when: (event) => {
           const target = event.target as HTMLElement | null;
           // Never intercept when inside the shortcut recorder input itself
