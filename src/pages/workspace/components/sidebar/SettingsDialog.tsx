@@ -18,6 +18,7 @@ import {
   createEmptyQuickNoteDrafts,
   useQuickNote,
 } from "@/stores/useQuickNote";
+import { createEmptySlotStacks } from "@/lib/quicknote/undoHistory";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { AI_INITIAL_STATE } from "@/stores/settings/slices/aiSlice";
 import { APPEARANCE_INITIAL_STATE } from "@/stores/settings/slices/appearanceSlice";
@@ -540,6 +541,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     useQuickNote.setState({
       activeSlot: 1,
       drafts: createEmptyQuickNoteDrafts(),
+      undoStacks: createEmptySlotStacks(),
+      redoStacks: createEmptySlotStacks(),
       pinned: true,
       editorZoom: 1,
       windowWidth: QUICKNOTE_DEFAULT_WIDTH,

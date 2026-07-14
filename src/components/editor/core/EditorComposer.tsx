@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   FilePanelController,
-  FormattingToolbarController,
   LinkToolbarController,
   SuggestionMenuController,
   TableHandlesController,
@@ -11,7 +10,6 @@ import {
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
-import { offset as floatingOffset, shift as floatingShift } from "@floating-ui/react";
 import {
   clonePageContent,
   getContentSignature,
@@ -22,6 +20,7 @@ import {
   EditorFormattingToolbar,
   shouldRenderFormattingToolbar,
 } from "@/components/editor/toolbars/formatting";
+import { FixedFormattingToolbarController } from "@/components/editor/toolbars/formatting/FixedFormattingToolbarController";
 import { AIExtension, AIMenuController } from "@blocknote/xl-ai";
 import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
@@ -231,30 +230,11 @@ export function EditorComposer({
     selector: ({ editor }) => shouldRenderFormattingToolbar(editor),
   });
   const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
-  const formattingToolbarFloatingOptions = useMemo(
-    () => ({
-      useFloatingOptions: {
-        open:
-          !suppressFormattingToolbar &&
-          (formattingToolbarAiActive ||
-          (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed)),
-        // 锁定在选区上方，去掉默认的 flip()：跨多行拖选时选区包围盒不断变高，
-        // flip() 会在 top/bottom 之间反复翻转导致工具栏上下抖动（BlockNote #1569）。
-        // 仅保留 offset + 受限 shift，水平方向贴边时平移、不再纵向翻转。
-        placement: "top-start" as const,
-        middleware: [
-          floatingOffset(10),
-          floatingShift({ crossAxis: false, padding: 8 }),
-        ],
-      },
-    }),
-    [
-      suppressFormattingToolbar,
-      formattingToolbarAiActive,
-      formattingToolbarSelectionAllowed,
-      formattingToolbarStoreOpen,
-    ],
-  );
+  const formattingToolbarOpen =
+    !suppressFormattingToolbar &&
+    (formattingToolbarAiActive ||
+      (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed));
+
 
   const slashMenuFloatingOptions = useMemo(
     () => (__GOOSE_LITE__ ? getQuicknoteSlashMenuFloatingOptions() : undefined),
@@ -323,9 +303,9 @@ export function EditorComposer({
           tableHandle={GooseTableHandle}
           extendButton={GooseTableExtendButton}
         />
-        <FormattingToolbarController
+        <FixedFormattingToolbarController
           formattingToolbar={EditorFormattingToolbar}
-          floatingUIOptions={formattingToolbarFloatingOptions}
+          open={formattingToolbarOpen}
         />
         <LinkToolbarController linkToolbar={EditorLinkToolbar} />
         <FilePanelController filePanel={EditorFilePanel} />

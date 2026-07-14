@@ -204,7 +204,7 @@ body,
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   line-height: 1;
-  cursor: default;
+  cursor: pointer;
   overflow: hidden;
   opacity: 1;
   box-shadow: none;
@@ -214,6 +214,13 @@ body,
     color 0.14s ease,
     background 0.14s ease,
     box-shadow 0.14s ease;
+}
+
+.quicknote-slot-switcher[data-scrubbing="true"],
+.quicknote-slot-switcher[data-scrubbing="true"] .quicknote-slot-btn {
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
 }
 
 .quicknote-slot-btn-label {

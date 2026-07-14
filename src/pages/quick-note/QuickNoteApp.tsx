@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { X, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,11 +40,15 @@ const POSITION_SETTLE_MS = 720;
  */
 export function QuickNoteApp() {
   const editorRef = useRef<EditorRef>(null);
+  /** 程序化恢复后抑制 N 次 onChange 记入撤销栈（覆盖 BlockNote 初始化同步）。 */
+  const suppressHistoryWritesRef = useRef(0);
 
   const activeSlot = useQuickNote((s) => s.activeSlot);
   const drafts = useQuickNote((s) => s.drafts);
   const setActiveSlot = useQuickNote((s) => s.setActiveSlot);
   const setDraftContent = useQuickNote((s) => s.setDraftContent);
+  const undoDraft = useQuickNote((s) => s.undoDraft);
+  const redoDraft = useQuickNote((s) => s.redoDraft);
   const saveDraftToNotebook = useQuickNote((s) => s.saveDraftToNotebook);
   const setWindowSize = useQuickNote((s) => s.setWindowSize);
   const setWindowPosition = useQuickNote((s) => s.setWindowPosition);
@@ -53,33 +57,81 @@ export function QuickNoteApp() {
   // 编辑界面缩放（持久化：下次开窗沿用上次 Cmd +/- 的程度）。
   const zoom = useQuickNote((s) => s.editorZoom);
 
-  // 草稿 page：基于当前槽位草稿现造。仅随 activeSlot 重建，避免编辑 onChange 回灌打断输入。
+  /**
+   * 撤销/重做后递增，迫使 EditorHostBridge 用最新 drafts 重建。
+   * 仅依赖 activeSlot 时，关窗重开后的持久化撤销无法驱动编辑器刷新。
+   */
+  const [historyEpoch, setHistoryEpoch] = useState(0);
+  /**
+   * 按住 1–5 拖动时的临时预览槽；null 表示未在 scrub。
+   * 编辑器显示 previewSlot ?? activeSlot，松手/移走后由 onChange 正式写入 activeSlot。
+   */
+  const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
+
+  const displaySlot = previewSlot ?? activeSlot;
+
+  // 草稿 page：基于显示槽位草稿现造。仅随 displaySlot / 历史恢复重建，
+  // 避免编辑 onChange 回灌打断输入。预览拖动时只换显示、不改 activeSlot。
   const draftPage = useMemo(
-    () => buildQuickNoteDraftPage(drafts[activeSlot] ?? null),
-    // 有意只依赖 activeSlot：槽位内容变更由编辑器内部维护。
+    () => buildQuickNoteDraftPage(drafts[displaySlot] ?? null),
+    // 有意不依赖 drafts 的每次击键：槽位内容变更由编辑器内部维护。
+    // historyEpoch 仅在撤销/重做后变化。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeSlot],
+    [displaySlot, historyEpoch],
   );
 
   // resize 抖动抑制：拖动边框期间标记，停下再持久化尺寸（见下方 resize effect）。
   const isResizingRef = useRef(false);
   const resizeSettleTimerRef = useRef<number | null>(null);
 
-  // 草稿内容变更：写入「本编辑器实例绑定的槽位」。
-  // 用 activeSlot 闭包锁定槽号，避免切换后旧实例尾随 onChange 串写到新槽。
+  // 草稿内容变更：写入「当前显示的槽位」（正式 active 或 scrub 预览）。
+  // 用 displaySlot 闭包锁定槽号，避免切换后旧实例尾随 onChange 串写。
   const onDraftChange = useMemo(() => {
-    const boundSlot = activeSlot;
+    const boundSlot = displaySlot;
     return (content: BlockNoteContent) => {
-      setDraftContent(content as never, boundSlot);
+      const suppress = suppressHistoryWritesRef.current > 0;
+      if (suppress) suppressHistoryWritesRef.current -= 1;
+      setDraftContent(content as never, boundSlot, {
+        recordHistory: !suppress,
+      });
     };
-  }, [activeSlot, setDraftContent]);
+  }, [displaySlot, setDraftContent]);
+
+  const applyHistoryContentToEditor = () => {
+    // 撤销/重做后编辑器会 remount 并可能连发 onChange；多抑制几次，避免把恢复记成新编辑。
+    suppressHistoryWritesRef.current = 4;
+    setHistoryEpoch((n) => n + 1);
+    requestAnimationFrame(() => {
+      editorRef.current?.editor?.focus?.();
+    });
+  };
+
+  const handleUndo = () => {
+    const result = undoDraft();
+    if (!result.applied) return false;
+    applyHistoryContentToEditor();
+    return true;
+  };
+
+  const handleRedo = () => {
+    const result = redoDraft();
+    if (!result.applied) return false;
+    applyHistoryContentToEditor();
+    return true;
+  };
 
   const handleSwitchSlot = (slot: QuickNoteSlot) => {
+    setPreviewSlot(null);
     if (slot === useQuickNote.getState().activeSlot) return;
     setActiveSlot(slot);
     requestAnimationFrame(() => {
       editorRef.current?.editor?.focus?.();
     });
+  };
+
+  /** 拖动预览：只改显示槽，不写 activeSlot。 */
+  const handlePreviewSlot = (slot: QuickNoteSlot | null) => {
+    setPreviewSlot(slot);
   };
 
   /** 关窗 / 收起前把当前位置写进 store + preload，保证下次 uTools 唤起仍在原处。 */
@@ -158,7 +210,8 @@ export function QuickNoteApp() {
   // 强制置顶（无失焦自动隐藏）：小窗常驻最前层，置顶由主窗 preload 在创建时设定，
   // 失焦不再触发隐藏——点窗外不会收起，只能 Esc / 关闭按钮收起。
 
-  // 键盘：Esc 收起；Cmd +/- 缩放编辑界面（Cmd+0 复位）。
+  // 键盘：Esc 收起；Cmd/Ctrl+Z 超长期撤销；Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y 重做；
+  // Cmd +/- 缩放编辑界面（Cmd+0 复位）。
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -172,8 +225,31 @@ export function QuickNoteApp() {
         quickNoteWindow.close();
         return;
       }
-      // 仅在按下 Cmd（macOS）/ Ctrl 时处理缩放。
-      if (!(e.metaKey || e.ctrlKey)) return;
+
+      // 仅在按下 Cmd（macOS）/ Ctrl 时处理缩放与撤销。
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+
+      // 超长期撤销/重做：拦截浏览器与 ProseMirror 默认行为，走持久化栈。
+      // 捕获阶段注册，确保先于编辑器快捷键。
+      if (key === "z") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
+      if (key === "y" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleRedo();
+        return;
+      }
+
       if (e.key === "=" || e.key === "+") {
         e.preventDefault();
         setEditorZoom(
@@ -193,9 +269,10 @@ export function QuickNoteApp() {
         setEditorZoom(1);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setEditorZoom, setWindowPosition]);
+    // 捕获阶段：抢在 ProseMirror undo 之前
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [setEditorZoom, setWindowPosition, undoDraft, redoDraft]);
 
   // 窗口位置记忆：用户拖动窗口移动 → 停下后记住最终位置，下次开窗沿用。
   // 轮询间隔必须短于 settle 时间，否则拖动中会反复触发持久化 IPC，导致正文重绘抖动。
@@ -289,7 +366,7 @@ export function QuickNoteApp() {
               </li>
               <li>
                 <b className="text-foreground">多便签</b>
-                ：顶栏中间 1–5 可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。
+                ：顶栏中间 1–5 可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。按住拖动可快速预览，松开或移走后生效。
               </li>
               <li>
                 <b className="text-foreground">始终置顶</b>
@@ -304,6 +381,10 @@ export function QuickNoteApp() {
                 ：Esc 或点击右上角 <X className="inline h-3 w-3 align-text-bottom" /> 收起，再次呼出草稿仍在。
               </li>
               <li>
+                <b className="text-foreground">超长期撤销</b>
+                ：⌘/Ctrl + Z 可一路回退编辑记录，关窗后再打开仍可继续撤销；⌘/Ctrl + Shift + Z 或 ⌘/Ctrl + Y 重做。
+              </li>
+              <li>
                 <b className="text-foreground">位置 / 尺寸记忆</b>
                 ：弹窗在屏幕上的位置、窗口宽高都会被记住，下次从 uTools 唤起仍在原处打开。
               </li>
@@ -316,8 +397,9 @@ export function QuickNoteApp() {
       <div className="pointer-events-none absolute inset-x-0 top-0 flex h-9 items-center justify-center">
         <div className="pointer-events-auto">
           <QuickNoteSlotSwitcher
-            activeSlot={activeSlot}
+            activeSlot={displaySlot}
             onChange={handleSwitchSlot}
+            onPreviewChange={handlePreviewSlot}
           />
         </div>
       </div>
@@ -341,7 +423,7 @@ export function QuickNoteApp() {
       {headerBar}
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto page-scroll-container">
         <EditorHostBridge
-          key={activeSlot}
+          key={`${displaySlot}-${historyEpoch}`}
           page={draftPage}
           isEditorFullWidth
           onContentChangeOverride={onDraftChange}

@@ -11,6 +11,15 @@ import {
   createEmptyLocalPageContent,
 } from "@/components/editor/utils/blocknote-content";
 import type { JSONContent, Page } from "@/types";
+import {
+  applyRedo,
+  applyUndo,
+  createEmptySlotStacks,
+  normalizeSlotStacks,
+  recordEditHistory,
+} from "@/lib/quicknote/undoHistory";
+import type { QuickNoteSlotStacks } from "@/lib/quicknote/undoHistory";
+
 
 /**
  * 速记小窗状态（独立窗口进程内使用）。
@@ -21,7 +30,8 @@ import type { JSONContent, Page } from "@/types";
  * 随后清空该槽位、回到空白便签。
  *
  * 支持 1–5 五个独立草稿槽位（activeSlot + drafts），各自持久化、互不覆盖。
- * 另持久化 pinned、editorZoom、windowWidth/windowHeight、windowX/windowY。
+ * 另持久化 pinned、editorZoom、windowWidth/windowHeight、windowX/windowY，
+ * 以及每槽撤销/重做栈（关窗后 Ctrl/Cmd+Z 仍可回退）。
  * 当前正在编辑的 draftPage 是会话态（基于当前槽位草稿现造），不持久化。
  */
 export type QuickNoteSlot = 1 | 2 | 3 | 4 | 5;
@@ -67,6 +77,15 @@ interface QuickNoteState {
   /** 五个独立草稿内容（各自持久化） */
   drafts: QuickNoteDrafts;
   /**
+   * 每槽撤销栈（持久化）。栈顶是最近一步可回退到的内容快照。
+   * 关窗后仍可继续 Ctrl/Cmd+Z。
+   */
+  undoStacks: QuickNoteSlotStacks;
+  /**
+   * 每槽重做栈（持久化）。撤销后写入；新编辑会清空。
+   */
+  redoStacks: QuickNoteSlotStacks;
+  /**
    * 是否置顶钉住。速记小窗强制置顶（产品决定，无取消入口），恒为 true。
    * 字段保留仅为持久化结构兼容；不再有切换 UI。
    */
@@ -93,7 +112,19 @@ interface QuickNoteState {
    * 草稿内容变更（编辑器 onContentChange 调用）。
    * 可显式指定 slot：切换槽位时旧编辑器卸载前的最后一次 onChange 仍写回原槽，避免串写。
    */
-  setDraftContent: (content: JSONContent, slot?: QuickNoteSlot) => void;
+  setDraftContent: (
+    content: JSONContent,
+    slot?: QuickNoteSlot,
+    options?: { recordHistory?: boolean },
+  ) => void;
+  /**
+   * 撤销当前槽位一步。返回恢复后的内容；无历史时返回 null 且不改状态。
+   * 注意：返回 null 既可能表示「无历史」，也可能表示恢复到空草稿——用 applied 语义
+   * 时请改用 undoDraft 的 boolean 返回值。
+   */
+  undoDraft: () => { content: JSONContent | null; applied: boolean };
+  /** 重做当前槽位一步。 */
+  redoDraft: () => { content: JSONContent | null; applied: boolean };
   /**
    * 保存当前槽位草稿到笔记本：以草稿内容新建一条真实笔记并落库，随后清空该槽位。
    * 返回新笔记 id；草稿为空时返回 null（不产生空笔记）。
@@ -155,11 +186,16 @@ export function getActiveDraftContent(state: {
   return state.drafts[state.activeSlot] ?? null;
 }
 
+/** 会话内每槽最近一次成功记入撤销栈的时间（不持久化，仅用于输入合并窗口）。 */
+const lastUndoRecordAtBySlot: Partial<Record<QuickNoteSlot, number>> = {};
+
 export const useQuickNote = create<QuickNoteState>()(
   persist(
     (set, get) => ({
       activeSlot: 1,
       drafts: createEmptyQuickNoteDrafts(),
+      undoStacks: createEmptySlotStacks(),
+      redoStacks: createEmptySlotStacks(),
       pinned: true, // 强制置顶，恒 true
       windowWidth: QUICKNOTE_DEFAULT_WIDTH,
       windowHeight: QUICKNOTE_DEFAULT_HEIGHT,
@@ -173,13 +209,75 @@ export const useQuickNote = create<QuickNoteState>()(
         set({ activeSlot: next });
       },
 
-      setDraftContent: (content, slot) =>
+      setDraftContent: (content, slot, options) =>
         set((state) => {
           const target = slot != null ? normalizeSlot(slot) : state.activeSlot;
+          const previous = state.drafts[target] ?? null;
+          const recordHistory = options?.recordHistory !== false;
+          if (!recordHistory) {
+            return {
+              drafts: { ...state.drafts, [target]: content },
+            };
+          }
+          // lastRecordAt 不持久化：用模块级 map 保持合并窗口（会话内有效即可）
+          const lastAt = lastUndoRecordAtBySlot[target] ?? 0;
+          const hist = recordEditHistory({
+            undo: state.undoStacks[target] ?? [],
+            redo: state.redoStacks[target] ?? [],
+            previous,
+            next: content,
+            lastRecordAt: lastAt,
+          });
+          if (hist.recorded) {
+            lastUndoRecordAtBySlot[target] = hist.lastRecordAt;
+          }
           return {
             drafts: { ...state.drafts, [target]: content },
+            undoStacks: { ...state.undoStacks, [target]: hist.undo },
+            redoStacks: { ...state.redoStacks, [target]: hist.redo },
           };
         }),
+
+      undoDraft: () => {
+        const state = get();
+        const slot = state.activeSlot;
+        const result = applyUndo({
+          undo: state.undoStacks[slot] ?? [],
+          redo: state.redoStacks[slot] ?? [],
+          current: state.drafts[slot] ?? null,
+        });
+        if (!result.applied) {
+          return { content: state.drafts[slot] ?? null, applied: false };
+        }
+        // 撤销/重做本身不记入历史；并重置合并窗口，避免紧接着的 onChange 误合并
+        lastUndoRecordAtBySlot[slot] = 0;
+        set({
+          drafts: { ...state.drafts, [slot]: result.content },
+          undoStacks: { ...state.undoStacks, [slot]: result.undo },
+          redoStacks: { ...state.redoStacks, [slot]: result.redo },
+        });
+        return { content: result.content, applied: true };
+      },
+
+      redoDraft: () => {
+        const state = get();
+        const slot = state.activeSlot;
+        const result = applyRedo({
+          undo: state.undoStacks[slot] ?? [],
+          redo: state.redoStacks[slot] ?? [],
+          current: state.drafts[slot] ?? null,
+        });
+        if (!result.applied) {
+          return { content: state.drafts[slot] ?? null, applied: false };
+        }
+        lastUndoRecordAtBySlot[slot] = 0;
+        set({
+          drafts: { ...state.drafts, [slot]: result.content },
+          undoStacks: { ...state.undoStacks, [slot]: result.undo },
+          redoStacks: { ...state.redoStacks, [slot]: result.redo },
+        });
+        return { content: result.content, applied: true };
+      },
 
       saveDraftToNotebook: () => {
         const content = getActiveDraftContent(get());
@@ -198,9 +296,26 @@ export const useQuickNote = create<QuickNoteState>()(
       },
 
       clearDraft: () =>
-        set((state) => ({
-          drafts: { ...state.drafts, [state.activeSlot]: null },
-        })),
+        set((state) => {
+          const slot = state.activeSlot;
+          const previous = state.drafts[slot] ?? null;
+          // 清空也记一步，方便撤销恢复
+          const hist = recordEditHistory({
+            undo: state.undoStacks[slot] ?? [],
+            redo: state.redoStacks[slot] ?? [],
+            previous,
+            next: null,
+            lastRecordAt: 0, // 强制新步，不与编辑合并
+          });
+          if (hist.recorded) {
+            lastUndoRecordAtBySlot[slot] = hist.lastRecordAt;
+          }
+          return {
+            drafts: { ...state.drafts, [slot]: null },
+            undoStacks: { ...state.undoStacks, [slot]: hist.undo },
+            redoStacks: { ...state.redoStacks, [slot]: hist.redo },
+          };
+        }),
 
       setWindowWidth: (width) =>
         set({ windowWidth: Math.max(QUICKNOTE_MIN_WIDTH, Math.round(width)) }),
@@ -221,11 +336,13 @@ export const useQuickNote = create<QuickNoteState>()(
     }),
     {
       name: "goose-note:quicknote",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         activeSlot: state.activeSlot,
         drafts: state.drafts,
+        undoStacks: state.undoStacks,
+        redoStacks: state.redoStacks,
         pinned: true, // 强制置顶，写回恒 true
         editorZoom: state.editorZoom,
         windowWidth: state.windowWidth,
@@ -242,13 +359,35 @@ export const useQuickNote = create<QuickNoteState>()(
           return {
             ...raw,
             activeSlot: 1,
-            drafts: normalizeDrafts(undefined, (raw.draftContent as JSONContent | null) ?? null),
+            drafts: normalizeDrafts(
+              undefined,
+              (raw.draftContent as JSONContent | null) ?? null,
+            ),
+            undoStacks: createEmptySlotStacks(),
+            redoStacks: createEmptySlotStacks(),
+          };
+        }
+        if (version < 2) {
+          return {
+            ...raw,
+            activeSlot: normalizeSlot(raw.activeSlot),
+            drafts: normalizeDrafts(
+              raw.drafts,
+              (raw.draftContent as JSONContent | null) ?? null,
+            ),
+            undoStacks: createEmptySlotStacks(),
+            redoStacks: createEmptySlotStacks(),
           };
         }
         return {
           ...raw,
           activeSlot: normalizeSlot(raw.activeSlot),
-          drafts: normalizeDrafts(raw.drafts, (raw.draftContent as JSONContent | null) ?? null),
+          drafts: normalizeDrafts(
+            raw.drafts,
+            (raw.draftContent as JSONContent | null) ?? null,
+          ),
+          undoStacks: normalizeSlotStacks(raw.undoStacks),
+          redoStacks: normalizeSlotStacks(raw.redoStacks),
         };
       },
       // 兜底：缺 drafts / 脏 activeSlot 时仍能归一，避免 rehydrate 后崩溃
@@ -261,6 +400,12 @@ export const useQuickNote = create<QuickNoteState>()(
           drafts: normalizeDrafts(
             p.drafts,
             (p.draftContent as JSONContent | null | undefined) ?? null,
+          ),
+          undoStacks: normalizeSlotStacks(
+            p.undoStacks ?? (current as QuickNoteState).undoStacks,
+          ),
+          redoStacks: normalizeSlotStacks(
+            p.redoStacks ?? (current as QuickNoteState).redoStacks,
           ),
           pinned: true,
         } as typeof current;

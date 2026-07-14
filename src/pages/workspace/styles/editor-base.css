@@ -1168,3 +1168,20 @@
 .quicknote-editor-surface .bn-block-content[data-content-type="file"] .goose-media-placeholder {
   width: 100%;
 }
+
+/* 格式工具栏：固定底部居中，不跟随选区浮动 */
+.goose-formatting-toolbar-dock {
+  pointer-events: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  box-shadow:
+    0 8px 22px rgba(15, 23, 42, 0.1),
+    0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-formatting-toolbar-dock {
+    transition: none;
+  }
+}
