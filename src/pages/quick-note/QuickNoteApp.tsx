@@ -128,14 +128,17 @@ export function QuickNoteApp() {
   };
 
   const handleSwitchSlot = useCallback(
-    (slot: QuickNoteSlot) => {
+    (slot: QuickNoteSlot, source: "pointer" | "keyboard") => {
       setPreviewSlot(null);
       if (slot === useQuickNote.getState().activeSlot) return;
       setActiveSlot(slot);
-      toast.info(`已切换到便签 ${slot}`, {
-        id: "quicknote-slot-switch",
-        duration: 1200,
-      });
+      if (source === "keyboard") {
+        toast.info(`已切换到便签 ${slot}`, {
+          id: "quicknote-slot-switch",
+          className: "quicknote-slot-switch-toast",
+          duration: 1200,
+        });
+      }
       requestAnimationFrame(() => {
         editorRef.current?.editor?.focus?.();
       });
@@ -251,7 +254,7 @@ export function QuickNoteApp() {
       ) {
         e.preventDefault();
         e.stopPropagation();
-        handleSwitchSlot(Number(e.key) as QuickNoteSlot);
+        handleSwitchSlot(Number(e.key) as QuickNoteSlot, "keyboard");
         return;
       }
 

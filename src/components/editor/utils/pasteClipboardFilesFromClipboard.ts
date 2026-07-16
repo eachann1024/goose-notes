@@ -1,6 +1,11 @@
 import type { BlockNoteEditor } from "@blocknote/core";
 import type { PartialBlock } from "@blocknote/core/blocks";
-import { isPasteableClipboardImageFile } from "./pasteClipboardImage";
+import { materializeImageBlob } from "@/lib/imageProcessor";
+import {
+  isPasteableClipboardImageFile,
+  resolveImageMimeForUpload,
+} from "./pasteClipboardImage";
+import { toast } from "sonner";
 
 function insertOrUpdateBlock(
   editor: BlockNoteEditor<any, any, any>,
@@ -49,13 +54,21 @@ export async function pasteClipboardFilesFromClipboard(
 
     const fileBlock = {
       type,
-      props: { name: file.name },
+      props: { name: file.name || "image.webp" },
     } as PartialBlock<any, any, any>;
 
     const insertedBlockId = insertOrUpdateBlock(editor, currentBlock, fileBlock);
 
     try {
-      const updateData = await editor.uploadFile(file, insertedBlockId);
+      // 先把剪贴板 File 读成完整字节并修正 MIME，避免异步解码时句柄失效
+      const mime = resolveImageMimeForUpload(file) || item.type || "image/png";
+      const materialized = await materializeImageBlob(file, mime);
+      const uploadFile = new File(
+        [materialized],
+        file.name || `paste-${Date.now()}.png`,
+        { type: materialized.type || mime },
+      );
+      const updateData = await editor.uploadFile(uploadFile, insertedBlockId);
       const updatedFileBlock =
         typeof updateData === "string"
           ? ({ props: { url: updateData } } as PartialBlock<any, any, any>)
@@ -64,6 +77,11 @@ export async function pasteClipboardFilesFromClipboard(
     } catch (err) {
       console.error("[pasteClipboardFiles] upload failed", err);
       editor.removeBlocks([insertedBlockId]);
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "图片粘贴失败，请稍后重试";
+      toast.error(message);
     }
   }
 }

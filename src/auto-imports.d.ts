@@ -184,6 +184,7 @@ declare global {
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const confirmLocalDelete: typeof import('./lib/confirm-local-delete').confirmLocalDelete
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
+  const convertImageBlobToPng: typeof import('./lib/imageProcessor').convertImageBlobToPng
   const countWords: typeof import('./components/editor/utils/content-text-extractor').countWords
   const createAiChatOnlyTarget: typeof import('./lib/ai-write/index').createAiChatOnlyTarget
   const createBlockTypeTransformSelectionSnapshot: typeof import('./lib/ai-write/index').createBlockTypeTransformSelectionSnapshot
@@ -204,6 +205,7 @@ declare global {
   const downloadWebdavBackup: typeof import('./lib/webdavSync').downloadWebdavBackup
   const emptyBlock: typeof import('./components/editor/utils/blocknote-content/index').emptyBlock
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
+  const ensureBodyParagraphAfterTitle: typeof import('./components/editor/utils/blocknote-content/index').ensureBodyParagraphAfterTitle
   const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
   const ensureFirstTitleHeading: typeof import('./components/editor/utils/blocknote-content/index').ensureFirstTitleHeading
   const exportNotebooks: typeof import('./lib/export/index').exportNotebooks
@@ -305,11 +307,13 @@ declare global {
   const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
   const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction
   const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut
+  const materializeImageBlob: typeof import('./lib/imageProcessor').materializeImageBlob
   const memo: typeof import('react').memo
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const migrateLocalPageIdMapEntry: typeof import('./lib/local-page-idmap').migrateLocalPageIdMapEntry
   const migrateNotebookAiChatsState: typeof import('./stores/useNotebookAiChats').migrateNotebookAiChatsState
   const mimeToImageType: typeof import('./lib/docxExport/docxImages').mimeToImageType
+  const needsBodyParagraphAfterTitle: typeof import('./components/editor/utils/blocknote-content/index').needsBodyParagraphAfterTitle
   const normalizeBaseUrl: typeof import('./lib/webdavSync').normalizeBaseUrl
   const normalizeBlockContent: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlockContent
   const normalizeBlocks: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlocks

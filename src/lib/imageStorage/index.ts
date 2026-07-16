@@ -83,13 +83,12 @@ export class ImageStorage {
 
   /**
    * 存储图片
-   * - 入口统一降采样（≤2560px）+ 压缩/格式转换（SVG 跳过）
+   * - 入口统一 WebP@80%（SVG 跳过；已是 WebP 不二次压缩）
    * - 小图片（< 100KB）：直接 base64 内嵌
    * - 大图片（≥ 100KB）：使用策略存储
    */
   async save(blob: Blob, mimeType: string): Promise<string> {
-    // 入口统一处理：降采样 + WebP/PNG 输出（SVG 跳过）
-    // 用压缩后的 blob.size 再决定是否内嵌，避免大图降采样后本可内嵌却走重策略
+    // 入口统一处理：WebP@80%；用压缩后的 size 决定是否内嵌
     const processed = await compressIfNeeded(blob, DEFAULT_STORAGE_CONFIG)
     const processedMime = processed.type || mimeType
 

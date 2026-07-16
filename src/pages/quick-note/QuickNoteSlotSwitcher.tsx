@@ -14,7 +14,7 @@ import {
 interface QuickNoteSlotSwitcherProps {
   activeSlot: QuickNoteSlot;
   /** 正式切换（点击 / 键盘 / 拖动松手或移走后提交） */
-  onChange: (slot: QuickNoteSlot) => void;
+  onChange: (slot: QuickNoteSlot, source: "pointer" | "keyboard") => void;
   /**
    * 按住拖动时的临时预览槽位；null 表示结束预览、回到 activeSlot。
    * 未传入时退化为即时 onChange（无预览态）。
@@ -75,7 +75,7 @@ export function QuickNoteSlotSwitcher({
     setScrubbing(false);
     setPreviewSlot(null);
     onPreviewChangeRef.current?.(null);
-    onChangeRef.current(slot);
+    onChangeRef.current(slot, "pointer");
   };
 
   const endScrubWithoutCommit = () => {
@@ -133,29 +133,33 @@ export function QuickNoteSlotSwitcher({
     const idx = QUICKNOTE_SLOTS.indexOf(activeSlot);
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
-      onChange(QUICKNOTE_SLOTS[(idx + 1) % QUICKNOTE_SLOTS.length]!);
+      onChange(
+        QUICKNOTE_SLOTS[(idx + 1) % QUICKNOTE_SLOTS.length]!,
+        "keyboard",
+      );
       return;
     }
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       onChange(
         QUICKNOTE_SLOTS[(idx - 1 + QUICKNOTE_SLOTS.length) % QUICKNOTE_SLOTS.length]!,
+        "keyboard",
       );
       return;
     }
     if (e.key === "Home") {
       e.preventDefault();
-      onChange(1);
+      onChange(1, "keyboard");
       return;
     }
     if (e.key === "End") {
       e.preventDefault();
-      onChange(5);
+      onChange(5, "keyboard");
       return;
     }
     if (/^[1-5]$/.test(e.key)) {
       e.preventDefault();
-      onChange(Number(e.key) as QuickNoteSlot);
+      onChange(Number(e.key) as QuickNoteSlot, "keyboard");
     }
   };
 

@@ -25,6 +25,7 @@ import {
   clonePageContent,
   createEditorSafeContent,
   getContentSignature,
+  needsBodyParagraphAfterTitle,
   normalizePageContent,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
@@ -71,6 +72,7 @@ import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensio
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
+import { createGooseBodyParagraphGuardExtension } from "@/components/editor/extensions/bodyParagraphGuardExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseQuoteInputRuleExtension } from "@/components/editor/inputrules/quoteInputRule";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
@@ -246,6 +248,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       ],
       extensions: [
         createGooseFirstTitleGuardExtension(isLocalFolderPageRef),
+        createGooseBodyParagraphGuardExtension(isLocalFolderPageRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
         gooseTabBehaviorExtension,
@@ -529,12 +532,35 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   }, [editor]);
 
   const focusEditorEnd = useCallback(() => {
+    // 标题一独占文档时（删光正文后）：补空正文并聚焦它，而不是把光标钉回标题末尾。
+    // 守卫 extension 也会补，这里主动插入保证点击当帧光标就落到正文。
+    if (
+      !isLocalFolderPageRef.current &&
+      needsBodyParagraphAfterTitle(editor.document)
+    ) {
+      const titleBlock = editor.document[0];
+      if (titleBlock) {
+        const [inserted] = editor.insertBlocks(
+          [{ type: "paragraph", content: [] }],
+          titleBlock,
+          "after",
+        );
+        if (inserted) {
+          editor.setTextCursorPosition(inserted, "start");
+          focusEditorSafely();
+          return;
+        }
+      }
+    }
+
     const lastBlock = editor.document.at(-1);
     if (lastBlock) {
       // 末块 content 为 "none"（image / divider / video / file 等无光标控件）时，
       // 无法直接聚焦末块末尾，在文档末尾插入一个空 paragraph 再聚焦它。
-      const blockSpec = (editor.schema as any).blockSpecs?.[lastBlock.type];
-      const contentType: string | undefined = blockSpec?.config?.content;
+      const blockSpecs = editor.schema.blockSpecs as
+        | Record<string, { config?: { content?: string } }>
+        | undefined;
+      const contentType = blockSpecs?.[lastBlock.type]?.config?.content;
       if (contentType === "none") {
         editor.insertBlocks(
           [{ type: "paragraph", content: [] }],

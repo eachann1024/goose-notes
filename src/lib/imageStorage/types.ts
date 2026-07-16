@@ -50,10 +50,16 @@ export interface StorageConfig {
  */
 export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
   inlineThreshold: 100 * 1024,   // 100KB
-  compressThreshold: 500 * 1024, // 500KB
-  compressQuality: 0.8,
-  maxEdge: 2560,
+  compressThreshold: 500 * 1024, // 500KB（策略侧参考；编码默认 WebP）
+  compressQuality: 0.8,         // 固定 WebP 80%
+  maxEdge: 4096,                 // 超大边等比缩到此上限
 }
+
+/**
+ * uTools db.postAttachment 上限约 10MB。
+ * 超过则拒绝入库（不再降质量兜底）。
+ */
+export const MAX_IMAGE_STORE_BYTES = 10 * 1024 * 1024
 
 /**
  * 存储策略类型

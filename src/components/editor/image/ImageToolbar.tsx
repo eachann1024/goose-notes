@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, Download, Maximize2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Copy, Download, Maximize2 } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 
@@ -15,6 +15,7 @@ interface ImageToolbarProps {
   selectedImage: SelectedImageState;
   applyImageAlignment: (alignment: ImageAlignment) => void;
   handleSelectedImageZoom: () => void;
+  handleSelectedImageCopy: () => void;
   handleSelectedImageDownload: () => void;
 }
 
@@ -22,6 +23,7 @@ export function ImageToolbar({
   selectedImage,
   applyImageAlignment,
   handleSelectedImageZoom,
+  handleSelectedImageCopy,
   handleSelectedImageDownload,
 }: ImageToolbarProps) {
   return (
@@ -69,6 +71,15 @@ export function ImageToolbar({
         className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
       >
         <Maximize2 className="h-[15px] w-[15px]" />
+      </button>
+      <button
+        type="button"
+        title="复制图片"
+        aria-label="复制图片"
+        onClick={handleSelectedImageCopy}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
+      >
+        <Copy className="h-[15px] w-[15px]" />
       </button>
       <button
         type="button"

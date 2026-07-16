@@ -9,7 +9,7 @@ import { compressIfNeeded } from '../../imageProcessor'
 
 export class Base64Strategy implements IImageStorageStrategy {
   /**
-   * 保存为 base64（压缩大图片，SVG/PNG 保留格式，其余转 WebP）
+   * 保存为 base64（统一 WebP@80%；已是 WebP 不二次压缩）
    */
   async save(blob: Blob, _mimeType: string): Promise<string> {
     const out = await compressIfNeeded(blob)

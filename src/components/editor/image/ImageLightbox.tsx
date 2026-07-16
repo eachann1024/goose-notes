@@ -6,6 +6,7 @@ import { Copy, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
+import { convertImageBlobToPng } from "@/lib/imageProcessor";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import {
@@ -16,7 +17,6 @@ import {
   getImageSrc,
   getImageBlockIdByIndex,
   getImageAlignmentFromBlock,
-  getImageExtension,
   type ImageAlignment,
 } from "./imageUtils";
 import { ImageToolbar, type SelectedImageState } from "@/components/editor/image/ImageToolbar";
@@ -197,9 +197,10 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
         resolvedObjectUrl = resolvedSrc;
       }
       const response = await fetch(resolvedSrc);
-      const blob = await response.blob();
-      const ext = getImageExtension(blob);
-      const filename = `image-${Date.now()}.${ext}`;
+      const sourceBlob = await response.blob();
+      // 存储多为 WebP；下载统一转 PNG，兼容更多工具
+      const blob = await convertImageBlobToPng(sourceBlob);
+      const filename = `image-${Date.now()}.png`;
 
       const targetPath = await platform.dialog.showSaveDialog({
         title: "保存文件",
@@ -239,19 +240,33 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     await downloadImage(currentSlide.src);
   }, [currentSlide, downloadImage]);
 
-  const handleCopy = useCallback(async () => {
-    if (!currentSlide) return;
+  const copyImageToClipboard = useCallback(async (src: string) => {
+    let resolvedObjectUrl: string | null = null;
     try {
-      const response = await fetch(currentSlide.src);
-      const blob = await response.blob();
-
+      const resolvedSrc = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
+      if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
+        resolvedObjectUrl = resolvedSrc;
+      }
+      const response = await fetch(resolvedSrc);
+      const sourceBlob = await response.blob();
+      // 剪贴板统一 PNG，避免 WebP 在部分 App 粘贴失败
+      const blob = await convertImageBlobToPng(sourceBlob);
       const base64 = await blobToBase64(blob);
       await platform.clipboard.copyImage(base64);
       toast.success("已复制到剪贴板");
     } catch (err) {
       toast.error(`复制失败: ${err instanceof Error ? err.message : "未知错误"}`);
+    } finally {
+      if (resolvedObjectUrl) {
+        try { URL.revokeObjectURL(resolvedObjectUrl); } catch { /* ignore */ }
+      }
     }
-  }, [currentSlide, platform]);
+  }, [platform, getActivePageLocalFilePath]);
+
+  const handleCopy = useCallback(async () => {
+    if (!currentSlide) return;
+    await copyImageToClipboard(currentSlide.src);
+  }, [copyImageToClipboard, currentSlide]);
 
   const applyImageAlignment = useCallback((alignment: ImageAlignment) => {
     if (!selectedImage?.blockId) return;
@@ -280,6 +295,11 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     await downloadImage(selectedImage.src);
   }, [downloadImage, selectedImage]);
 
+  const handleSelectedImageCopy = useCallback(async () => {
+    if (!selectedImage) return;
+    await copyImageToClipboard(selectedImage.src);
+  }, [copyImageToClipboard, selectedImage]);
+
   return (
     <>
       {selectedImage && !open && (
@@ -287,6 +307,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
           selectedImage={selectedImage}
           applyImageAlignment={applyImageAlignment}
           handleSelectedImageZoom={handleSelectedImageZoom}
+          handleSelectedImageCopy={handleSelectedImageCopy}
           handleSelectedImageDownload={handleSelectedImageDownload}
         />
       )}

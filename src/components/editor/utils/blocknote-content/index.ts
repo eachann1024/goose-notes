@@ -20,6 +20,10 @@ export {
   normalizeBlockContent,
   ensureFirstTitleHeading,
 } from "./normalize";
+export {
+  ensureBodyParagraphAfterTitle,
+  needsBodyParagraphAfterTitle,
+} from "./ensureBodyParagraph";
 
 export { createEditorSafeContent } from "./editorSafeContent";
 

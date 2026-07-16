@@ -111,6 +111,15 @@ body,
   transform: translate(-50%, -50%) !important;
 }
 
+/* 快捷键切换便签时，在右上角给出轻量确认；点击/拖动切换不触发提示。 */
+.quicknote-toaster[data-sonner-toaster]
+  [data-sonner-toast].quicknote-slot-switch-toast {
+  left: auto !important;
+  right: 16px !important;
+  top: 48px !important;
+  transform: none !important;
+}
+
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
 .quicknote-root .page-scroll-container {
   scrollbar-width: thin;

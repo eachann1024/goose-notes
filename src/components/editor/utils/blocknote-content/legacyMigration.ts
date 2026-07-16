@@ -2,6 +2,7 @@ import type { PartialBlock } from "@blocknote/core";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent, createEmptyBlockNoteContent } from "./emptyContent";
 import { normalizeBlockContent, ensureFirstTitleHeading } from "./normalize";
+import { ensureBodyParagraphAfterTitle } from "./ensureBodyParagraph";
 
 export interface LegacyPageContent {
   type?: string;
@@ -183,5 +184,7 @@ export function normalizePageContent(
     : normalizeBlockContent(childrenFromLegacy(content.content));
   if (!ensureTitle) return sanitized;
   if (!sanitized.length) return createEmptyBlockNoteContent();
-  return stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized));
+  return ensureBodyParagraphAfterTitle(
+    stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized)),
+  );
 }
