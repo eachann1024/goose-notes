@@ -294,6 +294,18 @@
   pointer-events: none;
 }
 
+/* 圆点和数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
+   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移，使其与 x=10px
+   的主干以及原生 checkbox 中心落在同一条视觉轴上。 */
+.workspace-editor-surface
+  .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  padding-left: 1px;
+  padding-right: 3px;
+}
+
 /* 下一同级 marker 的上边缘决定主干终点。 */
 .workspace-editor-surface
   .bn-block-outer:has(
