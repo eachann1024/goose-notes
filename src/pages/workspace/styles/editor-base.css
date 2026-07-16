@@ -229,7 +229,7 @@
  * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽
  * 的中心偏左 8px。改为由「拥有 children 的列表父块」绘制一根完整主干：
  *
- * - x=10px，与数字 / 圆点 / checkbox 的真实视觉中心轴重合；
+ * - x=11px，与数字 / 圆点 / checkbox 的真实视觉中心轴重合；
  * - y 从父项 marker 下边缘开始；接到下一同级项时，在线上方边缘收口；
  * - 后面仍有同级列表项时，继续穿过父块 margin 并收在下一 marker 上边缘；
  * - 线不接收指针事件，不影响光标、选择、checkbox 和拖拽。
@@ -246,7 +246,7 @@
       )
       + .bn-block-group
   ) {
-  --goose-list-marker-axis-x: 10px;
+  --goose-list-marker-axis-x: 11px;
   --goose-list-marker-axis-y: calc(0.75em + 3px);
   --goose-list-marker-clearance-y: 0.25em;
   --goose-list-next-marker-clearance-y: 0.25em;
@@ -295,8 +295,8 @@
 }
 
 /* 圆点和数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
-   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移，使其与 x=10px
-   的主干以及原生 checkbox 中心落在同一条视觉轴上。 */
+   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移，使其与 x=11px
+   的主干以及 checkbox 中心落在同一条视觉轴上。 */
 .workspace-editor-surface
   .bn-block-content:is(
     [data-content-type="bulletListItem"],
@@ -732,6 +732,8 @@
   .bn-block-content[data-content-type="checkListItem"]
   > div > input {
   height: auto;
+  margin-left: 5px;
+  margin-right: 7px;
   margin-block: 0;
 }
 
