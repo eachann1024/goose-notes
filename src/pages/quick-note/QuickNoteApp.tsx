@@ -225,7 +225,7 @@ export function QuickNoteApp() {
   // 强制置顶（无失焦自动隐藏）：小窗常驻最前层，置顶由主窗 preload 在创建时设定，
   // 失焦不再触发隐藏——点窗外不会收起，只能 Esc / 关闭按钮收起。
 
-  // 键盘：Esc 收起；Ctrl+1~5 切换便签；Cmd/Ctrl+Z 超长期撤销；
+  // 键盘：Esc 收起；Cmd/Ctrl+1~5 切换便签；Cmd/Ctrl+Z 超长期撤销；
   // Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y 重做；Cmd/Ctrl +/- 缩放编辑界面（0 复位）。
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -242,8 +242,7 @@ export function QuickNoteApp() {
       }
 
       if (
-        e.ctrlKey &&
-        !e.metaKey &&
+        (e.metaKey || e.ctrlKey) &&
         !e.altKey &&
         !e.shiftKey &&
         !e.repeat &&
@@ -404,7 +403,7 @@ export function QuickNoteApp() {
                 <b className="text-foreground">多便签</b>
                 ：顶栏中间 1–5
                 可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。按住拖动可快速预览，松开或移走后生效；也可按
-                Ctrl + 1–5 直接切换。
+                ⌘/Ctrl + 1–5 直接切换。
               </li>
               <li>
                 <b className="text-foreground">始终置顶</b>
