@@ -229,7 +229,7 @@
  * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽
  * 的中心偏左 8px。改为由「拥有 children 的列表父块」绘制一根完整主干：
  *
- * - x=12px，与数字 / 圆点 / checkbox 的 marker 中心轴重合；
+ * - x=10px，与数字 / 圆点 / checkbox 的真实视觉中心轴重合；
  * - y 从父项首行 marker 中心到最后一个子项首行 marker 中心；
  * - 后面仍有同级列表项时，继续穿过父块 margin 并接到下一 marker 中心；
  * - 线不接收指针事件，不影响光标、选择、checkbox 和拖拽。
@@ -246,7 +246,7 @@
       )
       + .bn-block-group
   ) {
-  --goose-list-marker-axis-x: 12px;
+  --goose-list-marker-axis-x: 10px;
   --goose-list-marker-axis-y: calc(0.75em + 3px);
   position: relative;
 }
@@ -310,13 +310,34 @@
   border-left: 0;
 }
 
-/* BlockNote checkbox 原为 4px + 12px + 8px，中心在 10px；保持总宽 24px
-   不动正文，只把左右 margin 调成 6px，让 checkbox 中心落到统一的 12px 轴。 */
+/* 一级子无序列表始终使用空心圆，不依赖父项是否也是无序列表。
+   BlockNote 默认只处理 bullet → bullet；混合父子列表会错误回退成实心圆。 */
 .workspace-editor-surface
-  .bn-block-content[data-content-type="checkListItem"]
-  > div > input {
-  margin-left: 6px;
-  margin-right: 6px;
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "◦" !important;
+}
+
+/* 第二级子无序列表继续使用方点，保持层级可辨识。 */
+.workspace-editor-surface
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "▪\FE0E" !important;
 }
 
 /*

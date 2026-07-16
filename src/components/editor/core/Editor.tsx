@@ -66,6 +66,7 @@ import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
+import { gooseEmptyNestedListEnterExtension } from "@/components/editor/extensions/emptyNestedListEnterExtension";
 import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
@@ -254,6 +255,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
+        gooseEmptyNestedListEnterExtension,
         gooseCollapsedToggleEnterExtension,
         gooseToggleHeadingAutoCollectExtension(),
         gooseCrossBlockDeleteExtension,
