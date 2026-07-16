@@ -13,7 +13,7 @@ type FixedFormattingToolbarControllerProps = {
 };
 
 /**
- * 格式工具栏：固定在视口底部居中，不跟随选区浮动。
+ * 速记小窗格式工具栏：固定在视口底部并横向铺满，不跟随选区浮动。
  * open 由选区 / AI 状态驱动；鼠标仍在工具栏上时短暂保持，便于点按按钮。
  */
 export function FixedFormattingToolbarController({
@@ -84,14 +84,14 @@ export function FixedFormattingToolbarController({
   return createPortal(
     <div
       data-goose-formatting-toolbar-dock
-      className="goose-formatting-toolbar-dock pointer-events-none fixed inset-x-0 z-[20000] flex justify-center px-3 transition-[opacity,transform,bottom] duration-150 ease-out"
+      className="goose-formatting-toolbar-dock pointer-events-none fixed inset-x-0 z-[20000] flex transition-[opacity,transform,bottom] duration-150 ease-out"
       style={{
-        bottom: `calc(${keyboardOffset}px + env(safe-area-inset-bottom, 0px) + 12px)`,
+        bottom: `calc(${keyboardOffset}px + env(safe-area-inset-bottom, 0px))`,
       }}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
     >
-      <div className="pointer-events-auto max-w-[min(100%,920px)]">
+      <div className="pointer-events-auto w-full min-w-0">
         <Component />
       </div>
     </div>,

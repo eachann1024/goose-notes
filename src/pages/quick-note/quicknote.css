@@ -46,7 +46,9 @@ body,
   opacity: 0;
   transform: translateY(-4px);
   pointer-events: none;
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 /* 鼠标进入整个窗口 → 顶栏淡入；移出 → 淡出。 */
 .quicknote-root:hover .quicknote-titlebar,
@@ -75,7 +77,10 @@ body,
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
    距离的，但首块前面没有内容，叠加 surface padding 后顶部会显出一大段死空白。
    仅作用于首块，不影响文中其它 heading 的上间距。 */
-.quicknote-editor-surface .bn-block-group > .bn-block-outer:first-child .bn-block-content[data-content-type="heading"] {
+.quicknote-editor-surface
+  .bn-block-group
+  > .bn-block-outer:first-child
+  .bn-block-content[data-content-type="heading"] {
   padding-top: 0;
 }
 /* 无侧边菜单（无把手/加号），收窄左右留白让正文贴近窗口。
@@ -107,7 +112,6 @@ body,
   transform: translate(-50%, -50%) !important;
 }
 
-
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
 .quicknote-root .page-scroll-container {
   scrollbar-width: thin;
@@ -124,8 +128,45 @@ body,
 .quicknote-root .page-scroll-container::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
 }
+
+/* 选中文字后的格式栏属于速记小窗：横向铺满并吸附窗口底边，不做悬浮胶囊。 */
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  width: 100%;
+  max-width: none;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] > div {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] > div > * {
+  flex: 0 0 auto;
+}
+
+.goose-formatting-toolbar-dock
+  [data-formatting-toolbar]
+  > div::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-formatting-toolbar-dock {
+    transition: none;
+  }
+}
+
 /* 速记斜杠菜单：更紧凑行高；列表底部留白，避免滚到底最后一项贴边被裁切感 */
-.quicknote-root [data-goose-slash-lite="true"] [data-notion-slash-surface="true"] {
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-notion-slash-surface="true"] {
   overflow: hidden;
   /* uTools 旧内核会把大圆角外投影绘成直角灰块；小窗只留很轻的边界感。 */
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
@@ -140,22 +181,27 @@ body,
 
 .quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item]:active,
 .quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item]:focus,
-.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item]:focus-visible,
-.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-selected="true"] {
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-item]:focus-visible,
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-selected="true"] {
   background: transparent !important;
   border-left: 0 !important;
   box-shadow: none !important;
   outline: none !important;
 }
 
-.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-selected="true"] {
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-selected="true"] {
   background: transparent !important;
 }
 
 .quicknote-root [data-goose-slash-lite="true"] [data-notion-slash-scroll] {
   scroll-padding-bottom: 12px;
 }
-
 
 /* ── 1–5 便签切换器 ─────────────────────────────────────────────
  * 顶栏居中。收起/展开都保持胶囊，但始终只一层表面：
@@ -230,7 +276,8 @@ body,
 }
 
 /* 收起：非当前项移出文档流，否则 width:0 仍占 flex gap，数字会偏一侧（当前为 1 时偏右） */
-.quicknote-slot-switcher[data-expanded="false"] .quicknote-slot-btn:not([data-active="true"]) {
+.quicknote-slot-switcher[data-expanded="false"]
+  .quicknote-slot-btn:not([data-active="true"]) {
   position: absolute;
   width: 0;
   min-width: 0;
@@ -241,7 +288,8 @@ body,
 }
 
 /* 收起当前项：只出数字，透明底，视觉完全交给外层胶囊；左右 padding 对称 */
-.quicknote-slot-switcher[data-expanded="false"] .quicknote-slot-btn[data-active="true"] {
+.quicknote-slot-switcher[data-expanded="false"]
+  .quicknote-slot-btn[data-active="true"] {
   width: 22px;
   color: hsl(var(--foreground));
   background: transparent;
@@ -249,13 +297,15 @@ body,
 }
 
 /* 展开当前项：轻高亮芯（与轨同色相、略提亮），不用实心白底+外阴影 */
-.quicknote-slot-switcher[data-expanded="true"] .quicknote-slot-btn[data-active="true"] {
+.quicknote-slot-switcher[data-expanded="true"]
+  .quicknote-slot-btn[data-active="true"] {
   color: hsl(var(--foreground));
   background: hsl(var(--foreground) / 0.1);
   box-shadow: none;
 }
 
-.quicknote-slot-switcher[data-expanded="true"] .quicknote-slot-btn:not([data-active="true"]):hover {
+.quicknote-slot-switcher[data-expanded="true"]
+  .quicknote-slot-btn:not([data-active="true"]):hover {
   color: hsl(var(--foreground));
   background: hsl(var(--foreground) / 0.05);
 }
@@ -278,13 +328,17 @@ body,
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.12);
 }
 
-.dark .quicknote-slot-switcher[data-expanded="false"] .quicknote-slot-btn[data-active="true"] {
+.dark
+  .quicknote-slot-switcher[data-expanded="false"]
+  .quicknote-slot-btn[data-active="true"] {
   color: hsl(var(--foreground));
   background: transparent;
   box-shadow: none;
 }
 
-.dark .quicknote-slot-switcher[data-expanded="true"] .quicknote-slot-btn[data-active="true"] {
+.dark
+  .quicknote-slot-switcher[data-expanded="true"]
+  .quicknote-slot-btn[data-active="true"] {
   color: hsl(var(--foreground));
   background: hsl(var(--foreground) / 0.14);
   box-shadow: none;

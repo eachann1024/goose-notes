@@ -2,12 +2,17 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   FilePanelController,
+  FormattingToolbarController,
   LinkToolbarController,
   SuggestionMenuController,
   TableHandlesController,
   useEditorState,
   useExtensionState,
 } from "@blocknote/react";
+import {
+  offset as floatingOffset,
+  shift as floatingShift,
+} from "@floating-ui/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import {
@@ -33,7 +38,10 @@ import { useTabs } from "@/stores/useTabs";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
-import { GooseTableHandle, GooseTableExtendButton } from "@/components/editor/menus/GooseTableHandle";
+import {
+  GooseTableHandle,
+  GooseTableExtendButton,
+} from "@/components/editor/menus/GooseTableHandle";
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
 import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
@@ -69,7 +77,9 @@ type EditorComposerProps = {
   page: any;
   editorContainerRef: RefObject<HTMLDivElement | null>;
   handleEditorBlankMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
-  handleEditorPasteCapture: (event: React.ClipboardEvent<HTMLDivElement>) => void;
+  handleEditorPasteCapture: (
+    event: React.ClipboardEvent<HTMLDivElement>,
+  ) => void;
   getSlashItems: (query: string) => Promise<any[]>;
   pageIdForUpdateRef: RefObject<string | null>;
   syncedContentSignatureRef: RefObject<string | null>;
@@ -119,7 +129,9 @@ export function EditorComposer({
   const [findBarOpen, setFindBarOpen] = useState(false);
   const { ai: aiSettings } = useEditorSettings();
 
-  const handleEditorKeyDownCapture = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleEditorKeyDownCapture = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
     if (
       __GOOSE_LITE__ ||
       event.key !== " " ||
@@ -223,7 +235,10 @@ export function EditorComposer({
     setLinkPopoverUrl("");
   };
 
-  const formattingToolbarStoreOpen = useExtensionState(FormattingToolbarExtension, { editor });
+  const formattingToolbarStoreOpen = useExtensionState(
+    FormattingToolbarExtension,
+    { editor },
+  );
   const formattingToolbarSelectionAllowed = useEditorState({
     editor,
     on: "selection",
@@ -235,6 +250,19 @@ export function EditorComposer({
     (formattingToolbarAiActive ||
       (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed));
 
+  const formattingToolbarFloatingOptions = useMemo(
+    () => ({
+      useFloatingOptions: {
+        open: formattingToolbarOpen,
+        placement: "top-start" as const,
+        middleware: [
+          floatingOffset(10),
+          floatingShift({ crossAxis: false, padding: 8 }),
+        ],
+      },
+    }),
+    [formattingToolbarOpen],
+  );
 
   const slashMenuFloatingOptions = useMemo(
     () => (__GOOSE_LITE__ ? getQuicknoteSlashMenuFloatingOptions() : undefined),
@@ -285,7 +313,9 @@ export function EditorComposer({
           // BlockNote 异步 props 补全（折叠块/视频/带属性图片等），静默同步 store 与
           // 基线、不入保存队列。一旦用户交互过（打字/IME/点击/拖拽…），照常入队保存。
           if (isLocalPage && !userInteractedRef.current) {
-            const nextContent = clonePageContent(editor.document as BlockNoteContent);
+            const nextContent = clonePageContent(
+              editor.document as BlockNoteContent,
+            );
             const nextSig = getContentSignature(nextContent);
             if (nextSig === syncedContentSignatureRef.current) return;
             syncedContentSignatureRef.current = nextSig;
@@ -303,10 +333,17 @@ export function EditorComposer({
           tableHandle={GooseTableHandle}
           extendButton={GooseTableExtendButton}
         />
-        <FixedFormattingToolbarController
-          formattingToolbar={EditorFormattingToolbar}
-          open={formattingToolbarOpen}
-        />
+        {__GOOSE_LITE__ ? (
+          <FixedFormattingToolbarController
+            formattingToolbar={EditorFormattingToolbar}
+            open={formattingToolbarOpen}
+          />
+        ) : (
+          <FormattingToolbarController
+            formattingToolbar={EditorFormattingToolbar}
+            floatingUIOptions={formattingToolbarFloatingOptions}
+          />
+        )}
         <LinkToolbarController linkToolbar={EditorLinkToolbar} />
         <FilePanelController filePanel={EditorFilePanel} />
         <SuggestionMenuController
@@ -315,8 +352,7 @@ export function EditorComposer({
           floatingUIOptions={slashMenuFloatingOptions}
           shouldOpen={(event) =>
             shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock:
-                usesRawEditorContent,
+              allowSlashMenuOnFirstBlock: usesRawEditorContent,
             })
           }
           suggestionMenuComponent={CustomSlashMenu as any}
@@ -332,8 +368,7 @@ export function EditorComposer({
           floatingUIOptions={slashMenuFloatingOptions}
           shouldOpen={(event) =>
             shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock:
-                usesRawEditorContent,
+              allowSlashMenuOnFirstBlock: usesRawEditorContent,
             })
           }
           suggestionMenuComponent={CustomSlashMenu as any}
