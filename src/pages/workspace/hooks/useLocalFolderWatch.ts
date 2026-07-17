@@ -230,8 +230,15 @@ export function useLocalFolderWatch({
         const timer = setTimeout(async () => {
           renameDebounceTimers.current.delete(debounceKey);
 
-          // 自移回声抑制：本应用内发起的 fs.rename 登记了路径，跳过处理
-          if (wasRecentlySelfMoved(filePath)) return;
+          // macOS 的 fs.watch 可能把普通 writeFile 报成 rename。应用自身保存产生的
+          // 这类回声不能按“文件重新出现”处理，否则 addSingleLocalPage 会替换当前页，
+          // 让编辑器选区和滚动视角一起回到文首。
+          if (
+            wasRecentlySelfMoved(filePath) ||
+            wasRecentlySelfWritten(filePath)
+          ) {
+            return;
+          }
 
           const exists = gooseFs.existsAsync
             ? await gooseFs.existsAsync(filePath)
@@ -255,6 +262,26 @@ export function useLocalFolderWatch({
             // 文件出现（新建 / rename 到此名）
             const isMdFile = /\.(md|markdown)$/i.test(filePath);
             if (isMdFile && notebook.id && notebook.localPath) {
+              // 延迟到达的自写 rename 事件可能已经超过时间窗。若该路径本来就在
+              // store 中，且磁盘内容仍与写后快照一致，则它只是保存回声，不应重载。
+              const existingPage = Object.values(
+                usePages.getState().pages,
+              ).find(
+                (candidate) =>
+                  candidate.workspaceId === notebook.id &&
+                  !candidate.isFolder &&
+                  candidate.localFilePath?.replace(/\\/g, "/") ===
+                    filePath.replace(/\\/g, "/"),
+              );
+              if (existingPage) {
+                const diskContent = await readDiskContent(filePath);
+                if (
+                  diskContent !== null &&
+                  isDiskContentMatchingSnapshot(filePath, diskContent)
+                ) {
+                  return;
+                }
+              }
               void usePages
                 .getState()
                 .addSingleLocalPage(notebook.id, notebook.localPath, filePath);

@@ -104,8 +104,12 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
         const bc = node.marks.find(
           (m: any) => m.type.name === "backgroundColor",
         );
-        textColors.add((tc?.attrs.stringValue as string | undefined) ?? "default");
-        bgColors.add((bc?.attrs.stringValue as string | undefined) ?? "default");
+        textColors.add(
+          (tc?.attrs.stringValue as string | undefined) ?? "default",
+        );
+        bgColors.add(
+          (bc?.attrs.stringValue as string | undefined) ?? "default",
+        );
         return false;
       });
 
@@ -138,13 +142,16 @@ export function FormattingToolbarColorPicker() {
     showAbove: true,
   });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeAnimTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeAnimTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-      if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
+      if (closeAnimTimeoutRef.current)
+        clearTimeout(closeAnimTimeoutRef.current);
     };
   }, []);
 
@@ -243,7 +250,7 @@ export function FormattingToolbarColorPicker() {
         "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
         isOpen
           ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
+          : "opacity-0 pointer-events-none",
       )}
       onMouseDown={(e) => e.preventDefault()}
       style={{
@@ -279,7 +286,7 @@ export function FormattingToolbarColorPicker() {
                 "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
                 isTextColorActive && currentTextColor === item.color
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
-                  : ""
+                  : "",
               )}
               onClick={() => {
                 applyTextColor(item.color);
@@ -321,7 +328,7 @@ export function FormattingToolbarColorPicker() {
                 "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
                 isBgColorActive && currentBgColor === item.color
                   ? "border-primary ring-1 ring-primary/25"
-                  : ""
+                  : "",
               )}
               onClick={() => {
                 applyBackgroundColor(item.color);
@@ -336,7 +343,9 @@ export function FormattingToolbarColorPicker() {
                 className="h-5 w-5 rounded-[4px] border border-border/20"
                 style={{
                   backgroundColor:
-                    item.color === "default" ? "transparent" : BG_PREVIEW[item.color],
+                    item.color === "default"
+                      ? "transparent"
+                      : BG_PREVIEW[item.color],
                 }}
               />
             </Button>
@@ -352,7 +361,7 @@ export function FormattingToolbarColorPicker() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Tooltip delayDuration={600}>
+      <Tooltip delayDuration={400}>
         <TooltipTrigger asChild>
           <button
             type="button"
@@ -362,7 +371,7 @@ export function FormattingToolbarColorPicker() {
             }
             className={cn(
               "inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted",
-              "aria-pressed:bg-accent aria-pressed:text-foreground"
+              "aria-pressed:bg-accent aria-pressed:text-foreground",
             )}
             aria-label="颜色选择"
           >
@@ -385,7 +394,7 @@ export function FormattingToolbarColorPicker() {
                 style={{
                   background: isBgMixed
                     ? mixedBarGradient
-                    : previewBgColor ?? "transparent",
+                    : (previewBgColor ?? "transparent"),
                   border: isBgColorActive
                     ? "1px solid hsl(var(--foreground) / 0.08)"
                     : undefined,

@@ -3,6 +3,7 @@ import {
     AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT,
     normalizeAutoCloseInactiveTabsHours,
     DEFAULT_SEARCH_PROVIDERS,
+    getSearchProviderTemplateError,
 } from '../types'
 
 export interface SearchProvidersSliceState {
@@ -16,10 +17,12 @@ export interface SearchProvidersSliceState {
     // 已关闭的通知 ID 集合，持久化存储
     dismissedNotices: Record<string, boolean>
 }
-
 export interface SearchProvidersSliceActions {
     toggleSearchProvider: (id: string) => void
     reorderSearchProviders: (nextIds: string[]) => void
+    addCustomSearchProvider: (provider: Pick<SearchProvider, 'name' | 'urlTemplate'>) => void
+    updateCustomSearchProvider: (id: string, provider: Pick<SearchProvider, 'name' | 'urlTemplate'>) => void
+    removeCustomSearchProvider: (id: string) => void
     setSearchAllNotebooks: (searchAll: boolean) => void
     setShowRecentInSearch: (enabled: boolean) => void
     setNotebookDropdownHoverExpand: (enabled: boolean) => void
@@ -79,6 +82,47 @@ export function createSearchProvidersSlice(set: SetFn): SearchProvidersSlice {
 
                 return { searchProviders: nextProviders }
             }),
+        addCustomSearchProvider: ({ name, urlTemplate }) => {
+            const normalizedName = name.trim().slice(0, 30)
+            const normalizedTemplate = urlTemplate.trim()
+            if (!normalizedName || getSearchProviderTemplateError(normalizedTemplate)) return
+
+            set((state) => ({
+                searchProviders: [
+                    ...state.searchProviders,
+                    {
+                        id: `custom-search-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                        name: normalizedName,
+                        urlTemplate: normalizedTemplate,
+                        isEnabled: true,
+                        isCustom: true,
+                    },
+                ],
+            }))
+        },
+        updateCustomSearchProvider: (id, { name, urlTemplate }) => {
+            const normalizedName = name.trim().slice(0, 30)
+            const normalizedTemplate = urlTemplate.trim()
+            if (!normalizedName || getSearchProviderTemplateError(normalizedTemplate)) return
+
+            set((state) => ({
+                searchProviders: state.searchProviders.map((provider) =>
+                    provider.id === id && provider.isCustom
+                        ? {
+                            ...provider,
+                            name: normalizedName,
+                            urlTemplate: normalizedTemplate,
+                        }
+                        : provider
+                ),
+            }))
+        },
+        removeCustomSearchProvider: (id) =>
+            set((state) => ({
+                searchProviders: state.searchProviders.filter(
+                    (provider) => provider.id !== id || !provider.isCustom
+                ),
+            })),
         setSearchAllNotebooks: (searchAll) => set({ searchAllNotebooks: searchAll }),
         setShowRecentInSearch: (enabled) => set({ showRecentInSearch: enabled }),
         setNotebookDropdownHoverExpand: (enabled) => set({ notebookDropdownHoverExpand: enabled }),

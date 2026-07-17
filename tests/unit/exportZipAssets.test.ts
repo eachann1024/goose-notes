@@ -1,17 +1,21 @@
 import { expect, test } from "playwright/test";
 import JSZip from "jszip";
 import {
+  blocksToHTML,
+  blocksToMarkdown,
   generateExportZip,
+  importFromMarkdown,
   importNotebooksFromZip,
   inspectNotebookImportZip,
 } from "../../src/lib/export";
+import { inlineExportMediaAsBase64 } from "../../src/lib/export/inlineImagesBase64";
 import type { Page } from "../../src/types";
 
 const notebookId = "notebook-export";
 const imageRef = "att:goose-img/pixel.png";
 const fileRef = "att-file:goose-file/report.pdf";
 const audioRef = "att-file:goose-file/chime.mp3";
-const videoRef = "att-file:goose-file/clip.mp4";
+const videoRef = "att-video:goose-file/clip.mp4";
 
 class TestFileReader {
   result: string | ArrayBuffer | null = null;
@@ -49,10 +53,7 @@ class TestFileReader {
 }
 
 function installAttachmentRuntime(onGetAttachment?: (id: string) => void) {
-  const attachments = new Map<
-    string,
-    { data: Uint8Array; type: string }
-  >([
+  const attachments = new Map<string, { data: Uint8Array; type: string }>([
     [
       "goose-img/pixel.png",
       {
@@ -218,10 +219,7 @@ function buildPage(): Page {
   };
 }
 
-function buildLocalImagePage(
-  id: string,
-  localFilePath: string,
-): Page {
+function buildLocalImagePage(id: string, localFilePath: string): Page {
   return {
     id,
     workspaceId: notebookId,
@@ -499,6 +497,49 @@ test("generateExportZip bundles audio and video attachment refs", async () => {
   );
   expect(assetPaths.some((path) => path.endsWith(".mp3"))).toBe(true);
   expect(assetPaths.some((path) => path.endsWith(".mp4"))).toBe(true);
+
+  const markdownPath = Object.keys(zip.files).find((path) =>
+    path.endsWith("/Media.md"),
+  );
+  expect(markdownPath).toBeTruthy();
+  const markdown = await zip.file(markdownPath!)!.async("text");
+  expect(markdown).toMatch(
+    /<video src="\.\/assets\/[^"\s]+\.mp4" controls preload="metadata"><\/video>/,
+  );
+});
+
+test("standalone Markdown and HTML exports inline playable video", async () => {
+  installAttachmentRuntime();
+  const content = buildMediaPage().content;
+
+  await inlineExportMediaAsBase64(content);
+
+  const videoBlock = content[2] as { props: { url: string } };
+  expect(videoBlock.props.url).toMatch(/^data:video\/mp4;base64,/);
+
+  const markdown = await blocksToMarkdown(content);
+  expect(markdown).toContain(
+    `<video src="${videoBlock.props.url}" controls preload="metadata"></video>`,
+  );
+
+  const html = await blocksToHTML(content);
+  expect(html).toContain(
+    `<video src="${videoBlock.props.url}" controls preload="metadata"></video>`,
+  );
+
+  const externalVideo = [
+    {
+      type: "video",
+      props: { url: 'https://example.com/clip.mp4?token=a&label="demo"' },
+    },
+  ] as any;
+  const externalMarkdown = await blocksToMarkdown(externalVideo);
+  const imported = importFromMarkdown(externalMarkdown, undefined, {
+    preserveStructure: true,
+  });
+  expect((imported.content[0] as { props: { url: string } }).props.url).toBe(
+    'https://example.com/clip.mp4?token=a&label="demo"',
+  );
 });
 
 test("generateExportZip reuses bundled attachment refs before repeated loads", async () => {

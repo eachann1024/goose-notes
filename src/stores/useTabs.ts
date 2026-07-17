@@ -50,6 +50,7 @@ interface TabsState {
   reconcileTabs: () => void;
   closeExpiredTabs: (now?: number) => void;
   clearAllTabs: () => void;
+  collapseToActiveTab: () => void;
 }
 
 const createTabId = (pageId: string) =>
@@ -129,7 +130,8 @@ const loadPersistedTabs = (): PersistedTabs | null => {
         .map((t) => ({
           ...t,
           lastAccessedAt:
-            typeof t.lastAccessedAt === "number" && Number.isFinite(t.lastAccessedAt)
+            typeof t.lastAccessedAt === "number" &&
+            Number.isFinite(t.lastAccessedAt)
               ? t.lastAccessedAt
               : now,
         })),
@@ -157,7 +159,9 @@ const persistTabs = (state: TabsState) => {
     pendingPersistState = null;
     if (!latestState) return;
     try {
-      const persistableTabs = latestState.openTabs.filter((tab) => !tab.preview);
+      const persistableTabs = latestState.openTabs.filter(
+        (tab) => !tab.preview,
+      );
       const activeStillValid = persistableTabs.some(
         (tab) => tab.id === latestState.activeTabId,
       );
@@ -195,7 +199,10 @@ export const useTabs = create<TabsState>()((set, get) => {
     const validTabIds = new Set(nextOpenTabs.map((tab) => tab.id));
     const { tabHistory, tabHistoryIndex } = get();
     const nextHistory = tabHistory.filter((tabId) => validTabIds.has(tabId));
-    const nextHistoryIndex = clampHistoryIndex(nextHistory.length, tabHistoryIndex);
+    const nextHistoryIndex = clampHistoryIndex(
+      nextHistory.length,
+      tabHistoryIndex,
+    );
     return {
       tabHistory: nextHistory,
       tabHistoryIndex: nextHistoryIndex,
@@ -309,8 +316,6 @@ export const useTabs = create<TabsState>()((set, get) => {
 
     openPreviewTab: (pageId: string) => {
       const { openTabs, activeTabId } = get();
-      const behavior =
-        useSettings.getState().sidebarClickBehavior ?? "preview";
 
       const existingTab = findTabByPageId(openTabs, pageId);
       if (existingTab) {
@@ -320,50 +325,9 @@ export const useTabs = create<TabsState>()((set, get) => {
       }
 
       commitActiveEditor();
-      const activeTab = openTabs.find((tab) => tab.id === activeTabId);
       const workspaceId = getWorkspaceIdForPage(pageId);
 
-      const activateTab = (tabId: string) => {
-        const now = Date.now();
-        set({
-          openTabs: get().openTabs.map((tab) =>
-            tab.id === tabId || tab.id === activeTabId
-              ? stampTabAccess(tab, now)
-              : tab,
-          ),
-          activeTabId: tabId,
-        });
-        pushTabHistory(tabId);
-        get().syncNotebookForPage(pageId);
-        void scheduleSetActivePage(pageId);
-      };
-
-      // replace-current 模式：就地把当前普通标签的内容换成新页面（固定/预览/欢迎标签不替换）。
-      if (
-        behavior === "replace-current" &&
-        activeTab &&
-        !activeTab.pinned &&
-        !activeTab.preview &&
-        activeTab.type !== "welcome"
-      ) {
-        const now = Date.now();
-        const nextTabs = openTabs.map((tab) =>
-          tab.id === activeTab.id
-            ? {
-                ...tab,
-                pageId,
-                workspaceId,
-                preview: false,
-                lastAccessedAt: now,
-              }
-            : tab,
-        );
-        set({ openTabs: orderTabs(nextTabs) });
-        activateTab(activeTab.id);
-        return;
-      }
-
-      // preview 模式（VSCode 式预览标签）：同时只保留一个预览标签，但它始终在最右新建，
+      // VSCode 式预览标签：同时只保留一个预览标签，但它始终在最右新建，
       // 不复用某个固定位置的旧槽。打开新预览时，丢弃上一个未晋升的预览标签 + 占位的欢迎标签。
       const now = Date.now();
       const newTab: TabItem = {
@@ -409,9 +373,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     openWelcomeTab: () => {
       const { openTabs } = get();
       // 复用已有的欢迎 tab（同时只存在一个）
-      const existingWelcome = openTabs.find(
-        (tab) => tab.type === "welcome",
-      );
+      const existingWelcome = openTabs.find((tab) => tab.type === "welcome");
       if (existingWelcome) {
         get().setActiveTab(existingWelcome.id);
         return;
@@ -455,7 +417,10 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (tabId === activeTabId) commitActiveEditor();
       if (!isWelcomeTab) {
         flushClosedPageSaves([closedPageId]);
-        const nextClosed = [closedPageId, ...recentlyClosedPageIds.filter((id) => id !== closedPageId)].slice(0, 10);
+        const nextClosed = [
+          closedPageId,
+          ...recentlyClosedPageIds.filter((id) => id !== closedPageId),
+        ].slice(0, 10);
         set({ recentlyClosedPageIds: nextClosed });
       }
 
@@ -470,7 +435,8 @@ export const useTabs = create<TabsState>()((set, get) => {
 
       let nextActiveId: string | null = null;
       if (activeTabId === tabId && nextTabs.length > 0) {
-        nextActiveId = nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;
+        nextActiveId =
+          nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;
       } else if (activeTabId !== tabId) {
         nextActiveId = resolveTabIdInHistory(activeTabId, nextTabs);
       }
@@ -622,8 +588,13 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (tabHistoryIndex <= 0) return;
 
       const validTabIds = new Set(openTabs.map((tab) => tab.id));
-      const sanitizedHistory = tabHistory.filter((tabId) => validTabIds.has(tabId));
-      const sanitizedIndex = clampHistoryIndex(sanitizedHistory.length, tabHistoryIndex);
+      const sanitizedHistory = tabHistory.filter((tabId) =>
+        validTabIds.has(tabId),
+      );
+      const sanitizedIndex = clampHistoryIndex(
+        sanitizedHistory.length,
+        tabHistoryIndex,
+      );
       if (sanitizedIndex <= 0) {
         set({ tabHistory: sanitizedHistory, tabHistoryIndex: sanitizedIndex });
         return;
@@ -649,8 +620,13 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (tabHistoryIndex >= tabHistory.length - 1) return;
 
       const validTabIds = new Set(openTabs.map((tab) => tab.id));
-      const sanitizedHistory = tabHistory.filter((tabId) => validTabIds.has(tabId));
-      const sanitizedIndex = clampHistoryIndex(sanitizedHistory.length, tabHistoryIndex);
+      const sanitizedHistory = tabHistory.filter((tabId) =>
+        validTabIds.has(tabId),
+      );
+      const sanitizedIndex = clampHistoryIndex(
+        sanitizedHistory.length,
+        tabHistoryIndex,
+      );
       if (sanitizedIndex >= sanitizedHistory.length - 1) {
         set({ tabHistory: sanitizedHistory, tabHistoryIndex: sanitizedIndex });
         return;
@@ -753,7 +729,9 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (!privacy.autoCloseInactiveTabs) return;
 
       const maxIdleMs =
-        normalizeAutoCloseInactiveTabsHours(privacy.autoCloseInactiveTabsHours) *
+        normalizeAutoCloseInactiveTabsHours(
+          privacy.autoCloseInactiveTabsHours,
+        ) *
         60 *
         60 *
         1000;
@@ -782,6 +760,31 @@ export const useTabs = create<TabsState>()((set, get) => {
       });
     },
 
+    collapseToActiveTab: () => {
+      const { openTabs, activeTabId } = get();
+      if (!activeTabId) return;
+      const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+      if (!activeTab) return;
+
+      const closedPageIds = openTabs
+        .filter((tab) => tab.id !== activeTabId && tab.type !== "welcome")
+        .map((tab) => tab.pageId)
+        .filter(Boolean);
+
+      commitActiveEditor();
+      flushClosedPageSaves(closedPageIds);
+
+      const nextTabs = [activeTab];
+      const historyState = syncHistoryWithOpenTabs(nextTabs);
+      set({
+        openTabs: nextTabs,
+        activeTabId: activeTab.id,
+        ...historyState,
+      });
+      get().syncNotebookForPage(activeTab.pageId);
+      void scheduleSetActivePage(activeTab.pageId);
+    },
+
     reopenLastClosedTab: () => {
       const { recentlyClosedPageIds, openTabs } = get();
       const openPageIds = new Set(openTabs.map((tab) => tab.pageId));
@@ -791,7 +794,11 @@ export const useTabs = create<TabsState>()((set, get) => {
         return page && !page.trashedAt;
       });
       if (!candidate) return;
-      set({ recentlyClosedPageIds: recentlyClosedPageIds.filter((id) => id !== candidate) });
+      set({
+        recentlyClosedPageIds: recentlyClosedPageIds.filter(
+          (id) => id !== candidate,
+        ),
+      });
       get().openTab(candidate);
     },
 
@@ -851,7 +858,9 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...historyState,
       });
 
-      const nextActiveTab = finalTabs.find((tab) => tab.id === fallbackActiveId);
+      const nextActiveTab = finalTabs.find(
+        (tab) => tab.id === fallbackActiveId,
+      );
       if (deletedPage?.trashedAt) {
         if (nextActiveTab?.pageId && nextActiveTab.pageId !== preferredPageId) {
           get().syncNotebookForPage(nextActiveTab.pageId);

@@ -1,7 +1,32 @@
 import { CellSelection } from "prosemirror-tables";
-import type { EditorState } from "prosemirror-state";
+import { NodeSelection, type EditorState } from "prosemirror-state";
 
 import { normalizeClipboardLineEndings } from "./clipboard";
+
+/** 当前是否选中了单个图片块；是则返回图片原始引用。 */
+export function getSelectedImageUrl(state: EditorState): string | null {
+  const selection = state.selection;
+  if (!(selection instanceof NodeSelection)) return null;
+
+  const readImageUrl = (node: typeof selection.node): string | null => {
+    if (node.type.name !== "image" && node.type.name !== "imageResize") {
+      return null;
+    }
+    const url = node.attrs?.url;
+    return typeof url === "string" && url ? url : null;
+  };
+
+  const selectedNodeUrl = readImageUrl(selection.node);
+  if (selectedNodeUrl) return selectedNodeUrl;
+
+  let imageUrl: string | null = null;
+  selection.node.descendants((node) => {
+    if (imageUrl) return false;
+    imageUrl = readImageUrl(node);
+    return !imageUrl;
+  });
+  return imageUrl;
+}
 
 /**
  * 表格单元格选区（CellSelection）的纯文本提取。

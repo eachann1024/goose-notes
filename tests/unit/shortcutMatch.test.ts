@@ -1,5 +1,10 @@
 import { expect, test } from "playwright/test";
-import { matchShortcut, shortcutHasModifier } from "../../src/lib/shortcut-match";
+import {
+  getShortcutFromMouseEvent,
+  matchMouseShortcut,
+  matchShortcut,
+  shortcutHasModifier,
+} from "../../src/lib/shortcut-match";
 
 function keyboardEvent(init: {
   key: string;
@@ -72,4 +77,12 @@ test("recorded plus shortcuts can be matched", () => {
       "Shift+Plus",
     ),
   ).toBe(true);
+});
+
+test("mouse side buttons use stable shortcut names", () => {
+  expect(getShortcutFromMouseEvent({ button: 3 })).toBe("MouseBack");
+  expect(getShortcutFromMouseEvent({ button: 4 })).toBe("MouseForward");
+  expect(getShortcutFromMouseEvent({ button: 1 })).toBe("");
+  expect(matchMouseShortcut({ button: 3 }, "mouseback")).toBe(true);
+  expect(matchMouseShortcut({ button: 4 }, "MouseForward")).toBe(true);
 });

@@ -10,7 +10,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import * as LucideIcons from "lucide-react";
 import { useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type {
+  CSSProperties,
+  MouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -113,8 +117,14 @@ export function SortablePageRow({
   revealResetSignal,
   titleRevealDisabled,
 }: SortablePageRowProps) {
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
-    useSortable({ id: item.id, disabled: !dragEnabled });
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !dragEnabled });
   const guardedListeners = dragEnabled
     ? {
         ...listeners,
@@ -145,10 +155,12 @@ export function SortablePageRow({
   const iconName = page.icon;
 
   const dndTransform = CSS.Transform.toString(transform);
-  const virtualTransform = typeof rowStyle.transform === "string" ? rowStyle.transform : "";
-  const mergedTransform = isDragging && dndTransform
-    ? `${virtualTransform} ${dndTransform}`.trim()
-    : virtualTransform;
+  const virtualTransform =
+    typeof rowStyle.transform === "string" ? rowStyle.transform : "";
+  const mergedTransform =
+    isDragging && dndTransform
+      ? `${virtualTransform} ${dndTransform}`.trim()
+      : virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
   const rowClickTimerRef = useRef<number | null>(null);
 
@@ -196,7 +208,9 @@ export function SortablePageRow({
     openInCurrentTab(newId);
   };
 
-  const handleArrowPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handleArrowPointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
     if (!showArrow) return;
@@ -213,7 +227,9 @@ export function SortablePageRow({
     }
   };
 
-  const handleHiddenArrowPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handleHiddenArrowPointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
     if (!hasChildren) return;
@@ -238,7 +254,10 @@ export function SortablePageRow({
         transform: mergedTransform,
         transition,
       }}
-      className={cn("group relative px-0", isDragging && "z-20 pointer-events-none")}
+      className={cn(
+        "goose-sidebar-tree-row group relative px-0",
+        isDragging && "z-20 pointer-events-none",
+      )}
     >
       {isNestDropTarget && (
         <div className="pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px] bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] shadow-[0_0_0_1px_hsl(var(--background)/0.5)_inset] transition-all duration-100" />
@@ -266,7 +285,7 @@ export function SortablePageRow({
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
             isActive &&
-              "bg-[var(--goose-interactive-selected)] text-foreground"
+              "bg-[var(--goose-interactive-selected)] text-foreground",
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -313,7 +332,7 @@ export function SortablePageRow({
                   "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                   showArrow
                     ? "hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
-                    : "opacity-0 pointer-events-none"
+                    : "opacity-0 pointer-events-none",
                 )}
                 onPointerDown={handleArrowPointerDown}
                 onClick={handleArrowClick}
@@ -321,7 +340,7 @@ export function SortablePageRow({
                 <LucideIcons.ChevronRight
                   className={cn(
                     "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
-                    item.isOpen && "rotate-90"
+                    item.isOpen && "rotate-90",
                   )}
                 />
               </button>
@@ -333,7 +352,7 @@ export function SortablePageRow({
                   type="button"
                   aria-label={item.isOpen ? "折叠子项" : "展开子项"}
                   aria-expanded={item.isOpen}
-                  className="group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
+                  className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
                   onPointerDown={handleHiddenArrowPointerDown}
                   onClick={handleHiddenArrowClick}
                   onDoubleClick={(e) => {
@@ -389,21 +408,23 @@ export function SortablePageRow({
                     />
                   </div>
                 ) : (
-                <IconSelector
-                  value={iconName}
-                  onChange={(newIcon) => updatePage(page.id, { icon: newIcon as string })}
-                >
-                  <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
-                    <div className="h-4 w-4 flex items-center justify-center">
-                      <LocalFileIcon
-                        page={page}
-                        iconName={iconName}
-                        isLocalFolder={false}
-                        hasChildren={hasChildren}
-                      />
+                  <IconSelector
+                    value={iconName}
+                    onChange={(newIcon) =>
+                      updatePage(page.id, { icon: newIcon as string })
+                    }
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
+                      <div className="h-4 w-4 flex items-center justify-center">
+                        <LocalFileIcon
+                          page={page}
+                          iconName={iconName}
+                          isLocalFolder={false}
+                          hasChildren={hasChildren}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </IconSelector>
+                  </IconSelector>
                 )}
               </div>
             )}
@@ -427,7 +448,7 @@ export function SortablePageRow({
                   ? "hidden"
                   : isNestDropTarget
                     ? "flex"
-                    : "hidden group-hover:flex"
+                    : "hidden group-hover:flex",
               )}
             >
               {isNestDropTarget && (

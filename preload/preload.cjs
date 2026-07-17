@@ -1009,29 +1009,43 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     },
 
     writeFile: (filePath, content, encoding = "utf-8") => {
+      // 必须在写入前登记：fs.watch 的回调可能在 writeFile/writeFileAsync 尚未返回时
+      // 先触发。若等写完再标记，前端会把自己的自动保存误判成外部修改并重载编辑器。
+      const normalizedFilePath = path.resolve(filePath);
+      const markedAt = Date.now();
+      recentWrites.set(normalizedFilePath, markedAt);
       try {
         fs.writeFileSync(filePath, content, resolveWriteEncoding(encoding));
-        // 标记最近写入，防止 watch 误触发重载提示
-        recentWrites.set(filePath, Date.now());
+        // 写入结束后续期，覆盖文件系统延迟派发 watch 事件的情况。
+        recentWrites.set(normalizedFilePath, Date.now());
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
+        if (recentWrites.get(normalizedFilePath) === markedAt) {
+          recentWrites.delete(normalizedFilePath);
+        }
         console.error("[gooseFs] writeFile failed:", err);
         return false;
       }
     },
 
     writeFileAsync: async (filePath, content, encoding = "utf-8") => {
+      const normalizedFilePath = path.resolve(filePath);
+      const markedAt = Date.now();
+      recentWrites.set(normalizedFilePath, markedAt);
       try {
         await fs.promises.writeFile(
           filePath,
           content,
           resolveWriteEncoding(encoding),
         );
-        recentWrites.set(filePath, Date.now());
+        recentWrites.set(normalizedFilePath, Date.now());
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
+        if (recentWrites.get(normalizedFilePath) === markedAt) {
+          recentWrites.delete(normalizedFilePath);
+        }
         console.error("[gooseFs] writeFileAsync failed:", err);
         return false;
       }
@@ -1058,7 +1072,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           { recursive: true },
           (eventType, filename) => {
             if (filename) {
-              const fullPath = path.join(dirPath, filename);
+              const fullPath = path.resolve(dirPath, String(filename));
               // 检查是否为最近写入的文件，避免误触发重载提示
               const now = Date.now();
               let skip = false;
@@ -1067,7 +1081,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
                   recentWrites.delete(key);
                   continue;
                 }
-                if (fullPath === key || fullPath.startsWith(key)) {
+                const normalizedKey = path.resolve(key);
+                if (
+                  fullPath === normalizedKey ||
+                  fullPath.startsWith(`${normalizedKey}${path.sep}`)
+                ) {
                   skip = true;
                   break;
                 }

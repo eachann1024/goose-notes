@@ -108,6 +108,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     searchProviders,
     toggleSearchProvider,
     reorderSearchProviders,
+    addCustomSearchProvider,
+    updateCustomSearchProvider,
+    removeCustomSearchProvider,
     utools,
     ai,
     setOpenSearchInUtools,
@@ -141,8 +144,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     removeCustomAction,
     notebookDropdownHoverExpand,
     setNotebookDropdownHoverExpand,
-    sidebarClickBehavior,
-    setSidebarClickBehavior,
     localFolderFileManager,
     setLocalFolderFileManager,
     localFolderExternalEditor,
@@ -151,63 +152,68 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setLocalFolderTerminal,
     localFolderHiddenFolders,
     setLocalFolderHiddenFolders,
-  } = useSettings(useShallow((s) => ({
-    theme: s.theme,
-    setTheme: s.setTheme,
-    codeStyle: s.codeStyle,
-    setCodeStyle: s.setCodeStyle,
-    globalEditorFullWidth: s.globalEditorFullWidth,
-    setGlobalEditorFullWidth: s.setGlobalEditorFullWidth,
-    tableEvenColumnWidth: s.tableEvenColumnWidth,
-    setTableEvenColumnWidth: s.setTableEvenColumnWidth,
-    searchProviders: s.searchProviders,
-    toggleSearchProvider: s.toggleSearchProvider,
-    reorderSearchProviders: s.reorderSearchProviders,
-    utools: s.utools,
-    ai: s.ai,
-    setOpenSearchInUtools: s.setOpenSearchInUtools,
-    setAIEnabled: s.setAIEnabled,
-    setAISelectedModelId: s.setAISelectedModelId,
-    saveAICustomConfig: s.saveAICustomConfig,
-    setUToolsWindowHeight: s.setUToolsWindowHeight,
-    privacy: s.privacy,
-    setAutoOpenLastNote: s.setAutoOpenLastNote,
-    setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
-    setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
-    showRecentInSearch: s.showRecentInSearch,
-    setShowRecentInSearch: s.setShowRecentInSearch,
-    closeTabShortcut: s.closeTabShortcut,
-    setCloseTabShortcut: s.setCloseTabShortcut,
-    searchPanelCloseShortcut: s.searchPanelCloseShortcut,
-    setSearchPanelCloseShortcut: s.setSearchPanelCloseShortcut,
-    appShortcuts: s.appShortcuts,
-    setAppShortcut: s.setAppShortcut,
-    resetAppShortcuts: s.resetAppShortcuts,
-    customFonts: s.customFonts,
-    setCustomLabel: s.setCustomLabel,
-    setCustomFont: s.setCustomFont,
-    uiFontSize: s.uiFontSize,
-    setUIFontSize: s.setUIFontSize,
-    hideExpandArrows: s.hideExpandArrows,
-    setHideExpandArrows: s.setHideExpandArrows,
-    customActions: s.customActions,
-    addCustomAction: s.addCustomAction,
-    updateCustomAction: s.updateCustomAction,
-    removeCustomAction: s.removeCustomAction,
-    notebookDropdownHoverExpand: s.notebookDropdownHoverExpand,
-    setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
-    sidebarClickBehavior: s.sidebarClickBehavior,
-    setSidebarClickBehavior: s.setSidebarClickBehavior,
-    localFolderFileManager: s.localFolderFileManager,
-    setLocalFolderFileManager: s.setLocalFolderFileManager,
-    localFolderExternalEditor: s.localFolderExternalEditor,
-    setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
-    localFolderTerminal: s.localFolderTerminal,
-    setLocalFolderTerminal: s.setLocalFolderTerminal,
-    localFolderHiddenFolders: s.localFolderHiddenFolders,
-    setLocalFolderHiddenFolders: s.setLocalFolderHiddenFolders,
-  })));
-  const { notebooks } = useNotebooks(useShallow((s) => ({ notebooks: s.notebooks })));
+  } = useSettings(
+    useShallow((s) => ({
+      theme: s.theme,
+      setTheme: s.setTheme,
+      codeStyle: s.codeStyle,
+      setCodeStyle: s.setCodeStyle,
+      globalEditorFullWidth: s.globalEditorFullWidth,
+      setGlobalEditorFullWidth: s.setGlobalEditorFullWidth,
+      tableEvenColumnWidth: s.tableEvenColumnWidth,
+      setTableEvenColumnWidth: s.setTableEvenColumnWidth,
+      searchProviders: s.searchProviders,
+      toggleSearchProvider: s.toggleSearchProvider,
+      reorderSearchProviders: s.reorderSearchProviders,
+      addCustomSearchProvider: s.addCustomSearchProvider,
+      updateCustomSearchProvider: s.updateCustomSearchProvider,
+      removeCustomSearchProvider: s.removeCustomSearchProvider,
+      utools: s.utools,
+      ai: s.ai,
+      setOpenSearchInUtools: s.setOpenSearchInUtools,
+      setAIEnabled: s.setAIEnabled,
+      setAISelectedModelId: s.setAISelectedModelId,
+      saveAICustomConfig: s.saveAICustomConfig,
+      setUToolsWindowHeight: s.setUToolsWindowHeight,
+      privacy: s.privacy,
+      setAutoOpenLastNote: s.setAutoOpenLastNote,
+      setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
+      setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
+      showRecentInSearch: s.showRecentInSearch,
+      setShowRecentInSearch: s.setShowRecentInSearch,
+      closeTabShortcut: s.closeTabShortcut,
+      setCloseTabShortcut: s.setCloseTabShortcut,
+      searchPanelCloseShortcut: s.searchPanelCloseShortcut,
+      setSearchPanelCloseShortcut: s.setSearchPanelCloseShortcut,
+      appShortcuts: s.appShortcuts,
+      setAppShortcut: s.setAppShortcut,
+      resetAppShortcuts: s.resetAppShortcuts,
+      customFonts: s.customFonts,
+      setCustomLabel: s.setCustomLabel,
+      setCustomFont: s.setCustomFont,
+      uiFontSize: s.uiFontSize,
+      setUIFontSize: s.setUIFontSize,
+      hideExpandArrows: s.hideExpandArrows,
+      setHideExpandArrows: s.setHideExpandArrows,
+      customActions: s.customActions,
+      addCustomAction: s.addCustomAction,
+      updateCustomAction: s.updateCustomAction,
+      removeCustomAction: s.removeCustomAction,
+      notebookDropdownHoverExpand: s.notebookDropdownHoverExpand,
+      setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
+      localFolderFileManager: s.localFolderFileManager,
+      setLocalFolderFileManager: s.setLocalFolderFileManager,
+      localFolderExternalEditor: s.localFolderExternalEditor,
+      setLocalFolderExternalEditor: s.setLocalFolderExternalEditor,
+      localFolderTerminal: s.localFolderTerminal,
+      setLocalFolderTerminal: s.setLocalFolderTerminal,
+      localFolderHiddenFolders: s.localFolderHiddenFolders,
+      setLocalFolderHiddenFolders: s.setLocalFolderHiddenFolders,
+    })),
+  );
+  const { notebooks } = useNotebooks(
+    useShallow((s) => ({ notebooks: s.notebooks })),
+  );
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
@@ -221,7 +227,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
     window.addEventListener("goose-note:settings-tab-change", handleTabChange);
     return () => {
-      window.removeEventListener("goose-note:settings-tab-change", handleTabChange);
+      window.removeEventListener(
+        "goose-note:settings-tab-change",
+        handleTabChange,
+      );
     };
   }, []);
 
@@ -237,13 +246,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     visible: appsBannerVisible,
     dismiss: dismissAppsBanner,
     reset: resetAppsBanner,
-  } =
-    usePersistentDismissState(SETTINGS_APPS_BANNER_ID);
+  } = usePersistentDismissState(SETTINGS_APPS_BANNER_ID);
 
   const notebookList = Object.values(notebooks).filter(
     (n) => n.source !== "local-folder",
   );
-  const { createNotebook } = useNotebooks(useShallow((s) => ({ createNotebook: s.createNotebook })));
+  const { createNotebook } = useNotebooks(
+    useShallow((s) => ({ createNotebook: s.createNotebook })),
+  );
   const resetPhrase = "我已知晓风险";
   const canReset = resetInput.trim() === resetPhrase;
 
@@ -458,7 +468,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           workspaceId,
           parentId,
         });
-        if (!firstPageId && workspaceId === firstWorkspaceId) firstPageId = pageId;
+        if (!firstPageId && workspaceId === firstWorkspaceId)
+          firstPageId = pageId;
         return pageId;
       },
     );
@@ -660,6 +671,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 searchProviders={searchProviders}
                 toggleSearchProvider={toggleSearchProvider}
                 reorderSearchProviders={reorderSearchProviders}
+                addCustomSearchProvider={addCustomSearchProvider}
+                updateCustomSearchProvider={updateCustomSearchProvider}
+                removeCustomSearchProvider={removeCustomSearchProvider}
                 openSearchInUtools={utools.openSearchInUtools}
                 setOpenSearchInUtools={setOpenSearchInUtools}
                 windowHeight={utools.windowHeight ?? 600}
@@ -674,8 +688,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
-                sidebarClickBehavior={sidebarClickBehavior}
-                setSidebarClickBehavior={setSidebarClickBehavior}
                 customActions={customActions}
                 addCustomAction={addCustomAction}
                 updateCustomAction={updateCustomAction}

@@ -64,6 +64,8 @@ export function formatShortcut(shortcut: string) {
       if (p === "down") return "↓";
       if (p === "left") return "←";
       if (p === "right") return "→";
+      if (p === "mouseback") return "鼠标后退键";
+      if (p === "mouseforward") return "鼠标前进键";
       return part.trim();
     })
     .join(isMac ? "" : " + ");

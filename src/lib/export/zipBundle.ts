@@ -138,7 +138,7 @@ function resolveAndReadBase64(
 
   // 优先相对于页面文件目录解析
   if (pageFilePath) {
-    const pageDir = pageFilePath.replace(/[\\/][^\\/]+$/, '');
+    const pageDir = pageFilePath.replace(/[\\/][^\\/]+$/, "");
     const fullPath = resolveToAbsolute(pageDir, src);
     const result = readLocalFileAsBase64(fullPath);
     if (result) return { data: result, resolvedPath: fullPath };
@@ -197,19 +197,34 @@ async function extractImagesFromContent(
           finalSrc = await blobToBase64(blob);
         }
       }
+      if (block.type === "video" && src.startsWith("att-video:")) {
+        const { videoStorage } = await import("@/lib/videoStorage");
+        const blob = await videoStorage.load(src, pageFilePath);
+        if (blob) {
+          finalSrc = await blobToBase64(blob);
+        }
+      }
 
       // 2) 本地文件路径（相对/绝对）→ 从文件系统读取
       if (isLocalAsset) {
-        const loadedAsset = resolveAndReadBase64(notebookPath, src, pageFilePath);
+        const loadedAsset = resolveAndReadBase64(
+          notebookPath,
+          src,
+          pageFilePath,
+        );
         if (loadedAsset) {
           const imageMapKey = `local:${loadedAsset.resolvedPath}`;
           if (imageMap.has(imageMapKey)) {
-            block.props.url = getRelativeAssetPath(imageMap.get(imageMapKey)!, depth);
+            block.props.url = getRelativeAssetPath(
+              imageMap.get(imageMapKey)!,
+              depth,
+            );
             continue;
           }
           const ext = guessAssetExtFromPath(src, isImage ? "png" : "bin");
           // 用原始文件名，避免重名加随机后缀
-          const rawName = src.split(/[\\/]/).pop() || `img_${Date.now()}.${ext}`;
+          const rawName =
+            src.split(/[\\/]/).pop() || `img_${Date.now()}.${ext}`;
           const uniqueName = usedAssetNames.has(rawName)
             ? `${rawName.replace(/\.([^.]+)$/, "")}_${Math.random().toString(36).slice(2, 6)}.${ext}`
             : rawName;
@@ -258,7 +273,15 @@ async function extractImagesFromContent(
     }
 
     if (block.children?.length) {
-      await extractImagesFromContent(block.children, assetsFolder, imageMap, usedAssetNames, depth, notebookPath, pageFilePath);
+      await extractImagesFromContent(
+        block.children,
+        assetsFolder,
+        imageMap,
+        usedAssetNames,
+        depth,
+        notebookPath,
+        pageFilePath,
+      );
     }
   }
 }
@@ -330,7 +353,11 @@ export async function inspectNotebookImportZip(
     }
     const notebooks = (meta as { notebooks?: unknown }).notebooks;
     const pages = (meta as { pages?: unknown }).pages;
-    if (!Array.isArray(notebooks) || notebooks.length === 0 || !Array.isArray(pages)) {
+    if (
+      !Array.isArray(notebooks) ||
+      notebooks.length === 0 ||
+      !Array.isArray(pages)
+    ) {
       throw new Error("备份元数据缺少记事本或页面列表");
     }
     if (
@@ -375,7 +402,8 @@ export async function inspectNotebookImportZip(
   zip.forEach((path, entry) => {
     if (entry.dir) return;
     const parts = path.split("/");
-    if (parts.length < 2 || parts[0] === "assets" || parts[1] === "assets") return;
+    if (parts.length < 2 || parts[0] === "assets" || parts[1] === "assets")
+      return;
     const extension = path.split(".").pop()?.toLowerCase();
     if (extension !== "md" && extension !== "json") return;
     notebookNames.add(parts[0]);
@@ -448,10 +476,7 @@ export async function generateExportZip(
       exportMetadataPages.push(pageClone);
     }
 
-    const processPage = async (
-      page: Page,
-      parentFolder: JSZipNs,
-    ) => {
+    const processPage = async (page: Page, parentFolder: JSZipNs) => {
       const pageClone = processedPages.get(page.id) ?? page;
 
       let content = "";
@@ -459,11 +484,9 @@ export async function generateExportZip(
 
       switch (format) {
         case "md": {
-          content = await buildExportMarkdown(
-            pageClone,
-            pageClone.content,
-            { includeTitleHeading: false },
-          );
+          content = await buildExportMarkdown(pageClone, pageClone.content, {
+            includeTitleHeading: false,
+          });
           extension = ".md";
           break;
         }
@@ -472,11 +495,7 @@ export async function generateExportZip(
             pageClone,
             pageClone.content,
           );
-          content = renderExportHtml(
-            getPageTitle(pageClone),
-            bodyHtml,
-            false,
-          );
+          content = renderExportHtml(getPageTitle(pageClone), bodyHtml, false);
           extension = ".html";
           break;
         }
@@ -513,11 +532,15 @@ export async function generateExportZip(
     .filter((id) => notebookIds.includes(id))
     .map((id) => {
       const nb = notebooksMap[id];
-      return nb ? { id, name: nb.name, icon: (nb as any).icon || "BookOpen" } : null;
+      return nb
+        ? { id, name: nb.name, icon: (nb as any).icon || "BookOpen" }
+        : null;
     })
     .filter(Boolean);
 
-  const exportPagesList = allPages.filter((p) => notebookIds.includes(p.workspaceId));
+  const exportPagesList = allPages.filter((p) =>
+    notebookIds.includes(p.workspaceId),
+  );
 
   // 读取并打包历史记录数据
   const { resolveHistoryBackend } = await import("@/lib/history/backend");
@@ -620,7 +643,9 @@ export async function importNotebooksFromZip(
   const zip = await JSZip.loadAsync(zipBlob);
 
   // 收集所有 assets：既查根级 assets/（旧格式），也查各笔记本内 xxx/assets/（新格式）
-  const loadAssetsFromFolder = async (folder: JSZipNs | null): Promise<Map<string, string>> => {
+  const loadAssetsFromFolder = async (
+    folder: JSZipNs | null,
+  ): Promise<Map<string, string>> => {
     const map = new Map<string, string>();
     if (!folder) return map;
     const files: string[] = [];
@@ -639,30 +664,33 @@ export async function importNotebooksFromZip(
   // 根级 assets（旧导出格式兼容）
   const rootAssetMap = await loadAssetsFromFolder(zip.folder("assets"));
 
-  const restoreBundledAssets = (blocks: any[], notebookAssetMap: Map<string, string>) => {
+  const restoreBundledAssets = (
+    blocks: any[],
+    notebookAssetMap: Map<string, string>,
+  ) => {
     for (const block of blocks) {
       if (!block || typeof block !== "object") continue;
       if (
-        (
-          block.type === "image" ||
+        (block.type === "image" ||
           block.type === "imageResize" ||
           block.type === "file" ||
           block.type === "audio" ||
-          block.type === "video"
-        ) &&
+          block.type === "video") &&
         block.props?.url
       ) {
         const src = block.props.url as string;
         const filename = getBundledAssetName(src);
         if (filename) {
           // 优先从笔记本内 assets 查找，再从根级 assets 查找
-          const dataUrl = notebookAssetMap.get(filename) || rootAssetMap.get(filename);
+          const dataUrl =
+            notebookAssetMap.get(filename) || rootAssetMap.get(filename);
           if (dataUrl) {
             block.props.url = dataUrl;
           }
         }
       }
-      if (block.children?.length) restoreBundledAssets(block.children, notebookAssetMap);
+      if (block.children?.length)
+        restoreBundledAssets(block.children, notebookAssetMap);
     }
   };
 
@@ -706,12 +734,16 @@ export async function importNotebooksFromZip(
 
         // 还原并合并历史记录数据到本地数据库
         if (meta.history) {
-          const { resolveHistoryBackend } = await import("@/lib/history/backend");
+          const { resolveHistoryBackend } =
+            await import("@/lib/history/backend");
           const MAX_VERSIONS_PER_PAGE = 50;
 
-          for (const [sourcePageId, historyItem] of Object.entries(meta.history) as [string, any][]) {
+          for (const [sourcePageId, historyItem] of Object.entries(
+            meta.history,
+          ) as [string, any][]) {
             try {
-              const pageId = importedPageIdMap.get(sourcePageId) ?? sourcePageId;
+              const pageId =
+                importedPageIdMap.get(sourcePageId) ?? sourcePageId;
               const backend = resolveHistoryBackend(pageId);
               const localIndex = await backend.loadIndex(pageId);
               const importedIndex = historyItem.index;
@@ -721,7 +753,7 @@ export async function importNotebooksFromZip(
 
               // 1. 合并 versions 列表并去重
               const versionMap = new Map<string, any>();
-              
+
               if (localIndex && Array.isArray(localIndex.versions)) {
                 for (const v of localIndex.versions) {
                   versionMap.set(v.versionId, v);
@@ -735,13 +767,14 @@ export async function importNotebooksFromZip(
 
               // 按时间戳从小到大排序
               let mergedVersions = Array.from(versionMap.values()).sort(
-                (a, b) => a.createdAt - b.createdAt
+                (a, b) => a.createdAt - b.createdAt,
               );
 
               // 2. 超出数量限制裁剪（淘汰最旧的非 Milestone）
               const evictedVersionIds: string[] = [];
               if (mergedVersions.length > MAX_VERSIONS_PER_PAGE) {
-                const evictCount = mergedVersions.length - MAX_VERSIONS_PER_PAGE;
+                const evictCount =
+                  mergedVersions.length - MAX_VERSIONS_PER_PAGE;
                 evictedVersionIds.push(
                   ...mergedVersions
                     .filter((v) => !v.isMilestone)
@@ -757,9 +790,10 @@ export async function importNotebooksFromZip(
               }
 
               // 3. 计算最新的字符数
-              const lastVersionCharCount = mergedVersions.length > 0 
-                ? mergedVersions[mergedVersions.length - 1].charCount
-                : 0;
+              const lastVersionCharCount =
+                mergedVersions.length > 0
+                  ? mergedVersions[mergedVersions.length - 1].charCount
+                  : 0;
 
               // 4. 保存合并后的索引
               await backend.saveIndex({
@@ -770,7 +804,9 @@ export async function importNotebooksFromZip(
 
               // 5. 写入导入的历史版本
               if (Array.isArray(importedVersions)) {
-                const activeVersionIds = new Set(mergedVersions.map((v) => v.versionId));
+                const activeVersionIds = new Set(
+                  mergedVersions.map((v) => v.versionId),
+                );
                 for (const version of importedVersions) {
                   if (activeVersionIds.has(version.versionId)) {
                     await backend.saveVersion({ ...version, pageId });
@@ -783,7 +819,10 @@ export async function importNotebooksFromZip(
                 await backend.removeVersion(pageId, evictedId);
               }
             } catch (err) {
-              console.error(`Failed to restore and merge history for page ${sourcePageId}:`, err);
+              console.error(
+                `Failed to restore and merge history for page ${sourcePageId}:`,
+                err,
+              );
             }
           }
         }
@@ -791,7 +830,10 @@ export async function importNotebooksFromZip(
         return;
       }
     } catch (e) {
-      console.error("Failed to restore from backup-metadata.json, fallback to folder parsing:", e);
+      console.error(
+        "Failed to restore from backup-metadata.json, fallback to folder parsing:",
+        e,
+      );
     }
   }
 
@@ -852,7 +894,8 @@ export async function importNotebooksFromZip(
           delete (pageData as any).id;
           delete (pageData as any).workspaceId;
           delete (pageData as any).parentId;
-          if (pageData.content) restoreBundledAssets(pageData.content, notebookAssetMap);
+          if (pageData.content)
+            restoreBundledAssets(pageData.content, notebookAssetMap);
         } catch (e) {
           console.error("Failed to parse JSON page", e);
         }
@@ -862,8 +905,7 @@ export async function importNotebooksFromZip(
         const content = imported.content;
         const firstBlock = Array.isArray(content) ? content[0] : undefined;
         const hasH1Title =
-          firstBlock?.type === "heading" &&
-          firstBlock.props?.level === 1;
+          firstBlock?.type === "heading" && firstBlock.props?.level === 1;
         if (!hasH1Title) {
           const blocks = Array.isArray(content) ? content : [];
           pageData = {
@@ -875,7 +917,8 @@ export async function importNotebooksFromZip(
         } else {
           pageData = { content };
         }
-        if (pageData.content) restoreBundledAssets(pageData.content, notebookAssetMap);
+        if (pageData.content)
+          restoreBundledAssets(pageData.content, notebookAssetMap);
       }
 
       const newId = await onCreatePage(pageData, workspaceId, parentId);

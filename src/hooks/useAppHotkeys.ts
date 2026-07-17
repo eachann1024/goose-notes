@@ -6,10 +6,16 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
-import { matchShortcut, shortcutHasModifier } from "@/lib/shortcut-match";
+import {
+  matchMouseShortcut,
+  matchShortcut,
+  shortcutHasModifier,
+} from "@/lib/shortcut-match";
+import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 
 type HotkeyEntry = {
   id: string;
+  shortcutId?: string;
   match: (event: KeyboardEvent) => boolean;
   when?: (event: KeyboardEvent) => boolean;
   handler: (event: KeyboardEvent) => void;
@@ -18,13 +24,15 @@ type HotkeyEntry = {
 export function useAppHotkeys() {
   // Subscribe to closeTabShortcut so the ref stays in sync, but the keydown
   // listener itself is registered only once (deps=[]).
-  const { closeTabShortcut, appShortcuts } = useSettings();
+  const { closeTabShortcut, searchPanelCloseShortcut, appShortcuts } =
+    useSettings();
   const { openTabs, activeTabId } = useTabs();
 
   // Dynamic values consumed inside the single keydown listener must be read
   // through refs, otherwise the once-registered listener would capture stale
   // values (breaks tab switching / close after the list changes).
   const closeTabShortcutRef = useRef(closeTabShortcut);
+  const searchPanelCloseShortcutRef = useRef(searchPanelCloseShortcut);
   const appShortcutsRef = useRef(appShortcuts);
   const openTabsRef = useRef(openTabs);
   const activeTabIdRef = useRef(activeTabId);
@@ -32,6 +40,9 @@ export function useAppHotkeys() {
   useEffect(() => {
     closeTabShortcutRef.current = closeTabShortcut;
   }, [closeTabShortcut]);
+  useEffect(() => {
+    searchPanelCloseShortcutRef.current = searchPanelCloseShortcut;
+  }, [searchPanelCloseShortcut]);
   useEffect(() => {
     appShortcutsRef.current = appShortcuts;
   }, [appShortcuts]);
@@ -43,6 +54,7 @@ export function useAppHotkeys() {
   }, [activeTabId]);
 
   useEffect(() => {
+    const fixedShortcuts = getFixedAppShortcuts();
     const isEditableEventTarget = (event: KeyboardEvent) => {
       const target =
         event.target instanceof HTMLElement
@@ -109,23 +121,19 @@ export function useAppHotkeys() {
           );
         },
       },
-      // cmd+, settings — if still default, keep Chinese comma / event.code fallback
+      // 设置快捷键固定：macOS 用 Ctrl+,，Windows/Linux 用 Alt+,。
       {
         id: "open-settings",
-        match: (event) => {
-          const s = appShortcutsRef.current.openSettings;
-          if (!s) return false;
-          if (s === "Mod+,") {
-            return (
-              hasPrimaryModifier(event) &&
-              (event.key === "," ||
-                event.key === "，" ||
-                event.code === "Comma") &&
-              !event.shiftKey
-            );
-          }
-          return matchesConfiguredShortcut(event, s);
-        },
+        match: (event) =>
+          !event.repeat &&
+          !event.metaKey &&
+          !event.shiftKey &&
+          (event.key === "," ||
+            event.key === "，" ||
+            event.code === "Comma") &&
+          (fixedShortcuts.openSettings === "Ctrl+,"
+            ? event.ctrlKey && !event.altKey
+            : event.altKey && !event.ctrlKey),
         handler: (event) => {
           event.preventDefault();
           closeAllOverlays();
@@ -135,6 +143,7 @@ export function useAppHotkeys() {
       // cmd+shift+k search
       {
         id: "open-search",
+        shortcutId: "openSearch",
         match: (event) => {
           const s = appShortcutsRef.current.openSearch;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -149,6 +158,7 @@ export function useAppHotkeys() {
       // 是否真正切换由 WorkspaceLayout 侧监听判断（需 ai.enabled），这里只负责派发
       {
         id: "toggle-ai-panel",
+        shortcutId: "toggleAIPanel",
         match: (event) => {
           const s = appShortcutsRef.current.toggleAIPanel;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -161,6 +171,7 @@ export function useAppHotkeys() {
       // toggle sidebar — configurable, default Alt+B; allow triggering even from editor
       {
         id: "toggle-sidebar",
+        shortcutId: "toggleSidebar",
         match: (event) => {
           const s = appShortcutsRef.current.toggleSidebar;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -171,13 +182,11 @@ export function useAppHotkeys() {
           useSidebarView.getState().toggleSidebarCollapsed();
         },
       },
-      // cmd+f editor find open
+      // 页内查找固定为 Chrome/系统通用的 Mod+F。
       {
         id: "editor-find-open",
-        match: (event) => {
-          const s = appShortcutsRef.current.editorFindOpen;
-          return !!s && matchesConfiguredShortcut(event, s);
-        },
+        match: (event) =>
+          matchesConfiguredShortcut(event, fixedShortcuts.editorFindOpen),
         handler: (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -229,33 +238,11 @@ export function useAppHotkeys() {
           useSettings.getState().setEditorFontSize(EDITOR_FONT_SIZE_DEFAULT);
         },
       },
-      // cmd+s save
-      {
-        id: "save",
-        match: (event) => {
-          const s = appShortcutsRef.current.saveNote;
-          return !!s && matchesConfiguredShortcut(event, s);
-        },
-        handler: (event) => {
-          event.preventDefault();
-          void (async () => {
-            window.dispatchEvent(
-              new CustomEvent("goose-note:flush-editor", {
-                detail: { immediate: true },
-              }),
-            );
-            await usePages.getState().flushPendingLocalSaves();
-            toast("内容已保存", { duration: 1500 });
-          })();
-        },
-      },
-      // cmd+n new note
+      // 新建笔记固定为 Mod+N，不跟随同步配置变化。
       {
         id: "new-note",
-        match: (event) => {
-          const s = appShortcutsRef.current.newNote;
-          return !!s && matchesConfiguredShortcut(event, s);
-        },
+        match: (event) =>
+          matchesConfiguredShortcut(event, fixedShortcuts.newNote),
         handler: (event) => {
           event.preventDefault();
           void (async () => {
@@ -283,6 +270,7 @@ export function useAppHotkeys() {
       // toggle theme (Mod+Shift+L)
       {
         id: "toggle-theme",
+        shortcutId: "toggleTheme",
         match: (event) => {
           const s = appShortcutsRef.current.toggleTheme;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -295,6 +283,7 @@ export function useAppHotkeys() {
       // nav-back / nav-forward (Mod+[ / Mod+])
       {
         id: "nav-back",
+        shortcutId: "navBack",
         match: (event) => {
           const s = appShortcutsRef.current.navBack;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -313,6 +302,7 @@ export function useAppHotkeys() {
       },
       {
         id: "nav-forward",
+        shortcutId: "navForward",
         match: (event) => {
           const s = appShortcutsRef.current.navForward;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -332,6 +322,7 @@ export function useAppHotkeys() {
       // new-tab (Mod+T)
       {
         id: "new-tab",
+        shortcutId: "newTab",
         match: (event) => {
           const s = appShortcutsRef.current.newTab;
           return !!s && matchesConfiguredShortcut(event, s);
@@ -352,6 +343,7 @@ export function useAppHotkeys() {
       // Layered: toast → dialog → tab. Fires even inside inputs unless in shortcut recorder.
       {
         id: "unified-close",
+        shortcutId: "close-tab",
         match: (event) =>
           !event.defaultPrevented &&
           matchShortcut(
@@ -388,6 +380,9 @@ export function useAppHotkeys() {
               target.tagName === "TEXTAREA" ||
               target.isContentEditable ||
               !!target.closest?.(".bn-editor"));
+          if ("button" in event && (event.button === 3 || event.button === 4)) {
+            return true;
+          }
           return !isInEditableTarget || shortcutHasModifier(closeTabShortcutRef.current);
         },
         handler: (event) => {
@@ -472,14 +467,12 @@ export function useAppHotkeys() {
           useTabs.getState().setActiveTab(tabs[nextIndex].id);
         },
       },
-      // Mod+Shift+T reopen last closed tab
+      // 与 Chrome 一致，固定使用 Mod+Shift+T，并按关闭顺序逐个恢复。
       {
         id: "reopen-tab",
-        match: (event) => {
-          if (event.defaultPrevented) return false;
-          const s = appShortcutsRef.current.reopenTab;
-          return !!s && matchesConfiguredShortcut(event, s);
-        },
+        match: (event) =>
+          !event.defaultPrevented &&
+          matchesConfiguredShortcut(event, fixedShortcuts.reopenTab),
         handler: (event) => {
           event.preventDefault();
           useTabs.getState().reopenLastClosedTab();
@@ -500,50 +493,61 @@ export function useAppHotkeys() {
       }
     };
 
-    document.addEventListener("keydown", dispatcher, true);
-    return () => {
-      document.removeEventListener("keydown", dispatcher, true);
+    const getMouseShortcutForEntry = (entry: HotkeyEntry) => {
+      if (entry.shortcutId === "close-tab") {
+        return closeTabShortcutRef.current;
+      }
+      return entry.shortcutId
+        ? appShortcutsRef.current[entry.shortcutId] ?? ""
+        : "";
     };
-  }, []);
-
-  // Mouse side buttons (back/forward) — non-keyboard, kept as a separate
-  // once-registered effect (uses store getState, no dynamic deps).
-  useEffect(() => {
-    let lastHandledButton = -1;
-    let lastHandledAt = 0;
 
     const handleMouseSideButton = (event: MouseEvent) => {
-      const isBack = event.button === 3;
-      const isForward = event.button === 4;
-      if (!isBack && !isForward) return;
+      if (event.button !== 3 && event.button !== 4) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) return;
 
-      const now = Date.now();
-      if (event.button === lastHandledButton && now - lastHandledAt < 120) {
-        event.preventDefault();
-        event.stopPropagation();
+      for (const entry of entries) {
+        const shortcut = getMouseShortcutForEntry(entry);
+        if (!shortcut || !matchMouseShortcut(event, shortcut)) continue;
+        const compatibleEvent = event as unknown as KeyboardEvent;
+        if (entry.when && !entry.when(compatibleEvent)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        entry.handler(compatibleEvent);
         return;
       }
 
-      lastHandledButton = event.button;
-      lastHandledAt = now;
+      // 搜索面板关闭键由 CommandPalette 自己处理；这里不抢先执行默认导航。
+      if (matchMouseShortcut(event, searchPanelCloseShortcutRef.current)) return;
+
+      // 未将侧键分配给其他动作时，保持浏览器式的后退 / 前进体验。
       event.preventDefault();
       event.stopPropagation();
-
-      if (isBack) {
+      if (event.button === 3) {
         useTabs.getState().goBackTabHistory();
-        return;
+      } else {
+        useTabs.getState().goForwardTabHistory();
       }
-
-      useTabs.getState().goForwardTabHistory();
     };
 
+    const suppressMouseSideButton = (event: MouseEvent) => {
+      if (event.button !== 3 && event.button !== 4) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    document.addEventListener("keydown", dispatcher, true);
     window.addEventListener("mousedown", handleMouseSideButton, true);
-    window.addEventListener("mouseup", handleMouseSideButton, true);
-    window.addEventListener("auxclick", handleMouseSideButton, true);
+    window.addEventListener("mouseup", suppressMouseSideButton, true);
+    window.addEventListener("auxclick", suppressMouseSideButton, true);
     return () => {
+      document.removeEventListener("keydown", dispatcher, true);
       window.removeEventListener("mousedown", handleMouseSideButton, true);
-      window.removeEventListener("mouseup", handleMouseSideButton, true);
-      window.removeEventListener("auxclick", handleMouseSideButton, true);
+      window.removeEventListener("mouseup", suppressMouseSideButton, true);
+      window.removeEventListener("auxclick", suppressMouseSideButton, true);
     };
   }, []);
 }

@@ -9,6 +9,7 @@ import {
 } from "@/stores/useSettings"
 import { SettingsSectionCard } from "./SettingsSectionCard"
 import { ShortcutField } from "./ShortcutField"
+import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
 
 interface SettingsShortcutsProps {
   closeTabShortcut: string
@@ -23,7 +24,10 @@ interface SettingsShortcutsProps {
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]"
 
+const FIXED_APP_SHORTCUTS = getFixedAppShortcuts()
+
 const FIXED_SHORTCUT_VALUES = [
+  ...Object.values(FIXED_APP_SHORTCUTS),
   ...Array.from({ length: 9 }, (_, index) => `Mod+${index + 1}`),
   "Ctrl+Tab",
   "Ctrl+Shift+Tab",
@@ -130,6 +134,10 @@ function makeCloseSetter(
 }
 
 const FIXED_SHORTCUTS = [
+  { label: "新建笔记", shortcut: FIXED_APP_SHORTCUTS.newNote },
+  { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
+  { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab },
+  { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
   { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9" },
   { label: "循环切换标签页", shortcut: "Ctrl+Tab" },
   { label: "反向循环切换标签页", shortcut: "Ctrl+Shift+Tab" },
@@ -202,7 +210,7 @@ export function SettingsShortcuts({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-2xl font-semibold tracking-tight text-foreground">快捷键</h3>
-          <p className="mt-1 text-sm text-muted-foreground">自定义应用内的键盘快捷键。</p>
+          <p className="mt-1 text-sm text-muted-foreground">自定义应用内的键盘快捷键或鼠标侧键。</p>
         </div>
         <Button
           variant="outline"
@@ -242,56 +250,6 @@ export function SettingsShortcuts({
             value={appShortcuts.openSearch ?? DEFAULT_APP_SHORTCUTS.openSearch}
             onChange={safeSetAppShortcut("openSearch")}
             resetValue={DEFAULT_APP_SHORTCUTS.openSearch}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-open-settings"
-            title="打开设置"
-            description="直接跳转到设置页面。"
-            value={appShortcuts.openSettings ?? DEFAULT_APP_SHORTCUTS.openSettings}
-            onChange={safeSetAppShortcut("openSettings")}
-            resetValue={DEFAULT_APP_SHORTCUTS.openSettings}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-editor-find"
-            title="页内查找"
-            description="在当前编辑器内开启文字查找。"
-            value={appShortcuts.editorFindOpen ?? DEFAULT_APP_SHORTCUTS.editorFindOpen}
-            onChange={safeSetAppShortcut("editorFindOpen")}
-            resetValue={DEFAULT_APP_SHORTCUTS.editorFindOpen}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-new-note"
-            title="新建笔记"
-            description="在当前记事本中快速新建一篇笔记。"
-            value={appShortcuts.newNote ?? DEFAULT_APP_SHORTCUTS.newNote}
-            onChange={safeSetAppShortcut("newNote")}
-            resetValue={DEFAULT_APP_SHORTCUTS.newNote}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-save-note"
-            title="保存笔记"
-            description="立即将当前笔记内容写入存储。"
-            value={appShortcuts.saveNote ?? DEFAULT_APP_SHORTCUTS.saveNote}
-            onChange={safeSetAppShortcut("saveNote")}
-            resetValue={DEFAULT_APP_SHORTCUTS.saveNote}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-reopen-tab"
-            title="恢复关闭的标签页"
-            description="重新打开最近关闭的标签页。"
-            value={appShortcuts.reopenTab ?? DEFAULT_APP_SHORTCUTS.reopenTab}
-            onChange={safeSetAppShortcut("reopenTab")}
-            resetValue={DEFAULT_APP_SHORTCUTS.reopenTab}
           />
         </div>
         <div className="mt-2">
@@ -358,7 +316,9 @@ export function SettingsShortcuts({
       </SettingsSectionCard>
 
       <SettingsSectionCard title="固定快捷键">
-        <p className="mb-3 text-xs text-muted-foreground">以下快捷键固定内置，不可修改。</p>
+        <p className="mb-3 text-xs text-muted-foreground">
+          以下快捷键固定内置，不参与云同步；在不同系统上会自动换成对应按键。
+        </p>
         <div className="space-y-0.5">
           {FIXED_SHORTCUTS.map((item) => (
             <div

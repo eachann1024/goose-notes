@@ -12,9 +12,18 @@ interface SettingsAppearanceProps {
   setGlobalEditorFullWidth: (enabled: boolean) => void;
   tableEvenColumnWidth: boolean;
   setTableEvenColumnWidth: (enabled: boolean) => void;
-  customFonts: Record<"default" | "serif" | "mono", { label: string | null; font: string | null }>;
-  setCustomLabel: (type: "default" | "serif" | "mono", label: string | null) => void;
-  setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
+  customFonts: Record<
+    "default" | "serif" | "mono",
+    { label: string | null; font: string | null }
+  >;
+  setCustomLabel: (
+    type: "default" | "serif" | "mono",
+    label: string | null,
+  ) => void;
+  setCustomFont: (
+    type: "default" | "serif" | "mono",
+    font: string | null,
+  ) => void;
   uiFontSize: "small" | "normal";
   setUIFontSize: (size: "small" | "normal") => void;
   hideExpandArrows: boolean;
@@ -33,7 +42,11 @@ const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
     label: "Dracula",
     description: "暗色使用 Dracula，浅色搭配柔和亮色",
   },
-  { value: "night", label: "Tokyo Night", description: "东京夜系风格，自动适配日夜" },
+  {
+    value: "night",
+    label: "Tokyo Night",
+    description: "东京夜系风格，自动适配日夜",
+  },
   { value: "nord", label: "Nord", description: "兼容旧版 Nord，深浅自动配对" },
 ];
 
@@ -49,8 +62,10 @@ const fontPlaceholders = {
   mono: "例：JetBrains Mono",
 };
 const fontPreviewText = {
-  default: "字体预览 Font Preview：Project Notes v2.1, Weekly Plan, Design Review, Alpha Beta Gamma 0123456789",
-  serif: "衬线预览 Serif Sample：山高水长，风物有信；Reading Journal, Chapter 08, Classic Typography 0123456789",
+  default:
+    "字体预览 Font Preview：Project Notes v2.1, Weekly Plan, Design Review, Alpha Beta Gamma 0123456789",
+  serif:
+    "衬线预览 Serif Sample：山高水长，风物有信；Reading Journal, Chapter 08, Classic Typography 0123456789",
   mono: "Monospace Preview: const releaseTag = 'build_2026_Q1_rc07'; function renderPreview(){ return 'AaBbCc 0123456789'; }",
 };
 
@@ -86,7 +101,9 @@ export function SettingsAppearance({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">外观</h3>
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+          外观
+        </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           自定义界面的外观和感觉。
         </p>
@@ -98,7 +115,10 @@ export function SettingsAppearance({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <LucideIcons.SunMoon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <LucideIcons.SunMoon
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
             <Label htmlFor="dark-mode">深色模式</Label>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
@@ -158,14 +178,20 @@ export function SettingsAppearance({
           </div>
         </div>
 
-        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.ALargeSmall className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.ALargeSmall
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label>界面字体大小</Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              调整整体界面的文字大小；{primaryModifier} + / - / 0 会调整并保存编辑器字号。
+              调整整体界面的文字大小；{primaryModifier} + / - / 0
+              会调整并保存编辑器字号。
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
@@ -199,11 +225,19 @@ export function SettingsAppearance({
         title="编辑器布局"
         description="你可以一键让所有记事本都使用更开阔的编辑宽度。"
       >
-        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.StretchHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="global-editor-full-width" className="cursor-pointer">
+              <LucideIcons.StretchHorizontal
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label
+                htmlFor="global-editor-full-width"
+                className="cursor-pointer"
+              >
                 全局默认全宽
               </Label>
             </div>
@@ -218,11 +252,19 @@ export function SettingsAppearance({
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>
-        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+        <div
+          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.Table2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="table-even-column-width" className="cursor-pointer">
+              <LucideIcons.Table2
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label
+                htmlFor="table-even-column-width"
+                className="cursor-pointer"
+              >
                 表格两端对齐
               </Label>
             </div>
@@ -237,16 +279,21 @@ export function SettingsAppearance({
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>
-        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+        <div
+          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.ChevronsDownUp className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.ChevronsDownUp
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label htmlFor="hide-expand-arrows" className="cursor-pointer">
                 隐藏展开箭头
               </Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              侧栏不常驻小箭头；移到有子项的行上时，图标位会变成箭头，点击即可展开或收起。
+              默认以图标下方短线提示可展开项；悬停该行时显示箭头，可点击展开或收起。
             </p>
           </div>
           <Switch
@@ -259,7 +306,15 @@ export function SettingsAppearance({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Code2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />主题与代码风格</span>}
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Code2
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            主题与代码风格
+          </span>
+        }
         description="选择代码块的配色方案，深浅模式自动适配。"
       >
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -288,7 +343,15 @@ export function SettingsAppearance({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Type className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />自定义字体</span>}
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Type
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            自定义字体
+          </span>
+        }
         description="填写系统已安装的字体名；留空则用默认字体。"
       >
         <div className="space-y-4">

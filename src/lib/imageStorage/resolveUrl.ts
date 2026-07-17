@@ -8,37 +8,36 @@
  * 网络 URL / data: / blob: 不经过 createObjectURL，原样返回，不缓存。
  */
 
-const MAX_OBJECT_URL_CACHE_SIZE = 256
+const MAX_OBJECT_URL_CACHE_SIZE = 256;
 
 // 模块级缓存：ref → ObjectURL
-const objectUrlCache = new Map<string, string>()
+const objectUrlCache = new Map<string, string>();
 
 function revokeObjectUrl(url: string) {
   try {
-    URL.revokeObjectURL(url)
+    URL.revokeObjectURL(url);
   } catch {
     // ignore browser/runtime revoke differences
   }
 }
 
 function rememberObjectUrl(cacheKey: string, objectUrl: string) {
-  objectUrlCache.set(cacheKey, objectUrl)
+  objectUrlCache.set(cacheKey, objectUrl);
 
   while (objectUrlCache.size > MAX_OBJECT_URL_CACHE_SIZE) {
     const oldest = objectUrlCache.entries().next().value as
-      | [string, string]
-      | undefined
-    if (!oldest) return
-    objectUrlCache.delete(oldest[0])
-    revokeObjectUrl(oldest[1])
+      [string, string] | undefined;
+    if (!oldest) return;
+    objectUrlCache.delete(oldest[0]);
+    revokeObjectUrl(oldest[1]);
   }
 }
 
 export function clearResolvedImageObjectUrlCache() {
   for (const objectUrl of objectUrlCache.values()) {
-    revokeObjectUrl(objectUrl)
+    revokeObjectUrl(objectUrl);
   }
-  objectUrlCache.clear()
+  objectUrlCache.clear();
 }
 
 /**
@@ -53,56 +52,54 @@ export async function resolveImageRefToUrl(
 ): Promise<string> {
   // 网络 URL / data: / blob: 原样返回，不缓存
   if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('data:') ||
-    url.startsWith('blob:')
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
   ) {
-    return url
+    return url;
   }
 
   // 本地文件路径（./assets/ 等）
-  const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlobAsync } = await import(
-    './strategies/file-system'
-  )
+  const { isLocalFilePath, resolveToAbsolute, readLocalFileAsBlobAsync } =
+    await import("./strategies/file-system");
   if (isLocalFilePath(url)) {
-    const isAbsolutePath = url.startsWith('/') || /^[A-Za-z]:[\\/]/.test(url)
+    const isAbsolutePath = url.startsWith("/") || /^[A-Za-z]:[\\/]/.test(url);
     const fullPath = isAbsolutePath
       ? url
       : pageLocalFilePath
-        ? resolveToAbsolute(
-            pageLocalFilePath.replace(/[\\/][^\\/]+$/, ''),
-            url,
-          )
-        : null
+        ? resolveToAbsolute(pageLocalFilePath.replace(/[\\/][^\\/]+$/, ""), url)
+        : null;
 
     if (fullPath) {
-      const cacheKey = `local:${fullPath}`
-      const cached = objectUrlCache.get(cacheKey)
-      if (cached) return cached
+      const cacheKey = `local:${fullPath}`;
+      const cached = objectUrlCache.get(cacheKey);
+      if (cached) return cached;
 
-      const blob = await readLocalFileAsBlobAsync(fullPath)
+      const blob = await readLocalFileAsBlobAsync(fullPath);
       if (blob) {
-        const objectUrl = URL.createObjectURL(blob)
-        rememberObjectUrl(cacheKey, objectUrl)
-        return objectUrl
+        const objectUrl = URL.createObjectURL(blob);
+        rememberObjectUrl(cacheKey, objectUrl);
+        return objectUrl;
       }
     }
-    return url
+    return url;
   }
 
   // 命中缓存：复用已有 ObjectURL
-  const cached = objectUrlCache.get(url)
-  if (cached) return cached
+  const cached = objectUrlCache.get(url);
+  if (cached) return cached;
 
-  // att: / uuid: / 兜底 → imageStorage.load()
-  const { imageStorage } = await import('./index')
-  const blob = await imageStorage.load(url)
+  // 视频附件优先走 videoStorage，其他内部引用再走 imageStorage。
+  const { videoStorage } = await import("@/lib/videoStorage");
+  const blob = videoStorage.canHandle(url)
+    ? await videoStorage.load(url, pageLocalFilePath)
+    : await (await import("./index")).imageStorage.load(url);
   if (blob) {
-    const objectUrl = URL.createObjectURL(blob)
-    rememberObjectUrl(url, objectUrl)
-    return objectUrl
+    const objectUrl = URL.createObjectURL(blob);
+    rememberObjectUrl(url, objectUrl);
+    return objectUrl;
   }
 
-  return url
+  return url;
 }

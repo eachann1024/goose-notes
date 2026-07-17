@@ -1,6 +1,7 @@
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -12,23 +13,39 @@ import {
   SortableContext,
   arrayMove,
   rectSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type { SearchProvider } from "@/stores/useSettings";
+import {
+  getSearchProviderTemplateError,
+  type SearchProvider,
+} from "@/stores/settings/types";
 
 interface SearchProviderSortableGridProps {
   providers: SearchProvider[];
   toggleSearchProvider: (id: string) => void;
   reorderSearchProviders: (nextIds: string[]) => void;
+  addCustomSearchProvider: (
+    provider: Pick<SearchProvider, "name" | "urlTemplate">,
+  ) => void;
+  updateCustomSearchProvider: (
+    id: string,
+    provider: Pick<SearchProvider, "name" | "urlTemplate">,
+  ) => void;
+  removeCustomSearchProvider: (id: string) => void;
 }
 
 interface ProviderCardProps {
   provider: SearchProvider;
   onToggle: (id: string) => void;
+  onEdit: (provider: SearchProvider) => void;
+  onRemove: (provider: SearchProvider) => void;
 }
 
 const PROVIDER_ITEM_CLASS =
@@ -37,7 +54,12 @@ const PROVIDER_ITEM_CLASS =
 const PROVIDER_SWITCH_CLASS =
   "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
-function ProviderCard({ provider, onToggle }: ProviderCardProps) {
+function ProviderCard({
+  provider,
+  onToggle,
+  onEdit,
+  onRemove,
+}: ProviderCardProps) {
   const {
     attributes,
     listeners,
@@ -68,7 +90,7 @@ function ProviderCard({ provider, onToggle }: ProviderCardProps) {
         provider.isEnabled
           ? "border-transparent bg-[var(--goose-interactive-selected)]"
           : PROVIDER_ITEM_CLASS,
-        isDragging && "shadow-md"
+        isDragging && "shadow-md",
       )}
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -95,12 +117,34 @@ function ProviderCard({ provider, onToggle }: ProviderCardProps) {
           </Tooltip>
         </TooltipProvider>
       </div>
-      <Switch
-        id={`provider-${provider.id}`}
-        checked={provider.isEnabled ?? false}
-        onCheckedChange={() => onToggle(provider.id)}
-        className={PROVIDER_SWITCH_CLASS}
-      />
+      <div className="flex shrink-0 items-center gap-1">
+        {provider.isCustom && (
+          <>
+            <button
+              type="button"
+              onClick={() => onEdit(provider)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`编辑 ${provider.name}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(provider)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-[hsl(var(--destructive)/0.18)]"
+              aria-label={`删除 ${provider.name}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+        <Switch
+          id={`provider-${provider.id}`}
+          checked={provider.isEnabled ?? false}
+          onCheckedChange={() => onToggle(provider.id)}
+          className={PROVIDER_SWITCH_CLASS}
+        />
+      </div>
     </div>
   );
 }
@@ -119,19 +163,31 @@ export function SearchProviderSortableGrid({
   providers,
   toggleSearchProvider,
   reorderSearchProviders,
+  addCustomSearchProvider,
+  updateCustomSearchProvider,
+  removeCustomSearchProvider,
 }: SearchProviderSortableGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [urlTemplate, setUrlTemplate] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 6,
       },
-    })
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const activeProvider = useMemo(
     () => providers.find((provider) => provider.id === activeId) ?? null,
-    [providers, activeId]
+    [providers, activeId],
   );
 
   const handleDragStart = ({ active }: DragStartEvent) => {
@@ -142,12 +198,81 @@ export function SearchProviderSortableGrid({
     setActiveId(null);
     if (!over || active.id === over.id) return;
 
-    const oldIndex = providers.findIndex((provider) => provider.id === active.id);
+    const oldIndex = providers.findIndex(
+      (provider) => provider.id === active.id,
+    );
     const newIndex = providers.findIndex((provider) => provider.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(providers, oldIndex, newIndex);
     reorderSearchProviders(next.map((provider) => provider.id));
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditingId(null);
+    setName("");
+    setUrlTemplate("");
+    setNameError(null);
+    setUrlError(null);
+  };
+
+  const startAdding = () => {
+    setEditingId(null);
+    setName("");
+    setUrlTemplate("");
+    setNameError(null);
+    setUrlError(null);
+    setFormOpen(true);
+  };
+
+  const startEditing = (provider: SearchProvider) => {
+    setEditingId(provider.id);
+    setName(provider.name);
+    setUrlTemplate(provider.urlTemplate);
+    setNameError(null);
+    setUrlError(null);
+    setFormOpen(true);
+  };
+
+  const handleRemove = (provider: SearchProvider) => {
+    removeCustomSearchProvider(provider.id);
+    if (editingId === provider.id) closeForm();
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedName = name.trim();
+    const normalizedTemplate = urlTemplate.trim();
+    const duplicateName = providers.some(
+      (provider) =>
+        provider.id !== editingId &&
+        provider.name.trim().toLocaleLowerCase() ===
+          normalizedName.toLocaleLowerCase(),
+    );
+    const nextNameError = !normalizedName
+      ? "请输入名称"
+      : duplicateName
+        ? "已有同名搜索引擎"
+        : null;
+    const nextUrlError = getSearchProviderTemplateError(normalizedTemplate);
+
+    setNameError(nextNameError);
+    setUrlError(nextUrlError);
+    if (nextNameError || nextUrlError) return;
+
+    if (editingId) {
+      updateCustomSearchProvider(editingId, {
+        name: normalizedName,
+        urlTemplate: normalizedTemplate,
+      });
+    } else {
+      addCustomSearchProvider({
+        name: normalizedName,
+        urlTemplate: normalizedTemplate,
+      });
+    }
+    closeForm();
   };
 
   return (
@@ -168,6 +293,8 @@ export function SearchProviderSortableGrid({
               key={provider.id}
               provider={provider}
               onToggle={toggleSearchProvider}
+              onEdit={startEditing}
+              onRemove={handleRemove}
             />
           ))}
         </div>
@@ -176,6 +303,109 @@ export function SearchProviderSortableGrid({
       <DragOverlay dropAnimation={null}>
         <ProviderOverlay provider={activeProvider} />
       </DragOverlay>
+
+      {formOpen ? (
+        <form
+          onSubmit={handleSubmit}
+          className="mt-3 rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] p-4 dark:bg-[hsl(var(--foreground)/0.08)]"
+        >
+          <div className="mb-3">
+            <p className="text-sm font-medium text-foreground">
+              {editingId ? "编辑自定义搜索" : "添加自定义搜索"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              在搜索网址中用 %s 表示右键菜单里的搜索内容。
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="custom-search-name">名称</Label>
+              <Input
+                id="custom-search-name"
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setNameError(null);
+                }}
+                placeholder="例如：知乎"
+                maxLength={30}
+                autoFocus
+                aria-invalid={Boolean(nameError)}
+                aria-describedby={
+                  nameError ? "custom-search-name-error" : undefined
+                }
+              />
+              {nameError && (
+                <p
+                  id="custom-search-name-error"
+                  className="text-xs text-destructive"
+                  role="alert"
+                >
+                  {nameError}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="custom-search-url">搜索网址</Label>
+              <Input
+                id="custom-search-url"
+                value={urlTemplate}
+                onChange={(event) => {
+                  setUrlTemplate(event.target.value);
+                  setUrlError(null);
+                }}
+                placeholder="https://example.com/search?q=%s"
+                inputMode="url"
+                spellCheck={false}
+                aria-invalid={Boolean(urlError)}
+                aria-describedby={
+                  urlError
+                    ? "custom-search-url-error"
+                    : "custom-search-url-help"
+                }
+              />
+              {urlError ? (
+                <p
+                  id="custom-search-url-error"
+                  className="text-xs text-destructive"
+                  role="alert"
+                >
+                  {urlError}
+                </p>
+              ) : (
+                <p
+                  id="custom-search-url-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  仅支持 http 或 https，且需要包含一个 %s。
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={closeForm}>
+              取消
+            </Button>
+            <Button type="submit" size="sm">
+              {editingId ? "保存" : "添加"}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={startAdding}
+          className="mt-3 text-muted-foreground hover:text-foreground"
+        >
+          <Plus className="h-4 w-4" />
+          添加自定义搜索
+        </Button>
+      )}
     </DndContext>
   );
 }

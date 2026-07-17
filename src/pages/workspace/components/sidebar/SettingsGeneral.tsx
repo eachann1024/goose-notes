@@ -20,6 +20,14 @@ interface SettingsGeneralProps {
   searchProviders: SearchProvider[];
   toggleSearchProvider: (id: string) => void;
   reorderSearchProviders: (nextIds: string[]) => void;
+  addCustomSearchProvider: (
+    provider: Pick<SearchProvider, "name" | "urlTemplate">,
+  ) => void;
+  updateCustomSearchProvider: (
+    id: string,
+    provider: Pick<SearchProvider, "name" | "urlTemplate">,
+  ) => void;
+  removeCustomSearchProvider: (id: string) => void;
   openSearchInUtools: boolean;
   setOpenSearchInUtools: (enabled: boolean) => void;
   windowHeight: number;
@@ -34,11 +42,12 @@ interface SettingsGeneralProps {
   setShowRecentInSearch: (enabled: boolean) => void;
   notebookDropdownHoverExpand: boolean;
   setNotebookDropdownHoverExpand: (enabled: boolean) => void;
-  sidebarClickBehavior: "preview" | "replace-current";
-  setSidebarClickBehavior: (behavior: "preview" | "replace-current") => void;
   customActions?: CustomAction[];
   addCustomAction?: (action: Omit<CustomAction, "id">) => void;
-  updateCustomAction?: (id: string, updates: Partial<Omit<CustomAction, "id">>) => void;
+  updateCustomAction?: (
+    id: string,
+    updates: Partial<Omit<CustomAction, "id">>,
+  ) => void;
   removeCustomAction?: (id: string) => void;
 }
 
@@ -48,11 +57,13 @@ const SETTINGS_OPTION_ROW_CLASS =
 const SETTINGS_SWITCH_CLASS =
   "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
-
 export function SettingsGeneral({
   searchProviders,
   toggleSearchProvider,
   reorderSearchProviders,
+  addCustomSearchProvider,
+  updateCustomSearchProvider,
+  removeCustomSearchProvider,
   openSearchInUtools,
   setOpenSearchInUtools,
   windowHeight,
@@ -67,8 +78,6 @@ export function SettingsGeneral({
   setShowRecentInSearch,
   notebookDropdownHoverExpand,
   setNotebookDropdownHoverExpand,
-  sidebarClickBehavior,
-  setSidebarClickBehavior,
   customActions = [],
   addCustomAction = () => {},
   updateCustomAction = () => {},
@@ -77,15 +86,24 @@ export function SettingsGeneral({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">通用</h3>
-        <p className="mt-1 text-sm text-muted-foreground">配置应用的通用设置。</p>
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+          通用
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          配置应用的通用设置。
+        </p>
       </div>
 
       <SettingsSectionCard title="行为设置">
-        <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.FileClock className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.FileClock
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label htmlFor="auto-open-last-note" className="cursor-pointer">
                 自动打开上次笔记
               </Label>
@@ -101,10 +119,15 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.MousePointer2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.MousePointer2
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label htmlFor="notebook-hover-expand" className="cursor-pointer">
                 悬停展开笔记本切换
               </Label>
@@ -120,32 +143,19 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.PanelTop className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="sidebar-click-preview" className="cursor-pointer">
-                侧栏单击使用预览标签
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              开启后单击侧栏页面会在临时预览标签打开（类似 VSCode）；关闭则替换当前普通标签。固定标签始终不会被替换。
-            </p>
-          </div>
-          <Switch
-            id="sidebar-click-preview"
-            checked={sidebarClickBehavior === "preview"}
-            onCheckedChange={(enabled) =>
-              setSidebarClickBehavior(enabled ? "preview" : "replace-current")
-            }
-            className={SETTINGS_SWITCH_CLASS}
-          />
-        </div>
-        <div className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <LucideIcons.TimerOff className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="auto-close-inactive-tabs" className="cursor-pointer">
+              <LucideIcons.TimerOff
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label
+                htmlFor="auto-close-inactive-tabs"
+                className="cursor-pointer"
+              >
                 自动关闭未访问标签
               </Label>
             </div>
@@ -182,10 +192,15 @@ export function SettingsGeneral({
       </SettingsSectionCard>
 
       <SettingsSectionCard title="搜索设置">
-        <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.History className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.History
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label htmlFor="show-recent-in-search" className="cursor-pointer">
                 搜索框显示最近访问
               </Label>
@@ -204,27 +219,44 @@ export function SettingsGeneral({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Search className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />搜索引擎</span>}
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Search
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            搜索引擎
+          </span>
+        }
         description="配置右键菜单中显示的搜索引擎，支持拖拽排序。"
       >
         <SearchProviderSortableGrid
           providers={searchProviders}
           toggleSearchProvider={toggleSearchProvider}
           reorderSearchProviders={reorderSearchProviders}
+          addCustomSearchProvider={addCustomSearchProvider}
+          updateCustomSearchProvider={updateCustomSearchProvider}
+          removeCustomSearchProvider={removeCustomSearchProvider}
         />
       </SettingsSectionCard>
 
       <SettingsSectionCard title="插件设置">
-        <div className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.Plug2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <LucideIcons.Plug2
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <Label htmlFor="open-in-utools" className="cursor-pointer">
                 使用 uTools 打开链接
               </Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              开启后，搜索结果和笔记中的网页链接会在 uTools 内置浏览器里打开；关闭则用系统浏览器。
+              开启后，搜索结果和笔记中的网页链接会在 uTools
+              内置浏览器里打开；关闭则用系统浏览器。
             </p>
           </div>
           <Switch
@@ -239,7 +271,10 @@ export function SettingsGeneral({
       <SettingsSectionCard title="窗口高度">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <LucideIcons.MoveVertical className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <LucideIcons.MoveVertical
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
             <Label>窗口高度</Label>
           </div>
           <span className="text-sm text-muted-foreground">
@@ -264,7 +299,15 @@ export function SettingsGeneral({
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Zap className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />快捷动作</span>}
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Zap
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            快捷动作
+          </span>
+        }
         description="右键菜单里直接跳转到其他插件，名称和指令都填完才能生效。"
         actions={
           <Button
@@ -353,7 +396,9 @@ export function SettingsGeneral({
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">暂无快捷动作，点击右上角添加。</p>
+          <p className="text-xs text-muted-foreground">
+            暂无快捷动作，点击右上角添加。
+          </p>
         )}
       </SettingsSectionCard>
     </div>

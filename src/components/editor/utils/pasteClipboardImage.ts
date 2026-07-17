@@ -1,8 +1,11 @@
-
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|heic|heif|tiff?)$/i;
+const VIDEO_EXT = /\.(mp4|m4v|mov|webm|avi|mkv|flv|wmv)$/i;
 
 /** 剪贴板 file item 是否应按图片块粘贴（含 Mac 空 file.type、靠 item.type/扩展名判断） */
-export function isPasteableClipboardImageFile(file: File, itemType: string): boolean {
+export function isPasteableClipboardImageFile(
+  file: File,
+  itemType: string,
+): boolean {
   if (itemType.startsWith("image/")) return true;
   if (file.type.startsWith("image/")) return true;
   return IMAGE_EXT.test(file.name);
@@ -19,6 +22,34 @@ export function clipboardHasPasteableImage(
     const file = item.getAsFile();
     if (!file) continue;
     if (isPasteableClipboardImageFile(file, item.type)) return true;
+  }
+  return false;
+}
+
+export function isPasteableClipboardVideoFile(
+  file: File,
+  itemType: string,
+): boolean {
+  return (
+    itemType.startsWith("video/") ||
+    file.type.startsWith("video/") ||
+    VIDEO_EXT.test(file.name)
+  );
+}
+
+export function clipboardHasPasteableMedia(
+  data: DataTransfer | null | undefined,
+): boolean {
+  if (!data?.items?.length) return false;
+  for (let i = 0; i < data.items.length; i++) {
+    const item = data.items[i];
+    const file = item.kind === "file" ? item.getAsFile() : null;
+    if (
+      file &&
+      (isPasteableClipboardImageFile(file, item.type) ||
+        isPasteableClipboardVideoFile(file, item.type))
+    )
+      return true;
   }
   return false;
 }

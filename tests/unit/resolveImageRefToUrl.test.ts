@@ -80,3 +80,33 @@ test("clearResolvedImageObjectUrlCache revokes cached object urls", async () => 
     URL.revokeObjectURL = originalRevokeObjectURL;
   }
 });
+
+test("resolveImageRefToUrl keeps local MP4 video MIME", async () => {
+  const originalCreateObjectURL = URL.createObjectURL;
+  let resolvedMime = "";
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      gooseFs: {
+        readFileBase64Async: async () => "AAAAEA==",
+      },
+    },
+  });
+
+  URL.createObjectURL = ((blob: Blob) => {
+    resolvedMime = blob.type;
+    return "blob:local-video";
+  }) as typeof URL.createObjectURL;
+
+  try {
+    const url = await resolveImageRefToUrl(
+      "./assets/clip.mp4",
+      "C:/notes/page.md",
+    );
+    expect(url).toBe("blob:local-video");
+    expect(resolvedMime).toBe("video/mp4");
+  } finally {
+    URL.createObjectURL = originalCreateObjectURL;
+  }
+});

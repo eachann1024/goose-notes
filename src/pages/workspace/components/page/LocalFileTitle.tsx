@@ -20,9 +20,14 @@ import { sanitizeFilenameSegment, splitFilePath } from "@/lib/local-title-bindin
 interface LocalFileTitleProps {
   pageId: string;
   localFilePath: string;
+  onEnterBelow?: () => void;
 }
 
-export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
+export function LocalFileTitle({
+  pageId,
+  localFilePath,
+  onEnterBelow,
+}: LocalFileTitleProps) {
   // Derive display name from the current file path (re-derives on pageId change / rename).
   const displayName = (() => {
     const { base } = splitFilePath(localFilePath);
@@ -87,7 +92,8 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
       const input = inputRef.current;
       if (input) {
         input.focus();
-        input.select();
+        const caret = input.value.length;
+        input.setSelectionRange(caret, caret);
       }
     }
   }, [editing]);
@@ -97,12 +103,13 @@ export function LocalFileTitle({ pageId, localFilePath }: LocalFileTitleProps) {
       if (e.key === "Enter") {
         e.preventDefault();
         void commitRename();
+        onEnterBelow?.();
       } else if (e.key === "Escape") {
         e.preventDefault();
         cancelEditing();
       }
     },
-    [commitRename, cancelEditing],
+    [commitRename, cancelEditing, onEnterBelow],
   );
 
   if (editing) {

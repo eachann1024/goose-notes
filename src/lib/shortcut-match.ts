@@ -32,6 +32,27 @@ export function shortcutHasModifier(shortcut: string) {
     .some(isModifierToken);
 }
 
+export type MouseShortcut = "MouseBack" | "MouseForward";
+
+export function getShortcutFromMouseEvent(
+  event: Pick<MouseEvent, "button">,
+): MouseShortcut | "" {
+  if (event.button === 3) return "MouseBack";
+  if (event.button === 4) return "MouseForward";
+  return "";
+}
+
+export function matchMouseShortcut(
+  event: Pick<MouseEvent, "button">,
+  shortcut: string,
+) {
+  const mouseShortcut = getShortcutFromMouseEvent(event);
+  return (
+    !!mouseShortcut &&
+    mouseShortcut.toLowerCase() === shortcut.trim().toLowerCase()
+  );
+}
+
 export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   const trimmed = shortcut.trim();
   if (!trimmed) return false;

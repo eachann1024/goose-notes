@@ -155,7 +155,9 @@ export const usePages = create<PagesState>()((set, get) => ({
         // 标题→文件名的 rename 仍由显式 Cmd/Ctrl+S（saveDirtyLocalPage）处理，
         // 避免输入标题过程中频繁重命名文件。
         // silent=true（切页/normalize 被动同步）时跳过标脏与队列，不触发写盘。
-        set((s) => ({ dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true } }));
+        set((s) => ({
+          dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true },
+        }));
         queueLocalPageSave(id, updates.content, get);
       }
 
@@ -386,8 +388,11 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   loadAllLocalFolderPages: () => loadAllLocalFolderPagesAction(set, get),
 
-  saveLocalPageContent: (pageId: string, content: JSONContent, options?: { force?: boolean }) =>
-    saveLocalPageContentAction(set, get, pageId, content, options),
+  saveLocalPageContent: (
+    pageId: string,
+    content: JSONContent,
+    options?: { force?: boolean },
+  ) => saveLocalPageContentAction(set, get, pageId, content, options),
 
   flushPendingLocalSaves: () => flushPendingLocalSavesAction(set, get),
 
@@ -416,7 +421,14 @@ export const usePages = create<PagesState>()((set, get) => ({
     appendPageContentAction(set, get, pageId, content),
 
   replaceBlockRange: (pageId, startBlockId, endBlockId, newBlocks) =>
-    replaceBlockRangeAction(set, get, pageId, startBlockId, endBlockId, newBlocks),
+    replaceBlockRangeAction(
+      set,
+      get,
+      pageId,
+      startBlockId,
+      endBlockId,
+      newBlocks,
+    ),
 }));
 
 const setupImageStorageResolver = async () => {
@@ -429,7 +441,9 @@ const setupImageStorageResolver = async () => {
     if (!page) return null;
 
     const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-    return notebook?.source === "local-folder" ? notebook.localPath : null;
+    return notebook?.source === "local-folder"
+      ? (page.localFilePath ?? null)
+      : null;
   });
 };
 

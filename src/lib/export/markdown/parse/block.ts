@@ -27,6 +27,14 @@ function indentLevel(line: string): number {
   return count;
 }
 
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 /**
  * 解析嵌套列表（bullet / ordered / checkbox 混嵌），输出 BlockNote 块格式：
  * { type: "bulletListItem"|"numberedListItem"|"checkListItem", props?, content, children? }
@@ -58,7 +66,7 @@ function parseNestedList(
 
     const stripped = line.slice(lvl);
 
-    const taskM = stripped.match(/^-\s+\[([ xX])\]\s+(.+)$/);
+    const taskM = stripped.match(/^-\s+\[([ xX])\](?:\s+(.*))?$/);
     const orderedM = !taskM && stripped.match(/^(\d+)\.\s+(.+)$/);
     const bulletM = !taskM && !orderedM && stripped.match(/^[-*+]\s+(.+)$/);
 
@@ -69,7 +77,7 @@ function parseNestedList(
       item = {
         type: "checkListItem",
         props: { checked: taskM[1].toLowerCase() === "x" },
-        content: parseInline(taskM[2]),
+        content: parseInline(taskM[2] ?? ""),
       };
     } else if (orderedM) {
       const num = parseInt(orderedM[1], 10);
@@ -106,7 +114,8 @@ function collectChildren(
   parseInline: (t: string) => any[],
 ): { items: any[]; nextIndex: number } {
   const i = startI;
-  if (i >= lines.length || !lines[i].trim()) return { items: [], nextIndex: startI };
+  if (i >= lines.length || !lines[i].trim())
+    return { items: [], nextIndex: startI };
   const childIndent = indentLevel(lines[i]);
   if (childIndent < minIndent) return { items: [], nextIndex: startI };
   return parseNestedList(lines, i, childIndent, parseInline);
@@ -151,13 +160,15 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    // ── video 块（serialize 写出的 <video src="…"></video> 单行）
+    // ── video 块（serialize 写出的 <video src="…" controls ...></video> 单行）
     // video 在 raw-guard allowlist 中不会被包成 goose-raw-block，这里映射回 video 块
-    const videoLineMatch = trimmedLine.match(/^<video\s+src="([^"]*)"[^>]*>\s*<\/video>$/i);
+    const videoLineMatch = trimmedLine.match(
+      /^<video\s+src="([^"]*)"[^>]*>\s*<\/video>$/i,
+    );
     if (videoLineMatch) {
       content.push({
         type: "video",
-        props: { url: videoLineMatch[1] },
+        props: { url: decodeHtmlAttribute(videoLineMatch[1]) },
       });
       i++;
       continue;
@@ -338,7 +349,7 @@ export function markdownToJsonContent(markdown: string): any {
     const baseIndent = indentLevel(line);
     const stripped = line.slice(baseIndent);
     if (
-      stripped.match(/^-\s+\[[ xX]\]\s+/) ||
+      stripped.match(/^-\s+\[[ xX]\](?:\s+.*)?$/) ||
       stripped.match(/^[-*+]\s+\S/) ||
       stripped.match(/^\d+\.\s+\S/)
     ) {
@@ -356,7 +367,9 @@ export function markdownToJsonContent(markdown: string): any {
     }
 
     // 图片：![alt](url){width=N align=X}（width → previewWidth，align → textAlignment）
-    const imgMatch = trimmedLine.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/);
+    const imgMatch = trimmedLine.match(
+      /^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/,
+    );
     if (imgMatch) {
       const metaRaw = imgMatch[3] || "";
       const metaMap = new Map<string, string>();

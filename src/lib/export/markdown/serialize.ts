@@ -33,7 +33,8 @@ function serializeCodeFenceInfo(
   attrs?: Record<string, unknown>,
 ): string {
   const tokens: string[] = [];
-  const normalizedLanguage = typeof language === "string" ? language.trim() : "";
+  const normalizedLanguage =
+    typeof language === "string" ? language.trim() : "";
   if (normalizedLanguage) {
     tokens.push(normalizedLanguage);
   }
@@ -105,8 +106,10 @@ function blockNoteInlineToText(content: any): string {
       // 高亮 backgroundColor=yellow → ==…==，其他颜色组合走 span
       const hasUnderline = styles.underline === true;
       const hasColor = styles.textColor && styles.textColor !== "default";
-      const hasBg = styles.backgroundColor && styles.backgroundColor !== "default";
-      const isYellowHighlight = hasBg && styles.backgroundColor === "yellow" && !hasColor;
+      const hasBg =
+        styles.backgroundColor && styles.backgroundColor !== "default";
+      const isYellowHighlight =
+        hasBg && styles.backgroundColor === "yellow" && !hasColor;
 
       if (styles.bold) text = `**${text}**`;
       if (styles.italic) text = `*${text}*`;
@@ -130,6 +133,14 @@ function blockNoteInlineToText(content: any): string {
 function escapePipeInCell(value: string): string {
   // GFM 表格 cell 里的 | 必须转义，否则会被解析成列分隔符
   return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 // ── 列表序列化（BlockNote 块格式：连续 *ListItem 顶层块组成一个列表）────────────
@@ -156,7 +167,11 @@ const CHILDREN_CONSUMED_TYPES = new Set([
  * 子缩进按 CommonMark 标记宽度对齐：`- ` → 2 空格，`1. ` → 3，`10. ` → 4。
  * checkbox 的 `[x]` 属于内容而非标记，继续行对齐 `- ` 之后（2 空格）。
  */
-function serializeListItemBlock(item: any, indent: string, num: number | null): string {
+function serializeListItemBlock(
+  item: any,
+  indent: string,
+  num: number | null,
+): string {
   const text = blockNoteInlineToText(item.content);
   let marker: string;
   let childIndentWidth: number;
@@ -172,7 +187,10 @@ function serializeListItemBlock(item: any, indent: string, num: number | null): 
   }
   let line = `${indent}${marker}${text}`;
   if (Array.isArray(item.children) && item.children.length > 0) {
-    const childMd = serializeBlocks(item.children, indent + " ".repeat(childIndentWidth));
+    const childMd = serializeBlocks(
+      item.children,
+      indent + " ".repeat(childIndentWidth),
+    );
     if (childMd) line += "\n" + childMd;
   }
   return line;
@@ -247,7 +265,8 @@ function serializeLegacyListItem(item: any, indent: string): string {
 
   let line: string;
   if (item.type === "taskItem") {
-    const checked = item?.attrs?.checked === true || item?.props?.checked === true;
+    const checked =
+      item?.attrs?.checked === true || item?.props?.checked === true;
     line = `${indent}- [${checked ? "x" : " "}] ${legacyItemInline(item)}`;
   } else if (item.type === "listItem") {
     if (item.attrs?.start != null) {
@@ -359,7 +378,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       if (!tableRows.length) return "";
       const colCount = Math.max(...tableRows.map((r) => r.length), 1);
       const padRow = (cells: any[]) => {
-        const out = cells.map((cell) => escapePipeInCell(blockNoteInlineToText(cell)));
+        const out = cells.map((cell) =>
+          escapePipeInCell(blockNoteInlineToText(cell)),
+        );
         while (out.length < colCount) out.push("");
         return out;
       };
@@ -394,7 +415,7 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     case "video": {
       const p = block.props ?? block.attrs ?? {};
       const src = p.url || p.src || "";
-      result = `<video src="${src}"></video>`;
+      result = `<video src="${escapeHtmlAttribute(src)}" controls preload="metadata"></video>`;
       break;
     }
 
@@ -406,7 +427,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "toggleListItem": {
       // BlockNote 折叠块 ↔ <details><summary>…</summary>…</details>
-      const children: any[] = Array.isArray(block.children) ? block.children : [];
+      const children: any[] = Array.isArray(block.children)
+        ? block.children
+        : [];
       const innerMd = children.length ? serializeBlocks(children, "") : "";
       result = innerMd
         ? `<details>\n<summary>${text}</summary>\n\n${innerMd}\n\n</details>`
@@ -416,9 +439,15 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "details": {
       // 极旧 parse 三件套格式：content = [detailsSummary, detailsContent]
-      const contentArr: any[] = Array.isArray(block.content) ? block.content : [];
-      const summaryBlock = contentArr.find((c: any) => c?.type === "detailsSummary");
-      const contentBlock = contentArr.find((c: any) => c?.type === "detailsContent");
+      const contentArr: any[] = Array.isArray(block.content)
+        ? block.content
+        : [];
+      const summaryBlock = contentArr.find(
+        (c: any) => c?.type === "detailsSummary",
+      );
+      const contentBlock = contentArr.find(
+        (c: any) => c?.type === "detailsContent",
+      );
       const summaryText = summaryBlock
         ? blockNoteInlineToText(summaryBlock.content)
         : "详情";
@@ -468,7 +497,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     }
 
     case "blockquote": {
-      const innerContent: any[] = Array.isArray(block.content) ? block.content : [];
+      const innerContent: any[] = Array.isArray(block.content)
+        ? block.content
+        : [];
       const quoteText = innerContent
         .map((b: any) => blockNoteInlineToText(b?.content ?? b))
         .join("\n");

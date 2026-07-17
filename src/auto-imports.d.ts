@@ -75,6 +75,7 @@ declare global {
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MIN
+  const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
@@ -89,6 +90,8 @@ declare global {
   const Label: typeof import('./components/ui/label').Label
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
+  const MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').MAX_VIDEO_ATTACHMENT_SIZE
+  const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').NON_CUSTOMIZABLE_APP_SHORTCUT_IDS
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
@@ -108,6 +111,7 @@ declare global {
   const QUICKNOTE_ZOOM_MAX: typeof import('./stores/useQuickNote').QUICKNOTE_ZOOM_MAX
   const QUICKNOTE_ZOOM_MIN: typeof import('./stores/useQuickNote').QUICKNOTE_ZOOM_MIN
   const QUICKNOTE_ZOOM_STEP: typeof import('./stores/useQuickNote').QUICKNOTE_ZOOM_STEP
+  const REMOVED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').REMOVED_APP_SHORTCUT_IDS
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
@@ -152,6 +156,7 @@ declare global {
   const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const UnderlineType: typeof import('./lib/docxExport/docxStyles').UnderlineType
   const VALID_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').VALID_BLOCK_TYPES
+  const VIDEO_OUTPUT_MIME: typeof import('./lib/videoProcessor').VIDEO_OUTPUT_MIME
   const WELCOME_TAB_PAGE_ID: typeof import('./stores/useTabs').WELCOME_TAB_PAGE_ID
   const activateNotebook: typeof import('./lib/notebookNavigation').activateNotebook
   const applyBlockTypeTransformToEditor: typeof import('./lib/ai-write/index').applyBlockTypeTransformToEditor
@@ -175,6 +180,7 @@ declare global {
   const clearAllLocalMdSnapshots: typeof import('./lib/local-md-snapshot').clearAllLocalMdSnapshots
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clipboardHasPasteableImage: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableImage
+  const clipboardHasPasteableMedia: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableMedia
   const clonePageContent: typeof import('./components/editor/utils/blocknote-content/index').clonePageContent
   const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
   const clsx: typeof import('clsx').clsx
@@ -255,6 +261,7 @@ declare global {
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getElementFromNode: typeof import('./components/editor/utils/selection').getElementFromNode
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
+  const getFixedAppShortcuts: typeof import('./lib/fixed-app-shortcuts').getFixedAppShortcuts
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
@@ -266,7 +273,9 @@ declare global {
   const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
+  const getSelectedImageUrl: typeof import('./components/editor/utils/selection').getSelectedImageUrl
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
+  const getShortcutFromMouseEvent: typeof import('./lib/shortcut-match').getShortcutFromMouseEvent
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const handleFileInsertion: typeof import('./components/editor/utils/handleClipboardFileInsertion').handleFileInsertion
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
@@ -291,14 +300,17 @@ declare global {
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
   const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile
+  const isPasteableClipboardVideoFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardVideoFile
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
+  const isVideoUploadFile: typeof import('./lib/videoProcessor').isVideoUploadFile
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const listWebdavBackups: typeof import('./lib/webdavSync').listWebdavBackups
+  const localAssetPaths: typeof import('./lib/local-folder-asset-maintenance').localAssetPaths
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
@@ -306,6 +318,7 @@ declare global {
   const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
   const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction
+  const matchMouseShortcut: typeof import('./lib/shortcut-match').matchMouseShortcut
   const matchShortcut: typeof import('./lib/shortcut-match').matchShortcut
   const materializeImageBlob: typeof import('./lib/imageProcessor').materializeImageBlob
   const memo: typeof import('react').memo
@@ -370,6 +383,7 @@ declare global {
   const saveBlobAndReveal: typeof import('./lib/export/index').saveBlobAndReveal
   const saveBlobWithPrompt: typeof import('./lib/export/index').saveBlobWithPrompt
   const scanLocalFolderPages: typeof import('./lib/local-folder-scanner').scanLocalFolderPages
+  const scanUnreferencedLocalAssets: typeof import('./lib/local-folder-asset-maintenance').scanUnreferencedLocalAssets
   const selectExpandedIds: typeof import('./stores/useSidebarView').selectExpandedIds
   const selectFavoritesCollapsed: typeof import('./stores/useSidebarView').selectFavoritesCollapsed
   const selectFocusedId: typeof import('./stores/useSidebarView').selectFocusedId
@@ -393,6 +407,7 @@ declare global {
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
+  const transcodeVideo: typeof import('./lib/videoProcessor').transcodeVideo
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
@@ -443,6 +458,7 @@ declare global {
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
   const validateGeneratedBlockStructure: typeof import('./lib/ai-write/index').validateGeneratedBlockStructure
+  const videoStorage: typeof import('./lib/videoStorage').videoStorage
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
   const wasRecentlyInteracting: typeof import('./lib/editor-interaction-signal').wasRecentlyInteracting
   const wasRecentlySelfWritten: typeof import('./lib/local-md-snapshot').wasRecentlySelfWritten
@@ -489,8 +505,14 @@ declare global {
   export type { ImageBufferResult } from './lib/docxExport/docxImages'
   import('./lib/docxExport/docxImages')
   // @ts-ignore
+  export type { FixedAppShortcutId } from './lib/fixed-app-shortcuts'
+  import('./lib/fixed-app-shortcuts')
+  // @ts-ignore
   export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
+  // @ts-ignore
+  export type { UnreferencedLocalAsset } from './lib/local-folder-asset-maintenance'
+  import('./lib/local-folder-asset-maintenance')
   // @ts-ignore
   export type { LocalFolderOpenAppKind, LocalFolderOpenAppCandidate } from './lib/local-folder-open-apps'
   import('./lib/local-folder-open-apps')
@@ -501,6 +523,9 @@ declare global {
   export type { LocalPageIdMap } from './lib/local-page-idmap'
   import('./lib/local-page-idmap')
   // @ts-ignore
+  export type { MouseShortcut } from './lib/shortcut-match'
+  import('./lib/shortcut-match')
+  // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
   // @ts-ignore
@@ -509,6 +534,9 @@ declare global {
   // @ts-ignore
   export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')
+  // @ts-ignore
+  export type { VideoTranscodeProgress } from './lib/videoProcessor'
+  import('./lib/videoProcessor')
   // @ts-ignore
   export type { WebdavBackupFile } from './lib/webdavSync'
   import('./lib/webdavSync')

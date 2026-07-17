@@ -83,7 +83,7 @@ function TreeRowIcon({
     return (
       <button
         type="button"
-        className="group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
+        className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
         draggable={false}
         aria-label={isExpanded ? "折叠子项" : "展开子项"}
         aria-expanded={isExpanded}
@@ -283,9 +283,12 @@ export function renderItem({
   }
   const isActive = context.isSelected;
   const isOver = context.isDraggingOver;
-  const interactive = context.interactiveElementProps as HTMLProps<HTMLDivElement>;
-  const withChildren = context.itemContainerWithChildrenProps as HTMLProps<HTMLLIElement>;
-  const withoutChildren = context.itemContainerWithoutChildrenProps as HTMLProps<HTMLDivElement>;
+  const interactive =
+    context.interactiveElementProps as HTMLProps<HTMLDivElement>;
+  const withChildren =
+    context.itemContainerWithChildrenProps as HTMLProps<HTMLLIElement>;
+  const withoutChildren =
+    context.itemContainerWithoutChildrenProps as HTMLProps<HTMLDivElement>;
 
   const title = getPageTitle(page);
   const notebook = page?.workspaceId
@@ -312,12 +315,17 @@ export function renderItem({
   // 拖入高亮，让人误以为不能拖成子页面。换成紧凑的"图标+标题"小胶囊，
   // 并弱化源行，让落点反馈始终可见。
   const handleDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
-    (interactive.onDragStart as React.DragEventHandler<HTMLDivElement> | undefined)?.(e);
+    (
+      interactive.onDragStart as
+        React.DragEventHandler<HTMLDivElement> | undefined
+    )?.(e);
     if (!e.dataTransfer) return;
 
     const ghost = document.createElement("div");
     ghost.className = "main-tree-drag-ghost";
-    const rowEl = (e.currentTarget as HTMLElement).closest("li")?.querySelector(".main-tree-row");
+    const rowEl = (e.currentTarget as HTMLElement)
+      .closest("li")
+      ?.querySelector(".main-tree-row");
     // 跳过折叠箭头，取页面图标本体
     const iconSvg = rowEl?.querySelector("svg:not(.lucide-chevron-right)");
     if (iconSvg) ghost.appendChild(iconSvg.cloneNode(true));
@@ -352,7 +360,9 @@ export function renderItem({
       if (e.detail <= 1) toggleLocalDirectory();
       return;
     }
-    (interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined)?.(e);
+    (
+      interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined
+    )?.(e);
   };
 
   const row = (
@@ -370,8 +380,8 @@ export function renderItem({
         isPendingFolder
           ? "bg-[var(--goose-interactive-selected)] text-foreground"
           : isActive
-          ? "bg-[var(--goose-interactive-selected)] text-foreground"
-          : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
+            ? "bg-[var(--goose-interactive-selected)] text-foreground"
+            : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
         // drop 高亮：使用 workspace-drag-line token 调性，更克制
         isOver &&
           "bg-[hsl(var(--primary)/0.10)] ring-1 ring-[hsl(var(--primary)/0.38)] ring-inset",
@@ -417,10 +427,7 @@ export function renderItem({
 
   return (
     <li {...withChildren} className="list-none">
-      <SidebarContextMenu
-        page={page}
-        onCreateLocalFolder={onCreateLocalFolder}
-      >
+      <SidebarContextMenu page={page} onCreateLocalFolder={onCreateLocalFolder}>
         {row}
       </SidebarContextMenu>
       {children}

@@ -34,7 +34,9 @@ export function getBlockNoteSlashMenuItems(
   const focusAndScrollTo = (block: { id: string }) => {
     try {
       editor.setTextCursorPosition(block, "end");
-    } catch { /* block 可能已被 BlockNote 内部刷新；忽略 */ }
+    } catch {
+      /* block 可能已被 BlockNote 内部刷新；忽略 */
+    }
     editor.focus();
     // React 自定义块（如 codeBlock）的 contentDOM 挂载是异步的：上面同步设的
     // PM 光标位置在 DOM 里找不到落点，会被回退到块容器外——表现为创建代码块后
@@ -43,7 +45,9 @@ export function getBlockNoteSlashMenuItems(
     window.setTimeout(() => {
       try {
         editor.setTextCursorPosition(block, "end");
-      } catch { /* block 可能已被 BlockNote 内部刷新；忽略 */ }
+      } catch {
+        /* block 可能已被 BlockNote 内部刷新；忽略 */
+      }
       editor.focus();
     }, 0);
     // 等 DOM 更新一帧后再滚动，确保新块已渲染
@@ -75,7 +79,11 @@ export function getBlockNoteSlashMenuItems(
         return { hasTrigger: false, content: c };
       }
       const text = c[0].text || "";
-      const trigger = text.startsWith("/") ? "/" : text.startsWith("、") ? "、" : null;
+      const trigger = text.startsWith("/")
+        ? "/"
+        : text.startsWith("、")
+          ? "、"
+          : null;
       if (!trigger) return { hasTrigger: false, content: c };
       const nextText = text.slice(trigger.length);
       return {
@@ -93,10 +101,13 @@ export function getBlockNoteSlashMenuItems(
     if (hasTrigger) {
       // 目标块若是 inline 内容块（段落/标题/各类列表项），保留剥掉触发符后的 content；
       // 若是结构化块（image/divider 等，content: "none"），不能塞 content。
-      const targetKind = (editor.schema as any).blockSchema?.[block.type]?.content;
+      const targetKind = (editor.schema as any).blockSchema?.[block.type]
+        ?.content;
       target = editor.updateBlock(
         currentBlock,
-        targetKind === "inline" ? { ...block, content: stripped.content } : block,
+        targetKind === "inline"
+          ? { ...block, content: stripped.content }
+          : block,
       );
     } else {
       const isEmpty =
@@ -204,7 +215,16 @@ export function getBlockNoteSlashMenuItems(
       title: "折叠一级标题",
       description: "可展开/收起下方内容的一级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
-      aliases: ["toggleheading", "toggleh1", "toggle", "collapseheading", "fold", "zhediebiaoti", "zhedie", "shouqibiaoti"],
+      aliases: [
+        "toggleheading",
+        "toggleh1",
+        "toggle",
+        "collapseheading",
+        "fold",
+        "zhediebiaoti",
+        "zhedie",
+        "shouqibiaoti",
+      ],
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -215,7 +235,14 @@ export function getBlockNoteSlashMenuItems(
       title: "折叠二级标题",
       description: "可展开/收起下方内容的二级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
-      aliases: ["toggleheading2", "toggleh2", "toggle", "fold", "zhedie", "zhedieerji"],
+      aliases: [
+        "toggleheading2",
+        "toggleh2",
+        "toggle",
+        "fold",
+        "zhedie",
+        "zhedieerji",
+      ],
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -226,7 +253,14 @@ export function getBlockNoteSlashMenuItems(
       title: "折叠三级标题",
       description: "可展开/收起下方内容的三级标题",
       icon: <LucideIcons.ChevronRightSquare size={18} />,
-      aliases: ["toggleheading3", "toggleh3", "toggle", "fold", "zhedie", "zhediesanji"],
+      aliases: [
+        "toggleheading3",
+        "toggleh3",
+        "toggle",
+        "fold",
+        "zhedie",
+        "zhediesanji",
+      ],
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -238,7 +272,15 @@ export function getBlockNoteSlashMenuItems(
       title: "待办事项",
       description: "带有复选框的任务列表",
       icon: <LucideIcons.CheckSquare size={18} />,
-      aliases: ["todo", "task", "daiban", "renwu", "提醒", "提醒事项", "tixing"],
+      aliases: [
+        "todo",
+        "task",
+        "daiban",
+        "renwu",
+        "提醒",
+        "提醒事项",
+        "tixing",
+      ],
       badge: "[]",
       onItemClick: () => insertOrUpdate({ type: "checkListItem" }),
     },
@@ -337,6 +379,29 @@ export function getBlockNoteSlashMenuItems(
       aliases: ["image", "photo", "tupian", "img"],
       onItemClick: () => {
         const inserted = insertOrUpdate({ type: "image" });
+        editor.getExtension(FilePanelExtension)?.showMenu(inserted.id);
+      },
+    },
+    {
+      title: "视频",
+      description: "上传视频并自动压缩为可播放的 MP4",
+      icon: <LucideIcons.Video size={18} />,
+      aliases: ["video", "movie", "shipin", "luping"],
+      onItemClick: () => {
+        const inserted = insertOrUpdate({ type: "video" });
+        // 视频为 void 块，末尾补空行便于继续书写
+        try {
+          const last = editor.document.at(-1);
+          if (last?.id === inserted?.id) {
+            editor.insertBlocks(
+              [{ type: "paragraph", content: "" }],
+              inserted,
+              "after",
+            );
+          }
+        } catch {
+          // ignore
+        }
         editor.getExtension(FilePanelExtension)?.showMenu(inserted.id);
       },
     },

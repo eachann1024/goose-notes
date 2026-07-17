@@ -25,13 +25,15 @@ function guessMimeFromPath(filePath: string): string {
 }
 
 /**
- * 将 content 内所有 image 块的 url 就地替换为 data:base64
- * - uuid:/att: → imageStorage 加载
- * - 本地文件路径（绝对路径或 file://）→ fs 读取
+ * 将单文件导出中的图片、视频资源就地替换为 data:base64。
+ * 整库 ZIP 导出会把媒体写入 assets 目录，不走此处。
+ * - uuid:/att:/att-video: → 内部附件存储
+ * - 本地文件路径 → 文件系统
  * - http(s) / 已是 base64 → 保留
  */
-export async function inlineImagesAsBase64(
+export async function inlineExportMediaAsBase64(
   content: BlockNoteContent,
+  pageLocalFilePath?: string | null,
 ): Promise<void> {
   if (!Array.isArray(content)) return;
 
@@ -65,8 +67,35 @@ export async function inlineImagesAsBase64(
       }
     }
 
+    if (block.type === "video" && block.props?.url) {
+      const src: string = block.props.url;
+      const mutableProps = block.props as { url: string };
+
+      if (
+        !src.startsWith("data:") &&
+        !src.startsWith("http://") &&
+        !src.startsWith("https://")
+      ) {
+        try {
+          let blob: Blob | null = null;
+          if (src.startsWith("att-file:")) {
+            const { fileStorage } = await import("@/lib/fileStorage");
+            blob = await fileStorage.load(src);
+          } else {
+            const { videoStorage } = await import("@/lib/videoStorage");
+            if (videoStorage.canHandle(src)) {
+              blob = await videoStorage.load(src, pageLocalFilePath);
+            }
+          }
+          if (blob) mutableProps.url = await blobToBase64(blob);
+        } catch (e) {
+          console.warn("[export] 内联视频失败:", src, e);
+        }
+      }
+    }
+
     if (Array.isArray(block.children) && block.children.length) {
-      await inlineImagesAsBase64(block.children);
+      await inlineExportMediaAsBase64(block.children, pageLocalFilePath);
     }
   }
 }

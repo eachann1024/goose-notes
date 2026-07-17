@@ -7,16 +7,12 @@ import {
     DEFAULT_HOTKEY_STATUS,
     normalizeDesktopHotkeyStatus,
 } from '../types'
+import { NON_CUSTOMIZABLE_APP_SHORTCUT_IDS } from '@/lib/fixed-app-shortcuts'
 
 export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     toggleSidebar: 'Alt+B',
     toggleAIPanel: 'Mod+J',
     openSearch: 'Mod+Shift+K',
-    openSettings: 'Mod+,',
-    editorFindOpen: 'Mod+F',
-    newNote: 'Mod+N',
-    saveNote: 'Mod+S',
-    reopenTab: 'Mod+Shift+T',
     toggleTheme: 'Mod+Shift+L',
     navBack: 'Mod+[',
     navForward: 'Mod+]',
@@ -118,10 +114,12 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
             })),
         setCloseTabShortcut: (shortcut) => set({ closeTabShortcut: shortcut }),
         setSearchPanelCloseShortcut: (shortcut) => set({ searchPanelCloseShortcut: shortcut }),
-        setAppShortcut: (id, shortcut) =>
+        setAppShortcut: (id, shortcut) => {
+            if (NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id)) return
             set((state) => ({
                 appShortcuts: { ...state.appShortcuts, [id]: shortcut },
-            })),
+            }))
+        },
         resetAppShortcuts: () => set({ appShortcuts: { ...DEFAULT_APP_SHORTCUTS } }),
     }
 }

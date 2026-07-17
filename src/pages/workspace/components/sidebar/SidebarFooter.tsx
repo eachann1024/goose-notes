@@ -34,7 +34,7 @@ export function SidebarFooter({
   );
   const toggleSidebarShortcutLabel = toggleSidebarShortcut
     ? formatShortcut(toggleSidebarShortcut)
-    : "未设置";
+    : "";
   const isDark = useResolvedTheme(theme) === "dark";
 
   const btnClass =
@@ -60,9 +60,11 @@ export function SidebarFooter({
             <TooltipContent side="top">
               <div className="flex items-center gap-2">
                 <span>收起侧栏</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {toggleSidebarShortcutLabel}
-                </span>
+                {toggleSidebarShortcutLabel && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {toggleSidebarShortcutLabel}
+                  </span>
+                )}
               </div>
             </TooltipContent>
           </Tooltip>

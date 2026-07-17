@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -17,6 +23,12 @@ import {
   type LocalFolderOpenAppCandidate,
 } from "@/lib/local-folder-open-apps";
 import { shell } from "@/lib/utools/shell";
+import { fs } from "@/lib/utools/fs";
+import {
+  scanUnreferencedLocalAssets,
+  type UnreferencedLocalAsset,
+} from "@/lib/local-folder-asset-maintenance";
+import { DialogShell } from "@/components/ui/dialog-shell";
 import * as LucideIcons from "lucide-react";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -102,16 +114,18 @@ function OpenAppField({
     }
   }, [isCustomValue, matchedOption, trimmedValue]);
 
-  const selectedValue = customActive && !trimmedValue
-    ? CUSTOM_VALUE
-    : !trimmedValue
-      ? SYSTEM_VALUE
-      : matchedOption?.appName ?? CUSTOM_VALUE;
-  const selectedLabel = customActive && !trimmedValue
-    ? "自定义"
-    : !trimmedValue
-      ? defaultLabel
-      : matchedOption?.label ?? trimmedValue;
+  const selectedValue =
+    customActive && !trimmedValue
+      ? CUSTOM_VALUE
+      : !trimmedValue
+        ? SYSTEM_VALUE
+        : (matchedOption?.appName ?? CUSTOM_VALUE);
+  const selectedLabel =
+    customActive && !trimmedValue
+      ? "自定义"
+      : !trimmedValue
+        ? defaultLabel
+        : (matchedOption?.label ?? trimmedValue);
   const showCustomInput = customActive || isCustomValue;
 
   const handleSelect = (nextValue: string) => {
@@ -133,12 +147,17 @@ function OpenAppField({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <Icon
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
             <Label htmlFor={`${id}-custom`} className="cursor-pointer">
               {title}
             </Label>
           </div>
-          <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
+          <p className="mt-1 pl-7 text-xs text-muted-foreground">
+            {description}
+          </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -151,7 +170,10 @@ function OpenAppField({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuRadioGroup value={selectedValue} onValueChange={handleSelect}>
+            <DropdownMenuRadioGroup
+              value={selectedValue}
+              onValueChange={handleSelect}
+            >
               <DropdownMenuRadioItem value={SYSTEM_VALUE}>
                 <span className="truncate">{defaultLabel}</span>
               </DropdownMenuRadioItem>
@@ -208,14 +230,21 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
     onChange([...DEFAULT_HIDDEN_FOLDERS]);
   };
 
-  const isDefault = JSON.stringify(folders) === JSON.stringify(DEFAULT_HIDDEN_FOLDERS);
+  const isDefault =
+    JSON.stringify(folders) === JSON.stringify(DEFAULT_HIDDEN_FOLDERS);
 
   return (
     <div className="space-y-3 p-4">
       <div>
         <div className="flex items-center gap-3">
-          <LucideIcons.EyeOff className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-          <Label htmlFor="local-folder-hidden-folder-input" className="cursor-pointer">
+          <LucideIcons.EyeOff
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            strokeWidth={1.75}
+          />
+          <Label
+            htmlFor="local-folder-hidden-folder-input"
+            className="cursor-pointer"
+          >
             隐藏文件夹
           </Label>
         </div>
@@ -226,7 +255,9 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
 
       <div className="flex flex-wrap gap-2 pl-7">
         {folders.length === 0 && (
-          <span className="text-xs text-muted-foreground">未隐藏任何文件夹</span>
+          <span className="text-xs text-muted-foreground">
+            未隐藏任何文件夹
+          </span>
         )}
         {folders.map((folder) => {
           const isDefaultFolder = DEFAULT_HIDDEN_FOLDERS.includes(folder);
@@ -293,6 +324,160 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+interface LocalAssetMaintenanceDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  assets: UnreferencedLocalAsset[];
+  loading: boolean;
+  onDelete: (paths: string[]) => Promise<void>;
+}
+
+function LocalAssetMaintenanceDialog({
+  open,
+  onOpenChange,
+  assets,
+  loading,
+  onDelete,
+}: LocalAssetMaintenanceDialogProps) {
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (open) setSelectedPaths([]);
+  }, [open]);
+
+  const toggle = (path: string) => {
+    setSelectedPaths((current) =>
+      current.includes(path)
+        ? current.filter((item) => item !== path)
+        : [...current, path],
+    );
+  };
+
+  const deleteSelected = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(selectedPaths);
+      setSelectedPaths([]);
+      setConfirming(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <DialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="清理未引用静态资源"
+      description="扫描当前本地文件夹笔记本页面引用的资源；删除后无法恢复。"
+      contentClassName="max-w-2xl"
+      bodyClassName="px-6 py-4"
+      footer={
+        confirming ? (
+          <>
+            <span className="mr-auto text-sm text-destructive">
+              确认删除已选 {selectedPaths.length} 个文件？
+            </span>
+            <Button
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+              disabled={deleting}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void deleteSelected()}
+              disabled={deleting}
+            >
+              {deleting ? "删除中…" : "确认删除"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="mr-auto text-xs text-muted-foreground">
+              共 {assets.length} 个未引用文件
+            </span>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              关闭
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={selectedPaths.length === 0}
+              onClick={() => setConfirming(true)}
+            >
+              删除已选
+            </Button>
+          </>
+        )
+      }
+    >
+      {loading ? (
+        <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+          正在扫描资源…
+        </div>
+      ) : assets.length === 0 ? (
+        <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+          <LucideIcons.CheckCircle2 className="h-6 w-6" />
+          未发现可清理的静态资源
+        </div>
+      ) : (
+        <div className="max-h-[50vh] space-y-1 overflow-y-auto pr-1">
+          {assets.map((asset) => (
+            <label
+              key={asset.path}
+              className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60"
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={selectedPaths.includes(asset.path)}
+                onChange={() => toggle(asset.path)}
+              />
+              <LucideIcons.File className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">{asset.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {asset.relativePath}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {formatFileSize(asset.size)}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                aria-label={`在文件管理器显示 ${asset.name}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void shell
+                    .showItemInFolder(asset.path)
+                    .then(
+                      (shown) => shown || fs.revealItemInFolder(asset.path),
+                    );
+                }}
+              >
+                <LucideIcons.FolderSearch className="h-4 w-4" />
+              </Button>
+            </label>
+          ))}
+        </div>
+      )}
+    </DialogShell>
+  );
+}
+
 export function SettingsLocalFolder({
   localFolderFileManager,
   setLocalFolderFileManager,
@@ -303,11 +488,75 @@ export function SettingsLocalFolder({
   localFolderHiddenFolders,
   setLocalFolderHiddenFolders,
 }: SettingsLocalFolderProps) {
-  const [fileManagerOptions, setFileManagerOptions] = useState<LocalFolderOpenAppCandidate[]>([]);
-  const [editorOptions, setEditorOptions] = useState<LocalFolderOpenAppCandidate[]>([]);
-  const [terminalOptions, setTerminalOptions] = useState<LocalFolderOpenAppCandidate[]>([]);
+  const [fileManagerOptions, setFileManagerOptions] = useState<
+    LocalFolderOpenAppCandidate[]
+  >([]);
+  const [editorOptions, setEditorOptions] = useState<
+    LocalFolderOpenAppCandidate[]
+  >([]);
+  const [terminalOptions, setTerminalOptions] = useState<
+    LocalFolderOpenAppCandidate[]
+  >([]);
   const systemDefaultLabels = useMemo(() => getSystemDefaultLabels(), []);
   const hiddenFoldersRefreshNonceRef = useRef(0);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [unreferencedAssets, setUnreferencedAssets] = useState<
+    UnreferencedLocalAsset[]
+  >([]);
+
+  const scanUnreferencedAssets = async () => {
+    const notebookState = useNotebooks.getState();
+    const activeNotebook = notebookState.activeNotebookId
+      ? notebookState.notebooks[notebookState.activeNotebookId]
+      : null;
+    if (
+      activeNotebook?.source !== "local-folder" ||
+      !activeNotebook.localPath ||
+      !window.gooseFs
+    ) {
+      toast.warning("请先切换到本地文件夹记事本");
+      return;
+    }
+
+    setMaintenanceOpen(true);
+    setMaintenanceLoading(true);
+    try {
+      window.dispatchEvent(
+        new CustomEvent("goose-note:flush-editor", {
+          detail: { immediate: true },
+        }),
+      );
+      await usePages.getState().flushPendingLocalSaves();
+      const pages = Object.values(usePages.getState().pages).filter(
+        (page) => page.workspaceId === activeNotebook.id,
+      );
+      setUnreferencedAssets(
+        await scanUnreferencedLocalAssets({
+          basePath: activeNotebook.localPath,
+          pages,
+          gooseFs: window.gooseFs,
+        }),
+      );
+    } catch (error) {
+      console.error("[settings] 扫描未引用静态资源失败", error);
+      toast.error("扫描未引用静态资源失败");
+      setMaintenanceOpen(false);
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
+
+  const deleteUnreferencedAssets = async (paths: string[]) => {
+    const results = await Promise.all(paths.map((path) => fs.deleteFile(path)));
+    const deletedPaths = new Set(paths.filter((_, index) => results[index]));
+    setUnreferencedAssets((assets) =>
+      assets.filter((asset) => !deletedPaths.has(asset.path)),
+    );
+    if (deletedPaths.size)
+      toast.success(`已删除 ${deletedPaths.size} 个未引用文件`);
+    if (deletedPaths.size !== paths.length) toast.error("部分文件删除失败");
+  };
 
   const handleHiddenFoldersChange = (folders: string[]) => {
     setLocalFolderHiddenFolders(folders);
@@ -342,20 +591,25 @@ export function SettingsLocalFolder({
         let skippedDirtyNotebook = false;
         for (const notebookId of loadedWorkspaceIds) {
           const notebook = notebookState.notebooks[notebookId];
-          if (notebook?.source !== "local-folder" || !notebook.localPath) continue;
+          if (notebook?.source !== "local-folder" || !notebook.localPath)
+            continue;
 
           const currentPages = usePages.getState();
-          const hasDirtyPage = Object.entries(currentPages.dirtyLocalPageIds)
-            .some(
-              ([pageId, dirty]) =>
-                dirty && currentPages.pages[pageId]?.workspaceId === notebookId,
-            );
+          const hasDirtyPage = Object.entries(
+            currentPages.dirtyLocalPageIds,
+          ).some(
+            ([pageId, dirty]) =>
+              dirty && currentPages.pages[pageId]?.workspaceId === notebookId,
+          );
           if (hasDirtyPage) {
             skippedDirtyNotebook = true;
             continue;
           }
 
-          await currentPages.loadLocalFolderPages(notebook.id, notebook.localPath);
+          await currentPages.loadLocalFolderPages(
+            notebook.id,
+            notebook.localPath,
+          );
         }
 
         if (skippedDirtyNotebook) {
@@ -381,7 +635,9 @@ export function SettingsLocalFolder({
       ]);
 
       if (cancelled) return;
-      setFileManagerOptions(fileManagers.filter((item) => item.id !== "finder"));
+      setFileManagerOptions(
+        fileManagers.filter((item) => item.id !== "finder"),
+      );
       setEditorOptions(editors);
       setTerminalOptions(terminals.filter((item) => item.id !== "terminal"));
     };
@@ -396,8 +652,12 @@ export function SettingsLocalFolder({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">本地文件夹</h3>
-        <p className="mt-1 text-sm text-muted-foreground">仅对本地文件夹类型的记事本生效。</p>
+        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+          本地文件夹
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          仅对本地文件夹类型的记事本生效。
+        </p>
       </div>
 
       <SettingsSectionCard title="打开方式">
@@ -444,6 +704,39 @@ export function SettingsLocalFolder({
           onChange={handleHiddenFoldersChange}
         />
       </SettingsSectionCard>
+
+      <SettingsSectionCard title="存储维护">
+        <div className="flex items-center justify-between gap-4 p-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <LucideIcons.Trash2
+                className="h-4 w-4 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label>清理未引用静态资源</Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              扫描页面同级 assets 目录及根 assets 兼容目录。
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => void scanUnreferencedAssets()}
+          >
+            扫描资源
+          </Button>
+        </div>
+      </SettingsSectionCard>
+
+      <LocalAssetMaintenanceDialog
+        open={maintenanceOpen}
+        onOpenChange={setMaintenanceOpen}
+        assets={unreferencedAssets}
+        loading={maintenanceLoading}
+        onDelete={deleteUnreferencedAssets}
+      />
     </div>
   );
 }

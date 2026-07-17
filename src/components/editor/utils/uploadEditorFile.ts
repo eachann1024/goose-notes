@@ -3,6 +3,8 @@ import {
   resolveImageMimeForUpload,
   shouldUploadViaImageStorage,
 } from "./pasteClipboardImage";
+import { isVideoUploadFile } from "@/lib/videoProcessor";
+import { videoStorage } from "@/lib/videoStorage";
 
 export interface EditorFileUploadDeps {
   getBlock: ((id: string) => { type?: string } | null | undefined) | null;
@@ -31,6 +33,10 @@ export async function uploadEditorFile(
   ) {
     const mime = resolveImageMimeForUpload(file);
     return deps.imageStorage.save(file, mime);
+  }
+
+  if (targetBlock?.type === "video" || isVideoUploadFile(file)) {
+    return videoStorage.save(file);
   }
 
   const availability = deps.getFileUploadAvailability();

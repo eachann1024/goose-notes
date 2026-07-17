@@ -21,6 +21,14 @@
   color: inherit;
 }
 
+/* 节点选中仍保留编辑器行为与工具栏，但不绘制 BlockNote / ProseMirror
+   默认的蓝色外框。该共享样式同时覆盖主窗与速记小窗。 */
+.bn-editor .ProseMirror-selectednode,
+.bn-editor .bn-block-content.ProseMirror-selectednode > *,
+.bn-editor .ProseMirror-selectednode > .bn-block-content > * {
+  outline: none !important;
+}
+
 /* 隐藏空折叠块展开后的「点击添加区块」提示按钮；
    空标题按 Enter 会退出折叠块（原生行为），无需此按钮。 */
 /* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈、像没展开），
@@ -51,8 +59,10 @@
   min-width: 16px;
   min-height: 16px;
   background-color: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 
 /* 折叠标题的箭头悬挂到左侧 gutter（Notion 手感）：
@@ -60,10 +70,15 @@
    视觉上像「标题前面多了空格」。改为绝对定位挂在 wrapper 左外侧，
    标题文字与普通标题左对齐；editor 自带 54px padding-inline，gutter 放得下。
    普通折叠列表(toggleListItem)的箭头充当列表 marker，保持行内不动。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper {
   position: relative;
 }
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper
+  > .bn-toggle-button {
   position: absolute;
   left: calc(-1em - 4px);
   top: 0;
@@ -77,12 +92,21 @@
 /* 折叠标题展开态（Notion）：gutter 箭头默认隐藏，hover / focus-within 再显示；
    收起态始终可见。直接命中 .bn-toggle-wrapper[data-show-children]，
    避免 .bn-block-outer:has() 在 uTools 旧 Chromium 上不生效导致展开时箭头常显。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper[data-show-children="true"]
+  > .bn-toggle-button {
   opacity: 0;
   pointer-events: none;
 }
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within > div > .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover
+  > div
+  > .bn-toggle-wrapper[data-show-children="true"]
+  > .bn-toggle-button,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within
+  > div
+  > .bn-toggle-wrapper[data-show-children="true"]
+  > .bn-toggle-button {
   opacity: 1;
   pointer-events: auto;
 }
@@ -108,11 +132,16 @@
    把空块的占位行挤到下一行），改为绝对定位钉在首行左侧 marker 位；
    wrapper 用 padding-left 保留 22px marker 空间，文字 x 在收起/展开/换行
    三态下恒定不动。 */
-.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper {
+.bn-block-content[data-content-type="toggleListItem"]
+  > div
+  > .bn-toggle-wrapper {
   position: relative;
   padding-left: 22px;
 }
-.bn-block-content[data-content-type="toggleListItem"] > div > .bn-toggle-wrapper > .bn-toggle-button {
+.bn-block-content[data-content-type="toggleListItem"]
+  > div
+  > .bn-toggle-wrapper
+  > .bn-toggle-button {
   position: absolute;
   left: 0;
   top: 0;
@@ -133,11 +162,13 @@
    完全看不出这些行还在折叠块里（像内容跑到了折叠块外面）。
    线挂在箭头列正下方，两种折叠块（toggleListItem / 折叠标题）都画。 */
 .bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  ~ .bn-block-group {
   position: relative;
 }
 .bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group::before,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"] ~ .bn-block-group::before {
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  ~ .bn-block-group::before {
   content: "";
   position: absolute;
   /* children group 相对标题文字缩进 22px，箭头列中心 ≈ 文字左缘往左 14px */
@@ -153,7 +184,9 @@
   background-color: rgba(250, 204, 21, 0.45);
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
-  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+  transition:
+    background-color 0.6s ease,
+    box-shadow 0.6s ease;
 }
 
 /* 搜索定位高亮淡出：到点后加此 class，背景与描边过渡到透明 */
@@ -167,7 +200,9 @@
   background-color: rgba(249, 115, 22, 0.7);
   box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
   color: inherit;
-  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+  transition:
+    background-color 0.6s ease,
+    box-shadow 0.6s ease;
 }
 
 .dark .goose-find-match {
@@ -211,7 +246,9 @@
   padding-inline: 0;
 }
 
-.workspace-editor-surface .bn-block-content[data-content-type="heading"] h1:first-child {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"]
+  h1:first-child {
   margin-top: 0;
 }
 
@@ -229,7 +266,8 @@
  * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽
  * 的中心偏左 8px。改为由「拥有 children 的列表父块」绘制一根完整主干：
  *
- * - x=11px，与数字 / 圆点 / checkbox 的真实视觉中心轴重合；
+ * - 默认 x=10.5px，对齐圆点 / checkbox 的真实视觉中心轴；
+ * - 有序列表单独使用 x=9px，对齐数字字形的视觉中心；
  * - y 从父项 marker 下边缘开始；接到下一同级项时，在线上方边缘收口；
  * - 后面仍有同级列表项时，继续穿过父块 margin 并收在下一 marker 上边缘；
  * - 线不接收指针事件，不影响光标、选择、checkbox 和拖拽。
@@ -246,7 +284,7 @@
       )
       + .bn-block-group
   ) {
-  --goose-list-marker-axis-x: 11px;
+  --goose-list-marker-axis-x: 10.5px;
   --goose-list-marker-axis-y: calc(0.75em + 3px);
   --goose-list-marker-clearance-y: 0.25em;
   --goose-list-next-marker-clearance-y: 0.25em;
@@ -257,16 +295,15 @@
    checkbox 按原生 12px 控件半高避让。连接线与 marker 同轴，但不能穿透。 */
 .workspace-editor-surface
   .bn-block:has(
-    > .bn-block-content[data-content-type="numberedListItem"]
-      + .bn-block-group
+    > .bn-block-content[data-content-type="numberedListItem"] + .bn-block-group
   ) {
+  --goose-list-marker-axis-x: 9px;
   --goose-list-marker-clearance-y: 0.625em;
 }
 
 .workspace-editor-surface
   .bn-block:has(
-    > .bn-block-content[data-content-type="checkListItem"]
-      + .bn-block-group
+    > .bn-block-content[data-content-type="checkListItem"] + .bn-block-group
   ) {
   --goose-list-marker-clearance-y: 6px;
 }
@@ -295,8 +332,7 @@
 }
 
 /* 圆点和数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
-   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移，使其与 x=11px
-   的主干以及 checkbox 中心落在同一条视觉轴上。 */
+   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移。 */
 .workspace-editor-surface
   .bn-block-content:is(
     [data-content-type="bulletListItem"],
@@ -427,23 +463,34 @@
   content: attr(data-index) "." !important;
 }
 
-.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
   margin-bottom: 0.6em;
 }
 
-.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="table"]) {
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="table"]) {
   margin-bottom: 0.6em;
 }
 
 /* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
    避免 tableEvenColumnWidth 的核心行为依赖旧 Chromium 不支持的 :has()。 */
-.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] table {
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  table {
   width: 100% !important;
   table-layout: fixed;
 }
 
-.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] th,
-.workspace-editor-surface.goose-table-even-column-width .bn-editor [data-content-type="table"] td {
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  th,
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  td {
   width: auto;
   overflow-wrap: anywhere;
 }
@@ -521,9 +568,13 @@
 }
 
 .workspace-editor-surface [data-callout="true"] .callout-icon-slot,
-.workspace-editor-surface [data-callout="true"] button[data-callout-icon-trigger],
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger],
 .quicknote-editor-surface [data-callout="true"] .callout-icon-slot,
-.quicknote-editor-surface [data-callout="true"] button[data-callout-icon-trigger] {
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -547,27 +598,57 @@
   line-height: 1;
 }
 
-.workspace-editor-surface [data-callout="true"] .callout-content.bn-inline-content,
-.quicknote-editor-surface [data-callout="true"] .callout-content.bn-inline-content {
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content {
   line-height: 1.5;
 }
 
 .workspace-editor-surface [data-callout="true"] .callout-icon-slot svg,
-.workspace-editor-surface [data-callout="true"] button[data-callout-icon-trigger] svg,
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg,
 .quicknote-editor-surface [data-callout="true"] .callout-icon-slot svg,
-.quicknote-editor-surface [data-callout="true"] button[data-callout-icon-trigger] svg {
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg {
   display: block;
 }
 
-.workspace-editor-surface [data-callout="true"] .callout-content .bn-block-outer:first-child,
-.workspace-editor-surface [data-callout="true"] .callout-content > .bn-block-group > .bn-block-outer:first-child,
-.quicknote-editor-surface [data-callout="true"] .callout-content .bn-block-outer:first-child,
-.quicknote-editor-surface [data-callout="true"] .callout-content > .bn-block-group > .bn-block-outer:first-child {
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child {
   margin-top: 0 !important;
 }
 
-.workspace-editor-surface [data-callout="true"] .callout-content .bn-block-content[data-content-type="paragraph"],
-.quicknote-editor-surface [data-callout="true"] .callout-content .bn-block-content[data-content-type="paragraph"] {
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"],
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"] {
   line-height: 1.5;
 }
 
@@ -639,7 +720,6 @@
   border-radius: 999px;
 }
 
-
 /* ===== 表格拖拽手柄按钮 ===== */
 .goose-table-handle-btn {
   display: flex;
@@ -654,7 +734,10 @@
   cursor: grab;
   padding: 2px;
   opacity: 0.72;
-  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .goose-table-handle-btn:hover {
@@ -667,15 +750,445 @@
 .workspace-editor-surface .bn-table-handle {
   border-radius: 4px;
   opacity: 0.5;
-  transition: opacity 120ms ease, background-color 120ms ease;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
 }
 .workspace-editor-surface .bn-table-handle:hover {
   opacity: 1;
   background: hsl(var(--accent) / 0.5);
 }
 
-.workspace-editor-surface .bn-block-outer:has(.bn-block-content[data-content-type="image"]) {
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="image"]),
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
   margin-bottom: 0.5em;
+}
+
+/* ===== 自定义视频播放器（替代原生 controls） ===== */
+.goose-video-block-shell {
+  position: relative;
+  max-width: 100%;
+}
+
+.goose-video-block-shell[data-alignment="center"] {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.goose-video-block-shell[data-alignment="right"] {
+  margin-left: auto;
+}
+
+.goose-video-player {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #141414;
+  outline: none;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.goose-video-player:focus-visible {
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.4),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.goose-video-player__video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 720px);
+  margin: 0;
+  background: #0a0a0a;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.goose-video-player__error {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.82);
+  background: #141414;
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.goose-video-player__error svg {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.goose-video-player__center-play {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.goose-video-player[data-playing="true"][data-controls="hidden"]
+  .goose-video-player__center-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.goose-video-player[data-playing="true"][data-controls="visible"]
+  .goose-video-player__center-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.goose-video-player__center-icon {
+  width: 56px;
+  height: 56px;
+  padding: 14px;
+  border-radius: 999px;
+  color: #f7f7f7;
+  background: rgba(20, 20, 20, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms ease;
+}
+
+.goose-video-player__center-icon--play {
+  padding-left: 16px;
+}
+
+.goose-video-player__center-play:hover .goose-video-player__center-icon {
+  transform: scale(1.05);
+  background: rgba(30, 30, 30, 0.72);
+}
+
+.goose-video-player__chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 0 10px 10px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.goose-video-player[data-playing="true"][data-controls="hidden"]
+  .goose-video-player__chrome {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.goose-video-player__chrome > * {
+  pointer-events: auto;
+}
+
+.goose-video-player__gradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.28) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.goose-video-player__progress {
+  position: relative;
+  z-index: 1;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.goose-video-player__progress-track {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: height 120ms ease;
+}
+
+.goose-video-player__progress:hover .goose-video-player__progress-track,
+.goose-video-player__progress:focus-visible
+  .goose-video-player__progress-track {
+  height: 5px;
+}
+
+.goose-video-player__progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: #f3f3f3;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.goose-video-player__progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.goose-video-player__progress:hover .goose-video-player__progress-thumb,
+.goose-video-player__progress:focus-visible
+  .goose-video-player__progress-thumb {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.goose-video-player__bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  margin-top: 2px;
+}
+
+.goose-video-player__bar-left,
+.goose-video-player__bar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.goose-video-player__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.goose-video-player__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.goose-video-player__btn:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+
+.goose-video-player__icon-play {
+  margin-left: 1px;
+}
+
+.goose-video-player__time {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  margin-left: 6px;
+  padding: 0 4px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.goose-video-player__time-sep {
+  margin: 0 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
+}
+
+.goose-video-player:fullscreen,
+.goose-video-player:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: #000;
+}
+
+.goose-video-player:fullscreen .goose-video-player__video,
+.goose-video-player:-webkit-full-screen .goose-video-player__video {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-video-player__center-play,
+  .goose-video-player__center-icon,
+  .goose-video-player__chrome,
+  .goose-video-player__progress-track,
+  .goose-video-player__progress-thumb,
+  .goose-video-player__btn {
+    transition: none;
+  }
+}
+
+/* ===== 全屏图片预览（yet-another-react-lightbox） ===== */
+.goose-image-lightbox.yarl__root {
+  --yarl__color_backdrop: rgba(12, 12, 12, 0.9);
+  --yarl__color_button: rgba(255, 255, 255, 0.92);
+  --yarl__color_button_active: #ffffff;
+  --yarl__slide_title_color: rgba(255, 255, 255, 0.88);
+}
+
+.goose-image-lightbox .yarl__container {
+  background:
+    radial-gradient(
+      120% 80% at 50% 0%,
+      rgba(255, 255, 255, 0.04),
+      transparent 55%
+    ),
+    rgba(12, 12, 12, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.goose-image-lightbox .yarl__toolbar {
+  top: 16px;
+  right: 16px;
+  left: auto;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(28, 28, 28, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.goose-image-lightbox .yarl__button {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.9);
+  filter: none;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.goose-image-lightbox .yarl__button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.goose-image-lightbox .yarl__button:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+
+.goose-image-lightbox .yarl__navigation_prev,
+.goose-image-lightbox .yarl__navigation_next {
+  width: 44px;
+  height: 44px;
+  margin: 0 12px;
+  border-radius: 12px;
+  background: rgba(28, 28, 28, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  filter: none;
+}
+
+.goose-image-lightbox .yarl__navigation_prev:hover,
+.goose-image-lightbox .yarl__navigation_next:hover {
+  background: rgba(40, 40, 40, 0.75);
+}
+
+.goose-image-lightbox .yarl__slide_image {
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.goose-image-lightbox .yarl__slide_title {
+  bottom: 20px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(20, 20, 20, 0.65);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-image-lightbox .yarl__button,
+  .goose-image-lightbox .yarl__navigation_prev,
+  .goose-image-lightbox .yarl__navigation_next {
+    transition: none;
+  }
 }
 
 /* ===== 行内代码（Notion 红字 + 浅灰底；变量见 index.css，含深色） ===== */
@@ -683,10 +1196,21 @@
 .quicknote-editor-surface .bn-inline-content code {
   background-color: var(--goose-inline-code-bg);
   color: var(--goose-inline-code-fg);
-  padding: var(--editor-inline-code-padding-y, 1px) var(--editor-inline-code-padding-x, 4px);
+  padding: var(--editor-inline-code-padding-y, 1px)
+    var(--editor-inline-code-padding-x, 4px);
   border-radius: var(--editor-inline-code-radius, 4px);
   border: 1px solid transparent;
-  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  ) !important;
   font-size: 0.85em;
   line-height: 1;
   vertical-align: middle;
@@ -699,13 +1223,32 @@
   border-color: var(--goose-inline-code-border-hover);
 }
 
-.workspace-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
-.workspace-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code,
-.quicknote-editor-surface .bn-editor [data-content-type="table"] th .bn-inline-content code,
-.quicknote-editor-surface .bn-editor [data-content-type="table"] td .bn-inline-content code {
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code {
   color: var(--goose-inline-code-fg);
 }
-
 
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
@@ -730,7 +1273,8 @@
 
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"]
-  > div > input {
+  > div
+  > input {
   height: auto;
   margin-left: 5px;
   margin-right: 7px;
@@ -739,7 +1283,9 @@
 
 /* ===== BlockNote children 缩进优化 ===== */
 /* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
-.workspace-editor-surface .bn-block:has(> .bn-block-content[data-content-type="heading"]) > .bn-block-children {
+.workspace-editor-surface
+  .bn-block:has(> .bn-block-content[data-content-type="heading"])
+  > .bn-block-children {
   padding-left: 0.5em;
 }
 
@@ -768,19 +1314,34 @@
 }
 
 /* 隐藏内置 language select（工具栏替代） */
-.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] > div > select {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > div
+  > select {
   display: none !important;
 }
 
 /* 内置 pre 样式覆盖 */
-.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] > pre {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > pre {
   margin: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: inherit;
   padding: 12px 16px;
-  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
   font-size: 0.85em;
   line-height: 1.7;
   position: relative;
@@ -799,8 +1360,12 @@
   transition: opacity 150ms ease;
 }
 
-.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"]:hover .goose-code-toolbar-host,
-.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"]:focus-within .goose-code-toolbar-host {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:hover
+  .goose-code-toolbar-host,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:focus-within
+  .goose-code-toolbar-host {
   opacity: 1;
 }
 
@@ -978,7 +1543,17 @@
   background: transparent;
   color: inherit;
   padding: 12px 16px;
-  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
   font-size: 0.85em;
   line-height: 1.7;
   overflow-x: auto;
@@ -1007,7 +1582,17 @@
   width: 40px;
   padding: 12px 8px 12px 0;
   text-align: right;
-  font-family: var(--font-mono, "DM Mono", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
   font-size: 11px;
   line-height: 1.7;
   display: none;
@@ -1114,7 +1699,9 @@
   border-radius: 6px;
   background-color: hsl(var(--muted) / 0.4);
   border: 1px solid hsl(var(--border) / 0.4);
-  transition: border-color 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1125,7 +1712,9 @@
 }
 
 /* 确保 BlockNote wrapper 不收缩 */
-.workspace-editor-surface .bn-block-content[data-content-type="file"] .bn-file-block-content-wrapper {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="file"]
+  .bn-file-block-content-wrapper {
   width: 100%;
 }
 
@@ -1202,7 +1791,9 @@
   background: transparent;
   color: hsl(var(--muted-foreground) / 0.7);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .goose-file-block-action-btn:hover {
@@ -1240,7 +1831,9 @@
 
 .goose-media-placeholder:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
 .goose-media-placeholder:disabled {
@@ -1274,7 +1867,9 @@
   background: var(--goose-block-subtle-inset);
   color: hsl(var(--muted-foreground));
   box-shadow: inset 0 0 0 1px var(--goose-block-subtle-border);
-  transition: color 150ms ease, background-color 150ms ease;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
 .goose-media-placeholder--file .goose-media-placeholder__icon {
@@ -1354,10 +1949,18 @@
   }
 }
 
-.workspace-editor-surface .bn-block-content[data-content-type="image"] .goose-media-placeholder,
-.workspace-editor-surface .bn-block-content[data-content-type="file"] .goose-media-placeholder,
-.quicknote-editor-surface .bn-block-content[data-content-type="image"] .goose-media-placeholder,
-.quicknote-editor-surface .bn-block-content[data-content-type="file"] .goose-media-placeholder {
+.workspace-editor-surface
+  .bn-block-content[data-content-type="image"]
+  .goose-media-placeholder,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="file"]
+  .goose-media-placeholder,
+.quicknote-editor-surface
+  .bn-block-content[data-content-type="image"]
+  .goose-media-placeholder,
+.quicknote-editor-surface
+  .bn-block-content[data-content-type="file"]
+  .goose-media-placeholder {
   width: 100%;
 }
 

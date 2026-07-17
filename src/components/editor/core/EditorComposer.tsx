@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   FilePanelController,
@@ -65,6 +72,7 @@ export {
   isBottomEditorBlankClick,
   getSelectedPlainTextContext,
   getSelectedCellPlainText,
+  getSelectedImageUrl,
   getElementFromNode,
   isInteractiveEditorTarget,
 } from "@/components/editor/utils/selection";
@@ -270,6 +278,21 @@ export function EditorComposer({
   );
   const usesRawEditorContent = shouldUseRawEditorContent(page);
 
+  const handleLocalFileTitleEnter = useCallback(() => {
+    const firstBlock = editor.document[0];
+    if (!firstBlock) return;
+
+    const [inserted] = editor.insertBlocks(
+      [{ type: "paragraph", content: "" }],
+      firstBlock,
+      "before",
+    );
+    if (inserted) {
+      editor.setTextCursorPosition(inserted, "start");
+      editor.focus();
+    }
+  }, [editor]);
+
   return (
     <EditorContextMenu
       editor={editor}
@@ -286,7 +309,11 @@ export function EditorComposer({
       tableEvenColumnWidth={tableEvenColumnWidth}
     >
       {page?.localFilePath && (
-        <LocalFileTitle pageId={page.id} localFilePath={page.localFilePath} />
+        <LocalFileTitle
+          pageId={page.id}
+          localFilePath={page.localFilePath}
+          onEnterBelow={handleLocalFileTitleEnter}
+        />
       )}
       <BlockNoteView
         editor={editor}

@@ -67,6 +67,7 @@ import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
+import { gooseMediaBlockEnterExtension } from "@/components/editor/extensions/mediaBlockEnterExtension";
 import { gooseEmptyNestedListEnterExtension } from "@/components/editor/extensions/emptyNestedListEnterExtension";
 import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
@@ -88,6 +89,7 @@ import {
   EditorComposer,
   editorSchema,
   getSelectedCellPlainText,
+  getSelectedImageUrl,
   getSelectedPlainTextContext,
   isBottomEditorBlankClick,
   normalizeClipboardLineEndings,
@@ -99,9 +101,13 @@ import { isLinkworthyText } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 import { pasteClipboardFilesFromClipboard } from "@/components/editor/utils/pasteClipboardFilesFromClipboard";
-import { clipboardHasPasteableImage } from "@/components/editor/utils/pasteClipboardImage";
+import {
+  clipboardHasPasteableImage,
+  clipboardHasPasteableMedia,
+} from "@/components/editor/utils/pasteClipboardImage";
 import { uploadEditorFile } from "@/components/editor/utils/uploadEditorFile";
 import { fileStorage, getFileUploadAvailability } from "@/lib/fileStorage";
+import { copyImageSrcToClipboard } from "@/components/editor/image/imageUtils";
 
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;
@@ -258,6 +264,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
+        gooseMediaBlockEnterExtension,
         gooseEmptyNestedListEnterExtension,
         gooseCollapsedToggleEnterExtension,
         gooseToggleHeadingAutoCollectExtension(),
@@ -313,7 +320,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         });
       },
       pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
-        if (clipboardHasPasteableImage(event.clipboardData)) {
+        if (
+          clipboardHasPasteableImage(event.clipboardData) ||
+          (!__GOOSE_LITE__ && clipboardHasPasteableMedia(event.clipboardData))
+        ) {
           void pasteClipboardFilesFromClipboard(event, ed);
           return true;
         }
@@ -558,8 +568,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       // 末块 content 为 "none"（image / divider / video / file 等无光标控件）时，
       // 无法直接聚焦末块末尾，在文档末尾插入一个空 paragraph 再聚焦它。
       const blockSpecs = editor.schema.blockSpecs as
-        | Record<string, { config?: { content?: string } }>
-        | undefined;
+        Record<string, { config?: { content?: string } }> | undefined;
       const contentType = blockSpecs?.[lastBlock.type]?.config?.content;
       if (contentType === "none") {
         editor.insertBlocks(
@@ -654,6 +663,23 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     const patchClipboardPlainText = (event: ClipboardEvent) => {
       const clipboardData = event.clipboardData;
       if (!clipboardData) return;
+
+      // BlockNote 默认会把 NodeSelection 图片块复制成 Markdown：
+      // ![name](att:...)。复制操作应给系统剪贴板写入真正的图片数据。
+      if (event.type === "copy") {
+        const selectedImageUrl = getSelectedImageUrl(editor.prosemirrorState);
+        if (selectedImageUrl) {
+          event.preventDefault();
+          void copyImageSrcToClipboard(
+            selectedImageUrl,
+            platformRef.current,
+            getActivePageLocalFilePathRef.current(),
+          ).catch((error) => {
+            console.error("[editor] Failed to copy selected image", error);
+          });
+          return;
+        }
+      }
 
       const cellText = getSelectedCellPlainText(editor.prosemirrorState);
       if (cellText != null) {
@@ -771,6 +797,28 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         nextContent,
         editor.schema,
       );
+      const currentRaw = clonePageContent(
+        editor.document as BlockNoteContent,
+      );
+      const currentSignature = getContentSignature(
+        isLocalPage ? currentRaw : normalizePageContent(currentRaw),
+      );
+      const nextSignature = getContentSignature(nextEditorContent);
+
+      // 本地文件自动保存的 watch 回声即使穿过了文件监听层，也不能重建编辑器。
+      // replaceBlocks 会使 ProseMirror 的失效选区落到视频等原子块上，并把该块
+      // 滚入视野。磁盘读回内容与当前编辑器语义一致时只更新同步基线，保留原选区。
+      if (nextSignature === currentSignature) {
+        syncedContentSignatureRef.current = currentSignature;
+        return;
+      }
+      // 文件监听触发的内容重载不等于页面导航。replaceBlocks 会让浏览器把外层
+      // 滚动容器拉回顶部，因此先记录当前位置，并在 DOM 更新后恢复，避免自动保存
+      // 的 watch 回声或真正的外部文件更新打断当前阅读/编辑视角。
+      const scrollContainer = editorContainerRef.current?.closest<HTMLElement>(
+        ".page-scroll-container",
+      );
+      const scrollTop = scrollContainer?.scrollTop;
       debouncedUpdate.cancel();
       try {
         editor.replaceBlocks(editor.document, nextEditorContent as any);
@@ -795,6 +843,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       );
       // 外部重载 = 程序化同步，重置用户交互标记（同切页 effect）。
       userInteractedRef.current = false;
+      if (scrollContainer && typeof scrollTop === "number") {
+        requestAnimationFrame(() => {
+          scrollContainer.scrollTop = scrollTop;
+        });
+      }
     };
 
     window.addEventListener("goose-note:flush-editor", handleFlush);

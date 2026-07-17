@@ -12,7 +12,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
-import { matchShortcut } from "@/lib/shortcut-match";
+import { matchMouseShortcut, matchShortcut } from "@/lib/shortcut-match";
 import { toast } from "sonner";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
@@ -145,7 +145,15 @@ export function CommandPalette() {
       }
     };
 
+    const handleMouseShortcut = (event: MouseEvent) => {
+      if (!open || !matchMouseShortcut(event, searchPanelCloseShortcut)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+    };
+
     document.addEventListener("keydown", down, true);
+    document.addEventListener("mousedown", handleMouseShortcut, true);
     const handleOpenSearch = (event: Event) => {
       const detail = (
         event as CustomEvent<{ resetQuery?: boolean; openInNewTab?: boolean }>
@@ -160,6 +168,7 @@ export function CommandPalette() {
     window.addEventListener("goose-note:open-search", handleOpenSearch);
     return () => {
       document.removeEventListener("keydown", down, true);
+      document.removeEventListener("mousedown", handleMouseShortcut, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
   }, [open, searchAllNotebooks, searchPanelCloseShortcut, setSearchAllNotebooks]);

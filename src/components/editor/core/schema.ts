@@ -3,6 +3,7 @@ import { createHeadingBlockSpec } from "@blocknote/core";
 import { calloutBlock } from "@/components/editor/blocks/callout/calloutBlock";
 import { customFileBlock } from "../blocks/file/customFileBlock";
 import { customImageBlock } from "../blocks/image/customImageBlock";
+import { customVideoBlock } from "../blocks/video/videoBlock";
 import { codeBlockSpec } from "@/components/editor/blocks/code/codeBlockSpec";
 
 export const editorSchema = BlockNoteSchema.create({
@@ -16,6 +17,7 @@ export const editorSchema = BlockNoteSchema.create({
     }),
     callout: calloutBlock,
     image: customImageBlock,
+    video: customVideoBlock,
     file: customFileBlock,
     codeBlock: codeBlockSpec,
   },

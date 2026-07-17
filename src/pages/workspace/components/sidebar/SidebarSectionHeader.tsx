@@ -20,10 +20,8 @@ export function SidebarSectionHeader({
   const appShortcuts = useSettings((state) => state.appShortcuts);
   const searchShortcut = appShortcuts.openSearch
     ? formatShortcut(appShortcuts.openSearch)
-    : "未设置";
-  const createShortcut = appShortcuts.newNote
-    ? formatShortcut(appShortcuts.newNote)
-    : "未设置";
+    : "";
+  const createShortcut = formatShortcut(getFixedAppShortcuts().newNote);
 
   return (
     <div className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
@@ -96,9 +94,11 @@ export function SidebarSectionHeader({
             <TooltipContent side="bottom">
               <div className="flex items-center gap-2">
                 <span>搜索</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {searchShortcut}
-                </span>
+                {searchShortcut && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {searchShortcut}
+                  </span>
+                )}
               </div>
             </TooltipContent>
           </Tooltip>

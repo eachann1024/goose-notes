@@ -146,7 +146,7 @@ export function EditorSideMenu() {
   return createPortal(
     <div
       className={cn(
-        "bn-side-menu fixed z-[60] flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1",
+        "bn-side-menu fixed z-[70] flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1",
         "shadow-[0_1px_2px_hsl(var(--foreground)/0.05),0_8px_22px_hsl(var(--foreground)/0.06)]",
         "transition-[opacity,transform] duration-150 ease-out",
         "dark:border-white/12 dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)]",

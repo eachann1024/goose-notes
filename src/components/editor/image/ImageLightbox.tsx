@@ -19,7 +19,10 @@ import {
   getImageAlignmentFromBlock,
   type ImageAlignment,
 } from "./imageUtils";
-import { ImageToolbar, type SelectedImageState } from "@/components/editor/image/ImageToolbar";
+import {
+  ImageToolbar,
+  type SelectedImageState,
+} from "@/components/editor/image/ImageToolbar";
 
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;
@@ -31,11 +34,16 @@ interface SlideInfo {
   alt?: string;
 }
 
-export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps) {
+export function ImageLightbox({
+  editor,
+  editorContainerRef,
+}: ImageLightboxProps) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [slides, setSlides] = useState<SlideInfo[]>([]);
-  const [selectedImage, setSelectedImage] = useState<SelectedImageState | null>(null);
+  const [selectedImage, setSelectedImage] = useState<SelectedImageState | null>(
+    null,
+  );
   const resolvedUrlsRef = useRef<Map<string, string>>(new Map());
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const selectedImageRef = useRef<SelectedImageState | null>(null);
@@ -44,7 +52,11 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
 
   const cleanupObjectUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {
-      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* ignore */
+      }
     });
     objectUrlsRef.current.clear();
     resolvedUrlsRef.current.clear();
@@ -60,59 +72,72 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     selectedImageRef.current = selectedImage;
   }, [selectedImage]);
 
-  const buildSlides = useCallback(async (container: HTMLElement): Promise<SlideInfo[]> => {
-    const images = getImageElements(container);
-    const slides: SlideInfo[] = [];
+  const buildSlides = useCallback(
+    async (container: HTMLElement): Promise<SlideInfo[]> => {
+      const images = getImageElements(container);
+      const slides: SlideInfo[] = [];
 
-    for (const img of images) {
-      const src = img.src || img.getAttribute("src") || "";
-      const alt = img.alt || img.getAttribute("alt") || "";
+      for (const img of images) {
+        const src = img.src || img.getAttribute("src") || "";
+        const alt = img.alt || img.getAttribute("alt") || "";
 
-      if (!src) continue;
+        if (!src) continue;
 
-      let resolved = resolvedUrlsRef.current.get(src);
-      if (!resolved) {
-        resolved = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
-        resolvedUrlsRef.current.set(src, resolved);
-        if (resolved.startsWith("blob:")) {
-          objectUrlsRef.current.add(resolved);
+        let resolved = resolvedUrlsRef.current.get(src);
+        if (!resolved) {
+          resolved = await resolveImageSrc(
+            src,
+            platform,
+            getActivePageLocalFilePath(),
+          );
+          resolvedUrlsRef.current.set(src, resolved);
+          if (resolved.startsWith("blob:")) {
+            objectUrlsRef.current.add(resolved);
+          }
         }
+
+        slides.push({ src: resolved, alt });
       }
 
-      slides.push({ src: resolved, alt });
-    }
+      return slides;
+    },
+    [platform, getActivePageLocalFilePath],
+  );
 
-    return slides;
-  }, [platform, getActivePageLocalFilePath]);
+  const openLightboxAtImage = useCallback(
+    async (img: HTMLImageElement) => {
+      const container = editorContainerRef.current;
+      if (!container) return;
 
-  const openLightboxAtImage = useCallback(async (img: HTMLImageElement) => {
-    const container = editorContainerRef.current;
-    if (!container) return;
+      const images = getImageElements(container);
+      const clickedIndex = images.indexOf(img);
+      if (clickedIndex < 0) return;
 
-    const images = getImageElements(container);
-    const clickedIndex = images.indexOf(img);
-    if (clickedIndex < 0) return;
+      const newSlides = await buildSlides(container);
+      if (newSlides.length === 0) return;
 
-    const newSlides = await buildSlides(container);
-    if (newSlides.length === 0) return;
+      setSlides(newSlides);
+      setIndex(clickedIndex);
+      setOpen(true);
+    },
+    [editorContainerRef, buildSlides],
+  );
 
-    setSlides(newSlides);
-    setIndex(clickedIndex);
-    setOpen(true);
-  }, [editorContainerRef, buildSlides]);
+  const handleImageDoubleClick = useCallback(
+    async (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const img = target.closest<HTMLImageElement>(
+        '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img',
+      );
+      if (!img) return;
 
-  const handleImageDoubleClick = useCallback(async (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    const img = target.closest<HTMLImageElement>(
-      '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img'
-    );
-    if (!img) return;
+      event.preventDefault();
+      event.stopPropagation();
 
-    event.preventDefault();
-    event.stopPropagation();
-
-    await openLightboxAtImage(img);
-  }, [openLightboxAtImage]);
+      await openLightboxAtImage(img);
+    },
+    [openLightboxAtImage],
+  );
 
   useEffect(() => {
     const container = editorContainerRef.current;
@@ -124,26 +149,29 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     };
   }, [editorContainerRef, handleImageDoubleClick]);
 
-  const updateSelectedImageFromElement = useCallback((img: HTMLImageElement) => {
-    const container = editorContainerRef.current;
-    if (!container) return;
+  const updateSelectedImageFromElement = useCallback(
+    (img: HTMLImageElement) => {
+      const container = editorContainerRef.current;
+      if (!container) return;
 
-    const imageIndex = getImageElements(container).indexOf(img);
-    const blockId =
-      getBlockIdFromImage(img, container) ||
-      getImageBlockIdByIndex(editor.document as any[], imageIndex);
-    const block = blockId ? editor.getBlock(blockId) : null;
-    const blockElement = getImageBlockElement(img, container);
+      const imageIndex = getImageElements(container).indexOf(img);
+      const blockId =
+        getBlockIdFromImage(img, container) ||
+        getImageBlockIdByIndex(editor.document as any[], imageIndex);
+      const block = blockId ? editor.getBlock(blockId) : null;
+      const blockElement = getImageBlockElement(img, container);
 
-    setSelectedImage({
-      blockId,
-      src: getImageSrc(img),
-      alt: img.alt || img.getAttribute("alt") || "",
-      index: imageIndex,
-      rect: (blockElement ?? img).getBoundingClientRect(),
-      alignment: getImageAlignmentFromBlock(block),
-    });
-  }, [editor, editorContainerRef]);
+      setSelectedImage({
+        blockId,
+        src: getImageSrc(img),
+        alt: img.alt || img.getAttribute("alt") || "",
+        index: imageIndex,
+        rect: (blockElement ?? img).getBoundingClientRect(),
+        alignment: getImageAlignmentFromBlock(block),
+      });
+    },
+    [editor, editorContainerRef],
+  );
 
   useEffect(() => {
     const container = editorContainerRef.current;
@@ -152,7 +180,7 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
       const img = target?.closest<HTMLImageElement>(
-        '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img'
+        '.bn-block-content[data-content-type="image"] img, .bn-block-content[data-content-type="imageResize"] img',
       );
 
       if (!img || !container.contains(img)) {
@@ -189,98 +217,131 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
 
   const currentSlide = slides[index];
 
-  const downloadImage = useCallback(async (src: string) => {
-    let resolvedObjectUrl: string | null = null;
-    try {
-      const resolvedSrc = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
-      if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
-        resolvedObjectUrl = resolvedSrc;
-      }
-      const response = await fetch(resolvedSrc);
-      const sourceBlob = await response.blob();
-      // 存储多为 WebP；下载统一转 PNG，兼容更多工具
-      const blob = await convertImageBlobToPng(sourceBlob);
-      const filename = `image-${Date.now()}.png`;
+  const downloadImage = useCallback(
+    async (src: string) => {
+      let resolvedObjectUrl: string | null = null;
+      try {
+        const resolvedSrc = await resolveImageSrc(
+          src,
+          platform,
+          getActivePageLocalFilePath(),
+        );
+        if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
+          resolvedObjectUrl = resolvedSrc;
+        }
+        const response = await fetch(resolvedSrc);
+        const sourceBlob = await response.blob();
+        // 存储多为 WebP；下载统一转 PNG，兼容更多工具
+        const blob = await convertImageBlobToPng(sourceBlob);
+        const filename = `image-${Date.now()}.png`;
 
-      const targetPath = await platform.dialog.showSaveDialog({
-        title: "保存文件",
-        defaultPath: filename,
-        buttonLabel: "保存",
-      });
+        const targetPath = await platform.dialog.showSaveDialog({
+          title: "保存文件",
+          defaultPath: filename,
+          buttonLabel: "保存",
+        });
 
-      if (targetPath) {
-        const base64 = await blobToBase64(blob);
-        const payload = base64.replace(/^data:.*;base64,/, "");
-        const saved = await platform.fs.writeFileAsync(targetPath, payload, "base64");
-        if (saved) {
-          await platform.shell.showItemInFolder(targetPath);
-          toast.success("图片已保存");
-          return;
+        if (targetPath) {
+          const base64 = await blobToBase64(blob);
+          const payload = base64.replace(/^data:.*;base64,/, "");
+          const saved = await platform.fs.writeFileAsync(
+            targetPath,
+            payload,
+            "base64",
+          );
+          if (saved) {
+            await platform.shell.showItemInFolder(targetPath);
+            toast.success("图片已保存");
+            return;
+          }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast.success("已开始下载");
+      } catch (err) {
+        toast.error(
+          `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        );
+      } finally {
+        if (resolvedObjectUrl) {
+          try {
+            URL.revokeObjectURL(resolvedObjectUrl);
+          } catch {
+            /* ignore */
+          }
         }
       }
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("已开始下载");
-    } catch (err) {
-      toast.error(`下载失败: ${err instanceof Error ? err.message : "未知错误"}`);
-    } finally {
-      if (resolvedObjectUrl) {
-        try { URL.revokeObjectURL(resolvedObjectUrl); } catch { /* ignore */ }
-      }
-    }
-  }, [platform, getActivePageLocalFilePath]);
+    },
+    [platform, getActivePageLocalFilePath],
+  );
 
   const handleDownload = useCallback(async () => {
     if (!currentSlide) return;
     await downloadImage(currentSlide.src);
   }, [currentSlide, downloadImage]);
 
-  const copyImageToClipboard = useCallback(async (src: string) => {
-    let resolvedObjectUrl: string | null = null;
-    try {
-      const resolvedSrc = await resolveImageSrc(src, platform, getActivePageLocalFilePath());
-      if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
-        resolvedObjectUrl = resolvedSrc;
+  const copyImageToClipboard = useCallback(
+    async (src: string) => {
+      let resolvedObjectUrl: string | null = null;
+      try {
+        const resolvedSrc = await resolveImageSrc(
+          src,
+          platform,
+          getActivePageLocalFilePath(),
+        );
+        if (resolvedSrc.startsWith("blob:") && resolvedSrc !== src) {
+          resolvedObjectUrl = resolvedSrc;
+        }
+        const response = await fetch(resolvedSrc);
+        const sourceBlob = await response.blob();
+        // 剪贴板统一 PNG，避免 WebP 在部分 App 粘贴失败
+        const blob = await convertImageBlobToPng(sourceBlob);
+        const base64 = await blobToBase64(blob);
+        await platform.clipboard.copyImage(base64);
+        toast.success("已复制到剪贴板");
+      } catch (err) {
+        toast.error(
+          `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        );
+      } finally {
+        if (resolvedObjectUrl) {
+          try {
+            URL.revokeObjectURL(resolvedObjectUrl);
+          } catch {
+            /* ignore */
+          }
+        }
       }
-      const response = await fetch(resolvedSrc);
-      const sourceBlob = await response.blob();
-      // 剪贴板统一 PNG，避免 WebP 在部分 App 粘贴失败
-      const blob = await convertImageBlobToPng(sourceBlob);
-      const base64 = await blobToBase64(blob);
-      await platform.clipboard.copyImage(base64);
-      toast.success("已复制到剪贴板");
-    } catch (err) {
-      toast.error(`复制失败: ${err instanceof Error ? err.message : "未知错误"}`);
-    } finally {
-      if (resolvedObjectUrl) {
-        try { URL.revokeObjectURL(resolvedObjectUrl); } catch { /* ignore */ }
-      }
-    }
-  }, [platform, getActivePageLocalFilePath]);
+    },
+    [platform, getActivePageLocalFilePath],
+  );
 
   const handleCopy = useCallback(async () => {
     if (!currentSlide) return;
     await copyImageToClipboard(currentSlide.src);
   }, [copyImageToClipboard, currentSlide]);
 
-  const applyImageAlignment = useCallback((alignment: ImageAlignment) => {
-    if (!selectedImage?.blockId) return;
-    const block = editor.getBlock(selectedImage.blockId);
-    if (!block) return;
+  const applyImageAlignment = useCallback(
+    (alignment: ImageAlignment) => {
+      if (!selectedImage?.blockId) return;
+      const block = editor.getBlock(selectedImage.blockId);
+      if (!block) return;
 
-    editor.updateBlock(block, {
-      props: { textAlignment: alignment },
-    } as any);
+      editor.updateBlock(block, {
+        props: { textAlignment: alignment },
+      } as any);
 
-    setSelectedImage((current) =>
-      current ? { ...current, alignment } : current,
-    );
-  }, [editor, selectedImage]);
+      setSelectedImage((current) =>
+        current ? { ...current, alignment } : current,
+      );
+    },
+    [editor, selectedImage],
+  );
 
   const handleSelectedImageZoom = useCallback(async () => {
     const container = editorContainerRef.current;
@@ -316,32 +377,42 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
           open={open}
           close={() => setOpen(false)}
           index={index}
-          slides={slides.map((s) => ({ src: s.src, alt: s.alt }))}
+          slides={slides.map((s) => ({
+            src: s.src,
+            alt: s.alt,
+            title: s.alt || undefined,
+          }))}
           plugins={[Zoom]}
-          zoom={{ maxZoomPixelRatio: 3 }}
-          carousel={{ finite: slides.length <= 1 }}
-          controller={{ closeOnBackdropClick: true }}
+          zoom={{
+            maxZoomPixelRatio: 4,
+            scrollToZoom: true,
+            doubleClickDelay: 250,
+          }}
+          carousel={{ finite: slides.length <= 1, padding: "48px" }}
+          controller={{ closeOnBackdropClick: true, closeOnPullDown: true }}
+          animation={{ fade: 220, swipe: 280 }}
+          className="goose-image-lightbox"
           toolbar={{
             buttons: [
               <button
                 key="download"
                 type="button"
                 title="下载图片"
+                aria-label="下载图片"
                 onClick={handleDownload}
                 className="yarl__button"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <Download size={20} />
+                <Download size={18} strokeWidth={1.75} />
               </button>,
               <button
                 key="copy"
                 type="button"
                 title="复制图片"
+                aria-label="复制图片"
                 onClick={handleCopy}
                 className="yarl__button"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <Copy size={20} />
+                <Copy size={18} strokeWidth={1.75} />
               </button>,
               "close",
             ],
@@ -352,16 +423,18 @@ export function ImageLightbox({ editor, editorContainerRef }: ImageLightboxProps
                 key="close"
                 type="button"
                 title="关闭"
+                aria-label="关闭"
                 onClick={() => setOpen(false)}
                 className="yarl__button"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <X size={20} />
+                <X size={18} strokeWidth={1.75} />
               </button>
             ),
+            buttonPrev: slides.length <= 1 ? () => null : undefined,
+            buttonNext: slides.length <= 1 ? () => null : undefined,
           }}
           styles={{
-            container: { backgroundColor: "rgba(0, 0, 0, 0.85)" },
+            container: { backgroundColor: "transparent" },
           }}
           on={{ view: ({ index: newIndex }) => setIndex(newIndex) }}
         />

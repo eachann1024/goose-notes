@@ -4,6 +4,8 @@ import {
   getAllConfiguredShortcuts,
   normalizeShortcutForConflict,
 } from "../../src/pages/workspace/components/sidebar/settings/SettingsShortcuts";
+import { getFixedAppShortcuts } from "../../src/lib/fixed-app-shortcuts";
+import { DEFAULT_APP_SHORTCUTS } from "../../src/stores/settings/slices/shortcutsSlice";
 
 function shortcutEvent(init: {
   key: string;
@@ -58,8 +60,21 @@ test("conflict normalization aligns Mod with the current platform primary modifi
 
 test("configured shortcut conflicts include fixed shortcuts", () => {
   const configured = getAllConfiguredShortcuts({}, "", "", "unused");
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+N"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+F"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+T"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+1"));
   expect(configured).toContain(normalizeShortcutForConflict("Ctrl+Tab"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+G"));
   expect(configured).toContain(normalizeShortcutForConflict("Shift+F3"));
+});
+
+test("fixed shortcuts adapt to the current operating system", () => {
+  expect(getFixedAppShortcuts("mac").openSettings).toBe("Ctrl+,");
+  expect(getFixedAppShortcuts("windows").openSettings).toBe("Alt+,");
+  expect(getFixedAppShortcuts("linux").openSettings).toBe("Alt+,");
+  expect(getFixedAppShortcuts("mac").reopenTab).toBe("Mod+Shift+T");
+  expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("newNote");
+  expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("saveNote");
+  expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("reopenTab");
 });

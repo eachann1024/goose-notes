@@ -156,9 +156,11 @@ function SortableTabItem({
               <TooltipContent side="bottom">
                 <div className="flex items-center gap-2">
                   <span>关闭标签页</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {closeTabShortcutLabel}
-                  </span>
+                  {closeTabShortcutLabel && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {closeTabShortcutLabel}
+                    </span>
+                  )}
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -180,9 +182,11 @@ function SortableTabItem({
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={onClose}>
           关闭
-          <span className="ml-auto text-xs text-muted-foreground">
-            {closeTabShortcutLabel}
-          </span>
+          {closeTabShortcutLabel && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {closeTabShortcutLabel}
+            </span>
+          )}
         </ContextMenuItem>
         <ContextMenuItem onSelect={onCloseOthers} disabled={!hasOtherTabs}>
           关闭其他标签页
@@ -274,18 +278,15 @@ export function PageHeader({
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
   const closeTabShortcutLabel = closeTabShortcut
     ? formatShortcut(closeTabShortcut)
-    : "未设置";
-  const searchShortcuts = appShortcuts.openSearch
-    ? formatShortcut(appShortcuts.openSearch)
-    : "未设置";
+    : "";
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const toggleSidebarShortcutLabel = appShortcuts.toggleSidebar
     ? formatShortcut(appShortcuts.toggleSidebar)
-    : "未设置";
+    : "";
   const toggleAiPanelShortcutLabel = appShortcuts.toggleAIPanel
     ? formatShortcut(appShortcuts.toggleAIPanel)
-    : "未设置";
+    : "";
   const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
   const [sidebarExpandAttention, setSidebarExpandAttention] = useState(false);
 
@@ -362,9 +363,11 @@ export function PageHeader({
               <TooltipContent side="bottom">
                 <div className="flex items-center gap-2">
                   <span>展开侧栏</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {toggleSidebarShortcutLabel}
-                  </span>
+                  {toggleSidebarShortcutLabel && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {toggleSidebarShortcutLabel}
+                    </span>
+                  )}
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -585,9 +588,11 @@ export function PageHeader({
               <TooltipContent side="bottom">
                 <div className="flex items-center gap-2">
                   <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {toggleAiPanelShortcutLabel}
-                  </span>
+                  {toggleAiPanelShortcutLabel && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {toggleAiPanelShortcutLabel}
+                    </span>
+                  )}
                 </div>
               </TooltipContent>
             </Tooltip>

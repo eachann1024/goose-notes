@@ -14,10 +14,7 @@ import { usePages } from "@/stores/usePages";
 import type { Page } from "@/types";
 import { LocalFolderLoadingSkeleton } from "./LocalFolderLoadingSkeleton";
 import { buildSidebarTitleDisambiguationMap } from "./sidebar-title-disambiguation";
-import {
-  buildVisibleTree,
-  type FlatTreeItem,
-} from "./tree-dnd";
+import { buildVisibleTree, type FlatTreeItem } from "./tree-dnd";
 import {
   useTreeDragHandlers,
   type DropIntent,
@@ -51,7 +48,9 @@ class LeftButtonPointerSensor extends PointerSensor {
     {
       eventName: "onPointerDown" as const,
       handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) =>
-        nativeEvent.isPrimary && nativeEvent.button === 0 && !nativeEvent.ctrlKey,
+        nativeEvent.isPrimary &&
+        nativeEvent.button === 0 &&
+        !nativeEvent.ctrlKey,
     },
   ];
 }
@@ -84,7 +83,8 @@ export function SidebarTree({
     setExpandPageId,
   } = usePages();
   // selectedPageId 传 null 表示"不高亮任何项"（如 AI 界面打开时），undefined 才 fallback 到 activePageId
-  const highlightedPageId = selectedPageId !== undefined ? selectedPageId : activePageId;
+  const highlightedPageId =
+    selectedPageId !== undefined ? selectedPageId : activePageId;
 
   const notebook = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]
@@ -92,7 +92,7 @@ export function SidebarTree({
   const isLocalNotebook = notebook?.source === "local-folder";
   const localLoadStatus = useNotebooks((state) =>
     activeNotebookId
-      ? state.localFolderLoadStates[activeNotebookId]?.status ?? "idle"
+      ? (state.localFolderLoadStates[activeNotebookId]?.status ?? "idle")
       : "idle",
   );
   const shouldShowLocalSkeleton =
@@ -116,7 +116,14 @@ export function SidebarTree({
         rootPageIds,
         flatRoots,
       }),
-    [pages, openPageIds, activeNotebookId, isLocalNotebook, rootPageIds, flatRoots]
+    [
+      pages,
+      openPageIds,
+      activeNotebookId,
+      isLocalNotebook,
+      rootPageIds,
+      flatRoots,
+    ],
   );
 
   const activeDescendantIds = useMemo(() => {
@@ -141,9 +148,11 @@ export function SidebarTree({
   const renderItems = useMemo(
     () =>
       activeId
-        ? visibleItems.filter((item) => ("isPlaceholder" in item ? true : !activeDescendantIds.has(item.id)))
+        ? visibleItems.filter((item) =>
+            "isPlaceholder" in item ? true : !activeDescendantIds.has(item.id),
+          )
         : visibleItems,
-    [visibleItems, activeId, activeDescendantIds]
+    [visibleItems, activeId, activeDescendantIds],
   );
   const titleDisambiguationMap = useMemo(
     () =>
@@ -157,8 +166,11 @@ export function SidebarTree({
   );
 
   const flatItems = useMemo(
-    () => renderItems.filter((item) => !("isPlaceholder" in item)) as FlatTreeItem[],
-    [renderItems]
+    () =>
+      renderItems.filter(
+        (item) => !("isPlaceholder" in item),
+      ) as FlatTreeItem[],
+    [renderItems],
   );
   const draggablePageIdSet = useMemo(
     () => (draggablePageIds ? new Set(draggablePageIds) : null),
@@ -183,11 +195,13 @@ export function SidebarTree({
       activationConstraint: {
         distance: 4,
       },
-    })
+    }),
   );
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const filterSelf = (collisions: Collision[]) =>
-      collisions.filter((collision) => String(collision.id) !== String(args.active.id));
+      collisions.filter(
+        (collision) => String(collision.id) !== String(args.active.id),
+      );
     const pointerHits = filterSelf(pointerWithin(args));
     if (pointerHits.length > 0) {
       return pointerHits;
@@ -259,15 +273,25 @@ export function SidebarTree({
 
     setExpandPageId(null);
     return () => window.clearTimeout(timer);
-  }, [expandPageId, pages, activeNotebookId, setExpandPageId, renderItems, virtualizer]);
+  }, [
+    expandPageId,
+    pages,
+    activeNotebookId,
+    setExpandPageId,
+    renderItems,
+    virtualizer,
+  ]);
 
-  const emitDragGuide = useCallback((guide: SidebarDragGuide | null) => {
-    if (!onDragGuideChange) return;
-    const key = guide ? `${guide.direction}:${guide.mode}` : "__none__";
-    if (dragGuideKeyRef.current === key) return;
-    dragGuideKeyRef.current = key;
-    onDragGuideChange(guide);
-  }, [onDragGuideChange]);
+  const emitDragGuide = useCallback(
+    (guide: SidebarDragGuide | null) => {
+      if (!onDragGuideChange) return;
+      const key = guide ? `${guide.direction}:${guide.mode}` : "__none__";
+      if (dragGuideKeyRef.current === key) return;
+      dragGuideKeyRef.current = key;
+      onDragGuideChange(guide);
+    },
+    [onDragGuideChange],
+  );
 
   useEffect(() => {
     return () => {
@@ -323,11 +347,14 @@ export function SidebarTree({
   if (flatItems.length === 0) {
     if (!showEmptyState) return null;
     return (
-      <TreeEmptyState
-        isLocalNotebook={isLocalNotebook}
-        width={width}
-        onCreatePage={onCreatePage}
-      />
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <TreeEmptyState
+          isLocalNotebook={isLocalNotebook}
+          width={width}
+          height={viewportHeight}
+          onCreatePage={onCreatePage}
+        />
+      </div>
     );
   }
 

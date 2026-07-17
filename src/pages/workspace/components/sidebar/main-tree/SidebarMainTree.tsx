@@ -71,7 +71,7 @@ export function SidebarMainTree({
   const isLocalFolder = notebook?.source === "local-folder";
   const localLoadStatus = useNotebooks((state) =>
     activeNotebookId
-      ? state.localFolderLoadStates[activeNotebookId]?.status ?? "idle"
+      ? (state.localFolderLoadStates[activeNotebookId]?.status ?? "idle")
       : "idle",
   );
   const shouldShowLocalSkeleton =
@@ -92,72 +92,78 @@ export function SidebarMainTree({
   const highlightedPageId =
     selectedPageId !== undefined ? selectedPageId : activePageId;
 
-  const startCreateLocalFolder = useCallback((parentId?: string) => {
-    if (!activeNotebookId || !isLocalFolder) return;
-    const parentPage = parentId ? pages[parentId] : undefined;
-    const safeParentId = parentPage?.isFolder ? parentId : undefined;
-    const pendingId = `${PENDING_FOLDER_ID_PREFIX}${Date.now()}`;
-    const now = Date.now();
-    setPendingFolder({
-      id: pendingId,
-      workspaceId: activeNotebookId,
-      parentId: safeParentId,
-      content: {
-        type: "doc",
-        content: [
-          {
-            type: "heading",
-            attrs: { level: 1 },
-            content: [{ type: "text", text: "新建文件夹" }],
-          },
-        ],
-      },
-      isFolder: true,
-      localPendingCreate: "folder",
-      isLocked: false,
-      isFullWidth: false,
-      fontSize: "default",
-      fontFamily: "default",
-      createdAt: now,
-      updatedAt: now,
-      order: now,
-    });
-    if (safeParentId && !expandedIds.includes(safeParentId)) {
-      expandView(activeNotebookId, safeParentId);
-    }
-  }, [activeNotebookId, expandedIds, expandView, isLocalFolder, pages]);
+  const startCreateLocalFolder = useCallback(
+    (parentId?: string) => {
+      if (!activeNotebookId || !isLocalFolder) return;
+      const parentPage = parentId ? pages[parentId] : undefined;
+      const safeParentId = parentPage?.isFolder ? parentId : undefined;
+      const pendingId = `${PENDING_FOLDER_ID_PREFIX}${Date.now()}`;
+      const now = Date.now();
+      setPendingFolder({
+        id: pendingId,
+        workspaceId: activeNotebookId,
+        parentId: safeParentId,
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1 },
+              content: [{ type: "text", text: "新建文件夹" }],
+            },
+          ],
+        },
+        isFolder: true,
+        localPendingCreate: "folder",
+        isLocked: false,
+        isFullWidth: false,
+        fontSize: "default",
+        fontFamily: "default",
+        createdAt: now,
+        updatedAt: now,
+        order: now,
+      });
+      if (safeParentId && !expandedIds.includes(safeParentId)) {
+        expandView(activeNotebookId, safeParentId);
+      }
+    },
+    [activeNotebookId, expandedIds, expandView, isLocalFolder, pages],
+  );
 
   const cancelPendingFolder = useCallback((id: string) => {
-    setPendingFolder((current) => current?.id === id ? null : current);
+    setPendingFolder((current) => (current?.id === id ? null : current));
   }, []);
 
-  const commitPendingFolder = useCallback((id: string, name: string) => {
-    const current = pendingFolder;
-    if (!current || current.id !== id || !activeNotebookId) return;
-    void (async () => {
-      const createdId = await createLocalFolderRecord({
-        workspaceId: activeNotebookId,
-        parentId: current.parentId,
-        title: name,
-      });
-      if (!createdId) {
-        toast.error("新建文件夹失败：名称冲突或文件系统错误");
-        return;
-      }
-      setPendingFolder((latest) => latest?.id === id ? null : latest);
-      if (current.parentId) {
-        expandView(activeNotebookId, current.parentId);
-      }
-      setExpandPageId(createdId);
-      toast.success("已新建文件夹");
-    })();
-  }, [
-    activeNotebookId,
-    createLocalFolderRecord,
-    expandView,
-    pendingFolder,
-    setExpandPageId,
-  ]);
+  const commitPendingFolder = useCallback(
+    (id: string, name: string) => {
+      const current = pendingFolder;
+      if (!current || current.id !== id || !activeNotebookId) return;
+      void (async () => {
+        const createdId = await createLocalFolderRecord({
+          workspaceId: activeNotebookId,
+          parentId: current.parentId,
+          title: name,
+        });
+        if (!createdId) {
+          toast.error("新建文件夹失败：名称冲突或文件系统错误");
+          return;
+        }
+        setPendingFolder((latest) => (latest?.id === id ? null : latest));
+        if (current.parentId) {
+          expandView(activeNotebookId, current.parentId);
+        }
+        setExpandPageId(createdId);
+        toast.success("已新建文件夹");
+      })();
+    },
+    [
+      activeNotebookId,
+      createLocalFolderRecord,
+      expandView,
+      pendingFolder,
+      setExpandPageId,
+    ],
+  );
 
   const scopedPages = useMemo(() => {
     const list = Object.values(pages);
@@ -184,11 +190,7 @@ export function SidebarMainTree({
         },
       };
     }
-    return pagesToTreeItems(
-      scopedPages,
-      activeNotebookId,
-      isLocalFolder,
-    );
+    return pagesToTreeItems(scopedPages, activeNotebookId, isLocalFolder);
   }, [scopedPages, activeNotebookId, isLocalFolder]);
 
   const rootChildren = items.root?.children ?? [];
@@ -319,14 +321,19 @@ export function SidebarMainTree({
       <TreeEmptyState
         isLocalNotebook={isLocalFolder}
         width={width}
+        height={viewportHeight}
         onCreatePage={onCreatePage}
       />
     );
-    if (!isLocalFolder || !activeNotebookId) return emptyState;
+    if (!isLocalFolder || !activeNotebookId) {
+      return (
+        <div className="flex min-h-0 w-full flex-1 flex-col">{emptyState}</div>
+      );
+    }
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex-1 min-h-0">
+          <div className="flex min-h-0 w-full flex-1 flex-col outline-none">
             {emptyState}
           </div>
         </ContextMenuTrigger>
@@ -369,7 +376,10 @@ export function SidebarMainTree({
       insertIndex = -1;
     }
 
-    if (newParentId && dragIds.some((id) => id === newParentId || isAncestor(id, newParentId!))) {
+    if (
+      newParentId &&
+      dragIds.some((id) => id === newParentId || isAncestor(id, newParentId!))
+    ) {
       return;
     }
 
@@ -391,7 +401,9 @@ export function SidebarMainTree({
     }
 
     // ── uTools 内置模式：原有内存排序逻辑 ────────────────────────────────────
-    const allChildren = getChildren(newParentId, activeNotebookId).map((p) => p.id);
+    const allChildren = getChildren(newParentId, activeNotebookId).map(
+      (p) => p.id,
+    );
     // rct 的 childIndex 基于含被拖项的原列表；过滤后 splice 前要补偿
     // 插入点之前被移除的项数，否则从上往下拖会偏后一位
     if (insertIndex > 0) {
@@ -444,90 +456,99 @@ export function SidebarMainTree({
             openPageFromSidebar(pageId, "permanent");
           }}
         >
-      <ControlledTreeEnvironment<Page>
-        items={items}
-        getItemTitle={(item) =>
-          item.index === "root" ? "" : getPageTitle(item.data)
-        }
-        viewState={viewState}
-        defaultInteractionMode={InteractionMode.ClickArrowToExpand}
-        canDragAndDrop={true}
-        canReorderItems={true}
-        canDropOnFolder={true}
-        canDropOnNonFolder={false}
-        canRename={false}
-        canSearch={false}
-        canSearchByStartingTyping={false}
-        canDropAt={(dragItems, target) => {
-          const targetId =
-            target.targetType === "between-items"
-              ? String(target.parentItem)
-              : String((target as any).targetItem);
-          if (targetId === "root") return true;
-          const parentPage = pages[targetId];
-          // 本地文件夹：落点父级必须是目录（或根）
-          if (isLocalFolder && parentPage && !parentPage.isFolder) return false;
-          return !dragItems.some((it) => {
-            const id = String(it.index);
-            return id === targetId || isAncestor(id, targetId);
-          });
-        }}
-        onExpandItem={(item) => {
-          if (!activeNotebookId) return;
-          expandView(activeNotebookId, String(item.index));
-        }}
-        onCollapseItem={(item) => {
-          if (!activeNotebookId) return;
-          collapseView(activeNotebookId, String(item.index));
-        }}
-        onFocusItem={(item) => {
-          if (!activeNotebookId) return;
-          setFocusedView(activeNotebookId, String(item.index));
-        }}
-        onSelectItems={(selected) => {
-          if (!activeNotebookId) return;
-          const last = selected.length > 0 ? String(selected[selected.length - 1]) : null;
-          setSelectedView(activeNotebookId, last);
-          if (!last || last === "root") return;
-          if (shouldSuppressSidebarSelect()) return;
-          const page = pages[last];
-          if (!page) return;
-          if (isLocalFolderDirectoryPage(last)) {
-            toggleLocalDirectory(last);
-            return;
-          }
-          const { meta, ctrl } = lastClickModRef.current;
-          if (meta || ctrl) {
-            openPageFromSidebar(last, "permanent");
-          } else {
-            openPageFromSidebar(last, "preview");
-          }
-        }}
-        onPrimaryAction={(item) => {
-          const id = String(item.index);
-          if (id === "root") return;
-          if (isLocalFolderDirectoryPage(id)) {
-            toggleLocalDirectory(id);
-            return;
-          }
-          openPageFromSidebar(id, "preview");
-        }}
-        onDrop={handleDrop}
-        renderItem={(args) =>
-          renderItem({
-            ...args,
-            onCreateLocalFolder: startCreateLocalFolder,
-            onCommitPendingFolder: commitPendingFolder,
-            onCancelPendingFolder: cancelPendingFolder,
-          })
-        }
-        renderItemArrow={renderItemArrow}
-        renderItemsContainer={renderItemsContainer}
-        renderTreeContainer={renderTreeContainer}
-        renderDragBetweenLine={renderDragBetweenLine}
-      >
-        <Tree treeId="main" rootItem="root" treeLabel="页面" ref={treeRef} />
-      </ControlledTreeEnvironment>
+          <ControlledTreeEnvironment<Page>
+            items={items}
+            getItemTitle={(item) =>
+              item.index === "root" ? "" : getPageTitle(item.data)
+            }
+            viewState={viewState}
+            defaultInteractionMode={InteractionMode.ClickArrowToExpand}
+            canDragAndDrop={true}
+            canReorderItems={true}
+            canDropOnFolder={true}
+            canDropOnNonFolder={false}
+            canRename={false}
+            canSearch={false}
+            canSearchByStartingTyping={false}
+            canDropAt={(dragItems, target) => {
+              const targetId =
+                target.targetType === "between-items"
+                  ? String(target.parentItem)
+                  : String((target as any).targetItem);
+              if (targetId === "root") return true;
+              const parentPage = pages[targetId];
+              // 本地文件夹：落点父级必须是目录（或根）
+              if (isLocalFolder && parentPage && !parentPage.isFolder)
+                return false;
+              return !dragItems.some((it) => {
+                const id = String(it.index);
+                return id === targetId || isAncestor(id, targetId);
+              });
+            }}
+            onExpandItem={(item) => {
+              if (!activeNotebookId) return;
+              expandView(activeNotebookId, String(item.index));
+            }}
+            onCollapseItem={(item) => {
+              if (!activeNotebookId) return;
+              collapseView(activeNotebookId, String(item.index));
+            }}
+            onFocusItem={(item) => {
+              if (!activeNotebookId) return;
+              setFocusedView(activeNotebookId, String(item.index));
+            }}
+            onSelectItems={(selected) => {
+              if (!activeNotebookId) return;
+              const last =
+                selected.length > 0
+                  ? String(selected[selected.length - 1])
+                  : null;
+              setSelectedView(activeNotebookId, last);
+              if (!last || last === "root") return;
+              if (shouldSuppressSidebarSelect()) return;
+              const page = pages[last];
+              if (!page) return;
+              if (isLocalFolderDirectoryPage(last)) {
+                toggleLocalDirectory(last);
+                return;
+              }
+              const { meta, ctrl } = lastClickModRef.current;
+              if (meta || ctrl) {
+                openPageFromSidebar(last, "permanent");
+              } else {
+                openPageFromSidebar(last, "preview");
+              }
+            }}
+            onPrimaryAction={(item) => {
+              const id = String(item.index);
+              if (id === "root") return;
+              if (isLocalFolderDirectoryPage(id)) {
+                toggleLocalDirectory(id);
+                return;
+              }
+              openPageFromSidebar(id, "preview");
+            }}
+            onDrop={handleDrop}
+            renderItem={(args) =>
+              renderItem({
+                ...args,
+                onCreateLocalFolder: startCreateLocalFolder,
+                onCommitPendingFolder: commitPendingFolder,
+                onCancelPendingFolder: cancelPendingFolder,
+              })
+            }
+            renderItemArrow={renderItemArrow}
+            renderItemsContainer={renderItemsContainer}
+            renderTreeContainer={renderTreeContainer}
+            renderDragBetweenLine={renderDragBetweenLine}
+          >
+            <Tree
+              treeId="main"
+              rootItem="root"
+              treeLabel="页面"
+              ref={treeRef}
+            />
+          </ControlledTreeEnvironment>
         </div>
       </ContextMenuTrigger>
       {isLocalFolder && activeNotebookId && (

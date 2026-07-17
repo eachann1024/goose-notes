@@ -97,7 +97,7 @@ export function EditorFormattingToolbar() {
 
   const bindTooltip = useCallback<BindTooltip>(
     (id) => ({
-      delayDuration: 600,
+      delayDuration: 400,
       open: activeTooltip === id,
       onOpenChange: (open) =>
         setActiveTooltip((prev) => (open ? id : prev === id ? null : prev)),
@@ -164,7 +164,9 @@ export function EditorFormattingToolbar() {
           );
           return;
         }
-        toast.info("uTools 内置模型使用右侧笔记本 AI 面板；已为你打开，可直接输入处理要求。");
+        toast.info(
+          "uTools 内置模型使用右侧笔记本 AI 面板；已为你打开，可直接输入处理要求。",
+        );
         return;
       }
       const apiKey = (
@@ -173,11 +175,13 @@ export function EditorFormattingToolbar() {
           : aiSettings.customClaudeApiKey
       ).trim();
       if (!apiKey) {
-        toast.error('未填写 API Key。请前往"设置 → AI 助手 → 自定义 AI"检查配置。');
+        toast.error(
+          '未填写 API Key。请前往"设置 → AI 助手 → 自定义 AI"检查配置。',
+        );
         return;
       }
       const hasModel =
-        (aiSettings.selectedModelId?.trim()) ||
+        aiSettings.selectedModelId?.trim() ||
         aiSettings.customModelOptions[0]?.id;
       if (!hasModel) {
         toast.error("请先保存自定义 AI 配置并获取模型列表");
@@ -299,7 +303,7 @@ export function EditorFormattingToolbar() {
 
   return (
     <TooltipProvider
-      delayDuration={600}
+      delayDuration={400}
       skipDelayDuration={0}
       disableHoverableContent
     >
@@ -332,7 +336,10 @@ export function EditorFormattingToolbar() {
         <div className="flex items-center gap-0.5 p-1">
           {!__GOOSE_LITE__ && aiSettings.enabled && (
             <>
-              <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
+              <AiButton
+                onActivate={handleAiActivate}
+                bindTooltip={bindTooltip}
+              />
               <Separator
                 orientation="vertical"
                 className="h-5 opacity-70 mx-0.5"
@@ -357,7 +364,9 @@ export function EditorFormattingToolbar() {
             hideMarks={isInHeading}
           />
 
-          {!isInHeading && <Separator orientation="vertical" className="h-5 opacity-70" />}
+          {!isInHeading && (
+            <Separator orientation="vertical" className="h-5 opacity-70" />
+          )}
 
           <LinkButton
             isLinkActive={isLinkActive}

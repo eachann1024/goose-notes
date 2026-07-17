@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { formatShortcut } from "@/lib/utils"
+import { getShortcutFromMouseEvent } from "@/lib/shortcut-match"
 
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]"
@@ -90,8 +91,8 @@ export function ShortcutField({
   const [isCapturing, setIsCapturing] = useState(false)
   const displayValue = value ? formatShortcut(value) : ""
   const hintText = isCapturing
-    ? "正在监听，现可直接按下快捷键"
-    : "点击输入框后开始录入快捷键"
+    ? "正在监听，可按键盘快捷键或鼠标侧键"
+    : "点击输入框后，按键盘快捷键或鼠标侧键"
 
   return (
     <div className={`space-y-2 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
@@ -117,6 +118,20 @@ export function ShortcutField({
           )}
           onFocus={() => setIsCapturing(true)}
           onBlur={() => setIsCapturing(false)}
+          onMouseDown={(event) => {
+            const shortcut = getShortcutFromMouseEvent(event.nativeEvent)
+            if (!shortcut) return
+            event.preventDefault()
+            event.stopPropagation()
+            event.currentTarget.focus()
+            setIsCapturing(true)
+            onChange(shortcut)
+          }}
+          onAuxClick={(event) => {
+            if (!getShortcutFromMouseEvent(event.nativeEvent)) return
+            event.preventDefault()
+            event.stopPropagation()
+          }}
           onKeyDown={(event) => {
             if (
               event.key === "Tab" &&
