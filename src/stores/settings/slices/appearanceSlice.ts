@@ -66,7 +66,7 @@ export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions;
 
 export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   theme: "system",
-  codeStyle: "default",
+  codeStyle: "github",
   defaultCodeBlockWrap: false,
   globalEditorFullWidth: false,
   tableEvenColumnWidth: true,

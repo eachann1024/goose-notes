@@ -29,8 +29,10 @@ export const AI_INITIAL_STATE: AISliceState = {
         workspaceReasoningLevel: 'default',
         useCustomProvider: true,
         customProtocol: 'openai',
+        customOpenAIResponsesBaseURL: DEFAULT_OPENAI_BASE_URL,
         customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
         customClaudeBaseURL: DEFAULT_CLAUDE_BASE_URL,
+        customOpenAIResponsesApiKey: '',
         customOpenAIApiKey: '',
         customClaudeApiKey: '',
         customModelOptions: [],
@@ -63,15 +65,17 @@ export function createAISlice(set: SetFn): AISlice {
         saveAICustomConfig: ({ protocol, baseURL, apiKey, modelOptions }) =>
             set((state) => {
                 const normalizedModelOptions = normalizeAIModelOptions(modelOptions)
-                const normalizedBaseURL = protocol === 'openai'
-                    ? normalizeAIBaseURL(baseURL, DEFAULT_OPENAI_BASE_URL)
-                    : normalizeAIBaseURL(baseURL, DEFAULT_CLAUDE_BASE_URL)
+                const normalizedBaseURL = protocol === 'claude'
+                    ? normalizeAIBaseURL(baseURL, DEFAULT_CLAUDE_BASE_URL)
+                    : normalizeAIBaseURL(baseURL, DEFAULT_OPENAI_BASE_URL)
                 const normalizedApiKey = normalizeAIApiKey(apiKey)
                 const nextAI = {
                     ...state.ai,
                     customProtocol: protocol,
+                    customOpenAIResponsesBaseURL: protocol === 'openai-responses' ? normalizedBaseURL : state.ai.customOpenAIResponsesBaseURL,
                     customOpenAIBaseURL: protocol === 'openai' ? normalizedBaseURL : state.ai.customOpenAIBaseURL,
                     customClaudeBaseURL: protocol === 'claude' ? normalizedBaseURL : state.ai.customClaudeBaseURL,
+                    customOpenAIResponsesApiKey: protocol === 'openai-responses' ? normalizedApiKey : state.ai.customOpenAIResponsesApiKey,
                     customOpenAIApiKey: protocol === 'openai' ? normalizedApiKey : state.ai.customOpenAIApiKey,
                     customClaudeApiKey: protocol === 'claude' ? normalizedApiKey : state.ai.customClaudeApiKey,
                     customModelOptions: normalizedModelOptions,

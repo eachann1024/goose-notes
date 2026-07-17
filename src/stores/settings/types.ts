@@ -9,7 +9,7 @@ export interface SearchProvider {
 }
 export type Theme = 'light' | 'dark' | 'system'
 
-export type CodeStyle = 'default' | 'github' | 'modern' | 'night' | 'dracula' | 'nord' | 'nord-light'
+export type CodeStyle = 'default' | 'github' | 'catppuccin' | 'modern' | 'night' | 'dracula' | 'nord' | 'nord-light'
 
 export interface UToolsSettings {
     globalSearchEnabled: boolean
@@ -24,8 +24,10 @@ export interface AISettings {
     workspaceReasoningLevel: AIReasoningLevel
     useCustomProvider: boolean
     customProtocol: CustomAIProtocol
+    customOpenAIResponsesBaseURL: string
     customOpenAIBaseURL: string
     customClaudeBaseURL: string
+    customOpenAIResponsesApiKey: string
     customOpenAIApiKey: string
     customClaudeApiKey: string
     customModelOptions: AIModelOption[]
@@ -152,6 +154,7 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
 ]
 
 export const CODE_STYLE_MIGRATION_MAP: Record<string, CodeStyle> = {
+    default: 'github',
     vivid: 'nord',
 }
 
@@ -182,20 +185,22 @@ export function normalizeDesktopHotkeyStatus(
 }
 
 export function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
-    if (!codeStyle) return 'default'
+    if (!codeStyle) return 'github'
     if (codeStyle in CODE_STYLE_MIGRATION_MAP) {
         return CODE_STYLE_MIGRATION_MAP[codeStyle]
     }
-    if (codeStyle === 'default' || codeStyle === 'github' || codeStyle === 'modern' || codeStyle === 'night' || codeStyle === 'dracula' || codeStyle === 'nord' || codeStyle === 'nord-light') {
+    if (codeStyle === 'github' || codeStyle === 'catppuccin' || codeStyle === 'modern' || codeStyle === 'night' || codeStyle === 'dracula' || codeStyle === 'nord' || codeStyle === 'nord-light') {
         return codeStyle
     }
-    return 'default'
+    return 'github'
 }
 
 export function resolveCodeTheme(codeStyle: CodeStyle, isDark: boolean): string {
     switch (codeStyle) {
         case 'modern':
             return isDark ? 'one-dark' : 'one-light'
+        case 'catppuccin':
+            return isDark ? 'catppuccin-mocha' : 'catppuccin-latte'
         case 'night':
             return isDark ? 'tokyo-night' : 'github-light-mod'
         case 'dracula':
@@ -373,7 +378,10 @@ export function normalizeAISettings(ai: Partial<AISettings> | undefined): AISett
         typeof ai?.workspaceSelectedModelId === 'string' && ai.workspaceSelectedModelId.trim()
             ? ai.workspaceSelectedModelId.trim()
             : null
-    const customProtocol = ai?.customProtocol === 'claude' ? 'claude' : 'openai'
+    const customProtocol: CustomAIProtocol =
+        ai?.customProtocol === 'openai-responses' || ai?.customProtocol === 'claude'
+            ? ai.customProtocol
+            : 'openai'
     const legacyAI = (ai ?? {}) as Partial<AISettings> & {
         customBaseURL?: unknown
         customApiKey?: unknown
@@ -388,6 +396,10 @@ export function normalizeAISettings(ai: Partial<AISettings> | undefined): AISett
         workspaceReasoningLevel: normalizeAIReasoningLevel(ai?.workspaceReasoningLevel),
         useCustomProvider: true,
         customProtocol,
+        customOpenAIResponsesBaseURL: normalizeAIBaseURL(
+            ai?.customOpenAIResponsesBaseURL,
+            ai?.customOpenAIBaseURL ?? DEFAULT_OPENAI_BASE_URL,
+        ),
         customOpenAIBaseURL: normalizeAIBaseURL(
             ai?.customOpenAIBaseURL,
             customProtocol === 'openai' && legacyBaseURL ? legacyBaseURL : DEFAULT_OPENAI_BASE_URL,
@@ -395,6 +407,10 @@ export function normalizeAISettings(ai: Partial<AISettings> | undefined): AISett
         customClaudeBaseURL: normalizeAIBaseURL(
             ai?.customClaudeBaseURL,
             customProtocol === 'claude' && legacyBaseURL ? legacyBaseURL : DEFAULT_CLAUDE_BASE_URL,
+        ),
+        customOpenAIResponsesApiKey: normalizeAIApiKey(
+            ai?.customOpenAIResponsesApiKey,
+            ai?.customOpenAIApiKey ?? (customProtocol === 'openai-responses' ? legacyApiKey : ''),
         ),
         customOpenAIApiKey: normalizeAIApiKey(
             ai?.customOpenAIApiKey,

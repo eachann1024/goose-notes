@@ -33,6 +33,7 @@ const liteStubAliases: { find: RegExp; replacement: string }[] = isQuicknoteBuil
       // AI（小窗砍掉「向 AI 提问」）：精确匹配包名，不碰 `@blocknote/xl-ai/style.css`（CSS 保留）。
       { find: /^@blocknote\/xl-ai$/, replacement: liteEmptyModule },
       { find: /^@blocknote\/xl-ai\/locales$/, replacement: liteEmptyModule },
+      { find: /^@ai-sdk\/openai$/, replacement: liteEmptyModule },
       { find: /^@ai-sdk\/openai-compatible$/, replacement: liteEmptyModule },
       { find: /^@ai-sdk\/anthropic$/, replacement: liteEmptyModule },
     ]
@@ -304,6 +305,7 @@ export default defineConfig({
       "@blocknote/xl-ai",
       "@blocknote/xl-pdf-exporter",
       "@ai-sdk/react",
+      "@ai-sdk/openai",
       "@ai-sdk/anthropic",
       "@ai-sdk/openai-compatible",
       "ai",

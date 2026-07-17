@@ -54,14 +54,19 @@ const CUSTOM_PROTOCOL_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    id: "openai-responses",
+    label: "OpenAI Responses",
+    description: "使用 /v1/responses，适合 OpenAI 及支持 Responses 的服务",
+  },
+  {
     id: "openai",
     label: "OpenAI 兼容协议",
-    description: "支持自定义 baseURL 与 API Key",
+    description: "使用 /v1/chat/completions，兼容多数第三方服务",
   },
   {
     id: "claude",
-    label: "Claude 协议",
-    description: "支持自定义 baseURL 与 API Key",
+    label: "Anthropic 协议",
+    description: "使用 /v1/messages，适合 Anthropic 及兼容服务",
   },
 ];
 
@@ -76,8 +81,10 @@ export function SettingsAI({
   saveCustomConfig,
 }: SettingsAIProps) {
   const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(ai.customProtocol);
+  const [customOpenAIResponsesBaseURL, setCustomOpenAIResponsesBaseURL] = useState(ai.customOpenAIResponsesBaseURL);
   const [customOpenAIBaseURL, setCustomOpenAIBaseURL] = useState(ai.customOpenAIBaseURL);
   const [customClaudeBaseURL, setCustomClaudeBaseURL] = useState(ai.customClaudeBaseURL);
+  const [customOpenAIResponsesApiKey, setCustomOpenAIResponsesApiKey] = useState(ai.customOpenAIResponsesApiKey);
   const [customOpenAIApiKey, setCustomOpenAIApiKey] = useState(ai.customOpenAIApiKey);
   const [customClaudeApiKey, setCustomClaudeApiKey] = useState(ai.customClaudeApiKey);
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
@@ -90,12 +97,20 @@ export function SettingsAI({
   }, [ai.customProtocol]);
 
   useEffect(() => {
+    setCustomOpenAIResponsesBaseURL(ai.customOpenAIResponsesBaseURL);
+  }, [ai.customOpenAIResponsesBaseURL]);
+
+  useEffect(() => {
     setCustomOpenAIBaseURL(ai.customOpenAIBaseURL);
   }, [ai.customOpenAIBaseURL]);
 
   useEffect(() => {
     setCustomClaudeBaseURL(ai.customClaudeBaseURL);
   }, [ai.customClaudeBaseURL]);
+
+  useEffect(() => {
+    setCustomOpenAIResponsesApiKey(ai.customOpenAIResponsesApiKey);
+  }, [ai.customOpenAIResponsesApiKey]);
 
   useEffect(() => {
     setCustomOpenAIApiKey(ai.customOpenAIApiKey);
@@ -117,9 +132,17 @@ export function SettingsAI({
 
   const currentModel = customModels.find((item) => item.id === selectedModelId) ?? null;
   const selectedProtocol = CUSTOM_PROTOCOL_OPTIONS.find((item) => item.id === customProtocol) ?? CUSTOM_PROTOCOL_OPTIONS[0];
-  const customBaseURL = customProtocol === "openai" ? customOpenAIBaseURL : customClaudeBaseURL;
-  const customApiKey = customProtocol === "openai" ? customOpenAIApiKey : customClaudeApiKey;
-  const currentBaseURLPlaceholder = customProtocol === "openai" ? DEFAULT_OPENAI_BASE_URL : DEFAULT_CLAUDE_BASE_URL;
+  const customBaseURL = customProtocol === "openai-responses"
+    ? customOpenAIResponsesBaseURL
+    : customProtocol === "openai"
+      ? customOpenAIBaseURL
+      : customClaudeBaseURL;
+  const customApiKey = customProtocol === "openai-responses"
+    ? customOpenAIResponsesApiKey
+    : customProtocol === "openai"
+      ? customOpenAIApiKey
+      : customClaudeApiKey;
+  const currentBaseURLPlaceholder = customProtocol === "claude" ? DEFAULT_CLAUDE_BASE_URL : DEFAULT_OPENAI_BASE_URL;
 
   const saveButtonReason = savingCustomConfig
     ? "正在保存并读取模型列表"
@@ -257,6 +280,10 @@ export function SettingsAI({
                   value={customBaseURL}
                   onChange={(event) => {
                     setCustomSaveError(null);
+                    if (customProtocol === "openai-responses") {
+                      setCustomOpenAIResponsesBaseURL(event.target.value);
+                      return;
+                    }
                     if (customProtocol === "openai") {
                       setCustomOpenAIBaseURL(event.target.value);
                       return;
@@ -281,6 +308,10 @@ export function SettingsAI({
                   value={customApiKey}
                   onChange={(event) => {
                     setCustomSaveError(null);
+                    if (customProtocol === "openai-responses") {
+                      setCustomOpenAIResponsesApiKey(event.target.value);
+                      return;
+                    }
                     if (customProtocol === "openai") {
                       setCustomOpenAIApiKey(event.target.value);
                       return;

@@ -31,7 +31,16 @@ interface SettingsAppearanceProps {
 }
 
 const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
-  { value: "github", label: "GitHub", description: "经典的开发者风格" },
+  {
+    value: "github",
+    label: "GitHub",
+    description: "GitHub 官方深浅配色",
+  },
+  {
+    value: "catppuccin",
+    label: "Catppuccin",
+    description: "浅色 Latte，深色 Mocha",
+  },
   {
     value: "modern",
     label: "One Dark Pro",
@@ -242,7 +251,7 @@ export function SettingsAppearance({
               </Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              让编辑区铺满整个宽度；每个记事本还可以单独覆盖这个默认值。
+              仅用于未单独设置宽度的记事本；记事本自己的设置优先。
             </p>
           </div>
           <Switch

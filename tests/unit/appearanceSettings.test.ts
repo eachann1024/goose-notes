@@ -3,8 +3,25 @@ import {
   normalizeCodeStyle,
   resolveCodeTheme,
 } from "../../src/stores/settings/types";
+import { APPEARANCE_INITIAL_STATE } from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
+
+test("GitHub 是默认且第一优先的代码风格", () => {
+  expect(APPEARANCE_INITIAL_STATE.codeStyle).toBe("github");
+  expect(normalizeCodeStyle("default")).toBe("github");
+  expect(normalizeCodeStyle(undefined)).toBe("github");
+  expect(normalizeCodeStyle("unknown")).toBe("github");
+  expect(resolveCodeTheme("github", false)).toBe("github-light");
+  expect(resolveCodeTheme("github", true)).toBe("github-dark");
+});
+
+test("Catppuccin 按界面明暗自动使用 Latte 和 Mocha", () => {
+  expect(normalizeCodeStyle("catppuccin")).toBe("catppuccin");
+  expect(resolveCodeTheme("catppuccin", false)).toBe("catppuccin-latte");
+  expect(resolveCodeTheme("catppuccin", true)).toBe("catppuccin-mocha");
+  expect(migrateCodeStyleTo2026("catppuccin")).toBe("catppuccin");
+});
 
 test("Dracula 使用独立设置值并按深浅模式映射", () => {
   expect(normalizeCodeStyle("dracula")).toBe("dracula");

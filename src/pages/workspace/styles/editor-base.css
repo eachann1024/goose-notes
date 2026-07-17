@@ -1975,6 +1975,25 @@
     0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
+/* 设置是独立的全屏任务面。打开后统一收起编辑器上下文浮层，避免这些高层级
+   portal 穿透到设置内容之上；保留设置自身的菜单、提示与 toast。 */
+body[data-goose-settings-open] [data-formatting-toolbar],
+body[data-goose-settings-open] [data-goose-formatting-toolbar-dock],
+body[data-goose-settings-open] [data-goose-image-toolbar],
+body[data-goose-settings-open] [data-goose-video-toolbar],
+body[data-goose-settings-open] [data-goose-find-in-page],
+body[data-goose-settings-open] .goose-code-floating-toolbar,
+body[data-goose-settings-open] .bn-side-menu,
+body[data-goose-settings-open] .bn-link-toolbar,
+body[data-goose-settings-open] .bn-panel,
+body[data-goose-settings-open] .bn-suggestion-menu,
+body[data-goose-settings-open] .bn-grid-suggestion-menu,
+body[data-goose-settings-open] .bn-table-handle,
+body[data-goose-settings-open] .bn-table-cell-handle,
+body[data-goose-settings-open] .bn-table-handle-menu {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .goose-formatting-toolbar-dock {
     transition: none;

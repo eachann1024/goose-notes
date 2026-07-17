@@ -1,4 +1,5 @@
 import type { LanguageModel } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { useSettings } from "@/stores/useSettings";
@@ -15,7 +16,7 @@ export type ModelAvailability =
 
 /**
  * 从 settings 构造 LanguageModel。
- * 支持 uTools 原生 AI、openai-compatible 和 anthropic 三种来源。
+ * 支持 uTools 原生 AI、OpenAI Responses、OpenAI 兼容和 Anthropic 四种来源。
  */
 export function buildLanguageModel(
   options?: Pick<CreateUToolsLanguageModelOptions, "executeTool">,
@@ -52,6 +53,17 @@ export function buildLanguageModel(
   }
 
   try {
+    if (ai.customProtocol === "openai-responses") {
+      const baseURL = (
+        ai.customOpenAIResponsesBaseURL || "https://api.openai.com/v1"
+      ).replace(/\/+$/, "");
+      const provider = createOpenAI({
+        apiKey: ai.customOpenAIResponsesApiKey || "placeholder",
+        baseURL,
+      });
+      return { ok: true, model: provider.responses(modelId) };
+    }
+
     if (ai.customProtocol === "claude") {
       const baseURL = (ai.customClaudeBaseURL || "https://api.anthropic.com").replace(
         /\/+$/,

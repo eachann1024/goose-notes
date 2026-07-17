@@ -11,7 +11,7 @@ A local-first, Notion-style note-taking app — built as a [uTools](https://u.to
 
 - **块编辑器**：基于 BlockNote 的所见即所得编辑，支持标题、列表、折叠块、代码块等
 - **本地优先**：笔记存储在本地，支持挂载本地文件夹作为记事本
-- **AI 能力**：集成 AI SDK（Anthropic / OpenAI-compatible），支持续写、改写、问答
+- **AI 能力**：集成 AI SDK（OpenAI Responses / OpenAI-compatible / Anthropic），支持续写、改写、问答
 - **快速速记**：独立的速记小窗（鹅的小窗），随手记录、一键入库
 - **全局搜索**：跨记事本搜索标题与正文，跳转即定位
 - **深色模式**：完整的明暗主题适配

@@ -78,7 +78,7 @@ function getClaudeModelsUrl(baseURL: string) {
 }
 
 export function getDefaultCustomAIBaseURL(protocol: CustomAIProtocol) {
-  return protocol === "openai" ? DEFAULT_OPENAI_BASE_URL : DEFAULT_CLAUDE_BASE_URL;
+  return protocol === "claude" ? DEFAULT_CLAUDE_BASE_URL : DEFAULT_OPENAI_BASE_URL;
 }
 
 function normalizeCustomAIBaseURL(baseURL: string, protocol: CustomAIProtocol) {
@@ -90,7 +90,11 @@ export function getCustomAIBaseURL(
   protocol: CustomAIProtocol = settings.customProtocol,
 ) {
   return normalizeCustomAIBaseURL(
-    protocol === "openai" ? settings.customOpenAIBaseURL : settings.customClaudeBaseURL,
+    protocol === "openai-responses"
+      ? settings.customOpenAIResponsesBaseURL
+      : protocol === "openai"
+        ? settings.customOpenAIBaseURL
+        : settings.customClaudeBaseURL,
     protocol,
   );
 }
@@ -99,7 +103,12 @@ export function getCustomAIApiKey(
   settings: AISettingsLike,
   protocol: CustomAIProtocol = settings.customProtocol,
 ) {
-  return (protocol === "openai" ? settings.customOpenAIApiKey : settings.customClaudeApiKey).trim();
+  return (protocol === "openai-responses"
+    ? settings.customOpenAIResponsesApiKey
+    : protocol === "openai"
+      ? settings.customOpenAIApiKey
+      : settings.customClaudeApiKey
+  ).trim();
 }
 
 export async function readErrorMessage(response: Response) {
@@ -205,6 +214,15 @@ export function getCustomProviderOptions(
     };
   }
 
+  if (settings.customProtocol === "openai-responses") {
+    return {
+      openai: {
+        reasoningEffort: reasoningLevel,
+        reasoningSummary: "auto",
+      },
+    };
+  }
+
   return {
     anthropic: {
       thinking: {
@@ -255,18 +273,26 @@ export async function fetchCustomAIModels(config: {
     throw new Error(getApiKeyMissingMessage());
   }
 
-  const modelsUrl = config.protocol === "openai" ? getOpenAIModelsUrl(config.baseURL) : getClaudeModelsUrl(config.baseURL);
+  const modelsUrl = config.protocol === "claude" ? getClaudeModelsUrl(config.baseURL) : getOpenAIModelsUrl(config.baseURL);
 
   const response = await fetch(modelsUrl, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "x-api-key": apiKey,
-    },
+    headers: config.protocol === "claude"
+      ? {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        }
+      : { Authorization: `Bearer ${apiKey}` },
   });
 
   if (!response.ok) {
     const errorMsg = await readErrorMessage(response);
-    throw new Error(errorMsg || getAuthFailedMessage(config.protocol === "openai" ? "自定义 OpenAI兼容源" : "自定义 Claude源"));
+    const providerLabel = config.protocol === "claude"
+      ? "自定义 Anthropic 源"
+      : config.protocol === "openai-responses"
+        ? "自定义 OpenAI Responses 源"
+        : "自定义 OpenAI 兼容源";
+    throw new Error(errorMsg || getAuthFailedMessage(providerLabel));
   }
 
   const payload = await response.json();

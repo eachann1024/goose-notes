@@ -30,6 +30,7 @@ import type { AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIReques
 import { getAIAvailability } from "./modelCatalog";
 import { handleUToolsStream } from "./providers/utools";
 import { handleOpenAIStream } from "./providers/openai";
+import { handleOpenAIResponsesStream } from "./providers/openaiResponses";
 import { handleClaudeStream } from "./providers/claude";
 
 async function handleCustomStream(
@@ -39,6 +40,9 @@ async function handleCustomStream(
   emit: (phase: AIStreamPhase, text: string, isReasoning: boolean) => void,
   requestOverrides?: AIRequestOverrides,
 ) {
+  if (settings.customProtocol === "openai-responses") {
+    return handleOpenAIResponsesStream(settings, messages, signal, emit, requestOverrides);
+  }
   if (settings.customProtocol === "openai") {
     return handleOpenAIStream(settings, messages, signal, emit, requestOverrides);
   }

@@ -1,6 +1,7 @@
 // BlockNote xl-ai 的 ChatTransport 适配器：把项目现有 AI Settings 桥到 Vercel AI SDK。
-// v1 支持自定义 OpenAI 兼容协议与 Claude；uTools 内置模型暂未接入（需写自定义 LanguageModelV2）。
+// 支持自定义 OpenAI Responses、OpenAI 兼容协议与 Anthropic；uTools 内置模型暂未接入。
 
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { aiDocumentFormats, ClientSideTransport } from "@blocknote/xl-ai";
@@ -17,13 +18,15 @@ function buildModel(
   }
   if (!settings.useCustomProvider) {
     throw new Error(
-      "uTools 内置模型暂不支持编辑器内 BlockNote AI 菜单。请在 设置 → AI 助手 中切换到自定义 OpenAI 或 Claude provider。",
+      "uTools 内置模型暂不支持编辑器内 BlockNote AI 菜单。请在 设置 → AI 助手 中切换到自定义 AI provider。",
     );
   }
   const apiKey = (
-    settings.customProtocol === "openai"
-      ? settings.customOpenAIApiKey
-      : settings.customClaudeApiKey
+    settings.customProtocol === "openai-responses"
+      ? settings.customOpenAIResponsesApiKey
+      : settings.customProtocol === "openai"
+        ? settings.customOpenAIApiKey
+        : settings.customClaudeApiKey
   ).trim();
   if (!apiKey) {
     throw new Error('未填写 API Key。请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。');
@@ -31,6 +34,15 @@ function buildModel(
 
   const normalizeBase = (url: string, fallback: string) =>
     (url || fallback).replace(/\/+$/, "");
+
+  if (settings.customProtocol === "openai-responses") {
+    const provider = createOpenAI({
+      baseURL: normalizeBase(settings.customOpenAIResponsesBaseURL, "https://api.openai.com/v1"),
+      apiKey: settings.customOpenAIResponsesApiKey,
+      fetch: fetchImpl,
+    });
+    return provider.responses(modelId);
+  }
 
   if (settings.customProtocol === "openai") {
     const provider = createOpenAICompatible({
@@ -42,7 +54,7 @@ function buildModel(
     return provider.chatModel(modelId);
   }
 
-  // Claude
+  // Anthropic
   const provider = createAnthropic({
     baseURL: normalizeBase(settings.customClaudeBaseURL, "https://api.anthropic.com/v1"),
     apiKey: settings.customClaudeApiKey,

@@ -51,6 +51,7 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
 
   return (
     <div
+      data-goose-find-in-page
       className="fixed right-2 top-2 z-[20500] flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur"
       onMouseDown={(event) => event.stopPropagation()}
     >

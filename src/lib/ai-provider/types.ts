@@ -1,4 +1,4 @@
-export type CustomAIProtocol = "openai" | "claude";
+export type CustomAIProtocol = "openai-responses" | "openai" | "claude";
 
 export interface AIModelOption {
   id: string;
@@ -15,8 +15,10 @@ export interface AISettingsLike {
   workspaceReasoningLevel: AIReasoningLevel;
   useCustomProvider: boolean;
   customProtocol: CustomAIProtocol;
+  customOpenAIResponsesBaseURL: string;
   customOpenAIBaseURL: string;
   customClaudeBaseURL: string;
+  customOpenAIResponsesApiKey: string;
   customOpenAIApiKey: string;
   customClaudeApiKey: string;
   customModelOptions: AIModelOption[];

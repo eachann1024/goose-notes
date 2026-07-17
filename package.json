@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.81",
+    "@ai-sdk/openai": "3.0.85",
     "@ai-sdk/openai-compatible": "2.0.48",
     "@ai-sdk/react": "^3.0.200",
     "@blocknote/core": "0.51.3",

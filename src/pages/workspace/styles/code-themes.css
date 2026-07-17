@@ -83,6 +83,47 @@
   --code-token-variable: #c9d1d9;
 }
 
+/* Catppuccin 官方 Highlight.js 配色：亮色使用 Latte，暗色使用 Mocha。 */
+:root[data-code-theme="catppuccin-latte"] {
+  --code-bg: #eff1f5;
+  --code-fg: #4c4f69;
+  --code-border: #bcc0cc;
+  --code-line-number: #9ca0b0;
+  --code-toolbar-chip-bg: rgba(204, 208, 218, 0.9);
+  --code-toolbar-chip-hover-bg: rgba(188, 192, 204, 0.82);
+  --code-toolbar-chip-active-bg: rgba(114, 135, 253, 0.2);
+  --code-toolbar-chip-fg: #6c6f85;
+  --code-toolbar-chip-active-fg: #4c4f69;
+  --code-token-comment: #7c7f93;
+  --code-token-keyword: #8839ef;
+  --code-token-string: #40a02b;
+  --code-token-number: #fe640b;
+  --code-token-function: #1e66f5;
+  --code-token-type: #df8e1d;
+  --code-token-operator: #04a5e5;
+  --code-token-variable: #8839ef;
+}
+
+:root[data-code-theme="catppuccin-mocha"] {
+  --code-bg: #1e1e2e;
+  --code-fg: #cdd6f4;
+  --code-border: #45475a;
+  --code-line-number: #6c7086;
+  --code-toolbar-chip-bg: rgba(49, 50, 68, 0.92);
+  --code-toolbar-chip-hover-bg: rgba(69, 71, 90, 0.86);
+  --code-toolbar-chip-active-bg: rgba(180, 190, 254, 0.2);
+  --code-toolbar-chip-fg: #a6adc8;
+  --code-toolbar-chip-active-fg: #cdd6f4;
+  --code-token-comment: #9399b2;
+  --code-token-keyword: #cba6f7;
+  --code-token-string: #a6e3a1;
+  --code-token-number: #fab387;
+  --code-token-function: #89b4fa;
+  --code-token-type: #f9e2af;
+  --code-token-operator: #89dceb;
+  --code-token-variable: #cba6f7;
+}
+
 :root[data-code-theme="one-light"] {
   --code-bg: #fafafa;
   --code-fg: #383a42;
@@ -313,4 +354,163 @@
   color: var(--code-token-function);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Catppuccin Highlight.js 的完整语义映射。基础分组保留给其他主题，
+   这里用更高特异度还原 Latte / Mocha 官方 token 角色。 */
+:root[data-code-theme="catppuccin-latte"] .goose-code-block-node {
+  --ctp-red: #d20f39;
+  --ctp-peach: #fe640b;
+  --ctp-yellow: #df8e1d;
+  --ctp-green: #40a02b;
+  --ctp-teal: #179299;
+  --ctp-sky: #04a5e5;
+  --ctp-sapphire: #209fb5;
+  --ctp-blue: #1e66f5;
+  --ctp-mauve: #8839ef;
+  --ctp-pink: #ea76cb;
+  --ctp-flamingo: #dd7878;
+  --ctp-text: #4c4f69;
+  --ctp-subtext0: #6c6f85;
+  --ctp-overlay2: #7c7f93;
+  --ctp-subtext1: #5c5f77;
+  --ctp-addition-bg: rgba(64, 160, 43, 0.15);
+  --ctp-deletion-bg: rgba(210, 15, 57, 0.15);
+}
+
+:root[data-code-theme="catppuccin-mocha"] .goose-code-block-node {
+  --ctp-red: #f38ba8;
+  --ctp-peach: #fab387;
+  --ctp-yellow: #f9e2af;
+  --ctp-green: #a6e3a1;
+  --ctp-teal: #94e2d5;
+  --ctp-sky: #89dceb;
+  --ctp-sapphire: #74c7ec;
+  --ctp-blue: #89b4fa;
+  --ctp-mauve: #cba6f7;
+  --ctp-pink: #f5c2e7;
+  --ctp-flamingo: #f2cdcd;
+  --ctp-text: #cdd6f4;
+  --ctp-subtext0: #a6adc8;
+  --ctp-overlay2: #9399b2;
+  --ctp-subtext1: #bac2de;
+  --ctp-addition-bg: rgba(166, 227, 161, 0.15);
+  --ctp-deletion-bg: rgba(243, 139, 168, 0.15);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(
+    .hljs-keyword,
+    .hljs-name,
+    .hljs-variable,
+    .hljs-variable.language_,
+    .hljs-selector-attr
+  ) {
+  color: var(--ctp-mauve);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-built_in, .hljs-doctag, .hljs-emphasis, .hljs-strong) {
+  color: var(--ctp-red);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-type, .hljs-title.class_, .hljs-selector-tag) {
+  color: var(--ctp-yellow);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-literal, .hljs-number, .hljs-variable.constant_, .hljs-meta) {
+  color: var(--ctp-peach);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-operator) {
+  color: var(--ctp-sky);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-punctuation) {
+  color: var(--ctp-subtext1);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(
+    .hljs-property,
+    .hljs-tag,
+    .hljs-bullet,
+    .hljs-formula,
+    .hljs-selector-class,
+    .hljs-selector-pseudo
+  ) {
+  color: var(--ctp-teal);
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node :is(.hljs-regexp) {
+  color: var(--ctp-pink);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-string, .hljs-char.escape_, .hljs-attribute, .hljs-code) {
+  color: var(--ctp-green);
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node :is(.hljs-subst) {
+  color: var(--ctp-subtext0);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-symbol, .hljs-template-tag, .hljs-template-variable) {
+  color: var(--ctp-flamingo);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(
+    .hljs-title,
+    .hljs-title.function_,
+    .hljs-section,
+    .hljs-attr,
+    .hljs-selector-id
+  ) {
+  color: var(--ctp-blue);
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node :is(.hljs-params) {
+  color: var(--ctp-text);
+}
+
+:root[data-code-theme^="catppuccin-"]
+  .goose-code-block-node
+  :is(.hljs-comment) {
+  color: var(--ctp-overlay2);
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node :is(.hljs-link) {
+  color: var(--ctp-sapphire);
+  font-style: italic;
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node :is(.hljs-quote) {
+  color: var(--ctp-green);
+  font-style: italic;
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node .hljs-addition {
+  color: var(--ctp-green);
+  background: var(--ctp-addition-bg);
+}
+
+:root[data-code-theme^="catppuccin-"] .goose-code-block-node .hljs-deletion {
+  color: var(--ctp-red);
+  background: var(--ctp-deletion-bg);
 }

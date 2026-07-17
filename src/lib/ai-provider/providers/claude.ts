@@ -61,7 +61,7 @@ export async function handleClaudeStream(
 
   if (!response.ok) {
     const errMs = await readErrorMessage(response);
-    throw new Error(errMs || "请求自定义 Claude 模型失败");
+    throw new Error(errMs || "请求自定义 Anthropic 模型失败");
   }
 
   let fullText = "";

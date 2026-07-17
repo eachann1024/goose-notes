@@ -96,6 +96,14 @@ const recordPreOverwriteHistory = async (id: string | undefined) => {
 };
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  useEffect(() => {
+    document.body.toggleAttribute("data-goose-settings-open", open);
+
+    return () => {
+      document.body.removeAttribute("data-goose-settings-open");
+    };
+  }, [open]);
+
   const {
     theme,
     setTheme,

@@ -164,7 +164,7 @@ export function getBlockNoteSlashMenuItems(
           return;
         }
 
-        // 自定义 OpenAI / Claude 继续使用 BlockNote 的结构化编辑菜单。
+        // 自定义 OpenAI Responses / OpenAI 兼容 / Anthropic 继续使用 BlockNote 的结构化编辑菜单。
         const ai = editor.getExtension(AIExtension);
         const blockId = editor.getTextCursorPosition().block.id;
         if (ai && blockId) {

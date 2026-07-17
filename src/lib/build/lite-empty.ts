@@ -39,5 +39,6 @@ export const AIMenuController = stub;
 export const ClientSideTransport = stub;
 export const aiDocumentFormats = stub;
 export const zh = stub; // @blocknote/xl-ai/locales 的 zh
+export const createOpenAI = stub;
 export const createOpenAICompatible = stub;
 export const createAnthropic = stub;

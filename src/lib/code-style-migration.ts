@@ -11,6 +11,7 @@ const LEGACY_CODE_STYLE_MAP: Record<string, CodeStyle> = {
 const KNOWN_CODE_STYLE_SET = new Set<CodeStyle>([
   "default",
   "github",
+  "catppuccin",
   "modern",
   "night",
   "dracula",
@@ -41,12 +42,17 @@ function writeMigrationMark(): void {
   }
 }
 
-export function migrateCodeStyleTo2026(codeStyle: string | null | undefined): CodeStyle {
+export function migrateCodeStyleTo2026(
+  codeStyle: string | null | undefined,
+): CodeStyle {
   if (typeof codeStyle === "string" && codeStyle in LEGACY_CODE_STYLE_MAP) {
     return LEGACY_CODE_STYLE_MAP[codeStyle];
   }
 
-  if (typeof codeStyle === "string" && KNOWN_CODE_STYLE_SET.has(codeStyle as CodeStyle)) {
+  if (
+    typeof codeStyle === "string" &&
+    KNOWN_CODE_STYLE_SET.has(codeStyle as CodeStyle)
+  ) {
     return codeStyle as CodeStyle;
   }
 

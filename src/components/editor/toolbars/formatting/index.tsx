@@ -136,7 +136,7 @@ export function EditorFormattingToolbar() {
       const { selection } = editor.prosemirrorState;
       if (selection.empty) return;
 
-      // BlockNote AI 菜单只支持自定义 OpenAI/Claude provider。提前校验，避免
+      // BlockNote AI 菜单只支持自定义 AI provider。提前校验，避免
       // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
       if (!aiSettings.enabled) {
         toast.error("AI 助手尚未开启，请先到设置中打开");
@@ -170,9 +170,11 @@ export function EditorFormattingToolbar() {
         return;
       }
       const apiKey = (
-        aiSettings.customProtocol === "openai"
-          ? aiSettings.customOpenAIApiKey
-          : aiSettings.customClaudeApiKey
+        aiSettings.customProtocol === "openai-responses"
+          ? aiSettings.customOpenAIResponsesApiKey
+          : aiSettings.customProtocol === "openai"
+            ? aiSettings.customOpenAIApiKey
+            : aiSettings.customClaudeApiKey
       ).trim();
       if (!apiKey) {
         toast.error(
