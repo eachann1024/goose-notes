@@ -46,3 +46,7 @@
 
 /* Open panel */
 "Choose a Markdown file or folder" = "选择 Markdown 文件或文件夹";
+
+/* Search toolbar */
+"Search" = "搜索";
+"Search in Document" = "在文稿中搜索";

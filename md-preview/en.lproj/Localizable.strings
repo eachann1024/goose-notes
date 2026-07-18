@@ -46,3 +46,7 @@
 
 /* Open panel */
 "Choose a Markdown file or folder" = "Choose a Markdown file or folder";
+
+/* Search toolbar */
+"Search" = "Search";
+"Search in Document" = "Search in Document";

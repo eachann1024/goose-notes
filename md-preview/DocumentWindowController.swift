@@ -2273,10 +2273,14 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
 
     private func makeSearchItem() -> NSToolbarItem {
         let item = NSSearchToolbarItem(itemIdentifier: .search)
-        item.label = "Search"
-        item.toolTip = "Search in document"
+        let searchInDocument = NSLocalizedString(
+            "Search in Document",
+            comment: "Toolbar search field tooltip and placeholder"
+        )
+        item.label = NSLocalizedString("Search", comment: "Toolbar search item label")
+        item.toolTip = searchInDocument
         item.preferredWidthForSearchField = 320
-        item.searchField.placeholderString = "Search in Document"
+        item.searchField.placeholderString = searchInDocument
         item.searchField.sendsSearchStringImmediately = true
         item.searchField.target = self
         item.searchField.action = #selector(searchFieldDidChange(_:))
