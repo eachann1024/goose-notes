@@ -54,16 +54,30 @@ function isLightColor(color: string): boolean {
   return luminance > 0.72;
 }
 
-function contentHeadingSizes(theme: CardTheme): { h1: number; h2: number; h3: number } {
+function contentHeadingSizes(theme: CardTheme): {
+  h1: number;
+  h2: number;
+  h3: number;
+} {
   const body = theme.bodyFontSize;
   return {
-    h1: Math.max(Math.round(theme.titleFontSize * 0.85), Math.round(body * 1.75)),
+    h1: Math.max(
+      Math.round(theme.titleFontSize * 0.85),
+      Math.round(body * 1.75),
+    ),
     h2: Math.max(Math.round(theme.titleFontSize * 0.7), Math.round(body * 1.4)),
-    h3: Math.max(Math.round(theme.titleFontSize * 0.58), Math.round(body * 1.22)),
+    h3: Math.max(
+      Math.round(theme.titleFontSize * 0.58),
+      Math.round(body * 1.22),
+    ),
   };
 }
 
-function contentHeadingWeights(theme: CardTheme): { h1: number; h2: number; h3: number } {
+function contentHeadingWeights(theme: CardTheme): {
+  h1: number;
+  h2: number;
+  h3: number;
+} {
   const base = theme.titleFontWeight;
   return {
     h1: Math.min(Math.max(base, 600), 900),
@@ -76,10 +90,9 @@ export function buildStyledHTML(params: {
   title: string;
   blocksHtml: string;
   theme: CardTheme;
-  isSelection?: boolean;
   watermarkConfig?: WatermarkConfig;
 }): string {
-  const { title, blocksHtml, theme, isSelection } = params;
+  const { title, blocksHtml, theme } = params;
   const wm = normalizeWatermarkConfig(params.watermarkConfig);
   const t = theme;
   const headingSize = contentHeadingSizes(t);
@@ -90,10 +103,6 @@ export function buildStyledHTML(params: {
       : t.textColor
     : "#ffffff";
   const checkedTaskText = t.secondaryText;
-  const selectionTagHtml = isSelection
-    ? `<div class="gooseshot-selection-tag">选中内容</div>`
-    : "";
-
   const decoStyle = t.showDecorations
     ? `
     .gooseshot-container::before {
@@ -124,7 +133,8 @@ export function buildStyledHTML(params: {
     text-align: ${t.titleAlign};
   `;
 
-  const headerBorder = "margin-bottom: 24px; padding-bottom: 0; border-bottom: none;";
+  const headerBorder =
+    "margin-bottom: 24px; padding-bottom: 0; border-bottom: none;";
   const bodyTextAlign = t.id === "academic" ? "text-align: justify;" : "";
 
   return `<!DOCTYPE html>
@@ -480,27 +490,20 @@ ${decoStyle}
   min-width: 0;
   line-height: ${t.bodyLineHeight};
 }
-.gooseshot-selection-tag {
-  display: inline-block;
-  background: ${t.accent}22;
-  color: ${isLightColor(t.accent) && t.mode === "dark" ? t.textColor : t.accent};
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  letter-spacing: 0.02em;
-}
 </style>
 </head>
 <body>
 <div class="gooseshot-container">
   <div class="gooseshot-card">
-    ${wm.showTitle ? `<div class="gooseshot-header">
+    ${
+      wm.showTitle
+        ? `<div class="gooseshot-header">
       <div class="gooseshot-title">${escapeHtml(title || "无标题")}</div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
     <div class="gooseshot-content">
-      ${selectionTagHtml}${blocksHtml}
+      ${blocksHtml}
     </div>
     ${getWatermarkHTML(theme, wm)}
   </div>

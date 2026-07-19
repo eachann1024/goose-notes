@@ -199,15 +199,6 @@ export function WorkspaceLayout({
 
   return (
     <>
-      <style>{`
-        @keyframes slow-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-        .animate-slow-pulse {
-          animation: slow-pulse 4s ease-in-out infinite;
-        }
-      `}</style>
       <div
         className="workspace-shell window-shell-safe-top flex overflow-hidden bg-background text-foreground"
         onDragEnter={onDragEnter}
@@ -295,7 +286,9 @@ export function WorkspaceLayout({
                         page={page}
                         onOpenSearch={openWelcomeTabHandler}
                         onToggleFavorite={() =>
-                          updatePage(activePageId, { isFavorite: !page.isFavorite })
+                          updatePage(activePageId, {
+                            isFavorite: !page.isFavorite,
+                          })
                         }
                         onTogglePinned={() =>
                           updatePage(activePageId, { isPinned: !page.isPinned })

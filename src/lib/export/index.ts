@@ -51,20 +51,24 @@ async function downloadBlob(blob: Blob, filename: string) {
   throw new Error("导出失败：无法保存文件");
 }
 
-function downloadFile(content: string, filename: string, contentType: string) {
+async function downloadFile(
+  content: string,
+  filename: string,
+  contentType: string,
+) {
   try {
     const blob = new Blob([content], { type: contentType });
-    void downloadBlob(blob, filename);
+    await downloadBlob(blob, filename);
   } catch (error) {
     console.error("下载失败:", error);
     throw error;
   }
 }
 
-export function exportToJSON(page: Page) {
+export async function exportToJSON(page: Page) {
   const data = JSON.stringify(page, null, 2);
   const title = getPageTitle(page);
-  downloadFile(data, `${title || "untitled"}.json`, "application/json");
+  await downloadFile(data, `${title || "untitled"}.json`, "application/json");
 }
 
 function escapeHtmlText(value: string): string {
@@ -84,7 +88,11 @@ export async function exportToMarkdown(page: Page) {
   await inlineExportMediaAsBase64(blocks, page.localFilePath);
   const fullMarkdown = await buildExportMarkdown(page, blocks);
   const title = getPageTitle(page);
-  downloadFile(fullMarkdown, `${title || "untitled"}.md`, "text/markdown");
+  await downloadFile(
+    fullMarkdown,
+    `${title || "untitled"}.md`,
+    "text/markdown",
+  );
 }
 
 export async function exportToHTML(page: Page) {
@@ -97,7 +105,7 @@ export async function exportToHTML(page: Page) {
   const bodyHtml = await buildExportHtmlBody(page, blocks);
   const title = getPageTitle(page);
   const fullHtml = renderExportHtml(title, bodyHtml, !page.localFilePath);
-  downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
+  await downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
 }
 
 export function renderExportHtml(
@@ -261,32 +269,54 @@ export function importFile(): Promise<ImportResult> {
     input.type = "file";
     input.accept = ".json,.md,.markdown,.txt";
 
+    let settled = false;
+    const finish = (result: ImportResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    const cancelled = () =>
+      finish({
+        title: "",
+        content: createEmptyBlockNoteContent(),
+        success: false,
+        error: "未选择文件",
+      });
+
+    input.addEventListener("cancel", cancelled, { once: true });
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
-        resolve({
-          title: "",
-          content: createEmptyBlockNoteContent(),
-          success: false,
-          error: "未选择文件",
-        });
+        cancelled();
         return;
       }
 
-      const text = await file.text();
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      const filename = file.name.replace(/\.[^/.]+$/, "");
+      try {
+        const text = await file.text();
+        const ext = file.name.split(".").pop()?.toLowerCase();
+        const filename = file.name.replace(/\.[^/.]+$/, "");
 
-      if (ext === "json") {
-        resolve(importFromJSON(text, filename));
-      } else if (ext === "md" || ext === "markdown" || ext === "txt") {
-        resolve(importFromMarkdown(text, filename));
-      } else {
-        resolve({
+        if (ext === "json") {
+          finish(importFromJSON(text, filename));
+        } else if (ext === "md" || ext === "markdown" || ext === "txt") {
+          finish(importFromMarkdown(text, filename));
+        } else {
+          finish({
+            title: "",
+            content: createEmptyBlockNoteContent(),
+            success: false,
+            error: "不支持的文件格式",
+          });
+        }
+      } catch (error) {
+        finish({
           title: "",
           content: createEmptyBlockNoteContent(),
           success: false,
-          error: "不支持的文件格式",
+          error:
+            error instanceof Error && error.message
+              ? `读取文件失败：${error.message}`
+              : "读取文件失败",
         });
       }
     };

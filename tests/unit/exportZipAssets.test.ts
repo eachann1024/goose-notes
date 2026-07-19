@@ -396,6 +396,40 @@ test("importNotebooksFromZip keeps external urls that contain assets path", asyn
   expect(importedContent[0].props.url).toBe(externalUrl);
 });
 
+test("metadata import failure propagates without falling back into duplicate folder import", async () => {
+  const zip = new JSZip();
+  zip.file(
+    "backup-metadata.json",
+    JSON.stringify({
+      version: 1,
+      notebooks: [{ id: notebookId, name: "Notebook", icon: "BookOpen" }],
+      pages: [
+        {
+          id: "page-that-fails",
+          workspaceId: notebookId,
+          content: [{ type: "paragraph", content: "Imported" }],
+        },
+      ],
+    }),
+  );
+  zip.file("Notebook/fallback.md", "# 不应回退导入");
+
+  let notebookCreates = 0;
+  await expect(
+    importNotebooksFromZip(
+      (await zip.generateAsync({ type: "arraybuffer" })) as unknown as Blob,
+      (_name, _icon, id) => {
+        notebookCreates += 1;
+        return id ?? notebookId;
+      },
+      async () => {
+        throw new Error("模拟页面写入失败");
+      },
+    ),
+  ).rejects.toThrow("模拟页面写入失败");
+  expect(notebookCreates).toBe(1);
+});
+
 test("importNotebooksFromZip scrubs local paths and remaps history to created page id", async () => {
   const { docs } = installDbRuntime();
   const zip = new JSZip();

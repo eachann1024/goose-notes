@@ -114,9 +114,7 @@ test("链接 type=link 递归 content 不丢文字", () => {
       {
         type: "link",
         href: "https://example.com",
-        content: [
-          { type: "text", text: "文档", styles: { bold: true } },
-        ],
+        content: [{ type: "text", text: "文档", styles: { bold: true } }],
       },
     ],
     theme,
@@ -250,16 +248,15 @@ test("codeBlock 输出 code-block 壳与语言标签", () => {
   expect(html).toContain("const y = 2");
 });
 
-test("isSelection 插入选中内容标签", () => {
+test("生成内容不插入额外的选中标识", () => {
   const theme = getCardTheme("notion");
   const html = buildStyledHTML({
     title: "t",
     blocksHtml: "<p>x</p>",
     theme,
-    isSelection: true,
   });
-  expect(html).toContain("gooseshot-selection-tag");
-  expect(html).toContain("选中内容");
+  expect(html).not.toContain("gooseshot-selection-tag");
+  expect(html).not.toContain("选中内容");
 });
 
 test("块级 backgroundColor / textColor 输出 style", () => {
@@ -267,7 +264,11 @@ test("块级 backgroundColor / textColor 输出 style", () => {
   const html = renderBlock(
     {
       type: "paragraph",
-      props: { backgroundColor: "yellow", textColor: "blue", textAlignment: "center" },
+      props: {
+        backgroundColor: "yellow",
+        textColor: "blue",
+        textAlignment: "center",
+      },
       content: [{ type: "text", text: "色块", styles: {} }],
     },
     theme,

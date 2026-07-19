@@ -4,35 +4,52 @@
 @import "./code-themes.css";
 @import "./notebook-ai.css";
 
+@keyframes slow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slow-pulse {
+    animation: none;
+  }
+}
+
 .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.06);
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line:
-    linear-gradient(
-      180deg,
-      hsl(218 18% 60% / 0) 0%,
-      hsl(218 18% 60% / 0.18) 22%,
-      hsl(218 18% 60% / 0.9) 50%,
-      hsl(218 18% 60% / 0.18) 78%,
-      hsl(218 18% 60% / 0) 100%
-    );
-  --workspace-resize-line-active:
-    linear-gradient(
-      180deg,
-      hsl(218 22% 52% / 0) 0%,
-      hsl(218 22% 52% / 0.28) 22%,
-      hsl(218 22% 52% / 1) 50%,
-      hsl(218 22% 52% / 0.28) 78%,
-      hsl(218 22% 52% / 0) 100%
-    );
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    hsl(218 18% 60% / 0) 0%,
+    hsl(218 18% 60% / 0.18) 22%,
+    hsl(218 18% 60% / 0.9) 50%,
+    hsl(218 18% 60% / 0.18) 78%,
+    hsl(218 18% 60% / 0) 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    hsl(218 22% 52% / 0) 0%,
+    hsl(218 22% 52% / 0.28) 22%,
+    hsl(218 22% 52% / 1) 50%,
+    hsl(218 22% 52% / 0.28) 78%,
+    hsl(218 22% 52% / 0) 100%
+  );
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: hsl(var(--primary));
   --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.4);
   --workspace-main-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.03),
-    0 0 8px rgba(15, 23, 42, 0.05);
+    0 0 0 1px rgba(15, 23, 42, 0.03), 0 0 8px rgba(15, 23, 42, 0.05);
   background: hsl(var(--goose-shell-bg));
 }
 
@@ -41,30 +58,27 @@
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line:
-    linear-gradient(
-      180deg,
-      hsl(210 18% 92% / 0) 0%,
-      hsl(210 18% 92% / 0.16) 22%,
-      hsl(210 18% 92% / 0.82) 50%,
-      hsl(210 18% 92% / 0.16) 78%,
-      hsl(210 18% 92% / 0) 100%
-    );
-  --workspace-resize-line-active:
-    linear-gradient(
-      180deg,
-      hsl(210 20% 95% / 0) 0%,
-      hsl(210 20% 95% / 0.24) 22%,
-      hsl(210 20% 95% / 0.96) 50%,
-      hsl(210 20% 95% / 0.24) 78%,
-      hsl(210 20% 95% / 0) 100%
-    );
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    hsl(210 18% 92% / 0) 0%,
+    hsl(210 18% 92% / 0.16) 22%,
+    hsl(210 18% 92% / 0.82) 50%,
+    hsl(210 18% 92% / 0.16) 78%,
+    hsl(210 18% 92% / 0) 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    hsl(210 20% 95% / 0) 0%,
+    hsl(210 20% 95% / 0.24) 22%,
+    hsl(210 20% 95% / 0.96) 50%,
+    hsl(210 20% 95% / 0.24) 78%,
+    hsl(210 20% 95% / 0) 100%
+  );
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: hsl(var(--primary));
   --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.42);
   --workspace-main-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 12px rgba(0, 0, 0, 0.32);
+    0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 12px rgba(0, 0, 0, 0.32);
 }
 
 .workspace-shell .workspace-divider {
@@ -89,7 +103,8 @@
 
 /* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
    导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。 */
-.workspace-shell .workspace-stage:has(.workspace-sidebar-pane[aria-hidden="true"]) {
+.workspace-shell
+  .workspace-stage:has(.workspace-sidebar-pane[aria-hidden="true"]) {
   gap: 0;
 }
 
@@ -317,7 +332,8 @@
 /* ── AI Workspace 流式加载动画 ── */
 
 @keyframes ai-workspace-stream-dot {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.25;
     transform: scale(0.85);
   }
@@ -337,7 +353,12 @@
 }
 
 .ai-workspace-stream-dot {
-  background: linear-gradient(90deg, hsl(var(--muted-foreground)), #10b981, hsl(var(--muted-foreground)));
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)),
+    #10b981,
+    hsl(var(--muted-foreground))
+  );
   background-size: 200% 100%;
   animation:
     ai-workspace-stream-dot 1.2s ease-in-out infinite,

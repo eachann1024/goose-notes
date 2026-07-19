@@ -2,10 +2,17 @@ import type { JSONContent } from "@/types";
 import type { PagesState } from "./types";
 import { LOCAL_SAVE_DEBOUNCE_MS, LOCAL_SAVE_MAX_WAIT_MS } from "./types";
 
-export const localSaveDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-export const localSaveMaxWaitTimers = new Map<string, ReturnType<typeof setTimeout>>();
+export const localSaveDebounceTimers = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>();
+export const localSaveMaxWaitTimers = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>();
 export const pendingLocalSaveContents = new Map<string, JSONContent>();
 export const localSaveWriteChains = new Map<string, Promise<void>>();
+const discardedPendingLocalSavePageIds = new Set<string>();
 
 export const cloneJSONContent = (content: JSONContent): JSONContent => {
   try {
@@ -29,6 +36,27 @@ export const clearLocalSaveTimers = (pageId: string) => {
   }
 };
 
+/**
+ * 用户明确接受磁盘版本时，丢弃该页尚未落盘的本地内容。
+ * 标记会阻止当前在途保存失败后把旧快照重新放回 pending。
+ */
+export const discardPendingLocalSave = (pageId: string) => {
+  clearLocalSaveTimers(pageId);
+  pendingLocalSaveContents.delete(pageId);
+  const activeWrite = localSaveWriteChains.get(pageId);
+  if (!activeWrite) {
+    discardedPendingLocalSavePageIds.delete(pageId);
+    return;
+  }
+
+  discardedPendingLocalSavePageIds.add(pageId);
+  void activeWrite
+    .finally(() => discardedPendingLocalSavePageIds.delete(pageId))
+    .catch(() => {
+      // 原写入链的失败由其调用方处理；这里只负责清理 discard 标记。
+    });
+};
+
 export const flushPendingLocalSaveByPageIdInternal = (
   pageId: string,
   getState: () => PagesState,
@@ -46,10 +74,21 @@ export const flushPendingLocalSaveByPageIdInternal = (
         }
         pendingLocalSaveContents.delete(pageId);
         try {
-          await getState().saveLocalPageContent(pageId, cloneJSONContent(latestContent));
+          const saved = await getState().saveLocalPageContent(
+            pageId,
+            cloneJSONContent(latestContent),
+          );
+          if (!saved) {
+            throw new Error(`本地页面保存未完成：${pageId}`);
+          }
         } catch (err) {
-          // save 失败：把内容重新放回 pending，下次 flush 可重试
-          if (!pendingLocalSaveContents.has(pageId)) {
+          // save 抛错或明确返回 false：保留待写内容，让显式 flush 感知失败，
+          // 并等待用户解决冲突或下一次编辑/flush 后重试。
+          // 写盘期间若已有更新内容进入队列，必须保留更新版本，不能用旧快照覆盖。
+          if (
+            !discardedPendingLocalSavePageIds.has(pageId) &&
+            !pendingLocalSaveContents.has(pageId)
+          ) {
             pendingLocalSaveContents.set(pageId, latestContent);
           }
           throw err;
@@ -72,7 +111,19 @@ export const queueLocalPageSave = (
   content: JSONContent,
   getState: () => PagesState,
 ) => {
+  // discard 只针对用户明确放弃的旧快照；后续真实编辑应恢复正常自动保存。
+  discardedPendingLocalSavePageIds.delete(pageId);
   pendingLocalSaveContents.set(pageId, content);
+
+  const runScheduledFlush = () => {
+    void flushPendingLocalSaveByPageIdInternal(pageId, getState).catch(
+      (error) => {
+        // 自动保存失败已保留在 pending 队列；这里消费拒绝，避免定时器产生
+        // unhandledrejection。冲突提示由 saveLocalPageContent 的现有事件链负责。
+        console.error("[local-folder] scheduled save failed", pageId, error);
+      },
+    );
+  };
 
   const existingDebounceTimer = localSaveDebounceTimers.get(pageId);
   if (existingDebounceTimer) {
@@ -80,13 +131,13 @@ export const queueLocalPageSave = (
   }
 
   const debounceTimer = setTimeout(() => {
-    void flushPendingLocalSaveByPageIdInternal(pageId, getState);
+    runScheduledFlush();
   }, LOCAL_SAVE_DEBOUNCE_MS);
   localSaveDebounceTimers.set(pageId, debounceTimer);
 
   if (!localSaveMaxWaitTimers.has(pageId)) {
     const maxWaitTimer = setTimeout(() => {
-      void flushPendingLocalSaveByPageIdInternal(pageId, getState);
+      runScheduledFlush();
     }, LOCAL_SAVE_MAX_WAIT_MS);
     localSaveMaxWaitTimers.set(pageId, maxWaitTimer);
   }
@@ -111,7 +162,9 @@ export const migratePendingLocalSave = (
   }
 };
 
-export const flushAllPendingLocalSavesInternal = async (getState: () => PagesState) => {
+export const flushAllPendingLocalSavesInternal = async (
+  getState: () => PagesState,
+) => {
   const pageIds = new Set<string>([
     ...pendingLocalSaveContents.keys(),
     ...localSaveDebounceTimers.keys(),

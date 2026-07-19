@@ -139,7 +139,6 @@ export const loadLocalFolderPagesAction = async (
     });
   }
 
-  get().removePagesByWorkspaceId(notebookId);
   try {
     const localPages = await scanLocalFolderPages({
       notebookId,
@@ -149,8 +148,13 @@ export const loadLocalFolderPagesAction = async (
     });
 
     set((state) => {
+      const pagesOutsideNotebook = Object.fromEntries(
+        Object.entries(state.pages).filter(
+          ([, page]) => page.workspaceId !== notebookId,
+        ),
+      );
       const updated = {
-        ...state.pages,
+        ...pagesOutsideNotebook,
         ...localPages.reduce(
           (acc, page) => {
             const existing = localPageMetadataCache.get(page.id);
@@ -255,7 +259,6 @@ export const loadLocalFolderPagesAction = async (
       }
       return result;
     });
-  } finally {
     useNotebooks.getState().setLocalFolderLoadState(notebookId, {
       status: "ready",
       finishedAt: Date.now(),
@@ -267,6 +270,17 @@ export const loadLocalFolderPagesAction = async (
     } catch {
       // 忽略
     }
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "无法读取本地文件夹";
+    useNotebooks.getState().setLocalFolderLoadState(notebookId, {
+      status: "error",
+      finishedAt: Date.now(),
+      error: message,
+    });
+    throw error;
   }
 };
 

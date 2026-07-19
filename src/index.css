@@ -190,8 +190,7 @@
   --radius-sm: calc(var(--radius) - 4px);
 
   /* fontFamily：v3 sans/serif/mono 映射 */
-  --font-sans:
-    var(--font-default), sans-serif;
+  --font-sans: var(--font-default), sans-serif;
   --font-serif: var(--font-serif), serif;
   --font-mono: var(--font-mono), monospace;
 
@@ -250,17 +249,17 @@
     /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
     --goose-pin-accent: #ef4444;
     /* 语义实色变量——替代 Tailwind 裸调色板色，uTools 旧内核 oklch 解析失败兜底 */
-    --goose-color-danger: #ef4444;           /* Pin/删除强调红 */
-    --goose-color-danger-hover: #dc2626;     /* 删除按钮 hover 背景红 */
+    --goose-color-danger: #ef4444; /* Pin/删除强调红 */
+    --goose-color-danger-hover: #dc2626; /* 删除按钮 hover 背景红 */
     --goose-color-danger-subtle-bg: #fee2e2; /* 链接移除按钮 hover 淡红背景 */
-    --goose-color-danger-focus: #dc2626;     /* 危险菜单项 focus/highlighted 文字色 */
-    --goose-color-favorite: #facc15;         /* 收藏星星黄 */
-    --goose-color-unsaved: #f59e0b;          /* 未保存状态点琥珀 */
-    --goose-color-success: #22c55e;          /* 成功确认勾绿 */
-    --goose-color-lock-bg: #fef08a;          /* 已锁定/已删除徽章背景 */
-    --goose-color-lock-text: #713f12;        /* 已锁定/已删除徽章文字 */
-    --goose-color-restore-hover: #d97706;    /* 恢复按钮 hover 背景琥珀 */
-    --goose-color-capture-hint: #ef4444;     /* 快捷键捕获提示占位符红 */
+    --goose-color-danger-focus: #dc2626; /* 危险菜单项 focus/highlighted 文字色 */
+    --goose-color-favorite: #facc15; /* 收藏星星黄 */
+    --goose-color-unsaved: #f59e0b; /* 未保存状态点琥珀 */
+    --goose-color-success: #22c55e; /* 成功确认勾绿 */
+    --goose-color-lock-bg: #fef08a; /* 已锁定/已删除徽章背景 */
+    --goose-color-lock-text: #713f12; /* 已锁定/已删除徽章文字 */
+    --goose-color-restore-hover: #d97706; /* 恢复按钮 hover 背景琥珀 */
+    --goose-color-capture-hint: #ef4444; /* 快捷键捕获提示占位符红 */
     /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，uTools 旧内核会回退成刺眼实色 */
     --goose-block-subtle-bg: #f3f2f1;
     --goose-block-subtle-border: #e8e7e5;
@@ -273,7 +272,7 @@
     --goose-inline-code-fg: #eb5757;
     --goose-inline-code-border-hover: #d9d9d9;
     --goose-editor-bg: 0 0% 100%;
-    --goose-nav-title: 0 0% 68.24%;
+    --goose-nav-title: 0 0% 43%;
     --background: var(--goose-shell-bg);
     --foreground: 0 0% 12%;
     --card: var(--goose-editor-bg);
@@ -292,7 +291,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 86%;
     --input: 0 0% 86%;
-    --ring: 0 0% 58%;
+    --ring: 0 0% 48%;
     --radius: 0.75rem;
     --radius-notion-slash: 18px;
     --radius-notion-slash-item: 12px;
@@ -347,7 +346,7 @@
     --goose-inline-code-fg: #ff7b7b;
     --goose-inline-code-border-hover: #404040;
     --goose-editor-bg: 60 2.2% 18%;
-    --goose-nav-title: 60 2.2% 44.5%;
+    --goose-nav-title: 0 0% 66%;
     --background: var(--goose-shell-bg);
     --foreground: 0 0% 90%;
     --card: var(--goose-editor-bg);
@@ -449,12 +448,26 @@
     --editor-file-icon-box-size: calc(40px * var(--editor-scale));
   }
 
-  /* 移除全局 focus 高亮边框 & ring */
-  *:focus,
-  *:focus-visible {
-    outline: none !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  /* 仅为键盘焦点提供统一高亮；鼠标焦点继续遵循浏览器与组件默认行为。 */
+  :where(
+    a[href],
+    button,
+    input,
+    textarea,
+    select,
+    summary,
+    [tabindex]:not([tabindex="-1"]),
+    [contenteditable="true"]
+  ):focus-visible {
+    outline: 2px solid hsl(var(--ring)) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Placeholder 也是操作提示，需达到与普通小号文本一致的可读性。 */
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 1;
   }
 
   /* Prevent image dragging globally */
@@ -566,8 +579,10 @@
   width: 14px;
   height: 14px;
   background-color: hsl(var(--muted-foreground));
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>") no-repeat center / 14px 14px;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>") no-repeat center / 14px 14px;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>")
+    no-repeat center / 14px 14px;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>")
+    no-repeat center / 14px 14px;
   transition: transform 0.2s ease;
 }
 
@@ -591,7 +606,6 @@
 .callout-content p {
   @apply m-0;
 }
-
 
 /* --- CMDK Overlay Style --- */
 [cmdk-overlay] {
@@ -861,7 +875,8 @@
 }
 
 @keyframes ai-icon-breathe {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -915,7 +930,8 @@
 }
 
 @keyframes ai-icon-aura-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.55;
     transform: scale(0.94);
   }
@@ -1212,6 +1228,88 @@ svg.lucide {
    旧内核可能丢失 pointerleave 等事件，导致 tooltip 等浮层卡住不关、
    悬在菜单旁形成"幽灵阴影"。菜单打开期间这些浮层本就不该出现，直接隐藏。 */
 body[data-scroll-locked] [role="tooltip"],
-body[data-scroll-locked] [data-radix-popper-content-wrapper]:has([role="tooltip"]) {
+body[data-scroll-locked]
+  [data-radix-popper-content-wrapper]:has([role="tooltip"]) {
   display: none !important;
+}
+
+.bootstrap-screen {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  text-align: center;
+}
+
+.bootstrap-screen__mark {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.bootstrap-screen h1,
+.bootstrap-screen p {
+  margin: 0;
+}
+
+.bootstrap-screen h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bootstrap-screen p,
+.bootstrap-screen code {
+  max-width: 32rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
+.bootstrap-screen code {
+  overflow-wrap: anywhere;
+}
+
+.bootstrap-screen button {
+  min-height: 36px;
+  margin-top: 4px;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bootstrap-screen__progress {
+  width: 72px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+}
+
+.bootstrap-screen__progress::after {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: inherit;
+  background: hsl(var(--foreground));
+  content: "";
+  animation: bootstrap-progress 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes bootstrap-progress {
+  to {
+    transform: translateX(122%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bootstrap-screen__progress::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.6;
+  }
 }
