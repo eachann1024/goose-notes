@@ -286,6 +286,34 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
   };
 
+  const updateQuickNotePrefs = (patch) => {
+    if (!patch || typeof patch !== "object") return;
+    try {
+      const raw = readStoredString(QUICKNOTE_DB_KEY);
+      let parsed = {};
+      if (typeof raw === "string") {
+        try {
+          parsed = JSON.parse(raw) || {};
+        } catch {
+          parsed = {};
+        }
+      }
+      const hasStateWrapper =
+        parsed && typeof parsed.state === "object" && parsed.state;
+      const previousState = hasStateWrapper ? parsed.state : parsed;
+      const state = { ...previousState, ...patch };
+      const next = hasStateWrapper
+        ? { ...parsed, state }
+        : {
+            state,
+            version: typeof parsed.version === "number" ? parsed.version : 1,
+          };
+      writeStoredString(QUICKNOTE_DB_KEY, JSON.stringify(next));
+    } catch {
+      /* noop */
+    }
+  };
+
   // 把窗口当前 bounds（位置+尺寸）写回 db 文档，作为下次开窗的权威持久化来源。
   // persist-size（拖动停下）与关窗时都调用——拖动只触发 resize、移动不触发，故关窗兜底位置。
   const persistQuickNoteBounds = () => {
@@ -307,64 +335,19 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     );
     const x = Math.round(Number(bounds.x));
     const y = Math.round(Number(bounds.y));
-    try {
-      const raw = readStoredString(QUICKNOTE_DB_KEY);
-      let parsed = {};
-      if (typeof raw === "string") {
-        try {
-          parsed = JSON.parse(raw) || {};
-        } catch {
-          parsed = {};
-        }
-      }
-      const hasStateWrapper =
-        parsed && typeof parsed.state === "object" && parsed.state;
-      const state = hasStateWrapper ? parsed.state : parsed;
-      state.windowWidth = w;
-      state.windowHeight = h;
-      if (Number.isFinite(x)) state.windowX = x;
-      if (Number.isFinite(y)) state.windowY = y;
-      const next = hasStateWrapper
-        ? { ...parsed, state }
-        : {
-            state,
-            version: typeof parsed.version === "number" ? parsed.version : 1,
-          };
-      writeStoredString(QUICKNOTE_DB_KEY, JSON.stringify(next));
-    } catch {
-      /* noop */
-    }
+    updateQuickNotePrefs({
+      windowWidth: w,
+      windowHeight: h,
+      ...(Number.isFinite(x) ? { windowX: x } : {}),
+      ...(Number.isFinite(y) ? { windowY: y } : {}),
+    });
   };
 
   // 只更新位置 x/y 写回 db 文档（尺寸保持库中原值）。供子窗移动上报使用：
   // 直接用传入坐标，不读 getBounds，避开关窗销毁瞬间取值不可靠的问题。
   const persistQuickNotePosition = (x, y) => {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    try {
-      const raw = readStoredString(QUICKNOTE_DB_KEY);
-      let parsed = {};
-      if (typeof raw === "string") {
-        try {
-          parsed = JSON.parse(raw) || {};
-        } catch {
-          parsed = {};
-        }
-      }
-      const hasStateWrapper =
-        parsed && typeof parsed.state === "object" && parsed.state;
-      const state = hasStateWrapper ? parsed.state : parsed;
-      state.windowX = Math.round(x);
-      state.windowY = Math.round(y);
-      const next = hasStateWrapper
-        ? { ...parsed, state }
-        : {
-            state,
-            version: typeof parsed.version === "number" ? parsed.version : 1,
-          };
-      writeStoredString(QUICKNOTE_DB_KEY, JSON.stringify(next));
-    } catch {
-      /* noop */
-    }
+    updateQuickNotePrefs({ windowX: Math.round(x), windowY: Math.round(y) });
   };
 
   // 关窗=隐藏（不销毁）：窗口常驻后台，下次唤起秒显（省去重新加载页面 + 重跑 bootstrap）。

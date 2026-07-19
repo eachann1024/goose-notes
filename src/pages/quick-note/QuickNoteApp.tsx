@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { X, HelpCircle } from "lucide-react";
+import { X, HelpCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   useQuickNote,
@@ -207,8 +207,6 @@ export function QuickNoteApp() {
   }, [flushEditor, setWindowPosition]);
 
   // 保存到笔记本：B 插件(standalone)→ redirect 回传 A 落库；A 插件 → 原本地落库。
-  // 注：保存按钮当前已隐藏，此函数暂时无调用方，保留逻辑以便后续恢复。
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSave = () => {
     flushEditor();
     const isStandalone =
@@ -234,6 +232,8 @@ export function QuickNoteApp() {
           );
           editorRef.current?.editor?.focus?.();
         });
+      } else {
+        toast.error("无法发送到主应用，请确认鹅的笔记已安装");
       }
       return;
     }
@@ -426,7 +426,16 @@ export function QuickNoteApp() {
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
         <div className="flex items-center gap-1">
-          {/* 保存按钮暂时隐藏（保留 handleSave 逻辑，后续可恢复）。 */}
+          <button
+            type="button"
+            aria-label="保存到笔记本"
+            title="保存到笔记本"
+            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+            onClick={handleSave}
+          >
+            <Save className="h-3.5 w-3.5" />
+          </button>
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -451,10 +460,14 @@ export function QuickNoteApp() {
                   ：这里写的内容是临时草稿，不会自动成为笔记，也不写入文件。
                 </li>
                 <li>
+                  <b className="text-foreground">保存到笔记本</b>
+                  ：点击左上角保存按钮，将当前便签转存为一条正式笔记；成功后会清空当前便签。
+                </li>
+                <li>
                   <b className="text-foreground">多便签</b>
                   ：顶栏中间 1–5
                   可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。按住拖动可快速预览，松开或移走后生效；也可按
-                  ⌘（macOS）或 Alt（Windows）+ 1–5 直接切换。
+                  ⌘/Ctrl + 1–5 直接切换；Windows 也支持 Alt + 1–5。
                 </li>
                 <li>
                   <b className="text-foreground">始终置顶</b>

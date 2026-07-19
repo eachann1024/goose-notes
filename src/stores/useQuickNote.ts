@@ -247,7 +247,12 @@ export const useQuickNote = create<QuickNoteState>()(
 
       setActiveSlot: (slot) => {
         const next = normalizeSlot(slot);
-        if (next === get().activeSlot) return;
+        const previous = get().activeSlot;
+        if (next === previous) return;
+        // 切槽是明确的编辑边界：回到任一槽后首次输入都应形成新撤销步，
+        // 不能和切换前 800ms 内的输入合并，否则一次撤销会直接退回空稿。
+        lastUndoRecordAtBySlot[previous] = 0;
+        lastUndoRecordAtBySlot[next] = 0;
         set({ activeSlot: next });
       },
 

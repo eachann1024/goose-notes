@@ -176,6 +176,15 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
 
     // 第二次触发隐藏，第三次触发复用并再次按当前 workArea 校正。
     global.window.exports.quicknote_new.args.enter();
+    assert.deepEqual(JSON.parse(persisted), {
+      state: {
+        windowX: 960,
+        windowY: 180,
+        windowWidth: 480,
+        windowHeight: 350,
+      },
+      version: 2,
+    });
     persisted = JSON.stringify({
       state: {
         windowX: 2560,
