@@ -270,7 +270,10 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           } else {
@@ -305,7 +308,10 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           }

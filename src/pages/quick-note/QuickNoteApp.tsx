@@ -51,8 +51,11 @@ const POSITION_SETTLE_MS = 720;
  */
 export function QuickNoteApp() {
   const editorRef = useRef<EditorRef>(null);
-  /** 撤销/重做重挂编辑器后，只静默一次与恢复内容签名一致的初始化同步。 */
-  const restoredContentSignatureRef = useRef<string | null>(null);
+  /** 撤销/重做重挂编辑器后，只静默一次同一槽位且与恢复内容签名一致的初始化同步。 */
+  const restoredContentSignatureRef = useRef<{
+    slot: QuickNoteSlot;
+    signature: string;
+  } | null>(null);
 
   const activeSlot = useQuickNote((s) => s.activeSlot);
   const drafts = useQuickNote((s) => s.drafts);
@@ -111,10 +114,10 @@ export function QuickNoteApp() {
     const boundSlot = displaySlot;
     return (content: BlockNoteContent) => {
       const signature = getContentSignature(content);
-      const restoredSignature = restoredContentSignatureRef.current;
+      const restored = restoredContentSignatureRef.current;
       const isRestoreSync =
-        restoredSignature !== null && signature === restoredSignature;
-      if (restoredSignature !== null) {
+        restored?.slot === boundSlot && signature === restored.signature;
+      if (restored?.slot === boundSlot) {
         restoredContentSignatureRef.current = null;
       }
       setDraftContent(content as never, boundSlot, {
@@ -133,9 +136,12 @@ export function QuickNoteApp() {
 
   const applyHistoryContentToEditor = useCallback(
     (content: BlockNoteContent | null) => {
-      restoredContentSignatureRef.current = getContentSignature(
-        buildQuickNoteDraftPage(content as never).content,
-      );
+      restoredContentSignatureRef.current = {
+        slot: useQuickNote.getState().activeSlot,
+        signature: getContentSignature(
+          buildQuickNoteDraftPage(content as never).content,
+        ),
+      };
       setHistoryEpoch((n) => n + 1);
       requestAnimationFrame(() => {
         editorRef.current?.editor?.focus?.();

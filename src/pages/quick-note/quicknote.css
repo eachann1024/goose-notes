@@ -300,7 +300,7 @@ body,
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: currentColor;
+  background: currentcolor;
   opacity: 0.72;
   transform: translateX(-50%);
 }

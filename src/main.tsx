@@ -513,78 +513,76 @@ export const bootstrap = async (
         {renderRoot()}
       </ErrorBoundary>,
     );
-
-    // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。由主应用（plugin A）消费；
-    // 速记小窗自身（lean）是发送方，不接收，故跳过。
-    if (lean) return;
-
-    // 冷启动时 preload 已 push 进 window.__gooseQuickNoteInbox，mount 后在此消费；
-    // 热场景（A 已在运行）通过 "goose-note:quicknote-inbox" 事件触发消费。
-    const consumeQuickNoteInbox = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any;
-      const inbox: string[] | undefined = w.__gooseQuickNoteInbox;
-      if (!Array.isArray(inbox) || inbox.length === 0) return;
-      const items = inbox.splice(0, inbox.length);
-      for (const blocksJson of items) {
-        try {
-          const blocks = JSON.parse(blocksJson);
-          const nbId =
-            useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
-          usePages
-            .getState()
-            .createPageRecord({ workspaceId: nbId, content: blocks });
-        } catch (e) {
-          console.error("[quicknote_save] 落库失败", e);
-        }
-      }
-      // 落库后：若是被 redirect 唤起（A 本轮不是用户主动打开的），退回后台。
-      if (w.__gooseQuickNoteRedirectWoke) {
-        w.__gooseQuickNoteRedirectWoke = false;
-        try {
-          const ut = w.utools;
-          if (ut && typeof ut.outPlugin === "function") {
-            ut.outPlugin(false);
-          }
-        } catch {
-          /* noop */
-        }
-      }
-    };
-    // 冷启动消费（React 刚 mount，已有积压）
-    consumeQuickNoteInbox();
-    // 热场景监听
-    window.addEventListener(
-      "goose-note:quicknote-inbox",
-      consumeQuickNoteInbox,
-    );
-
-    // 主窗启动后后台静默预热所有 local-folder 记事本页面，使「所有记事本」全局搜索覆盖全量。
-    // 不 await：不阻塞首屏；小窗（quicknote）不预热。idle 时机执行，避开首屏渲染高峰。
-    if (rootElement.dataset.entry !== "quicknote") {
-      const preloadAll = async () => {
-        try {
-          await usePages.getState().loadAllLocalFolderPages();
-        } catch (err) {
-          console.error("预加载本地文件夹页面失败", err);
-        }
-        import("@/lib/webdavSync")
-          .then(({ triggerAutoWebdavBackup }) => {
-            void triggerAutoWebdavBackup();
-          })
-          .catch((e) => {
-            console.error("加载 webdavSync 模块失败", e);
-          });
-      };
-      if (typeof requestIdleCallback === "function") {
-        requestIdleCallback(preloadAll, { timeout: 4000 });
-      } else {
-        setTimeout(preloadAll, 1500);
-      }
-    }
   } catch (error) {
     console.error("[bootstrap] 初始化失败", error);
     root.render(<BootstrapScreen lean={lean} error={error} />);
+    return;
+  }
+
+  // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。由主应用（plugin A）消费；
+  // 速记小窗自身（lean）是发送方，不接收，故跳过。
+  if (lean) return;
+
+  // 冷启动时 preload 已 push 进 window.__gooseQuickNoteInbox，mount 后在此消费；
+  // 热场景（A 已在运行）通过 "goose-note:quicknote-inbox" 事件触发消费。
+  const consumeQuickNoteInbox = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const inbox: string[] | undefined = w.__gooseQuickNoteInbox;
+    if (!Array.isArray(inbox) || inbox.length === 0) return;
+    const items = inbox.splice(0, inbox.length);
+    for (const blocksJson of items) {
+      try {
+        const blocks = JSON.parse(blocksJson);
+        const nbId =
+          useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
+        usePages
+          .getState()
+          .createPageRecord({ workspaceId: nbId, content: blocks });
+      } catch (e) {
+        console.error("[quicknote_save] 落库失败", e);
+      }
+    }
+    // 落库后：若是被 redirect 唤起（A 本轮不是用户主动打开的），退回后台。
+    if (w.__gooseQuickNoteRedirectWoke) {
+      w.__gooseQuickNoteRedirectWoke = false;
+      try {
+        const ut = w.utools;
+        if (ut && typeof ut.outPlugin === "function") {
+          ut.outPlugin(false);
+        }
+      } catch {
+        /* noop */
+      }
+    }
+  };
+  // 冷启动消费（React 刚 mount，已有积压）
+  consumeQuickNoteInbox();
+  // 热场景监听
+  window.addEventListener("goose-note:quicknote-inbox", consumeQuickNoteInbox);
+
+  // 主窗启动后后台静默预热所有 local-folder 记事本页面，使「所有记事本」全局搜索覆盖全量。
+  // 不 await：不阻塞首屏；小窗（quicknote）不预热。idle 时机执行，避开首屏渲染高峰。
+  if (rootElement.dataset.entry !== "quicknote") {
+    const preloadAll = async () => {
+      try {
+        await usePages.getState().loadAllLocalFolderPages();
+      } catch (err) {
+        console.error("预加载本地文件夹页面失败", err);
+      }
+      import("@/lib/webdavSync")
+        .then(({ triggerAutoWebdavBackup }) => {
+          void triggerAutoWebdavBackup();
+        })
+        .catch((e) => {
+          console.error("加载 webdavSync 模块失败", e);
+        });
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(preloadAll, { timeout: 4000 });
+    } else {
+      setTimeout(preloadAll, 1500);
+    }
   }
 };
 

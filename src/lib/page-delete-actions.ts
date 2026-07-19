@@ -63,7 +63,8 @@ export function permanentlyDeletePageWithCleanup(pageId: string) {
       : "此操作无法撤回。",
     action: {
       label: "确认永久删除",
-      onClick: () => {
+      onClick: (event) => {
+        event.preventDefault();
         if (permanentDeleteInFlight.has(pageId)) return;
         permanentDeleteInFlight.add(pageId);
         toast.loading(`正在永久删除「${title}」…`, { id: toastId });
