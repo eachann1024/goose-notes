@@ -11,9 +11,9 @@ import { useQuickNote } from "./stores/useQuickNote";
 import { QuickNoteApp } from "./pages/quick-note/QuickNoteApp";
 import "./pages/quick-note/quicknote.css";
 
-void (async () => {
+void bootstrap(() => <QuickNoteApp />, {
+  lean: true,
   // useQuickNote 持久化了 drafts / activeSlot / pinned / 窗口尺寸，需在渲染前 rehydrate，
-  // 否则草稿 page 拿不到已有草稿内容。
-  await useQuickNote.persist.rehydrate();
-  await bootstrap(() => <QuickNoteApp />, { lean: true });
-})();
+  // 否则草稿 page 拿不到已有草稿内容。放进 bootstrap 的错误边界流程，失败时不再白屏。
+  beforeInit: () => useQuickNote.persist.rehydrate(),
+});

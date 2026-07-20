@@ -51,7 +51,6 @@ bun run build
 
 速记小窗（B 插件）产物在 `dist-quicknote/plugin.json`，加载方式相同。
 
-
 ## 📦 构建产物
 
 `bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。
@@ -61,6 +60,8 @@ bun run build
 ```bash
 bun run typecheck   # tsc -b --noEmit
 bun run lint        # eslint .
+bun run test:unit   # 单元测试
+bun run test:e2e    # 浏览器端到端测试
 bun run build
 ```
 

@@ -5,11 +5,17 @@
  * 该文件被 SidebarMainTree.tsx 直接 import。
  * ────────────────────────────────────────────────────────────────────────── */
 
-/* 1) 容器：rct 默认会注入 outline / focus 边框，统一抹平 */
-.rct-main-tree,
-.rct-main-tree *:focus,
-.rct-main-tree *:focus-visible {
+/* 1) 容器：只抹掉鼠标焦点的默认边框，保留键盘焦点反馈。 */
+.rct-main-tree:focus:not(:focus-visible),
+.rct-main-tree *:focus:not(:focus-visible) {
   outline: none !important;
+  box-shadow: none !important;
+}
+
+.rct-main-tree [data-rct-item-interactive]:focus-visible,
+.rct-main-tree [data-rct-item-focus="true"]:focus-visible {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: -2px !important;
   box-shadow: none !important;
 }
 
@@ -64,10 +70,9 @@
   background: transparent !important;
 }
 
-/* 5) rct 在 :focus-visible 上注入的 2px outline 在某些浏览器里仍然漏出，
- *    再用属性选择子兜底一次。 */
-.rct-main-tree [data-rct-item-interactive],
-.rct-main-tree [data-rct-item-focus="true"] {
+/* 5) rct 的非键盘聚焦态仍不显示额外边框，避免与选中背景叠加。 */
+.rct-main-tree [data-rct-item-interactive]:focus:not(:focus-visible),
+.rct-main-tree [data-rct-item-focus="true"]:focus:not(:focus-visible) {
   outline: none !important;
   box-shadow: none !important;
 }

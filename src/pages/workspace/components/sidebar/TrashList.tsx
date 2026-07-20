@@ -98,6 +98,7 @@ export function TrashList({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="返回"
             className="h-7 w-7"
             onClick={() => onBack?.()}
           >
@@ -132,11 +133,15 @@ export function TrashList({
                 : "";
 
               return (
-                <div
+                <button
+                  type="button"
                   key={page.id}
                   style={{ height: itemHeight }}
+                  aria-current={
+                    highlightedPageId === page.id ? "page" : undefined
+                  }
                   className={cn(
-                    "group relative flex items-center gap-2 rounded-[8px] px-4 cursor-pointer transition-colors duration-200 overflow-hidden text-sm font-medium",
+                    "group relative flex w-full items-center gap-2 rounded-[8px] px-4 text-left transition-colors duration-200 overflow-hidden text-sm font-medium",
                     highlightedPageId === page.id
                       ? "bg-[var(--goose-interactive-selected)] text-foreground"
                       : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
@@ -171,7 +176,7 @@ export function TrashList({
                       {timeAgo}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

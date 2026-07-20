@@ -6,15 +6,16 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  QUICKNOTE_SLOTS,
-  type QuickNoteSlot,
-} from "@/stores/useQuickNote";
+import { QUICKNOTE_SLOTS, type QuickNoteSlot } from "@/stores/useQuickNote";
 
 interface QuickNoteSlotSwitcherProps {
   activeSlot: QuickNoteSlot;
+  occupiedSlots: Record<QuickNoteSlot, boolean>;
   /** 正式切换（点击 / 键盘 / 拖动松手或移走后提交） */
-  onChange: (slot: QuickNoteSlot, source: "pointer" | "keyboard") => void;
+  onChange: (
+    slot: QuickNoteSlot,
+    source: "pointer" | "shortcut" | "switcher-keyboard",
+  ) => void;
   /**
    * 按住拖动时的临时预览槽位；null 表示结束预览、回到 activeSlot。
    * 未传入时退化为即时 onChange（无预览态）。
@@ -23,7 +24,9 @@ interface QuickNoteSlotSwitcherProps {
 }
 
 function isQuickNoteSlot(value: number): value is QuickNoteSlot {
-  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
+  return (
+    value === 1 || value === 2 || value === 3 || value === 4 || value === 5
+  );
 }
 
 /**
@@ -33,6 +36,7 @@ function isQuickNoteSlot(value: number): value is QuickNoteSlot {
  */
 export function QuickNoteSlotSwitcher({
   activeSlot,
+  occupiedSlots,
   onChange,
   onPreviewChange,
 }: QuickNoteSlotSwitcherProps) {
@@ -87,13 +91,17 @@ export function QuickNoteSlotSwitcher({
     onPreviewChangeRef.current?.(null);
   };
 
-  const slotFromPoint = (clientX: number, clientY: number): QuickNoteSlot | null => {
+  const slotFromPoint = (
+    clientX: number,
+    clientY: number,
+  ): QuickNoteSlot | null => {
     const root = rootRef.current;
     if (!root) return null;
 
     // 仍在胶囊水平范围内时，按 X 投影到最近按钮（快速横滑不必严格命中圆心）
     const rootRect = root.getBoundingClientRect();
-    const insideY = clientY >= rootRect.top - 8 && clientY <= rootRect.bottom + 8;
+    const insideY =
+      clientY >= rootRect.top - 8 && clientY <= rootRect.bottom + 8;
     const insideX = clientX >= rootRect.left && clientX <= rootRect.right;
     if (insideY && insideX) {
       const buttons = root.querySelectorAll<HTMLElement>("[data-slot]");
@@ -131,36 +139,33 @@ export function QuickNoteSlotSwitcher({
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (scrubbingRef.current) return;
     const idx = QUICKNOTE_SLOTS.indexOf(activeSlot);
+    let targetSlot: QuickNoteSlot | null = null;
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
-      onChange(
-        QUICKNOTE_SLOTS[(idx + 1) % QUICKNOTE_SLOTS.length]!,
-        "keyboard",
-      );
-      return;
-    }
-    if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      targetSlot = QUICKNOTE_SLOTS[(idx + 1) % QUICKNOTE_SLOTS.length]!;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
-      onChange(
-        QUICKNOTE_SLOTS[(idx - 1 + QUICKNOTE_SLOTS.length) % QUICKNOTE_SLOTS.length]!,
-        "keyboard",
-      );
-      return;
-    }
-    if (e.key === "Home") {
+      targetSlot =
+        QUICKNOTE_SLOTS[
+          (idx - 1 + QUICKNOTE_SLOTS.length) % QUICKNOTE_SLOTS.length
+        ]!;
+    } else if (e.key === "Home") {
       e.preventDefault();
-      onChange(1, "keyboard");
-      return;
-    }
-    if (e.key === "End") {
+      targetSlot = 1;
+    } else if (e.key === "End") {
       e.preventDefault();
-      onChange(5, "keyboard");
-      return;
-    }
-    if (/^[1-5]$/.test(e.key)) {
+      targetSlot = 5;
+    } else if (/^[1-5]$/.test(e.key)) {
       e.preventDefault();
-      onChange(Number(e.key) as QuickNoteSlot, "keyboard");
+      targetSlot = Number(e.key) as QuickNoteSlot;
     }
+    if (targetSlot === null) return;
+    onChange(targetSlot, "switcher-keyboard");
+    requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLButtonElement>(`[data-slot="${targetSlot}"]`)
+        ?.focus();
+    });
   };
 
   const stopWindowScrubListeners = useRef<(() => void) | null>(null);
@@ -172,7 +177,10 @@ export function QuickNoteSlotSwitcher({
 
   useEffect(() => () => detachWindowScrubListeners(), []);
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>, slot: QuickNoteSlot) => {
+  const onPointerDown = (
+    e: ReactPointerEvent<HTMLButtonElement>,
+    slot: QuickNoteSlot,
+  ) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -246,22 +254,27 @@ export function QuickNoteSlotSwitcher({
     >
       {QUICKNOTE_SLOTS.map((slot) => {
         const active = slot === visualSlot;
+        const occupied = occupiedSlots[slot];
         return (
           <button
             key={slot}
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={`便签 ${slot}`}
+            aria-label={`便签 ${slot}${occupied ? "，有内容" : "，空白"}`}
             tabIndex={active ? 0 : -1}
             data-slot={slot}
             data-active={active ? "true" : "false"}
+            data-occupied={occupied ? "true" : "false"}
             className="quicknote-slot-btn"
             onPointerDown={(e) => onPointerDown(e, slot)}
             // 选择由 pointer 提交；避免 click 与拖动松手重复触发
             onClick={(e) => e.preventDefault()}
           >
             <span className="quicknote-slot-btn-label">{slot}</span>
+            {occupied && (
+              <span className="quicknote-slot-occupied" aria-hidden="true" />
+            )}
           </button>
         );
       })}

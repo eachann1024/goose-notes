@@ -15,9 +15,9 @@ export function useSidebarEffects({
   onOpenSettings,
 }: UseSidebarEffectsOptions) {
   const resolveDeleteTargetPageId = useCallback(
-    (target: HTMLElement) => {
+    (target: Element | null) => {
       const activePageId = usePages.getState().activePageId;
-      const isInSidebarTree = !!target.closest(".rct-main-tree");
+      const isInSidebarTree = !!target?.closest(".rct-main-tree");
       if (!isInSidebarTree || !activeNotebookId) return activePageId;
 
       const view = useSidebarView.getState();
@@ -42,13 +42,13 @@ export function useSidebarEffects({
 
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target instanceof Element ? e.target : null;
       const isInEditor =
-        target.isContentEditable ||
-        target.closest(".bn-editor") ||
-        target.closest("[data-ai-composer-editor]") ||
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA";
+        (target instanceof HTMLElement && target.isContentEditable) ||
+        !!target?.closest(".bn-editor") ||
+        !!target?.closest("[data-ai-composer-editor]") ||
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA";
 
       if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
         const deleteTargetPageId = resolveDeleteTargetPageId(target);

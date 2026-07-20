@@ -233,10 +233,47 @@ import { UToolsAdapter } from "./lib/utools";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
+}
+
+function BootstrapScreen({ lean, error }: { lean: boolean; error?: unknown }) {
+  const message =
+    error instanceof Error && error.message
+      ? error.message
+      : error
+        ? String(error)
+        : "";
+  return (
+    <main className="bootstrap-screen" role={error ? "alert" : "status"}>
+      <div className="bootstrap-screen__mark" aria-hidden="true">
+        🪿
+      </div>
+      {error ? (
+        <>
+          <h1>鹅的笔记暂时无法打开</h1>
+          <p>
+            {lean
+              ? "速记初始化没有完成，草稿数据仍保留在本地。"
+              : "初始化没有完成，本地数据不会因此被清除。"}
+          </p>
+          {message && <code>{message}</code>}
+          <button type="button" onClick={() => window.location.reload()}>
+            重新加载
+          </button>
+        </>
+      ) : (
+        <>
+          <h1>{lean ? "正在打开速记" : "正在打开鹅的笔记"}</h1>
+          <p>{lean ? "正在恢复草稿…" : "正在恢复本地笔记与设置…"}</p>
+          <span className="bootstrap-screen__progress" aria-hidden="true" />
+        </>
+      )}
+    </main>
+  );
 }
 
 let flushInFlight: Promise<void> | null = null;
@@ -379,92 +416,108 @@ const initHostFs = async () => {
 // 使 quicknote 构建能甩掉 echarts / PDF 导出 / AI 图表等仅主应用需要的重型代码。
 export const bootstrap = async (
   renderRoot: () => ReactNode,
-  options: { lean?: boolean } = {},
+  options: { lean?: boolean; beforeInit?: () => Promise<void> | void } = {},
 ) => {
   // lean=true（速记小窗）：跳过主应用专属的重活——加载+修复全部笔记、AI 聊天记录水合、
   // 缺失笔记本恢复、代码风格全量迁移、legacy 迁移、收件箱消费。这些与「草稿便签」无关，
   // 且 hydrateFromStorage 随笔记数线性变慢，是小窗冷启动的最大开销。
   // 仍保留：initHostFs（编辑器文件能力）、设置/字体（主题）、保存守卫（关窗 flush 草稿）。
-  const { lean = false } = options;
+  const { lean = false, beforeInit } = options;
+  const root = createRoot(rootElement);
+  root.render(<BootstrapScreen lean={lean} />);
 
-  // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
-  // saveLocalPageContent 走与 uTools 相同的 gooseFs 接口）。
-  // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
-  if (import.meta.env.DEV && location.search.includes("e2eLocalMock")) {
-    const { installE2ELocalMock } = await import("@/lib/dev/e2eLocalMock");
-    await installE2ELocalMock();
-  }
+  try {
+    await beforeInit?.();
+    // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
+    // saveLocalPageContent 走与 uTools 相同的 gooseFs 接口）。
+    // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
+    if (import.meta.env.DEV && location.search.includes("e2eLocalMock")) {
+      const { installE2ELocalMock } = await import("@/lib/dev/e2eLocalMock");
+      await installE2ELocalMock();
+    }
 
-  await initHostFs();
-  if (!lean) {
-    await migrateLegacyStorage();
-  }
-  await Promise.all([
-    useSettings.persist.rehydrate(),
-    useNotebooks.persist.rehydrate(),
-  ]);
-  if (!lean) {
-    // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）。主应用 AI 聊天记录，小窗不需要。
-    const { useNotebookAiChats } = await import("@/stores/useNotebookAiChats");
-    useNotebookAiChats.persist.rehydrate();
-    // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
-    await usePages.getState().hydrateFromStorage();
-  }
-  if (import.meta.env.DEV) {
-    const { installTestBridge } = await import("@/testBridge");
-    installTestBridge();
-  }
-  if (!lean) {
-    const pagesStore = usePages.getState();
-    const notebooksStore = useNotebooks.getState();
-    const recoveredNotebooks = recoverMissingNotebooksFromPages({
-      notebooks: notebooksStore.notebooks,
-      pages: pagesStore.pages,
-    });
-
-    if (recoveredNotebooks) {
-      const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
-        notebooksStore.activeNotebookId,
-        pagesStore.pages,
-      );
-      useNotebooks.setState({
-        notebooks: recoveredNotebooks.notebooks,
-        ...(shouldFocusRecoveredNotebook
-          ? {
-              activeNotebookId:
-                recoveredNotebooks.recoveredNotebookIds[0] ?? null,
-            }
-          : {}),
+    await initHostFs();
+    if (!lean) {
+      await migrateLegacyStorage();
+    }
+    await Promise.all([
+      useSettings.persist.rehydrate(),
+      useNotebooks.persist.rehydrate(),
+    ]);
+    if (!lean) {
+      // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）。主应用 AI 聊天记录，小窗不需要。
+      const { useNotebookAiChats } =
+        await import("@/stores/useNotebookAiChats");
+      useNotebookAiChats.persist.rehydrate();
+      // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
+      await usePages.getState().hydrateFromStorage();
+    }
+    if (import.meta.env.DEV) {
+      const { installTestBridge } = await import("@/testBridge");
+      installTestBridge();
+    }
+    if (!lean) {
+      const pagesStore = usePages.getState();
+      const notebooksStore = useNotebooks.getState();
+      const recoveredNotebooks = recoverMissingNotebooksFromPages({
+        notebooks: notebooksStore.notebooks,
+        pages: pagesStore.pages,
       });
-      console.warn(
-        `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
-      );
+
+      if (recoveredNotebooks) {
+        const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
+          notebooksStore.activeNotebookId,
+          pagesStore.pages,
+        );
+        useNotebooks.setState({
+          notebooks: recoveredNotebooks.notebooks,
+          ...(shouldFocusRecoveredNotebook
+            ? {
+                activeNotebookId:
+                  recoveredNotebooks.recoveredNotebookIds[0] ?? null,
+              }
+            : {}),
+        });
+        console.warn(
+          `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
+        );
+      }
+
+      const nextNotebooksStore = useNotebooks.getState();
+      if (
+        !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
+      ) {
+        const firstNotebookId =
+          Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
+        useNotebooks.setState({ activeNotebookId: firstNotebookId });
+      }
+    }
+    setupSaveGuards();
+    if (!lean) {
+      await runCodeStyleMigration2026();
     }
 
-    const nextNotebooksStore = useNotebooks.getState();
-    if (
-      !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
-    ) {
-      const firstNotebookId =
-        Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
-      useNotebooks.setState({ activeNotebookId: firstNotebookId });
+    const settingsStore = useSettings.getState();
+    const migratedCodeStyle = migrateCodeStyleTo2026(settingsStore.codeStyle);
+    if (migratedCodeStyle !== settingsStore.codeStyle) {
+      settingsStore.setCodeStyle(migratedCodeStyle);
     }
-  }
-  setupSaveGuards();
-  if (!lean) {
-    await runCodeStyleMigration2026();
-  }
 
-  const settingsStore = useSettings.getState();
-  const migratedCodeStyle = migrateCodeStyleTo2026(settingsStore.codeStyle);
-  if (migratedCodeStyle !== settingsStore.codeStyle) {
-    settingsStore.setCodeStyle(migratedCodeStyle);
+    const settings = useSettings.getState();
+    applyFontVariables(settings.customFonts);
+
+    root.render(
+      <ErrorBoundary
+        fallback={(error) => <BootstrapScreen lean={lean} error={error} />}
+      >
+        {renderRoot()}
+      </ErrorBoundary>,
+    );
+  } catch (error) {
+    console.error("[bootstrap] 初始化失败", error);
+    root.render(<BootstrapScreen lean={lean} error={error} />);
+    return;
   }
-
-  const settings = useSettings.getState();
-  applyFontVariables(settings.customFonts);
-
-  createRoot(rootElement).render(renderRoot());
 
   // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。由主应用（plugin A）消费；
   // 速记小窗自身（lean）是发送方，不接收，故跳过。

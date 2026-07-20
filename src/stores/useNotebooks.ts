@@ -17,12 +17,13 @@ export interface Notebook {
   localPathMissing?: boolean;
 }
 
-export type LocalFolderLoadStatus = "idle" | "loading" | "ready";
+export type LocalFolderLoadStatus = "idle" | "loading" | "ready" | "error";
 
 export interface LocalFolderLoadState {
   status: LocalFolderLoadStatus;
   startedAt?: number;
   finishedAt?: number;
+  error?: string;
 }
 
 const IDLE_LOCAL_FOLDER_LOAD_STATE: LocalFolderLoadState = {
@@ -363,7 +364,9 @@ export const useNotebooks = create<NotebooksState>()(
               }
               usePages.getState().removePagesByWorkspaceId(id);
             }
-          })();
+          })().catch((error) => {
+            console.error("[local-folder] 切换记事本时加载失败", error);
+          });
         }
 
         const pagesStore = usePages.getState();

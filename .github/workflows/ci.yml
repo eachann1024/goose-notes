@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -26,11 +26,29 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
       - name: Typecheck
         run: bun run typecheck
 
       - name: Lint
         run: bun run lint
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: End-to-end tests
+        run: bun run test:e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts
+          path: output/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Build
         run: bun run build

@@ -52,8 +52,16 @@ function createSafeHistoryContent(content: unknown): BlockNoteContent | null {
 function formatGroupLabel(ts: number, now: number): string {
   const d1 = new Date(ts);
   const d2 = new Date(now);
-  const day1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate()).getTime();
-  const day2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate()).getTime();
+  const day1 = new Date(
+    d1.getFullYear(),
+    d1.getMonth(),
+    d1.getDate(),
+  ).getTime();
+  const day2 = new Date(
+    d2.getFullYear(),
+    d2.getMonth(),
+    d2.getDate(),
+  ).getTime();
   const diffDays = Math.floor((day2 - day1) / (24 * 3600 * 1000));
   if (diffDays === 0) return "今天";
   if (diffDays === 1) return "昨天";
@@ -89,7 +97,8 @@ function useHistoryViewLogic() {
   const pageTitle = page ? extractBlockNoteTitle(page.content) || "无标题" : "";
 
   const [index, setIndex] = useState<HistoryIndex | null>(null);
-  const [selectedContent, setSelectedContent] = useState<BlockNoteContent | null>(null);
+  const [selectedContent, setSelectedContent] =
+    useState<BlockNoteContent | null>(null);
   const [selectedStatus, setSelectedStatus] =
     useState<SelectedHistoryStatus>("idle");
 
@@ -101,12 +110,18 @@ function useHistoryViewLogic() {
     }
     let cancelled = false;
     const backend = resolveHistoryBackend(pageId);
-    backend.loadIndex(pageId).then((idx) => {
-      if (!cancelled) setIndex(idx);
-    }).catch(() => {
-      if (!cancelled) setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
-    });
-    return () => { cancelled = true; };
+    backend
+      .loadIndex(pageId)
+      .then((idx) => {
+        if (!cancelled) setIndex(idx);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pageId, refreshTick]);
 
   // 加载选中版本内容
@@ -119,28 +134,32 @@ function useHistoryViewLogic() {
     let cancelled = false;
     setSelectedContent(null);
     setSelectedStatus("loading");
-    materializeVersion(pageId, selectedVersionId).then((result) => {
-      if (cancelled) return;
-      if (!result || result.content == null) {
-        setSelectedContent(null);
-        setSelectedStatus("missing");
-        return;
-      }
-      const safeContent = createSafeHistoryContent(result.content);
-      if (!safeContent) {
-        setSelectedContent(null);
-        setSelectedStatus("error");
-        return;
-      }
-      setSelectedContent(safeContent);
-      setSelectedStatus("ready");
-    }).catch(() => {
-      if (!cancelled) {
-        setSelectedContent(null);
-        setSelectedStatus("error");
-      }
-    });
-    return () => { cancelled = true; };
+    materializeVersion(pageId, selectedVersionId)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result || result.content == null) {
+          setSelectedContent(null);
+          setSelectedStatus("missing");
+          return;
+        }
+        const safeContent = createSafeHistoryContent(result.content);
+        if (!safeContent) {
+          setSelectedContent(null);
+          setSelectedStatus("error");
+          return;
+        }
+        setSelectedContent(safeContent);
+        setSelectedStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSelectedContent(null);
+          setSelectedStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pageId, selectedVersionId]);
 
   useEffect(() => {
@@ -148,7 +167,9 @@ function useHistoryViewLogic() {
     if (selectedVersionId) {
       if (index.versions.some((v) => v.versionId === selectedVersionId)) return;
     }
-    const sorted = [...index.versions].sort((a, b) => b.createdAt - a.createdAt);
+    const sorted = [...index.versions].sort(
+      (a, b) => b.createdAt - a.createdAt,
+    );
     select(sorted[0].versionId);
   }, [index, selectedVersionId, select]);
 
@@ -171,7 +192,9 @@ function useHistoryViewLogic() {
 
   const groups = useMemo(() => {
     if (!index || index.versions.length === 0) return [];
-    const sorted = [...index.versions].sort((a, b) => b.createdAt - a.createdAt);
+    const sorted = [...index.versions].sort(
+      (a, b) => b.createdAt - a.createdAt,
+    );
     const now = Date.now();
     const result: { label: string; items: HistoryIndexEntry[] }[] = [];
     let currentLabel = "";
@@ -187,7 +210,8 @@ function useHistoryViewLogic() {
   }, [index]);
 
   const selectedEntry = useMemo(
-    () => index?.versions.find((v) => v.versionId === selectedVersionId) ?? null,
+    () =>
+      index?.versions.find((v) => v.versionId === selectedVersionId) ?? null,
     [index, selectedVersionId],
   );
 
@@ -200,7 +224,11 @@ function useHistoryViewLogic() {
     );
     if (!ok) return;
 
-    try { flushEditorContent(true); } catch { /* ignore */ }
+    try {
+      flushEditorContent(true);
+    } catch {
+      /* ignore */
+    }
 
     const latest = getPage(pageId);
     if (!latest) return;
@@ -212,39 +240,49 @@ function useHistoryViewLogic() {
       trigger: "pre-op",
     }).catch((err) => console.error("[history] pre-op snapshot failed:", err));
 
-    materializeVersion(pageId, selectedVersionId).then((result) => {
-      if (!result || result.content == null) {
+    materializeVersion(pageId, selectedVersionId)
+      .then((result) => {
+        if (!result || result.content == null) {
+          toast.error("无法读取该版本");
+          return;
+        }
+        const safeContent = createSafeHistoryContent(result.content);
+        if (!safeContent) {
+          toast.error("该历史版本格式异常，无法还原");
+          return;
+        }
+        const updates: Parameters<typeof updatePage>[1] = {
+          content: safeContent,
+        };
+        if (result.localFrontmatter !== undefined) {
+          updates.localFrontmatter = result.localFrontmatter;
+        }
+        updatePage(pageId, updates);
+        toast.success("已还原，当前内容已保留为「操作前」版本");
+        exit();
+      })
+      .catch(() => {
         toast.error("无法读取该版本");
-        return;
-      }
-      const safeContent = createSafeHistoryContent(result.content);
-      if (!safeContent) {
-        toast.error("该历史版本格式异常，无法还原");
-        return;
-      }
-      const updates: Parameters<typeof updatePage>[1] = { content: safeContent };
-      if (result.localFrontmatter !== undefined) {
-        updates.localFrontmatter = result.localFrontmatter;
-      }
-      updatePage(pageId, updates);
-      toast.success("已还原，当前内容已保留为「操作前」版本");
-      exit();
-    }).catch(() => {
-      toast.error("无法读取该版本");
-    });
+      });
   };
 
   const handleToggleMilestone = (versionId: string, willBe: boolean) => {
     if (!pageId) return;
     if (willBe) {
-      markMilestone(pageId, versionId).then(() => {
-        toast.success("已标记为里程碑");
-        bumpRefresh();
-      }).catch((err) => console.error("[history] markMilestone failed:", err));
+      markMilestone(pageId, versionId)
+        .then(() => {
+          toast.success("已标记为里程碑");
+          bumpRefresh();
+        })
+        .catch((err) => console.error("[history] markMilestone failed:", err));
     } else {
-      unmarkMilestone(pageId, versionId).then(() => {
-        bumpRefresh();
-      }).catch((err) => console.error("[history] unmarkMilestone failed:", err));
+      unmarkMilestone(pageId, versionId)
+        .then(() => {
+          bumpRefresh();
+        })
+        .catch((err) =>
+          console.error("[history] unmarkMilestone failed:", err),
+        );
     }
   };
 
@@ -272,13 +310,8 @@ function useHistoryViewLogic() {
  * 退出按钮在主区 HistoryToolbar 上，这里不重复放。
  */
 export function HistoryVersionList() {
-  const {
-    groups,
-    isEmpty,
-    selectedVersionId,
-    select,
-    handleToggleMilestone,
-  } = useHistoryViewLogic();
+  const { groups, isEmpty, selectedVersionId, select, handleToggleMilestone } =
+    useHistoryViewLogic();
 
   return (
     <div className="flex-1 min-h-0 flex flex-col" aria-label="历史版本列表">
@@ -315,72 +348,66 @@ export function HistoryVersionList() {
                     return (
                       <div
                         key={v.versionId}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => select(v.versionId)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            select(v.versionId);
-                          }
-                        }}
                         className={cn(
-                          "w-full text-left rounded-[10px] px-3 py-2 transition-colors duration-150 cursor-pointer group",
+                          "w-full rounded-[10px] transition-colors duration-150 group relative",
                           isSelected
                             ? "bg-[hsl(var(--goose-selected-bg))]"
                             : "hover:bg-[hsl(var(--goose-selected-bg))]/60",
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs">{formatTime(v.createdAt)}</span>
-                            {v.label && (
-                              <span className="text-[11px] text-muted-foreground/70 truncate">
-                                {v.label}
+                        <button
+                          type="button"
+                          aria-current={isSelected ? "true" : undefined}
+                          aria-label={`查看 ${group.label} ${formatTime(v.createdAt)} 的历史版本`}
+                          onClick={() => select(v.versionId)}
+                          className="w-full text-left rounded-[10px] px-3 py-2 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs">
+                                {formatTime(v.createdAt)}
                               </span>
-                            )}
+                              {v.label && (
+                                <span className="text-[11px] text-muted-foreground/70 truncate">
+                                  {v.label}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {deltaText && (
+                                <span
+                                  className={
+                                    delta > 0
+                                      ? "text-[10px] text-foreground/60"
+                                      : "text-[10px] text-muted-foreground/50"
+                                  }
+                                >
+                                  {deltaText}
+                                </span>
+                              )}
+                              {v.isMilestone && (
+                                <LucideIcons.Pin className="h-3 w-3 text-foreground/70" />
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {deltaText && (
-                              <span
-                                className={
-                                  delta > 0
-                                    ? "text-[10px] text-foreground/60"
-                                    : "text-[10px] text-muted-foreground/50"
-                                }
-                              >
-                                {deltaText}
-                              </span>
-                            )}
-                            {v.isMilestone && (
-                              <LucideIcons.Pin className="h-3 w-3 text-foreground/70" />
-                            )}
+                          <div className="mt-0.5 pr-10">
+                            <span className="text-[10px] text-muted-foreground/50">
+                              {triggerLabel(v.trigger)} · {v.charCount} 字
+                            </span>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="text-[10px] text-muted-foreground/50">
-                            {triggerLabel(v.trigger)} · {v.charCount} 字
-                          </span>
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            aria-label={v.isMilestone ? "取消里程碑" : "标记里程碑"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleMilestone(v.versionId, !v.isMilestone);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                handleToggleMilestone(v.versionId, !v.isMilestone);
-                              }
-                            }}
-                            className="text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground cursor-pointer select-none"
-                          >
-                            {v.isMilestone ? "取消" : "标记"}
-                          </span>
-                        </div>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={
+                            v.isMilestone ? "取消里程碑" : "标记里程碑"
+                          }
+                          onClick={() =>
+                            handleToggleMilestone(v.versionId, !v.isMilestone)
+                          }
+                          className="absolute right-3 bottom-2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-foreground cursor-pointer select-none"
+                        >
+                          {v.isMilestone ? "取消" : "标记"}
+                        </button>
                       </div>
                     );
                   })}
@@ -423,7 +450,9 @@ export function HistoryToolbar() {
 
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs text-muted-foreground/70 shrink-0">历史 ·</span>
+        <span className="text-xs text-muted-foreground/70 shrink-0">
+          历史 ·
+        </span>
         <span className="text-sm font-medium truncate">{pageTitle}</span>
       </div>
 
@@ -450,12 +479,12 @@ export function HistoryToolbar() {
             )}
           </div>
         )}
-          <Button
-            size="sm"
-            className="h-7 px-3 text-xs"
-            disabled={!selectedVersionId || selectedStatus !== "ready"}
-            onClick={handleRestore}
-          >
+        <Button
+          size="sm"
+          className="h-7 px-3 text-xs"
+          disabled={!selectedVersionId || selectedStatus !== "ready"}
+          onClick={handleRestore}
+        >
           还原此版本
         </Button>
       </div>
@@ -504,12 +533,8 @@ function HistoryReaderState({
  * 复用与主 Editor 完全一致的滚动容器和 max-w-4xl 包裹。
  */
 export function HistoryReader() {
-  const {
-    selectedContent,
-    selectedVersionId,
-    selectedStatus,
-    isEmpty,
-  } = useHistoryViewLogic();
+  const { selectedContent, selectedVersionId, selectedStatus, isEmpty } =
+    useHistoryViewLogic();
 
   if (selectedStatus === "loading") {
     return (

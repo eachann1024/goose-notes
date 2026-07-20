@@ -607,6 +607,7 @@ export function PageHeader({
                   <Button
                     onClick={onRestore}
                     type="button"
+                    aria-label="恢复页面"
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-restore-hover)] hover:text-white"
@@ -623,6 +624,7 @@ export function PageHeader({
                   <Button
                     onClick={onDelete}
                     type="button"
+                    aria-label="永久删除页面"
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-hover)] hover:text-white"
                   >

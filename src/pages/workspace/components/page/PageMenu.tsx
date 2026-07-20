@@ -8,6 +8,7 @@ import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-conte
 import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -40,8 +41,15 @@ export function PageMenu() {
   const isLocalItem = Boolean(page?.localFilePath);
 
   const handleImport = async () => {
-    const result = await importFile();
-    if (result.success) {
+    try {
+      const result = await importFile();
+      if (!result.success) {
+        if (result.error !== "未选择文件") {
+          toast.error(result.error || "导入失败");
+        }
+        return;
+      }
+
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
 
       const content = result.content;
@@ -56,9 +64,21 @@ export function PageMenu() {
       requestAnimationFrame(() => {
         setActivePage(newId);
       });
-    } else {
-      console.error("导入失败:", result.error);
+      toast.success("已导入为新页面");
+    } catch (error) {
+      console.error("导入失败:", error);
+      toast.error("导入失败，请检查文件后重试");
     }
+  };
+
+  const runExport = (label: string, task: () => Promise<unknown>) => {
+    const toastId = toast.loading(`正在导出 ${label}…`);
+    void task()
+      .then(() => toast.success(`${label} 已导出`, { id: toastId }))
+      .catch((error) => {
+        console.error(`[export] ${label} 失败:`, error);
+        toast.error(`${label} 导出失败`, { id: toastId });
+      });
   };
 
   const handleThemeConfirm = (
@@ -155,6 +175,7 @@ export function PageMenu() {
                 <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 truncate">锁定页面</span>
                 <Switch
+                  aria-label="锁定页面"
                   checked={page.isLocked}
                   onCheckedChange={(checked) =>
                     updatePage(activePageId, { isLocked: checked })
@@ -170,6 +191,7 @@ export function PageMenu() {
               <LucideIcons.ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 truncate">全宽显示（当前记事本）</span>
               <Switch
+                aria-label="全宽显示（当前记事本）"
                 checked={Boolean(
                   notebook?.editorFullWidth ?? globalEditorFullWidth,
                 )}
@@ -235,40 +257,30 @@ export function PageMenu() {
               <DropdownMenuSubContent className="min-w-[160px]">
                 <DropdownMenuItem
                   className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => exportToJSON(page)}
+                  onSelect={() => runExport("JSON", () => exportToJSON(page))}
                 >
                   <LucideIcons.FileJson className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="min-w-0 truncate">JSON</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => {
-                    void exportToMarkdown(page).catch((e) => {
-                      console.error("[export] Markdown 失败:", e);
-                    });
-                  }}
+                  onSelect={() =>
+                    runExport("Markdown", () => exportToMarkdown(page))
+                  }
                 >
                   <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="min-w-0 truncate">Markdown</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => {
-                    void exportToHTML(page).catch((e) => {
-                      console.error("[export] HTML 失败:", e);
-                    });
-                  }}
+                  onSelect={() => runExport("HTML", () => exportToHTML(page))}
                 >
                   <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="min-w-0 truncate">HTML</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => {
-                    void exportToPDF(page).catch((e) => {
-                      console.error("[export] PDF 失败:", e);
-                    });
-                  }}
+                  onSelect={() => runExport("PDF", () => exportToPDF(page))}
                 >
                   <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="min-w-0 truncate">PDF</span>

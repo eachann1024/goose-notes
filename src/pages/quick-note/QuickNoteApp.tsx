@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { X, HelpCircle } from "lucide-react";
+import { X, HelpCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   useQuickNote,
@@ -16,6 +16,8 @@ import {
   QUICKNOTE_MIN_WIDTH,
   QUICKNOTE_MIN_HEIGHT,
   QUICKNOTE_ZOOM_STEP,
+  QUICKNOTE_SLOTS,
+  isQuickNoteDraftEmpty,
   type QuickNoteSlot,
 } from "@/stores/useQuickNote";
 import { EditorHostBridge } from "@/pages/workspace/components/editor-host/EditorHostBridge";
@@ -28,7 +30,9 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { quickNoteWindow } from "@/lib/utools/quickNoteWindow";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { QuickNoteSlotSwitcher } from "./QuickNoteSlotSwitcher";
+import { getQuickNoteSlotShortcut } from "./quickNoteShortcuts";
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
@@ -47,8 +51,11 @@ const POSITION_SETTLE_MS = 720;
  */
 export function QuickNoteApp() {
   const editorRef = useRef<EditorRef>(null);
-  /** 程序化恢复后抑制 N 次 onChange 记入撤销栈（覆盖 BlockNote 初始化同步）。 */
-  const suppressHistoryWritesRef = useRef(0);
+  /** 撤销/重做重挂编辑器后，只静默一次同一槽位且与恢复内容签名一致的初始化同步。 */
+  const restoredContentSignatureRef = useRef<{
+    slot: QuickNoteSlot;
+    signature: string;
+  } | null>(null);
 
   const activeSlot = useQuickNote((s) => s.activeSlot);
   const drafts = useQuickNote((s) => s.drafts);
@@ -76,6 +83,16 @@ export function QuickNoteApp() {
   const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
 
   const displaySlot = previewSlot ?? activeSlot;
+  const occupiedSlots = useMemo(
+    () =>
+      Object.fromEntries(
+        QUICKNOTE_SLOTS.map((slot) => [
+          slot,
+          !isQuickNoteDraftEmpty(drafts[slot] ?? null),
+        ]),
+      ) as Record<QuickNoteSlot, boolean>,
+    [drafts],
+  );
 
   // 草稿 page：基于显示槽位草稿现造。仅随 displaySlot / 历史恢复重建，
   // 避免编辑 onChange 回灌打断输入。预览拖动时只换显示、不改 activeSlot。
@@ -96,63 +113,96 @@ export function QuickNoteApp() {
   const onDraftChange = useMemo(() => {
     const boundSlot = displaySlot;
     return (content: BlockNoteContent) => {
-      const suppress = suppressHistoryWritesRef.current > 0;
-      if (suppress) suppressHistoryWritesRef.current -= 1;
+      const signature = getContentSignature(content);
+      const restored = restoredContentSignatureRef.current;
+      const isRestoreSync =
+        restored?.slot === boundSlot && signature === restored.signature;
+      if (restored?.slot === boundSlot) {
+        restoredContentSignatureRef.current = null;
+      }
       setDraftContent(content as never, boundSlot, {
-        recordHistory: !suppress,
+        recordHistory: !isRestoreSync,
       });
     };
   }, [displaySlot, setDraftContent]);
 
-  const applyHistoryContentToEditor = () => {
-    // 撤销/重做后编辑器会 remount 并可能连发 onChange；多抑制几次，避免把恢复记成新编辑。
-    suppressHistoryWritesRef.current = 4;
-    setHistoryEpoch((n) => n + 1);
-    requestAnimationFrame(() => {
-      editorRef.current?.editor?.focus?.();
-    });
-  };
+  const flushEditor = useCallback(() => {
+    window.dispatchEvent(
+      new CustomEvent("goose-note:flush-editor", {
+        detail: { immediate: true },
+      }),
+    );
+  }, []);
 
-  const handleUndo = () => {
+  const applyHistoryContentToEditor = useCallback(
+    (content: BlockNoteContent | null) => {
+      restoredContentSignatureRef.current = {
+        slot: useQuickNote.getState().activeSlot,
+        signature: getContentSignature(
+          buildQuickNoteDraftPage(content as never).content,
+        ),
+      };
+      setHistoryEpoch((n) => n + 1);
+      requestAnimationFrame(() => {
+        editorRef.current?.editor?.focus?.();
+      });
+    },
+    [],
+  );
+
+  const handleUndo = useCallback(() => {
+    flushEditor();
     const result = undoDraft();
     if (!result.applied) return false;
-    applyHistoryContentToEditor();
+    applyHistoryContentToEditor(result.content as BlockNoteContent | null);
     return true;
-  };
+  }, [applyHistoryContentToEditor, flushEditor, undoDraft]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
+    flushEditor();
     const result = redoDraft();
     if (!result.applied) return false;
-    applyHistoryContentToEditor();
+    applyHistoryContentToEditor(result.content as BlockNoteContent | null);
     return true;
-  };
+  }, [applyHistoryContentToEditor, flushEditor, redoDraft]);
 
   const handleSwitchSlot = useCallback(
-    (slot: QuickNoteSlot, source: "pointer" | "keyboard") => {
+    (
+      slot: QuickNoteSlot,
+      source: "pointer" | "shortcut" | "switcher-keyboard",
+    ) => {
+      flushEditor();
       setPreviewSlot(null);
       if (slot === useQuickNote.getState().activeSlot) return;
       setActiveSlot(slot);
-      if (source === "keyboard") {
+      if (source === "shortcut") {
         toast.info(`已切换到便签 ${slot}`, {
           id: "quicknote-slot-switch",
           className: "quicknote-slot-switch-toast",
           duration: 1200,
         });
       }
-      requestAnimationFrame(() => {
-        editorRef.current?.editor?.focus?.();
-      });
+      if (source !== "switcher-keyboard") {
+        requestAnimationFrame(() => {
+          editorRef.current?.editor?.focus?.();
+        });
+      }
     },
-    [setActiveSlot],
+    [flushEditor, setActiveSlot],
   );
 
   /** 拖动预览：只改显示槽，不写 activeSlot。 */
-  const handlePreviewSlot = (slot: QuickNoteSlot | null) => {
-    setPreviewSlot(slot);
-  };
+  const handlePreviewSlot = useCallback(
+    (slot: QuickNoteSlot | null) => {
+      flushEditor();
+      setPreviewSlot(slot);
+    },
+    [flushEditor],
+  );
 
   /** 关窗 / 收起前把当前位置写进 store + preload，保证下次 uTools 唤起仍在原处。 */
-  const persistPlacementThenClose = () => {
+  const persistPlacementThenClose = useCallback(() => {
+    flushEditor();
     const x = window.screenX;
     const y = window.screenY;
     if (Number.isFinite(x) && Number.isFinite(y)) {
@@ -160,12 +210,11 @@ export function QuickNoteApp() {
       quickNoteWindow.persistPosition(x, y);
     }
     quickNoteWindow.close();
-  };
+  }, [flushEditor, setWindowPosition]);
 
   // 保存到笔记本：B 插件(standalone)→ redirect 回传 A 落库；A 插件 → 原本地落库。
-  // 注：保存按钮当前已隐藏，此函数暂时无调用方，保留逻辑以便后续恢复。
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSave = () => {
+    flushEditor();
     const isStandalone =
       typeof window !== "undefined" &&
       window.__GOOSE_QUICKNOTE_STANDALONE__ === true;
@@ -173,7 +222,7 @@ export function QuickNoteApp() {
     if (isStandalone) {
       // B 插件：取最新草稿内容（getState() 绕过闭包，拿到 onChange 实时更新值）。
       const content = getActiveDraftContent(useQuickNote.getState());
-      if (!content) {
+      if (isQuickNoteDraftEmpty(content)) {
         toast.info("便签是空的，没有需要保存的内容");
         return;
       }
@@ -189,6 +238,8 @@ export function QuickNoteApp() {
           );
           editorRef.current?.editor?.focus?.();
         });
+      } else {
+        toast.error("无法发送到主应用，请确认鹅的笔记已安装");
       }
       return;
     }
@@ -228,33 +279,18 @@ export function QuickNoteApp() {
   // 强制置顶（无失焦自动隐藏）：小窗常驻最前层，置顶由主窗 preload 在创建时设定，
   // 失焦不再触发隐藏——点窗外不会收起，只能 Esc / 关闭按钮收起。
 
-  // 键盘：Esc 收起；Cmd/Ctrl+1~5 切换便签；Cmd/Ctrl+Z 超长期撤销；
+  // 键盘：Esc 收起；macOS Cmd / Windows Alt+1~5 切换便签；Cmd/Ctrl+Z 超长期撤销；
   // Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y 重做；Cmd/Ctrl +/- 缩放编辑界面（0 复位）。
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        const x = window.screenX;
-        const y = window.screenY;
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          setWindowPosition(x, y);
-          quickNoteWindow.persistPosition(x, y);
-        }
-        quickNoteWindow.close();
-        return;
-      }
+    const onShortcutKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+      if (e.key === "Escape") return;
 
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        !e.altKey &&
-        !e.shiftKey &&
-        !e.repeat &&
-        !e.isComposing &&
-        /^[1-5]$/.test(e.key)
-      ) {
+      const shortcutSlot = getQuickNoteSlotShortcut(e);
+      if (shortcutSlot !== null) {
         e.preventDefault();
         e.stopPropagation();
-        handleSwitchSlot(Number(e.key) as QuickNoteSlot, "keyboard");
+        handleSwitchSlot(shortcutSlot, "shortcut");
         return;
       }
 
@@ -263,8 +299,7 @@ export function QuickNoteApp() {
 
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
 
-      // 超长期撤销/重做：拦截浏览器与 ProseMirror 默认行为，走持久化栈。
-      // 捕获阶段注册，确保先于编辑器快捷键。
+      // 超长期撤销/重做：未被浮层消费时拦截默认行为，走持久化栈。
       if (key === "z") {
         e.preventDefault();
         e.stopPropagation();
@@ -301,15 +336,33 @@ export function QuickNoteApp() {
         setEditorZoom(1);
       }
     };
-    // 捕获阶段：抢在 ProseMirror undo 之前
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    const onEscapeKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key !== "Escape" ||
+        e.defaultPrevented ||
+        e.isComposing ||
+        e.keyCode === 229
+      ) {
+        return;
+      }
+      e.preventDefault();
+      persistPlacementThenClose();
+    };
+
+    // 槽位和撤销快捷键需先于编辑器默认行为处理；Escape 使用冒泡阶段，
+    // 让 Radix/编辑器浮层先关闭自身，未消费时才收起整窗。
+    window.addEventListener("keydown", onShortcutKeyDown, true);
+    window.addEventListener("keydown", onEscapeKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onShortcutKeyDown, true);
+      window.removeEventListener("keydown", onEscapeKeyDown);
+    };
   }, [
     handleSwitchSlot,
+    handleUndo,
+    handleRedo,
+    persistPlacementThenClose,
     setEditorZoom,
-    setWindowPosition,
-    undoDraft,
-    redoDraft,
   ]);
 
   // 窗口位置记忆：用户拖动窗口移动 → 停下后记住最终位置，下次开窗沿用。
@@ -373,93 +426,109 @@ export function QuickNoteApp() {
   }, [setWindowSize]);
 
   const headerBar = (
-    <div
-      className="quicknote-titlebar flex h-9 items-center justify-between gap-1 px-2"
-      style={{ WebkitAppRegion: "drag" } as CSSProperties}
-    >
-      <div className="flex items-center gap-1">
-        {/* 保存按钮暂时隐藏（保留 handleSave 逻辑，后续可恢复）。 */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label="使用说明"
-              title="使用说明"
-              className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            side="bottom"
-            className="w-72 text-xs leading-relaxed"
+    <div className="quicknote-titlebar-reveal-zone">
+      <div
+        className="quicknote-titlebar flex h-9 items-center justify-between gap-1 px-2"
+        style={{ WebkitAppRegion: "drag" } as CSSProperties}
+      >
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="保存到笔记本"
+            title="保存到笔记本"
+            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+            onClick={handleSave}
           >
-            <div className="mb-1.5 text-sm font-medium">速记便签 · 用法</div>
-            <ul className="space-y-1.5 text-muted-foreground">
-              <li>
-                <b className="text-foreground">草稿模式</b>
-                ：这里写的内容是临时草稿，不会自动成为笔记，也不写入文件。
-              </li>
-              <li>
-                <b className="text-foreground">多便签</b>
-                ：顶栏中间 1–5
-                可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。按住拖动可快速预览，松开或移走后生效；也可按
-                ⌘/Ctrl + 1–5 直接切换。
-              </li>
-              <li>
-                <b className="text-foreground">始终置顶</b>
-                ：小窗常驻最前层，点击窗外也不会自动隐藏。
-              </li>
-              <li>
-                <b className="text-foreground">缩放</b>
-                ：⌘ + / ⌘ - 放大缩小编辑界面，⌘ 0
-                复位；缩放程度会记住，下次打开仍保持。
-              </li>
-              <li>
-                <b className="text-foreground">收起</b>
-                ：Esc 或点击右上角{" "}
-                <X className="inline h-3 w-3 align-text-bottom" />{" "}
-                收起，再次呼出草稿仍在。
-              </li>
-              <li>
-                <b className="text-foreground">超长期撤销</b>
-                ：⌘/Ctrl + Z
-                可一路回退编辑记录，关窗后再打开仍可继续撤销；⌘/Ctrl + Shift + Z
-                或 ⌘/Ctrl + Y 重做。
-              </li>
-              <li>
-                <b className="text-foreground">位置 / 尺寸记忆</b>
-                ：弹窗在屏幕上的位置、窗口宽高都会被记住，下次从 uTools
-                唤起仍在原处打开。
-              </li>
-            </ul>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* 绝对居中，避免左右按钮宽度差导致视觉偏移 */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex h-9 items-center justify-center">
-        <div className="pointer-events-auto">
-          <QuickNoteSlotSwitcher
-            activeSlot={displaySlot}
-            onChange={handleSwitchSlot}
-            onPreviewChange={handlePreviewSlot}
-          />
+            <Save className="h-3.5 w-3.5" />
+          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="使用说明"
+                title="使用说明"
+                className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="bottom"
+              className="w-72 text-xs leading-relaxed"
+            >
+              <div className="mb-1.5 text-sm font-medium">速记便签 · 用法</div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li>
+                  <b className="text-foreground">草稿模式</b>
+                  ：这里写的内容是临时草稿，不会自动成为笔记，也不写入文件。
+                </li>
+                <li>
+                  <b className="text-foreground">保存到笔记本</b>
+                  ：点击左上角保存按钮，将当前便签转存为一条正式笔记；成功后会清空当前便签。
+                </li>
+                <li>
+                  <b className="text-foreground">多便签</b>
+                  ：顶栏中间 1–5
+                  可切换五个独立草稿，各自单独保存；默认只显示当前编号，悬停展开全部。按住拖动可快速预览，松开或移走后生效；也可按
+                  ⌘/Ctrl + 1–5 直接切换；Windows 也支持 Alt + 1–5。
+                </li>
+                <li>
+                  <b className="text-foreground">始终置顶</b>
+                  ：小窗常驻最前层，点击窗外也不会自动隐藏。
+                </li>
+                <li>
+                  <b className="text-foreground">缩放</b>
+                  ：⌘ + / ⌘ - 放大缩小编辑界面，⌘ 0
+                  复位；缩放程度会记住，下次打开仍保持。
+                </li>
+                <li>
+                  <b className="text-foreground">收起</b>
+                  ：Esc 或点击右上角{" "}
+                  <X className="inline h-3 w-3 align-text-bottom" />{" "}
+                  收起，再次呼出草稿仍在。
+                </li>
+                <li>
+                  <b className="text-foreground">超长期撤销</b>
+                  ：⌘/Ctrl + Z
+                  可一路回退编辑记录，关窗后再打开仍可继续撤销；⌘/Ctrl + Shift +
+                  Z 或 ⌘/Ctrl + Y 重做。
+                </li>
+                <li>
+                  <b className="text-foreground">位置 / 尺寸记忆</b>
+                  ：弹窗在屏幕上的位置、窗口宽高都会被记住，下次从 uTools
+                  唤起仍在原处打开。
+                </li>
+              </ul>
+            </PopoverContent>
+          </Popover>
         </div>
-      </div>
 
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          aria-label="关闭"
-          className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-          onClick={() => persistPlacementThenClose()}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {/* 绝对居中，避免左右按钮宽度差导致视觉偏移 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex h-9 items-center justify-center">
+          <div className="pointer-events-auto">
+            <QuickNoteSlotSwitcher
+              activeSlot={displaySlot}
+              occupiedSlots={occupiedSlots}
+              onChange={handleSwitchSlot}
+              onPreviewChange={handlePreviewSlot}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="关闭"
+            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+            onClick={() => persistPlacementThenClose()}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );

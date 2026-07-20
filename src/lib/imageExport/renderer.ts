@@ -1,7 +1,7 @@
 import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
-import { toPng } from "html-to-image";
+import { toCanvas } from "html-to-image";
 import type { CardThemeId } from "./themes";
 import { getCardTheme } from "./themes";
 import type { WatermarkConfig } from "./watermark";
@@ -11,8 +11,87 @@ import { resolveImageUrls } from "./remoteImageResolver";
 import { renderMermaidBlocksAsImages } from "./mermaid";
 import { renderMathBlocksAsImages } from "./math";
 
+const MAX_CAPTURE_PIXEL_RATIO = 4;
+const MIN_CAPTURE_PIXEL_RATIO = 0.1;
+const MAX_CAPTURE_EDGE = 16_384;
+const MAX_CAPTURE_PIXELS = 32_000_000;
+const CAPTURE_TIMEOUT_MS = 60_000;
+const SAVE_TIMEOUT_MS = 30_000;
+
+let isCapturingImage = false;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+}
+
+export function calculateSafePixelRatio(width: number, height: number): number {
+  const safeWidth = Math.max(1, Math.ceil(width));
+  const safeHeight = Math.max(1, Math.ceil(height));
+  const edgeRatio = Math.min(
+    MAX_CAPTURE_EDGE / safeWidth,
+    MAX_CAPTURE_EDGE / safeHeight,
+  );
+  const areaRatio = Math.sqrt(MAX_CAPTURE_PIXELS / (safeWidth * safeHeight));
+  const ratio = Math.min(MAX_CAPTURE_PIXEL_RATIO, edgeRatio, areaRatio);
+
+  if (ratio < MIN_CAPTURE_PIXEL_RATIO) {
+    throw new Error("内容过长，无法导出为单张图片，请缩小内容范围后重试");
+  }
+
+  // 向下保留四位，避免浮点取整后重新越过安全像素上限。
+  const safeRatio = Math.floor(ratio * 10_000) / 10_000;
+  const outputWidth = Math.ceil(safeWidth * safeRatio);
+  const outputHeight = Math.ceil(safeHeight * safeRatio);
+  if (
+    outputWidth > MAX_CAPTURE_EDGE ||
+    outputHeight > MAX_CAPTURE_EDGE ||
+    outputWidth * outputHeight > MAX_CAPTURE_PIXELS
+  ) {
+    throw new Error("图片尺寸超出安全限制，请缩小内容范围后重试");
+  }
+  return safeRatio;
+}
+
+function getSafePixelRatio(element: HTMLElement): number {
+  const rect = element.getBoundingClientRect();
+  const width = element.scrollWidth || rect.width;
+  const height = element.scrollHeight || rect.height;
+  return calculateSafePixelRatio(width, height);
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("图片编码失败"));
+        }
+      }, "image/png");
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 // ── Loading Overlay ────────────────────────────────────────────
 function createLoadingOverlay(): HTMLElement {
+  document
+    .querySelectorAll("#goose-image-export-loading")
+    .forEach((staleOverlay) => staleOverlay.remove());
+
   const overlay = document.createElement("div");
   overlay.id = "goose-image-export-loading";
   overlay.style.cssText = `
@@ -24,7 +103,7 @@ function createLoadingOverlay(): HTMLElement {
     overflow:hidden;
   `;
 
-  const C = ["#58d7b8","#4f9cf7","#9b72f2","#f472b6","#ffb56a","#22d3ee"];
+  const C = ["#58d7b8", "#4f9cf7", "#9b72f2", "#f472b6", "#ffb56a", "#22d3ee"];
   const particles = Array.from({ length: 14 }, (_, i) => {
     const c = C[i % C.length];
     const x = 34 + i * 2.4;
@@ -85,9 +164,8 @@ function createLoadingOverlay(): HTMLElement {
   return overlay;
 }
 
-function removeLoadingOverlay(): void {
-  const overlay = document.getElementById("goose-image-export-loading");
-  if (!overlay) return;
+function removeLoadingOverlay(overlay: HTMLElement): void {
+  if (!overlay.isConnected) return;
   overlay.style.animation = "ge-out .4s cubic-bezier(.33,1,.68,1) forwards";
   setTimeout(() => overlay.remove(), 420);
 }
@@ -99,7 +177,10 @@ async function waitForImages(container: HTMLElement): Promise<void> {
 
   const promises = Array.from(images).map((img) => {
     return new Promise<void>((resolve) => {
-      if (img.complete) { resolve(); return; }
+      if (img.complete) {
+        resolve();
+        return;
+      }
       img.onload = () => resolve();
       img.onerror = () => resolve();
       setTimeout(() => resolve(), 3000);
@@ -110,36 +191,57 @@ async function waitForImages(container: HTMLElement): Promise<void> {
 }
 
 async function captureElementToPng(element: HTMLElement, filename: string) {
+  if (isCapturingImage) {
+    const { toast } = await import("sonner");
+    toast.info("图片正在生成，请稍候");
+    return;
+  }
+
+  isCapturingImage = true;
   const overlay = createLoadingOverlay();
+  let canvas: HTMLCanvasElement | null = null;
 
   try {
-    await Promise.all([
-      document.fonts.ready,
-      waitForImages(element),
-    ]);
+    await withTimeout(
+      Promise.all([document.fonts.ready, waitForImages(element)]),
+      10_000,
+      "等待图片资源超时",
+    );
 
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => resolve(undefined)),
+    );
 
-    const dataUrl = await toPng(element, {
-      pixelRatio: 4,
-      quality: 0.92,
-      cacheBust: false,
-      skipFonts: true,
-      imagePlaceholder:
-        "data:image/svg+xml;charset=utf-8," +
-        encodeURIComponent(
-          '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">' +
-          '<rect width="200" height="80" rx="6" fill="#f3f4f6"/>' +
-          '<text x="100" y="44" font-family="sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">图片加载失败</text>' +
-          '</svg>',
-        ),
-    });
+    canvas = await withTimeout(
+      toCanvas(element, {
+        pixelRatio: getSafePixelRatio(element),
+        cacheBust: false,
+        skipFonts: true,
+        imagePlaceholder:
+          "data:image/svg+xml;charset=utf-8," +
+          encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">' +
+              '<rect width="200" height="80" rx="6" fill="#f3f4f6"/>' +
+              '<text x="100" y="44" font-family="sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">图片加载失败</text>' +
+              "</svg>",
+          ),
+      }),
+      CAPTURE_TIMEOUT_MS,
+      "生成图片超时",
+    );
 
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    const blob = await withTimeout(
+      canvasToPngBlob(canvas),
+      CAPTURE_TIMEOUT_MS,
+      "图片编码超时",
+    );
 
     const { saveBlobAndReveal } = await import("../export");
-    const saved = await saveBlobAndReveal(blob, filename);
+    const saved = await withTimeout(
+      saveBlobAndReveal(blob, filename),
+      SAVE_TIMEOUT_MS,
+      "保存图片超时",
+    );
     const { toast } = await import("sonner");
     if (saved) {
       toast.success("图片已保存到下载文件夹");
@@ -151,7 +253,12 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
     toast.error("导出图片失败，请重试");
     console.error("[imageExport] capture failed:", error);
   } finally {
-    removeLoadingOverlay();
+    if (canvas) {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+    isCapturingImage = false;
+    removeLoadingOverlay(overlay);
   }
 }
 
@@ -160,11 +267,19 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
 }
 
-function buildFileName(title: string, theme: ReturnType<typeof getCardTheme>, suffix?: string): string {
+function buildFileName(
+  title: string,
+  theme: ReturnType<typeof getCardTheme>,
+  suffix?: string,
+): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  const parts = [sanitizeFileName(title || "untitled"), sanitizeFileName(theme.nameEn), ts];
+  const parts = [
+    sanitizeFileName(title || "untitled"),
+    sanitizeFileName(theme.nameEn),
+    ts,
+  ];
   if (suffix) parts.splice(1, 0, suffix);
   return `${parts.join("_")}.png`;
 }
@@ -197,10 +312,17 @@ export async function exportPageToImage(
         ? content.slice(1)
         : content;
     const blocksHtml = renderBlocks(blocksToRender, theme);
-    const html = buildStyledHTML({ title, blocksHtml, theme, watermarkConfig: wm });
+    const html = buildStyledHTML({
+      title,
+      blocksHtml,
+      theme,
+      watermarkConfig: wm,
+    });
     container.innerHTML = html;
 
-    const cardElement = container.querySelector(".gooseshot-container") as HTMLElement;
+    const cardElement = container.querySelector(
+      ".gooseshot-container",
+    ) as HTMLElement;
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, buildFileName(title, theme));
@@ -241,12 +363,13 @@ export async function exportSelectionToImage(
       title,
       blocksHtml,
       theme,
-      isSelection: true,
       watermarkConfig: wm,
     });
     container.innerHTML = html;
 
-    const cardElement = container.querySelector(".gooseshot-container") as HTMLElement;
+    const cardElement = container.querySelector(
+      ".gooseshot-container",
+    ) as HTMLElement;
     if (!cardElement) throw new Error("Failed to create preview element");
 
     await captureElementToPng(cardElement, buildFileName(title, theme, "选中"));
@@ -256,6 +379,9 @@ export async function exportSelectionToImage(
 }
 
 // ── Legacy alias ───────────────────────────────────────────────
-export async function exportToImage(page: Page, themeId: CardThemeId = "notion") {
+export async function exportToImage(
+  page: Page,
+  themeId: CardThemeId = "notion",
+) {
   return exportPageToImage(page, themeId);
 }

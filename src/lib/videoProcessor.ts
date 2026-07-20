@@ -98,6 +98,7 @@ export async function transcodeVideo(
       message.includes("FFmpeg")
         ? "视频转换失败，请完成 uTools 的 FFmpeg 安装后重试"
         : message,
+      { cause: error },
     );
   } finally {
     void fs.cleanupTempFiles(`goose-note/video/${token}`, 0);

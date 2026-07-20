@@ -302,6 +302,7 @@ declare global {
   const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile
   const isPasteableClipboardVideoFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardVideoFile
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
+  const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl

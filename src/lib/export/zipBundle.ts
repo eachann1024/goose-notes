@@ -696,145 +696,146 @@ export async function importNotebooksFromZip(
 
   const metaFile = zip.file("backup-metadata.json");
   if (metaFile) {
+    let meta: any;
     try {
       const metaText = await metaFile.async("text");
-      const meta = JSON.parse(metaText);
-      if (meta && Array.isArray(meta.notebooks) && Array.isArray(meta.pages)) {
-        for (const nb of meta.notebooks) {
-          onCreateNotebook(nb.name, nb.icon || "BookOpen", nb.id);
-        }
+      meta = JSON.parse(metaText);
+    } catch (error) {
+      throw new Error("备份元数据已损坏，已停止导入", { cause: error });
+    }
 
-        const importedPageIdMap = new Map<string, string>();
-        const notebookAssetMaps = new Map<string, Map<string, string>>();
-        for (const nb of meta.notebooks) {
-          const assetMap = await loadAssetsFromFolder(
-            zip.folder(`${sanitizeFileName(nb.name)}/assets`),
-          );
-          notebookAssetMaps.set(nb.id, assetMap);
-        }
+    if (!meta || !Array.isArray(meta.notebooks) || !Array.isArray(meta.pages)) {
+      throw new Error("备份元数据格式无效，已停止导入");
+    }
 
-        for (const page of meta.pages) {
-          const pageData = { ...page };
-          const sourcePageId = typeof page.id === "string" ? page.id : null;
-          delete (pageData as any).localFilePath;
-          const assetMap = notebookAssetMaps.get(page.workspaceId);
-          if (pageData.content && assetMap) {
-            restoreBundledAssets(pageData.content, assetMap);
+    // 在产生任何 store 副作用前先把资源完整读入内存。此后若创建回调失败，
+    // 异常必须向外传播给 SettingsDialog 的回滚流程，禁止再回退目录解析造成重复数据。
+    const notebookAssetMaps = new Map<string, Map<string, string>>();
+    for (const nb of meta.notebooks) {
+      const assetMap = await loadAssetsFromFolder(
+        zip.folder(`${sanitizeFileName(nb.name)}/assets`),
+      );
+      notebookAssetMaps.set(nb.id, assetMap);
+    }
+
+    for (const nb of meta.notebooks) {
+      onCreateNotebook(nb.name, nb.icon || "BookOpen", nb.id);
+    }
+
+    const importedPageIdMap = new Map<string, string>();
+
+    for (const page of meta.pages) {
+      const pageData = { ...page };
+      const sourcePageId = typeof page.id === "string" ? page.id : null;
+      delete (pageData as any).localFilePath;
+      const assetMap = notebookAssetMaps.get(page.workspaceId);
+      if (pageData.content && assetMap) {
+        restoreBundledAssets(pageData.content, assetMap);
+      }
+      const createdPageId = await onCreatePage(
+        pageData,
+        page.workspaceId,
+        page.parentId,
+        page.id,
+      );
+      if (sourcePageId) {
+        importedPageIdMap.set(sourcePageId, createdPageId);
+      }
+    }
+
+    // 还原并合并历史记录数据到本地数据库
+    if (meta.history) {
+      const { resolveHistoryBackend } = await import("@/lib/history/backend");
+      const MAX_VERSIONS_PER_PAGE = 50;
+
+      for (const [sourcePageId, historyItem] of Object.entries(
+        meta.history,
+      ) as [string, any][]) {
+        try {
+          const pageId = importedPageIdMap.get(sourcePageId) ?? sourcePageId;
+          const backend = resolveHistoryBackend(pageId);
+          const localIndex = await backend.loadIndex(pageId);
+          const importedIndex = historyItem.index;
+          const importedVersions = historyItem.versions || [];
+
+          if (!importedIndex) continue;
+
+          // 1. 合并 versions 列表并去重
+          const versionMap = new Map<string, any>();
+
+          if (localIndex && Array.isArray(localIndex.versions)) {
+            for (const v of localIndex.versions) {
+              versionMap.set(v.versionId, v);
+            }
           }
-          const createdPageId = await onCreatePage(
-            pageData,
-            page.workspaceId,
-            page.parentId,
-            page.id,
-          );
-          if (sourcePageId) {
-            importedPageIdMap.set(sourcePageId, createdPageId);
+          if (Array.isArray(importedIndex.versions)) {
+            for (const v of importedIndex.versions) {
+              versionMap.set(v.versionId, v);
+            }
           }
-        }
 
-        // 还原并合并历史记录数据到本地数据库
-        if (meta.history) {
-          const { resolveHistoryBackend } =
-            await import("@/lib/history/backend");
-          const MAX_VERSIONS_PER_PAGE = 50;
+          // 按时间戳从小到大排序
+          let mergedVersions = Array.from(versionMap.values()).sort(
+            (a, b) => a.createdAt - b.createdAt,
+          );
 
-          for (const [sourcePageId, historyItem] of Object.entries(
-            meta.history,
-          ) as [string, any][]) {
-            try {
-              const pageId =
-                importedPageIdMap.get(sourcePageId) ?? sourcePageId;
-              const backend = resolveHistoryBackend(pageId);
-              const localIndex = await backend.loadIndex(pageId);
-              const importedIndex = historyItem.index;
-              const importedVersions = historyItem.versions || [];
-
-              if (!importedIndex) continue;
-
-              // 1. 合并 versions 列表并去重
-              const versionMap = new Map<string, any>();
-
-              if (localIndex && Array.isArray(localIndex.versions)) {
-                for (const v of localIndex.versions) {
-                  versionMap.set(v.versionId, v);
-                }
-              }
-              if (Array.isArray(importedIndex.versions)) {
-                for (const v of importedIndex.versions) {
-                  versionMap.set(v.versionId, v);
-                }
-              }
-
-              // 按时间戳从小到大排序
-              let mergedVersions = Array.from(versionMap.values()).sort(
-                (a, b) => a.createdAt - b.createdAt,
-              );
-
-              // 2. 超出数量限制裁剪（淘汰最旧的非 Milestone）
-              const evictedVersionIds: string[] = [];
-              if (mergedVersions.length > MAX_VERSIONS_PER_PAGE) {
-                const evictCount =
-                  mergedVersions.length - MAX_VERSIONS_PER_PAGE;
-                evictedVersionIds.push(
-                  ...mergedVersions
-                    .filter((v) => !v.isMilestone)
-                    .slice(0, evictCount)
-                    .map((v) => v.versionId),
-                );
-                if (evictedVersionIds.length > 0) {
-                  const evictedSet = new Set(evictedVersionIds);
-                  mergedVersions = mergedVersions.filter(
-                    (v) => !evictedSet.has(v.versionId),
-                  );
-                }
-              }
-
-              // 3. 计算最新的字符数
-              const lastVersionCharCount =
-                mergedVersions.length > 0
-                  ? mergedVersions[mergedVersions.length - 1].charCount
-                  : 0;
-
-              // 4. 保存合并后的索引
-              await backend.saveIndex({
-                pageId,
-                versions: mergedVersions,
-                lastVersionCharCount,
-              });
-
-              // 5. 写入导入的历史版本
-              if (Array.isArray(importedVersions)) {
-                const activeVersionIds = new Set(
-                  mergedVersions.map((v) => v.versionId),
-                );
-                for (const version of importedVersions) {
-                  if (activeVersionIds.has(version.versionId)) {
-                    await backend.saveVersion({ ...version, pageId });
-                  }
-                }
-              }
-
-              // 6. 清理淘汰裁剪掉的本地历史版本
-              for (const evictedId of evictedVersionIds) {
-                await backend.removeVersion(pageId, evictedId);
-              }
-            } catch (err) {
-              console.error(
-                `Failed to restore and merge history for page ${sourcePageId}:`,
-                err,
+          // 2. 超出数量限制裁剪（淘汰最旧的非 Milestone）
+          const evictedVersionIds: string[] = [];
+          if (mergedVersions.length > MAX_VERSIONS_PER_PAGE) {
+            const evictCount = mergedVersions.length - MAX_VERSIONS_PER_PAGE;
+            evictedVersionIds.push(
+              ...mergedVersions
+                .filter((v) => !v.isMilestone)
+                .slice(0, evictCount)
+                .map((v) => v.versionId),
+            );
+            if (evictedVersionIds.length > 0) {
+              const evictedSet = new Set(evictedVersionIds);
+              mergedVersions = mergedVersions.filter(
+                (v) => !evictedSet.has(v.versionId),
               );
             }
           }
-        }
 
-        return;
+          // 3. 计算最新的字符数
+          const lastVersionCharCount =
+            mergedVersions.length > 0
+              ? mergedVersions[mergedVersions.length - 1].charCount
+              : 0;
+
+          // 4. 保存合并后的索引
+          await backend.saveIndex({
+            pageId,
+            versions: mergedVersions,
+            lastVersionCharCount,
+          });
+
+          // 5. 写入导入的历史版本
+          if (Array.isArray(importedVersions)) {
+            const activeVersionIds = new Set(
+              mergedVersions.map((v) => v.versionId),
+            );
+            for (const version of importedVersions) {
+              if (activeVersionIds.has(version.versionId)) {
+                await backend.saveVersion({ ...version, pageId });
+              }
+            }
+          }
+
+          // 6. 清理淘汰裁剪掉的本地历史版本
+          for (const evictedId of evictedVersionIds) {
+            await backend.removeVersion(pageId, evictedId);
+          }
+        } catch (err) {
+          console.error(
+            `Failed to restore and merge history for page ${sourcePageId}:`,
+            err,
+          );
+        }
       }
-    } catch (e) {
-      console.error(
-        "Failed to restore from backup-metadata.json, fallback to folder parsing:",
-        e,
-      );
     }
+
+    return;
   }
 
   const topLevelEntries = new Set<string>();

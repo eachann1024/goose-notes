@@ -10,14 +10,24 @@ import {
 import { wasRecentlySelfMoved } from "@/stores/pages/actions/localFolder/move";
 import { useSettings } from "@/stores/useSettings";
 import { shouldIgnoreLocalRelativePath } from "@/lib/local-folder-scanner";
+import { discardPendingLocalSave } from "@/stores/pages/folderSync";
 
 interface GooseFs {
   existsAsync?: (path: string) => Promise<boolean>;
   exists: (path: string) => boolean;
-  watch: (path: string, callback: (eventType: string, filename: string) => void) => void;
+  watch: (
+    path: string,
+    callback: (eventType: string, filename: string) => void,
+  ) => void;
   unwatch: (path: string) => void;
-  readFileStatAsync?: (path: string) => Promise<{ ok: boolean; content?: string; error?: string }>;
-  readFileStat?: (path: string) => { ok: boolean; content?: string; error?: string };
+  readFileStatAsync?: (
+    path: string,
+  ) => Promise<{ ok: boolean; content?: string; error?: string }>;
+  readFileStat?: (path: string) => {
+    ok: boolean;
+    content?: string;
+    error?: string;
+  };
   readFileAsync?: (path: string) => Promise<string | null>;
   readFile?: (path: string) => string | null;
 }
@@ -111,14 +121,13 @@ function conflictHandlers(filePath: string, pageId: string) {
       updateSnapshotAfterWrite(filePath, "");
       const pg = usePages.getState().pages[pageId];
       if (!pg) return;
-      void usePages.getState().saveLocalPageContent(
-        pageId,
-        pg.content as any,
-        { force: true },
-      );
+      void usePages
+        .getState()
+        .saveLocalPageContent(pageId, pg.content as any, { force: true });
     },
     // 加载磁盘版本：丢弃本地编辑，重读磁盘
     onLoadDisk: () => {
+      discardPendingLocalSave(pageId);
       usePages.setState((s) => ({
         dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
       }));
@@ -155,7 +164,9 @@ export function useLocalFolderWatch({
   page,
 }: UseLocalFolderWatchOptions) {
   // 增量 rename/delete 事件去抖：同一目录连发事件合并，300ms 内只触发一次
-  const renameDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const renameDebounceTimers = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
 
   // 监听文件变更事件
   useEffect(() => {
@@ -192,7 +203,8 @@ export function useLocalFolderWatch({
             p.workspaceId === notebook.id &&
             !p.isFolder &&
             (p.localFilePath === filePath ||
-              p.localFilePath?.replace(/\\/g, "/") === filePath.replace(/\\/g, "/")),
+              p.localFilePath?.replace(/\\/g, "/") ===
+                filePath.replace(/\\/g, "/")),
         );
         if (!target) return;
 
@@ -212,7 +224,10 @@ export function useLocalFolderWatch({
         const isDirty = usePages.getState().dirtyLocalPageIds[target.id];
         if (isDirty || wasRecentlyInteracting(2000)) {
           // 脏页或用户刚操作过（输入尚未进入 debounce 标脏的竞态窗口）：弹冲突 toast
-          const { onKeepMine, onLoadDisk } = conflictHandlers(filePath, target.id);
+          const { onKeepMine, onLoadDisk } = conflictHandlers(
+            filePath,
+            target.id,
+          );
           showConflictToast(filePath, target.id, onKeepMine, onLoadDisk);
           return;
         }
@@ -255,7 +270,10 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           } else {
@@ -290,7 +308,10 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           }
@@ -318,9 +339,15 @@ export function useLocalFolderWatch({
       showConflictToast(filePath, pageId, onKeepMine, onLoadDisk);
     };
 
-    window.addEventListener("goose-note:local-file-conflict", handlePreSaveConflict);
+    window.addEventListener(
+      "goose-note:local-file-conflict",
+      handlePreSaveConflict,
+    );
     return () => {
-      window.removeEventListener("goose-note:local-file-conflict", handlePreSaveConflict);
+      window.removeEventListener(
+        "goose-note:local-file-conflict",
+        handlePreSaveConflict,
+      );
     };
   }, []);
 
@@ -334,13 +361,20 @@ export function useLocalFolderWatch({
       };
       const fileName = filePath.replace(/^.*[\\/]/, "");
       toast.error(`「${fileName}」保存失败`, {
-        description: "检测到另一个页面已指向同一个本地文件，请重新加载本地文件夹后再试。",
+        description:
+          "检测到另一个页面已指向同一个本地文件，请重新加载本地文件夹后再试。",
       });
     };
 
-    window.addEventListener("goose-note:local-file-duplicate", handleDuplicateLocalFile);
+    window.addEventListener(
+      "goose-note:local-file-duplicate",
+      handleDuplicateLocalFile,
+    );
     return () => {
-      window.removeEventListener("goose-note:local-file-duplicate", handleDuplicateLocalFile);
+      window.removeEventListener(
+        "goose-note:local-file-duplicate",
+        handleDuplicateLocalFile,
+      );
     };
   }, []);
 
@@ -371,11 +405,7 @@ export function useLocalFolderWatch({
   // ── 启动/停止目录 watcher ─────────────────────────────────────────────────
   useEffect(() => {
     const gfs = (window as any).gooseFs as GooseFs | undefined;
-    if (
-      notebook?.source === "local-folder" &&
-      notebook.localPath &&
-      gfs
-    ) {
+    if (notebook?.source === "local-folder" && notebook.localPath && gfs) {
       // 先检查目录是否存在，避免 ENOENT
       const dirExists = gfs.exists(notebook.localPath);
       if (dirExists) {

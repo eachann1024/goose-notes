@@ -1,15 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import {
-  uToolsStorage,
-  readDbStorageJSON,
-  writeDbStorageJSON,
-} from "@/lib/storage";
+import { uToolsStorage } from "@/lib/storage";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
-import {
-  createEmptyLocalPageContent,
-} from "@/components/editor/utils/blocknote-content";
+import { createEmptyLocalPageContent } from "@/components/editor/utils/blocknote-content";
 import type { JSONContent, Page } from "@/types";
 import {
   applyRedo,
@@ -19,7 +13,6 @@ import {
   recordEditHistory,
 } from "@/lib/quicknote/undoHistory";
 import type { QuickNoteSlotStacks } from "@/lib/quicknote/undoHistory";
-
 
 /**
  * 速记小窗状态（独立窗口进程内使用）。
@@ -51,7 +44,10 @@ function normalizeSlot(value: unknown): QuickNoteSlot {
   return 1;
 }
 
-function normalizeDrafts(raw: unknown, legacyDraft?: JSONContent | null): QuickNoteDrafts {
+function normalizeDrafts(
+  raw: unknown,
+  legacyDraft?: JSONContent | null,
+): QuickNoteDrafts {
   const empty = createEmptyQuickNoteDrafts();
   if (raw && typeof raw === "object") {
     const rec = raw as Record<string, JSONContent | null>;
@@ -169,14 +165,60 @@ export function clampQuickNoteZoom(zoom: unknown): number {
   return Math.round(clamped * 100) / 100;
 }
 
-/** 判断草稿内容是否为空白（无任何可见文本）——避免保存出空笔记。 */
-const isDraftEmpty = (content: JSONContent | null): boolean => {
+// 可承载 inline 文本、且空内容即视为「空白」的块类型。结构化块（image/table/
+// codeBlock/file/video/audio…）即使没有 inline text 也是真实内容，不能被当空白清掉。
+const TEXTUAL_BLOCK_TYPES = new Set([
+  "paragraph",
+  "heading",
+  "bulletListItem",
+  "numberedListItem",
+  "checkListItem",
+  "toggleListItem",
+  "quote",
+  "callout",
+]);
+
+function inlineContentHasText(content: unknown): boolean {
+  if (typeof content === "string") return content.trim().length > 0;
+  if (!Array.isArray(content)) return false;
+  return content.some((item) => {
+    if (!item || typeof item !== "object") return false;
+    const candidate = item as { text?: unknown; content?: unknown };
+    return (
+      (typeof candidate.text === "string" &&
+        candidate.text.trim().length > 0) ||
+      inlineContentHasText(candidate.content)
+    );
+  });
+}
+
+function blockHasMeaningfulContent(block: unknown): boolean {
+  if (!block || typeof block !== "object") return false;
+  const candidate = block as {
+    type?: unknown;
+    content?: unknown;
+    children?: unknown;
+  };
+  const type = typeof candidate.type === "string" ? candidate.type : "";
+  if (!type || !TEXTUAL_BLOCK_TYPES.has(type)) return true;
+  if (inlineContentHasText(candidate.content)) return true;
+  return (
+    Array.isArray(candidate.children) &&
+    candidate.children.some(blockHasMeaningfulContent)
+  );
+}
+
+/** 判断草稿是否为空白，供保存门控与槽位占用提示共用。 */
+export function isQuickNoteDraftEmpty(content: JSONContent | null): boolean {
   if (!content) return true;
-  const text = JSON.stringify(content)
-    .replace(/"type"|"text"|"content"|"styles"|"props"|"id"|"children"/g, "");
-  // 粗判：内容里若不含任何中日韩 / 拉丁 / 数字字符，视为空白。
-  return !/[\p{L}\p{N}]/u.test(text);
-};
+  if (Array.isArray(content)) return !content.some(blockHasMeaningfulContent);
+  if (typeof content !== "object") return true;
+  const root = content as { type?: unknown; content?: unknown };
+  if (root.type === "doc" && Array.isArray(root.content)) {
+    return !root.content.some(blockHasMeaningfulContent);
+  }
+  return !blockHasMeaningfulContent(root);
+}
 
 /** 读取当前激活槽位的草稿内容。 */
 export function getActiveDraftContent(state: {
@@ -205,7 +247,12 @@ export const useQuickNote = create<QuickNoteState>()(
 
       setActiveSlot: (slot) => {
         const next = normalizeSlot(slot);
-        if (next === get().activeSlot) return;
+        const previous = get().activeSlot;
+        if (next === previous) return;
+        // 切槽是明确的编辑边界：回到任一槽后首次输入都应形成新撤销步，
+        // 不能和切换前 800ms 内的输入合并，否则一次撤销会直接退回空稿。
+        lastUndoRecordAtBySlot[previous] = 0;
+        lastUndoRecordAtBySlot[next] = 0;
         set({ activeSlot: next });
       },
 
@@ -281,7 +328,7 @@ export const useQuickNote = create<QuickNoteState>()(
 
       saveDraftToNotebook: () => {
         const content = getActiveDraftContent(get());
-        if (isDraftEmpty(content)) {
+        if (isQuickNoteDraftEmpty(content)) {
           get().clearDraft();
           return null;
         }
@@ -320,14 +367,17 @@ export const useQuickNote = create<QuickNoteState>()(
       setWindowWidth: (width) =>
         set({ windowWidth: Math.max(QUICKNOTE_MIN_WIDTH, Math.round(width)) }),
       setWindowHeight: (height) =>
-        set({ windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)) }),
+        set({
+          windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)),
+        }),
       setWindowSize: (width, height) =>
         set({
           windowWidth: Math.max(QUICKNOTE_MIN_WIDTH, Math.round(width)),
           windowHeight: Math.max(QUICKNOTE_MIN_HEIGHT, Math.round(height)),
         }),
 
-      setEditorZoom: (zoom: number) => set({ editorZoom: clampQuickNoteZoom(zoom) }),
+      setEditorZoom: (zoom: number) =>
+        set({ editorZoom: clampQuickNoteZoom(zoom) }),
 
       setWindowPosition: (x: number, y: number) => {
         if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -421,20 +471,6 @@ export const useQuickNote = create<QuickNoteState>()(
  * 只看首块有无 inline 文本，不碰块类型 props——避免 isDraftEmpty 那种按 JSON 文本
  * 糊匹配、被 props 里 "default"/"left" 等拉丁字母值误判的问题。
  */
-// 可承载 inline 文本、且空内容即视为「空白」的块类型。结构化块（image/table/
-// codeBlock/file/video/audio…）不在此列：它们没有 inline content，内容在 props/rows 里，
-// 单个结构化块是真实草稿，不能被当空白清掉。
-const TEXTUAL_BLOCK_TYPES = new Set([
-  "paragraph",
-  "heading",
-  "bulletListItem",
-  "numberedListItem",
-  "checkListItem",
-  "toggleListItem",
-  "quote",
-  "callout",
-]);
-
 const isBlankSingleBlockDraft = (content: JSONContent | null): boolean => {
   if (!content) return true;
   if (!Array.isArray(content)) return false;

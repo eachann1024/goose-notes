@@ -5,22 +5,33 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { SearchResultPage, SearchResults } from "./useCommandSearch";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
 
-function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: string }) {
+function BreadcrumbPath({
+  parts,
+  fallback,
+}: {
+  parts: string[];
+  fallback?: string;
+}) {
   if (parts.length === 0) {
     if (!fallback) return null;
-    return <span className="shrink-0 text-xs text-muted-foreground/45">{fallback}</span>;
+    return (
+      <span className="shrink-0 text-xs text-muted-foreground">{fallback}</span>
+    );
   }
   return (
     <div className="flex items-center gap-0.5 shrink-0 max-w-[42%] overflow-hidden">
       {parts.map((part, i) => (
         <span key={i} className="flex items-center gap-0.5 min-w-0">
-          {i > 0 && <span className="text-muted-foreground/25 text-[10px] shrink-0">›</span>}
+          {i > 0 && (
+            <span
+              aria-hidden="true"
+              className="text-muted-foreground/60 text-[10px] shrink-0"
+            >
+              ›
+            </span>
+          )}
           <span
-            className={`truncate text-xs ${
-              i === 0
-                ? "text-muted-foreground/75 font-medium"
-                : "text-muted-foreground/50"
-            }`}
+            className={`truncate text-xs text-muted-foreground ${i === 0 ? "font-medium" : ""}`}
           >
             {part}
           </span>
@@ -30,7 +41,8 @@ function BreadcrumbPath({ parts, fallback }: { parts: string[]; fallback?: strin
   );
 }
 
-const MARK_CLASS = "rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground";
+const MARK_CLASS =
+  "rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground";
 
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -47,7 +59,9 @@ function HighlightText({ text, query }: { text: string; query: string }) {
       <>
         {parts.map((part, i) =>
           regex.test(part) ? (
-            <mark key={i} className={MARK_CLASS}>{part}</mark>
+            <mark key={i} className={MARK_CLASS}>
+              {part}
+            </mark>
           ) : (
             part
           ),
@@ -75,7 +89,9 @@ function HighlightText({ text, query }: { text: string; query: string }) {
         <>
           {segments.map((seg, i) =>
             seg.hit ? (
-              <mark key={i} className={MARK_CLASS}>{seg.chars}</mark>
+              <mark key={i} className={MARK_CLASS}>
+                {seg.chars}
+              </mark>
             ) : (
               seg.chars
             ),
@@ -112,65 +128,78 @@ export function PaletteResultGroup({
       {!searchQuery.trim() &&
         showRecentInSearch &&
         searchResults.recent.length > 0 && (
-        <Command.Group heading={
-          <div className="flex items-center justify-between">
-            <span>最近访问</span>
-            <div
-              role="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onHideRecent();
-              }}
-              className="p-0.5 rounded hover:bg-foreground/10 cursor-pointer transition-colors"
-            >
-              <LucideIcons.X className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground" />
-            </div>
-          </div>
-        }>
-          {searchResults.recent.map((page: Page) => {
-            const breadcrumb = getPageBreadcrumb(page);
-            return (
-              <Command.Item
-                key={`recent-${page.id}`}
-                value={`recent-${page.id}-${getPageTitle(page)}`}
-                onSelect={() => {
-                  onOpenPage(page, null);
-                }}
-                className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
-              >
-                <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
-                  <LucideIcons.Clock className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0" />
-                  <div
-                    role="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onRemoveRecent(page.id);
-                    }}
-                    className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 hover:bg-[var(--goose-interactive-selected)]"
-                  >
-                    <LucideIcons.X className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                </div>
-                <span className="truncate flex-1 mr-3">
-                  <HighlightText
-                    text={getPageTitle(page)}
-                    query={searchQuery}
+          <Command.Group
+            heading={
+              <div className="flex items-center justify-between">
+                <span>最近访问</span>
+                <button
+                  type="button"
+                  aria-label="隐藏最近访问"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onHideRecent();
+                  }}
+                  className="p-0.5 rounded hover:bg-foreground/10 cursor-pointer transition-colors"
+                >
+                  <LucideIcons.X
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-muted-foreground"
                   />
-                </span>
-                <BreadcrumbPath
-                  parts={breadcrumb.slice(0, -1)}
-                  fallback={new Date(page.updatedAt).toLocaleDateString()}
-                />
-              </Command.Item>
-            );
-          })}
-        </Command.Group>
-      )}
+                </button>
+              </div>
+            }
+          >
+            {searchResults.recent.map((page: Page) => {
+              const breadcrumb = getPageBreadcrumb(page);
+              return (
+                <Command.Item
+                  key={`recent-${page.id}`}
+                  value={`recent-${page.id}-${getPageTitle(page)}`}
+                  onSelect={() => {
+                    onOpenPage(page, null);
+                  }}
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                >
+                  <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
+                    <LucideIcons.Clock
+                      aria-hidden="true"
+                      className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0 group-focus-within/icon:opacity-0"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`从最近访问中移除“${getPageTitle(page)}”`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemoveRecent(page.id);
+                      }}
+                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-interactive-selected)]"
+                    >
+                      <LucideIcons.X
+                        aria-hidden="true"
+                        className="h-3 w-3 text-muted-foreground"
+                      />
+                    </button>
+                  </div>
+                  <span className="truncate flex-1 mr-3">
+                    <HighlightText
+                      text={getPageTitle(page)}
+                      query={searchQuery}
+                    />
+                  </span>
+                  <BreadcrumbPath
+                    parts={breadcrumb.slice(0, -1)}
+                    fallback={new Date(page.updatedAt).toLocaleDateString()}
+                  />
+                </Command.Item>
+              );
+            })}
+          </Command.Group>
+        )}
 
       {searchResults.all.length > 0 && (
         <Command.Group
@@ -200,7 +229,7 @@ export function PaletteResultGroup({
                     <BreadcrumbPath parts={breadcrumb.slice(0, -1)} />
                   </div>
                   {searchResults.hasQuery && page.contentSnippet && (
-                    <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
                       <HighlightText
                         text={page.contentSnippet}
                         query={searchQuery}
