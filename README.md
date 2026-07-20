@@ -1,37 +1,74 @@
-# 鹅的笔记
+# 鹅的笔记 · goose-note
 
-原生 macOS 笔记本。AppKit 负责窗口、菜单、侧边栏、数据和系统能力，单一 WKWebView 承载 BlockNote 编辑器。
+[![CI](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## 当前核心
+A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
 
-- 多笔记本与层级页面树
-- VS Code 风格预览标签与固定标签
-- 收藏、回收站和本地全文搜索
-- BlockNote 块编辑器与修订确认式自动保存
-- 系统外观、菜单、快捷键、导入与导出
-- 沙盒内本地存储和恢复副本
+本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 uTools 插件运行，也支持浏览器端使用。
 
-## 开发
+## ✨ 特性
 
-1. 安装依赖：`bun install`
-2. 生成设计令牌：`bun run tokens`
-3. 构建 Web 编辑器：`bun run build:web`
-4. 生成 Xcode 工程：`bun run project`
-5. 构建原生应用：`bun run build:native`
+- **块编辑器**：基于 BlockNote 的所见即所得编辑，支持标题、列表、折叠块、代码块等
+- **本地优先**：笔记存储在本地，支持挂载本地文件夹作为记事本
+- **AI 能力**：集成 AI SDK（OpenAI Responses / OpenAI-compatible / Anthropic），支持续写、改写、问答
+- **快速速记**：独立的速记小窗（鹅的小窗），随手记录、一键入库
+- **全局搜索**：跨记事本搜索标题与正文，跳转即定位
+- **深色模式**：完整的明暗主题适配
 
-浏览器验收使用 `bun run dev`，打开 `http://127.0.0.1:6001/harness.html`。该页面只提供开发替身，不是生产存储后端。
+## 🛠 技术栈
 
-## 验证
+- **编辑器**：BlockNote（ProseMirror）+ Tiptap 扩展
+- **框架**：React + TypeScript + Vite
+- **状态管理**：Zustand
+- **UI**：Radix UI + HeroUI + Tailwind CSS
+- **AI**：Vercel AI SDK
+- **宿主**：uTools（可选）/ 浏览器
 
-- `bun run check`
-- `bun run test:e2e`
-- `bun run test:native`
-- `bun run audit:boundaries`
+## 🚀 本地开发
 
-## 架构来源
+```bash
+# 安装依赖（推荐 bun）
+bun install
 
-原生架构参考并合并了 [pluk-inc/markdown-preview](https://github.com/pluk-inc/markdown-preview) 的 MIT 许可历史。编辑器风格参考 [eachann1024/goose-note-tauri](https://github.com/eachann1024/goose-note-tauri)，未引入 Tauri 或 Rust 运行时。
+# 启动开发服务器（http://localhost:6001）
+bun run dev
 
-## 许可
+# 构建（产出 uTools 插件包）
+bun run build
+```
 
-MIT。上游声明见 `THIRD_PARTY_NOTICES.md`。
+### uTools 插件调试
+
+浏览器 `bun run dev` 适合改 UI，但 uTools 真机行为（preload、主题、窗口等）需在插件环境里验证：
+
+1. 执行 `bun run build`（会生成 `dist/` 下的完整插件包，含 `dist/plugin.json`）
+2. 打开 **uTools 开发者工具**
+3. **加载插件**，选择本仓库的 `dist/plugin.json`
+4. 在开发者工具中 **打开** 该插件，即可看到最新构建效果
+
+改代码后重复步骤 1，再在开发者工具里重新打开插件（或按工具提示刷新）即可。
+
+速记小窗（B 插件）产物在 `dist-quicknote/plugin.json`，加载方式相同。
+
+
+## 📦 构建产物
+
+`bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。
+
+提交前请确保以下检查通过（CI 也会跑这些）：
+
+```bash
+bun run typecheck   # tsc -b --noEmit
+bun run lint        # eslint .
+bun run build
+```
+
+## 🤝 贡献
+
+欢迎贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解开发流程与规范，并遵守
+[行为准则](./CODE_OF_CONDUCT.md)。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
+
+## 📄 许可证
+
+[MIT](./LICENSE) © eachann
