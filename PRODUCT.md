@@ -1,35 +1,50 @@
-# 鹅的笔记 (Goose Note)
+# 鹅的笔记
 
-## Product Purpose
-uTools 插件，Notion 风格的本地化笔记应用。BlockNote 编辑器驱动，支持 Markdown 导入导出、AI 写作辅助、多记事本管理、标签页、收藏、置顶。桌面端单页应用。
+## 产品目标
 
-## Users
-中文用户，使用 uTools 效率工具链的知识工作者、开发者、学生。重视本地数据隐私和快速访问。
+- 提供一款本地优先、安静可靠的原生 macOS 笔记本。
+- 让用户在一个稳定的笔记库里组织笔记本、页面树和标签页，并专注写作。
+- 使用 AppKit 获得系统窗口、菜单、键盘、文件面板、辅助功能和会话恢复。
+- 使用 WKWebView 承载成熟的 BlockNote 块编辑器。
 
-## Brand
-品牌名"鹅的笔记"，吉祥物为鹅 🪿。风格简洁、专业、略带温暖。不做花哨品牌营销，产品即品牌。设计服务于笔记写作本身。
+## 用户
 
-## Tone
-简洁克制，功能优先。中文 UI，无多余英文。操作反馈用 toast/内联提示，不弹窗打断。
+- 长时间阅读和写作的中文知识工作者、开发者与学生。
+- 重视本地数据、快捷键、输入法、可恢复性和低干扰界面的人。
 
-## Register
-product — 设计服务于笔记编辑和管理的核心任务流。
+## 核心任务
 
-## Anti-references
-不做 Notion 全功能克隆。不做 Web-first SaaS 布局。不做纯品牌展示页。
+- 创建、重命名、移动和删除笔记本与页面。
+- 用层级页面树、收藏、回收站和全局搜索找到内容。
+- 在标签页之间切换，并自动恢复上次会话。
+- 使用标题、列表、待办、引用、代码、表格、链接和图片完成写作。
+- 自动保存，并清楚看到保存中、已保存和保存失败。
+- 通过系统面板导入与导出 Markdown。
 
-## Strategic Principles
-1. 本地优先，所有数据存本地
-2. 快速打开，uTools 即唤即用
-3. 编辑器体验核心，BlockNote 驱动
-4. 导入导出完善（JSON/MD/HTML/DOCX/PNG）
-5. AI 辅助写作，非主力功能
+## 数据原则
 
-## Current Tech Stack
-- React + TypeScript + Vite
-- BlockNote 0.49 编辑器
-- shadcn/ui + Radix UI
-- Tailwind CSS
-- html-to-image (toPng)
-- docx (Word 导出)
-- html2canvas (可用)
+- BlockNote JSON 是正文唯一权威格式。
+- 原生存储负责事务、修订、冲突、恢复副本和附件路径。
+- Markdown 是可移植边界，不与 JSON 双写。
+- 内容存入 Application Support。偏好存入 UserDefaults。
+- 默认不申请网络、全盘读取或 Apple Events 权限。
+
+## 产品边界
+
+- 不做 Notion 全功能克隆。
+- 不做 AI 写作工作区、MCP、云同步、WebDAV 或多人协作。
+- 不做 uTools、Tauri、Electron 或浏览器正式版本。
+- 不做速记小窗、托盘、独立便签窗或欢迎演示页。
+- 不在核心版本加入 Quick Look、自动更新、崩溃上报或发布平台绑定。
+
+## 平台
+
+- macOS 15 及以上。
+- AppKit 原生壳。
+- 单一 WKWebView 编辑器。
+- 应用沙盒开启。
+
+## 设计语域
+
+- product。
+- 设计服务于组织、寻找和写作，不承担品牌展示。
