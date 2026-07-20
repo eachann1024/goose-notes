@@ -136,8 +136,11 @@ export function renderBlocks(blocks: any[], theme: CardTheme): string {
         items.push(blocks[i]);
         i += 1;
       }
+      const start = Number(items[0]?.props?.start);
+      const startAttr =
+        Number.isInteger(start) && start > 1 ? ` start="${start}"` : "";
       parts.push(
-        `<ol class="bn-list">${items.map((item) => renderBlock(item, theme)).join("")}</ol>`,
+        `<ol class="bn-list"${startAttr}>${items.map((item) => renderBlock(item, theme)).join("")}</ol>`,
       );
       continue;
     }
@@ -189,7 +192,10 @@ export function renderBlock(block: any, theme: CardTheme): string {
           ? children
           : `<div class="nested-children">${children}</div>`
         : "";
-      return `<li${styleAttr}>${inlineHtml || ""}${childHtml}</li>`;
+      const value = Number(block.props?.start);
+      const valueAttr =
+        Number.isInteger(value) && value > 0 ? ` value="${value}"` : "";
+      return `<li${valueAttr}${styleAttr}>${inlineHtml || ""}${childHtml}</li>`;
     }
 
     case "checkListItem": {
@@ -319,7 +325,10 @@ export function renderBlock(block: any, theme: CardTheme): string {
 
     case "orderedList": {
       const items = block.content || block.children || [];
-      return `<ol class="bn-list">${(items as any[]).map((item: any) => renderBlock(item, theme)).join("")}</ol>`;
+      const start = Number(block.props?.start ?? block.attrs?.start);
+      const startAttr =
+        Number.isInteger(start) && start > 1 ? ` start="${start}"` : "";
+      return `<ol class="bn-list"${startAttr}>${(items as any[]).map((item: any) => renderBlock(item, theme)).join("")}</ol>`;
     }
 
     case "video": {

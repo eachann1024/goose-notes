@@ -287,7 +287,7 @@ function buildFileName(
 // ── Public API: Full Page Export ───────────────────────────────
 export async function exportPageToImage(
   page: Page,
-  themeId: CardThemeId = "notion",
+  themeId: CardThemeId = "github-light",
   watermarkConfig?: WatermarkConfig,
 ) {
   const theme = getCardTheme(themeId);
@@ -335,7 +335,7 @@ export async function exportPageToImage(
 export async function exportSelectionToImage(
   selectionBlocks: BlockNoteContent,
   pageTitle?: string,
-  themeId: CardThemeId = "notion",
+  themeId: CardThemeId = "github-light",
   watermarkConfig?: WatermarkConfig,
 ) {
   if (!Array.isArray(selectionBlocks) || selectionBlocks.length === 0) return;
@@ -381,7 +381,7 @@ export async function exportSelectionToImage(
 // ── Legacy alias ───────────────────────────────────────────────
 export async function exportToImage(
   page: Page,
-  themeId: CardThemeId = "notion",
+  themeId: CardThemeId = "github-light",
 ) {
   return exportPageToImage(page, themeId);
 }

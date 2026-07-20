@@ -6,11 +6,17 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { QUICKNOTE_SLOTS, type QuickNoteSlot } from "@/stores/useQuickNote";
+import {
+  getQuickNoteSlotName,
+  QUICKNOTE_SLOTS,
+  type QuickNoteSlot,
+  type QuickNoteSlotNames,
+} from "@/stores/useQuickNote";
 
 interface QuickNoteSlotSwitcherProps {
   activeSlot: QuickNoteSlot;
   occupiedSlots: Record<QuickNoteSlot, boolean>;
+  slotNames: QuickNoteSlotNames;
   /** 正式切换（点击 / 键盘 / 拖动松手或移走后提交） */
   onChange: (
     slot: QuickNoteSlot,
@@ -21,6 +27,8 @@ interface QuickNoteSlotSwitcherProps {
    * 未传入时退化为即时 onChange（无预览态）。
    */
   onPreviewChange?: (slot: QuickNoteSlot | null) => void;
+  /** 再次点击当前数字时请求重命名。 */
+  onRenameRequest: (slot: QuickNoteSlot) => void;
 }
 
 function isQuickNoteSlot(value: number): value is QuickNoteSlot {
@@ -37,8 +45,10 @@ function isQuickNoteSlot(value: number): value is QuickNoteSlot {
 export function QuickNoteSlotSwitcher({
   activeSlot,
   occupiedSlots,
+  slotNames,
   onChange,
   onPreviewChange,
+  onRenameRequest,
 }: QuickNoteSlotSwitcherProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scrubbingRef = useRef(false);
@@ -46,6 +56,8 @@ export function QuickNoteSlotSwitcher({
   const onChangeRef = useRef(onChange);
   const onPreviewChangeRef = useRef(onPreviewChange);
   const activeSlotRef = useRef(activeSlot);
+  const pointerStartSlotRef = useRef<QuickNoteSlot | null>(null);
+  const pointerMovedAcrossSlotsRef = useRef(false);
 
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -187,13 +199,20 @@ export function QuickNoteSlotSwitcher({
 
     detachWindowScrubListeners();
     scrubbingRef.current = true;
+    pointerStartSlotRef.current = slot;
+    pointerMovedAcrossSlotsRef.current = false;
     setScrubbing(true);
     updatePreview(slot);
 
     const onMove = (ev: PointerEvent) => {
       if (!scrubbingRef.current) return;
       const next = slotFromPoint(ev.clientX, ev.clientY);
-      if (next != null) updatePreview(next);
+      if (next != null) {
+        if (next !== pointerStartSlotRef.current) {
+          pointerMovedAcrossSlotsRef.current = true;
+        }
+        updatePreview(next);
+      }
     };
 
     const finish = (ev: PointerEvent) => {
@@ -205,13 +224,26 @@ export function QuickNoteSlotSwitcher({
         slotFromPoint(ev.clientX, ev.clientY) ??
         previewSlotRef.current ??
         activeSlotRef.current;
+      const shouldRename =
+        pointerStartSlotRef.current === activeSlotRef.current &&
+        next === activeSlotRef.current &&
+        !pointerMovedAcrossSlotsRef.current;
       detachWindowScrubListeners();
-      commitAndEnd(next);
+      if (shouldRename) {
+        endScrubWithoutCommit();
+        onRenameRequest(activeSlotRef.current);
+      } else {
+        commitAndEnd(next);
+      }
+      pointerStartSlotRef.current = null;
+      pointerMovedAcrossSlotsRef.current = false;
     };
 
     const cancel = () => {
       detachWindowScrubListeners();
       endScrubWithoutCommit();
+      pointerStartSlotRef.current = null;
+      pointerMovedAcrossSlotsRef.current = false;
     };
 
     window.addEventListener("pointermove", onMove);
@@ -255,13 +287,15 @@ export function QuickNoteSlotSwitcher({
       {QUICKNOTE_SLOTS.map((slot) => {
         const active = slot === visualSlot;
         const occupied = occupiedSlots[slot];
+        const slotName = getQuickNoteSlotName(slot, slotNames);
         return (
           <button
             key={slot}
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={`便签 ${slot}${occupied ? "，有内容" : "，空白"}`}
+            aria-label={`${slotName}${occupied ? "，有内容" : "，空白"}`}
+            title={`${slotName}；再次点击可改名`}
             tabIndex={active ? 0 : -1}
             data-slot={slot}
             data-active={active ? "true" : "false"}

@@ -448,7 +448,8 @@
     --editor-file-icon-box-size: calc(40px * var(--editor-scale));
   }
 
-  /* 仅为键盘焦点提供统一高亮；鼠标焦点继续遵循浏览器与组件默认行为。 */
+  /* 产品全局不绘制 focus 外框或 Tailwind ring。交互反馈由组件自身的
+     背景、文字与状态变化承担，避免 contenteditable 被浏览器包成输入框。 */
   :where(
     a[href],
     button,
@@ -458,9 +459,12 @@
     summary,
     [tabindex]:not([tabindex="-1"]),
     [contenteditable="true"]
-  ):focus-visible {
-    outline: 2px solid hsl(var(--ring)) !important;
-    outline-offset: 2px !important;
+  ):is(:focus, :focus-visible) {
+    outline: none !important;
+    outline-offset: 0 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-inset-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
   }
 
   /* Placeholder 也是操作提示，需达到与普通小号文本一致的可读性。 */

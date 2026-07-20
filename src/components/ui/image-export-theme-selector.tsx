@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   CARD_THEMES,
+  normalizeCardThemeId,
   type CardThemeId,
   type CardTheme,
   type WatermarkConfig,
@@ -44,7 +45,9 @@ export function ImageExportThemeSelector({
   onConfirm,
   mode,
 }: ImageExportThemeSelectorProps) {
-  const selectedId = useSettings((s) => s.imageExportThemeId);
+  const selectedId = normalizeCardThemeId(
+    useSettings((s) => s.imageExportThemeId),
+  );
   const setSelectedId = useSettings((s) => s.setImageExportThemeId);
   const storedWatermark = useSettings((s) => s.imageExportWatermark);
   const setWatermarkConfig = useSettings((s) => s.setImageExportWatermark);
@@ -94,7 +97,9 @@ export function ImageExportThemeSelector({
                       key={theme.id}
                       theme={theme}
                       selected={selectedId === theme.id}
-                      onClick={() => setSelectedId(theme.id)}
+                      onClick={() =>
+                        setSelectedId(normalizeCardThemeId(theme.id))
+                      }
                     />
                   ))}
                 </div>
