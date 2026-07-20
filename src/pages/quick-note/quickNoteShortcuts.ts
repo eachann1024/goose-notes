@@ -1,4 +1,5 @@
 import type { QuickNoteSlot } from "@/stores/useQuickNote";
+import { getPlatformKind } from "@/lib/utils";
 
 interface QuickNoteSlotShortcutEvent {
   key: string;
@@ -12,10 +13,7 @@ interface QuickNoteSlotShortcutEvent {
 }
 
 export function isWindowsQuickNotePlatform(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Windows|Win32|Win64/i.test(
-    `${navigator.platform ?? ""} ${navigator.userAgent ?? ""}`,
-  );
+  return getPlatformKind() === "windows";
 }
 
 export function getQuickNoteSlotShortcut(

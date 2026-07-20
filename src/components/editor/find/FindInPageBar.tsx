@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
+import { formatShortcut } from "@/lib/utils";
 import type { BlockNoteEditor } from "@blocknote/core";
 import {
   clearFind,
@@ -88,7 +89,7 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
       </button>
       <button
         type="button"
-        title="上一个 (Shift+Enter)"
+        title={`上一个（${formatShortcut("Shift+Enter")}）`}
         className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
         disabled={total === 0}
         onClick={() => handleStep(-1)}
@@ -97,7 +98,7 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
       </button>
       <button
         type="button"
-        title="下一个 (Enter)"
+        title={`下一个（${formatShortcut("Enter")}）`}
         className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
         disabled={total === 0}
         onClick={() => handleStep(1)}
@@ -106,7 +107,7 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
       </button>
       <button
         type="button"
-        title="关闭 (Esc)"
+        title={`关闭（${formatShortcut("Esc")}）`}
         className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
         onClick={onClose}
       >

@@ -21,8 +21,8 @@ function getGoogleFontsUrl(): string {
   return `https://fonts.googleapis.com/css2?family=${families.join("&family=")}&display=swap`;
 }
 
-/** 粗略判断颜色是否偏亮（勾选对号等对比色） */
-function isLightColor(color: string): boolean {
+/** 在深浅两种墨色中选择与背景对比度更高的一种。 */
+function getContrastingInk(color: string): "#0a0a0a" | "#ffffff" {
   const hex = color.trim();
   const short = /^#([0-9a-f]{3})$/i.exec(hex);
   const full = /^#([0-9a-f]{6})$/i.exec(hex);
@@ -43,15 +43,24 @@ function isLightColor(color: string): boolean {
       .replace(/\)/, "")
       .split(",")
       .map((p) => parseFloat(p.trim()));
-    if (nums.length < 3 || nums.some((n) => !Number.isFinite(n))) return false;
+    if (nums.length < 3 || nums.some((n) => !Number.isFinite(n))) {
+      return "#ffffff";
+    }
     r = nums[0];
     g = nums[1];
     b = nums[2];
   } else {
-    return false;
+    return "#ffffff";
   }
-  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  return luminance > 0.72;
+  const linearize = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+  const darkContrast = (luminance + 0.05) / 0.053;
+  const lightContrast = 1.05 / (luminance + 0.05);
+  return darkContrast >= lightContrast ? "#0a0a0a" : "#ffffff";
 }
 
 function contentHeadingSizes(theme: CardTheme): {
@@ -97,12 +106,7 @@ export function buildStyledHTML(params: {
   const t = theme;
   const headingSize = contentHeadingSizes(t);
   const headingWeight = contentHeadingWeights(t);
-  const checkMarkColor = isLightColor(t.accent)
-    ? t.mode === "dark"
-      ? "#0a0a0a"
-      : t.textColor
-    : "#ffffff";
-  const checkedTaskText = t.secondaryText;
+  const checkMarkColor = getContrastingInk(t.accent);
   const decoStyle = t.showDecorations
     ? `
     .gooseshot-container::before {
@@ -135,7 +139,6 @@ export function buildStyledHTML(params: {
 
   const headerBorder =
     "margin-bottom: 24px; padding-bottom: 0; border-bottom: none;";
-  const bodyTextAlign = t.id === "academic" ? "text-align: justify;" : "";
 
   return `<!DOCTYPE html>
 <html>
@@ -150,7 +153,6 @@ body {
   line-height: ${t.bodyLineHeight};
   font-size: ${t.bodyFontSize}px;
   letter-spacing: ${t.bodyLetterSpacing};
-  ${bodyTextAlign}
 }
 .gooseshot-container {
   background: ${t.background};
@@ -223,19 +225,47 @@ ${decoStyle}
 .gooseshot-content ol,
 .gooseshot-content ul.bn-list,
 .gooseshot-content ol.bn-list {
+  display: block;
   margin-bottom: 12px;
-  padding-left: 22px;
+  padding-inline-start: 1.65em;
+  list-style-position: outside;
+}
+.gooseshot-content ul,
+.gooseshot-content ul.bn-list {
+  list-style-type: disc;
+}
+.gooseshot-content ol,
+.gooseshot-content ol.bn-list {
+  list-style-type: decimal;
 }
 .gooseshot-content ul > li,
 .gooseshot-content ol > li,
 .gooseshot-content ul.bn-list > li,
 .gooseshot-content ol.bn-list > li {
+  display: list-item;
+  padding-inline-start: 0.2em;
   margin-bottom: 5px;
-  line-height: 1.75;
+  line-height: ${t.bodyLineHeight};
+  color: inherit;
+  break-inside: avoid;
 }
 .gooseshot-content ul > li::marker,
 .gooseshot-content ul.bn-list > li::marker {
-  color: ${t.secondaryText};
+  color: currentColor;
+  font-size: 0.82em;
+}
+.gooseshot-content ol > li::marker,
+.gooseshot-content ol.bn-list > li::marker {
+  color: currentColor;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.gooseshot-content li > ul,
+.gooseshot-content li > ol,
+.gooseshot-content li > ul.bn-list,
+.gooseshot-content li > ol.bn-list {
+  margin-top: 0.35em;
+  margin-bottom: 0.2em;
 }
 .gooseshot-content code {
   font-family: ${t.codeFont};
@@ -371,23 +401,33 @@ ${decoStyle}
 }
 .gooseshot-content .callout {
   background: ${t.calloutBg};
+  border: 1px solid currentColor;
   border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
   display: flex;
   gap: 10px;
   align-items: flex-start;
+  color: ${t.textColor};
+  break-inside: avoid;
 }
 .gooseshot-content .callout-icon {
   font-size: 18px;
   line-height: 1;
   flex-shrink: 0;
+  height: ${t.bodyFontSize * t.bodyLineHeight}px;
+  display: flex;
+  align-items: center;
 }
 .gooseshot-content .callout-text {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  line-height: 1.75;
+  line-height: ${t.bodyLineHeight};
+}
+.gooseshot-content .callout-text > .nested-children {
+  margin-left: 0;
+  margin-top: 0.45em;
 }
 .gooseshot-content .nested-children {
   margin-left: 22px;
@@ -456,6 +496,8 @@ ${decoStyle}
   margin-bottom: 0.35em;
   line-height: ${t.bodyLineHeight};
   font-size: ${t.bodyFontSize}px;
+  color: ${t.textColor};
+  break-inside: avoid;
 }
 .gooseshot-content .task-checkbox-wrap {
   height: ${t.bodyLineHeight}em;
@@ -466,7 +508,8 @@ ${decoStyle}
 .gooseshot-content .task-checkbox {
   width: 1em;
   height: 1em;
-  border: 1.5px solid ${t.tableBorder};
+  border: 1.5px solid currentColor;
+  background: transparent;
   border-radius: 0.22em;
   display: flex;
   align-items: center;
@@ -484,7 +527,12 @@ ${decoStyle}
   line-height: 1;
   font-weight: 700;
 }
-.gooseshot-content .task-item.checked .task-text { color: ${checkedTaskText}; }
+.gooseshot-content .task-item.checked .task-text {
+  color: ${t.textColor};
+  text-decoration: line-through;
+  text-decoration-color: ${t.secondaryText};
+  text-decoration-thickness: 1px;
+}
 .gooseshot-content .task-text {
   flex: 1;
   min-width: 0;

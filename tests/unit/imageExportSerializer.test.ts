@@ -1,5 +1,9 @@
 import { expect, test } from "playwright/test";
-import { CARD_THEMES, getCardTheme } from "../../src/lib/imageExport/themes";
+import {
+  CARD_THEMES,
+  getCardTheme,
+  normalizeCardThemeId,
+} from "../../src/lib/imageExport/themes";
 import { buildStyledHTML } from "../../src/lib/imageExport/serializer/builder";
 import {
   renderBlock,
@@ -63,8 +67,165 @@ test("全部主题都包含 checklist 居中与标题 CSS", () => {
     expect(html).toContain(".task-checkbox-wrap");
     expect(html).toContain(`height: ${theme.bodyLineHeight}em`);
     expect(html).toContain("width: 1em");
+    expect(html).toContain("border: 1.5px solid currentColor");
+    expect(html).toContain(`color: ${theme.textColor}`);
+    expect(html).toContain("text-decoration: line-through");
+    expect(html).toContain("list-style-type: disc");
+    expect(html).toContain("list-style-type: decimal");
+    expect(html).toContain("border: 1px solid currentColor");
     expect(html).toMatch(/\.gooseshot-content h3 \{/);
     expect(html).toContain(".empty-block");
+  }
+});
+
+test("浏览器中全部主题都显示列表标记、事项框和提醒块边界", async ({ page }) => {
+  for (const theme of CARD_THEMES) {
+    const blocksHtml = renderBlocks(
+      [
+        {
+          type: "bulletListItem",
+          content: [{ type: "text", text: "无序项目", styles: {} }],
+        },
+        {
+          type: "bulletListItem",
+          props: { textColor: "#ffffff", backgroundColor: "#000000" },
+          content: [{ type: "text", text: "深底浅字项目", styles: {} }],
+        },
+        {
+          type: "numberedListItem",
+          props: { start: 3 },
+          content: [{ type: "text", text: "有序项目", styles: {} }],
+        },
+        {
+          type: "checkListItem",
+          props: { checked: false },
+          content: [{ type: "text", text: "待办事项", styles: {} }],
+        },
+        {
+          type: "checkListItem",
+          props: { checked: true },
+          content: [{ type: "text", text: "完成事项", styles: {} }],
+        },
+        {
+          type: "checkListItem",
+          props: {
+            checked: false,
+            textColor: "#ffffff",
+            backgroundColor: "#000000",
+          },
+          content: [{ type: "text", text: "深底浅字事项", styles: {} }],
+        },
+        {
+          type: "callout",
+          props: { icon: "Bell" },
+          content: [{ type: "text", text: "提醒内容", styles: {} }],
+        },
+      ],
+      theme,
+    );
+    const html = buildStyledHTML({ title: theme.name, blocksHtml, theme });
+    await page.setContent(
+      html.replace("<style>", "<style>ol, ul, menu { list-style: none; }\n"),
+    );
+
+    const styles = await page.evaluate(() => {
+      const ul = document.querySelector("ul.bn-list");
+      const ol = document.querySelector("ol.bn-list");
+      const bullet = ul?.querySelector("li");
+      const number = ol?.querySelector("li");
+      const checkbox = document.querySelector(".task-checkbox:not(.checked)");
+      const checkedCheckbox = document.querySelector(".task-checkbox.checked");
+      const customBullet = ul.querySelector("li[style]");
+      const customTask = document.querySelector(".task-item[style]");
+      const customCheckbox = customTask?.querySelector(".task-checkbox");
+      const checkedText = document.querySelector(
+        ".task-item.checked .task-text",
+      );
+      const callout = document.querySelector(".callout");
+      if (
+        !ul ||
+        !ol ||
+        !bullet ||
+        !number ||
+        !checkbox ||
+        !checkedCheckbox ||
+        !customBullet ||
+        !customTask ||
+        !customCheckbox ||
+        !checkedText ||
+        !callout
+      ) {
+        throw new Error("导出块未完整渲染");
+      }
+      const relativeLuminance = (color: string) => {
+        const channels = color
+          .match(/[\d.]+/g)
+          ?.slice(0, 3)
+          .map(Number);
+        if (!channels || channels.length !== 3) return 0;
+        const [r, g, b] = channels.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045
+            ? value / 12.92
+            : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const checkedBackground =
+        getComputedStyle(checkedCheckbox).backgroundColor;
+      const checkedMark = getComputedStyle(checkedCheckbox, "::after").color;
+      const checkedLuminance = relativeLuminance(checkedBackground);
+      const markLuminance = relativeLuminance(checkedMark);
+      const checkedContrast =
+        (Math.max(checkedLuminance, markLuminance) + 0.05) /
+        (Math.min(checkedLuminance, markLuminance) + 0.05);
+      return {
+        bulletListStyle: getComputedStyle(ul).listStyleType,
+        orderedListStyle: getComputedStyle(ol).listStyleType,
+        bulletDisplay: getComputedStyle(bullet).display,
+        numberDisplay: getComputedStyle(number).display,
+        bulletMarkerColor: getComputedStyle(bullet, "::marker").color,
+        numberMarkerColor: getComputedStyle(number, "::marker").color,
+        orderedStart: ol.getAttribute("start"),
+        listIndent:
+          bullet.getBoundingClientRect().left - ul.getBoundingClientRect().left,
+        checkboxBorderStyle: getComputedStyle(checkbox).borderStyle,
+        checkboxBorderColor: getComputedStyle(checkbox).borderColor,
+        checkedContrast,
+        customBulletColor: getComputedStyle(customBullet).color,
+        customBulletMarkerColor: getComputedStyle(customBullet, "::marker")
+          .color,
+        customTaskColor: getComputedStyle(customTask).color,
+        customCheckboxBorderColor: getComputedStyle(customCheckbox).borderColor,
+        checkedDecoration: getComputedStyle(checkedText).textDecorationLine,
+        calloutBorderStyle: getComputedStyle(callout).borderStyle,
+        calloutBorderColor: getComputedStyle(callout).borderColor,
+        calloutColor: getComputedStyle(callout).color,
+      };
+    });
+
+    expect(styles, theme.id).toMatchObject({
+      bulletListStyle: "disc",
+      orderedListStyle: "decimal",
+      bulletDisplay: "list-item",
+      numberDisplay: "list-item",
+      orderedStart: "3",
+      checkboxBorderStyle: "solid",
+      checkedDecoration: "line-through",
+      calloutBorderStyle: "solid",
+    });
+    expect(styles.listIndent, theme.id).toBeGreaterThan(10);
+    expect(styles.bulletMarkerColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
+    expect(styles.numberMarkerColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
+    expect(styles.checkboxBorderColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
+    expect(styles.checkedContrast, theme.id).toBeGreaterThanOrEqual(4.5);
+    expect(styles.customBulletMarkerColor, theme.id).toBe(
+      styles.customBulletColor,
+    );
+    expect(styles.customCheckboxBorderColor, theme.id).toBe(
+      styles.customTaskColor,
+    );
+    expect(styles.calloutBorderColor, theme.id).toBe(styles.calloutColor);
   }
 });
 
@@ -79,7 +240,7 @@ test("Vercel 极黑浅色 accent 勾选对号用深色", () => {
 });
 
 test("深色主题粉色文字映射到提亮色盘", () => {
-  const theme = getCardTheme("obsidian");
+  const theme = getCardTheme("github-dark");
   const html = renderBlock(
     {
       type: "paragraph",
@@ -91,7 +252,7 @@ test("深色主题粉色文字映射到提亮色盘", () => {
 });
 
 test("空段落输出 empty-block 占位", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = renderBlock({ type: "paragraph", content: [] }, theme);
   expect(html).toContain('class="empty-block"');
   expect(html).toContain("data-empty");
@@ -99,7 +260,7 @@ test("空段落输出 empty-block 占位", () => {
 });
 
 test("段内 hardBreak 与文本换行转 br", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   expect(renderInline([{ type: "hardBreak" }], theme)).toBe("<br>");
   expect(
     renderInline([{ type: "text", text: "a\nb", styles: {} }], theme),
@@ -107,7 +268,7 @@ test("段内 hardBreak 与文本换行转 br", () => {
 });
 
 test("链接 type=link 递归 content 不丢文字", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = renderInline(
     [
       { type: "text", text: "见", styles: {} },
@@ -125,7 +286,7 @@ test("链接 type=link 递归 content 不丢文字", () => {
 });
 
 test("连续 bullet/numbered 合并为 ul/ol.bn-list", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = renderBlocks(
     [
       {
@@ -157,8 +318,38 @@ test("连续 bullet/numbered 合并为 ul/ol.bn-list", () => {
   expect((html.match(/<ol class="bn-list">/g) || []).length).toBe(1);
 });
 
+test("有序列表保留起始编号，嵌套列表保持语义容器", () => {
+  const theme = getCardTheme("github-light");
+  const html = renderBlocks(
+    [
+      {
+        type: "numberedListItem",
+        props: { start: 3 },
+        content: [{ type: "text", text: "第三项", styles: {} }],
+        children: [
+          {
+            type: "bulletListItem",
+            content: [{ type: "text", text: "子项", styles: {} }],
+          },
+        ],
+      },
+      {
+        type: "numberedListItem",
+        props: { start: 8 },
+        content: [{ type: "text", text: "第四项", styles: {} }],
+      },
+    ],
+    theme,
+  );
+  expect(html).toContain('<ol class="bn-list" start="3">');
+  expect(html).toContain('<li value="8">第四项</li>');
+  expect(html).toContain('<ul class="bn-list"><li>子项</li></ul>');
+  expect(html).toContain("第三项");
+  expect(html).toContain("第四项");
+});
+
 test("表格 headerRows=0 时首行仍为 td；默认首行 th", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const makeTable = (headerRows: number | undefined) =>
     renderBlock(
       {
@@ -203,7 +394,7 @@ test("表格 headerRows=0 时首行仍为 td；默认首行 th", () => {
 });
 
 test("图片 caption 输出 figure；非图片 file 输出 file-card", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const fig = renderBlock(
     {
       type: "image",
@@ -227,7 +418,7 @@ test("图片 caption 输出 figure；非图片 file 输出 file-card", () => {
 });
 
 test("codeBlock 输出 code-block 壳与语言标签", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = renderBlock(
     {
       type: "codeBlock",
@@ -249,7 +440,7 @@ test("codeBlock 输出 code-block 壳与语言标签", () => {
 });
 
 test("生成内容不插入额外的选中标识", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = buildStyledHTML({
     title: "t",
     blocksHtml: "<p>x</p>",
@@ -260,7 +451,7 @@ test("生成内容不插入额外的选中标识", () => {
 });
 
 test("块级 backgroundColor / textColor 输出 style", () => {
-  const theme = getCardTheme("notion");
+  const theme = getCardTheme("github-light");
   const html = renderBlock(
     {
       type: "paragraph",
@@ -279,12 +470,21 @@ test("块级 backgroundColor / textColor 输出 style", () => {
 });
 
 test("主题字体与水印微调生效", () => {
-  expect(getCardTheme("academic").titleFont).toContain("Noto Serif SC");
-  expect(getCardTheme("academic").codeFont).toContain("JetBrains Mono");
+  expect(getCardTheme("medium").titleFont).toContain("Noto Serif SC");
+  expect(getCardTheme("medium").codeFont).toContain("JetBrains Mono");
   expect(getCardTheme("typewriter").bodyFont).toContain("Noto Serif SC");
   expect(getCardTheme("vercel-dark").watermark).toBe("#8b8b93");
   expect(getCardTheme("tokyo-night").watermark).toBe("#7a83b0");
   expect(getCardTheme("poster").watermark).toContain("0.45");
   expect(getCardTheme("synthwave").watermark).toContain("255,120,220");
-  expect(getCardTheme("obsidian").secondaryText).toBe("#8b949e");
+  expect(getCardTheme("github-dark").secondaryText).toBe("#8b949e");
+});
+
+test("已删除主题会迁移到保留的代表主题", () => {
+  expect(CARD_THEMES).toHaveLength(15);
+  expect(normalizeCardThemeId("notion")).toBe("github-light");
+  expect(normalizeCardThemeId("obsidian")).toBe("github-dark");
+  expect(normalizeCardThemeId("academic")).toBe("medium");
+  expect(normalizeCardThemeId("linear")).toBe("github-light");
+  expect(normalizeCardThemeId("solarized-light")).toBe("typewriter");
 });

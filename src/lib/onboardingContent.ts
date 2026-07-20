@@ -1,8 +1,15 @@
 import type { PartialBlock } from "@blocknote/core";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
+import { formatShortcut } from "@/lib/utils";
 
 const WELCOME_IMAGE =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png";
+
+const fixedShortcuts = getFixedAppShortcuts();
+const shortcutLabel = (shortcut: string) => formatShortcut(shortcut);
+const shortcutLabels = (...shortcuts: string[]) =>
+  shortcuts.map(shortcutLabel).join(" / ");
 
 type ShortcutItem = {
   shortcut: string;
@@ -86,17 +93,17 @@ const shortcutSections: ShortcutSection[] = [
     description: "切页面之前先记住这组，都是全局入口。",
     items: [
       {
-        shortcut: "Cmd/Ctrl + N",
+        shortcut: shortcutLabel("Mod+N"),
         action: "新建页面",
         note: "在当前记事本里新建并自动打开。",
       },
       {
-        shortcut: "Cmd/Ctrl + ,",
+        shortcut: shortcutLabel(fixedShortcuts.openSettings),
         action: "打开设置",
         note: "调整快捷键、搜索行为和外观。",
       },
       {
-        shortcut: "Cmd/Ctrl + + / - / 0",
+        shortcut: shortcutLabels("Mod+Plus", "Mod+-", "Mod+0"),
         action: "放大、缩小、重置编辑器字号",
         note: "影响阅读与编辑时的文本大小。",
       },
@@ -107,14 +114,9 @@ const shortcutSections: ShortcutSection[] = [
     description: "一个管全局搜索，一个管当前页面查找，别混了。",
     items: [
       {
-        shortcut: "Cmd/Ctrl + Shift + K",
+        shortcut: shortcutLabel("Mod+Shift+K"),
         action: "打开全局搜索",
         note: "搜索页面标题与内容。",
-      },
-      {
-        shortcut: "Cmd/Ctrl + P",
-        action: "打开全局搜索",
-        note: "和上面是同一入口，习惯哪个用哪个。",
       },
       {
         shortcut: "Tab",
@@ -127,27 +129,27 @@ const shortcutSections: ShortcutSection[] = [
         note: "默认未设置，可在设置中自定义。",
       },
       {
-        shortcut: "Cmd/Ctrl + F",
+        shortcut: shortcutLabel("Mod+F"),
         action: "打开当前页查找",
         note: "只在当前页面内查找文本。",
       },
       {
-        shortcut: "Enter / Shift + Enter",
+        shortcut: shortcutLabels("Enter", "Shift+Enter"),
         action: "跳到下一个 / 上一个匹配",
         note: "查找框聚焦时可直接使用。",
       },
       {
-        shortcut: "Cmd/Ctrl + G / Shift + Cmd/Ctrl + G",
+        shortcut: shortcutLabels("Mod+G", "Mod+Shift+G"),
         action: "跳到下一个 / 上一个匹配",
         note: "不离开键盘继续浏览结果。",
       },
       {
-        shortcut: "F3 / Shift + F3",
+        shortcut: shortcutLabels("F3", "Shift+F3"),
         action: "跳到下一个 / 上一个匹配",
         note: "另一组常见查找导航键。",
       },
       {
-        shortcut: "Esc",
+        shortcut: shortcutLabel("Esc"),
         action: "关闭当前页查找",
         note: "关闭后会回到编辑器。",
       },
@@ -158,14 +160,14 @@ const shortcutSections: ShortcutSection[] = [
     description: "适合同时开多页写作和对照资料。",
     items: [
       {
-        shortcut: "Alt + W",
+        shortcut: shortcutLabel("Alt+W"),
         action: "关闭当前标签页",
         note: "默认值，可在设置中改成你顺手的组合键。",
       },
       {
-        shortcut: "Cmd/Ctrl + 1...9",
+        shortcut: shortcutLabel("Mod+1–9"),
         action: "按位置切换标签页",
-        note: "0 对应第 10 个标签页。",
+        note: "1–8 对应序号，9 跳到最后一个标签页。",
       },
     ],
   },
@@ -174,39 +176,44 @@ const shortcutSections: ShortcutSection[] = [
     description: "这组主要来自选中文本后的浮动工具栏。",
     items: [
       {
-        shortcut: "Cmd/Ctrl + B",
+        shortcut: shortcutLabel("Mod+B"),
         action: "粗体",
       },
       {
-        shortcut: "Cmd/Ctrl + I",
+        shortcut: shortcutLabel("Mod+I"),
         action: "斜体",
       },
       {
-        shortcut: "Cmd/Ctrl + U",
+        shortcut: shortcutLabel("Mod+U"),
         action: "下划线",
       },
       {
-        shortcut: "Cmd/Ctrl + Shift + S",
+        shortcut: shortcutLabel("Mod+Shift+S"),
         action: "删除线",
       },
       {
-        shortcut: "Cmd/Ctrl + E",
+        shortcut: shortcutLabel("Mod+E"),
         action: "行内代码",
       },
       {
-        shortcut: "Cmd/Ctrl + Shift + L / E / R / J",
+        shortcut: shortcutLabels(
+          "Mod+Shift+L",
+          "Mod+Shift+E",
+          "Mod+Shift+R",
+          "Mod+Shift+J",
+        ),
         action: "左对齐 / 居中 / 右对齐 / 两端对齐",
       },
       {
-        shortcut: "Cmd/Ctrl + Z",
+        shortcut: shortcutLabel("Mod+Z"),
         action: "撤销",
       },
       {
-        shortcut: "Shift + Cmd/Ctrl + Z 或 Cmd/Ctrl + Y",
+        shortcut: `${shortcutLabel("Mod+Shift+Z")} 或 ${shortcutLabel("Mod+Y")}`,
         action: "重做",
       },
       {
-        shortcut: "Tab / Shift + Tab",
+        shortcut: shortcutLabels("Tab", "Shift+Tab"),
         action: "表格中切换到下一个 / 上一个单元格",
         note: "只在表格内生效。",
       },
@@ -271,9 +278,9 @@ export const onboardingPageContent: BlockNoteContent = [
   image(WELCOME_IMAGE),
   heading(2, "第一次使用，建议先做这 4 步"),
   ...orderedList([
-    "按 Cmd/Ctrl + N 新建一页，先随便记两行内容。",
+    `按 ${shortcutLabel("Mod+N")} 新建一页，先随便记两行内容。`,
     "在空白行输入 /，看一遍能插入哪些块。",
-    "按 Cmd/Ctrl + Shift + K 试一次全局搜索，再按 Cmd/Ctrl + F 试一次页内查找。",
+    `按 ${shortcutLabel("Mod+Shift+K")} 试一次全局搜索，再按 ${shortcutLabel("Mod+F")} 试一次页内查找。`,
     "选中一段文字，试试粗体、斜体、行内代码和对齐按钮。",
   ]),
   heading(2, "页面与侧边栏"),
@@ -289,22 +296,30 @@ export const onboardingPageContent: BlockNoteContent = [
     ["能力", "怎么用", "适合什么场景"],
     [
       ["同时打开多页", "点开不同页面后会进入标签栏", "边写边查资料、对照多份内容"],
-      ["关闭当前标签页", "默认 Alt + W，也可在设置中改", "快速清理临时页面"],
-      ["按位置切换标签页", "Cmd/Ctrl + 1...9", "手不离键盘切换常用页"],
+      [
+        "关闭当前标签页",
+        `默认 ${shortcutLabel("Alt+W")}，也可在设置中改`,
+        "快速清理临时页面",
+      ],
+      [
+        "按位置切换标签页",
+        shortcutLabel("Mod+1–9"),
+        "1–8 对应序号，9 跳到最后一个标签页",
+      ],
     ],
   ),
   heading(2, "搜索与查找"),
   ...bulletList([
     "全局搜索用于跨页面找内容；页内查找用于在当前页面定位某个词。",
     "搜索面板里按 Tab 可以切换“当前记事本”与“全部记事本”。",
-    "查找框支持 Enter、Cmd/Ctrl + G 和 F3 继续跳转结果。",
-    "Esc 会关闭页内查找并把焦点还给编辑器。",
+    `查找框支持 ${shortcutLabel("Enter")}、${shortcutLabel("Mod+G")} 和 F3 继续跳转结果。`,
+    `${shortcutLabel("Esc")} 会关闭页内查找并把焦点还给编辑器。`,
   ]),
   heading(2, "编辑器基础操作"),
   ...bulletList([
     "内容会自动保存，普通笔记不用养成手动保存的习惯。",
-    "撤销与重做分别是 Cmd/Ctrl + Z、Shift + Cmd/Ctrl + Z 或 Cmd/Ctrl + Y。",
-    "表格里按 Tab / Shift + Tab 可以继续在单元格间移动。",
+    `撤销与重做分别是 ${shortcutLabel("Mod+Z")}、${shortcutLabel("Mod+Shift+Z")} 或 ${shortcutLabel("Mod+Y")}。`,
+    `表格里按 ${shortcutLabels("Tab", "Shift+Tab")} 可以继续在单元格间移动。`,
     "如果只是想快速输入结构，用 / 或 、 打开指令菜单通常比找按钮更快。",
   ]),
   heading(2, "常用块与输入方式"),
@@ -322,11 +337,11 @@ export const onboardingPageContent: BlockNoteContent = [
   heading(2, "自动保存说明"),
   callout(
     "💾",
-    "普通页面会自动保存，不需要把 Cmd/Ctrl + S 当成日常必按键。",
+    `普通页面会自动保存，不需要把 ${shortcutLabel("Mod+S")} 当成日常必按键。`,
   ),
   ...bulletList([
     "普通页面：边写边自动保存，离开页面前也会主动提交最新内容。",
-    "本地文件页面：除了自动保存外，还支持用 Cmd/Ctrl + S 立即刷新落盘，适合你想马上确认文件写入磁盘时使用。",
+    `本地文件页面：除了自动保存外，还支持用 ${shortcutLabel("Mod+S")} 立即刷新落盘，适合你想马上确认文件写入磁盘时使用。`,
     "如果你看到“内容已保存”提示，多半是在本地文件或立即保存流程里触发的，不代表平时必须手动保存。",
   ]),
   heading(2, "常见上手建议"),
@@ -374,7 +389,7 @@ export const onboardingChildPageContent: BlockNoteContent = [
   ...orderedList([
     "输入 / 打开指令菜单，比到处找按钮快很多。",
     "需要切换多个页面时用标签页，而不是反复回侧边栏。",
-    "需要找一句话时先用 Cmd/Ctrl + F，别把全局搜索当页内查找用。",
+    `需要找一句话时先用 ${shortcutLabel("Mod+F")}，别把全局搜索当页内查找用。`,
     "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
   ]),
   heading(2, "本地文件模式和普通页面的区别"),
@@ -401,8 +416,8 @@ export const onboardingSecondChildContent: BlockNoteContent = [
   ]),
   heading(2, "关于保存这件事"),
   ...bulletList([
-    "普通页面默认自动保存，所以这里不把 Cmd/Ctrl + S 当成必学快捷键。",
-    "如果你正在编辑本地文件页面，Cmd/Ctrl + S 更像“现在就立即落盘”。",
+    `普通页面默认自动保存，所以这里不把 ${shortcutLabel("Mod+S")} 当成必学快捷键。`,
+    `如果你正在编辑本地文件页面，${shortcutLabel("Mod+S")} 更像“现在就立即落盘”。`,
     "真正值得优先记住的，是搜索、查找、标签切换和格式化这几组高频操作。",
   ]),
 ];

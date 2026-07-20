@@ -2,6 +2,7 @@ import type { CodeStyle } from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
+import { formatShortcut } from "@/lib/utils";
 
 interface SettingsAppearanceProps {
   theme: "light" | "dark" | "system";
@@ -103,7 +104,6 @@ export function SettingsAppearance({
 }: SettingsAppearanceProps) {
   const getFontPreview = (type: "default" | "serif" | "mono") =>
     customFonts[type].font || DEFAULT_FONT_NAMES[type];
-  const primaryModifier = getPrimaryModifierKeyDisplay({ style: "symbol" });
   const displayedCodeStyle =
     LEGACY_CODE_STYLE_DISPLAY_MAP[codeStyle] ?? codeStyle;
 
@@ -199,7 +199,8 @@ export function SettingsAppearance({
               <Label>界面字体大小</Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              调整整体界面的文字大小；{primaryModifier} + / - / 0
+              调整整体界面的文字大小；{formatShortcut("Mod+Plus")} /{" "}
+              {formatShortcut("Mod+-")} / {formatShortcut("Mod+0")}
               会调整并保存编辑器字号。
             </p>
           </div>

@@ -79,7 +79,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
   aiChatScale: 1.0,
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
-  imageExportThemeId: "notion",
+  imageExportThemeId: "github-light",
   hideExpandArrows: false,
   singleTabMode: true,
 };

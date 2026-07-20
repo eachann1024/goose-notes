@@ -24,20 +24,25 @@ export function getPrimaryModifierKeyLabel() {
   return isMacPlatform() ? "Command" : "Ctrl";
 }
 
-export function getPrimaryModifierKeyDisplay(options?: { style?: "symbol" | "text" }) {
+export function getPrimaryModifierKeyDisplay(
+  options?: { style?: "symbol" | "text" },
+  platform: PlatformKind = getPlatformKind(),
+) {
   const style = options?.style ?? "symbol";
-  const platform = getPlatformKind();
 
   if (platform === "mac") {
     return style === "symbol" ? "⌘" : "Command";
   }
 
   // Win/Linux/other: 当前快捷键主键都是 Ctrl
-  return style === "symbol" ? "⌃" : "Ctrl";
+  return "Ctrl";
 }
 
-export function formatShortcut(shortcut: string) {
-  const isMac = isMacPlatform();
+export function formatShortcut(
+  shortcut: string,
+  platform: PlatformKind = getPlatformKind(),
+) {
+  const isMac = platform === "mac";
 
   return shortcut
     .split("+")
@@ -56,6 +61,7 @@ export function formatShortcut(shortcut: string) {
       if (p === "ctrl" || p === "control") return isMac ? "⌃" : "Ctrl";
       if (p === "alt" || p === "option") return isMac ? "⌥" : "Alt";
       if (p === "shift") return isMac ? "⇧" : "Shift";
+      if (p === "plus") return "+";
       if (p === "enter") return "↵";
       if (p === "backspace") return "⌫";
       if (p === "tab") return "⇥";

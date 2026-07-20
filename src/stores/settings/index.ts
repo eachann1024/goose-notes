@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uToolsStorage } from "@/lib/storage";
+import { normalizeCardThemeId } from "@/lib/imageExport";
 
 import type {
   Theme,
@@ -138,6 +139,12 @@ export const useSettings = create<SettingsState>()(
         applyCodeStyle(codeStyle);
         if (state && state.codeStyle !== codeStyle) {
           useSettings.setState({ codeStyle });
+        }
+        const imageExportThemeId = normalizeCardThemeId(
+          state?.imageExportThemeId,
+        );
+        if (state && state.imageExportThemeId !== imageExportThemeId) {
+          useSettings.setState({ imageExportThemeId });
         }
         if (state && typeof state.defaultCodeBlockWrap !== "boolean") {
           useSettings.setState({ defaultCodeBlockWrap: false });

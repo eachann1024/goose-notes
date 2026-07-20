@@ -22,7 +22,8 @@ import type { QuickNoteSlotStacks } from "@/lib/quicknote/undoHistory";
  * 用户点左上角「保存到笔记本」才把当前槽位草稿整体 createPageRecord 入库，
  * 随后清空该槽位、回到空白便签。
  *
- * 支持 1–5 五个独立草稿槽位（activeSlot + drafts），各自持久化、互不覆盖。
+ * 支持 1–5 五个独立草稿槽位（activeSlot + drafts），各自持久化、互不覆盖，
+ * 每个槽位名称（slotNames）也独立持久化。
  * 另持久化 pinned、editorZoom、windowWidth/windowHeight、windowX/windowY，
  * 以及每槽撤销/重做栈（关窗后 Ctrl/Cmd+Z 仍可回退）。
  * 当前正在编辑的 draftPage 是会话态（基于当前槽位草稿现造），不持久化。
@@ -33,9 +34,14 @@ export const QUICKNOTE_SLOT_COUNT = 5;
 export const QUICKNOTE_SLOTS: readonly QuickNoteSlot[] = [1, 2, 3, 4, 5];
 
 export type QuickNoteDrafts = Record<QuickNoteSlot, JSONContent | null>;
+export type QuickNoteSlotNames = Record<QuickNoteSlot, string>;
 
 export function createEmptyQuickNoteDrafts(): QuickNoteDrafts {
   return { 1: null, 2: null, 3: null, 4: null, 5: null };
+}
+
+export function createDefaultQuickNoteSlotNames(): QuickNoteSlotNames {
+  return { 1: "", 2: "", 3: "", 4: "", 5: "" };
 }
 
 function normalizeSlot(value: unknown): QuickNoteSlot {
@@ -67,11 +73,34 @@ function normalizeDrafts(
   return empty;
 }
 
+function normalizeSlotName(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, 24) : "";
+}
+
+function normalizeSlotNames(raw: unknown): QuickNoteSlotNames {
+  const names = createDefaultQuickNoteSlotNames();
+  if (!raw || typeof raw !== "object") return names;
+  const record = raw as Record<string, unknown>;
+  for (const slot of QUICKNOTE_SLOTS) {
+    names[slot] = normalizeSlotName(record[String(slot)]);
+  }
+  return names;
+}
+
+export function getQuickNoteSlotName(
+  slot: QuickNoteSlot,
+  names: QuickNoteSlotNames,
+): string {
+  return normalizeSlotName(names[slot]) || `便签 ${slot}`;
+}
+
 interface QuickNoteState {
   /** 当前激活的草稿槽位（1–5） */
   activeSlot: QuickNoteSlot;
   /** 五个独立草稿内容（各自持久化） */
   drafts: QuickNoteDrafts;
+  /** 五个草稿槽位的自定义名称；空字符串回退为“便签 N”。 */
+  slotNames: QuickNoteSlotNames;
   /**
    * 每槽撤销栈（持久化）。栈顶是最近一步可回退到的内容快照。
    * 关窗后仍可继续 Ctrl/Cmd+Z。
@@ -104,6 +133,8 @@ interface QuickNoteState {
   editorZoom: number;
   /** 切换当前草稿槽位（不改其它槽位内容） */
   setActiveSlot: (slot: QuickNoteSlot) => void;
+  /** 重命名指定草稿槽位；空名称恢复默认“便签 N”。 */
+  setSlotName: (slot: QuickNoteSlot, name: string) => void;
   /**
    * 草稿内容变更（编辑器 onContentChange 调用）。
    * 可显式指定 slot：切换槽位时旧编辑器卸载前的最后一次 onChange 仍写回原槽，避免串写。
@@ -236,6 +267,7 @@ export const useQuickNote = create<QuickNoteState>()(
     (set, get) => ({
       activeSlot: 1,
       drafts: createEmptyQuickNoteDrafts(),
+      slotNames: createDefaultQuickNoteSlotNames(),
       undoStacks: createEmptySlotStacks(),
       redoStacks: createEmptySlotStacks(),
       pinned: true, // 强制置顶，恒 true
@@ -254,6 +286,16 @@ export const useQuickNote = create<QuickNoteState>()(
         lastUndoRecordAtBySlot[previous] = 0;
         lastUndoRecordAtBySlot[next] = 0;
         set({ activeSlot: next });
+      },
+
+      setSlotName: (slot, name) => {
+        const target = normalizeSlot(slot);
+        set((state) => ({
+          slotNames: {
+            ...state.slotNames,
+            [target]: normalizeSlotName(name),
+          },
+        }));
       },
 
       setDraftContent: (content, slot, options) =>
@@ -386,11 +428,12 @@ export const useQuickNote = create<QuickNoteState>()(
     }),
     {
       name: "goose-note:quicknote",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         activeSlot: state.activeSlot,
         drafts: state.drafts,
+        slotNames: state.slotNames,
         undoStacks: state.undoStacks,
         redoStacks: state.redoStacks,
         pinned: true, // 强制置顶，写回恒 true
@@ -413,6 +456,7 @@ export const useQuickNote = create<QuickNoteState>()(
               undefined,
               (raw.draftContent as JSONContent | null) ?? null,
             ),
+            slotNames: createDefaultQuickNoteSlotNames(),
             undoStacks: createEmptySlotStacks(),
             redoStacks: createEmptySlotStacks(),
           };
@@ -425,11 +469,12 @@ export const useQuickNote = create<QuickNoteState>()(
               raw.drafts,
               (raw.draftContent as JSONContent | null) ?? null,
             ),
+            slotNames: createDefaultQuickNoteSlotNames(),
             undoStacks: createEmptySlotStacks(),
             redoStacks: createEmptySlotStacks(),
           };
         }
-        return {
+        const normalized = {
           ...raw,
           activeSlot: normalizeSlot(raw.activeSlot),
           drafts: normalizeDrafts(
@@ -438,7 +483,9 @@ export const useQuickNote = create<QuickNoteState>()(
           ),
           undoStacks: normalizeSlotStacks(raw.undoStacks),
           redoStacks: normalizeSlotStacks(raw.redoStacks),
+          slotNames: normalizeSlotNames(raw.slotNames),
         };
+        return normalized;
       },
       // 兜底：缺 drafts / 脏 activeSlot 时仍能归一，避免 rehydrate 后崩溃
       merge: (persisted, current) => {
@@ -451,6 +498,7 @@ export const useQuickNote = create<QuickNoteState>()(
             p.drafts,
             (p.draftContent as JSONContent | null | undefined) ?? null,
           ),
+          slotNames: normalizeSlotNames(p.slotNames),
           undoStacks: normalizeSlotStacks(
             p.undoStacks ?? (current as QuickNoteState).undoStacks,
           ),

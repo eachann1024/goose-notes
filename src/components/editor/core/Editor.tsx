@@ -309,6 +309,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       domAttributes: {
         editor: {
           class: "goose-blocknote-editor",
+          // 关闭浏览器/系统拼写检查：行内代码里的 hash、标识符、类名会被标红点
+          // 下划线，看起来像链接。链接下划线走 CSS，不依赖 spellcheck。
+          spellcheck: "false",
         },
       },
       uploadFile: async (file, blockId) => {

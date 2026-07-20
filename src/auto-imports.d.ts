@@ -196,6 +196,7 @@ declare global {
   const createBlockTypeTransformSelectionSnapshot: typeof import('./lib/ai-write/index').createBlockTypeTransformSelectionSnapshot
   const createContext: typeof import('react').createContext
   const createDebounce: typeof import('./components/editor/utils/debounce').createDebounce
+  const createDefaultQuickNoteSlotNames: typeof import('./stores/useQuickNote').createDefaultQuickNoteSlotNames
   const createEditorSafeContent: typeof import('./components/editor/utils/blocknote-content/index').createEditorSafeContent
   const createEmptyBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').createEmptyBlockNoteContent
   const createEmptyLocalPageContent: typeof import('./components/editor/utils/blocknote-content/index').createEmptyLocalPageContent
@@ -270,6 +271,7 @@ declare global {
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
+  const getQuickNoteSlotName: typeof import('./stores/useQuickNote').getQuickNoteSlotName
   const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
@@ -331,6 +333,7 @@ declare global {
   const normalizeBaseUrl: typeof import('./lib/webdavSync').normalizeBaseUrl
   const normalizeBlockContent: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlockContent
   const normalizeBlocks: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlocks
+  const normalizeCardThemeId: typeof import('./lib/imageExport/index').normalizeCardThemeId
   const normalizeClipboardLineEndings: typeof import('./components/editor/utils/clipboard').normalizeClipboardLineEndings
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
@@ -482,7 +485,7 @@ declare global {
   export type { Notebook, LocalFolderLoadStatus, LocalFolderLoadState } from './stores/useNotebooks'
   import('./stores/useNotebooks')
   // @ts-ignore
-  export type { QuickNoteSlot, QuickNoteDrafts } from './stores/useQuickNote'
+  export type { QuickNoteSlot, QuickNoteDrafts, QuickNoteSlotNames } from './stores/useQuickNote'
   import('./stores/useQuickNote')
   // @ts-ignore
   export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
