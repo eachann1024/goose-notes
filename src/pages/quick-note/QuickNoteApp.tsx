@@ -34,6 +34,7 @@ import type { BlockNoteContent } from "@/components/editor/utils/blocknote-conte
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { QuickNoteSlotSwitcher } from "./QuickNoteSlotSwitcher";
 import { getQuickNoteSlotShortcut } from "./quickNoteShortcuts";
+import { formatShortcut, getPlatformKind } from "@/lib/utils";
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
@@ -88,6 +89,21 @@ export function QuickNoteApp() {
   const [renamingSlot, setRenamingSlot] = useState<QuickNoteSlot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const helpShortcuts = useMemo(() => {
+    const platform = getPlatformKind();
+    return {
+      switchSlots: formatShortcut("Mod+1–5", platform),
+      alternateSwitchSlots:
+        platform === "windows" ? formatShortcut("Alt+1–5", platform) : null,
+      zoomIn: formatShortcut("Mod+Plus", platform),
+      zoomOut: formatShortcut("Mod+-", platform),
+      zoomReset: formatShortcut("Mod+0", platform),
+      undo: formatShortcut("Mod+Z", platform),
+      redo: formatShortcut("Mod+Shift+Z", platform),
+      alternateRedo: formatShortcut("Mod+Y", platform),
+    };
+  }, []);
 
   const displaySlot = previewSlot ?? activeSlot;
   const displaySlotName = getQuickNoteSlotName(displaySlot, slotNames);
@@ -554,15 +570,22 @@ export function QuickNoteApp() {
                 <li>
                   <b className="text-foreground">切换</b>
                   ：顶部 1–5 是五个独立便签。悬停展开，点击或拖动切换；也可按
-                  ⌘/Ctrl + 1–5，Windows 支持 Alt + 1–5。
+                  {helpShortcuts.switchSlots}
+                  {helpShortcuts.alternateSwitchSlots
+                    ? `，或 ${helpShortcuts.alternateSwitchSlots}`
+                    : ""}
+                  。
                 </li>
                 <li>
-                  <b className="text-foreground">编辑</b>
-                  ：⌘/Ctrl + +、- 缩放，0 复位；Z 撤销，Shift + Z 或 Y 重做。
+                  <b className="text-foreground">编辑</b>：
+                  {helpShortcuts.zoomIn} / {helpShortcuts.zoomOut} 缩放，
+                  {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
+                  {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
                 </li>
                 <li>
                   <b className="text-foreground">收起</b>
-                  ：小窗始终置顶；按 Esc 或点右上角
+                  ：小窗始终置顶；按{" "}
+                  {formatShortcut("Esc", getPlatformKind())} 或点右上角
                   <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
                   收起。草稿、位置、尺寸和缩放都会保留。
                 </li>

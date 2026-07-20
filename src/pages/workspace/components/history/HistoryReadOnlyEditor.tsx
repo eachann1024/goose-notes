@@ -59,6 +59,7 @@ export function HistoryReadOnlyEditor({
     domAttributes: {
       editor: {
         class: "goose-blocknote-editor",
+        spellcheck: "false",
       },
     },
     // 与 Editor.tsx 共享同一解析实现和 ObjectURL 缓存，避免历史视图重复泄漏
