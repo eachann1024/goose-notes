@@ -11,7 +11,7 @@ const iconButtonVariants = cva(
         muted:
           "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)]",
         danger:
-          "text-destructive/80 hover:bg-destructive/10 hover:text-destructive",
+          "text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)]",
         handle:
           "bg-muted/80 text-muted-foreground border border-border/50 backdrop-blur-[1px] cursor-grab hover:bg-primary/20 hover:text-foreground",
       },

@@ -15,7 +15,7 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
-/* uTools 旧内核渲染不出 Tailwind 的 box-shadow 变量链，菜单投影必须走内联 style */
+/* 部分旧 WebView 无法渲染 Tailwind 的 box-shadow 变量链，菜单投影走内联 style。 */
 const MENU_SHADOW =
   "0 14px 34px rgba(15,23,42,0.16), 0 2px 8px rgba(15,23,42,0.08)";
 

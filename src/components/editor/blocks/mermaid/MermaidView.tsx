@@ -8,7 +8,7 @@ interface MermaidViewProps {
 
 export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
   const [svg, setSvg] = useState<string>("");
-  const { theme } = useEditorSettings();
+  const { theme, features } = useEditorSettings();
   const resolvedTheme = useResolvedTheme(theme);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
         mermaid.initialize({
           startOnLoad: false,
           theme: isDark ? "dark" : "default",
-          securityLevel: "loose",
+          securityLevel: features.mermaidUnsafeHTML ? "loose" : "strict",
           fontFamily: "inherit",
           suppressErrorRendering: true,
         });
@@ -44,7 +44,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
       active = false;
       if (debounceTimer) clearTimeout(debounceTimer);
     };
-  }, [value, resolvedTheme]);
+  }, [features.mermaidUnsafeHTML, value, resolvedTheme]);
 
   if (!svg) return null;
 

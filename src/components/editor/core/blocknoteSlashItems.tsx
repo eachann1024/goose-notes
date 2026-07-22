@@ -16,6 +16,11 @@ export interface SlashMenuItem {
   onItemClick: () => void;
 }
 
+export interface SlashMenuFeaturePolicy {
+  transcodeVideoUploads: boolean;
+  openAttachmentsExternally: boolean;
+}
+
 export function isSlashMenuDivider(item: SlashMenuItem): boolean {
   return (
     typeof item === "object" &&
@@ -28,7 +33,10 @@ export function isSlashMenuDivider(item: SlashMenuItem): boolean {
 export function getBlockNoteSlashMenuItems(
   editor: BlockNoteEditor<any, any, any>,
   aiEnabled: boolean,
-  useCustomAIProvider = true,
+  features: SlashMenuFeaturePolicy = {
+    transcodeVideoUploads: true,
+    openAttachmentsExternally: true,
+  },
 ): SlashMenuItem[] {
   // 插入完成后：把光标移到新块、把视图滚动到新块、把焦点交回编辑器
   const focusAndScrollTo = (block: { id: string }) => {
@@ -128,8 +136,8 @@ export function getBlockNoteSlashMenuItems(
 
   const items: SlashMenuItem[] = [];
 
-  // 速记小窗（__GOOSE_LITE__）无 AI：不加「生成」斜杠项（其 handler 依赖 AIExtension）。
-  if (aiEnabled && !__GOOSE_LITE__) {
+  // 未启用 AI 的构建不添加「生成」斜杠项。
+  if (aiEnabled && __GOOSE_EDITOR_AI__) {
     items.push({
       title: "生成",
       description: "接着写点什么...",
@@ -159,12 +167,6 @@ export function getBlockNoteSlashMenuItems(
           });
         }
 
-        if (!useCustomAIProvider) {
-          window.dispatchEvent(new CustomEvent("goose-note:open-ai-panel"));
-          return;
-        }
-
-        // 自定义 OpenAI Responses / OpenAI 兼容 / Anthropic 继续使用 BlockNote 的结构化编辑菜单。
         const ai = editor.getExtension(AIExtension);
         const blockId = editor.getTextCursorPosition().block.id;
         if (ai && blockId) {
@@ -384,7 +386,9 @@ export function getBlockNoteSlashMenuItems(
     },
     {
       title: "视频",
-      description: "上传视频并自动压缩为可播放的 MP4",
+      description: features.transcodeVideoUploads
+        ? "上传视频并自动压缩为可播放的 MP4"
+        : "上传视频并保存为 Markdown 相对资源",
       icon: <LucideIcons.Video size={18} />,
       aliases: ["video", "movie", "shipin", "luping"],
       onItemClick: () => {
@@ -407,7 +411,9 @@ export function getBlockNoteSlashMenuItems(
     },
     {
       title: "文件",
-      description: "上传附件并直接调用系统默认应用打开",
+      description: features.openAttachmentsExternally
+        ? "上传附件并直接调用系统默认应用打开"
+        : "上传附件并保存为 Markdown 相对资源",
       icon: <LucideIcons.FileUp size={18} />,
       aliases: ["file", "attachment", "pdf", "wenjian", "fujian"],
       onItemClick: () => {
@@ -419,9 +425,9 @@ export function getBlockNoteSlashMenuItems(
 
   let menuItems = items;
 
-  // 速记小窗：精简斜杠菜单（无预览/重结构块）；标注、图片按产品保留。
-  if (__GOOSE_LITE__) {
-    const quicknoteSlashTitles = new Set([
+  // 紧凑模式精简斜杠菜单，保留常用输入块。
+  if (__GOOSE_EDITOR_COMPACT__) {
+    const compactSlashTitles = new Set([
       "一级标题",
       "二级标题",
       "待办事项",
@@ -434,12 +440,12 @@ export function getBlockNoteSlashMenuItems(
       "图片",
     ]);
     menuItems = menuItems.filter(
-      (it) => !isSlashMenuDivider(it) && quicknoteSlashTitles.has(it.title),
+      (it) => !isSlashMenuDivider(it) && compactSlashTitles.has(it.title),
     );
   }
 
   // 折叠块内部隐藏「折叠标题/折叠列表」项,避免无限折叠嵌套(任意后代)。
-  // 输入规则侧也做了同样拦截(见 toggleHeadingInputRule)。光标此时已在目标块。
+  // 统一 markdown 触发器也做了同样拦截。光标此时已在目标块。
   const currentBlock = editor.getTextCursorPosition().block;
   if (isInsideToggle(editor, currentBlock)) {
     const TOGGLE_TITLES = new Set([

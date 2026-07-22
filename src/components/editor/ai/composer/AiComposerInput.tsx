@@ -14,7 +14,10 @@ import {
   type AiReferenceSuggestionItem,
 } from "./referenceLookup";
 import { ComposerSuggestionsList } from "@/components/editor/ai/composer/ComposerSuggestionsList";
-import { createChipElement, useReferenceMentions } from "./useReferenceMentions";
+import {
+  createChipElement,
+  useReferenceMentions,
+} from "./useReferenceMentions";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import type { JSONContent } from "@/types";
 
@@ -33,7 +36,9 @@ function readTokensFromDom(container: HTMLElement): AiComposerToken[] {
         tokens.push({ type: "text", text: "\n" });
       } else if (el.dataset.aiMentionAttrs) {
         try {
-          const attrs = JSON.parse(el.dataset.aiMentionAttrs) as AiFileReferenceAttrs;
+          const attrs = JSON.parse(
+            el.dataset.aiMentionAttrs,
+          ) as AiFileReferenceAttrs;
           tokens.push({ type: "reference", reference: attrs });
         } catch {
           // ignore malformed chip
@@ -71,7 +76,9 @@ function buildPayloadFromTokens(tokens: AiComposerToken[]): AiComposerPayload {
   };
 }
 
-function buildJsonContentFromTokens(tokens: AiComposerToken[]): JSONContent | null {
+function buildJsonContentFromTokens(
+  tokens: AiComposerToken[],
+): JSONContent | null {
   if (!tokens.length) return null;
 
   const paragraphs: AiComposerToken[][] = [[]];
@@ -79,10 +86,18 @@ function buildJsonContentFromTokens(tokens: AiComposerToken[]): JSONContent | nu
   for (const token of tokens) {
     if (token.type === "text") {
       const parts = token.text.split("\n");
-      if (parts[0]) paragraphs[paragraphs.length - 1].push({ type: "text", text: parts[0] });
+      if (parts[0])
+        paragraphs[paragraphs.length - 1].push({
+          type: "text",
+          text: parts[0],
+        });
       for (let i = 1; i < parts.length; i++) {
         paragraphs.push([]);
-        if (parts[i]) paragraphs[paragraphs.length - 1].push({ type: "text", text: parts[i] });
+        if (parts[i])
+          paragraphs[paragraphs.length - 1].push({
+            type: "text",
+            text: parts[i],
+          });
       }
     } else {
       paragraphs[paragraphs.length - 1].push(token);
@@ -117,7 +132,9 @@ function setDomFromJsonContent(
       if (node.type === "text") {
         container.appendChild(document.createTextNode(node.text ?? ""));
       } else if (node.type === "aiFileReference" && node.attrs) {
-        container.appendChild(createChipElement(node.attrs as AiFileReferenceAttrs));
+        container.appendChild(
+          createChipElement(node.attrs as AiFileReferenceAttrs),
+        );
       }
     });
   });
@@ -142,12 +159,16 @@ interface AiComposerInputProps {
   onIsEmptyChange?: (isEmpty: boolean) => void;
   onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
   searchPages?: (query: string) => AiReferenceSuggestionItem[];
+  referencePlacement?: "inline" | "external";
   variant?: "compact" | "panel";
   compactWidthClass?: string;
   disabled?: boolean;
 }
 
-export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInputProps>(
+export const AiComposerInput = forwardRef<
+  AiComposerInputHandle,
+  AiComposerInputProps
+>(
   (
     {
       placeholder,
@@ -160,6 +181,7 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
       onIsEmptyChange,
       onReferenceAdded,
       searchPages,
+      referencePlacement = "inline",
       variant = "compact",
       compactWidthClass,
       disabled,
@@ -172,7 +194,9 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
     // Track the most recent content we emitted upward so we can ignore the echo
     // back via `initialContent` — otherwise the sync useEffect rebuilds the DOM
     // on every keystroke, invalidating the live selection and any cached ranges.
-    const lastEmittedContentRef = useRef<JSONContent | null | undefined>(initialContent);
+    const lastEmittedContentRef = useRef<JSONContent | null | undefined>(
+      initialContent,
+    );
 
     const [isEmpty, setIsEmpty] = useState(true);
 
@@ -205,6 +229,7 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
       onContentMutation: emitCurrentContent,
       onReferenceAdded,
       searchPages,
+      referencePlacement,
     });
 
     // ── imperative handle ────────────────────────────────────────────────────
@@ -234,7 +259,13 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
         },
         getPayload: (): AiComposerPayload => {
           const el = editorRef.current;
-          if (!el) return { promptText: "", freeformText: "", references: [], tokens: [] };
+          if (!el)
+            return {
+              promptText: "",
+              freeformText: "",
+              references: [],
+              tokens: [],
+            };
           return buildPayloadFromTokens(readTokensFromDom(el));
         },
       }),
@@ -280,10 +311,7 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
         if (handleMentionKeyDown(event)) return;
 
         // 平台习惯：Mac ⌘+Enter / Win·Linux Ctrl+Enter 发送
-        if (
-          event.key === "Enter" &&
-          (event.metaKey || event.ctrlKey)
-        ) {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           onSubmit();
           return;
@@ -323,14 +351,17 @@ export const AiComposerInput = forwardRef<AiComposerInputHandle, AiComposerInput
 
     // ── chip click delegation ────────────────────────────────────────────────
 
-    const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      const mentionId = target.dataset.aiMentionId;
-      if (mentionId) {
-        e.preventDefault();
-        onOpenPage(mentionId);
-      }
-    }, [onOpenPage]);
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        const mentionId = target.dataset.aiMentionId;
+        if (mentionId) {
+          e.preventDefault();
+          onOpenPage(mentionId);
+        }
+      },
+      [onOpenPage],
+    );
 
     return (
       <div

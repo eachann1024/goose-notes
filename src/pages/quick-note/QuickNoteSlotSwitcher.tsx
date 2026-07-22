@@ -39,7 +39,7 @@ function isQuickNoteSlot(value: number): value is QuickNoteSlot {
 
 /**
  * 标题栏居中的 1–5 便签切换器。
- * 默认只居中显示当前数字；hover / focus-within / 拖动时展开全部槽位。
+ * 随标题栏整体浮现，始终以完整 1–5 呈现，不再有收起的胶囊/圆点态。
  * 按住拖动可快速预览各槽内容，松开或移出后提交选中。
  */
 export function QuickNoteSlotSwitcher({
@@ -59,13 +59,10 @@ export function QuickNoteSlotSwitcher({
   const pointerStartSlotRef = useRef<QuickNoteSlot | null>(null);
   const pointerMovedAcrossSlotsRef = useRef(false);
 
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
 
   const visualSlot = previewSlot ?? activeSlot;
-  const expanded = hovered || focused || scrubbing;
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -257,7 +254,6 @@ export function QuickNoteSlotSwitcher({
   };
 
   const onRootPointerLeave = () => {
-    setHovered(false);
     // 「移走就生效」：拖动中指针离开切换器时提交当前预览槽
     if (!scrubbingRef.current) return;
     const slot = previewSlotRef.current ?? activeSlotRef.current;
@@ -269,19 +265,11 @@ export function QuickNoteSlotSwitcher({
     <div
       ref={rootRef}
       className="quicknote-slot-switcher"
-      data-expanded={expanded ? "true" : "false"}
       data-scrubbing={scrubbing ? "true" : "false"}
       role="radiogroup"
       aria-label="切换便签"
       style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-      onMouseEnter={() => setHovered(true)}
       onMouseLeave={onRootPointerLeave}
-      onFocus={() => setFocused(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          setFocused(false);
-        }
-      }}
       onKeyDown={onKeyDown}
     >
       {QUICKNOTE_SLOTS.map((slot) => {
@@ -306,9 +294,6 @@ export function QuickNoteSlotSwitcher({
             onClick={(e) => e.preventDefault()}
           >
             <span className="quicknote-slot-btn-label">{slot}</span>
-            {occupied && (
-              <span className="quicknote-slot-occupied" aria-hidden="true" />
-            )}
           </button>
         );
       })}

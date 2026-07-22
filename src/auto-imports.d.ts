@@ -246,14 +246,12 @@ declare global {
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
   const generateExportZip: typeof import('./lib/export/index').generateExportZip
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
-  const getAIProviderMode: typeof import('./lib/ai-provider/index').getAIProviderMode
   const getActiveDraftContent: typeof import('./stores/useQuickNote').getActiveDraftContent
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
-  const getAvailableAIModelOptions: typeof import('./lib/ai-provider/index').getAvailableAIModelOptions
-  const getAvailableUToolsAiModels: typeof import('./lib/utools-ai').getAvailableUToolsAiModels
   const getBlockTypeTransformSignature: typeof import('./lib/ai-write/index').getBlockTypeTransformSignature
   const getBlockTypeTransformTargetLabel: typeof import('./lib/ai-write/index').getBlockTypeTransformTargetLabel
   const getCardTheme: typeof import('./lib/imageExport/index').getCardTheme
+  const getCompactSlashMenuFloatingOptions: typeof import('./components/editor/utils/compactSlashMenuFloating').getCompactSlashMenuFloatingOptions
   const getContentSignature: typeof import('./components/editor/utils/blocknote-content/index').getContentSignature
   const getCustomAIApiKey: typeof import('./lib/ai-provider/index').getCustomAIApiKey
   const getCustomAIBaseURL: typeof import('./lib/ai-provider/index').getCustomAIBaseURL
@@ -306,7 +304,6 @@ declare global {
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
-  const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
   const isVideoUploadFile: typeof import('./lib/videoProcessor').isVideoUploadFile
@@ -318,7 +315,6 @@ declare global {
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
   const looksLikeMermaidDiagram: typeof import('./components/editor/utils/clipboard').looksLikeMermaidDiagram
-  const mapUToolsAiModelsToOptions: typeof import('./lib/ai-provider/index').mapUToolsAiModelsToOptions
   const markSelfWrite: typeof import('./lib/local-md-snapshot').markSelfWrite
   const markUserInteraction: typeof import('./lib/editor-interaction-signal').markUserInteraction
   const matchMouseShortcut: typeof import('./lib/shortcut-match').matchMouseShortcut
@@ -497,7 +493,7 @@ declare global {
   export type { AiBlockScopeKind, AiBlockScopeRange, AiBlockScope } from './lib/ai-block-scope'
   import('./lib/ai-block-scope')
   // @ts-ignore
-  export type { CustomAIProtocol, AIModelOption, AIProviderMode, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider/index'
+  export type { CustomAIProtocol, AIModelOption, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider/index'
   import('./lib/ai-provider/index')
   // @ts-ignore
   export type { AiWriteAction, AiBlockRange, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle, BlockTypeTransformIntent, BlockTypeTransformBlock, BlockTypeTransformPanelOpenDetail, BlockTypeTransformPlan, BlockTypeTransformResult, BlockTypeTransformSelectionSnapshot, BlockTypeTransformTarget, GeneratedBlockStructureExpectation, GeneratedBlockStructureValidationInput, GeneratedBlockStructureValidationResult, PseudoStructureMarkerIssue } from './lib/ai-write/index'
@@ -532,9 +528,6 @@ declare global {
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
-  // @ts-ignore
-  export type { UToolsAiModel } from './lib/utools-ai'
-  import('./lib/utools-ai')
   // @ts-ignore
   export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')

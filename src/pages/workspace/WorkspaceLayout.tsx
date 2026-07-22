@@ -129,7 +129,7 @@ export function WorkspaceLayout({
       window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
   }, [aiAvailableForNotebook, toggleAiPanel]);
 
-  // 编辑器内的 Space / 斜杠菜单 / 选区 AI 在 uTools 原生模型模式下共用此入口。
+  // 编辑器内的显式面板事件统一走此入口。
   // 使用 open 而非 toggle，重复触发不会把已经打开的面板关掉。
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -285,14 +285,6 @@ export function WorkspaceLayout({
                       <PageHeader
                         page={page}
                         onOpenSearch={openWelcomeTabHandler}
-                        onToggleFavorite={() =>
-                          updatePage(activePageId, {
-                            isFavorite: !page.isFavorite,
-                          })
-                        }
-                        onTogglePinned={() =>
-                          updatePage(activePageId, { isPinned: !page.isPinned })
-                        }
                         onRestore={() => restorePageWithToast(activePageId)}
                         onDelete={() =>
                           void permanentlyDeletePageWithCleanup(activePageId)

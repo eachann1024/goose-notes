@@ -34,22 +34,19 @@ import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/Inli
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
 import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
 import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
-import {
-  createBlockTypeTransformSelectionSnapshot,
-  type BlockTypeTransformPanelOpenDetail,
-} from "@/lib/ai-write";
 
 export { shouldRenderFormattingToolbar };
 
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
-  // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展，跳过 useExtension（避免对空壳 AIExtension 取键）。
-  // __GOOSE_LITE__ 是编译期常量，同一构建内分支固定，不违反 hooks 调用一致性。
+  // 未启用 AI 的构建跳过 useExtension；编译期分支在同一构建内保持稳定。
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const aiExtension = __GOOSE_LITE__ ? undefined : useExtension(AIExtension);
+  const aiExtension = __GOOSE_EDITOR_AI__
+    ? useExtension(AIExtension)
+    : undefined;
   const { ai: aiSettings } = useEditorSettings();
-  const { page } = useEditorPageContext();
-  const isLocalFolderPage = Boolean(page?.localFilePath);
+  const { contentMode } = useEditorPageContext();
+  const protectsFirstTitle = contentMode === "normalized";
   const markStates = useSelectionMarkStates(editor);
   const selectedBlocks = useSelectedBlocks();
 
@@ -69,12 +66,11 @@ export function EditorFormattingToolbar() {
     },
   });
 
-  // B2：仅当选区完全落在标题一内（内部笔记本页面的物理首块 H1）时禁用工具栏。
-  // local-folder 页面的标题由 LocalFileTitle 虚拟渲染，BlockNote 文档首块是普通正文，不施加此限制。
+  // 仅 normalized 文档把物理首块 H1 视为受保护的页面标题。
   const isInTitleOne = useEditorState({
     editor,
     selector: ({ editor }) =>
-      !isLocalFolderPage && selectionIsInsideFirstTitleBlock(editor),
+      protectsFirstTitle && selectionIsInsideFirstTitleBlock(editor),
   });
 
   const isInHeading = useEditorState({
@@ -136,37 +132,8 @@ export function EditorFormattingToolbar() {
       const { selection } = editor.prosemirrorState;
       if (selection.empty) return;
 
-      // BlockNote AI 菜单只支持自定义 AI provider。提前校验，避免
-      // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
       if (!aiSettings.enabled) {
         toast.error("AI 助手尚未开启，请先到设置中打开");
-        return;
-      }
-      if (!aiSettings.useCustomProvider) {
-        try {
-          const selection = createBlockTypeTransformSelectionSnapshot(editor, {
-            pageId: page.id,
-            protectFirstTitle: !page.localFilePath,
-          });
-          const detail: BlockTypeTransformPanelOpenDetail = {
-            version: 1,
-            pageId: page.id,
-            selection,
-          };
-          window.dispatchEvent(
-            new CustomEvent("goose-note:open-ai-panel", { detail }),
-          );
-        } catch (error) {
-          toast.error(
-            error instanceof Error && error.message
-              ? error.message
-              : "无法读取当前选区，请重新选择后再试。",
-          );
-          return;
-        }
-        toast.info(
-          "uTools 内置模型使用右侧笔记本 AI 面板；已为你打开，可直接输入处理要求。",
-        );
         return;
       }
       const apiKey = (
@@ -200,7 +167,7 @@ export function EditorFormattingToolbar() {
     } catch {
       /* ignore */
     }
-  }, [editor, aiExtension, aiSettings, page.id, page.localFilePath]);
+  }, [editor, aiExtension, aiSettings]);
 
   const handleAiClose = useCallback(() => {
     const savedSel = savedSelectionRef.current;
@@ -289,7 +256,7 @@ export function EditorFormattingToolbar() {
   // 小窗的格式栏是固定底栏，滚动不会遮挡选区，也不应闪烁隐藏；
   // 常规笔记本的浮动栏仍在滚动时收起，避免与正文一起漂移。
   const shouldHideForScroll =
-    (!__GOOSE_LITE__ && isScrolling) || isContextMenuOpen;
+    (!__GOOSE_EDITOR_COMPACT__ && isScrolling) || isContextMenuOpen;
   // While AI is active we keep the toolbar visible regardless of scroll/menu.
   const shouldHide = !aiActive && shouldHideForScroll;
 
@@ -336,7 +303,7 @@ export function EditorFormattingToolbar() {
         }}
       >
         <div className="flex items-center gap-0.5 p-1">
-          {!__GOOSE_LITE__ && aiSettings.enabled && (
+          {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
             <>
               <AiButton
                 onActivate={handleAiActivate}

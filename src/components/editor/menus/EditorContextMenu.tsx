@@ -80,7 +80,7 @@ export function EditorContextMenu({
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
   const platform = useEditorPlatform();
-  const { redirectAction, utools: utoolsSettings } = useEditorSettings();
+  const { redirectAction, openLinksInHost } = useEditorSettings();
 
   const activeSearchProviders = useMemo(
     () => searchProviders.filter((provider) => provider.isEnabled),
@@ -206,7 +206,7 @@ export function EditorContextMenu({
                       "%s",
                       encodeURIComponent(selectedText),
                     );
-                    void platform.shell.openUrl(url, utoolsSettings?.openSearchInUtools ?? false);
+                    void platform.shell.openUrl(url, openLinksInHost);
                   }}
                 >
                   <LucideIcons.Search className="mr-2 h-4 w-4" />

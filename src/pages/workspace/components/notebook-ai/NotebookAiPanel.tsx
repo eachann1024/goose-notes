@@ -47,10 +47,12 @@ import {
 } from "@/lib/ai-write";
 import { ChatMessages } from "./ChatMessages";
 import { Composer } from "./Composer";
+import type { NotebookAiImageAttachment } from "./Composer";
 import { usePanelWidth } from "./usePanelWidth";
 import { ConversationHistoryPopover } from "./ConversationHistoryPopover";
 import type { NotebookAiPanelSelectionCapture } from "./useNotebookAiPanel";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
+import { buildAiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { ChatTransport } from "ai";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import type { JSONContent, Page } from "@/types";
@@ -81,6 +83,15 @@ function createChatMessageId(prefix: string) {
     return `${prefix}-${globalThis.crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createImageFileList(
+  images: NotebookAiImageAttachment[],
+): FileList | undefined {
+  if (images.length === 0) return undefined;
+  const dataTransfer = new DataTransfer();
+  images.forEach(({ file }) => dataTransfer.items.add(file));
+  return dataTransfer.files;
 }
 
 function getPageBlocks(content: unknown): BlockTypeTransformBlock[] {
@@ -129,6 +140,7 @@ export function NotebookAiPanel({
   const requestCurrentPageIdRef = useRef<string | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isApplyingTransform, setIsApplyingTransform] = useState(false);
+  const [composerRevision, setComposerRevision] = useState(0);
   const [conversationId, setConversationId] = useState(() => {
     const chats = useNotebookAiChats.getState();
     return (
@@ -136,6 +148,14 @@ export function NotebookAiPanel({
       chats.createConversation(notebookId)
     );
   });
+  // 初次打开和新建会话时锁定当时的当前页，作为可见、可移除的默认上下文。
+  const initialReference = useMemo(() => {
+    const pageId = getCurrentNotebookAiPageId(notebookId);
+    const page = pageId ? usePages.getState().pages[pageId] : undefined;
+    return page
+      ? buildAiFileReferenceAttrs(page, useNotebooks.getState().notebooks)
+      : null;
+  }, [notebookId, composerRevision]);
 
   // 检查模型是否可用（用于引导文案）
   const modelCheck = buildLanguageModel();
@@ -280,19 +300,38 @@ export function NotebookAiPanel({
       : NOTEBOOK_AI_PLACEHOLDER_HINTS[placeholderIndex];
 
   const handleSend = useCallback(
-    (payload: AiComposerPayload) => {
+    (
+      payload: AiComposerPayload,
+      imageAttachments: NotebookAiImageAttachment[],
+    ) => {
       if (isBusy || unavailableReason) return false;
 
       const displayText = payload.promptText.trim();
-      if (!displayText) return false;
+      if (!displayText && imageAttachments.length === 0) return false;
+      const requestPayload = displayText
+        ? payload
+        : {
+            ...payload,
+            promptText: "请分析用户上传的图片。",
+            freeformText: "",
+          };
 
       const currentPageId = getCurrentNotebookAiPageId(notebookId);
-      const transformIntent = resolveBlockTypeTransformIntent(displayText);
+      const transformIntent =
+        imageAttachments.length === 0
+          ? resolveBlockTypeTransformIntent(displayText)
+          : null;
       const { modelText, metadata } = buildNotebookAiUserMessage({
-        payload,
+        payload: requestPayload,
         notebookId,
         currentPageId,
+        useImplicitPage: false,
       });
+      metadata.displayText = displayText || "已上传图片";
+      metadata.imageAttachments = imageAttachments.map(({ file }) => ({
+        filename: file.name,
+        mediaType: file.type || "image/*",
+      }));
       const cleanedMessages = sanitizeNotebookAiMessages(messages);
 
       if (transformIntent) {
@@ -469,7 +508,11 @@ export function NotebookAiPanel({
       }
 
       clearError();
-      void sendMessage({ text: modelText, metadata });
+      void sendMessage({
+        text: modelText,
+        files: createImageFileList(imageAttachments),
+        metadata,
+      });
       onConsumeCapturedSelection?.();
       return true;
     },
@@ -507,6 +550,7 @@ export function NotebookAiPanel({
     const nextConversationId = useNotebookAiChats
       .getState()
       .createConversation(notebookId);
+    setComposerRevision((revision) => revision + 1);
     setConversationId(nextConversationId);
     setMessages([]);
   }, [
@@ -641,6 +685,7 @@ export function NotebookAiPanel({
 
       {/* 输入框 */}
       <Composer
+        key={`${notebookId}-${composerRevision}`}
         onSend={handleSend}
         onStop={stop}
         isStreaming={isBusy}
@@ -648,6 +693,7 @@ export function NotebookAiPanel({
         placeholder={composerPlaceholder}
         searchPages={searchPages}
         onEscape={onClose}
+        initialReference={initialReference}
       />
     </div>
   );

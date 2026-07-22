@@ -191,6 +191,8 @@ export default defineConfig({
   define: {
     __HOST_TARGET__: JSON.stringify(hostTarget),
     __GOOSE_LITE__: JSON.stringify(isQuicknoteBuild),
+    __GOOSE_EDITOR_COMPACT__: JSON.stringify(isQuicknoteBuild),
+    __GOOSE_EDITOR_AI__: JSON.stringify(!isQuicknoteBuild),
   },
   plugins: [
     codeInspectorPlugin({

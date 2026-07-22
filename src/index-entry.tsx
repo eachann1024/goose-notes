@@ -10,5 +10,6 @@
  */
 import App from "./App.tsx";
 import { bootstrap } from "./main";
+import "@blocknote/xl-ai/style.css";
 
 void bootstrap(() => <App />);

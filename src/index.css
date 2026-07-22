@@ -449,7 +449,9 @@
   }
 
   /* 产品全局不绘制 focus 外框或 Tailwind ring。交互反馈由组件自身的
-     背景、文字与状态变化承担，避免 contenteditable 被浏览器包成输入框。 */
+     背景、文字与状态变化承担，避免 contenteditable 被浏览器包成输入框。
+     [tabindex] 包含 -1：Radix DialogContent 等容器在打开和窗口重获焦点时
+     会被程序性聚焦，uTools 旧内核会按系统强调色画出贴窗口边缘的 outline。 */
   :where(
     a[href],
     button,
@@ -457,7 +459,7 @@
     textarea,
     select,
     summary,
-    [tabindex]:not([tabindex="-1"]),
+    [tabindex],
     [contenteditable="true"]
   ):is(:focus, :focus-visible) {
     outline: none !important;

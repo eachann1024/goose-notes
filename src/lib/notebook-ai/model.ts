@@ -3,12 +3,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { useSettings } from "@/stores/useSettings";
-import { getAIAvailability } from "@/lib/ai-provider";
-import { DEFAULT_UTOOLS_MODEL } from "@/lib/ai-provider/modelCatalog";
-import {
-  createUToolsLanguageModel,
-  type CreateUToolsLanguageModelOptions,
-} from "@/lib/ai-provider/utoolsLanguageModel";
 
 export type ModelAvailability =
   | { ok: true; model: LanguageModel }
@@ -16,35 +10,20 @@ export type ModelAvailability =
 
 /**
  * 从 settings 构造 LanguageModel。
- * 支持 uTools 原生 AI、OpenAI Responses、OpenAI 兼容和 Anthropic 四种来源。
+ * 支持 OpenAI Responses、OpenAI 兼容和 Anthropic 三种自定义协议。
  */
-export function buildLanguageModel(
-  options?: Pick<CreateUToolsLanguageModelOptions, "executeTool">,
-): ModelAvailability {
+export function buildLanguageModel(): ModelAvailability {
   const ai = useSettings.getState().ai;
 
   if (!ai.enabled) {
     return { ok: false, reason: "AI 功能未开启，请前往设置启用 AI 助手。" };
   }
 
-  if (!ai.useCustomProvider) {
-    const availability = getAIAvailability(ai);
-    if (!availability.ok) {
-      return { ok: false, reason: availability.reason };
-    }
-    const modelId =
-      (ai.workspaceSelectedModelId ?? ai.selectedModelId ?? DEFAULT_UTOOLS_MODEL).trim();
-    return {
-      ok: true,
-      model: createUToolsLanguageModel({
-        modelId: modelId || DEFAULT_UTOOLS_MODEL,
-        executeTool: options?.executeTool,
-      }),
-    };
-  }
-
-  const modelId =
-    (ai.workspaceSelectedModelId ?? ai.selectedModelId ?? "").trim();
+  const modelId = (
+    ai.workspaceSelectedModelId ??
+    ai.selectedModelId ??
+    ""
+  ).trim();
   if (!modelId) {
     return {
       ok: false,
@@ -65,10 +44,9 @@ export function buildLanguageModel(
     }
 
     if (ai.customProtocol === "claude") {
-      const baseURL = (ai.customClaudeBaseURL || "https://api.anthropic.com").replace(
-        /\/+$/,
-        "",
-      );
+      const baseURL = (
+        ai.customClaudeBaseURL || "https://api.anthropic.com"
+      ).replace(/\/+$/, "");
       const provider = createAnthropic({
         apiKey: ai.customClaudeApiKey || "placeholder",
         baseURL,

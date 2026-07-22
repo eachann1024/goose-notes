@@ -9,7 +9,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import * as LucideIcons from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -162,7 +162,6 @@ export function SortablePageRow({
       ? `${virtualTransform} ${dndTransform}`.trim()
       : virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
-  const rowClickTimerRef = useRef<number | null>(null);
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
@@ -289,26 +288,16 @@ export function SortablePageRow({
           )}
           onClick={(e) => {
             e.stopPropagation();
-            if (rowClickTimerRef.current !== null) {
-              window.clearTimeout(rowClickTimerRef.current);
-            }
-            const openInNewTab = e.metaKey || e.ctrlKey;
-            rowClickTimerRef.current = window.setTimeout(() => {
-              rowClickTimerRef.current = null;
-              if (openInNewTab) {
-                openPageFromSidebar(page.id, "permanent");
-              } else {
-                openPageFromSidebar(page.id, "preview");
-              }
-            }, 220);
+            // 收藏等复用 SidebarTree 的区域不应为识别双击而延迟单击。
+            // 双击随后会把这次即时打开的预览标签晋升为永久标签。
+            openPageFromSidebar(
+              page.id,
+              e.metaKey || e.ctrlKey ? "permanent" : "preview",
+            );
           }}
           onDoubleClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (rowClickTimerRef.current !== null) {
-              window.clearTimeout(rowClickTimerRef.current);
-              rowClickTimerRef.current = null;
-            }
             openPageFromSidebar(page.id, "permanent");
           }}
           onAuxClick={(e) => {

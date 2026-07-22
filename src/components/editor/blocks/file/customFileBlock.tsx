@@ -3,7 +3,7 @@ import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { toast } from "sonner";
-import { fileStorage } from "@/lib/fileStorage";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   MediaLoadingPreview,
   MediaPlaceholder,
@@ -26,6 +26,7 @@ function CustomFileBlockContent({
   editor: any;
 }) {
   const showLoader = useUploadLoading(block.id);
+  const platform = useEditorPlatform();
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState("");
 
@@ -40,8 +41,8 @@ function CustomFileBlockContent({
     const name = block.props.name || "download";
     if (!url) return;
 
-    if (url.startsWith("att-file:")) {
-      const blob = await fileStorage.load(url);
+    if (!/^(?:https?|data|blob):/i.test(url)) {
+      const blob = await platform.imageStorage.load(url);
       if (!blob) {
         toast.error("附件不存在或尚未同步完成");
         return;
@@ -56,7 +57,7 @@ function CustomFileBlockContent({
     }
 
     triggerDownload(url, name);
-  }, [block.props.url, block.props.name]);
+  }, [block.props.url, block.props.name, platform]);
 
   const handleDelete = useCallback(() => {
     editor.removeBlocks([block]);

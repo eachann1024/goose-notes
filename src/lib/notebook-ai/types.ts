@@ -6,6 +6,10 @@ export interface NotebookAiMessageMetadata {
   displayText?: string;
   references?: AiFileReferenceAttrs[];
   implicitPage?: AiFileReferenceAttrs;
+  imageAttachments?: Array<{
+    filename: string;
+    mediaType: string;
+  }>;
 }
 
 /** 序列化进持久化存储的单条消息格式 */

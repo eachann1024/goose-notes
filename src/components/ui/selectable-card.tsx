@@ -12,7 +12,7 @@ const selectableCardVariants = cva(
       },
       tone: {
         default: "",
-        danger: "hover:bg-destructive/10",
+        danger: "hover:bg-[var(--goose-color-danger-subtle-bg)]",
       },
     },
     defaultVariants: {

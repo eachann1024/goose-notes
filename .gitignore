@@ -22,6 +22,9 @@ node_modules
 dist
 dist-ssr
 dist-quicknote/
+dist-native-editor/
+.build/
+default.profraw
 # src/lib/build/ contains source (lite-empty.ts is the quicknote alias target),
 # NOT build output. Global ~/.gitignore_global has `build/` which would hide it.
 !src/lib/build/
@@ -56,7 +59,6 @@ skills-lock.json
 .agents/
 # Skill / MCP tool outputs
 .impeccable/
-.playwright-mcp/
 .gitnexus
 .serena/
 playwright*/
@@ -66,5 +68,9 @@ playwright*/
 # ---- Local-only scratch ----
 tasks/
 scripts/
+!scripts/
+scripts/*
+!scripts/audit-native-editor.mjs
+!scripts/serve-native-editor.mjs
 # stray verification screenshots in repo root
 /*.png

@@ -132,7 +132,7 @@ export function selectionHasNonFormattableBlock(
 /**
  * 选区是否完全落在标题一（文档物理首块、heading level 1）内部。
  * 跨块选区（含 Cmd+A 全选）返回 false，保证全选时工具栏可用。
- * local-folder 页面的虚拟标题不在 BlockNote 文档里，调用方自行豁免。
+ * 虚拟标题不在 BlockNote 文档里，调用方应按 contentMode 自行豁免。
  */
 export function selectionIsInsideFirstTitleBlock(
   editor: BlockNoteEditor<any, any, any>,

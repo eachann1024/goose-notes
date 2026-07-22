@@ -35,8 +35,10 @@ export const createGooseLinkKeyboardExtension = (
           const target = normalizeExternalUrl(url);
           if (target) {
             // 动态读取 React Ref 里的最新设置，避免闭包捕获陈旧状态
-            const useInternalBrowser = settingsRef.current?.utools?.openSearchInUtools ?? false;
-            void getEditorPlatform().shell.openUrl(target, useInternalBrowser);
+            void getEditorPlatform().shell.openUrl(
+              target,
+              settingsRef.current.openLinksInHost,
+            );
           }
           return true;
         }

@@ -13,9 +13,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function isNotebookAiToolPart(
-  part: unknown,
-): part is {
+export function isNotebookAiToolPart(part: unknown): part is {
   type: string;
   state?: string;
   input?: unknown;
@@ -23,7 +21,11 @@ export function isNotebookAiToolPart(
   errorText?: string;
   toolCallId?: string;
 } {
-  return isObject(part) && typeof part.type === "string" && part.type.startsWith("tool-");
+  return (
+    isObject(part) &&
+    typeof part.type === "string" &&
+    part.type.startsWith("tool-")
+  );
 }
 
 function shouldDropFinishedToolPart(part: unknown) {
@@ -73,4 +75,29 @@ export function sanitizeNotebookAiMessages(
   }
 
   return changed ? nextMessages : messages;
+}
+
+/**
+ * 图片会作为 data URL 暂存在 AI SDK 的 file part 中。会话写入本地存储前必须
+ * 移除二进制内容：它既会放大存储，也会在后续每轮无意间重复上传旧图片。
+ * 附件名称和类型保留在 metadata.imageAttachments，供历史记录提示用户。
+ */
+export function prepareNotebookAiMessagesForPersistence(
+  messages: NotebookAiMessage[],
+): NotebookAiMessage[] {
+  const sanitized = sanitizeNotebookAiMessages(messages);
+  let changed = sanitized !== messages;
+
+  const nextMessages = sanitized.map((message) => {
+    const parts = message.parts ?? [];
+    const nextParts = parts.filter((part) => part.type !== "file");
+    if (nextParts.length === parts.length) return message;
+    changed = true;
+    return {
+      ...message,
+      parts: nextParts,
+    } as NotebookAiMessage;
+  });
+
+  return changed ? nextMessages : sanitized;
 }

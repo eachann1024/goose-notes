@@ -16,6 +16,8 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
+import { useSidebarView } from "@/stores/useSidebarView";
+import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
 import {
   EditorHostProvider,
@@ -40,6 +42,8 @@ interface EditorHostBridgeProps {
    * 把内容写到草稿存储而非真实 page（草稿不入 pages map、不进笔记列表）。
    */
   onContentChangeOverride?: (content: BlockNoteContent, options?: { silent?: boolean }) => void;
+  /** 宿主显式选择正文处理方式；本地文件默认 raw，应用页面默认 normalized。 */
+  contentMode?: "raw" | "normalized";
   children: ReactNode;
 }
 
@@ -47,9 +51,11 @@ export function EditorHostBridge({
   page,
   isEditorFullWidth,
   onContentChangeOverride,
+  contentMode = shouldUseRawEditorContent(page) ? "raw" : "normalized",
   children,
 }: EditorHostBridgeProps) {
   const theme = useSettings((s) => s.theme);
+  const editorFontSize = useSettings((s) => s.editorFontSize);
   const globalEditorFullWidth = useSettings((s) => s.globalEditorFullWidth);
   const tableEvenColumnWidth = useSettings((s) => s.tableEvenColumnWidth);
   const customFonts = useSettings((s) => s.customFonts);
@@ -59,10 +65,12 @@ export function EditorHostBridge({
   const searchProviders = useSettings((s) => s.searchProviders);
   const utools = useSettings((s) => s.utools);
   const customActions = useSettings((s) => s.customActions);
+  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
 
   const settings = useMemo<EditorSettings>(
     () => ({
       theme,
+      editorFontSize,
       globalEditorFullWidth,
       tableEvenColumnWidth,
       customFonts,
@@ -70,14 +78,22 @@ export function EditorHostBridge({
       onDefaultCodeBlockWrapChange: setDefaultCodeBlockWrap,
       ai,
       searchProviders,
-      utools,
       customActions,
+      openLinksInHost: utools.openSearchInUtools,
+      features: {
+        tablePresentationControls: true,
+        mermaidUnsafeHTML: true,
+        transcodeVideoUploads: true,
+        openAttachmentsExternally: true,
+      },
+      sidebarCollapsed,
       redirectAction: (label, payload) => {
         UToolsAdapter.redirect(label as string | [string, string], payload);
       },
     }),
     [
       theme,
+      editorFontSize,
       globalEditorFullWidth,
       tableEvenColumnWidth,
       customFonts,
@@ -87,12 +103,14 @@ export function EditorHostBridge({
       searchProviders,
       utools,
       customActions,
+      sidebarCollapsed,
     ],
   );
 
   const pageContext = useMemo<EditorPageContext>(
     () => ({
       page,
+      contentMode,
       isEditorFullWidth,
       onContentChange: (content: BlockNoteContent, options?: { silent?: boolean }) => {
         if (onContentChangeOverride) {
@@ -121,8 +139,10 @@ export function EditorHostBridge({
         const { notebooks } = useNotebooks.getState();
         return resolveAiReferenceContexts(refs, pages, notebooks);
       },
+      getLatestPage: (pageId: string) => usePages.getState().pages[pageId] ?? null,
+      onPromotePreview: () => useTabs.getState().promotePreviewTab(),
     }),
-    [page, isEditorFullWidth, onContentChangeOverride],
+    [page, contentMode, isEditorFullWidth, onContentChangeOverride],
   );
 
   // 触摸一次 useNotebooks 订阅，确保 notebook 变化时桥重渲染（宿主预算 isEditorFullWidth 在外层算）。

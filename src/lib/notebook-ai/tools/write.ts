@@ -1,17 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { usePages } from "@/stores/usePages";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { useTabs } from "@/stores/useTabs";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import {
-  cleanupWriterSession,
-  lookupCreatedPage,
+  createAndFinalizePage,
   reloadEditorIfActive,
 } from "@/lib/notebook-ai/liveWriter";
 import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
 import {
-  guardNotebookForAiWrite,
   guardPageForAiWrite,
   writePageContentSafely,
 } from "@/lib/notebook-ai/pageWriteGuard";
@@ -36,64 +32,15 @@ export const createPage = tool({
   }),
   execute: async (input, { experimental_context, toolCallId }) => {
     const { notebookId } = experimental_context as NotebookAiAgentContext;
-
-    // 检查 liveWriter 是否已在流式阶段建过该页面（bug 1 fix：避免双重建页）
-    const existingPageId = lookupCreatedPage(toolCallId);
-    if (existingPageId) {
-      const guard = guardPageForAiWrite(existingPageId, {
-        expectedNotebookId: notebookId,
-      });
-      if (!guard.ok) {
-        cleanupWriterSession(toolCallId);
-        return { pageId: existingPageId, ok: false, error: guard.error };
-      }
-      // 复用已建页面，只做最终落盘（完整 markdown 写入，标题更新为完整 title）
-      const content = buildAiPageContent(input.title, input.markdown);
-      const result = await writePageContentSafely(
-        existingPageId,
-        content as JSONContent,
-        { expectedNotebookId: notebookId },
-      );
-      if (!result.ok) {
-        cleanupWriterSession(toolCallId);
-        return { pageId: existingPageId, ok: false, error: result.error };
-      }
-      return { pageId: existingPageId, title: input.title, ok: true };
-    }
-
-    // liveWriter 没有预建页（流式未触发或直接调用），走正常新建路径
-    const notebookGuard = guardNotebookForAiWrite(notebookId);
-    if (!notebookGuard.ok) return { ok: false, error: notebookGuard.error };
-
-    const content = buildAiPageContent(input.title, input.markdown);
-
-    const latestNotebookGuard = guardNotebookForAiWrite(notebookId);
-    if (!latestNotebookGuard.ok) {
-      return { ok: false, error: latestNotebookGuard.error };
-    }
-    const notebook = useNotebooks.getState().notebooks[notebookId]!;
-    let pageId: string;
-    if (notebook.source === "local-folder") {
-      // 本地文件夹笔记本走专用路径
-      const id = await usePages.getState().createLocalPageRecord({
-        workspaceId: notebookId,
-        title: input.title,
-        content: content as JSONContent,
-      });
-      if (!id) return { ok: false, error: "创建本地页面失败，内容未保存" };
-      pageId = id;
-    } else {
-      pageId = usePages.getState().createPageRecord({
-        workspaceId: notebookId,
-        content: content as JSONContent,
-      });
-    }
-
-    // 打开新建页面（走 tabs 体系，与侧栏点击同链路）
-    useTabs.getState().openTab(pageId);
-    useNotebooks.getState().setLastActivePage(notebookId, pageId);
-
-    return { pageId, title: input.title, ok: true };
+    const result = await createAndFinalizePage({
+      toolCallId,
+      notebookId,
+      title: input.title,
+      markdown: input.markdown,
+    });
+    return result.ok
+      ? { pageId: result.pageId, title: input.title, ok: true }
+      : { ok: false, error: result.error };
   },
 });
 

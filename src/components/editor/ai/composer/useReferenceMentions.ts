@@ -30,6 +30,7 @@ interface UseReferenceMentionsOptions {
   onContentMutation: () => void;
   onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
   searchPages?: (query: string) => AiReferenceSuggestionItem[];
+  referencePlacement?: "inline" | "external";
 }
 
 const INACTIVE_MENTION: MentionState = {
@@ -66,13 +67,15 @@ function detectMentionAtCaret(container: HTMLElement): DetectedMention | null {
   return { query, range };
 }
 
-export function createChipElement(attrs: AiFileReferenceAttrs): HTMLSpanElement {
+export function createChipElement(
+  attrs: AiFileReferenceAttrs,
+): HTMLSpanElement {
   const span = document.createElement("span");
   span.contentEditable = "false";
   span.dataset.aiMentionId = attrs.pageId;
   span.dataset.aiMentionAttrs = JSON.stringify(attrs);
   span.className =
-  "inline-flex items-center mx-1 rounded px-1 py-0 text-[11px] font-medium" +
+    "inline-flex items-center mx-1 rounded px-1 py-0 text-[11px] font-medium" +
     " bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] border border-border" +
     " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none align-middle leading-5";
   span.textContent = `@${attrs.titleSnapshot}`;
@@ -85,6 +88,7 @@ export function useReferenceMentions({
   onContentMutation,
   onReferenceAdded,
   searchPages: searchPagesOverride,
+  referencePlacement = "inline",
 }: UseReferenceMentionsOptions) {
   const { searchPages } = useEditorPageContext();
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,16 +152,27 @@ export function useReferenceMentions({
       lastDetectedRef.current = null;
       if (!detected) return;
 
-      const chip = createChipElement(item);
-      const spacer = document.createTextNode(" ");
+      const caretRange = document.createRange();
       try {
         detected.range.deleteContents();
-        // Insert chip + spacer as one fragment so range state after insertNode
-        // doesn't affect spacer placement.
-        const frag = document.createDocumentFragment();
-        frag.appendChild(chip);
-        frag.appendChild(spacer);
-        detected.range.insertNode(frag);
+        if (referencePlacement === "inline") {
+          // Insert chip + spacer as one fragment so range state after insertNode
+          // doesn't affect spacer placement.
+          const spacer = document.createTextNode(" ");
+          const frag = document.createDocumentFragment();
+          frag.appendChild(createChipElement(item));
+          frag.appendChild(spacer);
+          detected.range.insertNode(frag);
+          caretRange.setStart(spacer, spacer.length);
+        } else {
+          // Notebook AI keeps page context outside the editable prompt, so the
+          // typed @query is removed and the caret stays at that position.
+          caretRange.setStart(
+            detected.range.startContainer,
+            detected.range.startOffset,
+          );
+        }
+        caretRange.collapse(true);
       } catch {
         return;
       }
@@ -167,17 +182,14 @@ export function useReferenceMentions({
       el.focus();
       const sel = window.getSelection();
       if (sel) {
-        const r = document.createRange();
-        r.setStart(spacer, spacer.length);
-        r.collapse(true);
         sel.removeAllRanges();
-        sel.addRange(r);
+        sel.addRange(caretRange);
       }
 
       onContentMutation();
       onReferenceAdded?.(item);
     },
-    [editorRef, onContentMutation, onReferenceAdded],
+    [editorRef, onContentMutation, onReferenceAdded, referencePlacement],
   );
 
   const handleMentionKeyDown = useCallback(
@@ -189,7 +201,10 @@ export function useReferenceMentions({
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setMention((prev) => ({ ...prev, activeIndex: (prev.activeIndex + 1) % count }));
+        setMention((prev) => ({
+          ...prev,
+          activeIndex: (prev.activeIndex + 1) % count,
+        }));
         return true;
       }
       if (event.key === "ArrowUp") {

@@ -52,7 +52,7 @@ export async function pasteClipboardFilesFromClipboard(
 
     const isImage = isPasteableClipboardImageFile(file, item.type);
     const isVideo =
-      !__GOOSE_LITE__ && isPasteableClipboardVideoFile(file, item.type);
+      !__GOOSE_EDITOR_COMPACT__ && isPasteableClipboardVideoFile(file, item.type);
     if (!isImage && !isVideo) continue;
 
     const type = isVideo ? "video" : resolveImageBlockType(editor);

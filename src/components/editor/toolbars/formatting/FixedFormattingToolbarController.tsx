@@ -13,7 +13,7 @@ type FixedFormattingToolbarControllerProps = {
 };
 
 /**
- * 速记小窗格式工具栏：固定在视口底部并横向铺满，不跟随选区浮动。
+ * 紧凑布局格式工具栏：固定在视口底部并横向铺满，不跟随选区浮动。
  * open 由选区 / AI 状态驱动；鼠标仍在工具栏上时短暂保持，便于点按按钮。
  */
 export function FixedFormattingToolbarController({

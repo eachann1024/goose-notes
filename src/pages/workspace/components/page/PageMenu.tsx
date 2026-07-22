@@ -133,8 +133,7 @@ export function PageMenu() {
             />
           </div>
 
-          {!isLocalItem && (
-            <DropdownMenuGroup>
+          <DropdownMenuGroup>
               <DropdownMenuItem
                 className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                 onSelect={() => {
@@ -149,7 +148,11 @@ export function PageMenu() {
                   )}
                 />
                 <span className="min-w-0 truncate">
-                  {page.isFavorite ? "取消收藏" : "收藏页面"}
+                  {page.isFavorite
+                    ? "取消收藏"
+                    : isLocalItem
+                      ? "收藏文件"
+                      : "收藏页面"}
                 </span>
               </DropdownMenuItem>
 
@@ -183,7 +186,6 @@ export function PageMenu() {
                 />
               </div>
             </DropdownMenuGroup>
-          )}
 
           {/* Switches Section */}
           <DropdownMenuGroup>

@@ -4,13 +4,13 @@ import type { EditorState, Transaction } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
 /**
- * 内部笔记本空态：标题一之下始终保留一行普通空段落。
+ * normalized 文档空态：标题一之下始终保留一行普通空段落。
  *
  * 用户把标题下唯一空行 Backspace 删掉后，文档会只剩 H1；
  * 此时点击下方空白只能聚焦标题末尾，无法再点进正文。
  * 本守卫在每次文档变更后，若顶层只剩 H1，立刻在其后插入空 paragraph。
  *
- * local-folder / 速记小窗草稿不施加（与 firstTitleGuard 同豁免）。
+ * raw 文档不施加（与 firstTitleGuard 同一策略）。
  */
 
 const TITLE_LEVEL = 1;
@@ -40,7 +40,7 @@ function getFirstTopLevelContainer(
 }
 
 function bodyParagraphGuardPlugin(
-  isLocalFolderPageRef: { current: boolean } = { current: false },
+  usesRawContentRef: { current: boolean } = { current: false },
 ) {
   return new Plugin({
     appendTransaction(
@@ -49,7 +49,7 @@ function bodyParagraphGuardPlugin(
       newState: EditorState,
     ) {
       if (!transactions.some((tr) => tr.docChanged)) return null;
-      if (isLocalFolderPageRef.current) return null;
+      if (usesRawContentRef.current) return null;
 
       if (countTopLevelBlockContainers(newState.doc) !== 1) return null;
 
@@ -82,11 +82,11 @@ function bodyParagraphGuardPlugin(
 }
 
 export function createGooseBodyParagraphGuardExtension(
-  isLocalFolderPageRef: { current: boolean },
+  usesRawContentRef: { current: boolean },
 ) {
   return createExtension({
     key: "goose-body-paragraph-guard",
-    prosemirrorPlugins: [bodyParagraphGuardPlugin(isLocalFolderPageRef)],
+    prosemirrorPlugins: [bodyParagraphGuardPlugin(usesRawContentRef)],
   });
 }
 

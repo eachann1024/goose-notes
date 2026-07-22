@@ -113,6 +113,39 @@ test("保存非当前会话时不会把激活指针切回旧会话", () => {
   expect(store.getActiveConversationId("notebookA")).toBe(firstConversationId);
 });
 
+test("图片消息只持久化附件摘要，不写入 data URL", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationId = store.createConversation("notebookA");
+  const imageMessage = {
+    id: "image-message",
+    role: "user",
+    metadata: {
+      displayText: "看看这张图",
+      imageAttachments: [{ filename: "diagram.png", mediaType: "image/png" }],
+    },
+    parts: [
+      {
+        type: "file",
+        mediaType: "image/png",
+        filename: "diagram.png",
+        url: "data:image/png;base64,ZmFrZQ==",
+      },
+      { type: "text", text: "看看这张图" },
+    ],
+  } as NotebookAiMessage;
+
+  store.setMessages("notebookA", conversationId, [imageMessage]);
+
+  const [persisted] = store.getConversationMessages(
+    "notebookA",
+    conversationId,
+  );
+  expect(persisted.parts).toEqual([{ type: "text", text: "看看这张图" }]);
+  expect(persisted.metadata?.imageAttachments).toEqual([
+    { filename: "diagram.png", mediaType: "image/png" },
+  ]);
+});
+
 test("最多保留 20 个笔记本且不限制单个笔记本的历史会话数", () => {
   const store = useNotebookAiChats.getState();
 

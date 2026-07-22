@@ -31,7 +31,12 @@ export function getCurrentNotebookAiPageId(notebookId: string): string | null {
 
   for (const pageId of candidates) {
     const page = pages[pageId];
-    if (!page || page.workspaceId !== notebookId || page.trashedAt || page.isFolder) {
+    if (
+      !page ||
+      page.workspaceId !== notebookId ||
+      page.trashedAt ||
+      page.isFolder
+    ) {
       continue;
     }
     return page.id;
@@ -65,7 +70,12 @@ function resolveContextBlock(references: AiFileReferenceAttrs[]) {
 function getImplicitPage(notebookId: string, currentPageId?: string | null) {
   if (!currentPageId) return undefined;
   const page = usePages.getState().pages[currentPageId];
-  if (!page || page.workspaceId !== notebookId || page.trashedAt || page.isFolder) {
+  if (
+    !page ||
+    page.workspaceId !== notebookId ||
+    page.trashedAt ||
+    page.isFolder
+  ) {
     return undefined;
   }
   return buildAiFileReferenceAttrs(page, useNotebooks.getState().notebooks);
@@ -75,6 +85,11 @@ export function buildNotebookAiUserMessage(params: {
   payload: AiComposerPayload;
   notebookId: string;
   currentPageId?: string | null;
+  /**
+   * AI 面板会把当前笔记作为显式、可移除的上下文项传入；移除后不能再
+   * 回退为隐式当前页，否则用户无法发起完全脱离笔记的提问。
+   */
+  useImplicitPage?: boolean;
 }): {
   modelText: string;
   metadata: NotebookAiMessageMetadata;
@@ -84,14 +99,15 @@ export function buildNotebookAiUserMessage(params: {
     params.currentPageId ?? getCurrentNotebookAiPageId(params.notebookId);
   const references = dedupeReferences(params.payload.references);
   const implicitPage =
-    references.length === 0
+    params.useImplicitPage !== false && references.length === 0
       ? getImplicitPage(params.notebookId, currentPageId)
       : undefined;
-  const contextReferences = references.length > 0 ? references : implicitPage ? [implicitPage] : [];
+  const contextReferences =
+    references.length > 0 ? references : implicitPage ? [implicitPage] : [];
   const contextBlock = resolveContextBlock(contextReferences);
   const contextIntro =
     references.length > 0
-      ? "用户通过 @ 明确引用了以下笔记。请优先基于这些引用回答；只有用户同时提到当前页时，才把当前页作为额外目标。"
+      ? "用户为本轮选择了以下笔记作为上下文。请优先基于这些内容回答，并根据用户指令确定需要读取或修改的目标。"
       : implicitPage
         ? "用户没有 @ 其它笔记。默认把当前活动页签对应的笔记作为本轮关联页面；“当前页 / 本文 / 这篇”都指向该页面。"
         : "";

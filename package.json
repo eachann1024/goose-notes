@@ -20,6 +20,11 @@
   "scripts": {
     "dev": "vite  --port 6001",
     "build": "tsc -b && vite build && GOOSE_BUILD_TARGET=quicknote vite build && node scripts/utools-build.js",
+    "build:native-editor": "vite build --config vite.native-editor.config.ts",
+    "dev:native-editor": "bun run build:native-editor && node scripts/serve-native-editor.mjs --mock ${NATIVE_EDITOR_PORT:-6012}",
+    "audit:native-editor": "node scripts/audit-native-editor.mjs",
+    "test:native-editor": "playwright test -c playwright.native-editor.config.ts",
+    "verify:native-editor": "bun run build:native-editor && bun run audit:native-editor && bun run test:native-editor",
     "build:debug": "GOOSE_DEBUG=1 tsc -b && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 GOOSE_BUILD_TARGET=quicknote vite build && GOOSE_DEBUG=1 node scripts/utools-build.js",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",

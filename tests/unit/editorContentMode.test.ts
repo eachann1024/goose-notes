@@ -1,5 +1,5 @@
 import { expect, test } from "playwright/test";
-import { shouldUseRawEditorContent } from "../../src/components/editor/core/editorContentMode";
+import { shouldUseRawEditorContent } from "../../src/pages/workspace/components/editor-host/editorContentMode";
 
 test("quicknote drafts and local files keep raw editor content when syncing", () => {
   expect(

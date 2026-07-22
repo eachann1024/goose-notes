@@ -20,8 +20,7 @@ function buildSystemPrompt(
   const notebookName = notebook?.name ?? "未知笔记本";
 
   const pages = usePages.getState().pages;
-  const activePageId =
-    currentPageId ?? getCurrentNotebookAiPageId(notebookId);
+  const activePageId = currentPageId ?? getCurrentNotebookAiPageId(notebookId);
   const activePage =
     activePageId && pages[activePageId]?.workspaceId === notebookId
       ? pages[activePageId]
@@ -70,6 +69,7 @@ ${pageList}
 10. **可视化回复要安静**：调用 showChart / showDiagram / showSvg 后，最终回复只给一句必要说明，不要重复输出图表源码、工具名或 JSON。
 11. **回答使用用户语言**：用户使用中文则用中文回答，使用英文则用英文回答。
 12. **不要编造内容**：若笔记本中没有相关内容，如实告知用户。
+13. **理解图片附件**：用户消息包含图片时，结合图片中的可见内容与文字回答；看不清或无法识别时直接说明，不要猜测。
 
 ## 输出格式规范（对话回复与写入笔记的 markdown 都必须严格遵守）
 
@@ -126,7 +126,10 @@ function stripMarkdownFence(text: string): string {
   return (match?.[1] ?? trimmed).trim();
 }
 
-function findMentionedMarkdownSection(markdown: string, userRequest: string): string {
+function findMentionedMarkdownSection(
+  markdown: string,
+  userRequest: string,
+): string {
   const headings = [...markdown.matchAll(/^(#{2,6})\s+(.+?)\s*$/gm)].map(
     (match) => ({
       level: match[1].length,
@@ -141,8 +144,9 @@ function findMentionedMarkdownSection(markdown: string, userRequest: string): st
     headings.find((heading) =>
       normalizedRequest.includes(heading.title.replace(/\s+/g, "")),
     ) ??
-    headings.find((heading) =>
-      heading.title.includes("示例") && normalizedRequest.includes("示例"),
+    headings.find(
+      (heading) =>
+        heading.title.includes("示例") && normalizedRequest.includes("示例"),
     );
   if (!target) return "";
 
@@ -152,7 +156,9 @@ function findMentionedMarkdownSection(markdown: string, userRequest: string): st
   return markdown.slice(target.index, next?.index ?? markdown.length).trimEnd();
 }
 
-function hasCompletedWriteTool(steps: Array<{ toolResults?: Array<unknown> }>): boolean {
+function hasCompletedWriteTool(
+  steps: Array<{ toolResults?: Array<unknown> }>,
+): boolean {
   return steps.some((step) =>
     step.toolResults?.some((result) => {
       if (!result || typeof result !== "object") return false;
@@ -178,13 +184,18 @@ async function repairUpdatePageToolCall(options: {
   model: LanguageModel;
   currentPageId?: string | null;
 }) {
-  const activePageId = options.currentPageId ?? usePages.getState().activePageId;
-  const page = activePageId ? usePages.getState().pages[activePageId] : undefined;
+  const activePageId =
+    options.currentPageId ?? usePages.getState().activePageId;
+  const page = activePageId
+    ? usePages.getState().pages[activePageId]
+    : undefined;
   if (!activePageId || !page) return null;
 
   const userRequest = getLastUserRequest(options.messages);
   const title = getPageTitle(page);
-  const currentMarkdown = await blocksToMarkdown(page.content as BlockNoteContent);
+  const currentMarkdown = await blocksToMarkdown(
+    page.content as BlockNoteContent,
+  );
 
   const result = await generateText({
     model: options.model,
@@ -230,12 +241,17 @@ async function repairReplaceInPageToolCall(options: {
   messages: unknown[];
   currentPageId?: string | null;
 }) {
-  const activePageId = options.currentPageId ?? usePages.getState().activePageId;
-  const page = activePageId ? usePages.getState().pages[activePageId] : undefined;
+  const activePageId =
+    options.currentPageId ?? usePages.getState().activePageId;
+  const page = activePageId
+    ? usePages.getState().pages[activePageId]
+    : undefined;
   if (!activePageId || !page) return null;
 
   const userRequest = getLastUserRequest(options.messages);
-  const currentMarkdown = await blocksToMarkdown(page.content as BlockNoteContent);
+  const currentMarkdown = await blocksToMarkdown(
+    page.content as BlockNoteContent,
+  );
   const section = findMentionedMarkdownSection(currentMarkdown, userRequest);
   if (!section) {
     return {
@@ -266,34 +282,7 @@ export function buildNotebookAgent(
     notebookId,
     currentPageId: currentPageId ?? getCurrentNotebookAiPageId(notebookId),
   };
-  const modelResult: ModelAvailability = buildLanguageModel({
-    executeTool: async ({ toolName, input, toolCallId, signal }) => {
-      const selectedTool = notebookAiTools[toolName as keyof typeof notebookAiTools];
-      const execute = selectedTool?.execute;
-      if (typeof execute !== "function") {
-        throw new Error(`AI 请求了未知工具：${toolName}`);
-      }
-
-      const output = execute(input as never, {
-        toolCallId,
-        messages: [],
-        abortSignal: signal,
-        experimental_context: agentContext,
-      });
-      if (
-        output &&
-        typeof output === "object" &&
-        Symbol.asyncIterator in output
-      ) {
-        let lastValue: unknown = null;
-        for await (const value of output as AsyncIterable<unknown>) {
-          lastValue = value;
-        }
-        return lastValue;
-      }
-      return await output;
-    },
-  });
+  const modelResult: ModelAvailability = buildLanguageModel();
   if (!modelResult.ok) {
     return { ok: false, reason: modelResult.reason };
   }

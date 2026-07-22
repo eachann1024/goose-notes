@@ -86,7 +86,7 @@ export function FileTrigger({
       />
       {triggerContent}
       {errorText ? (
-        <p className="mt-2 rounded-[12px] border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="mt-2 rounded-[12px] bg-[var(--goose-color-danger-subtle-bg)] px-3 py-2 text-sm text-[var(--goose-color-danger)]">
           {errorText}
         </p>
       ) : helperText ? (

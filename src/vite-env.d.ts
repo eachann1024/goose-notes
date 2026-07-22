@@ -6,7 +6,7 @@ interface ImportMetaEnv {
 }
 
 declare global {
-  const __HOST_TARGET__: "utools";
+  const __HOST_TARGET__: "utools" | "native-editor";
 
   /**
    * 速记小窗（plugin B / dist-quicknote）精简构建标志。
@@ -16,6 +16,14 @@ declare global {
    * 主应用（plugin A）构建恒为 false，行为完全不变。
    */
   const __GOOSE_LITE__: boolean;
+  const __GOOSE_EDITOR_COMPACT__: boolean;
+
+  /**
+   * 编辑器 AI 能力编译开关。主笔记本为 true；速记和原生 macOS 编辑器产物为 false。
+   * 与 __GOOSE_LITE__ 分离，确保原生编辑器保留数学、Mermaid、视频和代码格式化，
+   * 同时不会把 AI SDK 或 AI 菜单带入生产包。
+   */
+  const __GOOSE_EDITOR_AI__: boolean;
 
   interface GooseFs {
     readDir: (dir: string) => any[];

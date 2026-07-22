@@ -5,7 +5,7 @@
  * 在无宿主注入时仍能 build 且不崩。能用 Web API 表达的（下载用 a.click、剪贴板用
  * navigator.clipboard）就地实现，其余无对等 Web API 的能力 no-op 或抛"未实现"。
  *
- * 真实平台能力（uTools / Tauri）由各宿主在 Step 6 注入对应实现。
+ * 真实平台能力由各宿主注入对应实现。
  *
  * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §1 / §4 Step 4
  */
@@ -84,9 +84,7 @@ const clipboard: EditorPlatformClipboard = {
     }
     const response = await fetch(dataUrl);
     const blob = await response.blob();
-    await navigator.clipboard.write([
-      new ClipboardItem({ [blob.type]: blob }),
-    ]);
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
   },
   readText: async () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -96,11 +94,7 @@ const clipboard: EditorPlatformClipboard = {
   },
 };
 
-const ai: EditorPlatformAi = {
-  isNativeSupported: () => false,
-  listNativeModels: async () => [],
-  runStream: () => null,
-};
+const ai: EditorPlatformAi = {};
 
 export const noopPlatform: EditorPlatform = {
   fs,

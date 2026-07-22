@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/editor/ui/dropdown-menu";
 import { cn } from "@/components/editor/utils/cn";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 
 type TableExtendButtonProps = {
   orientation: "addOrRemoveRows" | "addOrRemoveColumns";
@@ -270,6 +271,7 @@ function getEvenColumnWidths(columnCount: number, tableWidth: number) {
 
 export function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) {
   const editor = useBlockNoteEditor<any, any, any>();
+  const { features } = useEditorSettings();
   const tableHandles = useExtension(TableHandlesExtension);
   const state = useExtensionState(TableHandlesExtension);
   const [open, setOpen] = useState(false);
@@ -460,7 +462,7 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
             <DropdownMenuItem onClick={() => tableHandles?.addRowOrColumn(index!, { orientation: "row", side: "below" })}>
               <LucideIcons.ArrowDown className="mr-2 h-4 w-4" /> 下方添加行
             </DropdownMenuItem>
-            {index === 0 && (
+            {index === 0 && features.tablePresentationControls && (
               <>
                 {isHeaderRow ? (
                   <DropdownMenuItem

@@ -63,7 +63,7 @@ export function NotebookEditDialog({
         {/* 标题 */}
         <div className="text-center mb-8">
           {showDeleteConfirm && (
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-destructive/15">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-[var(--goose-color-danger-subtle-bg)]">
               <AlertTriangle className="w-7 h-7 text-destructive" />
             </div>
           )}
@@ -81,7 +81,7 @@ export function NotebookEditDialog({
 
         {/* 表单卡片 */}
         {showDeleteConfirm ? (
-          <div className="bg-destructive/10 backdrop-blur-[1px] border border-destructive/20 rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
+          <div className="bg-[var(--goose-color-danger-subtle-bg)] backdrop-blur-[1px] rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
             <div className="space-y-3">
               <Label
                 htmlFor="confirm-delete"
@@ -195,7 +195,7 @@ export function NotebookEditDialog({
                   variant="ghost"
                   size="lg"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full"
+                  className="text-muted-foreground hover:text-[var(--goose-color-danger-focus)] hover:bg-[var(--goose-color-danger-subtle-bg)] w-full"
                 >
                   {isLocalFolder ? (
                     <LucideIcons.FolderX className="mr-2 h-4 w-4" />

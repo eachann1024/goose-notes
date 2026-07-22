@@ -5,13 +5,21 @@ import { Fragment, useEffect, useRef, useCallback } from "react";
 import type { ComponentProps, RefObject } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
-import { Check, MessageSquareText, Sparkles } from "lucide-react";
+import {
+  Check,
+  Image as ImageIcon,
+  MessageSquareText,
+  Sparkles,
+} from "lucide-react";
 import { ToolProgressCard } from "./ToolProgressCard";
 import { TableCard } from "./TableCard";
 import { ChartCard } from "./ChartCard";
 import { DiagramCard } from "./DiagramCard";
 import { SvgArtifactCard } from "./SvgArtifactCard";
-import { shouldShowToolProgress, type ToolDisplayPart } from "./toolProgressVisibility";
+import {
+  shouldShowToolProgress,
+  type ToolDisplayPart,
+} from "./toolProgressVisibility";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
@@ -61,7 +69,9 @@ const INPUT_ONLY_STATES = new Set([
 
 function getTextPartText(message: NotebookAiMessage) {
   const textPart = message.parts?.find((p) => p.type === "text");
-  return textPart && "text" in textPart ? (textPart as { text: string }).text : "";
+  return textPart && "text" in textPart
+    ? (textPart as { text: string }).text
+    : "";
 }
 
 function getUserDisplayText(message: NotebookAiMessage) {
@@ -79,7 +89,29 @@ function getUserDisplayText(message: NotebookAiMessage) {
   return rawText;
 }
 
-function shouldShowToolPart(part: ToolDisplayPart, isMessageStreaming: boolean) {
+function getUserImageParts(message: NotebookAiMessage) {
+  return (message.parts ?? []).filter(
+    (
+      part,
+    ): part is {
+      type: "file";
+      url: string;
+      filename?: string;
+      mediaType: string;
+    } =>
+      part.type === "file" &&
+      "url" in part &&
+      typeof part.url === "string" &&
+      "mediaType" in part &&
+      typeof part.mediaType === "string" &&
+      part.mediaType.startsWith("image/"),
+  );
+}
+
+function shouldShowToolPart(
+  part: ToolDisplayPart,
+  isMessageStreaming: boolean,
+) {
   const state = part.state ?? "";
   const hasTerminalPayload =
     state === "output-available" ||
@@ -88,7 +120,9 @@ function shouldShowToolPart(part: ToolDisplayPart, isMessageStreaming: boolean) 
     part.output !== undefined ||
     Boolean(part.errorText);
 
-  return isMessageStreaming || !INPUT_ONLY_STATES.has(state) || hasTerminalPayload;
+  return (
+    isMessageStreaming || !INPUT_ONLY_STATES.has(state) || hasTerminalPayload
+  );
 }
 
 function renderToolVisual(
@@ -96,7 +130,11 @@ function renderToolVisual(
   key: string | number,
   editorRef: RefObject<EditorRef | null> | undefined,
 ) {
-  if (part.type === "tool-showTable" && part.state === "output-available" && part.output) {
+  if (
+    part.type === "tool-showTable" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
     const tableData = part.output as {
       title?: string;
       columns: string[];
@@ -112,7 +150,11 @@ function renderToolVisual(
     );
   }
 
-  if (part.type === "tool-showChart" && part.state === "output-available" && part.output) {
+  if (
+    part.type === "tool-showChart" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
     const chartData = part.output as {
       type: "bar" | "line" | "pie";
       title?: string;
@@ -130,7 +172,11 @@ function renderToolVisual(
     );
   }
 
-  if (part.type === "tool-showDiagram" && part.state === "output-available" && part.output) {
+  if (
+    part.type === "tool-showDiagram" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
     const diagramData = part.output as {
       title?: string;
       language: "mermaid";
@@ -146,7 +192,11 @@ function renderToolVisual(
     );
   }
 
-  if (part.type === "tool-showSvg" && part.state === "output-available" && part.output) {
+  if (
+    part.type === "tool-showSvg" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
     const svgData = part.output as {
       title?: string;
       svg: string;
@@ -246,10 +296,41 @@ export function ChatMessages({
 
         if (isUser) {
           const text = getUserDisplayText(msg);
+          const imageParts = getUserImageParts(msg);
+          const persistedImages = msg.metadata?.imageAttachments ?? [];
           return (
             <div key={msg.id} className="flex justify-end">
-              <div className="notebook-ai-message-text max-w-[85%] rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
-                {text}
+              <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
+                {imageParts.length > 0 ? (
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {imageParts.map((image, index) => (
+                      <img
+                        key={`${image.url}-${index}`}
+                        src={image.url}
+                        alt={image.filename ?? "已上传图片"}
+                        className="h-20 w-20 rounded-[6px] object-cover"
+                      />
+                    ))}
+                  </div>
+                ) : persistedImages.length > 0 ? (
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {persistedImages.map((image) => (
+                      <span
+                        key={`${image.filename}-${image.mediaType}`}
+                        className="inline-flex max-w-full items-center gap-1 rounded-[5px] bg-background/55 px-1.5 py-1 text-[11px] text-muted-foreground"
+                      >
+                        <ImageIcon
+                          className="h-3 w-3 shrink-0"
+                          strokeWidth={1.75}
+                        />
+                        <span className="max-w-[170px] truncate">
+                          {image.filename}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {text ? <div>{text}</div> : null}
               </div>
             </div>
           );
@@ -270,7 +351,10 @@ export function ChatMessages({
               if (partType === "text") {
                 const textContent = (part as { text: string }).text;
                 return (
-                  <div key={pi} className="ai-md notebook-ai-message-text text-sm text-foreground">
+                  <div
+                    key={pi}
+                    className="ai-md notebook-ai-message-text text-sm text-foreground"
+                  >
                     <Streamdown
                       className="space-y-2"
                       components={MD_COMPONENTS}
@@ -294,7 +378,11 @@ export function ChatMessages({
                 const toolPart = part as ToolDisplayPart;
                 if (!shouldShowToolPart(toolPart, isStreaming)) return null;
 
-                const visual = renderToolVisual(toolPart, `visual-${pi}`, editorRef);
+                const visual = renderToolVisual(
+                  toolPart,
+                  `visual-${pi}`,
+                  editorRef,
+                );
                 if (showToolProgress && !renderedToolProgress) {
                   renderedToolProgress = true;
                   return (

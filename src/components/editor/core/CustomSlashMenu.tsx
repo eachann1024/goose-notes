@@ -252,7 +252,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       return null;
     }
 
-    const lite = __GOOSE_LITE__;
+    const lite = __GOOSE_EDITOR_COMPACT__;
 
     return (
       <div

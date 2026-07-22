@@ -275,7 +275,7 @@ export function SidebarContextMenu({
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() => void permanentlyDeletePageWithCleanup(page.id)}
-                className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-destructive/10"
+                className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
               >
                 <LucideIcons.Trash2 className="h-4 w-4" />
                 <span>永久删除</span>
@@ -284,7 +284,7 @@ export function SidebarContextMenu({
           ) : (
             <ContextMenuItem
               onSelect={() => void deletePageWithUndo(page.id)}
-              className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-destructive/10"
+              className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
             >
               {isLocalFolder ? (
                 <LucideIcons.FileX className="h-4 w-4" />

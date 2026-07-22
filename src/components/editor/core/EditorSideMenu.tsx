@@ -8,7 +8,7 @@ import {
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
-import { useSidebarView } from "@/stores/useSidebarView";
+import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import {
   Tooltip,
   TooltipContent,
@@ -30,7 +30,7 @@ export function EditorSideMenu() {
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
-  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const { sidebarCollapsed = false } = useEditorSettings();
 
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>

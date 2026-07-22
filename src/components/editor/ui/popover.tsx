@@ -27,7 +27,7 @@ const PopoverContent = React.forwardRef<
       )}
       {...props}
       style={{
-        // uTools 旧内核渲染不出 Tailwind 的 box-shadow 变量链，投影走内联 style
+        // 部分旧 WebView 无法渲染 Tailwind 的 box-shadow 变量链，投影走内联 style。
         boxShadow:
           "0 8px 22px rgba(15,23,42,0.1), 0 1px 3px rgba(15,23,42,0.06)",
         ...props.style,

@@ -1,5 +1,5 @@
 // BlockNote xl-ai 的 ChatTransport 适配器：把项目现有 AI Settings 桥到 Vercel AI SDK。
-// 支持自定义 OpenAI Responses、OpenAI 兼容协议与 Anthropic；uTools 内置模型暂未接入。
+// 支持自定义 OpenAI Responses、OpenAI 兼容协议与 Anthropic。
 
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -16,11 +16,6 @@ function buildModel(
   if (!settings.enabled) {
     throw new Error("AI 助手尚未开启，请先到设置中打开");
   }
-  if (!settings.useCustomProvider) {
-    throw new Error(
-      "uTools 内置模型暂不支持编辑器内 BlockNote AI 菜单。请在 设置 → AI 助手 中切换到自定义 AI provider。",
-    );
-  }
   const apiKey = (
     settings.customProtocol === "openai-responses"
       ? settings.customOpenAIResponsesApiKey
@@ -29,7 +24,9 @@ function buildModel(
         : settings.customClaudeApiKey
   ).trim();
   if (!apiKey) {
-    throw new Error('未填写 API Key。请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。');
+    throw new Error(
+      '未填写 API Key。请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。',
+    );
   }
 
   const normalizeBase = (url: string, fallback: string) =>
@@ -37,7 +34,10 @@ function buildModel(
 
   if (settings.customProtocol === "openai-responses") {
     const provider = createOpenAI({
-      baseURL: normalizeBase(settings.customOpenAIResponsesBaseURL, "https://api.openai.com/v1"),
+      baseURL: normalizeBase(
+        settings.customOpenAIResponsesBaseURL,
+        "https://api.openai.com/v1",
+      ),
       apiKey: settings.customOpenAIResponsesApiKey,
       fetch: fetchImpl,
     });
@@ -47,7 +47,10 @@ function buildModel(
   if (settings.customProtocol === "openai") {
     const provider = createOpenAICompatible({
       name: "goose-openai",
-      baseURL: normalizeBase(settings.customOpenAIBaseURL, "https://api.openai.com/v1"),
+      baseURL: normalizeBase(
+        settings.customOpenAIBaseURL,
+        "https://api.openai.com/v1",
+      ),
       apiKey: settings.customOpenAIApiKey,
       fetch: fetchImpl,
     });
@@ -56,7 +59,10 @@ function buildModel(
 
   // Anthropic
   const provider = createAnthropic({
-    baseURL: normalizeBase(settings.customClaudeBaseURL, "https://api.anthropic.com/v1"),
+    baseURL: normalizeBase(
+      settings.customClaudeBaseURL,
+      "https://api.anthropic.com/v1",
+    ),
     apiKey: settings.customClaudeApiKey,
     headers: {
       // 浏览器侧 Anthropic CORS 需要这个 header
@@ -72,7 +78,7 @@ export interface CreateGooseAITransportOptions {
   getModelId: () => string;
   /**
    * 宿主注入的 fetch（如 Tauri plugin-http，绕过 WebView CORS）。
-   * 未提供时回退 globalThis.fetch —— uTools 端行为与浏览器直连完全一致。
+   * 未提供时回退 globalThis.fetch。
    */
   getCustomFetch?: () => typeof fetch | undefined;
 }
@@ -82,7 +88,9 @@ export interface CreateGooseAITransportOptions {
 export function createGooseAITransport(
   options: CreateGooseAITransportOptions,
 ): ChatTransport<UIMessage> {
-  const sendMessages: ChatTransport<UIMessage>["sendMessages"] = async (params) => {
+  const sendMessages: ChatTransport<UIMessage>["sendMessages"] = async (
+    params,
+  ) => {
     const settings = options.getSettings();
     const modelId = options.getModelId();
     const fetchImpl = options.getCustomFetch?.() ?? globalThis.fetch;
@@ -94,7 +102,8 @@ export function createGooseAITransport(
     return inner.sendMessages(params);
   };
 
-  const reconnectToStream: ChatTransport<UIMessage>["reconnectToStream"] = async () => null;
+  const reconnectToStream: ChatTransport<UIMessage>["reconnectToStream"] =
+    async () => null;
 
   return {
     sendMessages,

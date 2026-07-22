@@ -631,6 +631,7 @@ export function QuickNoteApp() {
           key={`${displaySlot}-${historyEpoch}`}
           page={draftPage}
           isEditorFullWidth
+          contentMode="raw"
           onContentChangeOverride={onDraftChange}
         >
           {/*

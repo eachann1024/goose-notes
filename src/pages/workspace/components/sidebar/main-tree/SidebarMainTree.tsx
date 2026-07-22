@@ -473,7 +473,7 @@ export function SidebarMainTree({
     <>
       {localLoadError && (
         <div
-          className="mx-2 mb-1 flex items-center justify-between gap-2 rounded-[8px] bg-destructive/10 px-2.5 py-2 text-xs text-foreground"
+          className="mx-2 mb-1 flex items-center justify-between gap-2 rounded-[8px] bg-[var(--goose-color-danger-subtle-bg)] px-2.5 py-2 text-xs text-foreground"
           role="alert"
         >
           <span className="min-w-0 truncate" title={localLoadError}>

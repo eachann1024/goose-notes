@@ -206,8 +206,6 @@ function SortableTabItem({
 interface PageHeaderProps {
   page?: Page;
   onOpenSearch: () => void;
-  onToggleFavorite?: () => void;
-  onTogglePinned?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
   /** AI 面板当前是否打开 */
@@ -219,8 +217,6 @@ interface PageHeaderProps {
 export function PageHeader({
   page,
   onOpenSearch,
-  onToggleFavorite,
-  onTogglePinned,
   onRestore,
   onDelete,
   aiPanelOpen,
@@ -637,72 +633,7 @@ export function PageHeader({
           </>
         )}
 
-        {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onToggleFavorite}
-                  className={actionButtonClass}
-                  aria-label={
-                    page.isFavorite
-                      ? "取消收藏"
-                      : isLocalItem
-                        ? "收藏文件"
-                        : "收藏页面"
-                  }
-                >
-                  <LucideIcons.Star
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      page.isFavorite
-                        ? "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]"
-                        : "text-muted-foreground/70 dark:text-muted-foreground/55",
-                    )}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {page.isFavorite
-                  ? "取消收藏"
-                  : isLocalItem
-                    ? "收藏文件"
-                    : "收藏页面"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-
-        {page && !page.trashedAt && (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onTogglePinned}
-                  className={cn(
-                    actionButtonClass,
-                    page.isPinned &&
-                      "bg-[var(--goose-interactive-selected)] text-foreground",
-                  )}
-                  aria-label={page.isPinned ? "取消置顶" : "置顶页面"}
-                >
-                  <LucideIcons.Pin
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      page.isPinned
-                        ? "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]"
-                        : "text-muted-foreground/70 dark:text-muted-foreground/55",
-                    )}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {page.isPinned ? "取消置顶" : "置顶页面"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-
+        {/* 页面级状态操作收进“更多操作”，避免顶栏堆叠重复入口。 */}
         {page && !page.trashedAt && <PageMenu />}
       </div>
     </div>

@@ -23,7 +23,7 @@ export function EditorLinkToolbar({
 }: LinkToolbarProps) {
   const editor = useBlockNoteEditor();
   const platform = useEditorPlatform();
-  const { utools } = useEditorSettings();
+  const { openLinksInHost } = useEditorSettings();
   const [editing, setEditing] = useState(false);
   const [editUrl, setEditUrl] = useState(url);
   const [editText, setEditText] = useState(text);
@@ -69,10 +69,9 @@ export function EditorLinkToolbar({
   const handleOpen = useCallback(() => {
     const target = normalizeExternalUrl(url);
     if (target) {
-      const useInternalBrowser = utools?.openSearchInUtools ?? false;
-      void platform.shell.openUrl(target, useInternalBrowser);
+      void platform.shell.openUrl(target, openLinksInHost);
     }
-  }, [url, platform, utools]);
+  }, [url, platform, openLinksInHost]);
 
   const startEditing = useCallback(() => {
     setEditing(true);

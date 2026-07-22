@@ -1,12 +1,10 @@
 /**
  * EditorPlatform —— 编辑器内核的平台适配契约（承重墙）。
  *
- * 编辑器内核**只 import 此接口类型**，永远不直接触碰 utools.* / gooseFs / 原生 API。
- * 运行时实现由各宿主注入：uTools 端注入 `platform/utools.ts`，Tauri 端注入 `platform/tauri.ts`，
- * 纯浏览器/测试用 `noopPlatform.ts` 兜底。
+ * 编辑器内核**只 import 此接口类型**，不直接触碰任一宿主 API。
+ * 运行时实现由宿主注入，纯浏览器和测试使用 `noopPlatform.ts` 兜底。
  *
- * 设计取舍：全部 fs API 统一为 async —— uTools 的同步桥在 Tauri/WKWebView 无对等物，
- * async 是跨端的最低公分母。
+ * 设计取舍：宿主能力统一为 async，这是跨端的最低公分母。
  *
  * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §2
  */
@@ -56,9 +54,12 @@ export interface EditorPlatformFs {
   writeFileAsync(
     path: string,
     content: string,
-    encoding?: "utf8" | "base64"
+    encoding?: "utf8" | "base64",
   ): Promise<boolean>;
-  writeTempFile(relativePath: string, contentBase64: string): Promise<string | null>;
+  writeTempFile(
+    relativePath: string,
+    contentBase64: string,
+  ): Promise<string | null>;
   cleanupTempFiles(prefix: string, maxAgeMs: number): Promise<void>;
   existsAsync(path: string): Promise<boolean>;
   mkdir(path: string): Promise<boolean>;
@@ -88,7 +89,10 @@ export interface EditorPlatformImageStorage {
   load(ref: string): Promise<Blob | null>;
   delete(ref: string): Promise<void>;
   /** ObjectURL 缓存 */
-  resolveRefToUrl(ref: string, pageLocalFilePath?: string | null): Promise<string>;
+  resolveRefToUrl(
+    ref: string,
+    pageLocalFilePath?: string | null,
+  ): Promise<string>;
 }
 
 // ── dialog ────────────────────────────────
@@ -106,22 +110,10 @@ export interface EditorPlatformClipboard {
   readText(): Promise<string>;
 }
 
-// ── ai（吸收 AI provider 平台分支）─────────
+// ── ai（仅保留自定义协议所需的平台 fetch）──
 export interface EditorPlatformAi {
-  /** 平台原生 AI 是否可用（uTools: window.utools.ai；Tauri: false→走 transport 直连） */
-  isNativeSupported(): boolean;
-  /** 原生模型列表（uTools allAiModels；Tauri 返回 []） */
-  listNativeModels(): Promise<Array<{ id: string; label: string }>>;
-  /** 原生流式调用（uTools.ai）；非原生端返回 null，由 blocknoteAITransport 浏览器直连兜底 */
-  runStream?(
-    req: unknown,
-    onChunk: (delta: string) => void,
-    signal?: AbortSignal
-  ): Promise<string> | null;
   /**
-   * 宿主注入的 fetch，供 AI provider 绕过 WebView 的 CORS/ATS（如 Tauri 用 plugin-http
-   * 从 Rust 层发起请求）。未提供时 blocknoteAITransport 自动回退到 globalThis.fetch，
-   * uTools 端因不提供此成员，行为与浏览器直连完全一致。
+   * 宿主可注入受控 fetch；未提供时 transport 回退到 globalThis.fetch。
    */
   customFetch?: typeof fetch;
 }

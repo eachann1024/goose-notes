@@ -24,10 +24,6 @@ import type {
 import { fs as utoolsFs } from "@/lib/utools/fs";
 import { shell as utoolsShell } from "@/lib/utools/shell";
 import { dialogs as utoolsDialogs } from "@/lib/utools/dialogs";
-import {
-  isUToolsAiSupported,
-  getAvailableUToolsAiModels,
-} from "@/lib/utools-ai";
 import { imageStorage as appImageStorage } from "@/lib/imageStorage";
 import { resolveImageRefToUrl } from "@/lib/imageStorage/resolveUrl";
 
@@ -44,7 +40,7 @@ const fs: EditorPlatformFs = {
   // 图片读取统一 async：gooseFs.readFileBase64 经 preload 注入（同步桥），包一层 async。
   readFileBase64: async (path) => {
     const gfs =
-      typeof window !== "undefined" ? (window as any).gooseFs ?? null : null;
+      typeof window !== "undefined" ? ((window as any).gooseFs ?? null) : null;
     if (!gfs || typeof gfs.readFileBase64 !== "function") return null;
     try {
       return (gfs.readFileBase64(path) as string | null) ?? null;
@@ -111,13 +107,7 @@ const clipboard: EditorPlatformClipboard = {
   },
 };
 
-const ai: EditorPlatformAi = {
-  isNativeSupported: () => isUToolsAiSupported(),
-  listNativeModels: async () => {
-    const models = await getAvailableUToolsAiModels();
-    return models.map((m) => ({ id: m.id, label: m.label }));
-  },
-};
+const ai: EditorPlatformAi = {};
 
 export const utoolsEditorPlatform: EditorPlatform = {
   fs,

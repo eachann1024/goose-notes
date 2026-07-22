@@ -19,7 +19,7 @@ import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { renderMermaidSvgForExport } from "@/lib/imageExport/mermaid";
 import { indentCodeSelection } from "./codeBlockIndent";
 
-// 主应用与速记小窗均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
+// 所有宿主均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
 // 把语法包从 ~1MB（all 全量）降到 ~300KB（vendor-markdown 1257KB→530KB）。
 // 注意：不做小众语言运行时按需加载——vite/rolldown 对 node_modules 既无法 code-split
 // 裸包模板字符串，import.meta.glob 又会把全部 192 种语言 eager 内联进首屏（体积反弹到
@@ -750,10 +750,9 @@ function CodeBlockComponent({
 
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
-  // 速记小窗精简构建（__GOOSE_LITE__）不渲染 math/mermaid 预览——退化为纯代码块
-  // （源码可见、带行号），以甩掉 katex / mermaid 重型依赖。主应用恒为 false，行为不变。
+  // 紧凑编辑器构建不渲染 math/mermaid 预览，退化为可编辑源码。
   const isMathOrMermaid =
-    !__GOOSE_LITE__ && (language === "math" || language === "mermaid");
+    !__GOOSE_EDITOR_COMPACT__ && (language === "math" || language === "mermaid");
   const canPreview = isMathOrMermaid && textContent.trim().length > 0;
   const shouldShowPreview = canPreview && previewMode === "preview";
   const shouldShowSource = !isMathOrMermaid || previewMode === "code" || !canPreview;
@@ -868,7 +867,7 @@ function CodeBlockComponent({
           language={language}
           onLanguageChange={handleLanguageChange}
           getCodeContent={getCodeContent}
-          onFormat={__GOOSE_LITE__ ? undefined : handleFormat}
+          onFormat={__GOOSE_EDITOR_COMPACT__ ? undefined : handleFormat}
           wrap={wrap}
           onWrapChange={handleWrapChange}
           editable={isEditable}

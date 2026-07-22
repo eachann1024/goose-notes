@@ -41,7 +41,6 @@ import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
-import { useTabs } from "@/stores/useTabs";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -52,10 +51,12 @@ import {
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
 import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
-import { getQuicknoteSlashMenuFloatingOptions } from "@/components/editor/utils/quicknoteSlashMenuFloating";
+import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
 import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
-import { shouldUseRawEditorContent } from "@/components/editor/core/editorContentMode";
-import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
 
 // Re-exports to prevent broken imports elsewhere
 export {
@@ -101,13 +102,14 @@ type EditorComposerProps = {
   tableEvenColumnWidth: boolean;
   searchProviders: any[];
   customActions: any[];
-  /** 是否渲染块侧边菜单（+ / ⋮⋮）。速记小窗传 false 不显示，仅主编辑器显示。 */
+  /** 是否渲染块侧边菜单（+ / ⋮⋮）；紧凑布局可关闭。 */
   showSideMenu?: boolean;
   /**
    * 为 true 时强制隐藏格式化工具栏（仅在空白区域 mousedown 期间短暂置 true 用于消闪，
    * 由 Editor.tsx 的空白点击处理器管理）。
    */
   suppressFormattingToolbar?: boolean;
+  usesRawEditorContent: boolean;
 };
 
 export function EditorComposer({
@@ -130,18 +132,25 @@ export function EditorComposer({
   customActions,
   showSideMenu = true,
   suppressFormattingToolbar = false,
+  usesRawEditorContent,
 }: EditorComposerProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
   const [findBarOpen, setFindBarOpen] = useState(false);
+  const [findNavigationRequest, setFindNavigationRequest] = useState<{
+    id: number;
+    direction: "next" | "previous";
+  } | null>(null);
+  const findNavigationRequestIdRef = useRef(0);
   const { ai: aiSettings } = useEditorSettings();
+  const { onPromotePreview } = useEditorPageContext();
 
   const handleEditorKeyDownCapture = (
     event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
     if (
-      __GOOSE_LITE__ ||
+      !__GOOSE_EDITOR_AI__ ||
       event.key !== " " ||
       event.defaultPrevented ||
       event.repeat ||
@@ -176,11 +185,6 @@ export function EditorComposer({
 
     event.preventDefault();
     event.stopPropagation();
-    if (!aiSettings.useCustomProvider) {
-      window.dispatchEvent(new CustomEvent("goose-note:open-ai-panel"));
-      return;
-    }
-
     const ai = editor.getExtension(AIExtension);
     if (ai && block.id) {
       ai.openAIMenuAtBlock(block.id);
@@ -197,6 +201,30 @@ export function EditorComposer({
     window.addEventListener("goose-note:editor-find-open", handleOpenFind);
     return () =>
       window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
+  }, []);
+
+  useEffect(() => {
+    // 原生 AppKit 菜单通过桥接事件驱动查找导航。uTools 有自己的热键链路，
+    // 不在共享编辑器里接管，避免原生宿主接线改变其它宿主的运行时行为。
+    if (__HOST_TARGET__ !== "native-editor") return;
+
+    const handleFindNavigation = (event: Event) => {
+      const direction = (event as CustomEvent<{ direction?: unknown }>).detail
+        ?.direction;
+      if (direction !== "next" && direction !== "previous") return;
+      setFindBarOpen(true);
+      findNavigationRequestIdRef.current += 1;
+      setFindNavigationRequest({
+        id: findNavigationRequestIdRef.current,
+        direction,
+      });
+    };
+    window.addEventListener("goose-note:editor-find-nav", handleFindNavigation);
+    return () =>
+      window.removeEventListener(
+        "goose-note:editor-find-nav",
+        handleFindNavigation,
+      );
   }, []);
 
   useEffect(() => {
@@ -273,11 +301,12 @@ export function EditorComposer({
   );
 
   const slashMenuFloatingOptions = useMemo(
-    () => (__GOOSE_LITE__ ? getQuicknoteSlashMenuFloatingOptions() : undefined),
+    () =>
+      __GOOSE_EDITOR_COMPACT__
+        ? getCompactSlashMenuFloatingOptions()
+        : undefined,
     [],
   );
-  const usesRawEditorContent = shouldUseRawEditorContent(page);
-
   const handleLocalFileTitleEnter = useCallback(() => {
     const firstBlock = editor.document[0];
     if (!firstBlock) return;
@@ -328,18 +357,15 @@ export function EditorComposer({
         onChange={() => {
           const safePageId = pageIdForUpdateRef.current;
           if (!safePageId) return;
-          // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
-          // 与 Editor.tsx 切页/commit 路径保持一致：否则 normalize 改写让签名与基线
-          // 永不一致，打开后首个 onChange 即触发非 silent 保存（打开即写盘）。
+          // raw 文档跳过 normalizePageContent（含 ensureFirstTitleHeading），
+          // 与 Editor.tsx 切页/commit 路径保持一致，避免程序化规范化误触保存。
           // 用户真实输入仍会让文档签名偏离基线，照常走 debouncedUpdate 保存。
-          // 须与 Editor.tsx 的 isLocalFolderPage 判断保持一致：草稿页(__quicknote_draft__)
-          // 同样豁免 normalize，否则 onChange 在此把首块强转 H1 并回写持久化，
-          // 导致小窗重开后首块永久变成「标题1」。
-          const isLocalPage = shouldUseRawEditorContent(page);
-          // 用户意图门控（仅 local 页面）：打开后无任何用户交互时的 onChange 来自
+          // 须与 Editor.tsx 的 contentMode 保持一致；raw 文档不执行页面级规范化。
+          const usesRawContent = usesRawEditorContent;
+          // 用户意图门控（仅 raw 文档）：打开后无任何用户交互时的 onChange 来自
           // BlockNote 异步 props 补全（折叠块/视频/带属性图片等），静默同步 store 与
           // 基线、不入保存队列。一旦用户交互过（打字/IME/点击/拖拽…），照常入队保存。
-          if (isLocalPage && !userInteractedRef.current) {
+          if (usesRawContent && !userInteractedRef.current) {
             const nextContent = clonePageContent(
               editor.document as BlockNoteContent,
             );
@@ -351,7 +377,7 @@ export function EditorComposer({
           }
           debouncedUpdate(safePageId);
           if (userInteractedRef.current) {
-            useTabs.getState().promotePreviewTab();
+            onPromotePreview?.();
           }
         }}
       >
@@ -360,7 +386,7 @@ export function EditorComposer({
           tableHandle={GooseTableHandle}
           extendButton={GooseTableExtendButton}
         />
-        {__GOOSE_LITE__ ? (
+        {__GOOSE_EDITOR_COMPACT__ ? (
           <FixedFormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
             open={formattingToolbarOpen}
@@ -405,8 +431,8 @@ export function EditorComposer({
             }
           }}
         />
-        {/* 速记小窗（__GOOSE_LITE__）不挂 AI 菜单。 */}
-        {!__GOOSE_LITE__ && <AIMenuController aiMenu={GooseAIMenu} />}
+        {/* 紧凑编辑器构建不挂 AI 菜单。 */}
+        {__GOOSE_EDITOR_AI__ && <AIMenuController aiMenu={GooseAIMenu} />}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div
@@ -428,7 +454,7 @@ export function EditorComposer({
             }}
             placeholder="https://..."
             autoFocus
-            className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm shadow-[inset_0_0_0_1px_hsl(var(--input)/0.8)] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           />
           <button
             type="button"
@@ -443,6 +469,7 @@ export function EditorComposer({
       <FindInPageBar
         editor={editor}
         open={findBarOpen}
+        navigationRequest={findNavigationRequest}
         onClose={() => setFindBarOpen(false)}
       />
     </EditorContextMenu>

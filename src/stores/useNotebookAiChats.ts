@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { sanitizeNotebookAiMessages } from "@/lib/notebook-ai/messageUtils";
+import { prepareNotebookAiMessagesForPersistence } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { uToolsStorage } from "@/lib/storage";
 
@@ -70,9 +70,9 @@ function normalizeTimestamp(value: unknown, fallback: number) {
 
 function normalizeMessages(value: unknown) {
   if (!Array.isArray(value)) return [];
-  return sanitizeNotebookAiMessages(value as NotebookAiMessage[]).slice(
-    -MAX_MESSAGES_PER_CONVERSATION,
-  );
+  return prepareNotebookAiMessagesForPersistence(
+    value as NotebookAiMessage[],
+  ).slice(-MAX_MESSAGES_PER_CONVERSATION);
 }
 
 function createConversationId() {

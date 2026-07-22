@@ -15,45 +15,107 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { Page } from "@/types";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type {
-  AISettings,
-  CustomFonts,
-  CustomAction,
-  SearchProvider,
-  UToolsSettings,
-} from "@/stores/settings";
-import type {
   AiReferenceSuggestionItem,
   AiFileReferenceAttrs,
   ResolvedAiReferenceContext,
 } from "@/components/editor/ai/composer/referenceLookup";
 import type { EditorPlatform } from "./types";
 
+export interface EditorFontConfig {
+  label: string | null;
+  font: string | null;
+}
+
+export interface EditorCustomFonts {
+  default: EditorFontConfig;
+  serif: EditorFontConfig;
+  mono: EditorFontConfig;
+}
+
+export interface EditorAISettings {
+  enabled: boolean;
+  selectedModelId: string | null;
+  workspaceSelectedModelId: string | null;
+  workspaceReasoningLevel: "default" | "low" | "medium" | "high";
+  customProtocol: "openai-responses" | "openai" | "claude";
+  customOpenAIResponsesBaseURL: string;
+  customOpenAIBaseURL: string;
+  customClaudeBaseURL: string;
+  customOpenAIResponsesApiKey: string;
+  customOpenAIApiKey: string;
+  customClaudeApiKey: string;
+  customModelOptions: Array<{
+    id: string;
+    label: string;
+    description?: string;
+  }>;
+}
+
+export interface EditorSearchProvider {
+  id: string;
+  name: string;
+  urlTemplate: string;
+  isEnabled: boolean;
+}
+
+export interface EditorCustomAction {
+  id: string;
+  name: string;
+  pluginName?: string;
+  command: string;
+  isEnabled: boolean;
+}
+
+export interface EditorFeaturePolicy {
+  /** 只展示能够由当前文档格式持久化的表格外观操作。 */
+  tablePresentationControls: boolean;
+  /** 是否允许 Mermaid HTML 标签；不可信文档宿主应保持 false。 */
+  mermaidUnsafeHTML: boolean;
+  /** 上传视频时是否由宿主转码为 MP4。 */
+  transcodeVideoUploads: boolean;
+  /** 附件操作是否能直接交给系统默认应用。 */
+  openAttachmentsExternally: boolean;
+}
+
 /** 宿主透传给编辑器的设置（替换对 useSettings 的直读）。 */
 export interface EditorSettings {
   theme: "light" | "dark" | "system";
+  /** 正文字号（px）；由宿主同步到编辑器的 CSS 变量。 */
+  editorFontSize: number;
   globalEditorFullWidth: boolean;
   tableEvenColumnWidth: boolean;
-  customFonts: CustomFonts;
+  customFonts: EditorCustomFonts;
   defaultCodeBlockWrap: boolean;
   onDefaultCodeBlockWrapChange: (v: boolean) => void;
   /** 整个 ai slice 透传，编辑器内部按需读字段 */
-  ai: AISettings;
-  searchProviders: SearchProvider[];
-  /** uTools 端有值，Tauri 端 null */
-  utools: UToolsSettings | null;
-  customActions: CustomAction[];
-  /** 宿主提供的 redirect 能力（uTools 端：UToolsAdapter.redirect；Tauri 端：noop） */
-  redirectAction?: (label: string | [string, string], payload?: unknown) => void;
+  ai: EditorAISettings;
+  searchProviders: EditorSearchProvider[];
+  customActions: EditorCustomAction[];
+  /** 链接是否交给宿主内置浏览能力；编辑器不识别具体宿主。 */
+  openLinksInHost: boolean;
+  features: EditorFeaturePolicy;
+  /** 原生编辑器没有 Web 侧栏；默认 false，主工作区按自身状态注入。 */
+  sidebarCollapsed?: boolean;
+  /** 宿主提供的自定义动作跳转能力；不支持的宿主可不传。 */
+  redirectAction?: (
+    label: string | [string, string],
+    payload?: unknown,
+  ) => void;
 }
 
 /** 宿主透传给编辑器的「当前页 + 跨页能力」（替换对 usePages/useNotebooks/useTabs 的直读）。 */
 export interface EditorPageContext {
   /** 替换 activePageId + getPage（宿主决定哪页激活） */
   page: Page;
+  /** 宿主决定正文是按原始块处理，还是应用页面级规范化规则。 */
+  contentMode: "raw" | "normalized";
   /** 宿主预算 notebook.editorFullWidth ?? globalEditorFullWidth */
   isEditorFullWidth: boolean;
   /** 替换 updatePage（去抖在宿主或编辑器内皆可）。silent=true 时宿主跳过标脏与写盘（切页/normalize 路径）。 */
-  onContentChange: (content: BlockNoteContent, options?: { silent?: boolean }) => void;
+  onContentChange: (
+    content: BlockNoteContent,
+    options?: { silent?: boolean },
+  ) => void;
   /** 替换 useTabs.openTab（chip 点击导航） */
   onOpenPage: (pageId: string) => void;
   /** 图片相对路径解析：返回当前激活页的本地文件路径 */
@@ -63,6 +125,10 @@ export interface EditorPageContext {
   resolvePageContexts: (
     refs: AiFileReferenceAttrs[],
   ) => ResolvedAiReferenceContext[];
+  /** 外部重载时取得宿主最新页面；未提供时沿用当前 page。 */
+  getLatestPage?: (pageId: string) => Page | null;
+  /** 编辑后把预览标签提升为正式标签；无标签宿主可不提供。 */
+  onPromotePreview?: () => void;
 }
 
 /** 编辑器对外 props（宿主接线在 Step 6 完成）。 */

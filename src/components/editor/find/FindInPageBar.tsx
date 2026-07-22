@@ -13,10 +13,16 @@ import {
 type FindInPageBarProps = {
   editor: BlockNoteEditor<any, any, any> | null;
   open: boolean;
+  navigationRequest?: { id: number; direction: "next" | "previous" } | null;
   onClose: () => void;
 };
 
-export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
+export function FindInPageBar({
+  editor,
+  open,
+  navigationRequest = null,
+  onClose,
+}: FindInPageBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -36,6 +42,15 @@ export function FindInPageBar({ editor, open, onClose }: FindInPageBarProps) {
       clearFind(editor);
     }
   }, [open, editor]);
+
+  useEffect(() => {
+    if (!open || !editor || !navigationRequest) return;
+    const state = getFindState(editor);
+    if (state?.matches.length) {
+      stepFindMatch(editor, navigationRequest.direction === "next" ? 1 : -1);
+      setTick((value) => value + 1);
+    }
+  }, [editor, navigationRequest, open]);
 
   if (!open) return null;
 
