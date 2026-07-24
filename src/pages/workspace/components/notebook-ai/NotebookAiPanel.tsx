@@ -15,8 +15,17 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useChat } from "@ai-sdk/react";
-import { X, Plus, Bot, CircleAlert } from "lucide-react";
-import { toast } from "sonner";
+import {
+  X,
+  Plus,
+  CircleAlert,
+  MoreHorizontal,
+  PanelRight,
+  AppWindow,
+  History as HistoryIcon,
+  Check,
+} from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import type { RefObject } from "react";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -49,13 +58,28 @@ import { ChatMessages } from "./ChatMessages";
 import { Composer } from "./Composer";
 import type { NotebookAiImageAttachment } from "./Composer";
 import { usePanelWidth } from "./usePanelWidth";
-import { ConversationHistoryPopover } from "./ConversationHistoryPopover";
-import type { NotebookAiPanelSelectionCapture } from "./useNotebookAiPanel";
+import { ConversationHistoryList } from "./ConversationHistoryPopover";
+import type {
+  NotebookAiLayoutMode,
+  NotebookAiPanelSelectionCapture,
+} from "./useNotebookAiPanel";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
 import { buildAiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { ChatTransport } from "ai";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import type { JSONContent, Page } from "@/types";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface NotebookAiPanelProps {
   notebookId: string;
@@ -63,6 +87,11 @@ interface NotebookAiPanelProps {
   editorRef?: RefObject<EditorRef | null>;
   capturedSelection?: NotebookAiPanelSelectionCapture | null;
   onConsumeCapturedSelection?: () => void;
+  /** 打开方式：侧栏并排 / 独立标签 */
+  layoutMode?: NotebookAiLayoutMode;
+  onLayoutModeChange?: (mode: NotebookAiLayoutMode) => void;
+  /** 标签页全宽模式：取消拖宽手柄与固定宽度 */
+  variant?: "side-panel" | "tab";
 }
 
 const NOTEBOOK_AI_PLACEHOLDER_HINTS = [
@@ -131,10 +160,14 @@ export function NotebookAiPanel({
   editorRef,
   capturedSelection,
   onConsumeCapturedSelection,
+  layoutMode = "side-panel",
+  onLayoutModeChange,
+  variant = "side-panel",
 }: NotebookAiPanelProps) {
   const { notebooks } = useNotebooks();
   const notebook = notebooks[notebookId];
   const notebookName = notebook?.name ?? "AI 助手";
+  const isTabVariant = variant === "tab";
 
   const { width, onDragHandleMouseDown } = usePanelWidth();
   const requestCurrentPageIdRef = useRef<string | null>(null);
@@ -600,51 +633,114 @@ export function NotebookAiPanel({
       ? messages[messages.length - 1].id
       : undefined;
 
+  const headerIconButtonClass =
+    "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
+
   return (
     <div
       onKeyDown={handlePanelKeyDown}
-      className="relative flex h-full flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]"
-      style={{ width }}
+      className={cn(
+        "relative flex h-full min-w-0 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
+        isTabVariant && "w-full flex-1",
+      )}
+      style={isTabVariant ? undefined : { width }}
     >
-      {/* 拖拽手柄 */}
-      <div
-        className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-[var(--goose-interactive-hover)]"
-        onMouseDown={onDragHandleMouseDown}
-        aria-hidden="true"
-      />
-
-      {/* 头部 */}
-      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
-        <Bot
-          className="h-4 w-4 shrink-0 text-muted-foreground"
-          strokeWidth={1.75}
+      {/* 侧栏模式才显示拖宽手柄 */}
+      {!isTabVariant ? (
+        <div
+          className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-[var(--goose-interactive-hover)]"
+          onMouseDown={onDragHandleMouseDown}
+          aria-hidden="true"
         />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {notebookName}
-        </span>
+      ) : null}
+
+      {/* 头部：左侧仅关闭 / 新建 / 更多；右侧弱化笔记本名 */}
+      <div className="flex h-12 shrink-0 items-center gap-1 px-2.5">
+        <button
+          type="button"
+          onClick={onClose}
+          className={headerIconButtonClass}
+          aria-label="关闭 AI"
+          title="关闭"
+        >
+          <X className="h-4 w-4" strokeWidth={1.75} />
+        </button>
         <button
           type="button"
           onClick={handleNewConversation}
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+          className={headerIconButtonClass}
           aria-label="新建会话"
           title="新建会话"
           disabled={isBusy}
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
-        <ConversationHistoryPopover
-          notebookId={notebookId}
-          onSelectConversation={handleSelectConversation}
-          disabled={isBusy}
-        />
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
-          aria-label="关闭 AI 面板"
-        >
-          <X className="h-4 w-4" strokeWidth={1.75} />
-        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={headerIconButtonClass}
+              aria-label="更多选项"
+              title="更多"
+            >
+              <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" sideOffset={6} className="w-56">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <HistoryIcon className="h-4 w-4" strokeWidth={1.75} />
+                <span>历史会话</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-72 p-0">
+                <div className="border-b border-border/70 px-3 py-2.5">
+                  <div className="text-sm font-medium text-foreground">
+                    历史会话
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    切换当前笔记本的 AI 会话
+                  </div>
+                </div>
+                <ConversationHistoryList
+                  notebookId={notebookId}
+                  onSelectConversation={handleSelectConversation}
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            {onLayoutModeChange ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>打开方式</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onSelect={() => onLayoutModeChange("side-panel")}
+                  className="gap-2"
+                >
+                  <PanelRight className="h-4 w-4" strokeWidth={1.75} />
+                  <span className="flex-1">侧栏并排</span>
+                  {layoutMode === "side-panel" ? (
+                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  ) : null}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => onLayoutModeChange("tab")}
+                  className="gap-2"
+                >
+                  <AppWindow className="h-4 w-4" strokeWidth={1.75} />
+                  <span className="flex-1">独立标签页</span>
+                  {layoutMode === "tab" ? (
+                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  ) : null}
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <span className="min-w-0 flex-1 truncate pl-1.5 text-right text-xs text-muted-foreground">
+          {notebookName}
+        </span>
       </div>
 
       {/* 消息区 / 引导区 */}

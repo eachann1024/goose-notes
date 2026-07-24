@@ -5,7 +5,7 @@ import {
   writeDbStorageJSON,
 } from "./utoolsDbStorage";
 import { UToolsAdapter } from "../utools";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export const PAGE_DOC_PREFIX = "gn:page:";
 export const LOCAL_PAGE_META_DOC_PREFIX = "gn:local-meta:";

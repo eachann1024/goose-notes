@@ -63,11 +63,10 @@ export function TreeEmptyState({
 
         <Button
           type="button"
-          variant="secondary"
           size="sm"
           onClick={onCreatePage}
           className={cn(
-            "h-9 gap-1.5 px-3.5 font-medium text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.04),inset_0_0_0_1px_hsl(var(--input)/0.7)] hover:bg-secondary/90",
+            "h-9 gap-1.5 px-3.5 font-medium",
             isCompactEmptyState
               ? "w-full text-[13px]"
               : "min-w-[7.5rem] text-[14px]",

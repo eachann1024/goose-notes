@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useBlockNoteEditor } from "@blocknote/react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 type EditorFilePanelProps = {
   blockId: string;

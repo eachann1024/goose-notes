@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { wasRecentlyInteracting } from "@/lib/editor-interaction-signal";
 import {

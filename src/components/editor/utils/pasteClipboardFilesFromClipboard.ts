@@ -6,7 +6,7 @@ import {
   isPasteableClipboardVideoFile,
   resolveImageMimeForUpload,
 } from "./pasteClipboardImage";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 function insertOrUpdateBlock(
   editor: BlockNoteEditor<any, any, any>,

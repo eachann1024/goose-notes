@@ -10,7 +10,7 @@ import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
 import { shell } from "@/lib/utools/shell";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const _platform = navigator.platform || navigator.userAgent;
 const _isMac = /Mac/i.test(_platform);

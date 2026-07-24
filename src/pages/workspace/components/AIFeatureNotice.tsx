@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import * as LucideIcons from "lucide-react";
 import { FeatureToastCard } from "@/components/ui/feature-toast-card";
 import { useSettings } from "@/stores/useSettings";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const NOTICE_ID = "ai-writing-assistant";
 const NOTICE_TOAST_ID = "ai-feature-notice";

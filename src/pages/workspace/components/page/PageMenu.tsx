@@ -8,7 +8,7 @@ import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-conte
 import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {

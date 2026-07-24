@@ -7,7 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 import { X, HelpCircle, Pencil, Save } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,

@@ -219,7 +219,7 @@ applyRolldownPolyfills();
 
 import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import "./index.css";
 import "./fonts.css";
 import { applyFontVariables } from "./lib/fontLoader";
@@ -353,13 +353,13 @@ const setupSaveGuards = () => {
       // 内容已自动保存；显式保存会再确保落盘并应用「标题→文件名」重命名。
       void pagesState.saveDirtyLocalPage(activePageId).then((ok) => {
         if (ok) toast.success("已保存", { duration: 1200 });
-        else toast("内容已是最新", { duration: 1000 });
+        else toast.info("内容已是最新", { duration: 1000 });
       });
       return;
     }
 
     void runFlushOnce().then(() => {
-      toast("内容会自动保存，请放心", { duration: 1500 });
+      toast.info("内容会自动保存，请放心", { duration: 1500 });
     });
   };
 

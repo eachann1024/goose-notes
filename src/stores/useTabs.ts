@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 import { useSettings } from "./useSettings";
@@ -7,16 +7,31 @@ import { normalizeAutoCloseInactiveTabsHours } from "./settings/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 
 export const WELCOME_TAB_PAGE_ID = "welcome";
+export const NOTEBOOK_AI_TAB_PAGE_ID_PREFIX = "notebook-ai:";
+
+export type TabType = "welcome" | "notebook-ai";
 
 export interface TabItem {
   id: string;
   pageId: string;
-  type?: "welcome";
+  type?: TabType;
   pinned?: boolean;
   /** 预览/临时标签：侧栏单击打开，可被下一个预览替换；编辑后晋升永久 */
   preview?: boolean;
   workspaceId?: string;
   lastAccessedAt?: number;
+}
+
+export function getNotebookAiTabPageId(notebookId: string): string {
+  return `${NOTEBOOK_AI_TAB_PAGE_ID_PREFIX}${notebookId}`;
+}
+
+export function isNotebookAiTab(tab: Pick<TabItem, "type"> | null | undefined): boolean {
+  return tab?.type === "notebook-ai";
+}
+
+export function isSpecialTab(tab: Pick<TabItem, "type"> | null | undefined): boolean {
+  return tab?.type === "welcome" || tab?.type === "notebook-ai";
 }
 
 interface TabsState {
@@ -30,6 +45,9 @@ interface TabsState {
   syncActiveTabForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
   openWelcomeTab: () => void;
+  openNotebookAiTab: (notebookId: string) => void;
+  closeNotebookAiTab: (notebookId: string) => void;
+  findNotebookAiTab: (notebookId: string) => TabItem | undefined;
   openPreviewTab: (pageId: string) => void;
   openPermanentTab: (pageId: string, options?: { pin?: boolean }) => void;
   promotePreviewTab: (tabId?: string) => void;
@@ -72,7 +90,18 @@ const orderTabs = (tabs: TabItem[]): TabItem[] => {
 const applyPinnedOrder = orderTabs;
 
 const findTabByPageId = (tabs: TabItem[], pageId: string) =>
-  tabs.find((tab) => tab.pageId === pageId && tab.type !== "welcome");
+  tabs.find(
+    (tab) =>
+      tab.pageId === pageId && tab.type !== "welcome" && tab.type !== "notebook-ai",
+  );
+
+const findNotebookAiTabInList = (tabs: TabItem[], notebookId: string) =>
+  tabs.find(
+    (tab) =>
+      tab.type === "notebook-ai" &&
+      (tab.workspaceId === notebookId ||
+        tab.pageId === getNotebookAiTabPageId(notebookId)),
+  );
 
 const stampTabAccess = (tab: TabItem, now = Date.now()): TabItem => ({
   ...tab,
@@ -401,6 +430,61 @@ export const useTabs = create<TabsState>()((set, get) => {
       // 欢迎 tab 不关联真实页面，不调用 syncNotebookForPage / scheduleSetActivePage
     },
 
+    findNotebookAiTab: (notebookId: string) =>
+      findNotebookAiTabInList(get().openTabs, notebookId),
+
+    openNotebookAiTab: (notebookId: string) => {
+      if (!notebookId) return;
+      const { openTabs, activeTabId } = get();
+      const existing = findNotebookAiTabInList(openTabs, notebookId);
+      if (existing) {
+        if (existing.id !== activeTabId) {
+          get().setActiveTab(existing.id);
+        }
+        return;
+      }
+
+      commitActiveEditor();
+      const now = Date.now();
+      const pageId = getNotebookAiTabPageId(notebookId);
+      const newTab: TabItem = {
+        id: createTabId(pageId),
+        pageId,
+        type: "notebook-ai",
+        workspaceId: notebookId,
+        lastAccessedAt: now,
+      };
+      // 独立 AI 标签默认插到固定标签之后、普通标签最前，贴近「标签栏最左入口」。
+      const pinned = openTabs.filter((tab) => tab.pinned);
+      const rest = openTabs.filter((tab) => !tab.pinned);
+      const nextOpenTabs = [
+        ...pinned.map((tab) =>
+          tab.id === activeTabId ? stampTabAccess(tab, now) : tab,
+        ),
+        newTab,
+        ...rest.map((tab) =>
+          tab.id === activeTabId ? stampTabAccess(tab, now) : tab,
+        ),
+      ];
+      set({
+        openTabs: nextOpenTabs,
+        activeTabId: newTab.id,
+      });
+      pushTabHistory(newTab.id);
+      const notebookStore = useNotebooks.getState();
+      if (notebookStore.activeNotebookId !== notebookId) {
+        notebookStore.setActiveNotebook(notebookId);
+      }
+    },
+
+    closeNotebookAiTab: (notebookId: string) => {
+      if (!notebookId) return;
+      const existing = findNotebookAiTabInList(get().openTabs, notebookId);
+      if (existing) {
+        get().closeTab(existing.id);
+      }
+    },
+
     openInCurrentTab: (pageId: string) => {
       get().openPreviewTab(pageId);
     },
@@ -412,10 +496,10 @@ export const useTabs = create<TabsState>()((set, get) => {
 
       const closedTab = openTabs[index];
       const closedPageId = closedTab.pageId;
-      const isWelcomeTab = closedTab.type === "welcome";
+      const special = isSpecialTab(closedTab);
       // 关闭前确保该页的编辑已落盘（本地文件夹页面采用自动保存队列）。
       if (tabId === activeTabId) commitActiveEditor();
-      if (!isWelcomeTab) {
+      if (!special) {
         flushClosedPageSaves([closedPageId]);
         const nextClosed = [
           closedPageId,
@@ -454,8 +538,15 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...historyState,
       });
       const nextActiveTab = nextTabs.find((tab) => tab.id === fallbackActiveId);
-      get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-      void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+      if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
+        get().syncNotebookForPage(nextActiveTab.pageId);
+        void scheduleSetActivePage(nextActiveTab.pageId);
+      } else if (nextActiveTab?.type === "notebook-ai" && nextActiveTab.workspaceId) {
+        const notebookStore = useNotebooks.getState();
+        if (notebookStore.activeNotebookId !== nextActiveTab.workspaceId) {
+          notebookStore.setActiveNotebook(nextActiveTab.workspaceId);
+        }
+      }
     },
 
     closeOtherTabs: (tabId: string) => {
@@ -474,7 +565,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
       const closedPageIds = closedTabs
-        .filter((t) => t.type !== "welcome")
+        .filter((t) => !isSpecialTab(t))
         .map((t) => t.pageId);
       flushClosedPageSaves(closedPageIds);
 
@@ -508,7 +599,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
       const closedPageIds = closedTabs
-        .filter((t) => t.type !== "welcome")
+        .filter((t) => !isSpecialTab(t))
         .map((t) => t.pageId);
       flushClosedPageSaves(closedPageIds);
 
@@ -544,7 +635,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
       const closedPageIds = closedTabs
-        .filter((t) => t.type !== "welcome")
+        .filter((t) => !isSpecialTab(t))
         .map((t) => t.pageId);
       flushClosedPageSaves(closedPageIds);
 
@@ -576,11 +667,20 @@ export const useTabs = create<TabsState>()((set, get) => {
         activeTabId: tab.id,
       });
       pushTabHistory(tab.id);
-      // 欢迎 tab 不关联真实页面，不同步笔记本/活动页。
-      if (tab.type !== "welcome") {
-        get().syncNotebookForPage(tab.pageId);
-        void scheduleSetActivePage(tab.pageId);
+      // 欢迎 / AI 标签不关联真实页面，不同步活动页。
+      if (tab.type === "welcome") return;
+      if (tab.type === "notebook-ai") {
+        const notebookId = tab.workspaceId;
+        if (notebookId) {
+          const notebookStore = useNotebooks.getState();
+          if (notebookStore.activeNotebookId !== notebookId) {
+            notebookStore.setActiveNotebook(notebookId);
+          }
+        }
+        return;
       }
+      get().syncNotebookForPage(tab.pageId);
+      void scheduleSetActivePage(tab.pageId);
     },
 
     goBackTabHistory: () => {
@@ -699,6 +799,11 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextTabs = openTabs.filter((tab) => {
         // 欢迎 tab 不关联真实页面，始终保留。
         if (tab.type === "welcome") return true;
+        // AI 标签按笔记本存活：笔记本还在就保留。
+        if (tab.type === "notebook-ai") {
+          const notebookId = tab.workspaceId;
+          return Boolean(notebookId && notebooks[notebookId]);
+        }
         if (pagesState.getPage(tab.pageId)) return true;
         // 页面不在内存：若它属于尚未加载的本地文件夹笔记本，保留（稍后会加载）。
         const ws = tab.workspaceId;
@@ -737,7 +842,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         1000;
       const { openTabs, activeTabId } = get();
       const expiredTabs = openTabs.filter((tab) => {
-        if (tab.type === "welcome") return false;
+        if (isSpecialTab(tab)) return false;
         if (tab.pinned) return false;
         if (tab.id === activeTabId) return false;
         const lastAccessedAt = tab.lastAccessedAt ?? now;
@@ -767,7 +872,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (!activeTab) return;
 
       const closedPageIds = openTabs
-        .filter((tab) => tab.id !== activeTabId && tab.type !== "welcome")
+        .filter((tab) => tab.id !== activeTabId && !isSpecialTab(tab))
         .map((tab) => tab.pageId)
         .filter(Boolean);
 

@@ -6,7 +6,7 @@
  * - 通过 saveBlobAndReveal 走 uTools 保存通道，浏览器端回退到 a[download]
  */
 
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import type { Page } from "@/types";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { saveBlobAndReveal } from "@/lib/export/fileSave";

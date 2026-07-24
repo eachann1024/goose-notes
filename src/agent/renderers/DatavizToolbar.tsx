@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { Copy, Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { shell } from "@/lib/utools/shell";
 import { dialogs } from "@/lib/utools/dialogs";
 import { fs } from "@/lib/utools/fs";

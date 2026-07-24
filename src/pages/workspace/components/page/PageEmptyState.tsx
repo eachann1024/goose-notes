@@ -2,7 +2,7 @@ import { Search, Plus, Sparkles, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useEffect, useCallback } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { cn } from "@/lib/utils";

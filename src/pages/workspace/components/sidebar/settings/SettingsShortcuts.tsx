@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { formatShortcut, isMacPlatform } from "@/lib/utils"
 import {
   DEFAULT_CLOSE_TAB_SHORTCUT,

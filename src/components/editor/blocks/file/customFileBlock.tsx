@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   MediaLoadingPreview,

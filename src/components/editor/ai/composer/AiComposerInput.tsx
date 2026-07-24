@@ -140,6 +140,69 @@ function setDomFromJsonContent(
   });
 }
 
+/**
+ * Insert a soft line break into the contenteditable composer.
+ * Prefer native insertLineBreak / insertText; fall back to a trailing-safe <br>.
+ * A lone trailing <br> often fails to create a visible new line in Chromium.
+ */
+function insertComposerLineBreak(editor: HTMLElement): boolean {
+  const selection = window.getSelection();
+  if (!selection) return false;
+
+  const selectionInsideEditor =
+    selection.rangeCount > 0 &&
+    (editor === selection.anchorNode ||
+      editor.contains(selection.anchorNode));
+
+  if (!selectionInsideEditor) {
+    editor.focus();
+    const endRange = document.createRange();
+    endRange.selectNodeContents(editor);
+    endRange.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(endRange);
+  }
+
+  try {
+    if (document.execCommand("insertLineBreak")) return true;
+  } catch {
+    // fall through
+  }
+
+  // whitespace-pre-wrap makes a real newline text node render correctly
+  try {
+    if (document.execCommand("insertText", false, "\n")) return true;
+  } catch {
+    // fall through
+  }
+
+  if (!selection.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  if (
+    editor !== range.commonAncestorContainer &&
+    !editor.contains(range.commonAncestorContainer)
+  ) {
+    return false;
+  }
+
+  range.deleteContents();
+  const br = document.createElement("br");
+  range.insertNode(br);
+
+  // Trailing <br> needs a following anchor node so the caret can sit on the new line
+  if (!br.nextSibling) {
+    const anchor = document.createElement("br");
+    br.parentNode?.insertBefore(anchor, br.nextSibling);
+  }
+
+  const nextRange = document.createRange();
+  nextRange.setStartAfter(br);
+  nextRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  return true;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export interface AiComposerInputHandle {
@@ -306,22 +369,9 @@ export const AiComposerInput = forwardRef<
 
     const handleKeyDown = useCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
-        if (event.nativeEvent.isComposing) return;
+        if (event.nativeEvent.isComposing || isComposingRef.current) return;
 
         if (handleMentionKeyDown(event)) return;
-
-        // 平台习惯：Mac ⌘+Enter / Win·Linux Ctrl+Enter 发送
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          onSubmit();
-          return;
-        }
-
-        if (event.key === "Enter" && !event.shiftKey) {
-          event.preventDefault();
-          onSubmit();
-          return;
-        }
 
         if (event.key === "Escape") {
           event.preventDefault();
@@ -329,22 +379,23 @@ export const AiComposerInput = forwardRef<
           return;
         }
 
-        if (event.key === "Enter" && event.shiftKey) {
+        if (event.key !== "Enter") return;
+
+        // Shift+Enter：软换行（多行输入）
+        if (event.shiftKey) {
           event.preventDefault();
-          const sel = window.getSelection();
-          if (sel?.rangeCount) {
-            const range = sel.getRangeAt(0);
-            range.deleteContents();
-            const br = document.createElement("br");
-            range.insertNode(br);
-            range.setStartAfter(br);
-            range.setEndAfter(br);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            // trigger input to update empty state
+          event.stopPropagation();
+          const el = editorRef.current;
+          if (!el) return;
+          if (insertComposerLineBreak(el)) {
             handleInput();
           }
+          return;
         }
+
+        // Enter / ⌘·Ctrl+Enter：发送
+        event.preventDefault();
+        onSubmit();
       },
       [handleMentionKeyDown, onSubmit, onEscape, handleInput],
     );
@@ -375,7 +426,7 @@ export const AiComposerInput = forwardRef<
             className={cn(
               "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground opacity-70",
               variant === "panel"
-                ? "top-0 line-clamp-3 pr-10 text-[13px] leading-6"
+                ? "top-0 line-clamp-3 text-[13px] leading-6"
                 : "top-0 pr-8 text-[12px] leading-[20px]",
             )}
           >
@@ -398,7 +449,7 @@ export const AiComposerInput = forwardRef<
             "overflow-y-auto break-words whitespace-pre-wrap",
             disabled && "cursor-not-allowed opacity-60",
             variant === "panel"
-              ? "min-h-[56px] max-h-[144px] text-[13px] leading-6"
+              ? "min-h-[24px] max-h-[144px] text-[13px] leading-6"
               : "min-h-[20px] max-h-[88px] text-[12px] leading-[20px]",
           )}
           onInput={handleInput}

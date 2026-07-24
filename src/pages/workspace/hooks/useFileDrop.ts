@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";

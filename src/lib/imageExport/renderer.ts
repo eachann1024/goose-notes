@@ -13,6 +13,7 @@ import { buildStyledHTML, renderBlocks } from "./domSerializer";
 import { resolveImageUrls } from "./remoteImageResolver";
 import { renderMermaidBlocksAsImages } from "./mermaid";
 import { renderMathBlocksAsImages } from "./math";
+import { toast } from "@/components/ui/sonner";
 
 const MAX_CAPTURE_PIXEL_RATIO = 3;
 const MIN_CAPTURE_PIXEL_RATIO = 0.1;
@@ -327,7 +328,6 @@ async function waitForImages(container: HTMLElement): Promise<void> {
 
 async function captureElementToPng(element: HTMLElement, filename: string) {
   if (isCapturingImage) {
-    const { toast } = await import("sonner");
     toast.info("图片正在生成，请稍候");
     return;
   }
@@ -354,14 +354,12 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
       SAVE_TIMEOUT_MS,
       "保存图片超时",
     );
-    const { toast } = await import("sonner");
     if (saved) {
       toast.success("图片已保存到下载文件夹");
     } else {
       throw new Error("保存图片失败");
     }
   } catch (error) {
-    const { toast } = await import("sonner");
     toast.error(getExportErrorMessage(error));
     console.error("[imageExport] capture failed:", error);
   } finally {

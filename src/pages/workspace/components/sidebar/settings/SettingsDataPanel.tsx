@@ -19,7 +19,7 @@ import {
   normalizeRemoteDir,
   type WebdavBackupFile
 } from "@/lib/webdavSync";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface NotebookOption {
   id: string;
@@ -600,7 +600,6 @@ export function SettingsDataPanel({
 
               <div className="grid grid-cols-3 gap-2 w-full pt-2">
                 <Button
-                  variant="secondary"
                   className="w-full flex items-center justify-center gap-1.5 rounded-[12px]"
                   disabled={busy}
                   onClick={handleSaveAndTest}
@@ -609,6 +608,7 @@ export function SettingsDataPanel({
                   测试/保存配置
                 </Button>
                 <Button
+                  variant="secondary"
                   className="w-full flex items-center justify-center gap-1.5 rounded-[12px]"
                   disabled={busy || !hasSavedConfig}
                   onClick={handleUploadNow}

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -258,7 +258,7 @@ export function useAppHotkeys() {
                 : pagesStore.createPage(undefined, activeNotebookId);
             if (!newPageId) return;
             useTabs.getState().openTab(newPageId);
-            toast(
+            toast.success(
               notebook?.source === "local-folder"
                 ? "已创建新文件"
                 : "已创建新笔记",

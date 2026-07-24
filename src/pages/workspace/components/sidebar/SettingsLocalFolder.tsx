@@ -33,7 +33,7 @@ import * as LucideIcons from "lucide-react";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface SettingsLocalFolderProps {
   localFolderFileManager: string;
@@ -298,7 +298,6 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
         />
         <Button
           type="button"
-          variant="secondary"
           size="sm"
           className="h-9 shrink-0"
           onClick={() => addFolder(inputValue)}

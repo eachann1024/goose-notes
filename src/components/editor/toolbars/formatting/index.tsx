@@ -28,7 +28,7 @@ import {
 } from "@/components/editor/toolbars/formatting/helpers";
 import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
 import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
 import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";

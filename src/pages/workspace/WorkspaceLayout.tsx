@@ -66,18 +66,26 @@ export function WorkspaceLayout({
   );
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isWelcomeTab = activeTab?.type === "welcome";
+  const isNotebookAiTab = activeTab?.type === "notebook-ai";
   const openWelcomeTabHandler = () => {
     openWelcomeTab();
   };
   const aiEnabled = useSettings((s) => s.ai.enabled);
   const {
     isOpen: aiPanelOpen,
+    layoutMode: aiLayoutMode,
+    setLayoutMode: setAiLayoutMode,
     open: openAiPanel,
     toggle: toggleAiPanel,
     close: closeAiPanel,
     capturedSelection: aiPanelCapturedSelection,
     consumeCapturedSelection: consumeAiPanelCapturedSelection,
   } = useNotebookAiPanel();
+  const showSideAiPanel =
+    aiEnabled &&
+    aiPanelOpen &&
+    aiLayoutMode === "side-panel" &&
+    !isNotebookAiTab;
   const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
   const searchHighlightQuery = usePages((s) => s.searchHighlightQuery);
   const searchHighlightPageId = usePages((s) => s.searchHighlightPageId);
@@ -99,13 +107,11 @@ export function WorkspaceLayout({
     !!historyActivePageId && historyActivePageId === activePageId;
 
   const page = activePageId ? getPage(activePageId) : undefined;
-  const activeNotebook = activeNotebookId
-    ? notebooks[activeNotebookId]
-    : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
-  const isActiveLocalFolder = activeNotebook?.source === "local-folder";
   const isLocalFolderPage = pageNotebook?.source === "local-folder";
-  const aiAvailableForNotebook = aiEnabled && !isActiveLocalFolder;
+  // Notebook AI 已具备本地文件读取保护、写入失败回滚和本地页面创建通道，
+  // 不应再把本地文件夹笔记本静默排除。设置页开启后，所有笔记本统一显示入口。
+  const aiAvailableForNotebook = aiEnabled;
   const isEditorFullWidth = Boolean(
     pageNotebook?.editorFullWidth ?? globalEditorFullWidth,
   );
@@ -248,11 +254,57 @@ export function WorkspaceLayout({
                 <PageHeader
                   onOpenSearch={openWelcomeTabHandler}
                   aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                  aiLayoutMode={aiLayoutMode}
                   onToggleAiPanel={
                     aiAvailableForNotebook ? toggleAiPanel : undefined
                   }
                 />
-                <PageEmptyState />
+                <div className="relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
+                  <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
+                    <PageEmptyState />
+                  </div>
+                  {showSideAiPanel && activeNotebookId ? (
+                    <NotebookAiPanel
+                      key={`welcome-${activeNotebookId}`}
+                      notebookId={activeNotebookId}
+                      onClose={closeAiPanel}
+                      editorRef={editorRef}
+                      capturedSelection={aiPanelCapturedSelection}
+                      onConsumeCapturedSelection={
+                        consumeAiPanelCapturedSelection
+                      }
+                      layoutMode={aiLayoutMode}
+                      onLayoutModeChange={setAiLayoutMode}
+                      variant="side-panel"
+                    />
+                  ) : null}
+                </div>
+              </>
+            ) : isNotebookAiTab && activeNotebookId && aiAvailableForNotebook ? (
+              <>
+                <PageHeader
+                  onOpenSearch={openWelcomeTabHandler}
+                  aiPanelOpen={aiPanelOpen}
+                  aiLayoutMode={aiLayoutMode}
+                  onToggleAiPanel={toggleAiPanel}
+                />
+                <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row overflow-hidden !bg-[hsl(var(--goose-shell-bg))] p-0">
+                  <NotebookAiPanel
+                    key={`tab-${activeNotebookId}`}
+                    notebookId={
+                      activeTab?.workspaceId ?? activeNotebookId
+                    }
+                    onClose={closeAiPanel}
+                    editorRef={editorRef}
+                    capturedSelection={aiPanelCapturedSelection}
+                    onConsumeCapturedSelection={
+                      consumeAiPanelCapturedSelection
+                    }
+                    layoutMode={aiLayoutMode}
+                    onLayoutModeChange={setAiLayoutMode}
+                    variant="tab"
+                  />
+                </div>
               </>
             ) : activePageId && page && inHistoryMode ? (
               <>
@@ -289,7 +341,17 @@ export function WorkspaceLayout({
                         onDelete={() =>
                           void permanentlyDeletePageWithCleanup(activePageId)
                         }
-                        aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                        aiPanelOpen={
+                          aiAvailableForNotebook &&
+                          (aiLayoutMode === "side-panel"
+                            ? aiPanelOpen
+                            : openTabs.some(
+                                (tab) =>
+                                  tab.type === "notebook-ai" &&
+                                  tab.workspaceId === activeNotebookId,
+                              ))
+                        }
+                        aiLayoutMode={aiLayoutMode}
                         onToggleAiPanel={
                           aiAvailableForNotebook ? toggleAiPanel : undefined
                         }
@@ -418,21 +480,22 @@ export function WorkspaceLayout({
                         })()}
                       </div>
                     </div>
-                    {/* NotebookAiPanel 接线 */}
-                    {aiAvailableForNotebook &&
-                      aiPanelOpen &&
-                      activeNotebookId && (
-                        <NotebookAiPanel
-                          key={activeNotebookId}
-                          notebookId={activeNotebookId}
-                          onClose={closeAiPanel}
-                          editorRef={editorRef}
-                          capturedSelection={aiPanelCapturedSelection}
-                          onConsumeCapturedSelection={
-                            consumeAiPanelCapturedSelection
-                          }
-                        />
-                      )}
+                    {/* 侧栏并排 AI 面板 */}
+                    {showSideAiPanel && activeNotebookId ? (
+                      <NotebookAiPanel
+                        key={activeNotebookId}
+                        notebookId={activeNotebookId}
+                        onClose={closeAiPanel}
+                        editorRef={editorRef}
+                        capturedSelection={aiPanelCapturedSelection}
+                        onConsumeCapturedSelection={
+                          consumeAiPanelCapturedSelection
+                        }
+                        layoutMode={aiLayoutMode}
+                        onLayoutModeChange={setAiLayoutMode}
+                        variant="side-panel"
+                      />
+                    ) : null}
                   </div>
                 </EditorHostBridge>
               </>

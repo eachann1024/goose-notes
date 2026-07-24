@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { Input } from "@/components/ui/input";
@@ -72,6 +72,12 @@ const CUSTOM_PROTOCOL_OPTIONS: Array<{
 
 const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> 自定义 AI”补充 API Key";
 
+interface CustomAIConnection {
+  protocol: CustomAIProtocol;
+  baseURL: string;
+  apiKey: string;
+}
+
 export function SettingsAI({
   ai,
   enabled,
@@ -101,8 +107,13 @@ export function SettingsAI({
   );
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
+  const modelSectionRef = useRef<HTMLDivElement | null>(null);
+  const modelRequestIdRef = useRef(0);
 
-  const customModels = getStoredAIModelOptions(ai);
+  const storedCustomModels = getStoredAIModelOptions(ai);
+  // 切换到尚未保存的新供应商时，不继续展示上一个供应商的旧模型列表。
+  const customModels =
+    customProtocol === ai.customProtocol ? storedCustomModels : [];
 
   useEffect(() => {
     setCustomProtocol(ai.customProtocol);
@@ -167,6 +178,45 @@ export function SettingsAI({
       ? DEFAULT_CLAUDE_BASE_URL
       : DEFAULT_OPENAI_BASE_URL;
 
+  const getConnectionForProtocol = (
+    protocol: CustomAIProtocol,
+  ): CustomAIConnection => {
+    if (protocol === "openai-responses") {
+      return {
+        protocol,
+        baseURL: customOpenAIResponsesBaseURL,
+        apiKey: customOpenAIResponsesApiKey,
+      };
+    }
+    if (protocol === "openai") {
+      return {
+        protocol,
+        baseURL: customOpenAIBaseURL,
+        apiKey: customOpenAIApiKey,
+      };
+    }
+    return {
+      protocol,
+      baseURL: customClaudeBaseURL,
+      apiKey: customClaudeApiKey,
+    };
+  };
+
+  const scrollToModelSection = () => {
+    requestAnimationFrame(() => {
+      const target = modelSectionRef.current;
+      if (!target) return;
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      target.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+      target.focus({ preventScroll: true });
+    });
+  };
+
   const saveButtonReason = savingCustomConfig
     ? "正在保存并读取模型列表"
     : !customApiKey.trim()
@@ -186,41 +236,100 @@ export function SettingsAI({
           ? "请先填写并保存自定义 AI 配置"
           : null;
 
-  const handleSaveCustomConfig = async () => {
-    if (saveButtonReason) {
-      toast.error(saveButtonReason);
+  const refreshCustomModels = async (
+    connection: CustomAIConnection,
+    action: "save" | "switch" | "refresh",
+  ) => {
+    const apiKey = connection.apiKey.trim();
+    if (!apiKey) {
+      toast.error(CUSTOM_AI_KEY_HINT);
       return;
     }
 
+    const provider =
+      CUSTOM_PROTOCOL_OPTIONS.find(
+        (option) => option.id === connection.protocol,
+      ) ?? CUSTOM_PROTOCOL_OPTIONS[0];
+    const requestId = modelRequestIdRef.current + 1;
+    modelRequestIdRef.current = requestId;
     setSavingCustomConfig(true);
     setCustomSaveError(null);
 
     try {
       const modelOptions = await fetchCustomAIModels({
-        protocol: customProtocol,
-        baseURL: customBaseURL,
-        apiKey: customApiKey,
+        protocol: connection.protocol,
+        baseURL: connection.baseURL,
+        apiKey,
       });
+      if (requestId !== modelRequestIdRef.current) return;
 
       saveCustomConfig({
-        protocol: customProtocol,
-        baseURL: customBaseURL,
-        apiKey: customApiKey,
+        protocol: connection.protocol,
+        baseURL: connection.baseURL,
+        apiKey,
         modelOptions,
       });
 
-      if (modelOptions.length > 0) {
-        setSelectedModelId(modelOptions[0].id);
+      const nextModel =
+        modelOptions.find((model) => model.id === selectedModelId) ??
+        modelOptions[0] ??
+        null;
+      setSelectedModelId(nextModel?.id ?? null);
+      scrollToModelSection();
+
+      if (modelOptions.length === 0) {
+        toast.warning(`${provider.label} 配置已保存`, {
+          description: "已获取 0 个模型，请确认该服务是否提供模型列表接口。",
+        });
+      } else {
+        const actionLabel =
+          action === "switch"
+            ? `已切换到 ${provider.label}`
+            : action === "refresh"
+              ? `${provider.label} 模型列表已更新`
+              : `${provider.label} 配置已保存`;
+        toast.success(actionLabel, {
+          description: `已获取 ${modelOptions.length} 个模型，默认选择 ${nextModel?.label ?? nextModel?.id}。`,
+        });
       }
-      toast.success("自定义 AI 已保存");
     } catch (error) {
+      if (requestId !== modelRequestIdRef.current) return;
       const message =
         error instanceof Error ? error.message : "保存自定义 AI 失败";
       setCustomSaveError(message);
       toast.error(message);
     } finally {
-      setSavingCustomConfig(false);
+      if (requestId === modelRequestIdRef.current) {
+        setSavingCustomConfig(false);
+      }
     }
+  };
+
+  const handleSaveCustomConfig = async () => {
+    if (saveButtonReason) {
+      toast.error(saveButtonReason);
+      return;
+    }
+    await refreshCustomModels(getConnectionForProtocol(customProtocol), "save");
+  };
+
+  const handleProtocolChange = (value: string) => {
+    const protocol = value as CustomAIProtocol;
+    if (protocol === customProtocol) return;
+    setCustomSaveError(null);
+    setCustomProtocol(protocol);
+
+    const connection = getConnectionForProtocol(protocol);
+    const provider =
+      CUSTOM_PROTOCOL_OPTIONS.find((option) => option.id === protocol) ??
+      CUSTOM_PROTOCOL_OPTIONS[0];
+    if (!connection.apiKey.trim()) {
+      toast.info(`已切换到 ${provider.label}`, {
+        description: "填写 API Key 并保存后，将自动获取模型列表。",
+      });
+      return;
+    }
+    void refreshCustomModels(connection, "switch");
   };
 
   return (
@@ -310,6 +419,7 @@ export function SettingsAI({
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={savingCustomConfig}
                     className="min-w-[220px] justify-between rounded-[10px]"
                   >
                     <span className="truncate">{selectedProtocol.label}</span>
@@ -319,10 +429,7 @@ export function SettingsAI({
                 <DropdownMenuContent align="end" className="w-[280px]">
                   <DropdownMenuRadioGroup
                     value={customProtocol}
-                    onValueChange={(value) => {
-                      setCustomSaveError(null);
-                      setCustomProtocol(value as CustomAIProtocol);
-                    }}
+                    onValueChange={handleProtocolChange}
                   >
                     {CUSTOM_PROTOCOL_OPTIONS.map((option) => (
                       <DropdownMenuRadioItem
@@ -437,7 +544,6 @@ export function SettingsAI({
                   <TooltipTrigger asChild>
                     <div>
                       <Button
-                        variant="secondary"
                         size="sm"
                         disabled={Boolean(saveButtonReason)}
                         onClick={() => {
@@ -447,6 +553,9 @@ export function SettingsAI({
                           Boolean(saveButtonReason) && "cursor-not-allowed",
                         )}
                       >
+                        {!savingCustomConfig && (
+                          <LucideIcons.Save className="h-4 w-4" />
+                        )}
                         {savingCustomConfig ? "保存中..." : "保存"}
                       </Button>
                     </div>
@@ -463,113 +572,147 @@ export function SettingsAI({
         </div>
       </SettingsSectionCard>
 
-      <SettingsSectionCard
-        title={
-          <span className="flex items-center gap-2">
-            <LucideIcons.Brain
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            AI 模型
-          </span>
-        }
-        description="选择全局默认模型；笔记本 AI 如设置了工作区模型，会优先使用工作区模型。"
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              void handleSaveCustomConfig();
-            }}
-          >
-            重新获取模型
-          </Button>
-        }
+      <div
+        ref={modelSectionRef}
+        id="ai-model-settings"
+        tabIndex={-1}
+        className="scroll-mt-6 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <div className="space-y-3">
-          <div
-            className={cn(
-              "flex items-center justify-between gap-4 p-4",
-              SETTINGS_OPTION_ROW_CLASS,
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <LucideIcons.Cpu
+        <SettingsSectionCard
+          title={
+            <span className="flex items-center gap-2">
+              <LucideIcons.Brain
                 className="h-4 w-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.75}
               />
-              <div className="space-y-1">
-                <Label className="text-sm font-medium text-foreground">
-                  默认模型
-                </Label>
+              AI 模型
+            </span>
+          }
+          description={
+            <span className="block">
+              选择全局默认模型；笔记本 AI
+              如设置了工作区模型，会优先使用工作区模型。
+              <span
+                className="mt-1 block font-medium text-foreground/75"
+                role="status"
+                aria-live="polite"
+              >
+                {savingCustomConfig
+                  ? "正在获取模型列表…"
+                  : customSaveError
+                    ? `获取失败：${customSaveError}`
+                    : customModels.length > 0
+                      ? `已获取 ${customModels.length} 个模型${currentModel ? `，当前默认：${currentModel.label}` : ""}`
+                      : "尚未获取到模型。"}
+              </span>
+            </span>
+          }
+          actions={
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={Boolean(saveButtonReason)}
+              onClick={() => {
+                void refreshCustomModels(
+                  getConnectionForProtocol(customProtocol),
+                  "refresh",
+                );
+              }}
+            >
+              {savingCustomConfig ? (
+                <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <LucideIcons.RefreshCw className="h-4 w-4" />
+              )}
+              {savingCustomConfig ? "获取中…" : "重新获取模型"}
+            </Button>
+          }
+        >
+          <div className="space-y-3">
+            <div
+              className={cn(
+                "flex items-center justify-between gap-4 p-4",
+                SETTINGS_OPTION_ROW_CLASS,
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <LucideIcons.Cpu
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  strokeWidth={1.75}
+                />
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-foreground">
+                    默认模型
+                  </Label>
+                </div>
               </div>
+              <TooltipProvider delayDuration={600}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={modelButtonDisabled}
+                            className={cn(
+                              "min-w-[220px] justify-between rounded-[10px]",
+                              modelButtonDisabled && "cursor-not-allowed",
+                            )}
+                          >
+                            <span className="truncate">
+                              {currentModel?.label ??
+                                modelButtonReason ??
+                                "请选择模型"}
+                            </span>
+                            <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-[280px]"
+                          style={{
+                            maxHeight:
+                              "min(360px, var(--radix-dropdown-menu-content-available-height))",
+                          }}
+                        >
+                          <DropdownMenuRadioGroup
+                            value={selectedModelId ?? ""}
+                            onValueChange={(value) => setSelectedModelId(value)}
+                          >
+                            {customModels.map((model) => (
+                              <DropdownMenuRadioItem
+                                key={model.id}
+                                value={model.id}
+                                className="items-start gap-2"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-medium text-foreground">
+                                    {model.label}
+                                  </div>
+                                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                    {model.description || model.id}
+                                  </div>
+                                </div>
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TooltipTrigger>
+                  {modelButtonReason ? (
+                    <TooltipContent side="left">
+                      {modelButtonReason}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
+              </TooltipProvider>
             </div>
-            <TooltipProvider delayDuration={600}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={modelButtonDisabled}
-                          className={cn(
-                            "min-w-[220px] justify-between rounded-[10px]",
-                            modelButtonDisabled && "cursor-not-allowed",
-                          )}
-                        >
-                          <span className="truncate">
-                            {currentModel?.label ??
-                              modelButtonReason ??
-                              "请选择模型"}
-                          </span>
-                          <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-[280px]"
-                        style={{
-                          maxHeight:
-                            "min(360px, var(--radix-dropdown-menu-content-available-height))",
-                        }}
-                      >
-                        <DropdownMenuRadioGroup
-                          value={selectedModelId ?? ""}
-                          onValueChange={(value) => setSelectedModelId(value)}
-                        >
-                          {customModels.map((model) => (
-                            <DropdownMenuRadioItem
-                              key={model.id}
-                              value={model.id}
-                              className="items-start gap-2"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium text-foreground">
-                                  {model.label}
-                                </div>
-                                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                  {model.description || model.id}
-                                </div>
-                              </div>
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TooltipTrigger>
-                {modelButtonReason ? (
-                  <TooltipContent side="left">
-                    {modelButtonReason}
-                  </TooltipContent>
-                ) : null}
-              </Tooltip>
-            </TooltipProvider>
           </div>
-        </div>
-      </SettingsSectionCard>
+        </SettingsSectionCard>
+      </div>
     </div>
   );
 }

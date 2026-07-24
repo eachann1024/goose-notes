@@ -215,7 +215,8 @@ export function useReferenceMentions({
         }));
         return true;
       }
-      if (event.key === "Enter") {
+      // Shift+Enter 留给 composer 做换行；仅普通 Enter 确认 @ 引用
+      if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         const item = items[mention.activeIndex];
         if (item) {

@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { applyRolldownPolyfills } from "@/lib/rolldown-polyfill";
 import "../pages/workspace/styles/editor-base.css";
 import "../pages/workspace/styles/code-themes.css";
@@ -15,6 +15,6 @@ applyRolldownPolyfills();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <NativeEditorApp />
-    <Toaster position="bottom-center" richColors closeButton />
+    <Toaster position="bottom-center" />
   </React.StrictMode>,
 );

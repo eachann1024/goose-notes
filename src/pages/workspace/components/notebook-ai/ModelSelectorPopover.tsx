@@ -56,7 +56,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         <button
           type="button"
           disabled={disabled}
-          className="mb-0.5 flex h-7 max-w-[120px] shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 max-w-[120px] shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="切换模型"
           title={`当前模型：${effectiveModel?.id ?? effectiveModelId}`}
         >
@@ -66,7 +66,17 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
           <ChevronDown className="h-3 w-3 shrink-0" strokeWidth={1.75} />
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" align="end" sideOffset={6} className="w-56 p-1.5">
+      {/*
+        触发器在 composer 左侧：用 align="start" 让菜单从按钮左缘向右展开，
+        避免 align="end" 把宽菜单甩到按钮左侧（视觉上像「跑偏」）。
+      */}
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        collisionPadding={12}
+        className="w-56 p-1.5"
+      >
         <div className="px-2 pb-1.5 pt-1 text-xs text-muted-foreground">
           选择模型
         </div>

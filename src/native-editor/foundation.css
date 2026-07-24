@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @import "tw-animate-css";
+@import "../styles/goose-toast.css";
 
 @source "../components/editor/**/*.{ts,tsx}";
 @source "./*.{ts,tsx}";

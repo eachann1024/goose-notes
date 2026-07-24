@@ -40,7 +40,7 @@ import { UToolsAdapter } from "@/lib/utools";
 import type { ExportOptions } from "@/lib/export";
 import { uToolsStorage as dataStorage } from "@/lib/storage";
 import { ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface SettingsDialogProps {
   open: boolean;

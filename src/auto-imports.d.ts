@@ -92,6 +92,7 @@ declare global {
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
   const MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').MAX_VIDEO_ATTACHMENT_SIZE
   const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').NON_CUSTOMIZABLE_APP_SHORTCUT_IDS
+  const NOTEBOOK_AI_TAB_PAGE_ID_PREFIX: typeof import('./stores/useTabs').NOTEBOOK_AI_TAB_PAGE_ID_PREFIX
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
@@ -265,6 +266,7 @@ declare global {
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
   const getLocalMdSnapshot: typeof import('./lib/local-md-snapshot').getLocalMdSnapshot
+  const getNotebookAiTabPageId: typeof import('./stores/useTabs').getNotebookAiTabPageId
   const getPageTitle: typeof import('./components/editor/utils/page-title').getPageTitle
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
@@ -299,10 +301,12 @@ declare global {
   const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
+  const isNotebookAiTab: typeof import('./stores/useTabs').isNotebookAiTab
   const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile
   const isPasteableClipboardVideoFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardVideoFile
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
+  const isSpecialTab: typeof import('./stores/useTabs').isSpecialTab
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
@@ -406,6 +410,7 @@ declare global {
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
+  const toast: typeof import('./components/ui/sonner').toast
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const transcodeVideo: typeof import('./lib/videoProcessor').transcodeVideo
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
@@ -487,7 +492,7 @@ declare global {
   export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
-  export type { TabItem } from './stores/useTabs'
+  export type { TabType, TabItem } from './stores/useTabs'
   import('./stores/useTabs')
   // @ts-ignore
   export type { AiBlockScopeKind, AiBlockScopeRange, AiBlockScope } from './lib/ai-block-scope'

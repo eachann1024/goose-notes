@@ -3,7 +3,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
 import { Copy, Download, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { convertImageBlobToPng } from "@/lib/imageProcessor";

@@ -13,7 +13,7 @@ import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
 import { matchMouseShortcut, matchShortcut } from "@/lib/shortcut-match";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -91,7 +91,7 @@ export function CommandPalette() {
 
   const handleHideRecent = useCallback(() => {
     setShowRecentInSearch(false);
-    toast("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
+    toast.info("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
   }, [setShowRecentInSearch]);
 
   useEffect(() => {

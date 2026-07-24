@@ -3,7 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileText, ImagePlus, Send, Square, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
   AiComposerInput,
@@ -232,115 +232,120 @@ export function Composer({
 
       <div
         className={cn(
-          "flex items-end gap-2 rounded-[10px] border border-border bg-background px-3 py-2",
+          "flex flex-col gap-1 rounded-[10px] border border-border bg-background px-3 py-2",
           "focus-within:border-border",
           "transition-colors duration-150",
         )}
       >
-        {images.length > 0 && (
-          <div
-            className="mt-[2px] flex max-w-[40%] shrink-0 items-center gap-1 self-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            aria-label="待发送图片"
-          >
-            {images.map((image) => (
-              <div
-                key={image.previewUrl}
-                className="group relative h-5 w-5 shrink-0 overflow-hidden rounded-[4px] bg-[var(--goose-interactive-hover)]"
-              >
-                <img
-                  src={image.previewUrl}
-                  alt={image.file.name}
-                  title={image.file.name}
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(image.previewUrl)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
-                  aria-label={`移除图片 ${image.file.name}`}
-                  title={`移除 ${image.file.name}`}
+        <div className="flex items-start gap-2">
+          {images.length > 0 && (
+            <div
+              className="mt-[2px] flex max-w-[40%] shrink-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label="待发送图片"
+            >
+              {images.map((image) => (
+                <div
+                  key={image.previewUrl}
+                  className="group relative h-5 w-5 shrink-0 overflow-hidden rounded-[4px] bg-[var(--goose-interactive-hover)]"
                 >
-                  <X className="h-3 w-3" strokeWidth={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                  <img
+                    src={image.previewUrl}
+                    alt={image.file.name}
+                    title={image.file.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(image.previewUrl)}
+                    className="absolute inset-0 flex items-center justify-center bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
+                    aria-label={`移除图片 ${image.file.name}`}
+                    title={`移除 ${image.file.name}`}
+                  >
+                    <X className="h-3 w-3" strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-        <AiComposerInput
-          ref={inputRef}
-          placeholder={placeholder}
-          autoFocusToken={autoFocusToken}
-          onSubmit={handleSubmit}
-          onEscape={handleEscape}
-          onIsEmptyChange={setIsEmpty}
-          onReferenceAdded={addReference}
-          searchPages={searchPages}
-          referencePlacement="external"
-          variant="panel"
-          disabled={disabled || isStreaming}
-        />
+          <AiComposerInput
+            ref={inputRef}
+            placeholder={placeholder}
+            autoFocusToken={autoFocusToken}
+            onSubmit={handleSubmit}
+            onEscape={handleEscape}
+            onIsEmptyChange={setIsEmpty}
+            onReferenceAdded={addReference}
+            searchPages={searchPages}
+            referencePlacement="external"
+            variant="panel"
+            disabled={disabled || isStreaming}
+          />
+        </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          multiple
-          className="sr-only"
-          onChange={handleImageInput}
-          disabled={disabled || isStreaming}
-        />
-        <ModelSelectorPopover disabled={disabled} />
+        <div className="flex items-center gap-1">
+          <ModelSelectorPopover disabled={disabled} />
+          <div className="flex-1" />
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={
-            disabled || isStreaming || images.length >= MAX_IMAGE_ATTACHMENTS
-          }
-          className="mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="上传图片"
-          title={
-            images.length >= MAX_IMAGE_ATTACHMENTS
-              ? `最多 ${MAX_IMAGE_ATTACHMENTS} 张图片`
-              : "上传图片"
-          }
-        >
-          <ImagePlus className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </button>
-
-        {isStreaming ? (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            className="sr-only"
+            onChange={handleImageInput}
+            disabled={disabled || isStreaming}
+          />
           <button
             type="button"
-            onClick={onStop}
-            className={cn(
-              "mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
-              "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground",
-              "transition-colors duration-150",
-            )}
-            aria-label="停止生成"
-            title="停止生成"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={
+              disabled || isStreaming || images.length >= MAX_IMAGE_ATTACHMENTS
+            }
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="上传图片"
+            title={
+              images.length >= MAX_IMAGE_ATTACHMENTS
+                ? `最多 ${MAX_IMAGE_ATTACHMENTS} 张图片`
+                : "上传图片"
+            }
           >
-            <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <ImagePlus className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSend}
-            className={cn(
-              "mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
-              "transition-colors duration-150",
-              canSend
-                ? "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground"
-                : "cursor-not-allowed text-muted-foreground opacity-50",
-            )}
-            aria-label="发送消息"
-            title="发送消息"
-          >
-            <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
-          </button>
-        )}
+
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
+                "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150",
+              )}
+              aria-label="停止生成"
+              title="停止生成"
+            >
+              <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canSend}
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
+                "transition-colors duration-150",
+                canSend
+                  ? "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground"
+                  : "cursor-not-allowed text-muted-foreground opacity-50",
+              )}
+              aria-label="发送消息"
+              title="发送消息"
+            >
+              <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

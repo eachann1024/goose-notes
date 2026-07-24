@@ -9,7 +9,7 @@ import {
   type TreeRef,
 } from "react-complex-tree";
 import type { Page } from "@/types";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";

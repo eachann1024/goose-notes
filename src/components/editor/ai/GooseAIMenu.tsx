@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useBlockNoteEditor, useExtension } from "@blocknote/react";
 import { AIExtension, AIMenu, type AIMenuProps } from "@blocknote/xl-ai";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   applyBlockTypeTransformToEditor,
   createBlockTypeTransformSelectionSnapshot,

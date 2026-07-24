@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
@@ -107,13 +107,13 @@ export async function deletePageWithUndo(pageId: string) {
   useTabs.getState().removeDeletedPage(pageId);
 
   if (isLocalFolder) {
-    toast(`已删除「${pageTitle}」，已移入系统回收站`, {
+    toast.success(`已删除「${pageTitle}」，已移入系统回收站`, {
       duration: 3000,
     });
     return;
   }
 
-  toast(`已删除「${pageTitle}」`, {
+  toast.success(`已删除「${pageTitle}」`, {
     duration: 5000,
     action: {
       label: "撤回",

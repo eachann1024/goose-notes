@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, ArrowRight, Heart } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { WelcomeShortcutsCard } from "./WelcomeShortcutsCard";
 import { ButtonShowcase } from "./components/ButtonShowcase";

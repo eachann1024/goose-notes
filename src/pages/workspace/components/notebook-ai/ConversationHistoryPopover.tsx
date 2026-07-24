@@ -14,6 +14,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 
+export interface ConversationHistoryListProps {
+  notebookId: string;
+  onSelectConversation: (conversationId: string) => void;
+  /** 选中后回调（用于关闭外层菜单） */
+  onDidSelect?: () => void;
+  className?: string;
+  compact?: boolean;
+}
+
 export interface ConversationHistoryPopoverProps {
   notebookId: string;
   onSelectConversation: (conversationId: string) => void;
@@ -73,12 +82,13 @@ function formatConversationTime(timestamp: number) {
   });
 }
 
-export function ConversationHistoryPopover({
+export function ConversationHistoryList({
   notebookId,
   onSelectConversation,
-  disabled = false,
-}: ConversationHistoryPopoverProps) {
-  const [open, setOpen] = useState(false);
+  onDidSelect,
+  className,
+  compact = false,
+}: ConversationHistoryListProps) {
   const notebookChatState = useNotebookAiChats(
     (state) => state.chats[notebookId],
   );
@@ -95,8 +105,77 @@ export function ConversationHistoryPopover({
     if (conversationId !== activeConversationId) {
       onSelectConversation(conversationId);
     }
-    setOpen(false);
+    onDidSelect?.();
   };
+
+  if (conversations.length === 0) {
+    return (
+      <div
+        className={
+          className ??
+          "flex flex-col items-center justify-center gap-2 px-4 py-8 text-center text-muted-foreground"
+        }
+      >
+        <MessageSquareText className="h-5 w-5" strokeWidth={1.5} />
+        <span className="text-xs">暂无历史会话</span>
+      </div>
+    );
+  }
+
+  const list = (
+    <div className="space-y-0.5 pr-1">
+      {conversations.map((conversation) => {
+        const isActive = conversation.id === activeConversationId;
+        const summary = getConversationSummary(conversation.messages);
+
+        return (
+          <button
+            key={conversation.id}
+            type="button"
+            onClick={() => selectConversation(conversation.id)}
+            className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
+            aria-current={isActive ? "true" : undefined}
+            title={summary}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm text-foreground">{summary}</div>
+              <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock3 className="h-3 w-3" strokeWidth={1.75} />
+                <span>{formatConversationTime(conversation.updatedAt)}</span>
+              </div>
+            </div>
+            {isActive ? (
+              <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground">
+                <Check className="h-3 w-3" strokeWidth={2} />
+                当前
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (compact) {
+    return <div className={className}>{list}</div>;
+  }
+
+  return (
+    <ScrollArea
+      className={className ?? "p-1.5"}
+      style={{ height: Math.min(conversations.length * 58 + 12, 300) }}
+    >
+      {list}
+    </ScrollArea>
+  );
+}
+
+export function ConversationHistoryPopover({
+  notebookId,
+  onSelectConversation,
+  disabled = false,
+}: ConversationHistoryPopoverProps) {
+  const [open, setOpen] = useState(false);
 
   return (
     <Popover
@@ -123,54 +202,11 @@ export function ConversationHistoryPopover({
             切换当前笔记本的 AI 会话
           </div>
         </div>
-
-        {conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center text-muted-foreground">
-            <MessageSquareText className="h-5 w-5" strokeWidth={1.5} />
-            <span className="text-xs">暂无历史会话</span>
-          </div>
-        ) : (
-          <ScrollArea
-            className="p-1.5"
-            style={{ height: Math.min(conversations.length * 58 + 12, 300) }}
-          >
-            <div className="space-y-0.5 pr-1">
-              {conversations.map((conversation) => {
-                const isActive = conversation.id === activeConversationId;
-                const summary = getConversationSummary(conversation.messages);
-
-                return (
-                  <button
-                    key={conversation.id}
-                    type="button"
-                    onClick={() => selectConversation(conversation.id)}
-                    className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
-                    aria-current={isActive ? "true" : undefined}
-                    title={summary}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-foreground">
-                        {summary}
-                      </div>
-                      <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Clock3 className="h-3 w-3" strokeWidth={1.75} />
-                        <span>
-                          {formatConversationTime(conversation.updatedAt)}
-                        </span>
-                      </div>
-                    </div>
-                    {isActive ? (
-                      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground">
-                        <Check className="h-3 w-3" strokeWidth={2} />
-                        当前
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
+        <ConversationHistoryList
+          notebookId={notebookId}
+          onSelectConversation={onSelectConversation}
+          onDidSelect={() => setOpen(false)}
+        />
       </PopoverContent>
     </Popover>
   );

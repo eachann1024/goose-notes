@@ -13,7 +13,7 @@
  * 重名/空名/非法字符 → sonner toast 提示，标题回退原值。
  */
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { sanitizeFilenameSegment, splitFilePath } from "@/lib/local-title-binding";
 
