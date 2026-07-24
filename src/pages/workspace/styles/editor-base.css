@@ -292,7 +292,7 @@
 }
 
 /* 不同 marker 的纵向轮廓不同：圆点按半径避让，数字按字形半高避让，
-   checkbox 按原生 12px 控件半高避让。连接线与 marker 同轴，但不能穿透。 */
+   checkbox 按 1em 方框半高避让。连接线与 marker 同轴，但不能穿透。 */
 .workspace-editor-surface
   .bn-block:has(
     > .bn-block-content[data-content-type="numberedListItem"] + .bn-block-group
@@ -305,7 +305,7 @@
   .bn-block:has(
     > .bn-block-content[data-content-type="checkListItem"] + .bn-block-group
   ) {
-  --goose-list-marker-clearance-y: 6px;
+  --goose-list-marker-clearance-y: 0.5em;
 }
 
 .workspace-editor-surface
@@ -376,7 +376,7 @@
       > .bn-block-content[data-content-type="checkListItem"]
   )
   > .bn-block {
-  --goose-list-next-marker-clearance-y: 6px;
+  --goose-list-next-marker-clearance-y: 0.5em;
 }
 
 /* 下一同级仍是列表时，把主干延长到它的 marker 上边缘。 */
@@ -1215,7 +1215,9 @@
   ) !important;
   font-size: 0.85em;
   line-height: 1;
-  vertical-align: middle;
+  /* 按正文基线对齐后轻微上移：列表 marker / checkbox 锚在首行，
+     `middle` 会把高对比背景盒的视觉中心压低。em 偏移可随编辑器缩放。 */
+  vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -1279,13 +1281,17 @@
   align-items: center;
 }
 
+/* 方框随字号同步缩放：1em ≈ 一个汉字高（与文字一样大），cmd+= 放大字体时同步放大。
+   左右 margin 也用 em，使「间距+框+间距」总槽宽恒为 1.5em（默认 16px 字号时 24px，
+   与无序/有序列表 marker 槽一致），框中心落在 0.65em ≈ 10.4px，贴近连接线轴 10.5px。 */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"]
   > div
   > input {
-  height: auto;
-  margin-left: 5px;
-  margin-right: 7px;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.15em;
+  margin-right: 0.35em;
   margin-block: 0;
 }
 

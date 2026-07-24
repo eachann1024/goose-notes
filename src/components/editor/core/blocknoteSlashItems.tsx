@@ -137,7 +137,7 @@ export function getBlockNoteSlashMenuItems(
   const items: SlashMenuItem[] = [];
 
   // 未启用 AI 的构建不添加「生成」斜杠项。
-  if (aiEnabled && __GOOSE_EDITOR_AI__) {
+  if (aiEnabled && (__GOOSE_EDITOR_AI__ || __HOST_TARGET__ === "native-editor")) {
     items.push({
       title: "生成",
       description: "接着写点什么...",
@@ -167,6 +167,12 @@ export function getBlockNoteSlashMenuItems(
           });
         }
 
+        if (__HOST_TARGET__ === "native-editor") {
+          window.dispatchEvent(new CustomEvent("goose-note:native-ai-entry", {
+            detail: { source: "slash" },
+          }));
+          return;
+        }
         const ai = editor.getExtension(AIExtension);
         const blockId = editor.getTextCursorPosition().block.id;
         if (ai && blockId) {

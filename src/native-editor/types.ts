@@ -80,6 +80,46 @@ export interface LocalAssetAcknowledgement extends BridgeEnvelope {
   message?: string;
 }
 
+/**
+ * 原生 AI 服务的最小、版本化消息契约。WebView 只转交 BlockNote 已生成的
+ * UI stream chunk，绝不持有密钥、拼装 URL 或发起网络请求。
+ */
+export interface NativeAIRequest extends BridgeEnvelope {
+  type: "aiRequest";
+  chatID: string;
+  messages: unknown[];
+  toolDefinitions: unknown;
+}
+
+export interface NativeAIResult extends BridgeEnvelope {
+  status: "started" | "completed" | "failed" | "unavailable";
+  message?: string;
+}
+
+export interface NativeAIDelta extends BridgeEnvelope {
+  chunk: unknown;
+}
+
+export interface NativeAICancel extends BridgeEnvelope {
+  type: "aiCancel";
+}
+
+/** 编辑器内 AI 入口只请求原生壳打开受控的工作区面板，不传密钥或文件句柄。 */
+export interface NativeAIWorkspaceEntry extends BridgeEnvelope {
+  type: "aiWorkspaceEntry";
+}
+
+/** 选区改写只把文本交给原生面板，WebView 不拥有模型凭据或写文件能力。 */
+export interface NativeAISelectionRequest extends BridgeEnvelope {
+  type: "aiSelectionRequest";
+  selectedText: string;
+}
+
+export interface NativeAISelectionReplacement extends BridgeEnvelope {
+  selectionRequestID: string;
+  replacement: string;
+}
+
 export interface EditorCommand extends BridgeEnvelope {
   name: EditorCommandName;
 }
@@ -95,6 +135,10 @@ export type HostMessage =
       base64: string;
     })
   | (BridgeEnvelope & { type: "openExternalLink"; url: string })
+  | NativeAIRequest
+  | NativeAICancel
+  | NativeAIWorkspaceEntry
+  | NativeAISelectionRequest
   | (BridgeEnvelope & { type: "diagnostic"; message: string });
 
 export interface GooseNativeEditorAPI {
@@ -102,11 +146,14 @@ export interface GooseNativeEditorAPI {
   receiveAcknowledgement(acknowledgement: SaveAcknowledgement): void;
   receiveLocalResource(acknowledgement: LocalResourceAcknowledgement): void;
   receiveLocalAsset(acknowledgement: LocalAssetAcknowledgement): void;
+  receiveAIResult(result: NativeAIResult): void;
+  receiveAIDelta(delta: NativeAIDelta): void;
   updatePreferences(preferences: EditorPreferences): void;
   clear(envelope: BridgeEnvelope): void;
   dispatchCommand(command: EditorCommand): void;
   flushAndGetDraft(envelope?: BridgeEnvelope): Promise<EditorDraft>;
   focusEditor(envelope: BridgeEnvelope): void;
+  applyAISelection(replacement: NativeAISelectionReplacement): boolean;
 }
 
 declare global {

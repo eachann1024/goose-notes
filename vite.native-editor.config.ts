@@ -308,7 +308,7 @@ function artifactPlugin(): Plugin {
           localAsset: true,
           saveAck: true,
           flush: true,
-          ai: false,
+          ai: true,
           utools: false,
           quicknote: false,
           network: false,

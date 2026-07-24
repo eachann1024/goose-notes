@@ -1,5 +1,8 @@
 import type { Page } from "@/types";
-import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import {
+  extractPlainText,
+  type BlockNoteContent,
+} from "@/components/editor/utils/blocknote-content";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { toCanvas } from "html-to-image";
 import type { CardThemeId } from "./themes";
@@ -11,10 +14,10 @@ import { resolveImageUrls } from "./remoteImageResolver";
 import { renderMermaidBlocksAsImages } from "./mermaid";
 import { renderMathBlocksAsImages } from "./math";
 
-const MAX_CAPTURE_PIXEL_RATIO = 4;
+const MAX_CAPTURE_PIXEL_RATIO = 3;
 const MIN_CAPTURE_PIXEL_RATIO = 0.1;
 const MAX_CAPTURE_EDGE = 16_384;
-const MAX_CAPTURE_PIXELS = 32_000_000;
+const MAX_CAPTURE_PIXELS = 16_000_000;
 const CAPTURE_TIMEOUT_MS = 60_000;
 const SAVE_TIMEOUT_MS = 30_000;
 
@@ -63,11 +66,65 @@ export function calculateSafePixelRatio(width: number, height: number): number {
   return safeRatio;
 }
 
-function getSafePixelRatio(element: HTMLElement): number {
+/**
+ * uTools 的 Chromium 运行时连续创建大画布时可能暂时无法分配足够内存。
+ * 首次使用安全上限倍率；失败后逐级降到 2x、1x，避免一次偶发的画布失败
+ * 直接中断整个导出流程。
+ */
+export function getCapturePixelRatios(width: number, height: number): number[] {
+  const primaryRatio = calculateSafePixelRatio(width, height);
+  const roundDown = (ratio: number) => Math.floor(ratio * 10_000) / 10_000;
+  const candidates =
+    primaryRatio > 2
+      ? [primaryRatio, 2, 1]
+      : primaryRatio > 1
+        ? [primaryRatio, 1]
+        : [
+            primaryRatio,
+            Math.max(MIN_CAPTURE_PIXEL_RATIO, roundDown(primaryRatio * 0.75)),
+            Math.max(MIN_CAPTURE_PIXEL_RATIO, roundDown(primaryRatio * 0.5)),
+          ];
+
+  return candidates.filter(
+    (ratio, index) =>
+      ratio >= MIN_CAPTURE_PIXEL_RATIO &&
+      candidates.findIndex((candidate) => candidate === ratio) === index,
+  );
+}
+
+function getElementCapturePixelRatios(element: HTMLElement): number[] {
   const rect = element.getBoundingClientRect();
   const width = element.scrollWidth || rect.width;
   const height = element.scrollHeight || rect.height;
-  return calculateSafePixelRatio(width, height);
+  return getCapturePixelRatios(width, height);
+}
+
+function normalizeTitleText(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+/**
+ * 选区包含页面 H1 时，“显示标题”已经会在卡片头部渲染同一标题，
+ * 因此跳过选区里的重复 H1；普通章节标题仍按原样保留。
+ */
+export function getSelectionBlocksToRender(
+  selectionBlocks: BlockNoteContent,
+  pageTitle: string,
+  showTitle: boolean,
+): BlockNoteContent {
+  if (!showTitle || selectionBlocks.length === 0) return selectionBlocks;
+
+  const firstBlock = selectionBlocks[0] as any;
+  const headingLevel = Number(firstBlock?.props?.level) || 1;
+  if (firstBlock?.type !== "heading" || headingLevel !== 1) {
+    return selectionBlocks;
+  }
+
+  const selectedTitle = normalizeTitleText(extractPlainText([firstBlock]));
+  const generatedTitle = normalizeTitleText(pageTitle);
+  return selectedTitle && selectedTitle === generatedTitle
+    ? selectionBlocks.slice(1)
+    : selectionBlocks;
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -84,6 +141,84 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
       reject(error);
     }
   });
+}
+
+function releaseCanvas(canvas: HTMLCanvasElement | null): void {
+  if (!canvas) return;
+  canvas.width = 1;
+  canvas.height = 1;
+}
+
+async function yieldForCanvasCleanup(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+async function renderPngBlobWithFallback(element: HTMLElement): Promise<Blob> {
+  const pixelRatios = getElementCapturePixelRatios(element);
+  let lastError: unknown;
+
+  for (let index = 0; index < pixelRatios.length; index += 1) {
+    const pixelRatio = pixelRatios[index];
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = await withTimeout(
+        toCanvas(element, {
+          pixelRatio,
+          cacheBust: false,
+          skipFonts: true,
+          imagePlaceholder:
+            "data:image/svg+xml;charset=utf-8," +
+            encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">' +
+                '<rect width="200" height="80" rx="6" fill="#f3f4f6"/>' +
+                '<text x="100" y="44" font-family="sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">图片加载失败</text>' +
+                "</svg>",
+            ),
+        }),
+        CAPTURE_TIMEOUT_MS,
+        "生成图片超时",
+      );
+
+      return await withTimeout(
+        canvasToPngBlob(canvas),
+        CAPTURE_TIMEOUT_MS,
+        "图片编码超时",
+      );
+    } catch (error) {
+      lastError = error;
+      releaseCanvas(canvas);
+      canvas = null;
+      const hasFallback = index < pixelRatios.length - 1;
+      const timedOut =
+        error instanceof Error && /timeout|超时/i.test(error.message);
+      // html-to-image 没有取消接口；超时任务可能仍在后台运行，此时再起一次
+      // 捕获只会进一步增加内存压力，因此仅对已经明确失败的尝试降级重试。
+      if (!hasFallback || timedOut) break;
+      console.warn(
+        `[imageExport] ${pixelRatio}x capture failed, retrying at ${pixelRatios[index + 1]}x:`,
+        error,
+      );
+      await yieldForCanvasCleanup();
+    } finally {
+      // PNG Blob 已经独立于画布；每次尝试结束就立即释放大画布，避免在
+      // Base64 转换、写盘或下一次降级重试期间继续占用位图内存。
+      releaseCanvas(canvas);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("生成图片失败");
+}
+
+function getExportErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message.trim() : "";
+  if (!message) return "导出图片失败，请重试";
+  if (/timeout|超时/i.test(message)) return `导出图片失败：${message}`;
+  if (/内容过长|尺寸超出|图片编码|保存图片/.test(message)) {
+    return message;
+  }
+  return "导出图片失败，请重试";
 }
 
 // ── Loading Overlay ────────────────────────────────────────────
@@ -199,7 +334,6 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
 
   isCapturingImage = true;
   const overlay = createLoadingOverlay();
-  let canvas: HTMLCanvasElement | null = null;
 
   try {
     await withTimeout(
@@ -212,29 +346,7 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
       requestAnimationFrame(() => resolve(undefined)),
     );
 
-    canvas = await withTimeout(
-      toCanvas(element, {
-        pixelRatio: getSafePixelRatio(element),
-        cacheBust: false,
-        skipFonts: true,
-        imagePlaceholder:
-          "data:image/svg+xml;charset=utf-8," +
-          encodeURIComponent(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">' +
-              '<rect width="200" height="80" rx="6" fill="#f3f4f6"/>' +
-              '<text x="100" y="44" font-family="sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">图片加载失败</text>' +
-              "</svg>",
-          ),
-      }),
-      CAPTURE_TIMEOUT_MS,
-      "生成图片超时",
-    );
-
-    const blob = await withTimeout(
-      canvasToPngBlob(canvas),
-      CAPTURE_TIMEOUT_MS,
-      "图片编码超时",
-    );
+    const blob = await renderPngBlobWithFallback(element);
 
     const { saveBlobAndReveal } = await import("../export");
     const saved = await withTimeout(
@@ -250,13 +362,9 @@ async function captureElementToPng(element: HTMLElement, filename: string) {
     }
   } catch (error) {
     const { toast } = await import("sonner");
-    toast.error("导出图片失败，请重试");
+    toast.error(getExportErrorMessage(error));
     console.error("[imageExport] capture failed:", error);
   } finally {
-    if (canvas) {
-      canvas.width = 1;
-      canvas.height = 1;
-    }
     isCapturingImage = false;
     removeLoadingOverlay(overlay);
   }
@@ -274,7 +382,8 @@ function buildFileName(
 ): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const milliseconds = String(now.getMilliseconds()).padStart(3, "0");
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}_${milliseconds}`;
   const parts = [
     sanitizeFileName(title || "untitled"),
     sanitizeFileName(theme.nameEn),
@@ -357,7 +466,12 @@ export async function exportSelectionToImage(
   document.body.appendChild(container);
 
   try {
-    const blocksHtml = renderBlocks(clonedBlocks, theme);
+    const blocksToRender = getSelectionBlocksToRender(
+      clonedBlocks,
+      title,
+      wm.showTitle,
+    );
+    const blocksHtml = renderBlocks(blocksToRender, theme);
 
     const html = buildStyledHTML({
       title,

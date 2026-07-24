@@ -150,7 +150,7 @@ export function EditorComposer({
     event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
     if (
-      !__GOOSE_EDITOR_AI__ ||
+      (!__GOOSE_EDITOR_AI__ && __HOST_TARGET__ !== "native-editor") ||
       event.key !== " " ||
       event.defaultPrevented ||
       event.repeat ||
@@ -161,7 +161,7 @@ export function EditorComposer({
       event.nativeEvent.isComposing ||
       !editable ||
       !aiSettings.enabled ||
-      page?.localFilePath
+      (page?.localFilePath && __HOST_TARGET__ !== "native-editor")
     ) {
       return;
     }
@@ -185,6 +185,12 @@ export function EditorComposer({
 
     event.preventDefault();
     event.stopPropagation();
+    if (__HOST_TARGET__ === "native-editor") {
+      window.dispatchEvent(new CustomEvent("goose-note:native-ai-entry", {
+        detail: { source: "empty-paragraph" },
+      }));
+      return;
+    }
     const ai = editor.getExtension(AIExtension);
     if (ai && block.id) {
       ai.openAIMenuAtBlock(block.id);

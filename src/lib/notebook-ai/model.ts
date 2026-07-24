@@ -19,8 +19,13 @@ export function buildLanguageModel(): ModelAvailability {
     return { ok: false, reason: "AI 功能未开启，请前往设置启用 AI 助手。" };
   }
 
+  // 工作区覆盖只在模型仍存在于列表时生效，否则回退到设置里配置的默认模型。
+  const workspaceOverride = ai.workspaceSelectedModelId?.trim();
+  const workspaceOverrideValid =
+    !!workspaceOverride &&
+    ai.customModelOptions.some((option) => option.id === workspaceOverride);
   const modelId = (
-    ai.workspaceSelectedModelId ??
+    (workspaceOverrideValid ? workspaceOverride : null) ??
     ai.selectedModelId ??
     ""
   ).trim();

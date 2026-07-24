@@ -34,7 +34,7 @@ const expectedCapabilities = Object.freeze({
   localAsset: true,
   saveAck: true,
   flush: true,
-  ai: false,
+  ai: true,
   utools: false,
   quicknote: false,
   network: false,
@@ -61,8 +61,8 @@ const allowedFontExtensions = new Set([".otf", ".ttf", ".woff", ".woff2"]);
 const textArtifactExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
 
 const forbiddenSourceModules = [
-  ["AI 编辑器实现", /^src\/components\/editor\/ai\//i],
-  ["AI 编辑器状态", /^src\/components\/editor\/.*ai(?:[./_-]|$)/i],
+  ["AI 编辑器实现（仅允许原生菜单）", /^src\/components\/editor\/ai\/(?!GooseAIMenu\.tsx$)/i],
+  ["AI 编辑器状态（仅允许选区状态）", /^src\/components\/editor\/.*ai(?:[./_-]|$)/i],
   ["应用 Agent", /^src\/agent\//i],
   ["uTools 宿主实现", /^src\/(?:lib\/)?(?:utools|lib\/editor-platform\/utools)(?:[-./]|$)/i],
   ["Quicknote 宿主实现", /^src\/(?:pages\/quick-note|lib\/quicknote)(?:[./]|$)/i],
@@ -77,7 +77,7 @@ const forbiddenSourceModules = [
 ];
 
 const forbiddenPackages = [
-  ["AI SDK", /^(?:ai$|@ai-sdk\/|@blocknote\/xl-ai$|@json-render\/|streamdown$|@streamdown\/)/i],
+  ["AI SDK", /^(?:@ai-sdk\/|@json-render\/|streamdown$|@streamdown\/)/i],
   ["WebDAV", /^webdav$/i],
   ["PDF、Word 或压缩导出", /^(?:@blocknote\/xl-pdf-exporter|@react-pdf\/renderer|docx|html-to-image|jszip)$/i],
   ["桌面或插件宿主", /^(?:electron|@electron\/|@tauri-apps\/|utools)$/i],
@@ -90,7 +90,7 @@ const targetedRuntimeChecks = [
   ["WebDAV 运行时", /\bwebdav\b/i],
   ["Tauri 运行时", /__TAURI__|@tauri-apps/i],
   ["Electron 运行时", /require\(\s*["']electron["']\s*\)|\bBrowserWindow\b|electronAPI/i],
-  ["AI SDK 运行时", /@ai-sdk\/|@blocknote\/xl-ai|BlockNoteAIExtension/i],
+  ["AI SDK 运行时", /@ai-sdk\//i],
   ["正文数据库访问", /\bindexedDB\s*\.\s*(?:open|deleteDatabase)\s*\(|\bnew\s+Dexie\b|\bPouchDB\s*\(|\butools\s*\.\s*db\b|\blibrary\.json\b/i],
   ["浏览器文件系统宿主能力", /\bshow(?:SaveFile|OpenFile|Directory)Picker\s*\(/],
   ["远程网络调用", /\bfetch\s*\(\s*["'`]\s*(?:https?:|\/\/)|\b(?:WebSocket|EventSource)\s*\(\s*["'`]\s*(?:wss?:|https?:|\/\/)|\bsendBeacon\s*\(\s*["'`]\s*(?:https?:|\/\/)/i],

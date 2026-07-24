@@ -19,6 +19,7 @@ import {
   isImageUploadFile,
   resolveImageMimeForUpload,
 } from "@/components/editor/utils/pasteClipboardImage";
+import { ModelSelectorPopover } from "./ModelSelectorPopover";
 
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
@@ -190,10 +191,10 @@ export function Composer({
 
   return (
     <div className="shrink-0 px-3 py-2.5">
-      {(references.length > 0 || images.length > 0) && (
+      {references.length > 0 && (
         <div
           className="mb-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="本轮上下文与图片"
+          aria-label="本轮上下文"
         >
           {references.map((reference) => (
             <div
@@ -226,27 +227,6 @@ export function Composer({
               </button>
             </div>
           ))}
-          {images.map((image) => (
-            <div
-              key={image.previewUrl}
-              className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-[7px] bg-[var(--goose-interactive-hover)]"
-            >
-              <img
-                src={image.previewUrl}
-                alt={image.file.name}
-                className="h-full w-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => removeImage(image.previewUrl)}
-                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-[4px] bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-                aria-label={`移除图片 ${image.file.name}`}
-                title={`移除 ${image.file.name}`}
-              >
-                <X className="h-3 w-3" strokeWidth={1.9} />
-              </button>
-            </div>
-          ))}
         </div>
       )}
 
@@ -257,6 +237,36 @@ export function Composer({
           "transition-colors duration-150",
         )}
       >
+        {images.length > 0 && (
+          <div
+            className="mt-[2px] flex max-w-[40%] shrink-0 items-center gap-1 self-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="待发送图片"
+          >
+            {images.map((image) => (
+              <div
+                key={image.previewUrl}
+                className="group relative h-5 w-5 shrink-0 overflow-hidden rounded-[4px] bg-[var(--goose-interactive-hover)]"
+              >
+                <img
+                  src={image.previewUrl}
+                  alt={image.file.name}
+                  title={image.file.name}
+                  className="h-full w-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(image.previewUrl)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
+                  aria-label={`移除图片 ${image.file.name}`}
+                  title={`移除 ${image.file.name}`}
+                >
+                  <X className="h-3 w-3" strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <AiComposerInput
           ref={inputRef}
           placeholder={placeholder}
@@ -280,6 +290,8 @@ export function Composer({
           onChange={handleImageInput}
           disabled={disabled || isStreaming}
         />
+        <ModelSelectorPopover disabled={disabled} />
+
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}

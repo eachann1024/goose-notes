@@ -18,7 +18,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vite  --port 6001",
+    "dev": "vite",
     "build": "tsc -b && vite build && GOOSE_BUILD_TARGET=quicknote vite build && node scripts/utools-build.js",
     "build:native-editor": "vite build --config vite.native-editor.config.ts",
     "dev:native-editor": "bun run build:native-editor && node scripts/serve-native-editor.mjs --mock ${NATIVE_EDITOR_PORT:-6012}",

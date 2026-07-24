@@ -22,6 +22,8 @@ import {
   nativeEditorPlatform,
   nativeResourceBridge,
 } from "./runtime";
+import { nativeAITransportBridge } from "./aiTransportStub";
+import { applyAISelection, invalidateAISelections } from "./aiSelectionBridge";
 import {
   parseNativeMarkdown,
   serializeNativeMarkdown,
@@ -37,6 +39,7 @@ import type {
   NativeEditorAppearance,
   NativeEditorFont,
   NativeEditorMode,
+  NativeAISelectionReplacement,
   SaveAcknowledgement,
 } from "./types";
 
@@ -93,7 +96,8 @@ interface RepairCandidate {
 }
 
 const EMPTY_AI_SETTINGS = {
-  enabled: false,
+  // 入口始终可见；未配置原生服务时 transport 会返回可操作的配置提示，且不会联网。
+  enabled: true,
   selectedModelId: null,
   workspaceSelectedModelId: null,
   workspaceReasoningLevel: "medium",
@@ -140,6 +144,7 @@ export function NativeEditorApp() {
   const [fullWidth, setFullWidth] = useState(false);
   const [saveState, setSaveState] = useState<SaveVisualState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [aiUnavailableMessage, setAIUnavailableMessage] = useState("");
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [editorGeneration, setEditorGeneration] = useState(0);
   const [committedPageToken, setCommittedPageToken] = useState(0);
@@ -488,6 +493,8 @@ export function NativeEditorApp() {
         document.activeElement.blur();
       nativeResourceBridge.invalidate();
       nativeAssetBridge.invalidate();
+      nativeAITransportBridge.invalidate();
+      invalidateAISelections();
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
       pageIDRef.current = normalized.pageID;
@@ -752,11 +759,19 @@ export function NativeEditorApp() {
     [matchesCurrentEnvelope],
   );
 
+  const applyNativeAISelection = useCallback((replacement: NativeAISelectionReplacement) => {
+    if (!matchesCurrentEnvelope(replacement) || modeRef.current !== "blocks") return false;
+    const editor = editorRef.current?.editor;
+    return editor ? applyAISelection(editor, replacement) : false;
+  }, [matchesCurrentEnvelope]);
+
   const clear = useCallback(
     (envelope: BridgeEnvelope) => {
       if (!matchesCurrentEnvelope(envelope)) return;
       nativeResourceBridge.invalidate();
       nativeAssetBridge.invalidate();
+      nativeAITransportBridge.invalidate();
+      invalidateAISelections();
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
       pageIDRef.current = null;
@@ -804,9 +819,12 @@ export function NativeEditorApp() {
       receiveAcknowledgement,
       receiveLocalResource: nativeResourceBridge.receive,
       receiveLocalAsset: nativeAssetBridge.receive,
+      receiveAIResult: nativeAITransportBridge.receiveResult,
+      receiveAIDelta: nativeAITransportBridge.receiveDelta,
       updatePreferences: applyPreferences,
       clear,
       dispatchCommand,
+      applyAISelection: applyNativeAISelection,
       focusEditor: (envelope) => {
         if (matchesCurrentEnvelope(envelope)) focusEditor();
       },
@@ -878,6 +896,7 @@ export function NativeEditorApp() {
     }
   }, [
     applyPreferences,
+    applyNativeAISelection,
     buildDraft,
     clear,
     dispatchCommand,
@@ -908,6 +927,7 @@ export function NativeEditorApp() {
       });
       nativeResourceBridge.invalidate();
       nativeAssetBridge.invalidate();
+      nativeAITransportBridge.invalidate();
     },
     [],
   );
@@ -970,6 +990,25 @@ export function NativeEditorApp() {
     setSaveState("saving");
     void commitDraft();
   };
+
+  useEffect(() => {
+    const showUnavailableAI = () => {
+      const context = window.__gooseBridgeContext;
+      if (context?.pageID && window.webkit?.messageHandlers?.gooseNotes) {
+        postToHost({
+          version: 1,
+          type: "aiWorkspaceEntry",
+          requestID: createRequestID(),
+          pageID: context.pageID,
+          revision: context.revision,
+        });
+        return;
+      }
+      setAIUnavailableMessage("AI 生成功能需要在原生应用中配置服务后才能使用。");
+    };
+    window.addEventListener("goose-note:native-ai-entry", showUnavailableAI);
+    return () => window.removeEventListener("goose-note:native-ai-entry", showUnavailableAI);
+  }, []);
 
   const reload = () => {
     if (!pageIDRef.current) return;
@@ -1082,6 +1121,12 @@ export function NativeEditorApp() {
                 <RotateCcw aria-hidden="true" size={14} />
                 {saveState === "conflict" ? "重新载入" : "重试"}
               </button>
+            </div>
+          )}
+          {aiUnavailableMessage && (
+            <div className="native-ai-notice" role="status">
+              <span>{aiUnavailableMessage}</span>
+              <button type="button" onClick={() => setAIUnavailableMessage("")}>知道了</button>
             </div>
           )}
           {isLoadingPage ? (

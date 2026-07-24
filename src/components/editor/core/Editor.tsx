@@ -481,7 +481,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       let items = getBlockNoteSlashMenuItems(
         editor,
         aiSettingsRef.current.enabled &&
-          contentModeRef.current === "normalized",
+          (contentModeRef.current === "normalized" || __HOST_TARGET__ === "native-editor"),
         settingsRef.current.features,
       );
       if (hiddenSlashItemTitles && hiddenSlashItemTitles.length > 0) {

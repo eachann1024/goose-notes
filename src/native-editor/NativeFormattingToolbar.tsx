@@ -4,6 +4,7 @@ import {
   useSelectedBlocks,
 } from "@blocknote/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
@@ -24,10 +25,11 @@ import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/Inli
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
 import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
 import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
+import { canRequestAISelection, requestAISelection } from "./aiSelectionBridge";
 
 export { shouldRenderFormattingToolbar };
 
-/** 原生目标的纯格式工具栏：保留文字、链接、颜色和对齐，不加载 AI 状态或面板。 */
+/** 原生目标的格式工具栏；选区 AI 只经版本化桥接请求原生面板。 */
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   const { contentMode } = useEditorPageContext();
@@ -78,6 +80,7 @@ export function EditorFormattingToolbar() {
     firstBlock?.props as { textAlignment?: string } | undefined
   )?.textAlignment ?? "left";
   const linkUrl = editor.getSelectedLinkUrl();
+  const canUseAISelection = canRequestAISelection();
   const setTextAlignment = useCallback((alignment: "left" | "center" | "right") => {
     editor.transact(() => {
       for (const block of selectedBlocks) {
@@ -161,6 +164,22 @@ export function EditorFormattingToolbar() {
           />
           <Separator orientation="vertical" className="h-5 opacity-70" />
           <ClearFormatButton onClear={clearFormatting} bindTooltip={bindTooltip} />
+          <Separator orientation="vertical" className="h-5 opacity-70" />
+          <button
+            type="button"
+            disabled={!canUseAISelection}
+            aria-label="AI 改写或转换选区"
+            title={canUseAISelection ? "AI 改写或转换选区" : "仅可在原生应用中使用 AI 选区建议"}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors",
+              canUseAISelection
+                ? "hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                : "cursor-not-allowed text-muted-foreground/55",
+            )}
+            onClick={() => { requestAISelection(editor); }}
+          >
+            <Sparkles aria-hidden="true" size={15} />
+          </button>
         </div>
       </div>
     </TooltipProvider>

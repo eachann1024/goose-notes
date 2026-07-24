@@ -207,6 +207,20 @@ test.describe("native-editor build artifact bridge flow", () => {
     );
   });
 
+  test("原生 AI 入口只请求原生工作区面板，不发起网络请求", async ({ page }) => {
+    await receivePage(page, pagePayload("\n"));
+    const editor = await blockEditor(page);
+    await editor.fill("/");
+    await expect(page.getByText("生成", { exact: true })).toBeVisible();
+    await page.getByText("生成", { exact: true }).click();
+    expect((await hostMessages(page)).filter((message) => message.type === "aiWorkspaceEntry")).toHaveLength(1);
+
+    await editor.fill("");
+    await editor.press("Space");
+    expect((await hostMessages(page)).filter((message) => message.type === "aiWorkspaceEntry")).toHaveLength(2);
+    expect((await hostMessages(page)).filter((message) => message.type === "aiRequest")).toHaveLength(0);
+  });
+
   test("finishes a repair gate commit even when requestAnimationFrame is suspended", async ({ page }) => {
     const payload = pagePayload("> [!NOTE]\n> 后台窗口也要完成装载。\n");
     const state = await page.evaluate(async (nextPage) => {
@@ -340,7 +354,7 @@ test.describe("native-editor build artifact bridge flow", () => {
     ]) {
       await expect(page.getByRole("button", { name: new RegExp(`^${title}`) })).toHaveCount(1);
     }
-    await expect(page.getByRole("button", { name: /生成/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /生成/ })).toHaveCount(1);
   });
 
   test("preserves native block alignment metadata without exposing the marker", async ({ page }) => {

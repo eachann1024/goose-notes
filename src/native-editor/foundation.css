@@ -53,6 +53,7 @@
     --editor-inline-code-padding-y: calc(3px * var(--editor-scale));
     --editor-inline-code-padding-x: calc(6px * var(--editor-scale));
     --editor-inline-code-radius: calc(4px * var(--editor-scale));
+    --editor-inline-code-baseline-offset: 0.04em;
     --editor-link-tooltip-font-size: calc(12px * var(--editor-scale));
     --editor-link-tooltip-padding-y: calc(6px * var(--editor-scale));
     --editor-link-tooltip-padding-x: calc(10px * var(--editor-scale));
