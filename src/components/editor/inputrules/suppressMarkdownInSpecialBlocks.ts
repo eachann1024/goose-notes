@@ -52,8 +52,10 @@ const MARKDOWN_TARGET_TYPES = new Set([
 ]);
 
 // 行首 markdown 触发前缀：数字列表 / 符号列表 / 待办 / 标题 / 引用 / 代码块围栏。
+// 与 markdownInputRules 对齐：有序支持 `1.`/`1。`，待办支持 `[]`/`【】`（及 x 勾选）。
 // 不含末尾空白——空白由本次输入（空格或 Enter 的 \n）补足，见下方判断。
-const MARKDOWN_PREFIX = /^\s?(?:\d+\.|[-+*]|\[[ xX]?\]|#{1,6}|>|```.*)$/;
+const MARKDOWN_PREFIX =
+  /^\s?(?:\d+[.。]|[-+*]|(?:\[[ xX]?\]|【[ xX]?】)|#{1,6}|[|｜]|[>》]|```.*)$/;
 
 /**
  * 从 ProseMirror selection 向上找最近的 blockContainer，返回其内容块类型名。

@@ -1,4 +1,5 @@
 import { createExtension } from "@blocknote/core";
+import { tryUndoMarkdownBlockTrigger } from "@/components/editor/inputrules/markdownInputRules";
 import {
   findParentBlock,
   isToggleBlock,
@@ -65,6 +66,11 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
   key: "goose-empty-block-backspace",
   keyboardShortcuts: {
     Backspace: ({ editor }) => {
+      // 优先：markdown 输入规则刚转换出的空块（含 `【】`/`[]`/`1。` 等）立刻退格时，
+      // 还原触发前缀。必须先于列表项原生降级，否则触发字符会丢失。
+      const view = editor.prosemirrorView;
+      if (view && tryUndoMarkdownBlockTrigger(view)) return true;
+
       const state = editor.prosemirrorState;
       // 仅处理光标（空选区）；非空选区交给 crossBlockDelete / 默认。
       if (!state.selection.empty) return false;

@@ -112,6 +112,8 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
   let ready = null;
   let createOptions = null;
   const setBoundsCalls = [];
+  let outPluginCalls = [];
+  let hideCalls = 0;
   let currentBounds = { x: 960, y: 180, width: 480, height: 350 };
   let persisted = JSON.stringify({
     state: {
@@ -130,7 +132,9 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
       setBoundsCalls.push({ ...bounds });
     },
     show: () => {},
-    hide: () => {},
+    hide: () => {
+      hideCalls += 1;
+    },
     focus: () => {},
     setAlwaysOnTop: () => {},
     webContents: { send: () => {} },
@@ -148,6 +152,10 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
       getCursorScreenPoint: () => ({ x: 100, y: 100 }),
       removeSubInput: () => {},
       hideMainWindow: () => {},
+      outPlugin: (isKill) => {
+        outPluginCalls.push(isKill);
+        return true;
+      },
       createBrowserWindow: (_url, options, callback) => {
         createOptions = options;
         ready = callback;
@@ -173,9 +181,14 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
     assert.equal(createOptions.height, 350);
     ready();
     assert.deepEqual(setBoundsCalls[0], currentBounds);
+    // enter 后必须 outPlugin(false) 释放宿主，浮窗本身不被 hide。
+    assert.deepEqual(outPluginCalls, [false]);
+    assert.equal(hideCalls, 0);
 
     // 第二次触发隐藏，第三次触发复用并再次按当前 workArea 校正。
     global.window.exports.quicknote_new.args.enter();
+    assert.equal(hideCalls, 1);
+    assert.deepEqual(outPluginCalls, [false, false]);
     assert.deepEqual(JSON.parse(persisted), {
       state: {
         windowX: 960,
@@ -201,6 +214,7 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
       width: 480,
       height: 350,
     });
+    assert.deepEqual(outPluginCalls, [false, false, false]);
   } finally {
     delete require.cache[modulePath];
     if (originalWindow === undefined) delete global.window;

@@ -1,10 +1,7 @@
 import type { Page } from "@/types";
-import {
-  isNotebookAiTab,
-  useTabs,
-  type TabItem,
-} from "@/stores/useTabs";
+import { useTabs, type TabItem } from "@/stores/useTabs";
 import type { NotebookAiLayoutMode } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { isFullscreenAiLayout } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import {
   DndContext,
   PointerSensor,
@@ -124,12 +121,6 @@ function SortableTabItem({
               className="h-2 w-2 shrink-0 rounded-full bg-[var(--goose-color-unsaved)]"
             />
           )}
-          {isNotebookAiTab(tab) ? (
-            <AiGradientIcon
-              className="h-3.5 w-3.5 shrink-0"
-              state="idle"
-            />
-          ) : null}
           <span
             className={cn(
               "min-w-0 flex-1 truncate",
@@ -140,11 +131,9 @@ function SortableTabItem({
           >
             {tab.type === "welcome"
               ? "新标签页"
-              : isNotebookAiTab(tab)
-                ? "AI"
-                : tabPage
-                  ? getPageTitle(tabPage)
-                  : ""}
+              : tabPage
+                ? getPageTitle(tabPage)
+                : ""}
           </span>
           <TooltipProvider delayDuration={2000}>
             <Tooltip>
@@ -185,9 +174,7 @@ function SortableTabItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-[200px]">
-        {tab.type !== "welcome" &&
-          !isNotebookAiTab(tab) &&
-          onLocateInTree && (
+        {tab.type !== "welcome" && onLocateInTree && (
           <>
             <ContextMenuItem onSelect={onLocateInTree}>
               在文件树中定位
@@ -229,10 +216,12 @@ interface PageHeaderProps {
   onDelete?: () => void;
   /** AI 面板当前是否打开 */
   aiPanelOpen?: boolean;
-  /** AI 打开方式：标签模式下入口在标签栏最左 */
+  /** AI 打开方式：全屏时入口在标签栏最左（仅图标） */
   aiLayoutMode?: NotebookAiLayoutMode;
   /** 切换 AI 面板（传入时显示按钮，不传则不渲染） */
   onToggleAiPanel?: () => void;
+  /** 激活普通标签前回调（全屏 AI 下点标签可退出全屏） */
+  onBeforeActivateTab?: () => void;
 }
 
 export function PageHeader({
@@ -241,8 +230,9 @@ export function PageHeader({
   onRestore,
   onDelete,
   aiPanelOpen,
-  aiLayoutMode = "tab",
+  aiLayoutMode = "fullscreen",
   onToggleAiPanel,
+  onBeforeActivateTab,
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
@@ -283,10 +273,9 @@ export function PageHeader({
     reorderTabs(from, to);
   };
   const visibleTabs = openTabs.filter((tab) => {
+    // AI 不占用标签页，仅图标入口
+    if (tab.type === "notebook-ai") return false;
     if (tab.type === "welcome") return true;
-    if (isNotebookAiTab(tab)) {
-      return !activeNotebookId || tab.workspaceId === activeNotebookId;
-    }
     const tabPage = getPage(tab.pageId);
     return (
       tabPage &&
@@ -294,9 +283,10 @@ export function PageHeader({
       (!activeNotebookId || tabPage.workspaceId === activeNotebookId)
     );
   });
-  const showAiOnTabRail = Boolean(onToggleAiPanel) && aiLayoutMode === "tab";
+  const showAiOnTabRail =
+    Boolean(onToggleAiPanel) && isFullscreenAiLayout(aiLayoutMode);
   const showAiOnActions =
-    Boolean(onToggleAiPanel) && aiLayoutMode === "side-panel";
+    Boolean(onToggleAiPanel) && !isFullscreenAiLayout(aiLayoutMode);
   const [showSaved, setShowSaved] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
@@ -404,11 +394,12 @@ export function PageHeader({
           onDoubleClick={(e) => {
             // 只在点击容器自身空白区域时触发（非标签项、非按钮）
             if (e.target === e.currentTarget) {
+              onBeforeActivateTab?.();
               useTabs.getState().openWelcomeTab();
             }
           }}
         >
-          {/* 独立标签模式：闪烁 AI 入口钉在标签栏最左 */}
+          {/* 全屏模式：仅图标入口钉在标签栏最左，不创建 AI 标签 */}
           {showAiOnTabRail ? (
             <TooltipProvider delayDuration={600}>
               <Tooltip>
@@ -461,28 +452,27 @@ export function PageHeader({
             >
               {visibleTabs.map((tab) => {
                 const tabPage =
-                  tab.type === "welcome" || isNotebookAiTab(tab)
-                    ? undefined
-                    : getPage(tab.pageId);
-                if (
-                  tab.type !== "welcome" &&
-                  !isNotebookAiTab(tab) &&
-                  !tabPage
-                )
-                  return null;
+                  tab.type === "welcome" ? undefined : getPage(tab.pageId);
+                if (tab.type !== "welcome" && !tabPage) return null;
                 const visibleIndex = visibleTabs.findIndex((t) => t.id === tab.id);
                 return (
                   <SortableTabItem
                     key={tab.id}
                     tab={tab}
                     tabPage={tabPage}
-                    isActive={activeTabId === tab.id}
+                    isActive={
+                      activeTabId === tab.id &&
+                      !(
+                        aiPanelOpen && isFullscreenAiLayout(aiLayoutMode)
+                      )
+                    }
                     isDirty={isTabDirty(tab.pageId)}
                     hasLeftTabs={visibleIndex > 0}
                     hasRightTabs={visibleIndex < visibleTabs.length - 1}
                     hasOtherTabs={visibleTabs.length > 1}
                     closeTabShortcutLabel={closeTabShortcutLabel}
                     onActivate={() => {
+                      onBeforeActivateTab?.();
                       setActiveTab(tab.id);
                     }}
                     onClose={() => closeTab(tab.id)}
@@ -558,18 +548,20 @@ export function PageHeader({
                   >
                     {visibleTabs.map((tab) => {
                       const tabPage =
-                        tab.type === "welcome" || isNotebookAiTab(tab)
+                        tab.type === "welcome"
                           ? undefined
                           : getPage(tab.pageId);
                       const title =
                         tab.type === "welcome"
                           ? "新标签页"
-                          : isNotebookAiTab(tab)
-                            ? "AI"
-                            : tabPage
-                              ? getPageTitle(tabPage)
-                              : "";
-                      const isActive = activeTabId === tab.id;
+                          : tabPage
+                            ? getPageTitle(tabPage)
+                            : "";
+                      const isActive =
+                        activeTabId === tab.id &&
+                        !(
+                          aiPanelOpen && isFullscreenAiLayout(aiLayoutMode)
+                        );
                       return (
                         <DropdownMenuItem
                           key={tab.id}
@@ -578,6 +570,7 @@ export function PageHeader({
                             isActive && "bg-[var(--goose-interactive-selected)] text-foreground",
                           )}
                           onSelect={() => {
+                            onBeforeActivateTab?.();
                             setActiveTab(tab.id);
                             // 跳转后滚动到该标签（welcome 标签无 pageId，直接找活动标签）
                             setTimeout(() => {
@@ -596,12 +589,6 @@ export function PageHeader({
                               strokeWidth={1.75}
                             />
                           )}
-                          {isNotebookAiTab(tab) ? (
-                            <AiGradientIcon
-                              className="h-3.5 w-3.5 shrink-0"
-                              state="idle"
-                            />
-                          ) : null}
                           <span
                             className={cn(
                               "min-w-0 flex-1 truncate",

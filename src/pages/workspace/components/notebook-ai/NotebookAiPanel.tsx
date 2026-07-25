@@ -63,6 +63,7 @@ import type {
   NotebookAiLayoutMode,
   NotebookAiPanelSelectionCapture,
 } from "./useNotebookAiPanel";
+import { isFullscreenAiLayout } from "./useNotebookAiPanel";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
 import { buildAiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { ChatTransport } from "ai";
@@ -87,11 +88,11 @@ interface NotebookAiPanelProps {
   editorRef?: RefObject<EditorRef | null>;
   capturedSelection?: NotebookAiPanelSelectionCapture | null;
   onConsumeCapturedSelection?: () => void;
-  /** 打开方式：侧栏并排 / 独立标签 */
+  /** 打开方式：侧栏并排 / 全屏 */
   layoutMode?: NotebookAiLayoutMode;
   onLayoutModeChange?: (mode: NotebookAiLayoutMode) => void;
-  /** 标签页全宽模式：取消拖宽手柄与固定宽度 */
-  variant?: "side-panel" | "tab";
+  /** 侧栏可拖宽；全屏铺满主区域 */
+  variant?: "side-panel" | "fullscreen";
 }
 
 const NOTEBOOK_AI_PLACEHOLDER_HINTS = [
@@ -164,10 +165,8 @@ export function NotebookAiPanel({
   onLayoutModeChange,
   variant = "side-panel",
 }: NotebookAiPanelProps) {
-  const { notebooks } = useNotebooks();
-  const notebook = notebooks[notebookId];
-  const notebookName = notebook?.name ?? "AI 助手";
-  const isTabVariant = variant === "tab";
+  const isFullscreen = variant === "fullscreen";
+  const layoutIsFullscreen = isFullscreenAiLayout(layoutMode);
 
   const { width, onDragHandleMouseDown } = usePanelWidth();
   const requestCurrentPageIdRef = useRef<string | null>(null);
@@ -633,6 +632,31 @@ export function NotebookAiPanel({
       ? messages[messages.length - 1].id
       : undefined;
 
+  // 会话标题：取首条用户消息摘要（与历史列表一致）
+  const conversationTitle = useMemo(() => {
+    const firstUser = messages.find((message) => message.role === "user");
+    if (!firstUser) return "新会话";
+    const displayText = firstUser.metadata?.displayText?.trim();
+    if (displayText) return displayText;
+    const textPart = firstUser.parts?.find((part) => part.type === "text");
+    const raw =
+      textPart && "text" in textPart && typeof textPart.text === "string"
+        ? textPart.text.trim()
+        : "";
+    if (!raw) return "新会话";
+    const hiddenContextStart = raw.indexOf("\n\n本轮笔记上下文：");
+    if (raw.startsWith("用户输入：") && hiddenContextStart > -1) {
+      return (
+        raw.slice("用户输入：".length, hiddenContextStart).trim() || "新会话"
+      );
+    }
+    if (raw.startsWith("用户输入：")) {
+      return raw.slice("用户输入：".length).trim() || "新会话";
+    }
+    // 单行标题，去掉换行噪声
+    return raw.split("\n")[0]?.trim() || "新会话";
+  }, [messages]);
+
   const headerIconButtonClass =
     "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
 
@@ -640,13 +664,16 @@ export function NotebookAiPanel({
     <div
       onKeyDown={handlePanelKeyDown}
       className={cn(
-        "relative flex h-full min-w-0 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
-        isTabVariant && "w-full flex-1",
+        "relative flex h-full min-w-0 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]",
+        // 侧栏：独立卡片；全屏：铺满主区域，与编辑器表面一体
+        isFullscreen
+          ? "w-full flex-1 rounded-none"
+          : "rounded-[12px]",
       )}
-      style={isTabVariant ? undefined : { width }}
+      style={isFullscreen ? undefined : { width }}
     >
       {/* 侧栏模式才显示拖宽手柄 */}
-      {!isTabVariant ? (
+      {!isFullscreen ? (
         <div
           className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-[var(--goose-interactive-hover)]"
           onMouseDown={onDragHandleMouseDown}
@@ -654,8 +681,21 @@ export function NotebookAiPanel({
         />
       ) : null}
 
-      {/* 头部：左侧仅关闭 / 新建 / 更多；右侧弱化笔记本名 */}
-      <div className="flex h-12 shrink-0 items-center gap-1 px-2.5">
+      {/* 头部：左标题，右 关闭 / 新建 / 更多 */}
+      <div
+        className={cn(
+          "flex h-12 shrink-0 items-center gap-1",
+          isFullscreen ? "px-3" : "px-2.5",
+          isFullscreen && "border-b border-border/50",
+        )}
+      >
+        <span
+          className="min-w-0 flex-1 truncate pr-2 text-sm font-medium text-foreground"
+          title={conversationTitle}
+        >
+          {conversationTitle}
+        </span>
+
         <button
           type="button"
           onClick={onClose}
@@ -687,7 +727,7 @@ export function NotebookAiPanel({
               <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" sideOffset={6} className="w-56">
+          <DropdownMenuContent align="end" sideOffset={6} className="w-56">
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <HistoryIcon className="h-4 w-4" strokeWidth={1.75} />
@@ -719,17 +759,17 @@ export function NotebookAiPanel({
                 >
                   <PanelRight className="h-4 w-4" strokeWidth={1.75} />
                   <span className="flex-1">侧栏并排</span>
-                  {layoutMode === "side-panel" ? (
+                  {!layoutIsFullscreen ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                   ) : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onSelect={() => onLayoutModeChange("tab")}
+                  onSelect={() => onLayoutModeChange("fullscreen")}
                   className="gap-2"
                 >
                   <AppWindow className="h-4 w-4" strokeWidth={1.75} />
-                  <span className="flex-1">独立标签页</span>
-                  {layoutMode === "tab" ? (
+                  <span className="flex-1">全屏</span>
+                  {layoutIsFullscreen ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                   ) : null}
                 </DropdownMenuItem>
@@ -737,10 +777,6 @@ export function NotebookAiPanel({
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <span className="min-w-0 flex-1 truncate pl-1.5 text-right text-xs text-muted-foreground">
-          {notebookName}
-        </span>
       </div>
 
       {/* 消息区 / 引导区 */}
@@ -761,19 +797,32 @@ export function NotebookAiPanel({
           messages={messages}
           streamingMessageId={streamingMessageId}
           editorRef={editorRef}
+          layout={isFullscreen ? "fullscreen" : "side-panel"}
         />
       )}
 
       {error ? (
-        <div className="mx-3 mb-2 flex items-start gap-2 rounded-[8px] border border-destructive bg-[hsl(var(--background))] px-3 py-2 text-xs text-destructive">
-          <CircleAlert
-            className="mt-0.5 h-3.5 w-3.5 shrink-0"
-            strokeWidth={1.75}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="font-medium">本轮失败原因</div>
-            <div className="mt-0.5 break-words leading-relaxed">
-              {formatChatError(error)}
+        <div
+          className={cn(
+            "mb-2 w-full",
+            isFullscreen ? "px-6" : "px-3",
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-start gap-2 rounded-[8px] border border-destructive bg-[hsl(var(--background))] px-3 py-2 text-xs text-destructive",
+              isFullscreen && "mx-auto max-w-[720px]",
+            )}
+          >
+            <CircleAlert
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+              strokeWidth={1.75}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">本轮失败原因</div>
+              <div className="mt-0.5 break-words leading-relaxed">
+                {formatChatError(error)}
+              </div>
             </div>
           </div>
         </div>
@@ -790,6 +839,7 @@ export function NotebookAiPanel({
         searchPages={searchPages}
         onEscape={onClose}
         initialReference={initialReference}
+        layout={isFullscreen ? "fullscreen" : "side-panel"}
       />
     </div>
   );

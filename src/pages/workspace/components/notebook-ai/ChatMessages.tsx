@@ -23,6 +23,7 @@ import {
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
+import { cn } from "@/lib/utils";
 
 const ANIMATE_OPTIONS = {
   animation: "blurIn" as const,
@@ -56,6 +57,8 @@ interface ChatMessagesProps {
   /** 正在流式输出的消息 id（最后一条 assistant msg id）*/
   streamingMessageId?: string;
   editorRef?: RefObject<EditorRef | null>;
+  /** 全屏会话更宽、居中；侧栏保持紧凑 */
+  layout?: "side-panel" | "fullscreen";
 }
 
 const INPUT_ONLY_STATES = new Set([
@@ -218,10 +221,12 @@ export function ChatMessages({
   messages,
   streamingMessageId,
   editorRef,
+  layout = "side-panel",
 }: ChatMessagesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isUserScrolled = useRef(false);
   const lastScrollTop = useRef(0);
+  const isFullscreen = layout === "fullscreen";
 
   const scrollToBottom = useCallback((force = false) => {
     const el = containerRef.current;
@@ -266,19 +271,44 @@ export function ChatMessages({
     return (
       <div
         ref={containerRef}
-        className="flex flex-1 items-center justify-center overflow-y-auto px-5"
+        className={cn(
+          "flex flex-1 items-center justify-center overflow-y-auto",
+          isFullscreen ? "px-8" : "px-5",
+        )}
       >
-        <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
-            <MessageSquareText className="h-5 w-5" strokeWidth={1.75} />
+        <div
+          className={cn(
+            "flex flex-col items-center gap-3 text-center",
+            isFullscreen ? "max-w-[360px]" : "max-w-[260px]",
+          )}
+        >
+          <div
+            className={cn(
+              "relative flex items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground",
+              isFullscreen ? "h-12 w-12" : "h-11 w-11",
+            )}
+          >
+            <MessageSquareText
+              className={isFullscreen ? "h-6 w-6" : "h-5 w-5"}
+              strokeWidth={1.75}
+            />
             <Sparkles
               className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground"
               strokeWidth={1.75}
             />
           </div>
-          <p className="text-sm font-medium text-foreground">开始和 AI 对话</p>
+          <p
+            className={cn(
+              "font-medium text-foreground",
+              isFullscreen ? "text-[15px]" : "text-sm",
+            )}
+          >
+            开始和 AI 对话
+          </p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            让它帮你整理、搜索、创作笔记。
+            {isFullscreen
+              ? "全屏会话模式：整理、搜索、创作笔记，随时可切回侧栏并排。"
+              : "让它帮你整理、搜索、创作笔记。"}
           </p>
         </div>
       </div>
@@ -288,8 +318,17 @@ export function ChatMessages({
   return (
     <div
       ref={containerRef}
-      className="notebook-ai-messages flex-1 overflow-y-auto px-3 py-3 space-y-3 [scrollbar-width:thin]"
+      className={cn(
+        "notebook-ai-messages flex-1 overflow-y-auto [scrollbar-width:thin]",
+        isFullscreen ? "px-6 py-5" : "px-3 py-3",
+      )}
     >
+      <div
+        className={cn(
+          "mx-auto w-full space-y-3",
+          isFullscreen ? "max-w-[720px]" : "max-w-none",
+        )}
+      >
       {messages.map((msg) => {
         const isUser = msg.role === "user";
         const isStreaming = streamingMessageId === msg.id;
@@ -404,6 +443,7 @@ export function ChatMessages({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

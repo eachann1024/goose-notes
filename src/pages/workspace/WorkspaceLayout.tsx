@@ -25,7 +25,11 @@ import {
   restorePageWithToast,
 } from "@/lib/page-delete-actions";
 import { NotebookAiPanel } from "./components/notebook-ai/NotebookAiPanel";
-import { useNotebookAiPanel } from "./components/notebook-ai/useNotebookAiPanel";
+import { NotebookAiHostScope } from "./components/notebook-ai/NotebookAiHostScope";
+import {
+  isFullscreenAiLayout,
+  useNotebookAiPanel,
+} from "./components/notebook-ai/useNotebookAiPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { extractPlainText } from "@/components/editor/utils/blocknote-content";
 
@@ -66,7 +70,6 @@ export function WorkspaceLayout({
   );
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isWelcomeTab = activeTab?.type === "welcome";
-  const isNotebookAiTab = activeTab?.type === "notebook-ai";
   const openWelcomeTabHandler = () => {
     openWelcomeTab();
   };
@@ -81,11 +84,11 @@ export function WorkspaceLayout({
     capturedSelection: aiPanelCapturedSelection,
     consumeCapturedSelection: consumeAiPanelCapturedSelection,
   } = useNotebookAiPanel();
+  const aiFullscreen = isFullscreenAiLayout(aiLayoutMode);
   const showSideAiPanel =
-    aiEnabled &&
-    aiPanelOpen &&
-    aiLayoutMode === "side-panel" &&
-    !isNotebookAiTab;
+    aiEnabled && aiPanelOpen && !aiFullscreen;
+  const showFullscreenAi =
+    aiEnabled && aiPanelOpen && aiFullscreen;
   const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
   const searchHighlightQuery = usePages((s) => s.searchHighlightQuery);
   const searchHighlightPageId = usePages((s) => s.searchHighlightPageId);
@@ -249,7 +252,52 @@ export function WorkspaceLayout({
           />
 
           <main className="workspace-main-sheet relative flex-1 flex flex-col h-full overflow-hidden">
-            {isWelcomeTab ? (
+            {showFullscreenAi &&
+            activeNotebookId &&
+            aiAvailableForNotebook ? (
+              <>
+                <PageHeader
+                  page={page}
+                  onOpenSearch={() => {
+                    // 全屏会话中新建/搜索标签，先退出 AI 全屏，避免状态叠层
+                    closeAiPanel();
+                    openWelcomeTabHandler();
+                  }}
+                  onRestore={
+                    activePageId
+                      ? () => restorePageWithToast(activePageId)
+                      : undefined
+                  }
+                  onDelete={
+                    activePageId
+                      ? () =>
+                          void permanentlyDeletePageWithCleanup(activePageId)
+                      : undefined
+                  }
+                  aiPanelOpen
+                  aiLayoutMode={aiLayoutMode}
+                  onToggleAiPanel={toggleAiPanel}
+                  onBeforeActivateTab={closeAiPanel}
+                />
+                <div className="relative ml-0 mt-0 flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+                  <NotebookAiHostScope notebookId={activeNotebookId}>
+                    <NotebookAiPanel
+                      key={`fullscreen-${activeNotebookId}`}
+                      notebookId={activeNotebookId}
+                      onClose={closeAiPanel}
+                      editorRef={editorRef}
+                      capturedSelection={aiPanelCapturedSelection}
+                      onConsumeCapturedSelection={
+                        consumeAiPanelCapturedSelection
+                      }
+                      layoutMode={aiLayoutMode}
+                      onLayoutModeChange={setAiLayoutMode}
+                      variant="fullscreen"
+                    />
+                  </NotebookAiHostScope>
+                </div>
+              </>
+            ) : isWelcomeTab ? (
               <>
                 <PageHeader
                   onOpenSearch={openWelcomeTabHandler}
@@ -264,46 +312,22 @@ export function WorkspaceLayout({
                     <PageEmptyState />
                   </div>
                   {showSideAiPanel && activeNotebookId ? (
-                    <NotebookAiPanel
-                      key={`welcome-${activeNotebookId}`}
-                      notebookId={activeNotebookId}
-                      onClose={closeAiPanel}
-                      editorRef={editorRef}
-                      capturedSelection={aiPanelCapturedSelection}
-                      onConsumeCapturedSelection={
-                        consumeAiPanelCapturedSelection
-                      }
-                      layoutMode={aiLayoutMode}
-                      onLayoutModeChange={setAiLayoutMode}
-                      variant="side-panel"
-                    />
+                    <NotebookAiHostScope notebookId={activeNotebookId}>
+                      <NotebookAiPanel
+                        key={`welcome-${activeNotebookId}`}
+                        notebookId={activeNotebookId}
+                        onClose={closeAiPanel}
+                        editorRef={editorRef}
+                        capturedSelection={aiPanelCapturedSelection}
+                        onConsumeCapturedSelection={
+                          consumeAiPanelCapturedSelection
+                        }
+                        layoutMode={aiLayoutMode}
+                        onLayoutModeChange={setAiLayoutMode}
+                        variant="side-panel"
+                      />
+                    </NotebookAiHostScope>
                   ) : null}
-                </div>
-              </>
-            ) : isNotebookAiTab && activeNotebookId && aiAvailableForNotebook ? (
-              <>
-                <PageHeader
-                  onOpenSearch={openWelcomeTabHandler}
-                  aiPanelOpen={aiPanelOpen}
-                  aiLayoutMode={aiLayoutMode}
-                  onToggleAiPanel={toggleAiPanel}
-                />
-                <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row overflow-hidden !bg-[hsl(var(--goose-shell-bg))] p-0">
-                  <NotebookAiPanel
-                    key={`tab-${activeNotebookId}`}
-                    notebookId={
-                      activeTab?.workspaceId ?? activeNotebookId
-                    }
-                    onClose={closeAiPanel}
-                    editorRef={editorRef}
-                    capturedSelection={aiPanelCapturedSelection}
-                    onConsumeCapturedSelection={
-                      consumeAiPanelCapturedSelection
-                    }
-                    layoutMode={aiLayoutMode}
-                    onLayoutModeChange={setAiLayoutMode}
-                    variant="tab"
-                  />
                 </div>
               </>
             ) : activePageId && page && inHistoryMode ? (
@@ -342,14 +366,7 @@ export function WorkspaceLayout({
                           void permanentlyDeletePageWithCleanup(activePageId)
                         }
                         aiPanelOpen={
-                          aiAvailableForNotebook &&
-                          (aiLayoutMode === "side-panel"
-                            ? aiPanelOpen
-                            : openTabs.some(
-                                (tab) =>
-                                  tab.type === "notebook-ai" &&
-                                  tab.workspaceId === activeNotebookId,
-                              ))
+                          aiAvailableForNotebook && aiPanelOpen
                         }
                         aiLayoutMode={aiLayoutMode}
                         onToggleAiPanel={

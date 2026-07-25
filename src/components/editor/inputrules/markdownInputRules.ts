@@ -1,12 +1,13 @@
 import { createExtension } from "@blocknote/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
 import { scheduleToggleHeadingSiblingAbsorption } from "./toggleHeadingInputRule";
 
 type RestoreState = {
   /** 块内容节点的位置；转换不会改变该位置。 */
   pos: number;
-  /** 删除触发空格后应恢复的原始前缀，例如 `1.`、`[]`、`#`。 */
+  /** 删除触发空格后应恢复的原始前缀，例如 `1.`、`1。`、`[]`、`【】`、`#`。 */
   triggerText: string;
   /** 转换前的块类型与属性，退格时精确恢复，避免丢失颜色等通用属性。 */
   originalType: string;
@@ -25,6 +26,62 @@ type BlockTrigger = {
 const markdownBlockTriggerKey = new PluginKey<RestoreState | null>(
   "goose-markdown-block-trigger",
 );
+
+/**
+ * 转换后立刻在空块开头退格时，还原触发前缀（不含触发空格）。
+ * 供本插件 handleKeyDown 与 emptyBlockBackspace 共用，避免插件顺序导致
+ * 列表项原生降级抢走退格、触发字符（`【】` / `1。` 等）丢失。
+ */
+export function tryUndoMarkdownBlockTrigger(view: EditorView): boolean {
+  const stored = markdownBlockTriggerKey.getState(view.state);
+  if (!stored) return false;
+
+  const { state } = view;
+  const node = state.doc.nodeAt(stored.pos);
+  const { $from, empty } = state.selection;
+  // 边界：非空内容 / 非空选区 / 光标不在块首 / 已离开该块 → 一律放行默认删除。
+  if (
+    !node ||
+    node.type.name !== stored.convertedType ||
+    node.textContent.length > 0 ||
+    !empty ||
+    $from.parentOffset !== 0 ||
+    $from.before($from.depth) !== stored.pos
+  ) {
+    return false;
+  }
+
+  const originalType = state.schema.nodes[stored.originalType];
+  if (!originalType) return false;
+
+  const tr = state.tr;
+  // 先还原块类型，再写回触发前缀（不含触发空格），避免 `【】 ` / `1。 ` 退格变成双空格。
+  tr.setNodeMarkup(stored.pos, originalType, stored.originalAttrs);
+  const insertAt = stored.pos + 1;
+  tr.insertText(stored.triggerText, insertAt);
+  // 光标固定在还原前缀之后；docChanged 会清掉 restore 状态，再次退格走普通删除。
+  tr.setSelection(
+    TextSelection.create(tr.doc, insertAt + stored.triggerText.length),
+  );
+  view.dispatch(tr);
+  return true;
+}
+
+/**
+ * 行首待办触发匹配：半角 `[]`/`[x]` 与中文 `【】`/`【x】`。
+ * 导出供单测；转换与退格还原都依赖同一规则。
+ */
+export function matchCheckListTrigger(
+  textBefore: string,
+): { checked: boolean; triggerText: string } | null {
+  const matched = /^\s?(?:\[([ xX]?)\]|【([ xX]?)】)$/u.exec(textBefore);
+  if (!matched) return null;
+  const mark = matched[1] ?? matched[2] ?? "";
+  return {
+    checked: /x/i.test(mark),
+    triggerText: matched[0],
+  };
+}
 
 /**
  * 将所有「行首标记 + 空格」的普通 markdown 块触发收敛到一处。
@@ -67,12 +124,13 @@ function getBlockTrigger(
     return { type: "bulletListItem", props: {}, triggerText: bullet[0] };
   }
 
-  const checked = /^\s?\[([ xX]?)\]$/u.exec(textBefore);
+  // 半角 `[]` / `[x]` 与中文全角 `【】` / `【x】` 均转待办，对齐 `1.` / `1。` 的中英输入习惯。
+  const checked = matchCheckListTrigger(textBefore);
   if (checked) {
     return {
       type: "checkListItem",
-      props: { checked: /x/i.test(checked[1]) },
-      triggerText: checked[0],
+      props: { checked: checked.checked },
+      triggerText: checked.triggerText,
     };
   }
 
@@ -149,83 +207,57 @@ function createMarkdownBlockTrigger(editor: any) {
     },
     props: {
       handleTextInput(view, from, to, text) {
-      if (text !== " " || from !== to) return false;
+        if (text !== " " || from !== to) return false;
 
-      const { state } = view;
-      const $from = state.doc.resolve(from);
-      const parent = $from.parent;
-      if (parent.type.name !== "paragraph" && parent.type.name !== "heading") {
-        return false;
-      }
+        const { state } = view;
+        const $from = state.doc.resolve(from);
+        const parent = $from.parent;
+        if (parent.type.name !== "paragraph" && parent.type.name !== "heading") {
+          return false;
+        }
 
-      const textBefore = parent.textBetween(
-        0,
-        $from.parentOffset,
-        null,
-        "￼",
-      );
-      const currentBlock = editor.getTextCursorPosition().block;
-      const trigger = getBlockTrigger(textBefore, editor, currentBlock);
-      if (!trigger) return false;
+        const textBefore = parent.textBetween(
+          0,
+          $from.parentOffset,
+          null,
+          "￼",
+        );
+        const currentBlock = editor.getTextCursorPosition().block;
+        const trigger = getBlockTrigger(textBefore, editor, currentBlock);
+        if (!trigger) return false;
 
-      // 除折叠标题外，所有 markdown 触发只允许从普通段落开始。
-      if (
-        parent.type.name !== "paragraph" &&
-        !(trigger.type === "heading" && /^[>》]$/u.test(textBefore))
-      ) {
-        return false;
-      }
+        // 除折叠标题外，所有 markdown 触发只允许从普通段落开始。
+        if (
+          parent.type.name !== "paragraph" &&
+          !(trigger.type === "heading" && /^[>》]$/u.test(textBefore))
+        ) {
+          return false;
+        }
 
-      const blockPos = $from.before($from.depth);
-      const targetType = state.schema.nodes[trigger.type];
-      if (!targetType) return false;
+        const blockPos = $from.before($from.depth);
+        const targetType = state.schema.nodes[trigger.type];
+        if (!targetType) return false;
 
-      const tr = state.tr;
-      tr.setNodeMarkup(blockPos, targetType, {
-        ...parent.attrs,
-        ...trigger.props,
-      });
-      tr.delete(from - trigger.triggerText.length, from);
-      tr.setMeta(markdownBlockTriggerKey, {
-        pos: blockPos,
-        triggerText: trigger.triggerText,
-        originalType: parent.type.name,
-        originalAttrs: { ...parent.attrs },
-        convertedType: trigger.type,
-      } satisfies RestoreState);
-      view.dispatch(tr);
-      trigger.afterTransform?.();
-      return true;
+        const tr = state.tr;
+        tr.setNodeMarkup(blockPos, targetType, {
+          ...parent.attrs,
+          ...trigger.props,
+        });
+        tr.delete(from - trigger.triggerText.length, from);
+        tr.setMeta(markdownBlockTriggerKey, {
+          pos: blockPos,
+          triggerText: trigger.triggerText,
+          originalType: parent.type.name,
+          originalAttrs: { ...parent.attrs },
+          convertedType: trigger.type,
+        } satisfies RestoreState);
+        view.dispatch(tr);
+        trigger.afterTransform?.();
+        return true;
       },
       handleKeyDown(view, event) {
-      if (event.key !== "Backspace") return false;
-
-      const stored = markdownBlockTriggerKey.getState(view.state);
-      if (!stored) return false;
-
-      const { state } = view;
-      const node = state.doc.nodeAt(stored.pos);
-      const { $from, empty } = state.selection;
-      // 只接管「转换后立刻在刚生成的空块开头退格」这一种语义明确的情况。
-      if (
-        !node ||
-        node.type.name !== stored.convertedType ||
-        node.textContent.length > 0 ||
-        !empty ||
-        $from.parentOffset !== 0 ||
-        $from.before($from.depth) !== stored.pos
-      ) {
-        return false;
-      }
-
-      const originalType = state.schema.nodes[stored.originalType];
-      if (!originalType) return false;
-
-      const tr = state.tr;
-      tr.setNodeMarkup(stored.pos, originalType, stored.originalAttrs);
-      tr.insertText(stored.triggerText, stored.pos + 1);
-      view.dispatch(tr);
-      return true;
+        if (event.key !== "Backspace") return false;
+        return tryUndoMarkdownBlockTrigger(view);
       },
     },
   });

@@ -157,7 +157,17 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const STORAGE_DOC_PREFIX = "gn:storage:";
   const getStorageDocId = (storageKey) => `${STORAGE_DOC_PREFIX}${storageKey}`;
 
-  const clearHostQuickNoteEntryOnce = () => {
+  /**
+   * 速记 feature 进入后释放 uTools 宿主主界面：
+   * - hideMainWindow：立刻收起本次命中条
+   * - outPlugin(false)：插件退后台、不杀进程
+   *
+   * 为什么必须 outPlugin：只 hide 不 out 时，插件仍占着宿主会话；
+   * 用户再按全局 uTools 热键会重新露出「鹅的小窗」宿主条，而不是主搜索界面。
+   * outPlugin 默认/false 只隐藏到后台，不结束进程，createBrowserWindow 浮窗与
+   * quickNoteWin 引用都保留——浮窗继续显示，不因唤起 uTools 被关掉。
+   */
+  const releaseHostToUToolsMain = () => {
     try {
       utools.removeSubInput?.();
     } catch {
@@ -168,19 +178,12 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     } catch {
       /* noop */
     }
-  };
-
-  const clearHostQuickNoteEntry = () => {
-    clearHostQuickNoteEntryOnce();
-    // uTools 可能在 feature enter 回调结束后重新绘制命中条。
-    // 后续几拍继续清理，确保打开/关闭 toggle 都不残留宿主搜索框。
-    [0, 16, 80, 180].forEach((delay) => {
-      try {
-        setTimeout(clearHostQuickNoteEntryOnce, delay);
-      } catch {
-        /* noop */
-      }
-    });
+    try {
+      // false = 不杀进程；省略参数官方语义同样是退后台。
+      utools.outPlugin?.(false);
+    } catch {
+      /* noop */
+    }
   };
 
   const readStoredString = (storageKey) => {
@@ -353,8 +356,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 关窗=隐藏（不销毁）：窗口常驻后台，下次唤起秒显（省去重新加载页面 + 重跑 bootstrap）。
   // 隐藏前持久化 bounds；保留 quickNoteWin 引用、仅置 visible=false。
   // 若窗口已被宿主销毁（isDestroyed），清空引用走下次新建路径。
+  // 注意：不在此处 hideMainWindow——enter 时已 outPlugin 释放宿主；
+  // 若再延迟 hide 主窗，会把用户「关小窗后立刻唤起的 uTools 主界面」误关掉。
   const hideQuickNoteWindow = () => {
-    clearHostQuickNoteEntry();
     if (!quickNoteWin || quickNoteWin.isDestroyed?.()) {
       quickNoteWin = null;
       quickNoteVisible = false;
@@ -369,14 +373,13 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
     quickNoteVisible = false;
     quickNoteActiveMode = null;
-    clearHostQuickNoteEntry();
   };
 
   // 复用已隐藏的窗口：show + focus + 置顶，并推 enter 让子窗重新聚焦光标（草稿延续，不重解析）。
   // 再次显示前用持久化位置/尺寸 setBounds，避免隐藏期间被系统挪位或首次 setBounds 失败后落错位置。
+  // 宿主释放由 enter 末尾 releaseHostToUToolsMain 统一做，这里只负责浮窗本体。
   const showExistingQuickNoteWindow = (mode) => {
     if (!quickNoteWin || quickNoteWin.isDestroyed?.()) return false;
-    clearHostQuickNoteEntry();
     try {
       const prefs = readQuickNotePrefs();
       const restoredBounds = resolveQuickNoteBounds(prefs, utools);
@@ -493,8 +496,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   // ── 打开速记小窗 ──────────────────────────────────────────────
   const openQuickNoteWindow = (mode) => {
-    clearHostQuickNoteEntry();
     // 窗口常驻：再次触发 = toggle。可见 → 隐藏；已隐藏 → 秒显（复用已加载的窗口）。
+    // 宿主主界面由 enter 末尾 releaseHostToUToolsMain 释放，这里不碰 hideMainWindow。
     if (quickNoteWin && !quickNoteWin.isDestroyed?.()) {
       if (quickNoteVisible) {
         hideQuickNoteWindow();
@@ -596,10 +599,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       } catch {
         /* noop */
       }
-      clearHostQuickNoteEntry();
-      // ⚠️ 关键：不要 outPlugin！B 进程要常驻持有 quickNoteWin 引用，
-      // 否则第二次按速记键的 toggle 关窗会失效（引用丢了变成又开一个新窗）。
-      // mode:"none" 在真机仍可能短暂留下宿主命中条；这里显式隐藏主窗并移除 subInput。
+      // 官方 mode:none 范式：hideMainWindow + outPlugin。
+      // 释放宿主后，全局 uTools 热键应回到主搜索界面；浮窗本身不在此处隐藏。
+      releaseHostToUToolsMain();
     };
     window.exports = {
       quicknote_new: {
@@ -616,9 +618,20 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       },
     };
 
+    // onPluginOut：绝不能 hide/destroy 浮窗（用户要的是小窗常驻 + uTools 主界面可用）。
+    // isKill=true 时进程将被回收，清空引用避免悬挂；浮窗随进程一起走。
     if (typeof utools.onPluginOut === "function") {
-      utools.onPluginOut(() => {
-        clearHostQuickNoteEntry();
+      utools.onPluginOut((isKill) => {
+        if (isKill === true) {
+          try {
+            persistQuickNoteBounds();
+          } catch {
+            /* noop */
+          }
+          quickNoteWin = null;
+          quickNoteVisible = false;
+          quickNoteActiveMode = null;
+        }
       });
     }
   }

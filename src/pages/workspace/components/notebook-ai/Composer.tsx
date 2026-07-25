@@ -47,6 +47,8 @@ interface ComposerProps {
   searchPages?: (query: string) => AiReferenceSuggestionItem[];
   onEscape?: () => void;
   initialReference?: AiFileReferenceAttrs | null;
+  /** 全屏时输入区居中加宽 */
+  layout?: "side-panel" | "fullscreen";
 }
 
 export function Composer({
@@ -58,7 +60,9 @@ export function Composer({
   searchPages,
   onEscape,
   initialReference,
+  layout = "side-panel",
 }: ComposerProps) {
+  const isFullscreen = layout === "fullscreen";
   const inputRef = useRef<AiComposerInputHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imagesRef = useRef<NotebookAiImageAttachment[]>([]);
@@ -190,7 +194,20 @@ export function Composer({
   const canSend = !isStreaming && !disabled && (!isEmpty || images.length > 0);
 
   return (
-    <div className="shrink-0 px-3 py-2.5">
+    <div
+      className={cn(
+        "shrink-0",
+        isFullscreen
+          ? "border-t border-border/50 px-6 py-3"
+          : "px-3 py-2.5",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto w-full",
+          isFullscreen ? "max-w-[720px]" : "max-w-none",
+        )}
+      >
       {references.length > 0 && (
         <div
           className="mb-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -346,6 +363,7 @@ export function Composer({
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
