@@ -1,6 +1,5 @@
 # 鹅的笔记 · goose-note
 
-[![CI](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
