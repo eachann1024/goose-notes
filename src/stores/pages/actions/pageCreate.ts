@@ -26,8 +26,28 @@ import type { PagesState } from "../types";
 import { persistPageSnapshot, persistPageSnapshots, syncLocalPageMetadataCache } from "../persistence";
 import type { StoreSet, StoreGet } from "./hydrate";
 import { flushEditorContent } from "./flushEditor";
+import { requestPageTitleFocus } from "@/lib/page-title-focus";
+import { useSettings } from "@/stores/useSettings";
 
 const initialContent: JSONContent = createEmptyBlockNoteContent();
+
+/**
+ * 新建页聚焦策略：
+ * - 单标签：页头 SingleTabTitle 响应 requestPageTitleFocus
+ * - 多标签 + 本地文件：正文上方 LocalFileTitle 响应 requestPageTitleFocus
+ * - 多标签 + 内部页：focus-editor-start 把光标放到首块 H1 标题末尾
+ */
+function focusNewPage(pageId: string) {
+  requestPageTitleFocus(pageId);
+  if (useSettings.getState().singleTabMode) {
+    return;
+  }
+  if (typeof window !== "undefined") {
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+    }, 100);
+  }
+}
 
 export function createDefaultPageContent(title = ""): JSONContent {
   return createEmptyBlockNoteContent(title);
@@ -175,14 +195,7 @@ export const createPageAction = (
   });
   set({ activePageId: finalId });
   useNotebooks.getState().setLastActivePage(workspaceId, finalId);
-
-  if (typeof window !== "undefined") {
-    setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("goose-note:focus-editor-start"),
-      );
-    }, 100);
-  }
+  focusNewPage(finalId);
 
   return finalId;
 };
@@ -233,20 +246,13 @@ export const createLocalPageAction = async (
   const id = await get().createLocalPageRecord({
     workspaceId,
     parentId,
-    title: "新页面",
+    title: "无标题",
     content: createEmptyLocalPageContent(),
   });
   if (!id) return null;
   set({ activePageId: id });
   useNotebooks.getState().setLastActivePage(workspaceId, id);
-
-  if (typeof window !== "undefined") {
-    setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("goose-note:focus-editor-start"),
-      );
-    }, 100);
-  }
+  focusNewPage(id);
 
   return id;
 };

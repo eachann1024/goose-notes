@@ -1,4 +1,10 @@
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   Clock3,
@@ -10,9 +16,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
+import { cn } from "@/lib/utils";
 
 export interface ConversationHistoryListProps {
   notebookId: string;
@@ -57,29 +63,79 @@ function getConversationSummary(messages: NotebookAiMessage[]) {
     : "新会话";
 }
 
+/** 显示到时分秒；非今日附带月日（跨年再带年份） */
 function formatConversationTime(timestamp: number) {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "";
 
   const now = new Date();
+  const time = date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
   const isToday =
     date.getFullYear() === now.getFullYear() &&
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
 
-  if (isToday) {
-    return date.toLocaleTimeString("zh-CN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
+  if (isToday) return time;
 
-  return date.toLocaleDateString("zh-CN", {
+  const datePart = date.toLocaleDateString("zh-CN", {
     year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
     month: "short",
     day: "numeric",
   });
+
+  return `${datePart} ${time}`;
+}
+
+/**
+ * Dropdown / 溢出容器内 Radix Tooltip 常被 pointer 捕获拦掉。
+ * 用 body portal + 固定定位，0 延迟悬停展示。
+ */
+function PortalHoverTip({
+  content,
+  children,
+}: {
+  content: string;
+  children: (handlers: {
+    onMouseEnter: (event: MouseEvent<HTMLElement>) => void;
+    onMouseLeave: () => void;
+  }) => ReactNode;
+}) {
+  const [tip, setTip] = useState<{ top: number; left: number } | null>(null);
+
+  return (
+    <>
+      {children({
+        onMouseEnter: (event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const maxWidth = 288;
+          const left = Math.min(
+            Math.max(8, rect.left),
+            window.innerWidth - maxWidth - 8,
+          );
+          setTip({ top: rect.bottom + 6, left });
+        },
+        onMouseLeave: () => setTip(null),
+      })}
+      {tip && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="tooltip"
+              className="pointer-events-none fixed z-[30000] max-w-xs select-none whitespace-normal break-words rounded-[14px] border border-border/80 bg-popover px-2.5 py-1.5 text-[12px] font-medium leading-snug text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:border-white/20"
+              style={{ top: tip.top, left: tip.left }}
+            >
+              {content}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
 
 export function ConversationHistoryList({
@@ -123,50 +179,61 @@ export function ConversationHistoryList({
   }
 
   const list = (
-    <div className="space-y-0.5 pr-1">
+    <div className="min-w-0 max-w-full space-y-0.5 overflow-x-hidden pr-1">
       {conversations.map((conversation) => {
         const isActive = conversation.id === activeConversationId;
         const summary = getConversationSummary(conversation.messages);
 
         return (
-          <button
-            key={conversation.id}
-            type="button"
-            onClick={() => selectConversation(conversation.id)}
-            className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
-            aria-current={isActive ? "true" : undefined}
-            title={summary}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm text-foreground">{summary}</div>
-              <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Clock3 className="h-3 w-3" strokeWidth={1.75} />
-                <span>{formatConversationTime(conversation.updatedAt)}</span>
-              </div>
-            </div>
-            {isActive ? (
-              <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground">
-                <Check className="h-3 w-3" strokeWidth={2} />
-                当前
-              </span>
-            ) : null}
-          </button>
+          <PortalHoverTip key={conversation.id} content={summary}>
+            {({ onMouseEnter, onMouseLeave }) => (
+              <button
+                type="button"
+                onClick={() => selectConversation(conversation.id)}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
+                aria-current={isActive ? "true" : undefined}
+              >
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="block w-full truncate text-sm text-foreground">
+                    {summary}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Clock3 className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+                    <span className="truncate">
+                      {formatConversationTime(conversation.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                {isActive ? (
+                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground">
+                    <Check className="h-3 w-3" strokeWidth={2} />
+                    当前
+                  </span>
+                ) : null}
+              </button>
+            )}
+          </PortalHoverTip>
         );
       })}
     </div>
   );
 
   if (compact) {
-    return <div className={className}>{list}</div>;
+    return <div className={cn("min-w-0 max-w-full", className)}>{list}</div>;
   }
 
   return (
-    <ScrollArea
-      className={className ?? "p-1.5"}
-      style={{ height: Math.min(conversations.length * 58 + 12, 300) }}
+    <div
+      className={cn(
+        "min-w-0 max-w-full overflow-x-hidden overflow-y-auto p-1.5",
+        className,
+      )}
+      style={{ maxHeight: Math.min(conversations.length * 58 + 12, 300) }}
     >
       {list}
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -195,8 +262,12 @@ export function ConversationHistoryPopover({
           <HistoryIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-72 p-0">
-        <div className="border-b border-border/70 px-3 py-2.5">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-72 max-w-72 overflow-hidden p-0"
+      >
+        <div className="px-3 py-2.5">
           <div className="text-sm font-medium text-foreground">历史会话</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             切换当前笔记本的 AI 会话

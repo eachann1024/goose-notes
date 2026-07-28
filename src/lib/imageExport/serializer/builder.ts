@@ -528,10 +528,8 @@ ${decoStyle}
   font-weight: 700;
 }
 .gooseshot-content .task-item.checked .task-text {
-  color: ${t.textColor};
-  text-decoration: line-through;
-  text-decoration-color: ${t.secondaryText};
-  text-decoration-thickness: 1px;
+  color: ${t.secondaryText};
+  text-decoration: none;
 }
 .gooseshot-content .task-text {
   flex: 1;

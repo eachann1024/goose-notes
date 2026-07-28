@@ -55,27 +55,33 @@ const CUSTOM_PROTOCOL_OPTIONS: Array<{
 }> = [
   {
     id: "openai-responses",
-    label: "OpenAI Responses",
+    label: "OpenAI 官方 Responses API",
     description: "使用 /v1/responses，适合 OpenAI 及支持 Responses 的服务",
   },
   {
     id: "openai",
     label: "OpenAI 兼容协议",
-    description: "使用 /v1/chat/completions，兼容多数第三方服务",
+    description: "使用 /v1/chat/completions，兼容多数模型与中转服务",
   },
   {
     id: "claude",
-    label: "Anthropic 协议",
-    description: "使用 /v1/messages，适合 Anthropic 及兼容服务",
+    label: "Anthropic 原生工具调用",
+    description: "通过 Messages API 使用 Anthropic 原生工具能力",
   },
 ];
 
-const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> 自定义 AI”补充 API Key";
+const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> AI 服务”补充 API Key";
 
 interface CustomAIConnection {
   protocol: CustomAIProtocol;
   baseURL: string;
   apiKey: string;
+}
+
+function getSupportedProtocol(protocol: CustomAIProtocol): CustomAIProtocol {
+  return CUSTOM_PROTOCOL_OPTIONS.some((option) => option.id === protocol)
+    ? protocol
+    : "openai-responses";
 }
 
 export function SettingsAI({
@@ -87,15 +93,15 @@ export function SettingsAI({
   saveCustomConfig,
 }: SettingsAIProps) {
   const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(
-    ai.customProtocol,
+    getSupportedProtocol(ai.customProtocol),
   );
   const [customOpenAIResponsesBaseURL, setCustomOpenAIResponsesBaseURL] =
-    useState(ai.customOpenAIResponsesBaseURL);
+    useState(ai.customOpenAIResponsesBaseURL || DEFAULT_OPENAI_BASE_URL);
   const [customOpenAIBaseURL, setCustomOpenAIBaseURL] = useState(
-    ai.customOpenAIBaseURL,
+    ai.customOpenAIBaseURL || DEFAULT_OPENAI_BASE_URL,
   );
   const [customClaudeBaseURL, setCustomClaudeBaseURL] = useState(
-    ai.customClaudeBaseURL,
+    ai.customClaudeBaseURL || DEFAULT_CLAUDE_BASE_URL,
   );
   const [customOpenAIResponsesApiKey, setCustomOpenAIResponsesApiKey] =
     useState(ai.customOpenAIResponsesApiKey);
@@ -107,6 +113,7 @@ export function SettingsAI({
   );
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const modelSectionRef = useRef<HTMLDivElement | null>(null);
   const modelRequestIdRef = useRef(0);
 
@@ -116,19 +123,23 @@ export function SettingsAI({
     customProtocol === ai.customProtocol ? storedCustomModels : [];
 
   useEffect(() => {
-    setCustomProtocol(ai.customProtocol);
+    setCustomProtocol(getSupportedProtocol(ai.customProtocol));
   }, [ai.customProtocol]);
 
   useEffect(() => {
-    setCustomOpenAIResponsesBaseURL(ai.customOpenAIResponsesBaseURL);
+    setCustomOpenAIResponsesBaseURL(
+      ai.customOpenAIResponsesBaseURL || DEFAULT_OPENAI_BASE_URL,
+    );
   }, [ai.customOpenAIResponsesBaseURL]);
 
   useEffect(() => {
-    setCustomOpenAIBaseURL(ai.customOpenAIBaseURL);
+    setCustomOpenAIBaseURL(
+      ai.customOpenAIBaseURL || DEFAULT_OPENAI_BASE_URL,
+    );
   }, [ai.customOpenAIBaseURL]);
 
   useEffect(() => {
-    setCustomClaudeBaseURL(ai.customClaudeBaseURL);
+    setCustomClaudeBaseURL(ai.customClaudeBaseURL || DEFAULT_CLAUDE_BASE_URL);
   }, [ai.customClaudeBaseURL]);
 
   useEffect(() => {
@@ -173,31 +184,26 @@ export function SettingsAI({
       : customProtocol === "openai"
         ? customOpenAIApiKey
         : customClaudeApiKey;
-  const currentBaseURLPlaceholder =
-    customProtocol === "claude"
-      ? DEFAULT_CLAUDE_BASE_URL
-      : DEFAULT_OPENAI_BASE_URL;
-
   const getConnectionForProtocol = (
     protocol: CustomAIProtocol,
   ): CustomAIConnection => {
     if (protocol === "openai-responses") {
       return {
         protocol,
-        baseURL: customOpenAIResponsesBaseURL,
+        baseURL: customOpenAIResponsesBaseURL.trim() || DEFAULT_OPENAI_BASE_URL,
         apiKey: customOpenAIResponsesApiKey,
       };
     }
     if (protocol === "openai") {
       return {
         protocol,
-        baseURL: customOpenAIBaseURL,
+        baseURL: customOpenAIBaseURL.trim() || DEFAULT_OPENAI_BASE_URL,
         apiKey: customOpenAIApiKey,
       };
     }
     return {
       protocol,
-      baseURL: customClaudeBaseURL,
+      baseURL: customClaudeBaseURL.trim() || DEFAULT_CLAUDE_BASE_URL,
       apiKey: customClaudeApiKey,
     };
   };
@@ -255,6 +261,17 @@ export function SettingsAI({
     setSavingCustomConfig(true);
     setCustomSaveError(null);
 
+    // 先持久化 Base URL / API Key，避免拉模型失败时配置丢失、下次重填。
+    // 同协议保留已有模型列表；切换协议时先清空，等拉取成功再写入。
+    const previousModelOptions =
+      connection.protocol === ai.customProtocol ? storedCustomModels : [];
+    saveCustomConfig({
+      protocol: connection.protocol,
+      baseURL: connection.baseURL,
+      apiKey,
+      modelOptions: previousModelOptions,
+    });
+
     try {
       const modelOptions = await fetchCustomAIModels({
         protocol: connection.protocol,
@@ -297,7 +314,12 @@ export function SettingsAI({
       const message =
         error instanceof Error ? error.message : "保存自定义 AI 失败";
       setCustomSaveError(message);
-      toast.error(message);
+      toast.error(message, {
+        description:
+          action === "refresh"
+            ? "模型列表未更新，已保留当前配置。"
+            : "Base URL 与 API Key 已保存，模型列表未能更新。",
+      });
     } finally {
       if (requestId === modelRequestIdRef.current) {
         setSavingCustomConfig(false);
@@ -372,7 +394,7 @@ export function SettingsAI({
               </Label>
             </div>
             <div className="text-xs leading-5 text-muted-foreground">
-              关闭后页头不会显示 AI 图标，已打开的 AI 页面也会自动收起。
+              关闭后隐藏所有 AI 入口，并停止当前生成。
             </div>
           </div>
           <Switch
@@ -390,7 +412,7 @@ export function SettingsAI({
               className="h-4 w-4 shrink-0 text-muted-foreground"
               strokeWidth={1.75}
             />
-            自定义 AI
+            AI 服务
           </span>
         }
         description="接入 OpenAI Responses、OpenAI 兼容或 Anthropic 服务。"
@@ -470,18 +492,24 @@ export function SettingsAI({
                 value={customBaseURL}
                 onChange={(event) => {
                   setCustomSaveError(null);
+                  const next = event.target.value;
                   if (customProtocol === "openai-responses") {
-                    setCustomOpenAIResponsesBaseURL(event.target.value);
+                    setCustomOpenAIResponsesBaseURL(next);
                     return;
                   }
                   if (customProtocol === "openai") {
-                    setCustomOpenAIBaseURL(event.target.value);
+                    setCustomOpenAIBaseURL(next);
                     return;
                   }
-                  setCustomClaudeBaseURL(event.target.value);
+                  setCustomClaudeBaseURL(next);
                 }}
-                placeholder={currentBaseURLPlaceholder}
+                placeholder={
+                  customProtocol === "claude"
+                    ? DEFAULT_CLAUDE_BASE_URL
+                    : DEFAULT_OPENAI_BASE_URL
+                }
                 autoComplete="off"
+                spellCheck={false}
               />
             </div>
 
@@ -498,25 +526,44 @@ export function SettingsAI({
                   API Key
                 </Label>
               </div>
-              <Input
-                id="custom-ai-api-key"
-                type="password"
-                value={customApiKey}
-                onChange={(event) => {
-                  setCustomSaveError(null);
-                  if (customProtocol === "openai-responses") {
-                    setCustomOpenAIResponsesApiKey(event.target.value);
-                    return;
-                  }
-                  if (customProtocol === "openai") {
-                    setCustomOpenAIApiKey(event.target.value);
-                    return;
-                  }
-                  setCustomClaudeApiKey(event.target.value);
-                }}
-                placeholder="输入后点保存自动拉取模型"
-                autoComplete="off"
-              />
+              <div className="relative">
+                <Input
+                  id="custom-ai-api-key"
+                  type={apiKeyVisible ? "text" : "password"}
+                  value={customApiKey}
+                  onChange={(event) => {
+                    setCustomSaveError(null);
+                    if (customProtocol === "openai-responses") {
+                      setCustomOpenAIResponsesApiKey(event.target.value);
+                      return;
+                    }
+                    if (customProtocol === "openai") {
+                      setCustomOpenAIApiKey(event.target.value);
+                      return;
+                    }
+                    setCustomClaudeApiKey(event.target.value);
+                  }}
+                  placeholder="输入后点保存自动拉取模型"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setApiKeyVisible((visible) => !visible)}
+                  aria-label={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
+                  aria-pressed={apiKeyVisible}
+                >
+                  {apiKeyVisible ? (
+                    <LucideIcons.EyeOff className="h-4 w-4" strokeWidth={1.75} />
+                  ) : (
+                    <LucideIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div
@@ -535,7 +582,7 @@ export function SettingsAI({
                     保存配置
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    保存后自动拉取该服务可用的模型列表。
+                    保存 Base URL 与 API Key，并自动拉取可用模型列表。
                   </p>
                 </div>
               </div>

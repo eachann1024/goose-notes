@@ -363,6 +363,12 @@ export function renderItem({
     (
       interactive.onClick as React.MouseEventHandler<HTMLDivElement> | undefined
     )?.(e);
+    // 已选中再点时 tree 可能不触发 onSelectItems；全屏 AI 下仍需回到该页标签
+    const pageId = String(item.index);
+    if (pageId && pageId !== "root") {
+      const permanent = e.metaKey || e.ctrlKey;
+      openPageFromSidebar(pageId, permanent ? "permanent" : "preview");
+    }
   };
 
   const row = (

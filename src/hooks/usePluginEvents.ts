@@ -9,6 +9,7 @@ import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { fs } from "@/lib/utools/fs";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 type UToolsPluginEnterDetail = {
   code?: string;
@@ -79,6 +80,7 @@ export function usePluginEvents() {
     // new_page 唤起：用选中文字新建笔记并打开（不触碰任何已存在页面）。
     const handleNewPage = async (event: Event) => {
       if (!usePages.getState().hydrated) return;
+      closeNotebookAiIfFullscreen();
       const customEvent = event as CustomEvent<{ text?: string }>;
       const text = customEvent.detail?.text ?? "";
 
@@ -124,6 +126,7 @@ export function usePluginEvents() {
       const pageId = customEvent.detail?.pageId;
       if (typeof pageId !== "string" || pageId.length === 0) return;
       if (!usePages.getState().pages[pageId]) return;
+      closeNotebookAiIfFullscreen();
       useTabs.getState().openTab(pageId);
     };
 

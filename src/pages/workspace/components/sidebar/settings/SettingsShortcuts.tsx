@@ -19,6 +19,7 @@ interface SettingsShortcutsProps {
   appShortcuts: Record<string, string>
   setAppShortcut: (id: string, shortcut: string) => void
   resetAppShortcuts: () => void
+  singleTabMode: boolean
 }
 
 const SETTINGS_OPTION_ROW_CLASS =
@@ -136,11 +137,11 @@ function makeCloseSetter(
 const FIXED_SHORTCUTS = [
   { label: "新建笔记", shortcut: FIXED_APP_SHORTCUTS.newNote },
   { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
-  { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab },
+  { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
   { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
-  { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9" },
-  { label: "循环切换标签页", shortcut: "Ctrl+Tab" },
-  { label: "反向循环切换标签页", shortcut: "Ctrl+Shift+Tab" },
+  { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9", tabOnly: true },
+  { label: "循环切换标签页", shortcut: "Ctrl+Tab", tabOnly: true },
+  { label: "反向循环切换标签页", shortcut: "Ctrl+Shift+Tab", tabOnly: true },
   { label: "查找下一处", shortcut: "Mod+G" },
   { label: "查找上一处", shortcut: "Mod+Shift+G" },
   { label: "字号放大", shortcut: "Mod+=" },
@@ -182,6 +183,7 @@ export function SettingsShortcuts({
   appShortcuts,
   setAppShortcut,
   resetAppShortcuts,
+  singleTabMode,
 }: SettingsShortcutsProps) {
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -262,7 +264,8 @@ export function SettingsShortcuts({
             resetValue={DEFAULT_APP_SHORTCUTS.toggleTheme}
           />
         </div>
-        <div className="mt-2">
+        {!singleTabMode && <>
+          <div className="mt-2">
           <ShortcutField
             id="shortcut-nav-back"
             title="后退"
@@ -271,8 +274,8 @@ export function SettingsShortcuts({
             onChange={safeSetAppShortcut("navBack")}
             resetValue={DEFAULT_APP_SHORTCUTS.navBack}
           />
-        </div>
-        <div className="mt-2">
+          </div>
+          <div className="mt-2">
           <ShortcutField
             id="shortcut-nav-forward"
             title="前进"
@@ -281,8 +284,8 @@ export function SettingsShortcuts({
             onChange={safeSetAppShortcut("navForward")}
             resetValue={DEFAULT_APP_SHORTCUTS.navForward}
           />
-        </div>
-        <div className="mt-2">
+          </div>
+          <div className="mt-2">
           <ShortcutField
             id="shortcut-new-tab"
             title="新建标签页"
@@ -291,19 +294,20 @@ export function SettingsShortcuts({
             onChange={safeSetAppShortcut("newTab")}
             resetValue={DEFAULT_APP_SHORTCUTS.newTab}
           />
-        </div>
+          </div>
+        </>}
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="关闭行为">
-        <ShortcutField
+      <SettingsSectionCard title={singleTabMode ? "面板关闭" : "关闭行为"}>
+        {!singleTabMode && <ShortcutField
           id="close-tab-shortcut"
           title="关闭快捷键"
           description={`默认 ${closeTabDefaultLabel}。按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。`}
           value={closeTabShortcut}
           onChange={safeSetCloseTab}
           resetValue={DEFAULT_CLOSE_TAB_SHORTCUT}
-        />
-        <div className="mt-2">
+        />}
+        <div className={singleTabMode ? "" : "mt-2"}>
           <ShortcutField
             id="search-panel-close-shortcut"
             title="关闭搜索面板"
@@ -320,7 +324,7 @@ export function SettingsShortcuts({
           以下快捷键固定内置，不参与云同步；在不同系统上会自动换成对应按键。
         </p>
         <div className="space-y-0.5">
-          {FIXED_SHORTCUTS.map((item) => (
+          {FIXED_SHORTCUTS.filter((item) => !singleTabMode || !item.tabOnly).map((item) => (
             <div
               key={item.label}
               className={`flex items-center justify-between gap-4 px-4 py-2.5 ${SETTINGS_OPTION_ROW_CLASS}`}

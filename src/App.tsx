@@ -22,6 +22,7 @@ function App() {
     editorFontSize,
     customFonts,
     privacy,
+    singleTabMode,
   } = useSettings();
   const { hydrated, onboardingCompleted, activePageId } = usePages();
 
@@ -97,6 +98,11 @@ function App() {
     privacy.autoCloseInactiveTabs,
     privacy.autoCloseInactiveTabsHours,
   ]);
+
+  useEffect(() => {
+    if (!hydrated || !singleTabMode) return;
+    useTabs.getState().collapseToActiveTab();
+  }, [hydrated, singleTabMode]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

@@ -5,13 +5,18 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import { buildLanguageModel } from "./model";
 import { notebookAiTools } from "./tools";
+import {
+  getSkillToolNames,
+  NOTEBOOK_AGENT_INSTRUCTIONS,
+  NOTEBOOK_SKILLS,
+} from "./skills";
 import { getCurrentNotebookAiPageId } from "./context";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { LanguageModel } from "ai";
 import type { ModelAvailability } from "./model";
 import type { NotebookAiAgentContext } from "./types";
 
-/** 构建注入了笔记本上下文的 system prompt */
+/** 只注入当前任务所需的稳定上下文，具体能力由 loadSkill 渐进加载。 */
 function buildSystemPrompt(
   notebookId: string,
   currentPageId?: string | null,
@@ -30,67 +35,15 @@ function buildSystemPrompt(
       ? `[${activePage.id}] ${getPageTitle(activePage)}`
       : "（无当前打开页面）";
 
-  // 取当前笔记本最近页面标题摘要，给模型定位用；正文需要时再 readPage。
-  const notebookPages = Object.values(pages)
-    .filter((p) => p.workspaceId === notebookId && !p.trashedAt)
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 20);
+  return `${NOTEBOOK_AGENT_INSTRUCTIONS}
 
-  const pageList =
-    notebookPages.length > 0
-      ? notebookPages
-          .map(
-            (p) =>
-              `- [${p.id}] ${getPageTitle(p)}${p.id === activePage?.id ? "（当前打开）" : ""}`,
-          )
-          .join("\n")
-      : "（暂无页面）";
+# 当前上下文
 
-  return `你是「${notebookName}」笔记本的 AI 助手，帮助用户管理和创作笔记内容。
+- 当前笔记本：${notebookName}
+- 当前笔记本 id：${notebookId}
+- 当前打开页面：${activePageLine}
 
-当前笔记本：${notebookName}（id: ${notebookId}）
-
-当前打开页面：${activePageLine}
-
-当前笔记本页面（最近 20 页，仅标题索引，正文需按需读取）：
-${pageList}
-
-## 工具使用守则
-
-1. **当前页面优先**：用户说“这个页面 / 当前页面 / 本文 / 这篇”时，直接对“当前打开页面”使用 readPage；不要先 searchNotes，也不要 listPages。用户要求精简、润色、总结、改写当前页时，禁止 searchNotes。当前页面来自用户发送本轮消息时的活动页签，不要被后续新建页面或切换页面影响。
-2. **搜索必须克制**：只有用户明确要求跨页搜索，或目标页面不明确时才用 searchNotes。一次请求默认最多调用 1 次 searchNotes；只有搜索结果明显不够且查询词实质不同，才允许再搜一次。
-3. **读取必须克制**：只读取实际需要回答或修改的页面。不要批量读取页面；不要为了润色当前页去读其它笔记。
-4. **写作类任务必须用 createPage**：创建新文章时调用 createPage 工具，markdown 参数输出完整正文，首行不要重复标题。
-5. **批量修改用 replaceInPage**：需要在多页修改内容时，逐页调用 replaceInPage 并汇报每页替换结果。
-6. **表格数据用 showTable**：展示结构化数据时使用 showTable 工具。
-7. **数值对比/趋势用 showChart**：展示数值对比或趋势时使用 showChart 工具。
-8. **流程/结构/关系/架构图用 showDiagram**：当用户要流程图、时序图、关系图、架构图、Mermaid 图时，调用 showDiagram，source 只输出 Mermaid DSL，不要在正文重复贴源码。
-9. **SVG/矢量图用 showSvg**：只有用户明确要求“SVG / 矢量图 / 图标 / 示意图”时才调用 showSvg；svg 必须是完整 <svg>，禁止脚本、事件属性、foreignObject、外链资源。
-10. **可视化回复要安静**：调用 showChart / showDiagram / showSvg 后，最终回复只给一句必要说明，不要重复输出图表源码、工具名或 JSON。
-11. **回答使用用户语言**：用户使用中文则用中文回答，使用英文则用英文回答。
-12. **不要编造内容**：若笔记本中没有相关内容，如实告知用户。
-13. **理解图片附件**：用户消息包含图片时，结合图片中的可见内容与文字回答；看不清或无法识别时直接说明，不要猜测。
-
-## 输出格式规范（对话回复与写入笔记的 markdown 都必须严格遵守）
-
-### 任务/进度/清单 → 必须用任务列表语法
-
-**判定标准**：只要一个条目带有「完成状态」（已完成 / 进行中 / 未开始 / 待办 / 打勾 / done / 工期+进度 等），它就是任务项，整组必须用任务列表表达，每行都以 \`- [x] \`（已完成）或 \`- [ ] \`（未完成/进行中/未开始）开头。同一组清单每一行都要带前缀，不能只给前几行加、其余掉回普通段落。
-
-正确示范（每行都带前缀）：
-- [x] 系统分析（1天）— 已完成
-- [ ] 需求分析（0.5天）— 进行中
-- [ ] 登录注册（0.2天）— 未开始
-
-以下写法一律禁止：用引用块 \`>\` 强调（引用块只能引述原文）、写成加粗段落 \`**xx**：已完成\`、裸标记缺 \`- \` 前缀如 \`[x] xx\`、一组里只有前几行带前缀其余掉回段落。
-
-### 其它格式约束
-
-1. **禁止使用 emoji**（包括 ✅ ❌ ⬜ ▶ 等符号）。完成状态用打勾语法或「已完成 / 进行中 / 未开始」等文字表达。
-2. **列表保持紧凑**：列表项之间不插空行；任务文本用纯文本，不加多余的装饰符号（如 \`_\`、\`~\`、成对短横线）。
-3. **结构清晰**：正文用标题、列表、表格组织；不用连续符号画分隔线；引用块 \`>\` 只用于引述他人原文。
-
-保持回答简洁清晰，聚焦用户的实际需求。`;
+先判断本轮需求是否在路由能力内。然后调用 loadSkill 加载最匹配的 Skill，再执行。`;
 }
 
 function textFromMessageContent(content: unknown): string {
@@ -156,22 +109,6 @@ function findMentionedMarkdownSection(
   return markdown.slice(target.index, next?.index ?? markdown.length).trimEnd();
 }
 
-function hasCompletedWriteTool(
-  steps: Array<{ toolResults?: Array<unknown> }>,
-): boolean {
-  return steps.some((step) =>
-    step.toolResults?.some((result) => {
-      if (!result || typeof result !== "object") return false;
-      const toolName = (result as Record<string, unknown>).toolName;
-      return (
-        toolName === "createPage" ||
-        toolName === "updatePage" ||
-        toolName === "replaceInPage"
-      );
-    }),
-  );
-}
-
 async function repairUpdatePageToolCall(options: {
   toolCall: {
     type: "tool-call";
@@ -199,17 +136,14 @@ async function repairUpdatePageToolCall(options: {
 
   const result = await generateText({
     model: options.model,
-    prompt: `你正在修复一个笔记工具调用。模型刚才错误地调用了 updatePage，但没有提供 markdown。
+    prompt: `${NOTEBOOK_SKILLS.updateNote.content}
 
-请根据用户请求，改写“当前页面 Markdown”，只输出新的正文 Markdown。
+# 工具调用修复
 
-规则：
-- 不要输出 JSON。
-- 不要包裹代码围栏。
-- 不要重复页面标题。
-- 保留用户没有要求删除或修改的内容。
-- 如果用户要求删除某个区块，删除对应标题和其下内容。
-- 如果用户要求精简或润色，保留核心信息，删掉啰嗦示例。
+- 上一次 updatePage 缺少 markdown。
+- 只输出新的正文 Markdown。
+- 不输出 JSON 或代码围栏。
+- 不重复页面标题。
 
 用户请求：
 ${userRequest || "按用户最近的要求更新当前页面"}
@@ -281,6 +215,7 @@ export function buildNotebookAgent(
   const agentContext: NotebookAiAgentContext = {
     notebookId,
     currentPageId: currentPageId ?? getCurrentNotebookAiPageId(notebookId),
+    loadedSkills: new Set(),
   };
   const modelResult: ModelAvailability = buildLanguageModel();
   if (!modelResult.ok) {
@@ -291,13 +226,14 @@ export function buildNotebookAgent(
     model: modelResult.model,
     tools: notebookAiTools,
     instructions: buildSystemPrompt(notebookId, agentContext.currentPageId),
-    stopWhen: stepCountIs(6),
+    stopWhen: stepCountIs(16),
     experimental_context: agentContext,
-    prepareStep: ({ steps }) => {
-      if (hasCompletedWriteTool(steps)) {
-        return { activeTools: [] };
-      }
-      return undefined;
+    prepareStep: () => {
+      const activeTools = [
+        "loadSkill",
+        ...getSkillToolNames(agentContext.loadedSkills),
+      ] as Array<keyof typeof notebookAiTools>;
+      return { activeTools };
     },
     experimental_repairToolCall: async (options) => {
       if (options.toolCall.toolName === "updatePage") {

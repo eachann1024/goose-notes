@@ -1,6 +1,7 @@
 import type { UIMessage, InferUITools } from "ai";
 import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import type { NotebookAiTools } from "./tools";
+import type { NotebookSkillId } from "./skills";
 
 export interface NotebookAiMessageMetadata {
   displayText?: string;
@@ -22,6 +23,7 @@ export type NotebookAiMessage = UIMessage<
 export interface NotebookAiAgentContext {
   notebookId: string;
   currentPageId?: string | null;
+  loadedSkills: Set<NotebookSkillId>;
 }
 
 /** 单条 AI 会话状态 */

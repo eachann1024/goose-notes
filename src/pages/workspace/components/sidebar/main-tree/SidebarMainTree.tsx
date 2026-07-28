@@ -222,6 +222,9 @@ export function SidebarMainTree({
 
   const treeRef = useRef<TreeRef>(null);
   const lastClickModRef = useRef({ meta: false, ctrl: false });
+  // react-complex-tree 的方向键默认只移动焦点，不会激活页面。
+  // 仅记录从树内发起的上下导航，避免鼠标点击、自动定位和左右展开/折叠误触发切页。
+  const verticalKeyboardNavigationRef = useRef(false);
   // 记录上一次已为之展开/定位的激活页，避免每次 render 重复 focus 打断用户
   const lastLocatedActiveIdRef = useRef<string | null>(null);
 
@@ -493,7 +496,30 @@ export function SidebarMainTree({
           <div
             className="flex-1 min-h-0 overflow-auto"
             style={{ width, height: viewportHeight || undefined }}
+            onKeyDownCapture={(event) => {
+              const target = event.target as HTMLElement;
+              if (
+                target.matches("input, textarea") ||
+                target.isContentEditable
+              ) {
+                return;
+              }
+              if (
+                (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.altKey
+              ) {
+                verticalKeyboardNavigationRef.current = true;
+              }
+            }}
+            onKeyUpCapture={(event) => {
+              if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                verticalKeyboardNavigationRef.current = false;
+              }
+            }}
             onMouseDown={(e) => {
+              verticalKeyboardNavigationRef.current = false;
               lastClickModRef.current = { meta: e.metaKey, ctrl: e.ctrlKey };
             }}
             onAuxClick={(e) => {
@@ -550,7 +576,17 @@ export function SidebarMainTree({
               }}
               onFocusItem={(item) => {
                 if (!activeNotebookId) return;
-                setFocusedView(activeNotebookId, String(item.index));
+                const pageId = String(item.index);
+                setFocusedView(activeNotebookId, pageId);
+
+                // 上下键沿 react-complex-tree 计算出的“当前可见节点”移动：
+                // 展开时会进入子页面，折叠时会跳过整棵子树。
+                if (!verticalKeyboardNavigationRef.current) return;
+                verticalKeyboardNavigationRef.current = false;
+                if (pageId === "root" || !pages[pageId]) return;
+                if (isLocalFolderDirectoryPage(pageId)) return;
+                setSelectedView(activeNotebookId, pageId);
+                openPageFromSidebar(pageId, "preview");
               }}
               onSelectItems={(selected) => {
                 if (!activeNotebookId) return;

@@ -12,6 +12,7 @@ import {
   shortcutHasModifier,
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 type HotkeyEntry = {
   id: string;
@@ -245,6 +246,7 @@ export function useAppHotkeys() {
           matchesConfiguredShortcut(event, fixedShortcuts.newNote),
         handler: (event) => {
           event.preventDefault();
+          closeNotebookAiIfFullscreen();
           void (async () => {
             const pagesStore = usePages.getState();
             const notebooksStore = useNotebooks.getState();
@@ -289,6 +291,7 @@ export function useAppHotkeys() {
           return !!s && matchesConfiguredShortcut(event, s);
         },
         when: () => {
+          if (useSettings.getState().singleTabMode) return false;
           const hasOpenModal = () =>
             !!document.querySelector(
               '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
@@ -308,6 +311,7 @@ export function useAppHotkeys() {
           return !!s && matchesConfiguredShortcut(event, s);
         },
         when: () => {
+          if (useSettings.getState().singleTabMode) return false;
           const hasOpenModal = () =>
             !!document.querySelector(
               '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
@@ -328,6 +332,7 @@ export function useAppHotkeys() {
           return !!s && matchesConfiguredShortcut(event, s);
         },
         when: () => {
+          if (useSettings.getState().singleTabMode) return false;
           const hasOpenModal = () =>
             !!document.querySelector(
               '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
@@ -411,6 +416,7 @@ export function useAppHotkeys() {
             return;
           }
           // c. close tab
+          if (useSettings.getState().singleTabMode) return;
           const activeId = activeTabIdRef.current;
           if (activeId) {
             useTabs.getState().closeTab(activeId);
@@ -424,6 +430,7 @@ export function useAppHotkeys() {
       {
         id: "switch-tab-by-number",
         match: (event) => {
+          if (useSettings.getState().singleTabMode) return false;
           if (event.defaultPrevented) return false;
           if (
             !(event.metaKey || event.ctrlKey) ||
@@ -450,6 +457,7 @@ export function useAppHotkeys() {
       {
         id: "cycle-tab",
         match: (event) =>
+          !useSettings.getState().singleTabMode &&
           event.ctrlKey &&
           !event.metaKey &&
           !event.altKey &&
@@ -471,6 +479,7 @@ export function useAppHotkeys() {
       {
         id: "reopen-tab",
         match: (event) =>
+          !useSettings.getState().singleTabMode &&
           !event.defaultPrevented &&
           matchesConfiguredShortcut(event, fixedShortcuts.reopenTab),
         handler: (event) => {

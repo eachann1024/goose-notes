@@ -14,6 +14,7 @@ import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
 import { matchMouseShortcut, matchShortcut } from "@/lib/shortcut-match";
 import { toast } from "@/components/ui/sonner";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
@@ -42,6 +43,7 @@ export function CommandPalette() {
     showRecentInSearch,
     setShowRecentInSearch,
     searchPanelCloseShortcut,
+    singleTabMode,
   } = useSettings();
   const {
     searchResults,
@@ -161,7 +163,8 @@ export function CommandPalette() {
       if (detail?.resetQuery) {
         setSearchQuery("");
       }
-      openInNewTabRef.current = detail?.openInNewTab === true;
+      openInNewTabRef.current =
+        !singleTabMode && detail?.openInNewTab === true;
       trackSearchOpened("programmatic");
       setOpen(true);
     };
@@ -171,7 +174,13 @@ export function CommandPalette() {
       document.removeEventListener("mousedown", handleMouseShortcut, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
-  }, [open, searchAllNotebooks, searchPanelCloseShortcut, setSearchAllNotebooks]);
+  }, [
+    open,
+    searchAllNotebooks,
+    searchPanelCloseShortcut,
+    setSearchAllNotebooks,
+    singleTabMode,
+  ]);
 
   const runCommand = useCallback(async (command: () => void) => {
     command();
@@ -214,11 +223,12 @@ export function CommandPalette() {
       const targetNotebookId = page.workspaceId;
 
       runCommand(() => {
+        closeNotebookAiIfFullscreen();
         if (targetNotebookId && targetNotebookId !== activeNotebookId) {
           setActiveNotebook(targetNotebookId);
         }
 
-        if (openInNewTabRef.current) {
+        if (!singleTabMode && openInNewTabRef.current) {
           openPermanentTab(page.id);
         } else {
           openPreviewTab(page.id);
@@ -236,6 +246,7 @@ export function CommandPalette() {
     },
     [
       activeNotebookId,
+      singleTabMode,
       openPreviewTab,
       openPermanentTab,
       setActiveNotebook,

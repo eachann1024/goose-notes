@@ -1,12 +1,16 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { usePages } from "@/stores/usePages";
+import { useTabs } from "@/stores/useTabs";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import {
   createAndFinalizePage,
   reloadEditorIfActive,
 } from "@/lib/notebook-ai/liveWriter";
 import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
+import { normalizeAiMarkdown } from "@/lib/notebook-ai/markdown";
+import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
   guardPageForAiWrite,
   writePageContentSafely,
@@ -183,5 +187,242 @@ export const replaceInPage = tool({
     reloadEditorIfActive(pageId);
 
     return { pageId, title, replacedCount: count, ok: true };
+  },
+});
+
+// ----------------------------------------------------------------
+// appendToPage
+// ----------------------------------------------------------------
+export const appendToPage = tool({
+  description:
+    "在页面正文末尾追加 Markdown，不改动已有内容和标题。pageId 省略时默认追加到当前打开页面。",
+  inputSchema: z.object({
+    pageId: z
+      .string()
+      .optional()
+      .describe("目标页面 id；省略则使用当前打开页面"),
+    markdown: z
+      .string()
+      .describe(
+        "要追加的 Markdown 内容。待办/进度/清单必须使用 `- [ ]` / `- [x]`，列表项之间不留空行。",
+      ),
+  }),
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId, notebookId } =
+      experimental_context as NotebookAiAgentContext;
+    const pageId =
+      input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
+    const guard = guardPageForAiWrite(pageId, {
+      expectedNotebookId: notebookId,
+    });
+    if (!guard.ok) return { pageId, ok: false, error: guard.error };
+
+    const markdown = normalizeAiMarkdown(input.markdown).trim();
+    if (!markdown) {
+      return { pageId, ok: false, error: "要追加的内容不能为空" };
+    }
+
+    const addition = importMarkdownFragment(markdown);
+    if (!addition?.length) {
+      return { pageId, ok: false, error: "追加内容无法解析为 Markdown" };
+    }
+
+    const expectedRevision = {
+      updatedAt: guard.updatedAt,
+      contentSignature: guard.contentSignature,
+    };
+    const currentContent = normalizePageContent(guard.page.content, {
+      ensureFirstTitle: !guard.page.localFilePath,
+    });
+    const title = getPageTitle(guard.page);
+    const content = [...currentContent, ...addition] as JSONContent;
+    const result = await writePageContentSafely(
+      pageId,
+      content as JSONContent,
+      { expectedNotebookId: notebookId, expectedRevision },
+    );
+    if (!result.ok) return { pageId, title, ok: false, error: result.error };
+
+    reloadEditorIfActive(pageId);
+    return { pageId, title, ok: true };
+  },
+});
+
+// ----------------------------------------------------------------
+// renamePage
+// ----------------------------------------------------------------
+export const renamePage = tool({
+  description: "重命名页面，不改动正文。pageId 省略时默认重命名当前打开页面。",
+  inputSchema: z.object({
+    pageId: z
+      .string()
+      .optional()
+      .describe("目标页面 id；省略则使用当前打开页面"),
+    title: z.string().min(1).describe("新标题，不含 # 前缀"),
+  }),
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId, notebookId } =
+      experimental_context as NotebookAiAgentContext;
+    const pageId =
+      input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
+    const guard = guardPageForAiWrite(pageId, {
+      expectedNotebookId: notebookId,
+    });
+    if (!guard.ok) return { pageId, ok: false, error: guard.error };
+
+    const title = input.title.replace(/^#+\s*/, "").trim();
+    if (!title) return { pageId, ok: false, error: "新标题不能为空" };
+
+    if (guard.page.localFilePath) {
+      try {
+        const nextPageId = await usePages
+          .getState()
+          .renameLocalPageFile(pageId, title);
+        return { pageId: nextPageId, title, ok: true };
+      } catch (error) {
+        return {
+          pageId,
+          ok: false,
+          error: error instanceof Error ? error.message : "页面重命名失败",
+        };
+      }
+    }
+
+    const expectedRevision = {
+      updatedAt: guard.updatedAt,
+      contentSignature: guard.contentSignature,
+    };
+    const [firstBlock, ...bodyBlocks] = normalizePageContent(
+      guard.page.content,
+    );
+    const content = [
+      {
+        ...firstBlock,
+        type: "heading",
+        props: { ...firstBlock?.props, level: 1 },
+        content: title,
+      },
+      ...bodyBlocks,
+    ] as JSONContent;
+    const result = await writePageContentSafely(
+      pageId,
+      content as JSONContent,
+      { expectedNotebookId: notebookId, expectedRevision },
+    );
+    if (!result.ok) return { pageId, title, ok: false, error: result.error };
+
+    reloadEditorIfActive(pageId);
+    return { pageId, title, ok: true };
+  },
+});
+
+// ----------------------------------------------------------------
+// deletePages
+// ----------------------------------------------------------------
+export const deletePages = tool({
+  description:
+    "删除当前绑定笔记本中的一个或多个页面。应用内页面移入垃圾箱，本地文件夹页面移入系统回收站；不会永久删除。删除父页面会同时删除其子页面。",
+  inputSchema: z.object({
+    pageIds: z
+      .array(z.string())
+      .min(1)
+      .max(50)
+      .describe(
+        "要删除的页面 id 列表，必须来自当前上下文、listPages 或 searchNotes",
+      ),
+  }),
+  execute: async (input, { experimental_context }) => {
+    const { notebookId } = experimental_context as NotebookAiAgentContext;
+    const pages = usePages.getState().pages;
+    const pageIds = [
+      ...new Set(input.pageIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (pageIds.length === 0) {
+      return { ok: false, error: "至少需要一个有效的页面 id" };
+    }
+
+    for (const pageId of pageIds) {
+      const page = pages[pageId];
+      if (!page) return { ok: false, error: `页面 ${pageId} 不存在` };
+      if (page.workspaceId !== notebookId) {
+        return { ok: false, error: "AI 只能删除当前绑定笔记本中的页面" };
+      }
+      if (page.trashedAt) {
+        return {
+          ok: false,
+          error: `页面《${getPageTitle(page)}》已在垃圾箱中`,
+        };
+      }
+      if (page.isFolder) {
+        return {
+          ok: false,
+          error: `不能通过 AI 删除文件夹《${getPageTitle(page)}》`,
+        };
+      }
+      if (page.isLocked) {
+        return { ok: false, error: `页面《${getPageTitle(page)}》已锁定` };
+      }
+    }
+
+    const requestedIds = new Set(pageIds);
+    const rootPageIds = pageIds.filter((pageId) => {
+      let parentId = pages[pageId]?.parentId;
+      while (parentId) {
+        if (requestedIds.has(parentId)) return false;
+        parentId = pages[parentId]?.parentId;
+      }
+      return true;
+    });
+
+    const affectedIds = new Set<string>();
+    const collectTree = (rootId: string) => {
+      const stack = [rootId];
+      while (stack.length) {
+        const currentId = stack.pop()!;
+        if (affectedIds.has(currentId)) continue;
+        affectedIds.add(currentId);
+        Object.values(pages).forEach((page) => {
+          if (
+            page.workspaceId === notebookId &&
+            !page.trashedAt &&
+            page.parentId === currentId
+          ) {
+            stack.push(page.id);
+          }
+        });
+      }
+    };
+    rootPageIds.forEach(collectTree);
+
+    const deletedRoots: Array<{ pageId: string; title: string }> = [];
+    for (const pageId of rootPageIds) {
+      const page = usePages.getState().pages[pageId];
+      if (!page) continue;
+      const title = getPageTitle(page);
+      const deleted = await usePages.getState().deletePage(pageId);
+      if (!deleted) {
+        return {
+          ok: false,
+          deletedRoots,
+          error: `删除《${title}》失败，已停止后续删除`,
+        };
+      }
+      deletedRoots.push({ pageId, title });
+      affectedIds.forEach((affectedPageId) => {
+        let currentId: string | undefined = affectedPageId;
+        while (currentId && currentId !== pageId) {
+          currentId = pages[currentId]?.parentId;
+        }
+        if (currentId === pageId) {
+          useTabs.getState().removeDeletedPage(affectedPageId);
+        }
+      });
+    }
+
+    return {
+      ok: true,
+      deletedCount: affectedIds.size,
+      deletedRoots,
+    };
   },
 });

@@ -80,6 +80,8 @@ export const reloadLocalPageFromDiskAction = async (
           ...current,
           content: parsed.content,
           localFrontmatter: parsed.frontmatter,
+          fontFamily: parsed.fontFamily,
+          isLocked: parsed.isLocked,
           localReadState: parsed.readState,
           localReadError: parsed.readError,
           updatedAt: Date.now(),
@@ -329,11 +331,7 @@ export const removeSingleLocalPageAction = (
   });
 
   // 关闭指向该页面的标签
-  const tabs = useTabs.getState();
-  const tab = tabs.openTabs.find((t) => t.pageId === pageId);
-  if (tab) {
-    tabs.closeTab(tab.id);
-  }
+  useTabs.getState().removeDeletedPage(pageId);
 };
 
 // ── 增量 watch 辅助：单个新文件扫入 store ────────────────────────────────────
@@ -417,10 +415,10 @@ export const addSingleLocalPageAction = async (
     workspaceId: notebookId,
     content: parsed.content,
     isFolder: false,
-    isLocked: false,
+    isLocked: parsed.isLocked,
     isFullWidth: false,
     fontSize: "default",
-    fontFamily: "default",
+    fontFamily: parsed.fontFamily,
     localFilePath: filePath,
     localFrontmatter: parsed.frontmatter,
     localReadState: parsed.readState,

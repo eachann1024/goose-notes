@@ -4,6 +4,7 @@ import { uToolsStorage } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 import { fs } from "@/lib/utools/fs";
 import { persistPageSnapshots } from "./pages/persistence";
+import { useSettings } from "./useSettings";
 
 export interface Notebook {
   id: string;
@@ -267,9 +268,15 @@ export const useNotebooks = create<NotebooksState>()(
         const { [id]: _deletedLoadState, ...remainingLoadStates } =
           state.localFolderLoadStates;
 
-        const remainingTabs = tabsStore.openTabs.filter(
+        let remainingTabs = tabsStore.openTabs.filter(
           (tab) => !deletedPageIds.has(tab.pageId),
         );
+        if (useSettings.getState().singleTabMode && remainingTabs.length > 1) {
+          const active = remainingTabs.find(
+            (tab) => tab.id === tabsStore.activeTabId,
+          );
+          remainingTabs = active ? [active] : [remainingTabs[0]];
+        }
         const nextActiveTabId =
           tabsStore.activeTabId &&
           remainingTabs.some((tab) => tab.id === tabsStore.activeTabId)

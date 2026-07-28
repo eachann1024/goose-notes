@@ -22,10 +22,7 @@ function syncSidebarSelectionAfterDelete(
   const view = useSidebarView.getState();
   const focused = view.focusedByNotebook[workspaceId];
   const selected = view.selectedByNotebook[workspaceId];
-  if (
-    !removedIds.has(focused || "") &&
-    !removedIds.has(selected || "")
-  ) {
+  if (!removedIds.has(focused || "") && !removedIds.has(selected || "")) {
     return;
   }
   const nextActive =
@@ -43,6 +40,7 @@ export const deletePageAction = async (
   set: StoreSet,
   get: StoreGet,
   id: string,
+  options?: { trashBatchId?: string },
 ): Promise<boolean> => {
   flushEditorContent();
   const page = get().pages[id];
@@ -113,10 +111,9 @@ export const deletePageAction = async (
           isLocalNotebook: true,
           expandedIds,
         });
-        useNotebooks.getState().setLastActivePage(
-          page.workspaceId,
-          nextActivePageId,
-        );
+        useNotebooks
+          .getState()
+          .setLastActivePage(page.workspaceId, nextActivePageId);
       }
 
       return {
@@ -155,7 +152,7 @@ export const deletePageAction = async (
 
     const newPages = { ...state.pages };
     const now = Date.now();
-    const batchId = `b-${now}-${id}`;
+    const batchId = options?.trashBatchId || `b-${now}-${id}`;
     removedIds.forEach((pid) => {
       if (newPages[pid]) {
         newPages[pid] = {
@@ -181,10 +178,7 @@ export const deletePageAction = async (
         expandedIds:
           useSidebarView.getState().expandedByNotebook[workspaceId] ?? [],
       });
-      useNotebooks.getState().setLastActivePage(
-        workspaceId,
-        newActivePageId,
-      );
+      useNotebooks.getState().setLastActivePage(workspaceId, newActivePageId);
     }
 
     return {

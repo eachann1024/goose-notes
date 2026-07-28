@@ -3,6 +3,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 /**
  * 页面删除/恢复的唯一入口。
@@ -19,6 +20,7 @@ export function restorePageWithToast(
   if (!result.ok) return;
 
   if (opts.reopenTab) {
+    closeNotebookAiIfFullscreen();
     const tabsStore = useTabs.getState();
     const existingTab = tabsStore.openTabs.find((tab) => tab.pageId === pageId);
     if (existingTab) {

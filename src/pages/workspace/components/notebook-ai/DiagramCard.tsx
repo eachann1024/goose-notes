@@ -41,7 +41,7 @@ export function DiagramCard({ title, source, editorRef }: DiagramCardProps) {
   }, [resolvedTheme, source]);
 
   return (
-    <div className="group relative my-2 overflow-hidden rounded-[8px] border border-border bg-background">
+    <div className="group relative my-2 overflow-hidden rounded-[8px] bg-[var(--goose-interactive-hover)]">
       <ArtifactActions
         copySource={source}
         downloadSource={svg}
@@ -53,7 +53,7 @@ export function DiagramCard({ title, source, editorRef }: DiagramCardProps) {
         )}
       />
       {title ? (
-        <div className="border-b border-border/70 px-3 py-2 text-xs font-medium text-foreground">
+        <div className="px-3 py-2 text-xs font-medium text-foreground">
           {title}
         </div>
       ) : null}

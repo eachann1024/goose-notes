@@ -23,7 +23,6 @@ dist
 dist-ssr
 dist-quicknote/
 dist-native-editor/
-.build/
 default.profraw
 # src/lib/build/ contains source (lite-empty.ts is the quicknote alias target),
 # NOT build output. Global ~/.gitignore_global has `build/` which would hide it.
@@ -32,7 +31,6 @@ default.profraw
 *.local
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -46,31 +44,12 @@ default.profraw
 docs
 CHANGELOG.md
 
-# ---- AI assistant / tooling artifacts ----
-# Claude Code: keep shared agents/skills & project specs, ignore local-only noise
-.claude/
-# Skill/MCP tool lock files
 skills-lock.json
-# Other AI coding tools (Codex / Cursor / Zed / Trae / agent runners)
-.codex
-.cursor
-.zed
-.trae/
-.agents/
-# Skill / MCP tool outputs
-.impeccable/
-.gitnexus
-.serena/
-playwright*/
-# design checks (local screenshots)
-.design-check/
+!src/agent/AGENTS.md
+!src/agent/**/SKILL.md
 
 # ---- Local-only scratch ----
 tasks/
-scripts/
-!scripts/
 scripts/*
-!scripts/audit-native-editor.mjs
-!scripts/serve-native-editor.mjs
 # stray verification screenshots in repo root
 /*.png

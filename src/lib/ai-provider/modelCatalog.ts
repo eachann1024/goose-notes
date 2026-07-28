@@ -9,7 +9,7 @@ import type {
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
 export const SETTINGS_ENTRY_HINT =
-  '请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。';
+  '请前往"设置 -> AI 助手 -> AI 服务"检查配置。';
 export const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
   default: 0,
   low: 1024,
@@ -76,22 +76,20 @@ export function getDefaultCustomAIBaseURL(protocol: CustomAIProtocol) {
     : DEFAULT_OPENAI_BASE_URL;
 }
 
-function normalizeCustomAIBaseURL(baseURL: string, protocol: CustomAIProtocol) {
-  return baseURL.trim() || getDefaultCustomAIBaseURL(protocol);
-}
-
 export function getCustomAIBaseURL(
   settings: AISettingsLike,
   protocol: CustomAIProtocol = settings.customProtocol,
 ) {
-  return normalizeCustomAIBaseURL(
-    protocol === "openai-responses"
-      ? settings.customOpenAIResponsesBaseURL
-      : protocol === "openai"
-        ? settings.customOpenAIBaseURL
-        : settings.customClaudeBaseURL,
-    protocol,
-  );
+  if (protocol === "claude") {
+    const baseURL = settings.customClaudeBaseURL?.trim();
+    return baseURL || DEFAULT_CLAUDE_BASE_URL;
+  }
+  if (protocol === "openai") {
+    const baseURL = settings.customOpenAIBaseURL?.trim();
+    return baseURL || DEFAULT_OPENAI_BASE_URL;
+  }
+  const baseURL = settings.customOpenAIResponsesBaseURL?.trim();
+  return baseURL || DEFAULT_OPENAI_BASE_URL;
 }
 
 export function getCustomAIApiKey(

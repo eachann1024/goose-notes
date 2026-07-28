@@ -9,6 +9,7 @@
  *   letter-spacing 不显式设置，与 h1 一样继承 body 的 0.01em。
  *
  * 点击进入行内编辑：Enter/失焦提交，Esc 取消。
+ * 新建页会通过 requestPageTitleFocus 自动进入编辑，光标落在文件名末尾。
  * 提交后调用 usePages.renameLocalPageFile(pageId, newBaseName)。
  * 重名/空名/非法字符 → sonner toast 提示，标题回退原值。
  */
@@ -16,6 +17,11 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "re
 import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { sanitizeFilenameSegment, splitFilePath } from "@/lib/local-title-binding";
+import {
+  completePageTitleFocus,
+  isPageTitleFocusRequested,
+  subscribePageTitleFocus,
+} from "@/lib/page-title-focus";
 
 interface LocalFileTitleProps {
   pageId: string;
@@ -34,9 +40,13 @@ export function LocalFileTitle({
     return base || "无标题";
   })();
 
-  const [editing, setEditing] = useState(false);
+  const [initiallyFocused] = useState(() =>
+    isPageTitleFocusRequested(pageId),
+  );
+  const [editing, setEditing] = useState(initiallyFocused);
   const [editValue, setEditValue] = useState(displayName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipNextBlurCommitRef = useRef(false);
 
   // Sync displayName → editValue when not editing (handles external renames).
   useEffect(() => {
@@ -86,11 +96,54 @@ export function LocalFileTitle({
     }
   }, [editValue, localFilePath, pageId, cancelEditing]);
 
-  // Auto-focus input on enter editing mode.
+  // 新建页标题聚焦：多次重试抢过编辑器 body 的程序性 focus。
+  useEffect(() => {
+    const timers: number[] = [];
+    const scheduleStableFocus = () => {
+      [0, 50, 150, 300, 600].forEach((delay, index, delays) => {
+        timers.push(
+          window.setTimeout(() => {
+            if (!isPageTitleFocusRequested(pageId)) return;
+            setEditing(true);
+            setEditValue(displayName);
+            const input = inputRef.current;
+            if (!input?.isConnected) return;
+            input.focus({ preventScroll: true });
+            const caret = input.value.length;
+            input.setSelectionRange(caret, caret);
+            if (
+              index === delays.length - 1 &&
+              document.activeElement === input
+            ) {
+              completePageTitleFocus(pageId);
+            }
+          }, delay),
+        );
+      });
+    };
+
+    if (initiallyFocused && isPageTitleFocusRequested(pageId)) {
+      scheduleStableFocus();
+    }
+    const unsubscribe = subscribePageTitleFocus((requestedPageId) => {
+      if (
+        requestedPageId === pageId &&
+        isPageTitleFocusRequested(pageId)
+      ) {
+        scheduleStableFocus();
+      }
+    });
+    return () => {
+      unsubscribe();
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [displayName, initiallyFocused, pageId]);
+
+  // Auto-focus input on enter editing mode (manual click path).
   useEffect(() => {
     if (editing) {
       const input = inputRef.current;
-      if (input) {
+      if (input && document.activeElement !== input) {
         input.focus();
         const caret = input.value.length;
         input.setSelectionRange(caret, caret);
@@ -102,10 +155,13 @@ export function LocalFileTitle({
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        void commitRename();
-        onEnterBelow?.();
+        skipNextBlurCommitRef.current = true;
+        void commitRename().then(() => {
+          onEnterBelow?.();
+        });
       } else if (e.key === "Escape") {
         e.preventDefault();
+        skipNextBlurCommitRef.current = true;
         cancelEditing();
       }
     },
@@ -128,8 +184,16 @@ export function LocalFileTitle({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => {
+            // 新建页切换期间编辑器会短暂抢焦；聚焦请求尚未完成时忽略这次
+            // 程序性 blur，避免提前退出编辑态。
+            if (isPageTitleFocusRequested(pageId)) return;
+            if (skipNextBlurCommitRef.current) {
+              skipNextBlurCommitRef.current = false;
+              return;
+            }
             void commitRename();
           }}
+          autoFocus={initiallyFocused}
           style={{
             fontSize: "calc(var(--editor-font-size, 16px) * 3)",
             fontWeight: 700,

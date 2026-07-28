@@ -9,6 +9,7 @@ import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -50,6 +51,7 @@ export function PageMenu() {
         return;
       }
 
+      closeNotebookAiIfFullscreen();
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
 
       const content = result.content;
@@ -122,7 +124,11 @@ export function PageMenu() {
             <span className="sr-only">更多操作</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[280px] p-2" align="end" forceMount>
+        <DropdownMenuContent
+          className="max-h-[calc(100vh-24px)] w-[304px] overflow-y-auto p-2"
+          align="end"
+          forceMount
+        >
           {/* Font Selector */}
           <div className="px-1 py-2">
             <FontSelector
@@ -133,65 +139,147 @@ export function PageMenu() {
             />
           </div>
 
-          <DropdownMenuGroup>
-              <DropdownMenuItem
-                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                onSelect={() => {
-                  updatePage(activePageId, { isFavorite: !page.isFavorite });
-                }}
+          <div className="mx-1 my-1.5 h-px bg-border" />
+
+          <section aria-label="页面状态">
+            <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
+              页面状态
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 px-1 pb-0.5">
+              <button
+                type="button"
+                aria-pressed={page.isFavorite}
+                onClick={() =>
+                  updatePage(activePageId, { isFavorite: !page.isFavorite })
+                }
+                className={cn(
+                  "relative grid min-h-[46px] grid-cols-[24px_minmax(0,1fr)] items-center gap-2 rounded-[10px] border px-2 py-1.5 pr-5 text-left transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                  page.isFavorite
+                    ? "border-[#ead39b] bg-[#fff8e6] text-[#8a621a] hover:bg-[#fff3d6] dark:border-[#654f23] dark:bg-[#3a2d16] dark:text-[#fbbf24] dark:hover:bg-[#44351a]"
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-block-subtle-bg)]",
+                )}
               >
-                <LucideIcons.Star
+                <span
                   className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground",
+                    "grid h-6 w-6 place-items-center rounded-[8px]",
                     page.isFavorite &&
-                      "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                      "bg-[#fff1c8] dark:bg-[#4b3919]",
                   )}
-                />
-                <span className="min-w-0 truncate">
-                  {page.isFavorite
-                    ? "取消收藏"
-                    : isLocalItem
-                      ? "收藏文件"
-                      : "收藏页面"}
+                >
+                  <LucideIcons.Star
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground",
+                      page.isFavorite &&
+                        "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                    )}
+                  />
                 </span>
-              </DropdownMenuItem>
+                <span className="min-w-0 truncate text-xs font-medium">
+                  {isLocalItem ? "收藏文件" : "收藏页面"}
+                </span>
+                {page.isFavorite && (
+                  <LucideIcons.Check className="absolute right-1.5 top-1.5 h-3 w-3" />
+                )}
+              </button>
 
-              <DropdownMenuItem
-                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                onSelect={() => {
-                  updatePage(activePageId, { isPinned: !page.isPinned });
-                }}
+              <button
+                type="button"
+                aria-pressed={page.isPinned}
+                onClick={() =>
+                  updatePage(activePageId, { isPinned: !page.isPinned })
+                }
+                className={cn(
+                  "relative grid min-h-[46px] grid-cols-[24px_minmax(0,1fr)] items-center gap-2 rounded-[10px] border px-2 py-1.5 pr-5 text-left transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                  page.isPinned
+                    ? "border-[#e8c0bc] bg-[#fff0ee] text-[#91433d] hover:bg-[#ffe7e4] dark:border-[#6b3734] dark:bg-[#3f2020] dark:text-[#f87171] dark:hover:bg-[#492525]"
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-block-subtle-bg)]",
+                )}
               >
-                <LucideIcons.Pin
+                <span
                   className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground",
+                    "grid h-6 w-6 place-items-center rounded-[8px]",
                     page.isPinned &&
-                      "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+                      "bg-[#ffe1dd] dark:bg-[#512827]",
                   )}
-                />
-                <span className="min-w-0 truncate">
-                  {page.isPinned ? "取消置顶" : "置顶页面"}
+                >
+                  <LucideIcons.Pin
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground",
+                      page.isPinned &&
+                        "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+                    )}
+                  />
                 </span>
-              </DropdownMenuItem>
+                <span className="min-w-0 truncate text-xs font-medium">
+                  置顶页面
+                </span>
+                {page.isPinned && (
+                  <LucideIcons.Check className="absolute right-1.5 top-1.5 h-3 w-3" />
+                )}
+              </button>
+            </div>
+          </section>
 
-              <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
-                <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 truncate">锁定页面</span>
-                <Switch
-                  aria-label="锁定页面"
-                  checked={page.isLocked}
-                  onCheckedChange={(checked) =>
-                    updatePage(activePageId, { isLocked: checked })
-                  }
-                />
-              </div>
-            </DropdownMenuGroup>
+          <div className="mx-1 my-1.5 h-px bg-border" />
 
-          {/* Switches Section */}
+          {/* Switches Section — 整行可点，含文字区域 */}
           <DropdownMenuGroup>
-            <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2 py-1.5 text-xs">
+            <div
+              role="button"
+              tabIndex={0}
+              className="grid min-h-10 cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2.5 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              onClick={() =>
+                updatePage(activePageId, { isLocked: !page.isLocked })
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  updatePage(activePageId, { isLocked: !page.isLocked });
+                }
+              }}
+            >
+              <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 truncate">锁定页面</span>
+              <Switch
+                aria-label="锁定页面"
+                checked={page.isLocked}
+                onCheckedChange={(checked) =>
+                  updatePage(activePageId, { isLocked: checked })
+                }
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            <div
+              role="button"
+              tabIndex={0}
+              className="grid min-h-10 cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2.5 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              onClick={() => {
+                if (!notebook) return;
+                updateNotebook(notebook.id, {
+                  editorFullWidth: !(
+                    notebook.editorFullWidth ?? globalEditorFullWidth
+                  ),
+                });
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                if (!notebook) return;
+                updateNotebook(notebook.id, {
+                  editorFullWidth: !(
+                    notebook.editorFullWidth ?? globalEditorFullWidth
+                  ),
+                });
+              }}
+            >
               <LucideIcons.ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 truncate">全宽显示（当前记事本）</span>
+              <span className="min-w-0 truncate">
+                全宽显示
+                <span className="text-muted-foreground">（当前记事本）</span>
+              </span>
               <Switch
                 aria-label="全宽显示（当前记事本）"
                 checked={Boolean(
@@ -201,32 +289,21 @@ export function PageMenu() {
                   if (!notebook) return;
                   updateNotebook(notebook.id, { editorFullWidth: checked });
                 }}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
-
-            <DropdownMenuItem
-              className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs text-foreground/85 dark:text-foreground/85 data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
-              onClick={() => void deletePageWithUndo(activePageId)}
-            >
-              {isLocalItem ? (
-                <LucideIcons.FileX className="h-3.5 w-3.5" />
-              ) : (
-                <LucideIcons.Trash2 className="h-3.5 w-3.5" />
-              )}
-              <span className="min-w-0 truncate">
-                {isLocalItem ? "移到系统回收站" : "移至垃圾箱"}
-              </span>
-            </DropdownMenuItem>
           </DropdownMenuGroup>
+
+          <div className="mx-1 my-1.5 h-px bg-border" />
 
           {/* Import */}
           {!isLocalItem && (
             <DropdownMenuGroup>
               <DropdownMenuItem
-                className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs"
                 onSelect={handleImport}
               >
-                <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                <LucideIcons.Upload className="h-4 w-4 text-muted-foreground" />
                 <span className="min-w-0 truncate">导入</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -234,26 +311,23 @@ export function PageMenu() {
 
           {/* Generate Image — standalone, before Export */}
           <DropdownMenuItem
-            className="page-menu-generate-image grid grid-cols-[16px_minmax(0,1fr)_auto] gap-x-2 text-xs text-foreground"
+            className="page-menu-generate-image grid min-h-10 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground"
             onSelect={() => {
               setSelectedBlocks(getEditorSelectedBlocks());
               setThemeSelectorOpen(true);
             }}
           >
-            <LucideIcons.Image className="h-3.5 w-3.5 text-muted-foreground" />
+            <LucideIcons.Image className="h-4 w-4 text-muted-foreground" />
             <span className="page-menu-shimmer-text min-w-0 truncate font-medium text-foreground">
               {selectedBlocks.length > 0 ? "生成选中图片" : "生成图片"}
-            </span>
-            <span className="text-[10px] font-normal text-muted-foreground/70">
-              {selectedBlocks.length > 0 ? "选中" : "可选中生成"}
             </span>
           </DropdownMenuItem>
 
           {/* Export submenu */}
           <DropdownMenuGroup>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 text-xs">
-                <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground" />
+              <DropdownMenuSubTrigger className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 px-2.5 text-xs">
+                <LucideIcons.Download className="h-4 w-4 text-muted-foreground" />
                 <span className="min-w-0 truncate">导出</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="min-w-[160px]">
@@ -291,7 +365,7 @@ export function PageMenu() {
             </DropdownMenuSub>
 
             <DropdownMenuItem
-              className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+              className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs"
               onSelect={() => {
                 const pid = activePageId;
                 // 进入历史模式前 flush，避免 200ms debounce 内的最新编辑丢失
@@ -305,30 +379,32 @@ export function PageMenu() {
                 }, 80);
               }}
             >
-              <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground" />
+              <LucideIcons.History className="h-4 w-4 text-muted-foreground" />
               <span className="min-w-0 truncate">页面历史</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <div className="px-2 py-1.5 text-xs text-muted-foreground">
-            <div className="flex flex-col gap-1">
-              <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2">
-                <span aria-hidden="true" />
-                <span>字数</span>
-                <span className="text-[10px] opacity-80">
-                  {countWords(page.content)}
-                </span>
-              </div>
-              <div className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2">
-                <span aria-hidden="true" />
-                <div className="flex flex-col gap-0.5">
-                  <span>最后编辑于</span>
-                  <span className="text-[10px] opacity-80">
-                    {new Date(page.updatedAt).toLocaleString("zh-CN")}
-                  </span>
-                </div>
-              </div>
-            </div>
+          <DropdownMenuItem
+            className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
+            onClick={() => void deletePageWithUndo(activePageId)}
+          >
+            {isLocalItem ? (
+              <LucideIcons.FileX className="h-4 w-4" />
+            ) : (
+              <LucideIcons.Trash2 className="h-4 w-4" />
+            )}
+            <span className="min-w-0 truncate">
+              {isLocalItem ? "移到系统回收站" : "移至垃圾箱"}
+            </span>
+          </DropdownMenuItem>
+
+          <div className="mx-1 mt-1.5 h-px bg-border" />
+
+          <div className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+            <span>{countWords(page.content)} 字</span>
+            <span className="min-w-0 truncate text-right">
+              编辑于 {new Date(page.updatedAt).toLocaleString("zh-CN")}
+            </span>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

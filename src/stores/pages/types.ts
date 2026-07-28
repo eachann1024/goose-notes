@@ -59,7 +59,10 @@ export interface PagesState {
     updates: Partial<Page>,
     options?: { silent?: boolean },
   ) => void;
-  deletePage: (id: string) => Promise<boolean>;
+  deletePage: (
+    id: string,
+    options?: { trashBatchId?: string },
+  ) => Promise<boolean>;
   restorePage: (id: string) => {
     ok: boolean;
     pageTitle?: string;
@@ -155,7 +158,10 @@ export interface PagesState {
    * 移动 local-folder 页面（文件或目录）到目标父目录。
    * targetFolderId 为 undefined 表示移到根目录。
    */
-  moveLocalPage: (pageId: string, targetFolderId: string | undefined) => Promise<void>;
+  moveLocalPage: (
+    pageId: string,
+    targetFolderId: string | undefined,
+  ) => Promise<void>;
   getLocalFilePath: (pageId: string) => string | null;
   createLocalPage: (
     parentId?: string,
@@ -177,10 +183,7 @@ export interface PagesState {
     content: JSONContent,
     mode?: "replace",
   ) => Promise<boolean>;
-  appendPageContent: (
-    pageId: string,
-    content: JSONContent,
-  ) => Promise<boolean>;
+  appendPageContent: (pageId: string, content: JSONContent) => Promise<boolean>;
   replaceBlockRange: (
     pageId: string,
     startBlockId: string,

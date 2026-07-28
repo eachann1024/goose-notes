@@ -34,6 +34,8 @@ interface SettingsGeneralProps {
   setWindowHeight: (height: number) => void;
   autoOpenLastNote: boolean;
   setAutoOpenLastNote: (enabled: boolean) => void;
+  singleTabMode: boolean;
+  setSingleTabMode: (enabled: boolean) => void;
   autoCloseInactiveTabs: boolean;
   setAutoCloseInactiveTabs: (enabled: boolean) => void;
   autoCloseInactiveTabsHours: number;
@@ -70,6 +72,8 @@ export function SettingsGeneral({
   setWindowHeight,
   autoOpenLastNote,
   setAutoOpenLastNote,
+  singleTabMode,
+  setSingleTabMode,
   autoCloseInactiveTabs,
   setAutoCloseInactiveTabs,
   autoCloseInactiveTabsHours,
@@ -97,6 +101,30 @@ export function SettingsGeneral({
       <SettingsSectionCard title="行为设置">
         <div
           className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <LucideIcons.PanelTop
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label htmlFor="single-tab-mode" className="cursor-pointer">
+                极简工作区
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              只保留当前笔记；从侧栏、搜索或最近访问打开时直接替换，不显示标签管理操作。
+            </p>
+          </div>
+          <Switch
+            id="single-tab-mode"
+            checked={singleTabMode}
+            onCheckedChange={setSingleTabMode}
+            className={SETTINGS_SWITCH_CLASS}
+          />
+        </div>
+        <div
+          className={`mt-2 flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">
@@ -143,7 +171,7 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        <div
+        {!singleTabMode && <div
           className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
         >
           <div className="min-w-0">
@@ -188,7 +216,7 @@ export function SettingsGeneral({
               className={SETTINGS_SWITCH_CLASS}
             />
           </div>
-        </div>
+        </div>}
       </SettingsSectionCard>
 
       <SettingsSectionCard title="搜索设置">

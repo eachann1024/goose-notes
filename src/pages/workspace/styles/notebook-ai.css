@@ -28,6 +28,61 @@
   user-select: none;
 }
 
+.notebook-ai-messages .notebook-ai-progress-toggle {
+  cursor: pointer;
+}
+
+.notebook-ai-messages .notebook-ai-approval-plan button,
+.notebook-ai-messages .notebook-ai-approval-plan label,
+.notebook-ai-messages .notebook-ai-approval-plan input {
+  cursor: pointer;
+}
+
+.notebook-ai-messages .notebook-ai-approval-plan button:disabled,
+.notebook-ai-messages .notebook-ai-approval-plan fieldset:disabled label,
+.notebook-ai-messages .notebook-ai-approval-plan fieldset:disabled input {
+  cursor: default;
+}
+
+.notebook-ai-plan-checkbox {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  border: 1.5px solid var(--goose-block-subtle-border);
+  border-radius: 5px;
+  background: var(--goose-block-subtle-inset);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.notebook-ai-plan-checkbox:checked {
+  border-color: var(--goose-ai-approval-check-bg);
+  background: var(--goose-ai-approval-check-bg);
+}
+
+.notebook-ai-plan-checkbox:checked::after {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--goose-ai-approval-check-fg);
+  border-width: 0 1.5px 1.5px 0;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.notebook-ai-plan-checkbox:focus-visible {
+  outline: 2px solid var(--goose-ai-approval-check-bg);
+  outline-offset: 2px;
+}
+
+.notebook-ai-plan-checkbox:disabled {
+  opacity: 0.6;
+}
+
 .notebook-ai-messages ::selection {
   background-color: rgba(35, 131, 226, 0.28);
   color: inherit;

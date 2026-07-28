@@ -7,11 +7,17 @@ import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import {
   Check,
+  FileText,
   Image as ImageIcon,
   MessageSquareText,
   Sparkles,
 } from "lucide-react";
 import { ToolProgressCard } from "./ToolProgressCard";
+import {
+  ApprovalPlanCard,
+  type BatchApprovalResponse,
+  type BatchUndoResult,
+} from "./ApprovalPlanCard";
 import { TableCard } from "./TableCard";
 import { ChartCard } from "./ChartCard";
 import { DiagramCard } from "./DiagramCard";
@@ -24,6 +30,7 @@ import type { EditorRef } from "@/components/editor/core/Editor";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { cn } from "@/lib/utils";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 
 const ANIMATE_OPTIONS = {
   animation: "blurIn" as const,
@@ -59,6 +66,8 @@ interface ChatMessagesProps {
   editorRef?: RefObject<EditorRef | null>;
   /** 全屏会话更宽、居中；侧栏保持紧凑 */
   layout?: "side-panel" | "fullscreen";
+  onBatchApproval: (response: BatchApprovalResponse) => Promise<void> | void;
+  onBatchUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
 }
 
 const INPUT_ONLY_STATES = new Set([
@@ -116,6 +125,12 @@ function shouldShowToolPart(
   isMessageStreaming: boolean,
 ) {
   const state = part.state ?? "";
+  if (
+    part.type === "tool-executeBatchPlan" &&
+    (state === "approval-requested" || state === "approval-responded")
+  ) {
+    return true;
+  }
   const hasTerminalPayload =
     state === "output-available" ||
     state === "output-error" ||
@@ -222,8 +237,11 @@ export function ChatMessages({
   streamingMessageId,
   editorRef,
   layout = "side-panel",
+  onBatchApproval,
+  onBatchUndo,
 }: ChatMessagesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { onOpenPage } = useEditorPageContext();
   const isUserScrolled = useRef(false);
   const lastScrollTop = useRef(0);
   const isFullscreen = layout === "fullscreen";
@@ -329,120 +347,189 @@ export function ChatMessages({
           isFullscreen ? "max-w-[720px]" : "max-w-none",
         )}
       >
-      {messages.map((msg) => {
-        const isUser = msg.role === "user";
-        const isStreaming = streamingMessageId === msg.id;
+        {messages.map((msg) => {
+          const isUser = msg.role === "user";
+          const isStreaming = streamingMessageId === msg.id;
 
-        if (isUser) {
-          const text = getUserDisplayText(msg);
-          const imageParts = getUserImageParts(msg);
-          const persistedImages = msg.metadata?.imageAttachments ?? [];
-          return (
-            <div key={msg.id} className="flex justify-end">
-              <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
-                {imageParts.length > 0 ? (
-                  <div className="flex flex-wrap justify-end gap-1.5">
-                    {imageParts.map((image, index) => (
-                      <img
-                        key={`${image.url}-${index}`}
-                        src={image.url}
-                        alt={image.filename ?? "已上传图片"}
-                        className="h-20 w-20 rounded-[6px] object-cover"
-                      />
-                    ))}
-                  </div>
-                ) : persistedImages.length > 0 ? (
-                  <div className="flex flex-wrap justify-end gap-1.5">
-                    {persistedImages.map((image) => (
-                      <span
-                        key={`${image.filename}-${image.mediaType}`}
-                        className="inline-flex max-w-full items-center gap-1 rounded-[5px] bg-background/55 px-1.5 py-1 text-[11px] text-muted-foreground"
-                      >
-                        <ImageIcon
-                          className="h-3 w-3 shrink-0"
-                          strokeWidth={1.75}
-                        />
-                        <span className="max-w-[170px] truncate">
-                          {image.filename}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {text ? <div>{text}</div> : null}
-              </div>
-            </div>
-          );
-        }
-
-        // assistant message
-        const toolParts = (msg.parts ?? [])
-          .filter(isNotebookAiToolPart)
-          .filter((part) => shouldShowToolPart(part, isStreaming));
-        let renderedToolProgress = false;
-        const showToolProgress = shouldShowToolProgress(toolParts, isStreaming);
-
-        return (
-          <div key={msg.id} className="space-y-1">
-            {msg.parts?.map((part, pi) => {
-              const partType = part.type;
-
-              if (partType === "text") {
-                const textContent = (part as { text: string }).text;
-                return (
-                  <div
-                    key={pi}
-                    className="ai-md notebook-ai-message-text text-sm text-foreground"
-                  >
-                    <Streamdown
-                      className="space-y-2"
-                      components={MD_COMPONENTS}
-                      isAnimating={isStreaming}
-                      animated={ANIMATE_OPTIONS}
-                      plugins={{ cjk }}
-                      parseIncompleteMarkdown={isStreaming}
+          if (isUser) {
+            const text = getUserDisplayText(msg);
+            const imageParts = getUserImageParts(msg);
+            const persistedImages = msg.metadata?.imageAttachments ?? [];
+            const references = msg.metadata?.references ?? [];
+            return (
+              <div key={msg.id} className="flex justify-end">
+                {/* V3：用户浅色气泡 */}
+                <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
+                  {references.length > 0 ? (
+                    <div
+                      className="flex flex-wrap justify-end gap-1.5"
+                      aria-label="本条消息引用的文件"
                     >
-                      {textContent}
-                    </Streamdown>
-                  </div>
-                );
-              }
+                      {references.map((reference) => (
+                        <button
+                          key={reference.pageId}
+                          type="button"
+                          onClick={() => onOpenPage(reference.pageId)}
+                          className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-[7px] bg-background/45 px-2 text-[11px] text-muted-foreground outline-none transition-colors hover:bg-background/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                          title={`打开“${reference.titleSnapshot}”`}
+                          aria-label={`打开引用文件：${reference.titleSnapshot}`}
+                        >
+                          <FileText
+                            className="h-3 w-3 shrink-0"
+                            strokeWidth={1.75}
+                          />
+                          <span className="max-w-[180px] truncate">
+                            {reference.titleSnapshot}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {imageParts.length > 0 ? (
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {imageParts.map((image, index) => (
+                        <img
+                          key={`${image.url}-${index}`}
+                          src={image.url}
+                          alt={image.filename ?? "已上传图片"}
+                          className="h-20 w-20 rounded-[8px] object-cover"
+                        />
+                      ))}
+                    </div>
+                  ) : persistedImages.length > 0 ? (
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {persistedImages.map((image) => (
+                        <span
+                          key={`${image.filename}-${image.mediaType}`}
+                          className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-background/45 px-1.5 py-1 text-[11px] text-muted-foreground"
+                        >
+                          <ImageIcon
+                            className="h-3 w-3 shrink-0"
+                            strokeWidth={1.75}
+                          />
+                          <span className="max-w-[170px] truncate">
+                            {image.filename}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {text ? <div className="select-text">{text}</div> : null}
+                </div>
+              </div>
+            );
+          }
 
-              if (partType === "reasoning") {
-                return null;
-              }
+          // assistant message — V3 软卡片
+          const toolParts = (msg.parts ?? [])
+            .filter(isNotebookAiToolPart)
+            .filter((part) => shouldShowToolPart(part, isStreaming));
+          const progressToolParts = toolParts;
+          let renderedToolProgress = false;
+          const showToolProgress = shouldShowToolProgress(
+            progressToolParts,
+            isStreaming,
+          );
 
-              // tool parts
-              if (isNotebookAiToolPart(part)) {
-                const toolPart = part as ToolDisplayPart;
-                if (!shouldShowToolPart(toolPart, isStreaming)) return null;
+          return (
+            <div
+              key={msg.id}
+              className="space-y-2 rounded-[14px] bg-[var(--goose-interactive-hover)]/70 px-3.5 py-3"
+            >
+              <div className="flex select-none items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[6px] bg-[#58d7b8]/15 text-[#58d7b8]">
+                  <Sparkles className="h-2.5 w-2.5" strokeWidth={2.25} />
+                </span>
+                <span>回答</span>
+              </div>
+              {msg.parts?.map((part, pi) => {
+                const partType = part.type;
 
-                const visual = renderToolVisual(
-                  toolPart,
-                  `visual-${pi}`,
-                  editorRef,
-                );
-                if (showToolProgress && !renderedToolProgress) {
-                  renderedToolProgress = true;
+                if (partType === "text") {
+                  const textContent = (part as { text: string }).text;
                   return (
-                    <Fragment key={pi}>
-                      <ToolProgressCard
-                        parts={toolParts}
-                        isMessageStreaming={isStreaming}
-                      />
-                      {visual}
-                    </Fragment>
+                    <div
+                      key={pi}
+                      className="ai-md notebook-ai-message-text select-text text-sm text-foreground"
+                    >
+                      <Streamdown
+                        className="space-y-2"
+                        components={MD_COMPONENTS}
+                        isAnimating={isStreaming}
+                        animated={ANIMATE_OPTIONS}
+                        plugins={{ cjk }}
+                        parseIncompleteMarkdown={isStreaming}
+                      >
+                        {textContent}
+                      </Streamdown>
+                    </div>
                   );
                 }
 
-                return visual;
-              }
+                if (partType === "reasoning") {
+                  return null;
+                }
 
-              return null;
-            })}
-          </div>
-        );
-      })}
+                // tool parts
+                if (isNotebookAiToolPart(part)) {
+                  const toolPart = part as ToolDisplayPart;
+                  if (!shouldShowToolPart(toolPart, isStreaming)) return null;
+
+                  if (toolPart.type === "tool-executeBatchPlan") {
+                    const progress =
+                      showToolProgress && !renderedToolProgress ? (
+                        <ToolProgressCard
+                          parts={progressToolParts}
+                          isMessageStreaming={isStreaming}
+                        />
+                      ) : null;
+                    if (progress) renderedToolProgress = true;
+                    if (
+                      toolPart.state === "input-streaming" ||
+                      toolPart.state === "input-available" ||
+                      toolPart.state === "call" ||
+                      toolPart.state === "partial-call"
+                    ) {
+                      return <Fragment key={`batch-progress-${pi}`}>{progress}</Fragment>;
+                    }
+                    return (
+                      <Fragment key={`approval-plan-${pi}`}>
+                        {progress}
+                        <ApprovalPlanCard
+                          part={toolPart}
+                          onApprovalResponse={onBatchApproval}
+                          onUndo={onBatchUndo}
+                        />
+                      </Fragment>
+                    );
+                  }
+
+                  const visual = renderToolVisual(
+                    toolPart,
+                    `visual-${pi}`,
+                    editorRef,
+                  );
+                  if (showToolProgress && !renderedToolProgress) {
+                    renderedToolProgress = true;
+                    return (
+                      <Fragment key={pi}>
+                        <ToolProgressCard
+                          parts={progressToolParts}
+                          isMessageStreaming={isStreaming}
+                        />
+                        {visual}
+                      </Fragment>
+                    );
+                  }
+
+                  return visual;
+                }
+
+                return null;
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

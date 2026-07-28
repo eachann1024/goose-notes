@@ -37,7 +37,7 @@ export const AI_INITIAL_STATE: AISliceState = {
     selectedModelId: null,
     workspaceSelectedModelId: null,
     workspaceReasoningLevel: "default",
-    customProtocol: "openai",
+    customProtocol: "openai-responses",
     customOpenAIResponsesBaseURL: DEFAULT_OPENAI_BASE_URL,
     customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
     customClaudeBaseURL: DEFAULT_CLAUDE_BASE_URL,
@@ -81,6 +81,21 @@ export function createAISlice(set: SetFn): AISlice {
             ? normalizeAIBaseURL(baseURL, DEFAULT_CLAUDE_BASE_URL)
             : normalizeAIBaseURL(baseURL, DEFAULT_OPENAI_BASE_URL);
         const normalizedApiKey = normalizeAIApiKey(apiKey);
+        // 保留用户当前默认模型（仍在新列表中时）；否则回落到列表首项
+        const preservedSelectedModelId =
+          state.ai.selectedModelId &&
+          normalizedModelOptions.some(
+            (item) => item.id === state.ai.selectedModelId,
+          )
+            ? state.ai.selectedModelId
+            : (normalizedModelOptions[0]?.id ?? state.ai.selectedModelId);
+        const preservedWorkspaceModelId =
+          state.ai.workspaceSelectedModelId &&
+          normalizedModelOptions.some(
+            (item) => item.id === state.ai.workspaceSelectedModelId,
+          )
+            ? state.ai.workspaceSelectedModelId
+            : state.ai.workspaceSelectedModelId;
         const nextAI = {
           ...state.ai,
           customProtocol: protocol,
@@ -109,8 +124,8 @@ export function createAISlice(set: SetFn): AISlice {
               ? normalizedApiKey
               : state.ai.customClaudeApiKey,
           customModelOptions: normalizedModelOptions,
-          selectedModelId:
-            normalizedModelOptions[0]?.id ?? state.ai.selectedModelId,
+          selectedModelId: preservedSelectedModelId,
+          workspaceSelectedModelId: preservedWorkspaceModelId,
         };
 
         return { ai: nextAI };

@@ -2,6 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useEffect } from "react";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 interface TrashListProps {
   onBack?: () => void;
@@ -80,6 +81,7 @@ export function TrashList({
     const nextPageId = trashedPages[0].id;
     onSelectPage?.(nextPageId);
     if (activePageId !== nextPageId) {
+      closeNotebookAiIfFullscreen();
       setActivePage(nextPageId);
     }
   }, [
@@ -147,6 +149,7 @@ export function TrashList({
                       : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
                   )}
                   onClick={() => {
+                    closeNotebookAiIfFullscreen();
                     onSelectPage?.(page.id);
                     setActivePage(page.id);
                   }}

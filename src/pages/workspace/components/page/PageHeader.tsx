@@ -2,6 +2,7 @@ import type { Page } from "@/types";
 import { useTabs, type TabItem } from "@/stores/useTabs";
 import type { NotebookAiLayoutMode } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { isFullscreenAiLayout } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { useAiHeaderActions } from "@/pages/workspace/components/notebook-ai/aiHeaderSlot";
 import {
   DndContext,
   PointerSensor,
@@ -20,7 +21,9 @@ import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
+import { PageIconButton } from "./PageIconButton";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { SingleTabTitle } from "./SingleTabTitle";
 
 // AI 按钮由 WorkspaceLayout 按 ai.enabled 门控后传入 onToggleAiPanel。
 
@@ -239,6 +242,12 @@ export function PageHeader({
   const isLocalItem = !!page?.localFilePath;
   const { lastSavedAt, getPage } = usePages();
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
+  const notebooks = useNotebooks((state) => state.notebooks);
+  // 本地文件夹页没有 page.icon 元数据；仅 uTools 内置库页在顶栏放紧凑图标入口
+  const showPageIcon =
+    Boolean(page) &&
+    !page?.localFilePath &&
+    notebooks[page?.workspaceId ?? ""]?.source !== "local-folder";
   const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
   const isTabDirty = (tabPageId: string) =>
     Boolean(dirtyLocalPageIds?.[tabPageId]);
@@ -260,7 +269,7 @@ export function PageHeader({
     syncNotebookForPage(pageId);
     setExpandPageId(pageId);
   };
-  const { closeTabShortcut, appShortcuts } = useSettings();
+  const { closeTabShortcut, appShortcuts, singleTabMode } = useSettings();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -287,6 +296,10 @@ export function PageHeader({
     Boolean(onToggleAiPanel) && isFullscreenAiLayout(aiLayoutMode);
   const showAiOnActions =
     Boolean(onToggleAiPanel) && !isFullscreenAiLayout(aiLayoutMode);
+  /** 全屏 AI 打开时：隐藏 PageMenu，改挂 AI 工具栏（× / + / ···） */
+  const aiFullscreenOpen =
+    Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
+  const aiHeaderActions = useAiHeaderActions();
   const [showSaved, setShowSaved] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
@@ -350,11 +363,18 @@ export function PageHeader({
     event.preventDefault();
   };
 
+  /** 顶栏通用图标按钮：透明底，hover 才起底，与 PageIconButton 一致 */
   const actionButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/70 dark:text-muted-foreground/55 transition-colors duration-150 hover:bg-muted/65 dark:hover:bg-muted/45 hover:text-foreground dark:hover:text-foreground/85";
+    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground";
 
   return (
-    <div className="workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-editor-bg))] sticky top-0 z-10 shrink-0">
+    <div
+      className={cn(
+        "workspace-divider h-12 flex items-center justify-between px-3 bg-[hsl(var(--goose-editor-bg))] sticky top-0 z-10 shrink-0",
+        aiPhase === "streaming" && "ai-header-nebula-streaming",
+      )}
+      data-ai-header-effect={aiPhase === "streaming" ? "nebula" : undefined}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {sidebarCollapsed ? (
           <TooltipProvider delayDuration={600}>
@@ -393,7 +413,7 @@ export function PageHeader({
           onWheel={handleTabsWheel}
           onDoubleClick={(e) => {
             // 只在点击容器自身空白区域时触发（非标签项、非按钮）
-            if (e.target === e.currentTarget) {
+            if (!singleTabMode && e.target === e.currentTarget) {
               onBeforeActivateTab?.();
               useTabs.getState().openWelcomeTab();
             }
@@ -410,8 +430,6 @@ export function PageHeader({
                       "ai-icon-button",
                       actionButtonClass,
                       "mr-0.5 shrink-0",
-                      aiPanelOpen &&
-                        "bg-[var(--goose-interactive-selected)] text-foreground",
                     )}
                     data-ai-state={aiPhase}
                     onClick={onToggleAiPanel}
@@ -441,73 +459,89 @@ export function PageHeader({
             </TooltipProvider>
           ) : null}
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleTabDragEnd}
-          >
-            <SortableContext
-              items={visibleTabs.map((tab) => tab.id)}
-              strategy={horizontalListSortingStrategy}
+          {singleTabMode ? (
+            page ? (
+              <>
+                {showPageIcon ? <PageIconButton page={page} /> : null}
+                <SingleTabTitle
+                  key={`${page.id}:${getPageTitle(page)}`}
+                  page={page}
+                />
+              </>
+            ) : (
+              <span className="min-w-0 flex-1 truncate px-2 text-sm font-semibold text-foreground">
+                开始
+              </span>
+            )
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleTabDragEnd}
             >
-              {visibleTabs.map((tab) => {
-                const tabPage =
-                  tab.type === "welcome" ? undefined : getPage(tab.pageId);
-                if (tab.type !== "welcome" && !tabPage) return null;
-                const visibleIndex = visibleTabs.findIndex((t) => t.id === tab.id);
-                return (
-                  <SortableTabItem
-                    key={tab.id}
-                    tab={tab}
-                    tabPage={tabPage}
-                    isActive={
-                      activeTabId === tab.id &&
-                      !(
-                        aiPanelOpen && isFullscreenAiLayout(aiLayoutMode)
-                      )
-                    }
-                    isDirty={isTabDirty(tab.pageId)}
-                    hasLeftTabs={visibleIndex > 0}
-                    hasRightTabs={visibleIndex < visibleTabs.length - 1}
-                    hasOtherTabs={visibleTabs.length > 1}
-                    closeTabShortcutLabel={closeTabShortcutLabel}
-                    onActivate={() => {
-                      onBeforeActivateTab?.();
-                      setActiveTab(tab.id);
-                    }}
-                    onClose={() => closeTab(tab.id)}
-                    onCloseOthers={() => {
-                      visibleTabs
-                        .filter((item) => item.id !== tab.id)
-                        .forEach((item) => closeTab(item.id));
-                    }}
-                    onCloseLeft={() => {
-                      visibleTabs
-                        .slice(0, visibleIndex)
-                        .forEach((item) => closeTab(item.id));
-                    }}
-                    onCloseRight={() => {
-                      visibleTabs
-                        .slice(visibleIndex + 1)
-                        .forEach((item) => closeTab(item.id));
-                    }}
-                    onTogglePin={() => togglePinTab(tab.id)}
-                    onPromotePreview={() => promotePreviewTab(tab.id)}
-                    onLocateInTree={() => locateInTree(tab.pageId)}
-                  />
-                );
-              })}
-            </SortableContext>
-          </DndContext>
+              <SortableContext
+                items={visibleTabs.map((tab) => tab.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {visibleTabs.map((tab) => {
+                  const tabPage =
+                    tab.type === "welcome" ? undefined : getPage(tab.pageId);
+                  if (tab.type !== "welcome" && !tabPage) return null;
+                  const visibleIndex = visibleTabs.findIndex(
+                    (t) => t.id === tab.id,
+                  );
+                  return (
+                    <SortableTabItem
+                      key={tab.id}
+                      tab={tab}
+                      tabPage={tabPage}
+                      isActive={
+                        activeTabId === tab.id &&
+                        !(aiPanelOpen && isFullscreenAiLayout(aiLayoutMode))
+                      }
+                      isDirty={isTabDirty(tab.pageId)}
+                      hasLeftTabs={visibleIndex > 0}
+                      hasRightTabs={visibleIndex < visibleTabs.length - 1}
+                      hasOtherTabs={visibleTabs.length > 1}
+                      closeTabShortcutLabel={closeTabShortcutLabel}
+                      onActivate={() => {
+                        onBeforeActivateTab?.();
+                        setActiveTab(tab.id);
+                      }}
+                      onClose={() => closeTab(tab.id)}
+                      onCloseOthers={() => {
+                        visibleTabs
+                          .filter((item) => item.id !== tab.id)
+                          .forEach((item) => closeTab(item.id));
+                      }}
+                      onCloseLeft={() => {
+                        visibleTabs
+                          .slice(0, visibleIndex)
+                          .forEach((item) => closeTab(item.id));
+                      }}
+                      onCloseRight={() => {
+                        visibleTabs
+                          .slice(visibleIndex + 1)
+                          .forEach((item) => closeTab(item.id));
+                      }}
+                      onTogglePin={() => togglePinTab(tab.id)}
+                      onPromotePreview={() => promotePreviewTab(tab.id)}
+                      onLocateInTree={() => locateInTree(tab.pageId)}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          )}
 
-          {openTabs.length === 0 && page && (
+          {!singleTabMode && openTabs.length === 0 && page && (
             <span className="truncate text-sm text-foreground/80">
               {getPageTitle(page)}
             </span>
           )}
 
           {/* 平时 hover 标签栏才显形；极端溢出滚动时仍钉在右缘，不被挤出可视区 */}
-          {!page?.trashedAt && (
+          {!singleTabMode && !page?.trashedAt && (
             <div className="pointer-events-none sticky right-0 flex shrink-0 items-center gap-0.5 rounded-[8px] bg-[hsl(var(--goose-editor-bg))] opacity-0 transition-opacity duration-150 group-hover/tabs:pointer-events-auto group-hover/tabs:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 motion-reduce:transition-none">
               <TooltipProvider delayDuration={600}>
                 <Tooltip>
@@ -623,18 +657,15 @@ export function PageHeader({
         )}
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1">
-        {page && !page.trashedAt && (
+        {/* 全屏 AI 右上角是关闭/新建/更多，裸 ✓ 贴着 × 会像「确认/取消」，此处改用文案提示 */}
+        {page && !page.trashedAt && showSaved && (
           <span
-            className={cn(
-              "inline-flex h-8 w-5 shrink-0 items-center justify-center text-muted-foreground/55 transition-opacity duration-200",
-              showSaved
-                ? "opacity-100 animate-in fade-in zoom-in-95"
-                : "pointer-events-none opacity-0",
-            )}
-            aria-hidden={!showSaved}
-            title={showSaved ? "已保存" : undefined}
+            className="inline-flex h-8 shrink-0 items-center gap-1 px-1.5 text-[11px] text-muted-foreground/70 animate-in fade-in zoom-in-95"
+            title="已保存"
+            aria-live="polite"
           >
-            <LucideIcons.Check className="h-3.5 w-3.5" strokeWidth={1.8} />
+            <LucideIcons.Check className="h-3 w-3" strokeWidth={1.8} />
+            <span>已保存</span>
           </span>
         )}
 
@@ -645,12 +676,7 @@ export function PageHeader({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className={cn(
-                    "ai-icon-button",
-                    actionButtonClass,
-                    aiPanelOpen &&
-                      "bg-[var(--goose-interactive-selected)] text-foreground",
-                  )}
+                  className={cn("ai-icon-button", actionButtonClass)}
                   data-ai-state={aiPhase}
                   onClick={onToggleAiPanel}
                   aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
@@ -715,8 +741,17 @@ export function PageHeader({
           </>
         )}
 
-        {/* 页面级状态操作收进“更多操作”，避免顶栏堆叠重复入口。 */}
-        {page && !page.trashedAt && <PageMenu />}
+        {/* 多标签：图标放右侧操作区，避免正文上方再占一行空白 */}
+        {!singleTabMode && showPageIcon && page && !page.trashedAt ? (
+          <PageIconButton page={page} />
+        ) : null}
+
+        {/* 全屏 AI：右上角给 AI 工具栏（关闭/新建/更多），隐藏页面 PageMenu */}
+        {aiFullscreenOpen ? (
+          aiHeaderActions
+        ) : page && !page.trashedAt ? (
+          <PageMenu />
+        ) : null}
       </div>
     </div>
   );

@@ -7,7 +7,11 @@ import {
   splitFilePath,
 } from "@/lib/local-title-binding";
 import { migrateLocalPageIdMapEntry, toRelativePath } from "@/lib/local-page-idmap";
-import { migratePendingLocalSave } from "../../folderSync";
+import {
+  acquireLocalPageFileOperation,
+  flushPendingLocalSaveByPageIdInternal,
+  migratePendingLocalSave,
+} from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
 import { cloneLocalPageContent } from "../pageCreate";
 import { markSelfMoved } from "./move";
@@ -212,53 +216,77 @@ export async function renameLocalPageFileAction(
     throw new Error(`已存在同名文件：${sanitized}${ext}`);
   }
 
-  let renamed: boolean;
+  // 先让编辑器的 800ms 防抖立即提交到 store，再写完已经排队的旧路径内容。
+  // 标题输入与编辑器同属同步事件链，dispatch 返回时 updatePage 已完成入队。
+  window.dispatchEvent(
+    new CustomEvent("goose-note:flush-editor", {
+      detail: { immediate: true, pageId },
+    }),
+  );
+  await flushPendingLocalSaveByPageIdInternal(pageId, get);
+
+  // 与所有正文写盘共用页面级串行锁：等待在途的直接保存结束，并阻止后续保存
+  // 在 localFilePath 切换前读取旧路径。同页并发 rename 也会自然串行。
+  const releaseFileOperation = await acquireLocalPageFileOperation(pageId);
   try {
+    const renamed = Boolean(
+      await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)),
+    );
+    if (!renamed) {
+      throw new Error("重命名操作未成功");
+    }
+
+    // 成功后才登记自移路径；失败时不应误吞接下来 5 秒的真实文件事件。
     markSelfMoved(page.localFilePath.replace(/\\/g, "/"));
     markSelfMoved(nextFilePath.replace(/\\/g, "/"));
-    renamed = Boolean(await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)));
-  } catch (err) {
-    throw new Error(`重命名失败：${(err as Error).message ?? String(err)}`, { cause: err });
+
+    // 磁盘已改名后先同步 store。后面的快照/idMap 属于附属元数据，即使迁移异常，
+    // 等待锁的保存也会读取新路径，不会把旧文件重新创建出来。
+    set((state) => {
+      const current = state.pages[pageId];
+      if (!current) return state;
+      return {
+        pages: {
+          ...state.pages,
+          [pageId]: { ...current, localFilePath: nextFilePath },
+        },
+      };
+    });
+
+    // 迁移快照 Map：旧路径 → 新路径（保持保存前 diff 有效）
+    const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
+      await import("@/lib/local-md-snapshot");
+    const oldSnapshot = getLocalMdSnapshot(page.localFilePath);
+    if (oldSnapshot !== undefined) {
+      setLocalMdSnapshot(nextFilePath, oldSnapshot);
+      deleteLocalMdSnapshot(page.localFilePath);
+    }
+
+    // 稳定 id：更新映射表（旧 relativePath → 新 relativePath，stableId 不变），
+    // 然后只更新 page 的 localFilePath 字段，id 保持不变。
+    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+    const basePath = notebook?.localPath || "";
+    const oldRelativePath = toRelativePath(basePath, page.localFilePath);
+    const newRelativePath = toRelativePath(basePath, nextFilePath);
+    migrateLocalPageIdMapEntry(
+      page.workspaceId,
+      oldRelativePath,
+      newRelativePath,
+      pageId,
+    );
+
+    return pageId;
+  } catch (error) {
+    if (error instanceof Error && error.message === "重命名操作未成功") {
+      throw error;
+    }
+    throw new Error(
+      `重命名失败：${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  } finally {
+    releaseFileOperation();
   }
-  if (!renamed) {
-    throw new Error("重命名操作未成功");
-  }
-
-  // 迁移快照 Map：旧路径 → 新路径（保持保存前 diff 有效）
-  const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
-    await import("@/lib/local-md-snapshot");
-  const oldSnapshot = getLocalMdSnapshot(page.localFilePath);
-  if (oldSnapshot !== undefined) {
-    setLocalMdSnapshot(nextFilePath, oldSnapshot);
-    deleteLocalMdSnapshot(page.localFilePath);
-  }
-
-  // 稳定 id：更新映射表（旧 relativePath → 新 relativePath，stableId 不变），
-  // 然后只更新 page 的 localFilePath 字段，id 保持不变。
-  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-  const basePath = notebook?.localPath || "";
-  const oldRelativePath = toRelativePath(basePath, page.localFilePath);
-  const newRelativePath = toRelativePath(basePath, nextFilePath);
-  migrateLocalPageIdMapEntry(
-    page.workspaceId,
-    oldRelativePath,
-    newRelativePath,
-    pageId,
-  );
-
-  // id 不变，仅更新 localFilePath（以及同步 dirtyLocalPageIds 键不需要改变）。
-  set((state) => {
-    const current = state.pages[pageId];
-    if (!current) return state;
-    return {
-      pages: {
-        ...state.pages,
-        [pageId]: { ...current, localFilePath: nextFilePath },
-      },
-    };
-  });
-
-  return pageId;
 }
 
 export const saveDirtyLocalPageAction = async (

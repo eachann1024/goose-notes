@@ -9,16 +9,16 @@ interface TableCardProps {
 
 export function TableCard({ title, columns, rows }: TableCardProps) {
   return (
-    <div className="my-2 overflow-hidden rounded-[8px] border border-border">
+    <div className="my-2 overflow-hidden rounded-[8px] bg-[var(--goose-interactive-hover)]">
       {title && (
-        <div className="border-b border-border bg-[var(--goose-interactive-hover)] px-3 py-2 text-xs font-medium text-foreground">
+        <div className="px-3 py-2 text-xs font-medium text-foreground">
           {title}
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto bg-background/40">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-border bg-[var(--goose-interactive-hover)]">
+            <tr className="bg-[var(--goose-interactive-hover)]">
               {columns.map((col, i) => (
                 <th
                   key={i}
@@ -33,7 +33,7 @@ export function TableCard({ title, columns, rows }: TableCardProps) {
             {rows.map((row, ri) => (
               <tr
                 key={ri}
-                className="border-b border-border last:border-0 hover:bg-[var(--goose-interactive-hover)] transition-colors"
+                className="transition-colors odd:bg-transparent even:bg-[var(--goose-interactive-hover)]/40 hover:bg-[var(--goose-interactive-hover)]"
               >
                 {row.map((cell, ci) => (
                   <td

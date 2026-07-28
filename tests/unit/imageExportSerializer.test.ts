@@ -69,7 +69,8 @@ test("全部主题都包含 checklist 居中与标题 CSS", () => {
     expect(html).toContain("width: 1em");
     expect(html).toContain("border: 1.5px solid currentColor");
     expect(html).toContain(`color: ${theme.textColor}`);
-    expect(html).toContain("text-decoration: line-through");
+    expect(html).toContain(`.task-item.checked .task-text`);
+    expect(html).toContain(`color: ${theme.secondaryText}`);
     expect(html).toContain("list-style-type: disc");
     expect(html).toContain("list-style-type: decimal");
     expect(html).toContain("border: 1px solid currentColor");
@@ -141,6 +142,9 @@ test("浏览器中全部主题都显示列表标记、事项框和提醒块边�
       const checkedText = document.querySelector(
         ".task-item.checked .task-text",
       );
+      const uncheckedText = document.querySelector(
+        ".task-item:not(.checked) .task-text",
+      );
       const callout = document.querySelector(".callout");
       if (
         !ul ||
@@ -153,6 +157,7 @@ test("浏览器中全部主题都显示列表标记、事项框和提醒块边�
         !customTask ||
         !customCheckbox ||
         !checkedText ||
+        !uncheckedText ||
         !callout
       ) {
         throw new Error("导出块未完整渲染");
@@ -198,6 +203,8 @@ test("浏览器中全部主题都显示列表标记、事项框和提醒块边�
         customTaskColor: getComputedStyle(customTask).color,
         customCheckboxBorderColor: getComputedStyle(customCheckbox).borderColor,
         checkedDecoration: getComputedStyle(checkedText).textDecorationLine,
+        checkedTextColor: getComputedStyle(checkedText).color,
+        uncheckedTextColor: getComputedStyle(uncheckedText).color,
         calloutBorderStyle: getComputedStyle(callout).borderStyle,
         calloutBorderColor: getComputedStyle(callout).borderColor,
         calloutColor: getComputedStyle(callout).color,
@@ -211,13 +218,14 @@ test("浏览器中全部主题都显示列表标记、事项框和提醒块边�
       numberDisplay: "list-item",
       orderedStart: "3",
       checkboxBorderStyle: "solid",
-      checkedDecoration: "line-through",
+      checkedDecoration: "none",
       calloutBorderStyle: "solid",
     });
     expect(styles.listIndent, theme.id).toBeGreaterThan(10);
     expect(styles.bulletMarkerColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
     expect(styles.numberMarkerColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
     expect(styles.checkboxBorderColor, theme.id).not.toBe("rgba(0, 0, 0, 0)");
+    expect(styles.checkedTextColor, theme.id).not.toBe(styles.uncheckedTextColor);
     expect(styles.checkedContrast, theme.id).toBeGreaterThanOrEqual(4.5);
     expect(styles.customBulletMarkerColor, theme.id).toBe(
       styles.customBulletColor,

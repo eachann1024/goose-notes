@@ -32,6 +32,11 @@ try {
     fs.copyFileSync(preloadHelperSrc, path.join(distDir, 'mcp-tools.cjs'));
   }
 
+  const webFetchHelperSrc = path.join(rootDir, 'preload/web-fetch.cjs');
+  if (fs.existsSync(webFetchHelperSrc)) {
+    fs.copyFileSync(webFetchHelperSrc, path.join(distDir, 'web-fetch.cjs'));
+  }
+
   fs.writeFileSync(path.join(distDir, 'package.json'), JSON.stringify({ type: 'commonjs' }));
 
   const logoSrc = path.join(rootDir, 'public/logo.png');

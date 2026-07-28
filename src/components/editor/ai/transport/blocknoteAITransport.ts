@@ -1,5 +1,5 @@
 // BlockNote xl-ai 的 ChatTransport 适配器：把项目现有 AI Settings 桥到 Vercel AI SDK。
-// 支持自定义 OpenAI Responses、OpenAI 兼容协议与 Anthropic。
+// 同时支持 OpenAI Responses、OpenAI-compatible Chat Completions 与 Anthropic。
 
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -25,7 +25,7 @@ function buildModel(
   ).trim();
   if (!apiKey) {
     throw new Error(
-      '未填写 API Key。请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。',
+      '未填写 API Key。请前往"设置 -> AI 助手 -> AI 服务"检查配置。',
     );
   }
 

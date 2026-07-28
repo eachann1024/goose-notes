@@ -13,6 +13,29 @@ export const localSaveMaxWaitTimers = new Map<
 export const pendingLocalSaveContents = new Map<string, JSONContent>();
 export const localSaveWriteChains = new Map<string, Promise<void>>();
 const discardedPendingLocalSavePageIds = new Set<string>();
+const localPageFileOperationTails = new Map<string, Promise<void>>();
+
+/**
+ * 同一页面的正文写盘与文件重命名必须串行：调用方取得锁后再读取 localFilePath。
+ * 这样 rename 会等待已在途的直接保存，后续保存也会等路径切换完成。
+ */
+export const acquireLocalPageFileOperation = async (
+  pageId: string,
+): Promise<() => void> => {
+  const previous = localPageFileOperationTails.get(pageId) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  localPageFileOperationTails.set(pageId, current);
+  await previous;
+  return () => {
+    if (localPageFileOperationTails.get(pageId) === current) {
+      localPageFileOperationTails.delete(pageId);
+    }
+    release();
+  };
+};
 
 export const cloneJSONContent = (content: JSONContent): JSONContent => {
   try {

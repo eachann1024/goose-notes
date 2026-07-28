@@ -8,6 +8,8 @@ import { uToolsStorage } from "@/lib/storage";
 const MAX_MESSAGES_PER_CONVERSATION = 60;
 /** 最多持久化聊天记录的笔记本数 */
 const MAX_NOTEBOOKS = 20;
+/** 超过此时长未活跃的会话视为归档：再次打开 AI 进入空白新会话，旧会话留在历史里 */
+export const CONVERSATION_STALE_MS = 6 * 60 * 60 * 1000;
 const NOTEBOOK_AI_CHATS_STORAGE_VERSION = 1;
 
 export interface NotebookAiConversation {
@@ -46,6 +48,16 @@ export interface NotebookAiChatsState extends NotebookAiChatsPersistedState {
   listConversations: (notebookId: string) => NotebookAiConversation[];
   /** 新建并激活空会话；已有空会话时直接复用 */
   createConversation: (notebookId: string) => string;
+  /**
+   * 打开 AI 面板时解析当前会话：
+   * - 无激活 / 空会话 → 返回（或创建）空会话
+   * - 有消息且最近活跃未超过 maxAgeMs → 继续该会话
+   * - 有消息但已过期 → 归档（留在历史），新建空白会话
+   */
+  ensureFreshActiveConversation: (
+    notebookId: string,
+    options?: { now?: number; maxAgeMs?: number },
+  ) => string;
   /** 激活已存在的会话；会话不存在时不修改状态 */
   setActiveConversation: (notebookId: string, conversationId: string) => void;
   /** 更新指定会话的消息 */
@@ -326,12 +338,62 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
         return conversationId;
       },
 
+      ensureFreshActiveConversation: (notebookId, options) => {
+        const now = options?.now ?? Date.now();
+        const maxAgeMs = options?.maxAgeMs ?? CONVERSATION_STALE_MS;
+        const notebookChat = get().chats[notebookId];
+        const activeId = notebookChat?.activeConversationId ?? null;
+        const activeConversation = activeId
+          ? notebookChat?.conversations[activeId]
+          : undefined;
+
+        // 尚无会话，或当前就是空会话：直接落到可复用的空会话。
+        if (!activeConversation || activeConversation.messages.length === 0) {
+          return get().createConversation(notebookId);
+        }
+
+        // 以笔记本级 last touch 为准（发消息 / 切历史 / 新建 / 打开都会刷新），
+        // 避免「只点开历史」后马上被 6 小时规则误归档。
+        const lastActiveAt = Math.max(
+          notebookChat?.updatedAt ?? 0,
+          activeConversation.updatedAt,
+        );
+        if (now - lastActiveAt < maxAgeMs) {
+          // 恢复未过期会话时刷新 touch，把 6 小时窗口从「最近一次打开」起算。
+          get().setActiveConversation(notebookId, activeConversation.id);
+          return activeConversation.id;
+        }
+
+        // 过期：旧会话保留在 conversations 里供历史列表读取，激活新空白会话。
+        return get().createConversation(notebookId);
+      },
+
       setActiveConversation: (notebookId, conversationId) => {
         set((state) => {
           const notebookChat = state.chats[notebookId];
-          if (!notebookChat?.conversations[conversationId]) return state;
-          if (notebookChat.activeConversationId === conversationId)
-            return state;
+          const conversation = notebookChat?.conversations[conversationId];
+          if (!notebookChat || !conversation) return state;
+
+          const now = Date.now();
+          // 已是当前会话时仍刷新 touch 时间，表示用户再次打开/继续该会话。
+          if (notebookChat.activeConversationId === conversationId) {
+            return {
+              chats: {
+                ...state.chats,
+                [notebookId]: {
+                  ...notebookChat,
+                  conversations: {
+                    ...notebookChat.conversations,
+                    [conversationId]: {
+                      ...conversation,
+                      updatedAt: now,
+                    },
+                  },
+                  updatedAt: now,
+                },
+              },
+            };
+          }
 
           return {
             chats: {
@@ -339,7 +401,14 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
               [notebookId]: {
                 ...notebookChat,
                 activeConversationId: conversationId,
-                updatedAt: Date.now(),
+                conversations: {
+                  ...notebookChat.conversations,
+                  [conversationId]: {
+                    ...conversation,
+                    updatedAt: now,
+                  },
+                },
+                updatedAt: now,
               },
             },
           };

@@ -4,6 +4,7 @@ import {
   extractFrontmatter,
   decodeUnsupportedMarkdownForDisk,
 } from "@/lib/markdown-raw-guard";
+import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
 import { isLocalFolderPage } from "../../persistence";
 import {
   isLocalMdUnchanged,
@@ -13,6 +14,7 @@ import {
   markSelfWrite,
 } from "@/lib/local-md-snapshot";
 import {
+  acquireLocalPageFileOperation,
   flushPendingLocalSaveByPageIdInternal,
   flushAllPendingLocalSavesInternal,
 } from "../../folderSync";
@@ -200,7 +202,32 @@ export const saveLocalPageContentAction = async (
 ): Promise<boolean> => {
   if (typeof window === "undefined" || !window.gooseFs)
     return false;
+  const gooseFs = window.gooseFs;
 
+  // 与文件重命名共用页面级串行锁；取得锁后再读取路径。
+  const releaseFileOperation = await acquireLocalPageFileOperation(pageId);
+  try {
+    return await saveLocalPageContentUnlocked(
+      set,
+      get,
+      gooseFs,
+      pageId,
+      content,
+      options,
+    );
+  } finally {
+    releaseFileOperation();
+  }
+};
+
+const saveLocalPageContentUnlocked = async (
+  set: StoreSet,
+  get: StoreGet,
+  gooseFs: NonNullable<Window["gooseFs"]>,
+  pageId: string,
+  content: JSONContent,
+  options?: { force?: boolean },
+): Promise<boolean> => {
   const page = get().pages[pageId];
   if (!page) return false;
 
@@ -314,10 +341,21 @@ export const saveLocalPageContentAction = async (
   const { blocksToMarkdown } = await import("@/lib/export");
   const markdownContent = await blocksToMarkdown(processedContent as any);
 
-  // scanner 抽出 frontmatter 后不入编辑器，保存时由这里 prepend 回去
-  // （否则首次保存就把 frontmatter 丢了）
-  const finalContent = page.localFrontmatter
-    ? `${page.localFrontmatter}\n\n${markdownContent}`
+  // scanner 抽出 frontmatter 后不入编辑器，保存时 prepend 回去。
+  // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked），
+  // 解析失败则原样保留 blob，避免破坏用户手写 YAML。
+  const frontmatterMerge = mergeLocalPageSettingsIntoFrontmatter(
+    page.localFrontmatter,
+    {
+      fontFamily: page.fontFamily ?? "default",
+      isLocked: Boolean(page.isLocked),
+    },
+  );
+  const frontmatterBlob = frontmatterMerge.parseFailed
+    ? page.localFrontmatter
+    : frontmatterMerge.blob;
+  const finalContent = frontmatterBlob
+    ? `${frontmatterBlob}\n\n${markdownContent}`
     : markdownContent;
 
   if (!markdownContent.trim()) {
@@ -371,16 +409,16 @@ export const saveLocalPageContentAction = async (
 
   if (pendingImageWrites.length > 0) {
     try {
-      if (window.gooseFs.mkdir) {
-        await window.gooseFs.mkdir(assetsDir);
+      if (gooseFs.mkdir) {
+        await gooseFs.mkdir(assetsDir);
       }
     } catch {}
     await Promise.all(
       pendingImageWrites.map(({ imagePath, base64Data }) => {
-        if (window.gooseFs?.writeFileAsync) {
-          return window.gooseFs.writeFileAsync(imagePath, base64Data, "base64");
+        if (gooseFs.writeFileAsync) {
+          return gooseFs.writeFileAsync(imagePath, base64Data, "base64");
         }
-        return Promise.resolve(window.gooseFs?.writeFile(imagePath, base64Data));
+        return Promise.resolve(gooseFs.writeFile(imagePath, base64Data));
       }),
     );
   }
@@ -402,10 +440,38 @@ export const saveLocalPageContentAction = async (
 
   if (result) {
     // 落盘成功即清除脏标记（自动保存与显式保存共用此路径）。
-    set((s) => ({
-      lastSavedAt: Date.now(),
-      dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
-    }));
+    // merge 成功时同步 store 中的 localFrontmatter，与磁盘一致。
+    const nextFrontmatter =
+      !frontmatterMerge.parseFailed
+        ? frontmatterBlob
+        : page.localFrontmatter;
+    set((s) => {
+      const current = s.pages[pageId];
+      if (!current) {
+        return {
+          lastSavedAt: Date.now(),
+          dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
+        };
+      }
+      const frontmatterChanged =
+        (current.localFrontmatter ?? undefined) !==
+        (nextFrontmatter ?? undefined);
+      return {
+        lastSavedAt: Date.now(),
+        dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
+        ...(frontmatterChanged
+          ? {
+              pages: {
+                ...s.pages,
+                [pageId]: {
+                  ...current,
+                  localFrontmatter: nextFrontmatter || undefined,
+                },
+              },
+            }
+          : {}),
+      };
+    });
     // 写盘成功后更新快照为实际写入磁盘的内容，下次变更比较以此为基准。
     updateSnapshotAfterWrite(filePath, diskContent);
   }

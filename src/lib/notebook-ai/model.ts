@@ -50,7 +50,7 @@ export function buildLanguageModel(): ModelAvailability {
 
     if (ai.customProtocol === "claude") {
       const baseURL = (
-        ai.customClaudeBaseURL || "https://api.anthropic.com"
+        ai.customClaudeBaseURL || "https://api.anthropic.com/v1"
       ).replace(/\/+$/, "");
       const provider = createAnthropic({
         apiKey: ai.customClaudeApiKey || "placeholder",

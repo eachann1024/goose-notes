@@ -1,7 +1,8 @@
 /**
- * Notebook AI composer — wraps the shared @-aware AI composer input.
+ * Notebook AI composer — V3-B：附件（页面引用 + 粘贴/上传图）收进 dock 顶部。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FileText, ImagePlus, Send, Square, X } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,47 @@ interface ComposerProps {
   layout?: "side-panel" | "fullscreen";
 }
 
+function ImageChipPreview({
+  src,
+  name,
+  anchorRect,
+}: {
+  src: string;
+  name: string;
+  anchorRect: DOMRect;
+}) {
+  const maxWidth = 176;
+  const left = Math.min(
+    Math.max(8, anchorRect.left),
+    window.innerWidth - maxWidth - 8,
+  );
+  // 默认在芯片上方；空间不够则贴在下方
+  const placeAbove = anchorRect.top > 168;
+  const top = placeAbove ? anchorRect.top - 8 : anchorRect.bottom + 8;
+
+  return createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[30000] w-44 rounded-[10px] bg-popover p-1.5 text-popover-foreground shadow-[0_12px_32px_rgba(15,23,42,0.28)] dark:bg-[#2e2e2e]"
+      style={{
+        left,
+        top,
+        transform: placeAbove ? "translateY(-100%)" : undefined,
+      }}
+    >
+      <img
+        src={src}
+        alt={name}
+        className="h-[120px] w-full rounded-[6px] object-cover"
+      />
+      <div className="mt-1.5 truncate px-0.5 text-[11px] text-muted-foreground">
+        {name}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function Composer({
   onSend,
   onStop,
@@ -73,6 +115,11 @@ export function Composer({
     initialReference ? [initialReference] : [],
   );
   const [images, setImages] = useState<NotebookAiImageAttachment[]>([]);
+  const [hoveredImage, setHoveredImage] = useState<{
+    src: string;
+    name: string;
+    rect: DOMRect;
+  } | null>(null);
 
   useEffect(() => {
     imagesRef.current = images;
@@ -113,8 +160,10 @@ export function Composer({
     if (accepted === false) return;
 
     inputRef.current?.clear();
+    setReferences([]);
     images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
     setImages([]);
+    setHoveredImage(null);
     setIsEmpty(true);
     setAutoFocusToken((token) => token + 1);
   }, [disabled, images, isStreaming, isEmpty, onSend, references]);
@@ -133,10 +182,8 @@ export function Composer({
     );
   }, []);
 
-  const handleImageInput = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = Array.from(event.target.files ?? []);
-      event.target.value = "";
+  const addImageFiles = useCallback(
+    (selectedFiles: File[]) => {
       if (selectedFiles.length === 0) return;
 
       const available = MAX_IMAGE_ATTACHMENTS - images.length;
@@ -183,23 +230,45 @@ export function Composer({
     [images.length],
   );
 
+  const handleImageInput = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(event.target.files ?? []);
+      event.target.value = "";
+      addImageFiles(selectedFiles);
+    },
+    [addImageFiles],
+  );
+
+  /** 粘贴图片 → 与上传同一套附件芯片 */
+  const handleDockPaste = useCallback(
+    (event: React.ClipboardEvent) => {
+      if (disabled || isStreaming) return;
+      const files = Array.from(event.clipboardData?.files ?? []);
+      const imageFiles = files.filter(isImageUploadFile);
+      if (imageFiles.length === 0) return;
+      event.preventDefault();
+      addImageFiles(imageFiles);
+    },
+    [addImageFiles, disabled, isStreaming],
+  );
+
   const removeImage = useCallback((previewUrl: string) => {
     setImages((current) => {
       const target = current.find((image) => image.previewUrl === previewUrl);
       if (target) URL.revokeObjectURL(target.previewUrl);
       return current.filter((image) => image.previewUrl !== previewUrl);
     });
+    setHoveredImage(null);
   }, []);
 
   const canSend = !isStreaming && !disabled && (!isEmpty || images.length > 0);
+  const hasAttachments = references.length > 0 || images.length > 0;
 
   return (
     <div
       className={cn(
         "shrink-0",
-        isFullscreen
-          ? "border-t border-border/50 px-6 py-3"
-          : "px-3 py-2.5",
+        isFullscreen ? "px-6 py-3" : "px-3 py-2.5",
       )}
     >
       <div
@@ -208,82 +277,106 @@ export function Composer({
           isFullscreen ? "max-w-[720px]" : "max-w-none",
         )}
       >
-      {references.length > 0 && (
+        {/* V3-B dock：附件条 + 输入 + 工具行 一体 */}
         <div
-          className="mb-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="本轮上下文"
+          className={cn(
+            "flex flex-col rounded-[16px] bg-[var(--goose-interactive-hover)] px-3 py-2.5",
+            "shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)]",
+            "transition-colors duration-150",
+          )}
+          onPaste={handleDockPaste}
         >
-          {references.map((reference) => (
+          {hasAttachments ? (
             <div
-              key={reference.pageId}
-              className="group flex h-7 max-w-[80%] shrink-0 items-center rounded-[7px] bg-[var(--goose-interactive-selected)] text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] focus-within:bg-[var(--goose-interactive-hover)] focus-within:ring-1 focus-within:ring-ring"
+              className="mb-2.5 flex w-full min-w-0 flex-wrap content-start items-start gap-1.5 border-b border-border/40 pb-2.5"
+              aria-label="本轮附件"
             >
-              <button
-                type="button"
-                onClick={() => onOpenPage(reference.pageId)}
-                className="flex min-w-0 items-center gap-1.5 py-1 pl-2 pr-1.5 outline-none"
-                aria-label={`打开页面：${reference.titleSnapshot}`}
-                title={`打开“${reference.titleSnapshot}”`}
-              >
-                <FileText
-                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <span className="min-w-0 truncate">
-                  {reference.titleSnapshot}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => removeReference(reference.pageId)}
-                className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 outline-none transition-opacity hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-                aria-label={`移除页面上下文：${reference.titleSnapshot}`}
-                title={`移除“${reference.titleSnapshot}”`}
-              >
-                <X className="h-3 w-3" strokeWidth={1.9} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+              {references.map((reference) => (
+                <div
+                  key={reference.pageId}
+                  className="group relative inline-flex h-[30px] max-w-[min(180px,100%)] min-w-0 shrink-0 items-center gap-1.5 rounded-[8px] bg-black/10 py-0 pl-2 pr-1 dark:bg-black/25"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpenPage(reference.pageId)}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 outline-none"
+                    aria-label={`打开页面：${reference.titleSnapshot}`}
+                    title={`打开“${reference.titleSnapshot}”`}
+                  >
+                    <FileText
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                      strokeWidth={1.75}
+                    />
+                    <span className="min-w-0 truncate text-xs text-foreground">
+                      {reference.titleSnapshot}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeReference(reference.pageId)}
+                    className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-muted-foreground opacity-0 outline-none transition-opacity hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                    aria-label={`移除页面上下文：${reference.titleSnapshot}`}
+                    title={`移除“${reference.titleSnapshot}”`}
+                  >
+                    <X className="h-3 w-3" strokeWidth={1.9} />
+                  </button>
+                </div>
+              ))}
 
-      <div
-        className={cn(
-          "flex flex-col gap-1 rounded-[10px] border border-border bg-background px-3 py-2",
-          "focus-within:border-border",
-          "transition-colors duration-150",
-        )}
-      >
-        <div className="flex items-start gap-2">
-          {images.length > 0 && (
-            <div
-              className="mt-[2px] flex max-w-[40%] shrink-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              aria-label="待发送图片"
-            >
               {images.map((image) => (
                 <div
                   key={image.previewUrl}
-                  className="group relative h-5 w-5 shrink-0 overflow-hidden rounded-[4px] bg-[var(--goose-interactive-hover)]"
+                  className="group relative inline-flex h-[30px] max-w-[min(180px,100%)] min-w-0 shrink-0 items-center gap-1.5 rounded-[8px] bg-black/10 py-0 pl-1.5 pr-1 dark:bg-black/25"
+                  onMouseEnter={(event) => {
+                    setHoveredImage({
+                      src: image.previewUrl,
+                      name: image.file.name,
+                      rect: event.currentTarget.getBoundingClientRect(),
+                    });
+                  }}
+                  onMouseLeave={() => setHoveredImage(null)}
+                  onFocus={(event) => {
+                    setHoveredImage({
+                      src: image.previewUrl,
+                      name: image.file.name,
+                      rect: event.currentTarget.getBoundingClientRect(),
+                    });
+                  }}
+                  onBlur={() => setHoveredImage(null)}
                 >
-                  <img
-                    src={image.previewUrl}
-                    alt={image.file.name}
-                    title={image.file.name}
-                    className="h-full w-full object-cover"
-                  />
+                  <span className="h-[18px] w-[18px] shrink-0 overflow-hidden rounded-[5px] bg-muted">
+                    <img
+                      src={image.previewUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                    {image.file.name}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removeImage(image.previewUrl)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
+                    className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-muted-foreground opacity-0 outline-none transition-opacity hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     aria-label={`移除图片 ${image.file.name}`}
                     title={`移除 ${image.file.name}`}
                   >
-                    <X className="h-3 w-3" strokeWidth={2} />
+                    <X className="h-3 w-3" strokeWidth={1.9} />
                   </button>
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
+
+          {hoveredImage
+            ? (
+                <ImageChipPreview
+                  src={hoveredImage.src}
+                  name={hoveredImage.name}
+                  anchorRect={hoveredImage.rect}
+                />
+              )
+            : null}
 
           <AiComposerInput
             ref={inputRef}
@@ -298,72 +391,73 @@ export function Composer({
             variant="panel"
             disabled={disabled || isStreaming}
           />
-        </div>
 
-        <div className="flex items-center gap-1">
-          <ModelSelectorPopover disabled={disabled} />
-          <div className="flex-1" />
+          <div className="mt-1.5 flex items-center gap-1">
+            <ModelSelectorPopover disabled={disabled} />
+            <div className="flex-1" />
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            multiple
-            className="sr-only"
-            onChange={handleImageInput}
-            disabled={disabled || isStreaming}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={
-              disabled || isStreaming || images.length >= MAX_IMAGE_ATTACHMENTS
-            }
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="上传图片"
-            title={
-              images.length >= MAX_IMAGE_ATTACHMENTS
-                ? `最多 ${MAX_IMAGE_ATTACHMENTS} 张图片`
-                : "上传图片"
-            }
-          >
-            <ImagePlus className="h-3.5 w-3.5" strokeWidth={1.75} />
-          </button>
-
-          {isStreaming ? (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="sr-only"
+              onChange={handleImageInput}
+              disabled={disabled || isStreaming}
+            />
             <button
               type="button"
-              onClick={onStop}
-              className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
-                "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground",
-                "transition-colors duration-150",
-              )}
-              aria-label="停止生成"
-              title="停止生成"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={
+                disabled ||
+                isStreaming ||
+                images.length >= MAX_IMAGE_ATTACHMENTS
+              }
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="上传图片"
+              title={
+                images.length >= MAX_IMAGE_ATTACHMENTS
+                  ? `最多 ${MAX_IMAGE_ATTACHMENTS} 张图片`
+                  : "上传图片"
+              }
             >
-              <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <ImagePlus className="h-4 w-4" strokeWidth={1.75} />
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!canSend}
-              className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]",
-                "transition-colors duration-150",
-                canSend
-                  ? "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground"
-                  : "cursor-not-allowed text-muted-foreground opacity-50",
-              )}
-              aria-label="发送消息"
-              title="发送消息"
-            >
-              <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
-            </button>
-          )}
+
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
+                  "bg-[var(--goose-interactive-selected)] text-muted-foreground hover:text-foreground",
+                  "transition-colors duration-150",
+                )}
+                aria-label="停止生成"
+                title="停止生成"
+              >
+                <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSend}
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
+                  "transition-colors duration-150",
+                  canSend
+                    ? "bg-[#58d7b8]/15 text-[#58d7b8] hover:brightness-110"
+                    : "cursor-not-allowed text-muted-foreground opacity-50",
+                )}
+                aria-label="发送消息"
+                title="发送消息"
+              >
+                <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

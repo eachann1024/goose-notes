@@ -156,18 +156,18 @@ const shortcutSections: ShortcutSection[] = [
     ],
   },
   {
-    title: "标签页",
-    description: "适合同时开多页写作和对照资料。",
+    title: "极简工作区",
+    description: "默认只保留当前笔记，用搜索或侧边栏直接切换。",
     items: [
       {
-        shortcut: shortcutLabel("Alt+W"),
-        action: "关闭当前标签页",
-        note: "默认值，可在设置中改成你顺手的组合键。",
+        shortcut: shortcutLabel("Mod+N"),
+        action: "新建笔记",
+        note: "创建后直接输入顶栏标题，按回车进入正文。",
       },
       {
-        shortcut: shortcutLabel("Mod+1–9"),
-        action: "按位置切换标签页",
-        note: "1–8 对应序号，9 跳到最后一个标签页。",
+        shortcut: shortcutLabel("Mod+Shift+K"),
+        action: "搜索并切换笔记",
+        note: "打开结果会替换当前笔记，不会新增标签。",
       },
     ],
   },
@@ -291,20 +291,20 @@ export const onboardingPageContent: BlockNoteContent = [
     "删除的页面会进入垃圾箱，不是立刻消失，误删还有回退空间。",
     "本地文件夹模式下，页面会和你的磁盘文件联动，适合管理现有 Markdown 文件。",
   ]),
-  heading(2, "标签页"),
+  heading(2, "极简工作区"),
   table(
-    ["能力", "怎么用", "适合什么场景"],
+    ["能力", "怎么用", "结果"],
     [
-      ["同时打开多页", "点开不同页面后会进入标签栏", "边写边查资料、对照多份内容"],
+      ["切换笔记", "从侧边栏、搜索或最近访问打开", "当前笔记被直接替换"],
       [
-        "关闭当前标签页",
-        `默认 ${shortcutLabel("Alt+W")}，也可在设置中改`,
-        "快速清理临时页面",
+        "新建笔记",
+        `按 ${shortcutLabel("Mod+N")} 或点击侧边栏加号`,
+        "先输入顶栏标题，再进入正文",
       ],
       [
-        "按位置切换标签页",
-        shortcutLabel("Mod+1–9"),
-        "1–8 对应序号，9 跳到最后一个标签页",
+        "需要多标签时",
+        "在设置中关闭“极简工作区”",
+        "恢复标签栏及其管理快捷键",
       ],
     ],
   ),
@@ -348,7 +348,7 @@ export const onboardingPageContent: BlockNoteContent = [
   ...taskList([
     { checked: true, text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。" },
     { checked: false, text: "给常用页面加收藏或置顶，减少每天来回翻找。" },
-    { checked: false, text: "把自己最常用的关闭标签页、搜索面板退出键改成顺手的组合。" },
+    { checked: false, text: "把搜索面板退出键改成顺手的组合。" },
     { checked: false, text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。" },
   ]),
   heading(2, "示例区块"),
@@ -379,7 +379,7 @@ export const onboardingChildPageContent: BlockNoteContent = [
   heading(2, "你会最先接触到的模块"),
   ...bulletList([
     "页面树：组织父子层级、拖拽调整顺序、收藏常用页。",
-    "标签栏：同时打开多页，适合在笔记、资料和草稿之间切换。",
+    "极简工作区：始终只保留当前笔记，减少页面切换噪音。",
     "搜索：全局找页面内容，或在当前页内精准定位关键词。",
     "编辑器：支持文本格式、表格、代码块、公式、Mermaid、图片与附件。",
     "页面操作：导入、导出、锁定页面、调整全宽显示。",
@@ -388,7 +388,7 @@ export const onboardingChildPageContent: BlockNoteContent = [
   heading(2, "最值得立刻记住的习惯"),
   ...orderedList([
     "输入 / 打开指令菜单，比到处找按钮快很多。",
-    "需要切换多个页面时用标签页，而不是反复回侧边栏。",
+    "需要切换页面时优先用搜索；只有确实需要并排处理时再关闭极简工作区。",
     `需要找一句话时先用 ${shortcutLabel("Mod+F")}，别把全局搜索当页内查找用。`,
     "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
   ]),

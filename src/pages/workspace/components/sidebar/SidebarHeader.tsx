@@ -1,6 +1,7 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 interface SidebarHeaderProps {
   dragGuide: {
@@ -298,6 +299,7 @@ export function SidebarHeader({
     (pageId: string) => {
       const targetPage = usePages.getState().getPage(pageId);
       if (!targetPage || targetPage.trashedAt) return;
+      closeNotebookAiIfFullscreen();
       onOpenPinnedPage?.();
 
       if (useNotebooks.getState().activeNotebookId !== targetPage.workspaceId) {

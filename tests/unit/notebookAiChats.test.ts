@@ -1,6 +1,7 @@
 import { expect, test } from "playwright/test";
 import type { NotebookAiMessage } from "../../src/lib/notebook-ai/types";
 import {
+  CONVERSATION_STALE_MS,
   migrateNotebookAiChatsState,
   useNotebookAiChats,
 } from "../../src/stores/useNotebookAiChats";
@@ -192,4 +193,105 @@ test("清空全部会话记录", () => {
   store.clearAllChats();
 
   expect(useNotebookAiChats.getState().chats).toEqual({});
+});
+
+test("打开 AI：未过期会话继续，过期会话归档后进入空白新会话", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationId = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationId, [createMessage(1, "旧会话")]);
+
+  const freshNow = Date.now();
+  const continuedId = store.ensureFreshActiveConversation("notebookA", {
+    now: freshNow,
+  });
+  expect(continuedId).toBe(conversationId);
+  expect(store.getConversationMessages("notebookA")).toHaveLength(1);
+
+  const staleNow = freshNow + CONVERSATION_STALE_MS + 1;
+  const nextId = store.ensureFreshActiveConversation("notebookA", {
+    now: staleNow,
+  });
+
+  expect(nextId).not.toBe(conversationId);
+  expect(store.getActiveConversationId("notebookA")).toBe(nextId);
+  expect(store.getConversationMessages("notebookA")).toEqual([]);
+  // 旧会话仍在历史里
+  expect(store.listConversations("notebookA").map((item) => item.id)).toEqual([
+    conversationId,
+  ]);
+  expect(
+    store.getConversationMessages("notebookA", conversationId),
+  ).toHaveLength(1);
+});
+
+test("打开 AI：空会话不会被 6 小时规则误归档", () => {
+  const store = useNotebookAiChats.getState();
+  const emptyId = store.createConversation("notebookA");
+
+  // 人为把 touch 时间拨到很久以前
+  useNotebookAiChats.setState((state) => {
+    const notebookChat = state.chats.notebookA;
+    const conversation = notebookChat.conversations[emptyId];
+    return {
+      chats: {
+        ...state.chats,
+        notebookA: {
+          ...notebookChat,
+          updatedAt: 1,
+          conversations: {
+            ...notebookChat.conversations,
+            [emptyId]: { ...conversation, updatedAt: 1, createdAt: 1 },
+          },
+        },
+      },
+    };
+  });
+
+  const resolvedId = store.ensureFreshActiveConversation("notebookA", {
+    now: Date.now(),
+  });
+  expect(resolvedId).toBe(emptyId);
+  expect(store.getConversationMessages("notebookA")).toEqual([]);
+});
+
+test("从历史切回旧会话会刷新活跃时间，短时间内再打开仍保留", () => {
+  const store = useNotebookAiChats.getState();
+  const oldId = store.createConversation("notebookA");
+  store.setMessages("notebookA", oldId, [createMessage(1, "历史会话")]);
+  const newerId = store.createConversation("notebookA");
+  store.setMessages("notebookA", newerId, [createMessage(2, "新会话")]);
+
+  // 把会话消息时间拨到过期，但随后从历史点开旧会话
+  const base = Date.now() - CONVERSATION_STALE_MS - 60_000;
+  useNotebookAiChats.setState((state) => {
+    const notebookChat = state.chats.notebookA;
+    return {
+      chats: {
+        ...state.chats,
+        notebookA: {
+          ...notebookChat,
+          updatedAt: base,
+          conversations: {
+            [oldId]: {
+              ...notebookChat.conversations[oldId],
+              updatedAt: base,
+            },
+            [newerId]: {
+              ...notebookChat.conversations[newerId],
+              updatedAt: base + 1,
+            },
+          },
+        },
+      },
+    };
+  });
+
+  store.setActiveConversation("notebookA", oldId);
+  const resolvedId = store.ensureFreshActiveConversation("notebookA", {
+    now: Date.now(),
+  });
+  expect(resolvedId).toBe(oldId);
+  expect(store.getConversationMessages("notebookA")[0]?.metadata?.displayText).toBe(
+    "历史会话",
+  );
 });

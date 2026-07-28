@@ -5,8 +5,6 @@ const INPUT_ONLY_TOOL_STATES = new Set([
   "partial-call",
   "input-streaming",
   "input-available",
-  "approval-requested",
-  "approval-responded",
 ]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -75,6 +73,38 @@ export function sanitizeNotebookAiMessages(
   }
 
   return changed ? nextMessages : messages;
+}
+
+/**
+ * 批量计划由应用本地确定性执行，不需要模型再次消费这类工具调用。
+ * 兼容源可能要求供应商私有的 thought_signature；发送下一轮对话时移除
+ * 批量工具 part，同时保留本地持久化消息中的审批与撤回记录。
+ */
+export function prepareNotebookAiMessagesForModel(
+  messages: NotebookAiMessage[],
+): NotebookAiMessage[] {
+  const sanitized = sanitizeNotebookAiMessages(messages);
+  const nextMessages: NotebookAiMessage[] = [];
+
+  for (const message of sanitized) {
+    const parts = message.parts ?? [];
+    const nextParts = parts.filter(
+      (part) =>
+        !(isNotebookAiToolPart(part) && part.type === "tool-executeBatchPlan"),
+    );
+
+    if (message.role === "assistant" && !nextParts.some(hasModelRelevantPart)) {
+      continue;
+    }
+
+    nextMessages.push(
+      nextParts.length === parts.length
+        ? message
+        : ({ ...message, parts: nextParts } as NotebookAiMessage),
+    );
+  }
+
+  return nextMessages;
 }
 
 /**

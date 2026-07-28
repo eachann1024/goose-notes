@@ -50,6 +50,7 @@ import {
 } from "./slices/localFolderSlice";
 import { createWebdavSlice, type WebdavSlice } from "./slices/webdavSlice";
 import { normalizeWatermarkConfig } from "@/lib/imageExport";
+import { migrateSettingsPersistedState } from "./migrations";
 
 export type SettingsState = AISlice &
   AppearanceSlice &
@@ -128,6 +129,8 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
+      version: 1,
+      migrate: (persistedState) => migrateSettingsPersistedState(persistedState),
       storage: createJSONStorage(() => uToolsStorage),
       skipHydration: true,
       onRehydrateStorage: () => (state) => {
@@ -151,10 +154,6 @@ export const useSettings = create<SettingsState>()(
         }
         if (state && typeof state.hideExpandArrows !== "boolean") {
           useSettings.setState({ hideExpandArrows: false });
-        }
-        // 新用户默认单标签；已有设置未记录该字段时保留多标签行为。
-        if (state && typeof state.singleTabMode !== "boolean") {
-          useSettings.setState({ singleTabMode: false });
         }
         if (state && typeof state.tableEvenColumnWidth !== "boolean") {
           useSettings.setState({ tableEvenColumnWidth: true });

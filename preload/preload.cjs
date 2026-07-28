@@ -17,6 +17,7 @@ const {
   sortNoteItems,
   stripMarkdownSyntax,
 } = require("./mcp-tools.cjs");
+const { fetchPublicText } = require("./web-fetch.cjs");
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
@@ -1211,6 +1212,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
     openWithApp,
     openTerminalAtPath,
+  };
+
+  window.gooseWeb = {
+    fetchText: (url) => fetchPublicText(url),
   };
 
   registerMcpTools();

@@ -435,19 +435,15 @@ export function normalizeAISettings(
   ai: Partial<AISettings> | undefined,
 ): AISettings {
   const customModelOptions = normalizeAIModelOptions(ai?.customModelOptions);
-  const selectedModelId =
+  const storedSelectedModelId =
     typeof ai?.selectedModelId === "string" && ai.selectedModelId.trim()
       ? ai.selectedModelId.trim()
       : null;
-  const workspaceSelectedModelId =
+  const storedWorkspaceSelectedModelId =
     typeof ai?.workspaceSelectedModelId === "string" &&
     ai.workspaceSelectedModelId.trim()
       ? ai.workspaceSelectedModelId.trim()
       : null;
-  const customProtocol: CustomAIProtocol =
-    ai?.customProtocol === "openai-responses" || ai?.customProtocol === "claude"
-      ? ai.customProtocol
-      : "openai";
   const legacyAI = (ai ?? {}) as Partial<AISettings> & {
     customBaseURL?: unknown;
     customApiKey?: unknown;
@@ -460,18 +456,34 @@ export function normalizeAISettings(
     typeof legacyAI.customApiKey === "string"
       ? legacyAI.customApiKey.trim()
       : "";
+  const customProtocol: CustomAIProtocol =
+    ai?.customProtocol === "openai-responses" ||
+    ai?.customProtocol === "openai" ||
+    ai?.customProtocol === "claude"
+      ? ai.customProtocol
+      : legacyApiKey || legacyBaseURL
+        ? "openai"
+        : "openai-responses";
+  const selectedModelId =
+    storedSelectedModelId &&
+    (customModelOptions.length === 0 ||
+      customModelOptions.some((item) => item.id === storedSelectedModelId))
+      ? storedSelectedModelId
+      : (customModelOptions[0]?.id ?? null);
 
   return {
     enabled: Boolean(ai?.enabled),
     selectedModelId,
-    workspaceSelectedModelId,
+    workspaceSelectedModelId: storedWorkspaceSelectedModelId,
     workspaceReasoningLevel: normalizeAIReasoningLevel(
       ai?.workspaceReasoningLevel,
     ),
     customProtocol,
     customOpenAIResponsesBaseURL: normalizeAIBaseURL(
       ai?.customOpenAIResponsesBaseURL,
-      ai?.customOpenAIBaseURL ?? DEFAULT_OPENAI_BASE_URL,
+      customProtocol === "openai-responses" && legacyBaseURL
+        ? legacyBaseURL
+        : DEFAULT_OPENAI_BASE_URL,
     ),
     customOpenAIBaseURL: normalizeAIBaseURL(
       ai?.customOpenAIBaseURL,
@@ -487,8 +499,7 @@ export function normalizeAISettings(
     ),
     customOpenAIResponsesApiKey: normalizeAIApiKey(
       ai?.customOpenAIResponsesApiKey,
-      ai?.customOpenAIApiKey ??
-        (customProtocol === "openai-responses" ? legacyApiKey : ""),
+      customProtocol === "openai-responses" ? legacyApiKey : "",
     ),
     customOpenAIApiKey: normalizeAIApiKey(
       ai?.customOpenAIApiKey,

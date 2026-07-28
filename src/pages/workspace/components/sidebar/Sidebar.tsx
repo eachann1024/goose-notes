@@ -16,6 +16,7 @@ import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
 import { SidebarOutline } from "./SidebarOutline";
 import { HistoryVersionList } from "../history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
+import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 
 const SIDEBAR_SIDE_GAP_LEFT = 0;
 const SIDEBAR_SIDE_GAP_RIGHT = 9;
@@ -178,6 +179,7 @@ export function Sidebar({
 
   const handleCreatePage = () => {
     if (!activeNotebookId) return;
+    closeNotebookAiIfFullscreen();
     // 在当前所处页面的同级创建：取当前页的 parentId 作为新页的父级
     const basePageId = selectedPageId ?? activePageId;
     const basePage = basePageId ? getPage(basePageId) : undefined;
@@ -193,7 +195,6 @@ export function Sidebar({
     openInCurrentTab(newPageId);
     // 新页若落在折叠的父级下，展开祖先并聚焦使其可见
     if (siblingParentId) setExpandPageId(newPageId);
-    window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
   };
 
   const handleSearch = () => {
@@ -272,7 +273,10 @@ export function Sidebar({
                       setCurrentView("pages");
                     }
                   }}
-                  onSwitchToOutline={() => setCurrentView("outline")}
+                  onSwitchToOutline={() => {
+                    closeNotebookAiIfFullscreen();
+                    setCurrentView("outline");
+                  }}
                 />
               </div>
               {currentView === "pages" ? (
@@ -317,6 +321,7 @@ export function Sidebar({
             return;
           }
           if (inHistoryMode) exitHistoryView();
+          closeNotebookAiIfFullscreen();
           setCurrentView("trash");
           setShowSettings(false);
           setSelectedTrashPageId(null);

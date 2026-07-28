@@ -27,6 +27,7 @@ import { SEARCH_PROVIDERS_INITIAL_STATE } from "@/stores/settings/slices/searchP
 import { SHORTCUTS_INITIAL_STATE } from "@/stores/settings/slices/shortcutsSlice";
 import { UTOOLS_INITIAL_STATE } from "@/stores/settings/slices/utoolsSlice";
 import { WEBDAV_INITIAL_STATE } from "@/stores/settings/slices/webdavSlice";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import {
   clearPersistedInternalPages,
   clearPersistedPages,
@@ -128,6 +129,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
+    singleTabMode,
+    setSingleTabMode,
     setAutoCloseInactiveTabs,
     setAutoCloseInactiveTabsHours,
     showRecentInSearch,
@@ -185,6 +188,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setUToolsWindowHeight: s.setUToolsWindowHeight,
       privacy: s.privacy,
       setAutoOpenLastNote: s.setAutoOpenLastNote,
+      singleTabMode: s.singleTabMode,
+      setSingleTabMode: s.setSingleTabMode,
       setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
       setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
       showRecentInSearch: s.showRecentInSearch,
@@ -345,7 +350,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         const { setActivePage } = usePages.getState();
 
         if (firstWorkspaceId) setActiveNotebook(firstWorkspaceId);
-        if (firstPageId) setActivePage(firstPageId);
+        if (firstPageId) {
+          closeNotebookAiIfFullscreen();
+          setActivePage(firstPageId);
+        }
 
         toast.success("导入成功", {
           description: `已恢复 ${notebookCount} 个记事本，共 ${pageCount} 个页面`,
@@ -485,6 +493,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       throw new Error("备份中没有可恢复的记事本");
     }
     useNotebooks.setState({ activeNotebookId: firstWorkspaceId });
+    closeNotebookAiIfFullscreen();
     usePages.setState({ activePageId: firstPageId });
   };
 
@@ -688,6 +697,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
+                singleTabMode={singleTabMode}
+                setSingleTabMode={(enabled) => {
+                  setSingleTabMode(enabled);
+                  if (enabled) {
+                    useTabs.getState().collapseToActiveTab();
+                    toast.success("已开启极简工作区");
+                  }
+                }}
                 autoCloseInactiveTabs={privacy.autoCloseInactiveTabs}
                 setAutoCloseInactiveTabs={setAutoCloseInactiveTabs}
                 autoCloseInactiveTabsHours={privacy.autoCloseInactiveTabsHours}
@@ -714,6 +731,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 appShortcuts={appShortcuts}
                 setAppShortcut={setAppShortcut}
                 resetAppShortcuts={resetAppShortcuts}
+                singleTabMode={singleTabMode}
               />
             </div>
           )}

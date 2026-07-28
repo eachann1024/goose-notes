@@ -121,7 +121,7 @@ export function buildNotebookAiUserMessage(params: {
           contextIntro,
           contextBlock,
           implicitPage
-            ? `默认工具目标 pageId：${implicitPage.pageId}。readPage、updatePage、replaceInPage 省略 pageId 时应操作这个页面。`
+            ? `默认工具目标 pageId：${implicitPage.pageId}。readPage、updatePage、replaceInPage、appendToPage、renamePage 省略 pageId 时应操作这个页面。`
             : "",
         ]
           .filter(Boolean)

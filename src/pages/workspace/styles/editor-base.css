@@ -29,6 +29,20 @@
   outline: none !important;
 }
 
+/* 极简工作区把内部笔记的首个 H1 提到顶栏编辑，正文从标题下方直接开始。
+   本地文件正文没有标题块，不能隐藏它的首段。
+   注意：EditorContextMenu 内还有一层 workspace-editor-surface，没有 data-local-file-page；
+   若按内层 surface 判断，会把本地空页唯一段落也 display:none，主区看起来全黑。
+   因此以 main 上的 data-local-file-page 为准。 */
+.workspace-main-sheet[data-single-tab-mode="true"]:not(
+    [data-local-file-page="true"]
+  )
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer:first-child {
+  display: none;
+}
+
 /* 隐藏空折叠块展开后的「点击添加区块」提示按钮；
    空标题按 Enter 会退出折叠块（原生行为），无需此按钮。 */
 /* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈、像没展开），

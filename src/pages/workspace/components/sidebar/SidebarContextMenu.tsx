@@ -11,6 +11,7 @@ import { useSettings } from "@/stores/useSettings";
 import { shell } from "@/lib/utools/shell";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
 import { toast } from "@/components/ui/sonner";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 const _platform = navigator.platform || navigator.userAgent;
 const _isMac = /Mac/i.test(_platform);
@@ -114,6 +115,7 @@ export function SidebarContextMenu({
     (s) => s.localFolderExternalEditor,
   );
   const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
+  const singleTabMode = useSettings((s) => s.singleTabMode);
   const hasParent = !!page.parentId;
 
   const handleOpenInFileManager = async () => {
@@ -144,19 +146,22 @@ export function SidebarContextMenu({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="goose-sidebar-context-menu w-60 !border-0">
-          <ContextMenuItem
-            onSelect={() => {
-              if (isTrashed) return;
-              useTabs.getState().openTab(page.id);
-            }}
-            disabled={isTrashed}
-          >
-            <LucideIcons.PanelTopOpen className="h-4 w-4" />
-            <span>在新标签页打开</span>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {formatShortcut("Mod")}+点击
-            </span>
-          </ContextMenuItem>
+          {!singleTabMode && (
+            <ContextMenuItem
+              onSelect={() => {
+                if (isTrashed) return;
+                closeNotebookAiIfFullscreen();
+                useTabs.getState().openTab(page.id);
+              }}
+              disabled={isTrashed}
+            >
+              <LucideIcons.PanelTopOpen className="h-4 w-4" />
+              <span>在新标签页打开</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {formatShortcut("Mod")}+点击
+              </span>
+            </ContextMenuItem>
+          )}
           {isLocalFolder && !isTrashed && page.localFilePath && (
             <ContextMenuItem
               onSelect={() => {

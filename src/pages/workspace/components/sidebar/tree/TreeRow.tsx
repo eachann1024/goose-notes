@@ -16,10 +16,12 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
+import { closeNotebookAiIfFullscreen } from "../../notebook-ai/useNotebookAiPanel";
 import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
 import { IconSelector } from "../../shared/IconSelector";
@@ -165,6 +167,7 @@ export function SortablePageRow({
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
+    closeNotebookAiIfFullscreen();
 
     if (isLocalFolder) {
       void createLocalPage(page.id, activeNotebookId || undefined);
@@ -196,7 +199,14 @@ export function SortablePageRow({
         onToggleOpen(page.id);
       }
       openInCurrentTab(existingBlankChild.id);
-      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+      requestPageTitleFocus(existingBlankChild.id);
+      if (!useSettings.getState().singleTabMode) {
+        window.setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent("goose-note:focus-editor-start"),
+          );
+        }, 100);
+      }
       return;
     }
 

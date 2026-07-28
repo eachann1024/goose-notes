@@ -134,7 +134,7 @@ export function ChartCard(props: ChartCardProps) {
   }, [props, resolvedTheme]);
 
   return (
-    <div className="my-2 overflow-hidden rounded-[8px] border border-border">
+    <div className="my-2 overflow-hidden rounded-[8px] bg-[var(--goose-interactive-hover)]">
       <div
         ref={containerRef}
         style={{ width: "100%", height: 220 }}

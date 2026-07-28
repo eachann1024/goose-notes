@@ -262,6 +262,8 @@
     --goose-color-lock-text: #713f12; /* 已锁定/已删除徽章文字 */
     --goose-color-restore-hover: #d97706; /* 恢复按钮 hover 背景琥珀 */
     --goose-color-capture-hint: #ef4444; /* 快捷键捕获提示占位符红 */
+    --goose-ai-approval-check-bg: #737373;
+    --goose-ai-approval-check-fg: #ffffff;
     /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，uTools 旧内核会回退成刺眼实色 */
     --goose-block-subtle-bg: #f3f2f1;
     --goose-block-subtle-border: #e8e7e5;
@@ -337,6 +339,8 @@
     --goose-color-lock-text: #fef9c3;
     --goose-color-restore-hover: #b45309;
     --goose-color-capture-hint: #f87171;
+    --goose-ai-approval-check-bg: #a3a3a3;
+    --goose-ai-approval-check-fg: #1f1f1f;
     --goose-block-subtle-bg: #252525;
     --goose-block-subtle-border: #363636;
     --goose-block-subtle-hover: #2e2e2e;
@@ -938,34 +942,37 @@
   }
 }
 
-@keyframes ai-icon-aura-pulse {
+@keyframes ai-title-nebula-shift {
   0%,
   100% {
-    opacity: 0.55;
-    transform: scale(0.94);
+    background-position: 0% 50%;
   }
   50% {
-    opacity: 0.95;
-    transform: scale(1.06);
+    background-position: 100% 50%;
   }
 }
 
-@keyframes ai-icon-aura-burst {
-  0% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  28% {
-    opacity: 1;
-    transform: scale(1.12);
-  }
-  62% {
-    opacity: 0.75;
-    transform: scale(1.34);
-  }
+@keyframes ai-title-nebula-bloom {
+  0%,
   100% {
-    opacity: 0;
-    transform: scale(1.7);
+    opacity: 0.44;
+    transform: translate3d(-4%, 0, 0) scale(0.96);
+  }
+  50% {
+    opacity: 0.82;
+    transform: translate3d(7%, 0, 0) scale(1.06);
+  }
+}
+
+@keyframes ai-title-nebula-stars {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate3d(0, 1px, 0) scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate3d(-3px, -1px, 0) scale(1.12);
   }
 }
 
@@ -973,6 +980,11 @@
   transform-origin: 12px 12px;
   transform-box: fill-box;
   animation: ai-icon-breathe 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* SVG 默认会把滤镜和缩放裁在 viewBox 内，视觉上会形成 24×24 方框。 */
+.ai-icon {
+  overflow: visible;
 }
 
 .ai-icon[data-ai-state="done"] .ai-icon-glyph {
@@ -1028,15 +1040,20 @@
   border-color: rgba(149, 243, 216, 0.65);
 }
 
+/* 未选中：与顶栏 PageIconButton 一致，透明底、无描边；选中靠星云特效，不画选中边框 */
 .ai-icon-button {
   position: relative;
   isolation: isolate;
-  background: hsl(var(--primary) / 0.12);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.18);
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  color: hsl(var(--muted-foreground) / 0.75);
 }
 
 .ai-icon-button:hover {
-  background: hsl(var(--primary) / 0.2);
+  background: transparent;
+  color: hsl(var(--foreground));
 }
 
 .ai-icon-button:focus-visible {
@@ -1045,66 +1062,146 @@
 }
 
 .ai-icon-button[aria-pressed="true"] {
-  background: hsl(var(--primary) / 0.24);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.3);
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ai-icon-button[aria-pressed="true"]:hover {
+  background: transparent;
 }
 
 .ai-icon-button .ai-icon {
   filter: saturate(1.25) contrast(1.18);
+  transition:
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+.ai-icon-button:hover .ai-icon {
+  filter: saturate(1.4) contrast(1.22) brightness(1.08);
+}
+
+.ai-icon-button[aria-pressed="true"] .ai-icon {
+  filter: saturate(1.65) contrast(1.28) brightness(1.18)
+    drop-shadow(0 0 4px rgba(99, 215, 255, 0.78))
+    drop-shadow(0 0 8px rgba(159, 134, 255, 0.46));
+  transform: scale(1.08);
 }
 
 .dark .ai-icon-button {
-  background: hsl(var(--primary) / 0.16);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.22);
+  background: transparent;
+  box-shadow: none;
+  color: hsl(var(--muted-foreground) / 0.7);
 }
 
-.dark .ai-icon-button:hover,
+.dark .ai-icon-button:hover {
+  background: transparent;
+  color: hsl(var(--foreground) / 0.9);
+}
+
 .dark .ai-icon-button[aria-pressed="true"] {
-  background: hsl(var(--primary) / 0.24);
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dark .ai-icon-button[aria-pressed="true"]:hover {
+  background: transparent;
 }
 
 .dark .ai-icon-button .ai-icon {
   filter: saturate(1.08) brightness(1.04);
 }
 
-.ai-icon-button::before {
+/* 深色选中态必须写在 .dark .ai-icon-button .ai-icon 之后，否则同优先级会被 idle 滤镜盖掉 */
+.dark .ai-icon-button[aria-pressed="true"] .ai-icon {
+  filter: saturate(1.55) contrast(1.22) brightness(1.28)
+    drop-shadow(0 0 5px rgba(99, 215, 255, 0.88))
+    drop-shadow(0 0 12px rgba(159, 134, 255, 0.55));
+  transform: scale(1.08);
+}
+
+.dark .ai-icon-button:hover .ai-icon {
+  filter: saturate(1.22) contrast(1.12) brightness(1.12);
+}
+
+.dark .ai-icon-button[aria-pressed="true"]:hover .ai-icon {
+  filter: saturate(1.6) contrast(1.25) brightness(1.32)
+    drop-shadow(0 0 6px rgba(99, 215, 255, 0.95))
+    drop-shadow(0 0 14px rgba(159, 134, 255, 0.6));
+}
+
+/* AI 运行时把星云状态延展到整条顶栏；空闲或仅打开面板时完全撤回。 */
+.ai-header-nebula-streaming {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    118deg,
+    #f1edff,
+    #e9f4ff 42%,
+    #ffeefa 72%,
+    #eefcff
+  );
+  background-size: 220% 220%;
+  box-shadow:
+    0 5px 18px rgba(125, 93, 229, 0.14),
+    inset 0 -1px rgba(156, 128, 255, 0.16);
+  animation: ai-title-nebula-shift 7s ease-in-out infinite;
+}
+
+.ai-header-nebula-streaming::before {
   content: "";
   position: absolute;
-  inset: -3px;
-  z-index: -1;
-  border-radius: inherit;
+  z-index: 0;
+  top: -30px;
+  right: 5%;
+  width: 150px;
+  height: 88px;
   background: radial-gradient(
-    circle at 50% 55%,
-    rgba(149, 243, 216, 0.55),
-    rgba(99, 215, 255, 0.4) 38%,
-    rgba(159, 134, 255, 0.3) 60%,
-    transparent 78%
+    circle,
+    rgba(255, 116, 192, 0.34),
+    rgba(129, 112, 255, 0.16) 46%,
+    transparent 72%
   );
-  opacity: 0;
-  transform: scale(0.85);
-  transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 50%;
   pointer-events: none;
-  filter: blur(6px);
+  animation: ai-title-nebula-bloom 4.8s ease-in-out infinite;
 }
 
-.ai-icon-button[data-ai-state="streaming"]::before {
-  opacity: 1;
-  animation: ai-icon-aura-pulse 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+.ai-header-nebula-streaming::after {
+  content: "✦  ·  ✦";
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 14px;
+  color: rgba(124, 92, 255, 0.55);
+  font-size: 8px;
+  letter-spacing: 5px;
+  text-shadow:
+    -34px 17px rgba(255, 113, 185, 0.48),
+    10px 18px rgba(80, 196, 255, 0.6);
+  pointer-events: none;
+  animation: ai-title-nebula-stars 2.6s ease-in-out infinite;
 }
 
-.ai-icon-button[data-ai-state="done"]::before {
-  opacity: 1;
-  animation: ai-icon-aura-burst 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+.ai-header-nebula-streaming > * {
+  position: relative;
+  z-index: 1;
 }
 
-.dark .ai-icon-button::before {
-  background: radial-gradient(
-    circle at 50% 55%,
-    rgba(149, 243, 216, 0.45),
-    rgba(99, 215, 255, 0.32) 38%,
-    rgba(159, 134, 255, 0.26) 60%,
-    transparent 78%
+.dark .ai-header-nebula-streaming {
+  background: linear-gradient(
+    118deg,
+    #312c4d,
+    #243b56 42%,
+    #4a2d46 72%,
+    #203f46
   );
+  background-size: 220% 220%;
+  box-shadow:
+    0 8px 26px rgba(90, 58, 190, 0.3),
+    inset 0 -1px rgba(187, 166, 255, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1116,14 +1213,11 @@
 
   .ai-icon[data-ai-state] .ai-icon-glyph,
   .ai-icon[data-ai-state] .ai-icon-flash,
-  .ai-icon-button[data-ai-state]::before,
+  .ai-header-nebula-streaming,
+  .ai-header-nebula-streaming::before,
+  .ai-header-nebula-streaming::after,
   .ai-icon-ring {
     animation: none;
-  }
-
-  .ai-icon-button[data-ai-state="streaming"]::before,
-  .ai-icon-button[data-ai-state="done"]::before {
-    opacity: 0.7;
   }
 
   .ai-icon-ring {
@@ -1227,7 +1321,6 @@
     animation: none;
   }
 }
-
 
 /* 本地空文件夹点击反馈：只让图标短促摆动，不弹 toast 打断浏览节奏。 */
 .goose-empty-folder-shake {

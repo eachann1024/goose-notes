@@ -1,13 +1,15 @@
-import { Search, Plus, Sparkles, type LucideIcon } from "lucide-react";
+import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { toast } from "@/components/ui/sonner";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { cn } from "@/lib/utils";
 import { dialogs } from "@/lib/utools/dialogs";
 import { useTabs } from "@/stores/useTabs";
+import { useSettings } from "@/stores/useSettings";
 
 const isEmptyContent = (
   content:
@@ -35,6 +37,21 @@ const isEmptyContent = (
   return false;
 };
 
+function AiCrystalFx() {
+  return (
+    <span className="page-empty-ai-fx" aria-hidden="true">
+      <span className="page-empty-ai-crystal-core" />
+      <span className="page-empty-ai-crystal-mesh" />
+      <span className="page-empty-ai-crystal-corner tl" />
+      <span className="page-empty-ai-crystal-corner tr" />
+      <span className="page-empty-ai-crystal-corner bl" />
+      <span className="page-empty-ai-crystal-corner br" />
+      <span className="page-empty-ai-crystal-dot" />
+      <span className="page-empty-ai-crystal-dot d2" />
+    </span>
+  );
+}
+
 export function PageEmptyState() {
   const {
     createPage,
@@ -50,6 +67,7 @@ export function PageEmptyState() {
     createLocalFolderNotebook,
   } = useNotebooks();
   const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
+  const aiEnabled = useSettings((s) => s.ai.enabled);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
@@ -88,7 +106,14 @@ export function PageEmptyState() {
 
     if (existingBlankPage) {
       openInCurrentTab(existingBlankPage.id);
-      window.dispatchEvent(new CustomEvent("goose-note:focus-editor-start"));
+      requestPageTitleFocus(existingBlankPage.id);
+      if (!useSettings.getState().singleTabMode) {
+        window.setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent("goose-note:focus-editor-start"),
+          );
+        }, 100);
+      }
       return existingBlankPage.id;
     }
 
@@ -112,6 +137,10 @@ export function PageEmptyState() {
 
   const onSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+  }, []);
+
+  const onOpenAi = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("goose-note:open-ai-panel"));
   }, []);
 
   const onOpenLocalFolder = useCallback(async () => {
@@ -170,43 +199,67 @@ export function PageEmptyState() {
     };
   }, [onCreatePage]);
 
-  const actions: Array<{
-    key: string;
-    title: string;
-    description: string;
-    onClick: () => void | Promise<void>;
-    icon: LucideIcon;
-  }> = [
-    {
-      key: "create-page",
-      icon: Plus,
-      title: isLocalFolder ? "新建文件" : "新建页面",
-      description: isLocalFolder
-        ? "在当前文件夹创建 Markdown 文件"
-        : "创建一个空白页面开始记录",
-      onClick: onCreatePage,
-    },
-    {
-      key: "open-folder",
-      icon: Sparkles,
-      title: "打开本地文件夹",
-      description: "批量管理 Markdown 笔记",
-      onClick: onOpenLocalFolder,
-    },
-    {
+  const actions = useMemo(() => {
+    const list: Array<{
+      key: string;
+      title: string;
+      description: string;
+      onClick: () => void | Promise<void>;
+      icon: LucideIcon;
+      variant?: "default" | "ai";
+    }> = [
+      {
+        key: "create-page",
+        icon: Plus,
+        title: isLocalFolder ? "新建文件" : "新建页面",
+        description: isLocalFolder
+          ? "在当前文件夹创建 Markdown 文件"
+          : "创建一个空白页面开始记录",
+        onClick: onCreatePage,
+      },
+      {
+        key: "open-folder",
+        icon: FolderOpen,
+        title: "打开本地文件夹",
+        description: "批量管理 Markdown 笔记",
+        onClick: onOpenLocalFolder,
+      },
+    ];
+
+    if (aiEnabled) {
+      list.push({
+        key: "ai",
+        icon: Sparkles,
+        title: "AI",
+        description: "整理、续写、检索与可视化笔记",
+        onClick: onOpenAi,
+        variant: "ai",
+      });
+    }
+
+    list.push({
       key: "search",
       icon: Search,
       title: "搜索内容",
       description: "快速查找已记录的内容",
       onClick: onSearch,
-    },
-  ];
+    });
+
+    return list;
+  }, [
+    aiEnabled,
+    isLocalFolder,
+    onCreatePage,
+    onOpenLocalFolder,
+    onOpenAi,
+    onSearch,
+  ]);
 
   return (
     <div className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]">
       <div className="min-h-full flex items-start justify-center pt-2 sm:pt-4 md:pt-6">
         {/* 内容区 */}
-        <div className="relative w-full max-w-4xl">
+        <div className="relative w-full max-w-5xl">
           {/* 标题 */}
           <div className="text-center mb-6 sm:mb-8 md:mb-12 pt-2 sm:pt-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 md:mb-4">
@@ -219,10 +272,18 @@ export function PageEmptyState() {
             </p>
           </div>
 
-          {/* 操作卡片网格 */}
-          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 max-w-4xl mx-auto">
+          {/* 操作卡片网格：AI 关 3 卡 / AI 开 4 卡（第 3=AI，第 4=搜索） */}
+          <div
+            className={cn(
+              "grid grid-cols-1 min-[520px]:grid-cols-2 gap-3 sm:gap-4 md:gap-5 mx-auto",
+              aiEnabled
+                ? "max-w-5xl xl:grid-cols-4"
+                : "max-w-4xl xl:grid-cols-3",
+            )}
+          >
             {actions.map((action) => {
               const Icon = action.icon;
+              const isAi = action.variant === "ai";
               return (
                 <button
                   key={action.key}
@@ -237,9 +298,16 @@ export function PageEmptyState() {
                   <div
                     className={cn(
                       "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 transition-[background-color,box-shadow,transform] duration-200 ease-out group-hover:scale-105 group-hover:bg-[var(--goose-interactive-selected)] group-hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-selected-bg))] dark:group-hover:bg-[var(--goose-interactive-selected)] dark:group-hover:shadow-[0_10px_22px_rgba(0,0,0,0.26)]",
+                      isAi && "page-empty-ai-chip group-hover:scale-105",
                     )}
                   >
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-foreground" />
+                    {isAi ? <AiCrystalFx /> : null}
+                    <Icon
+                      className={cn(
+                        "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-foreground",
+                        isAi && "page-empty-ai-icon text-foreground/75",
+                      )}
+                    />
                   </div>
                   <h3
                     className={cn(

@@ -1,7 +1,7 @@
 /**
  * User-facing progress summary for all tool parts in one assistant message.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -62,6 +62,7 @@ function getStepStatus(
   isMessageStreaming?: boolean,
 ): ProgressStep["status"] {
   if (part.state === "output-error" || part.errorText) return "error";
+  if (part.state === "approval-requested") return "done";
   if (isInputOnly(part)) return isMessageStreaming ? "running" : "waiting";
   return "done";
 }
@@ -70,7 +71,9 @@ function countOutput(output: unknown) {
   return Array.isArray(output) ? output.length : undefined;
 }
 
-function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "detail"> {
+function getStepText(
+  part: ToolProgressPart,
+): Pick<ProgressStep, "label" | "detail"> {
   const input = readObject(part.input);
   const output = readObject(part.output);
   const outputCount = countOutput(part.output);
@@ -114,6 +117,33 @@ function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "deta
     };
   }
 
+  if (part.type === "tool-searchWeb") {
+    const query = truncate(asString(input?.query) || "关键词");
+    if (outputError) return { label: "联网搜索", detail: outputError };
+    return {
+      label: "联网搜索",
+      detail: output ? `已完成“${query}”的联网搜索` : `正在搜索“${query}”`,
+    };
+  }
+
+  if (part.type === "tool-readWebPage") {
+    const url = asString(input?.url);
+    const host = (() => {
+      try {
+        return url ? new URL(url).hostname : "网页";
+      } catch {
+        return "网页";
+      }
+    })();
+    if (outputError) return { label: "读取网页", detail: outputError };
+    return {
+      label: "读取网页",
+      detail: output
+        ? `已读取 ${truncate(host)}`
+        : `正在读取 ${truncate(host)}`,
+    };
+  }
+
   if (part.type === "tool-readPage") {
     if (outputError) return { label: "读取笔记", detail: outputError };
     return {
@@ -136,7 +166,7 @@ function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "deta
       label: "写入页面",
       detail: needsMarkdown
         ? "等待完整正文后再写入"
-          : ok
+        : ok
           ? title
             ? `已写入《${truncate(title)}》`
             : "已写入当前页"
@@ -148,7 +178,9 @@ function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "deta
 
   if (part.type === "tool-replaceInPage") {
     const replacedCount =
-      typeof output?.replacedCount === "number" ? output.replacedCount : undefined;
+      typeof output?.replacedCount === "number"
+        ? output.replacedCount
+        : undefined;
     return {
       label: "替换内容",
       detail:
@@ -163,6 +195,84 @@ function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "deta
             : title
               ? `《${truncate(title)}》没有找到可替换内容`
               : "没有找到可替换内容",
+    };
+  }
+
+  if (part.type === "tool-appendToPage") {
+    const ok = output?.ok === true;
+    return {
+      label: "追加内容",
+      detail: outputError
+        ? outputError
+        : ok
+          ? title
+            ? `已追加到《${truncate(title)}》`
+            : "已追加到当前页"
+          : title
+            ? `正在追加到《${truncate(title)}》`
+            : "正在追加页面内容",
+    };
+  }
+
+  if (part.type === "tool-renamePage") {
+    const ok = output?.ok === true;
+    return {
+      label: "重命名页面",
+      detail: outputError
+        ? outputError
+        : ok
+          ? title
+            ? `已重命名为《${truncate(title)}》`
+            : "已完成重命名"
+          : title
+            ? `正在重命名为《${truncate(title)}》`
+            : "正在重命名页面",
+    };
+  }
+
+  if (part.type === "tool-deletePages") {
+    const deletedCount =
+      typeof output?.deletedCount === "number"
+        ? output.deletedCount
+        : undefined;
+    return {
+      label: "删除页面",
+      detail: outputError
+        ? outputError
+        : deletedCount === undefined
+          ? "正在把页面移入垃圾箱"
+          : `已删除 ${deletedCount} 个页面`,
+    };
+  }
+
+  if (part.type === "tool-executeBatchPlan") {
+    const operationCount = Array.isArray(input?.operations)
+      ? input.operations.length
+      : Array.isArray(readObject(input?.plan)?.changes)
+        ? (readObject(input?.plan)?.changes as unknown[]).length
+        : 0;
+    if (part.state === "output-error" || part.errorText) {
+      return {
+        label: "生成批量计划",
+        detail: "计划参数未通过校验，正在等待 AI 修正",
+      };
+    }
+    if (
+      part.state === "approval-requested" ||
+      part.state === "approval-responded"
+    ) {
+      return {
+        label: "生成批量计划",
+        detail: operationCount
+          ? `已生成 ${operationCount} 项操作，等待审批`
+          : "计划已生成，等待审批",
+      };
+    }
+    return {
+      label: "生成批量计划",
+      detail: title
+        ? `正在生成《${truncate(title)}》`
+        : "正在整理批量操作与审批内容",
     };
   }
 
@@ -194,7 +304,10 @@ function getStepText(part: ToolProgressPart): Pick<ProgressStep, "label" | "deta
     };
   }
 
-  return { label: "处理内容", detail: "正在处理请求" };
+  return {
+    label: "处理内容",
+    detail: part.output !== undefined ? "已完成本步骤" : "正在处理请求",
+  };
 }
 
 function buildSteps(
@@ -211,7 +324,11 @@ function buildSummary(steps: ProgressStep[]) {
   const doneSteps = steps.filter((step) => step.status === "done");
   const runningStep = steps.find((step) => step.status === "running");
   const errorStep = steps.find((step) => step.status === "error");
-  const source = errorStep ? [errorStep] : runningStep ? [runningStep] : doneSteps;
+  const source = errorStep
+    ? [errorStep]
+    : runningStep
+      ? [runningStep]
+      : doneSteps;
   return source
     .slice(0, 3)
     .map((step) => step.detail)
@@ -222,24 +339,36 @@ export function ToolProgressCard({
   parts,
   isMessageStreaming,
 }: ToolProgressCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => Boolean(isMessageStreaming));
   const steps = useMemo(
     () => buildSteps(parts, isMessageStreaming),
     [parts, isMessageStreaming],
   );
 
+  useEffect(() => {
+    setExpanded(Boolean(isMessageStreaming));
+  }, [isMessageStreaming]);
+
   if (steps.length === 0) return null;
 
   const hasError = steps.some((step) => step.status === "error");
-  const isRunning = steps.some((step) => step.status === "running");
-  const statusText = hasError ? "失败" : isRunning ? "处理中" : "已完成";
+  const isRunning =
+    Boolean(isMessageStreaming) ||
+    steps.some((step) => step.status === "running");
+  const statusText = isMessageStreaming
+    ? "处理中"
+    : hasError
+      ? "失败"
+      : isRunning
+        ? "处理中"
+        : "已完成";
   const summary = buildSummary(steps) || `${steps.length} 个步骤`;
 
   return (
-    <div className="my-1 rounded-[8px] border border-border bg-[var(--goose-interactive-hover)] text-xs">
+    <div className="my-1 rounded-[8px] bg-[var(--goose-interactive-hover)] text-xs">
       <button
         type="button"
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+        className="notebook-ai-progress-toggle flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
       >
@@ -285,7 +414,7 @@ export function ToolProgressCard({
       </button>
 
       {expanded ? (
-        <div className="space-y-1 border-t border-border px-3 py-2">
+        <div className="space-y-1 px-3 pb-2 pt-0">
           {steps.map((step, index) => (
             <div key={`${step.label}-${index}`} className="flex gap-2">
               <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--muted-foreground))]" />

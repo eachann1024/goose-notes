@@ -49,7 +49,7 @@ export function ArtifactActions({
 }: ArtifactActionsProps) {
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 rounded-[8px] border border-border/80 bg-background/95 p-1 opacity-0 shadow-[0_8px_22px_rgba(15,23,42,0.08)] transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:border-white/15">
+      <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 rounded-[8px] bg-background/95 p-1 opacity-0 shadow-[0_8px_22px_rgba(15,23,42,0.08)] transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

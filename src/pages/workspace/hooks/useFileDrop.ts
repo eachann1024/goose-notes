@@ -4,6 +4,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { activateNotebook } from "@/lib/notebookNavigation";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 type WorkspaceDragIntent = "folder" | "text-file" | "file";
 
@@ -150,6 +151,7 @@ export function useFileDrop() {
       return;
     }
 
+    closeNotebookAiIfFullscreen();
     await activateNotebook(targetNotebookId);
     useTabs.getState().openTab(firstPageId);
     await usePages.getState().setActivePage(firstPageId);

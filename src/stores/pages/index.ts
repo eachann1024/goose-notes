@@ -11,6 +11,10 @@ import {
   removePersistedPageSnapshots,
   shouldPersistLocalPageMetaUpdate,
 } from "./persistence";
+import {
+  isLocalPageFrontmatterSettingsUpdate,
+  mergeLocalPageSettingsIntoFrontmatter,
+} from "@/lib/local-frontmatter";
 import { queueLocalPageSave } from "./folderSync";
 
 // Re-export flushEditorContent for external consumers
@@ -103,6 +107,14 @@ export const usePages = create<PagesState>()((set, get) => ({
     const shouldPersistLocalMeta =
       isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
     const silent = options?.silent === true;
+    const isLocal = isLocalFolderPage(page);
+    const shouldMergeFrontmatterSettings =
+      isLocal &&
+      !silent &&
+      isLocalPageFrontmatterSettingsUpdate(updates);
+    // 仅改字体/锁定也要落盘；读失败页不写，避免覆盖坏文件
+    const shouldQueueLocalSettingsSave =
+      shouldMergeFrontmatterSettings && page?.localReadState !== "error";
 
     set((state) => {
       const page = state.pages[id];
@@ -135,7 +147,7 @@ export const usePages = create<PagesState>()((set, get) => ({
       // 只有真正的内容编辑才刷新 updatedAt：必须显式传入 content 字段，
       // 且没有标记为 silent（silent 用于切页/normalize 这类被动同步）。
       const isContentEdit = "content" in updates && !silent;
-      const updatedPage = {
+      let updatedPage = {
         ...page,
         ...updates,
         ...(favoriteOrder !== undefined ? { favoriteOrder } : {}),
@@ -143,22 +155,49 @@ export const usePages = create<PagesState>()((set, get) => ({
         updatedAt: isContentEdit ? now : page.updatedAt,
       };
 
-      if (
-        updates.content &&
+      // 本地页：字体/锁定 merge 进 frontmatter blob（解析失败保留原文，避免破坏手写 YAML）
+      if (shouldMergeFrontmatterSettings) {
+        const mergeResult = mergeLocalPageSettingsIntoFrontmatter(
+          updatedPage.localFrontmatter,
+          {
+            fontFamily: updatedPage.fontFamily ?? "default",
+            isLocked: Boolean(updatedPage.isLocked),
+          },
+        );
+        if (!mergeResult.parseFailed) {
+          updatedPage = {
+            ...updatedPage,
+            localFrontmatter: mergeResult.blob,
+          };
+        } else if (mergeResult.error) {
+          console.warn(
+            "[local-frontmatter] 无法安全写入设置，已保留原 frontmatter：",
+            mergeResult.error,
+          );
+        }
+      }
+
+      const shouldQueueContentSave =
+        Boolean(updates.content) &&
         !silent &&
         useNotebooks.getState().notebooks[page.workspaceId]?.source ===
           "local-folder" &&
-        page.localReadState !== "error"
-      ) {
+        page.localReadState !== "error";
+
+      // 内容编辑 或 仅改 frontmatter 设置：标脏并入防抖写盘队列
+      if (shouldQueueContentSave || shouldQueueLocalSettingsSave) {
         // 本地文件夹与普通笔记本一致：编辑即自动保存。先标脏（短暂显示"保存中"），
         // 再入防抖队列落盘；写盘成功后由 saveLocalPageContent 清除脏标记。
         // 标题→文件名的 rename 仍由显式 Cmd/Ctrl+S（saveDirtyLocalPage）处理，
         // 避免输入标题过程中频繁重命名文件。
         // silent=true（切页/normalize 被动同步）时跳过标脏与队列，不触发写盘。
+        const contentForSave = shouldQueueContentSave
+          ? updates.content!
+          : updatedPage.content;
         set((s) => ({
           dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true },
         }));
-        queueLocalPageSave(id, updates.content, get);
+        queueLocalPageSave(id, contentForSave, get);
       }
 
       return {
@@ -182,7 +221,7 @@ export const usePages = create<PagesState>()((set, get) => ({
     persistPageSnapshot(updatedPage);
   },
 
-  deletePage: (id) => deletePageAction(set, get, id),
+  deletePage: (id, options) => deletePageAction(set, get, id, options),
 
   restorePage: (id) => restorePageAction(set, get, id),
 

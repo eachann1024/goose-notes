@@ -145,7 +145,7 @@ export function EditorFormattingToolbar() {
       ).trim();
       if (!apiKey) {
         toast.error(
-          '未填写 API Key。请前往"设置 → AI 助手 → 自定义 AI"检查配置。',
+          '未填写 API Key。请前往"设置 → AI 助手 → AI 服务"检查配置。',
         );
         return;
       }
@@ -153,7 +153,7 @@ export function EditorFormattingToolbar() {
         aiSettings.selectedModelId?.trim() ||
         aiSettings.customModelOptions[0]?.id;
       if (!hasModel) {
-        toast.error("请先保存自定义 AI 配置并获取模型列表");
+        toast.error("请先保存 AI 服务配置并获取模型列表");
         return;
       }
 

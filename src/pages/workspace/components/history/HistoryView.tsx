@@ -14,6 +14,7 @@ import {
   unmarkMilestone,
 } from "@/lib/history/snapshot";
 import { materializeVersion } from "@/lib/history/restore";
+import { parseLocalFrontmatterBlob } from "@/lib/local-frontmatter";
 import type { HistoryIndex, HistoryIndexEntry } from "@/lib/history/types";
 import {
   createEditorSafeContent,
@@ -24,6 +25,7 @@ import {
 import { editorSchema } from "@/components/editor/core/EditorComposer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HistoryReadOnlyEditor } from "./HistoryReadOnlyEditor";
+import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 
 const TRIGGER_LABEL: Record<HistoryIndexEntry["trigger"], string> = {
   idle: "自动",
@@ -256,6 +258,10 @@ function useHistoryViewLogic() {
         };
         if (result.localFrontmatter !== undefined) {
           updates.localFrontmatter = result.localFrontmatter;
+          // 还原 frontmatter 时同步 goose 设置，避免随后写盘用当前内存设置覆盖
+          const fm = parseLocalFrontmatterBlob(result.localFrontmatter);
+          updates.fontFamily = fm.settings.fontFamily;
+          updates.isLocked = fm.settings.isLocked;
         }
         updatePage(pageId, updates);
         toast.success("已还原，当前内容已保留为「操作前」版本");
@@ -359,7 +365,10 @@ export function HistoryVersionList() {
                           type="button"
                           aria-current={isSelected ? "true" : undefined}
                           aria-label={`查看 ${group.label} ${formatTime(v.createdAt)} 的历史版本`}
-                          onClick={() => select(v.versionId)}
+                          onClick={() => {
+                            closeNotebookAiIfFullscreen();
+                            select(v.versionId);
+                          }}
                           className="w-full text-left rounded-[10px] px-3 py-2 cursor-pointer"
                         >
                           <div className="flex items-center justify-between gap-2">

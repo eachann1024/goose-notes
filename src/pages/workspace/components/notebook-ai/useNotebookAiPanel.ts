@@ -69,9 +69,44 @@ function persistLayoutMode(mode: NotebookAiLayoutMode) {
 
 /** 清掉历史遗留的 notebook-ai 标签（现已不再使用标签承载 AI）。 */
 function purgeLegacyNotebookAiTabs() {
-  const tabs = useTabs.getState();
-  const legacy = tabs.openTabs.filter((tab) => isNotebookAiTab(tab));
-  legacy.forEach((tab) => tabs.closeTab(tab.id));
+  useTabs.setState((state) => {
+    const legacyIds = new Set(
+      state.openTabs.filter((tab) => isNotebookAiTab(tab)).map((tab) => tab.id),
+    );
+    if (legacyIds.size === 0) return state;
+    const openTabs = state.openTabs.filter((tab) => !legacyIds.has(tab.id));
+    const activeTabId =
+      state.activeTabId && !legacyIds.has(state.activeTabId)
+        ? state.activeTabId
+        : (openTabs[openTabs.length - 1]?.id ?? null);
+    const tabHistory = state.tabHistory.filter((id) => !legacyIds.has(id));
+    return {
+      openTabs,
+      activeTabId,
+      tabHistory,
+      tabHistoryIndex: tabHistory.length - 1,
+    };
+  });
+}
+
+/**
+ * 模块级关闭句柄：侧栏选页等非 React 树路径需要在 AI 全屏时退出会话。
+ * 仅在 useNotebookAiPanel 挂载期间有效。
+ */
+let closeAiPanelHandler: (() => void) | null = null;
+
+/** 当前是否处于「AI 已打开且全屏」——侧栏点页面时应退出 AI 回到该标签。 */
+export function isNotebookAiFullscreenOpen(): boolean {
+  return readStoredOpen() && isFullscreenAiLayout(readStoredLayoutMode());
+}
+
+/**
+ * 从侧栏打开页面时调用：若 AI 全屏覆盖主区域，先关掉 AI，
+ * 让用户回到对应页面标签（与点标签栏 onBeforeActivateTab 一致）。
+ */
+export function closeNotebookAiIfFullscreen(): void {
+  if (!isNotebookAiFullscreenOpen()) return;
+  closeAiPanelHandler?.();
 }
 
 export function useNotebookAiPanel() {
@@ -120,6 +155,16 @@ export function useNotebookAiPanel() {
   const consumeCapturedSelection = useCallback(() => {
     setCapturedSelection(null);
   }, []);
+
+  // 暴露关闭句柄给侧栏导航等外部路径
+  useEffect(() => {
+    closeAiPanelHandler = close;
+    return () => {
+      if (closeAiPanelHandler === close) {
+        closeAiPanelHandler = null;
+      }
+    };
+  }, [close]);
 
   // 启动时清理旧 AI 标签
   useEffect(() => {

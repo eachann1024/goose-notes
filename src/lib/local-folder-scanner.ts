@@ -2,6 +2,7 @@ import {
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
 } from "@/lib/markdown-raw-guard";
+import { parseLocalFrontmatterBlob } from "@/lib/local-frontmatter";
 import { setLocalMdSnapshot } from "@/lib/local-md-snapshot";
 import {
   type LocalPageIdMap,
@@ -11,7 +12,7 @@ import {
   toRelativePath,
   writeLocalPageIdMap,
 } from "@/lib/local-page-idmap";
-import type { JSONContent, Page } from "@/types";
+import type { FontFamily, JSONContent, Page } from "@/types";
 
 const IGNORED_FOLDERS = new Set([
   "node_modules",
@@ -147,6 +148,8 @@ function buildFolderPage(
 export interface ParsedLocalMarkdown {
   content: JSONContent;
   frontmatter?: string;
+  fontFamily: FontFamily;
+  isLocked: boolean;
   readState: "ready" | "error";
   readError?: string;
 }
@@ -160,6 +163,8 @@ export async function parseLocalMarkdownContent(
   if (markdown === null) {
     return {
       content: [] as unknown as JSONContent,
+      fontFamily: "default",
+      isLocked: false,
       readState: "error",
       readError: readError || "Markdown 文件读取失败",
     };
@@ -171,7 +176,9 @@ export async function parseLocalMarkdownContent(
   //    无 H1 的文件解析后首块保持段落（「文件名标题绑定」已废弃）。
   //    侧栏/tab 标题由 getPageTitle() 从 localFilePath 文件名取得，不依赖 H1。
   //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
+  // 4) 从 frontmatter 恢复 goose-font / goose-locked（解析失败则默认，blob 仍原样保留）
   const { frontmatter, body } = extractFrontmatter(markdown);
+  const fmSettings = parseLocalFrontmatterBlob(frontmatter).settings;
   const encodedBody = encodeUnsupportedMarkdownForEditor(body);
   const { importFromMarkdown } = await import("@/lib/export");
   const imported = importFromMarkdown(encodedBody, fallbackTitle, {
@@ -182,6 +189,8 @@ export async function parseLocalMarkdownContent(
   return {
     content: importedBlocks as unknown as JSONContent,
     frontmatter: frontmatter || undefined,
+    fontFamily: fmSettings.fontFamily,
+    isLocked: fmSettings.isLocked,
     readState: imported.success ? "ready" : "error",
     readError: imported.success ? undefined : imported.error || "Markdown 解析失败",
   };
@@ -218,10 +227,10 @@ async function buildMarkdownPage(
     workspaceId: notebookId,
     content: parsed.content,
     isFolder: false,
-    isLocked: false,
+    isLocked: parsed.isLocked,
     isFullWidth: false,
     fontSize: "default",
-    fontFamily: "default",
+    fontFamily: parsed.fontFamily,
     localFilePath: entry.path,
     localFrontmatter: parsed.frontmatter,
     localReadState: parsed.readState,

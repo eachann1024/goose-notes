@@ -17,6 +17,7 @@ import {
   useExtensionState,
 } from "@blocknote/react";
 import {
+  flip as floatingFlip,
   offset as floatingOffset,
   shift as floatingShift,
 } from "@floating-ui/react";
@@ -41,6 +42,7 @@ import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
+import { useSettings } from "@/stores/useSettings";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -134,6 +136,7 @@ export function EditorComposer({
   suppressFormattingToolbar = false,
   usesRawEditorContent,
 }: EditorComposerProps) {
+  const singleTabMode = useSettings((state) => state.singleTabMode);
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -296,10 +299,16 @@ export function EditorComposer({
     () => ({
       useFloatingOptions: {
         open: formattingToolbarOpen,
-        placement: "top-start" as const,
+        // 默认落在完整选区下方，避免覆盖被选文字或越过正文顶边压到页头。
+        // 底部空间不足时再翻到上方；shift 同时兜住窄窗口与多标签布局的横向边界。
+        placement: "bottom-start" as const,
         middleware: [
           floatingOffset(10),
-          floatingShift({ crossAxis: false, padding: 8 }),
+          floatingFlip({
+            fallbackPlacements: ["top-start"],
+            padding: 8,
+          }),
+          floatingShift({ padding: 8 }),
         ],
       },
     }),
@@ -343,7 +352,7 @@ export function EditorComposer({
       isEditorFullWidth={isEditorFullWidth}
       tableEvenColumnWidth={tableEvenColumnWidth}
     >
-      {page?.localFilePath && (
+      {page?.localFilePath && !singleTabMode && (
         <LocalFileTitle
           pageId={page.id}
           localFilePath={page.localFilePath}
@@ -438,7 +447,9 @@ export function EditorComposer({
           }}
         />
         {/* 紧凑编辑器构建不挂 AI 菜单。 */}
-        {__GOOSE_EDITOR_AI__ && <AIMenuController aiMenu={GooseAIMenu} />}
+        {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
+          <AIMenuController aiMenu={GooseAIMenu} />
+        )}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div

@@ -30,6 +30,10 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { markUserInteraction } from "@/lib/editor-interaction-signal";
 import { normalizeExternalUrl } from "@/lib/openExternalUrl";
+import {
+  completePageTitleFocus,
+  isPageTitleFocusRequested,
+} from "@/lib/page-title-focus";
 
 /**
  * 原始文档内容 → 编辑器可用块数组（不做任何页面级规范化改写）。
@@ -61,6 +65,7 @@ import {
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
+import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
@@ -260,6 +265,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
         gooseTabBehaviorExtension,
+        gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
         createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
@@ -769,7 +775,63 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     };
 
     const handleFocusStart = () => {
-      focusEditorSafely();
+      const pageId = pageRef.current?.id;
+      // 本地文件标题由 LocalFileTitle 承担；新建页标题聚焦请求未完成时不抢焦到正文。
+      if (
+        pageId &&
+        isPageTitleFocusRequested(pageId) &&
+        usesRawEditorContentRef.current
+      ) {
+        return;
+      }
+
+      // 多标签新建内部页：光标落到首块 H1 标题末尾（与截图中的标题位置一致）。
+      const focusTitleEnd = () => {
+        const blocks = editor.document;
+        if (blocks.length === 0) return false;
+        try {
+          editor.setTextCursorPosition(blocks[0], "end");
+          editor.focus();
+          if (pageId && isPageTitleFocusRequested(pageId)) {
+            completePageTitleFocus(pageId);
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      if (!focusTitleEnd()) {
+        requestAnimationFrame(() => {
+          if (!focusTitleEnd()) focusEditorSafely();
+        });
+      }
+    };
+
+    const handleFocusBody = () => {
+      const focusBody = () => {
+        const blocks = editor.document;
+        if (blocks.length === 0) return false;
+        const target = usesRawEditorContentRef.current
+          ? blocks[0]
+          : blocks[1] ?? blocks[0];
+        try {
+          if (!usesRawEditorContentRef.current && blocks.length === 1) {
+            const [inserted] = editor.insertBlocks(
+              [{ type: "paragraph", content: "" }],
+              blocks[0],
+              "after",
+            );
+            if (inserted) editor.setTextCursorPosition(inserted, "start");
+          } else {
+            editor.setTextCursorPosition(target, "start");
+          }
+          editor.focus();
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      if (!focusBody()) requestAnimationFrame(() => focusBody());
     };
 
     const handlePluginEnter = () => {
@@ -851,6 +913,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
     window.addEventListener("goose-note:flush-editor", handleFlush);
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
+    window.addEventListener("goose-note:focus-editor-body", handleFocusBody);
     window.addEventListener("goose-note:plugin-enter", handlePluginEnter);
     window.addEventListener(
       "goose-note:reload-active-editor",
@@ -863,6 +926,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         "goose-note:focus-editor-start",
         handleFocusStart,
       );
+      window.removeEventListener("goose-note:focus-editor-body", handleFocusBody);
       window.removeEventListener("goose-note:plugin-enter", handlePluginEnter);
       window.removeEventListener(
         "goose-note:reload-active-editor",

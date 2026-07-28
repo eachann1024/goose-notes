@@ -16,6 +16,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
+import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
@@ -120,6 +121,7 @@ export function EditorHostBridge({
         usePages.getState().updatePage(page.id, { content } as Partial<Page>, options?.silent ? { silent: true } : undefined);
       },
       onOpenPage: (pageId: string) => {
+        closeNotebookAiIfFullscreen();
         useTabs.getState().openTab(pageId);
       },
       getActivePageLocalFilePath: () => {
