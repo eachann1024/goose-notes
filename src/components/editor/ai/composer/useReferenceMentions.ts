@@ -67,6 +67,35 @@ function detectMentionAtCaret(container: HTMLElement): DetectedMention | null {
   return { query, range };
 }
 
+/** 解析 @ 菜单锚点；range 为空时退到 caret / 编辑器矩形，避免菜单飞到左上角。 */
+function resolveMentionAnchorRect(
+  range: Range,
+  editor: HTMLElement,
+): DOMRect {
+  const rect = range.getBoundingClientRect();
+  if (rect.width > 0 || rect.height > 0) {
+    return rect;
+  }
+
+  const clientRects = range.getClientRects();
+  if (clientRects.length > 0) {
+    const first = clientRects[0];
+    if (first.width > 0 || first.height > 0) {
+      return first;
+    }
+  }
+
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const caretRect = selection.getRangeAt(0).getBoundingClientRect();
+    if (caretRect.width > 0 || caretRect.height > 0) {
+      return caretRect;
+    }
+  }
+
+  return editor.getBoundingClientRect();
+}
+
 export function createChipElement(
   attrs: AiFileReferenceAttrs,
 ): HTMLSpanElement {
@@ -74,10 +103,11 @@ export function createChipElement(
   span.contentEditable = "false";
   span.dataset.aiMentionId = attrs.pageId;
   span.dataset.aiMentionAttrs = JSON.stringify(attrs);
+  // 垂直对齐：chip 用 inline-flex + items-center；高度与行高由 notebook-ai.css 统一。
   span.className =
-    "inline-flex items-center mx-1 rounded px-1 py-0 text-[11px] font-medium" +
-    " bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] border border-border" +
-    " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none align-middle leading-5";
+    "ai-composer-chip inline-flex items-center justify-center mx-1 rounded px-1 text-[11px] font-medium leading-none" +
+    " bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border" +
+    " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none";
   span.textContent = `@${attrs.titleSnapshot}`;
   return span;
 }
@@ -124,7 +154,7 @@ export function useReferenceMentions({
     const detected = detectMentionAtCaret(el);
     if (detected) {
       lastDetectedRef.current = detected;
-      const rect = detected.range.getBoundingClientRect();
+      const rect = resolveMentionAnchorRect(detected.range, el);
       setMention((prev) => ({
         active: true,
         query: detected.query,
