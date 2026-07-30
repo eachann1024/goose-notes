@@ -1,7 +1,11 @@
+import { useMemo } from "react";
 import { Command } from "cmdk";
 import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { usePages } from "@/stores/usePages";
+import { LocalFileIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
 import type { SearchResultPage, SearchResults } from "./useCommandSearch";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
 
@@ -123,6 +127,30 @@ export function PaletteResultGroup({
   onRemoveRecent,
   onHideRecent,
 }: PaletteResultGroupProps) {
+  const pages = usePages((state) => state.pages);
+  const notebooks = useNotebooks((state) => state.notebooks);
+  const pageIdsWithChildren = useMemo(() => {
+    const ids = new Set<string>();
+    Object.values(pages).forEach((page) => {
+      if (!page.trashedAt && page.parentId) {
+        ids.add(page.parentId);
+      }
+    });
+    return ids;
+  }, [pages]);
+
+  const renderPageIcon = (page: Page, className?: string) => (
+    <LocalFileIcon
+      page={page}
+      iconName={page.icon}
+      isLocalFolder={
+        notebooks[page.workspaceId]?.source === "local-folder"
+      }
+      hasChildren={pageIdsWithChildren.has(page.id)}
+      className={className}
+    />
+  );
+
   return (
     <>
       {!searchQuery.trim() &&
@@ -161,10 +189,9 @@ export function PaletteResultGroup({
                   className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
-                    <LucideIcons.Clock
-                      aria-hidden="true"
-                      className="h-4 w-4 text-muted-foreground/70 transition-opacity duration-200 group-hover/icon:opacity-0 group-focus-within/icon:opacity-0"
-                    />
+                    <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-200 group-hover/icon:opacity-0 group-focus-within/icon:opacity-0">
+                      {renderPageIcon(page)}
+                    </span>
                     <button
                       type="button"
                       aria-label={`从最近访问中移除“${getPageTitle(page)}”`}
@@ -217,7 +244,9 @@ export function PaletteResultGroup({
                 }}
                 className="relative flex cursor-pointer select-none items-start rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
               >
-                <LucideIcons.FileText className="mr-2 h-4 w-4 shrink-0 mt-0.5" />
+                <span className="mr-2 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                  {renderPageIcon(page)}
+                </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-3">
                     <span className="truncate font-medium">

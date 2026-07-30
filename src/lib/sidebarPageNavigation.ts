@@ -19,7 +19,8 @@ export function openPageFromSidebar(
   mode: "preview" | "permanent",
   options?: { pin?: boolean },
 ) {
-  if (isLocalFolderDirectoryPage(pageId)) return;
+  // 本地文件夹目录页也放行：主区渲染 FolderHomePage（Finder 式目录主页），
+  // 不再静默 return。WorkspaceLayout 按 isFolder 分流渲染。
 
   // AI 全屏时主区域被会话盖住：侧栏点页面应退出 AI 并切到该标签
   // （与标签栏 onBeforeActivateTab 行为对齐）

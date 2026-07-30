@@ -5,6 +5,7 @@ import { extractTextFromContent } from "@/components/editor/utils/content-text-e
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { pinyinMatchIndices } from "@/lib/pinyin-search";
 import { syncIndex, searchIndex } from "./pageSearchIndex";
+import { isCommandSearchablePage } from "./searchPageFilter";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
@@ -78,16 +79,11 @@ function getContentSnippet(
 /** 全库可搜页面（与 Tab 笔记本范围无关），供 MiniSearch 单例索引 */
 function buildSearchablePagesRecord(
   pages: Record<string, Page>,
+  notebooks: ReturnType<typeof useNotebooks.getState>["notebooks"],
 ): Record<string, Page> {
-  const notebooks = useNotebooks.getState().notebooks;
   const record: Record<string, Page> = {};
   for (const page of Object.values(pages)) {
-    if (page.trashedAt) continue;
-    const title = getPageTitle(page);
-    if (!title || title === "无标题") continue;
-    if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) {
-      continue;
-    }
+    if (!isCommandSearchablePage(page, notebooks)) continue;
     record[page.id] = page;
   }
   return record;
@@ -106,6 +102,7 @@ export function useCommandSearch({
 }: CommandSearchState) {
   const [searchQuery, setSearchQuery] = useState("");
   const deferredQuery = useDeferredValue(searchQuery);
+  const notebooks = useNotebooks((state) => state.notebooks);
   const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("goose-recent-excludes");
@@ -122,23 +119,21 @@ export function useCommandSearch({
   }, [removedRecentIds]);
 
   const filteredPages = useMemo(() => {
-    const allPagesArray = Object.values(pages).filter((p) => {
-      if (p.trashedAt) return false;
-      const title = getPageTitle(p);
-      return title && title !== "无标题";
-    });
+    const allPagesArray = Object.values(pages).filter((page) =>
+      isCommandSearchablePage(page, notebooks),
+    );
     if (searchAllNotebooks) {
       return allPagesArray;
     }
     const currentNotebookId = activeNotebookId || DEFAULT_NOTEBOOK;
     return allPagesArray.filter((p) => p.workspaceId === currentNotebookId);
-  }, [pages, searchAllNotebooks, activeNotebookId]);
+  }, [pages, notebooks, searchAllNotebooks, activeNotebookId]);
 
   // 索引始终覆盖 store 内全部可搜页；笔记本范围仅在 searchResults 的 filteredSet 过滤。
   // 若按 filteredPages sync，单本模式会 discard 其它本，Tab 切回「所有记事本」当轮搜不到。
   useEffect(() => {
-    syncIndex(buildSearchablePagesRecord(pages));
-  }, [pages]);
+    syncIndex(buildSearchablePagesRecord(pages, notebooks));
+  }, [pages, notebooks]);
 
   const getPageBreadcrumb = useCallback(
     (page: Page): string[] => {
@@ -185,15 +180,9 @@ export function useCommandSearch({
       return { recent, all, allDisplay: all.slice(0, 30), hasQuery: false };
     }
 
-    const notebooks = useNotebooks.getState().notebooks;
-
     // 构建 filteredPages 的 id 集合（已按 notebook/trash 过滤）
     const filteredSet = new Map<string, Page>();
     for (const page of filteredPages) {
-      // 本地文件夹：排除文件夹本身，只搜文件
-      if (notebooks[page.workspaceId]?.source === "local-folder" && page.isFolder) {
-        continue;
-      }
       filteredSet.set(page.id, page);
     }
 

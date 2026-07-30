@@ -17,6 +17,10 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import {
+  getPageTitle,
+  withInternalPageTitle,
+} from "@/components/editor/utils/page-title";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
@@ -36,7 +40,7 @@ import { UToolsAdapter } from "@/lib/utools";
 interface EditorHostBridgeProps {
   /** 当前被编辑的页（替换编辑器内核对 usePages.activePageId/getPage 的直读）。 */
   page: Page;
-  /** 宿主预算：notebook.editorFullWidth ?? globalEditorFullWidth。 */
+  /** 宿主决定编辑器是否使用全宽；常规笔记固定为 true。 */
   isEditorFullWidth: boolean;
   /**
    * 内容变更落库回调的覆盖。默认走 usePages.updatePage 落库；速记小窗草稿模式传入此项，
@@ -57,7 +61,6 @@ export function EditorHostBridge({
 }: EditorHostBridgeProps) {
   const theme = useSettings((s) => s.theme);
   const editorFontSize = useSettings((s) => s.editorFontSize);
-  const globalEditorFullWidth = useSettings((s) => s.globalEditorFullWidth);
   const tableEvenColumnWidth = useSettings((s) => s.tableEvenColumnWidth);
   const customFonts = useSettings((s) => s.customFonts);
   const defaultCodeBlockWrap = useSettings((s) => s.defaultCodeBlockWrap);
@@ -72,7 +75,6 @@ export function EditorHostBridge({
     () => ({
       theme,
       editorFontSize,
-      globalEditorFullWidth,
       tableEvenColumnWidth,
       customFonts,
       defaultCodeBlockWrap,
@@ -95,7 +97,6 @@ export function EditorHostBridge({
     [
       theme,
       editorFontSize,
-      globalEditorFullWidth,
       tableEvenColumnWidth,
       customFonts,
       defaultCodeBlockWrap,
@@ -118,7 +119,18 @@ export function EditorHostBridge({
           onContentChangeOverride(content, options);
           return;
         }
-        usePages.getState().updatePage(page.id, { content } as Partial<Page>, options?.silent ? { silent: true } : undefined);
+        const pagesStore = usePages.getState();
+        const livePage = pagesStore.pages[page.id] ?? page;
+        const contentToSave =
+          contentMode === "normalized" &&
+          useSettings.getState().singleTabMode
+            ? withInternalPageTitle(content, getPageTitle(livePage))
+            : content;
+        pagesStore.updatePage(
+          page.id,
+          { content: contentToSave } as Partial<Page>,
+          options?.silent ? { silent: true } : undefined,
+        );
       },
       onOpenPage: (pageId: string) => {
         closeNotebookAiIfFullscreen();
@@ -146,9 +158,6 @@ export function EditorHostBridge({
     }),
     [page, contentMode, isEditorFullWidth, onContentChangeOverride],
   );
-
-  // 触摸一次 useNotebooks 订阅，确保 notebook 变化时桥重渲染（宿主预算 isEditorFullWidth 在外层算）。
-  void useNotebooks((s) => s.activeNotebookId);
 
   return (
     <EditorPlatformProvider platform={utoolsEditorPlatform}>

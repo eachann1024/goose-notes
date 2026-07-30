@@ -12,7 +12,13 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
-import { matchMouseShortcut, matchShortcut } from "@/lib/shortcut-match";
+import {
+  getModifierOnlyShortcut,
+  matchMouseShortcut,
+  matchModifierOnlyShortcutKey,
+  matchModifierOnlyShortcutKeyDown,
+  matchShortcut,
+} from "@/lib/shortcut-match";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
@@ -123,7 +129,21 @@ export function CommandPalette() {
   }, [searchQuery]);
 
   useEffect(() => {
+    let pendingModifierOnlyClose = false;
+
     const down = (e: KeyboardEvent) => {
+      if (
+        open &&
+        getModifierOnlyShortcut(searchPanelCloseShortcut) &&
+        matchModifierOnlyShortcutKeyDown(e, searchPanelCloseShortcut)
+      ) {
+        pendingModifierOnlyClose = true;
+        return;
+      }
+      if (pendingModifierOnlyClose) {
+        pendingModifierOnlyClose = false;
+      }
+
       const eventForMatching = e.key === " "
         ? ({
             key: "Space",
@@ -147,7 +167,20 @@ export function CommandPalette() {
       }
     };
 
+    const up = (e: KeyboardEvent) => {
+      const shouldClose =
+        open &&
+        pendingModifierOnlyClose &&
+        matchModifierOnlyShortcutKey(e, searchPanelCloseShortcut);
+      pendingModifierOnlyClose = false;
+      if (!shouldClose) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    };
+
     const handleMouseShortcut = (event: MouseEvent) => {
+      pendingModifierOnlyClose = false;
       if (!open || !matchMouseShortcut(event, searchPanelCloseShortcut)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -155,6 +188,7 @@ export function CommandPalette() {
     };
 
     document.addEventListener("keydown", down, true);
+    document.addEventListener("keyup", up, true);
     document.addEventListener("mousedown", handleMouseShortcut, true);
     const handleOpenSearch = (event: Event) => {
       const detail = (
@@ -171,6 +205,7 @@ export function CommandPalette() {
     window.addEventListener("goose-note:open-search", handleOpenSearch);
     return () => {
       document.removeEventListener("keydown", down, true);
+      document.removeEventListener("keyup", up, true);
       document.removeEventListener("mousedown", handleMouseShortcut, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
@@ -297,7 +332,7 @@ export function CommandPalette() {
               // 用实色交互变量而非 bg-foreground/8：uTools 旧内核解析不了 Tailwind 的
               // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
               searchAllNotebooks
-                ? "bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))]"
+                ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                 : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-[var(--goose-interactive-hover)]"
             }`}
           >

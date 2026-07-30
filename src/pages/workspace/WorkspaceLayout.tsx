@@ -8,6 +8,7 @@ import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
+import { FolderHomePage } from "./components/page/FolderHomePage";
 import { PageHeader } from "./components/page/PageHeader";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/page-delete-actions";
 import { NotebookAiPanel } from "./components/notebook-ai/NotebookAiPanel";
 import { NotebookAiHostScope } from "./components/notebook-ai/NotebookAiHostScope";
+import { NotebookAiSessionProvider } from "./components/notebook-ai/NotebookAiSession";
 import {
   isFullscreenAiLayout,
   useNotebookAiPanel,
@@ -102,7 +104,6 @@ export function WorkspaceLayout({
       notebooks: s.notebooks,
     })),
   );
-  const globalEditorFullWidth = useSettings((s) => s.globalEditorFullWidth);
   const singleTabMode = useSettings((s) => s.singleTabMode);
   const historyActivePageId = useHistoryView((s) => s.active);
   const inHistoryMode =
@@ -118,9 +119,6 @@ export function WorkspaceLayout({
   const aiAvailableForNotebook = aiEnabled;
   // 全屏 AI 优先用当前笔记本；本地文件夹切页竞态下 activeNotebookId 可能短暂为空，回退到页面所属本。
   const aiNotebookId = activeNotebookId ?? page?.workspaceId ?? null;
-  const isEditorFullWidth = Boolean(
-    pageNotebook?.editorFullWidth ?? globalEditorFullWidth,
-  );
 
   // 全局搜索「跳转即定位」：监听搜索高亮信号，落到匹配块并展开折叠 + 高亮。
   // 信号由命令面板写入（只带 query，不带 blockId），见 searchHighlightLocate.ts。
@@ -135,11 +133,15 @@ export function WorkspaceLayout({
     const onToggle = () => {
       if (!aiAvailableForNotebook) return;
       toggleAiPanel();
+      // 由关闭切到打开时，面板若是首次挂载会自行聚焦；已挂载（如布局切换场景）则补发聚焦事件
+      if (!aiPanelOpen) {
+        window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
+      }
     };
     window.addEventListener("goose-note:toggle-ai-panel", onToggle);
     return () =>
       window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
-  }, [aiAvailableForNotebook, toggleAiPanel]);
+  }, [aiAvailableForNotebook, aiPanelOpen, toggleAiPanel]);
 
   // 极简工作区的新建页会直接进入标题编辑。若此时 AI 正以全屏覆盖主区域，
   // 必须同步退出 AI，否则只会看到页头标题框，正文仍错误地停留在 AI 会话。
@@ -168,6 +170,9 @@ export function WorkspaceLayout({
           ? (detail as Parameters<typeof openAiPanel>[0])
           : null;
       openAiPanel(capture);
+      // 面板已打开时重复触发「打开」不会重挂载，补发聚焦事件让输入框重新获焦；
+      // 首次挂载时面板自身会聚焦，此事件无害。
+      window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
     };
     window.addEventListener("goose-note:open-ai-panel", onOpen);
     return () => window.removeEventListener("goose-note:open-ai-panel", onOpen);
@@ -273,6 +278,118 @@ export function WorkspaceLayout({
             data-local-file-page={isLocalFolderPage ? "true" : undefined}
           >
             {/*
+              会话运行时与面板 UI 解耦：Provider 在 AI 可用时常驻，
+              关面板 / 切页不卸载 useChat，顶栏动画可跟到请求真正结束。
+            */}
+            {aiAvailableForNotebook && aiNotebookId ? (
+              <NotebookAiSessionProvider
+                key={aiNotebookId}
+                notebookId={aiNotebookId}
+                editorRef={editorRef}
+              >
+                <NotebookAiWorkspaceBody
+                  showFullscreenAi={showFullscreenAi}
+                  aiNotebookId={aiNotebookId}
+                  aiAvailableForNotebook={aiAvailableForNotebook}
+                  isWelcomeTab={isWelcomeTab}
+                  openWelcomeTabHandler={openWelcomeTabHandler}
+                  aiPanelOpen={aiPanelOpen}
+                  aiLayoutMode={aiLayoutMode}
+                  toggleAiPanel={toggleAiPanel}
+                  showSideAiPanel={showSideAiPanel}
+                  closeAiPanel={closeAiPanel}
+                  editorRef={editorRef}
+                  aiPanelCapturedSelection={aiPanelCapturedSelection}
+                  consumeAiPanelCapturedSelection={
+                    consumeAiPanelCapturedSelection
+                  }
+                  setAiLayoutMode={setAiLayoutMode}
+                  activePageId={activePageId}
+                  page={page}
+                  inHistoryMode={inHistoryMode}
+                  isLocalFolderPage={isLocalFolderPage}
+                  scrollContainerRef={scrollContainerRef}
+                />
+              </NotebookAiSessionProvider>
+            ) : (
+              <NotebookAiWorkspaceBody
+                showFullscreenAi={false}
+                aiNotebookId={null}
+                aiAvailableForNotebook={false}
+                isWelcomeTab={isWelcomeTab}
+                openWelcomeTabHandler={openWelcomeTabHandler}
+                aiPanelOpen={false}
+                aiLayoutMode={aiLayoutMode}
+                toggleAiPanel={toggleAiPanel}
+                showSideAiPanel={false}
+                closeAiPanel={closeAiPanel}
+                editorRef={editorRef}
+                aiPanelCapturedSelection={null}
+                consumeAiPanelCapturedSelection={
+                  consumeAiPanelCapturedSelection
+                }
+                setAiLayoutMode={setAiLayoutMode}
+                activePageId={activePageId}
+                page={page}
+                inHistoryMode={inHistoryMode}
+                isLocalFolderPage={isLocalFolderPage}
+                scrollContainerRef={scrollContainerRef}
+              />
+            )}
+          </main>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** 主内容区 + 条件挂载的 AI 面板 UI（运行时在外层 Provider）。 */
+function NotebookAiWorkspaceBody({
+  showFullscreenAi,
+  aiNotebookId,
+  aiAvailableForNotebook,
+  isWelcomeTab,
+  openWelcomeTabHandler,
+  aiPanelOpen,
+  aiLayoutMode,
+  toggleAiPanel,
+  showSideAiPanel,
+  closeAiPanel,
+  editorRef,
+  aiPanelCapturedSelection,
+  consumeAiPanelCapturedSelection,
+  setAiLayoutMode,
+  activePageId,
+  page,
+  inHistoryMode,
+  isLocalFolderPage,
+  scrollContainerRef,
+}: {
+  showFullscreenAi: boolean;
+  aiNotebookId: string | null;
+  aiAvailableForNotebook: boolean;
+  isWelcomeTab: boolean;
+  openWelcomeTabHandler: () => void;
+  aiPanelOpen: boolean;
+  aiLayoutMode: ReturnType<typeof useNotebookAiPanel>["layoutMode"];
+  toggleAiPanel: () => void;
+  showSideAiPanel: boolean;
+  closeAiPanel: () => void;
+  editorRef: RefObject<EditorRef | null>;
+  aiPanelCapturedSelection: ReturnType<
+    typeof useNotebookAiPanel
+  >["capturedSelection"];
+  consumeAiPanelCapturedSelection: () => void;
+  setAiLayoutMode: ReturnType<typeof useNotebookAiPanel>["setLayoutMode"];
+  activePageId: string | null | undefined;
+  page: ReturnType<typeof usePages.getState>["pages"][string] | undefined;
+  inHistoryMode: boolean;
+  isLocalFolderPage: boolean;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <>
+            {/*
               全屏 AI 叠在底层内容之上，不再卸载编辑器/欢迎页。
               否则再次开关 AI 时本地文件夹页会短暂落到「有页头标题、正文既非 AI 也非编辑器」的空白态。
             */}
@@ -338,23 +455,53 @@ export function WorkspaceLayout({
                         "h-full overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
                       )}
                     >
-                      <div
-                        className={cn(
-                          "flex min-h-full flex-col pt-0",
-                          isEditorFullWidth ? "px-14" : "px-8",
-                        )}
-                      >
+                      <div className="flex min-h-full flex-col px-14 pt-0">
                         <HistoryReader />
                       </div>
                     </div>
                   </div>
                 </>
               ) : activePageId && page ? (
+                page.isFolder && isLocalFolderPage ? (
+                  /* 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
+                  <>
+                    <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
+                      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
+                        <PageHeader
+                          page={page}
+                          onOpenSearch={openWelcomeTabHandler}
+                          onRestore={() => restorePageWithToast(activePageId)}
+                          onDelete={() =>
+                            void permanentlyDeletePageWithCleanup(activePageId)
+                          }
+                          aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                          aiLayoutMode={aiLayoutMode}
+                          onToggleAiPanel={
+                            aiAvailableForNotebook ? toggleAiPanel : undefined
+                          }
+                        />
+                        <FolderHomePage page={page} />
+                      </div>
+                      {showSideAiPanel && aiNotebookId ? (
+                        <NotebookAiPanel
+                          key={`folder-${aiNotebookId}`}
+                          notebookId={aiNotebookId}
+                          onClose={closeAiPanel}
+                          editorRef={editorRef}
+                          capturedSelection={aiPanelCapturedSelection}
+                          onConsumeCapturedSelection={
+                            consumeAiPanelCapturedSelection
+                          }
+                          layoutMode={aiLayoutMode}
+                          onLayoutModeChange={setAiLayoutMode}
+                          variant="side-panel"
+                        />
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
                 <>
-                  <EditorHostBridge
-                    page={page}
-                    isEditorFullWidth={isEditorFullWidth}
-                  >
+                  <EditorHostBridge page={page} isEditorFullWidth>
                     <div
                       className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
                       data-local-file-page={
@@ -383,12 +530,7 @@ export function WorkspaceLayout({
                             "h-full flex-1 min-w-0 overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
                           )}
                         >
-                          <div
-                            className={cn(
-                              "flex min-h-full flex-col pt-1",
-                              isEditorFullWidth ? "px-14" : "px-8",
-                            )}
-                          >
+                          <div className="flex min-h-full flex-col px-14 pt-1">
                             <ErrorBoundary
                               key={activePageId}
                               resetKey={activePageId}
@@ -432,6 +574,7 @@ export function WorkspaceLayout({
                     </div>
                   </EditorHostBridge>
                 </>
+                )
               ) : (
                 <PageEmptyState />
               )}
@@ -481,9 +624,6 @@ export function WorkspaceLayout({
                 </div>
               </div>
             ) : null}
-          </main>
-        </div>
-      </div>
     </>
   );
 }
