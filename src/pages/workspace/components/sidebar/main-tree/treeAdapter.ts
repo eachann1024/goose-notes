@@ -26,7 +26,6 @@ const ROOT_PLACEHOLDER: Page = {
   workspaceId: "",
   content: { type: "doc", content: [] } as any,
   isLocked: false,
-  isFullWidth: false,
   fontSize: "medium" as any,
   fontFamily: "default" as any,
   createdAt: 0,

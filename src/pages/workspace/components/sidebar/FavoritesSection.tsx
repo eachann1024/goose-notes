@@ -87,7 +87,7 @@ export function FavoritesSection({
       </div>
 
       {!favoritesCollapsed && (
-        <div className="pl-0 pr-[9px] pt-0.5 overflow-hidden">
+        <div className="pl-0 pt-0.5 overflow-hidden">
           <SidebarTree
             activeNotebookId={activeNotebookId}
             width={width}

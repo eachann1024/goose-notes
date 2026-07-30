@@ -39,7 +39,7 @@ export function SidebarFooter({
 
   const btnClass =
     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground [&_svg]:block";
-  const activeClass = "text-foreground bg-[var(--goose-interactive-selected)]";
+  const activeClass = "text-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected)]";
 
   return (
     <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">

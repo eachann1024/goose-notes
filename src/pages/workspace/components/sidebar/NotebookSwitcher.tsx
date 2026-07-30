@@ -227,7 +227,7 @@ export function NotebookSwitcher() {
                 "min-h-11 py-2 mb-1 last:mb-0",
                 notebook.localPathMissing && "opacity-50",
                 activeNotebookId === notebook.id &&
-                  "bg-[var(--goose-interactive-selected)] text-foreground",
+                  "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
               )}
               onClick={() => {
                 if (notebook.localPathMissing) return;

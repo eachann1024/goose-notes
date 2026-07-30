@@ -46,7 +46,6 @@ export interface Page {
   isFolder?: boolean;
   isFavorite?: boolean;
   isLocked: boolean;
-  isFullWidth: boolean;
   fontSize: FontSize;
   fontFamily: FontFamily;
 

@@ -21,3 +21,10 @@ test("已有明确选择不会被迁移覆盖", () => {
     migrateSettingsPersistedState({ singleTabMode: false }).singleTabMode,
   ).toBe(false);
 });
+
+test("迁移时丢弃已废弃的全宽设置", () => {
+  const migrated = migrateSettingsPersistedState({
+    globalEditorFullWidth: false,
+  });
+  expect(migrated).not.toHaveProperty("globalEditorFullWidth");
+});

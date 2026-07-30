@@ -169,7 +169,8 @@ export function SidebarContextMenu({
               }}
             >
               <LucideIcons.FolderPlus className="h-4 w-4" />
-              <span>新建文件夹</span>
+              {/* 右键目标是文件夹时按需求显示「新建文件」；行为不变，仍创建子文件夹 */}
+              <span>{page.isFolder ? "新建文件" : "新建文件夹"}</span>
             </ContextMenuItem>
           )}
           {isLocalFolder && !isTrashed && page.localFilePath && (

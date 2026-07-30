@@ -27,6 +27,7 @@ import { getPageTitle } from "./treeAdapter";
 
 const INDENT = 18;
 const ROW_PADDING_LEFT = 6;
+let activeMainTreeDragId: string | null = null;
 
 function TreeRowIcon({
   page,
@@ -179,6 +180,10 @@ interface RenderItemArgs {
   onCreateLocalFolder?: (parentId?: string) => void;
   onCommitPendingFolder?: (id: string, name: string) => void;
   onCancelPendingFolder?: (id: string) => void;
+  onActivateLocalDirectory?: (
+    id: string,
+    mode: "preview" | "permanent",
+  ) => void;
 }
 
 function PendingFolderNameInput({
@@ -275,6 +280,7 @@ export function renderItem({
   onCreateLocalFolder,
   onCommitPendingFolder,
   onCancelPendingFolder,
+  onActivateLocalDirectory,
 }: RenderItemArgs) {
   const hideExpandArrows = useSettings.getState().hideExpandArrows;
   const page = item.data;
@@ -298,6 +304,7 @@ export function renderItem({
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
   const isPendingFolder = page.localPendingCreate === "folder";
   const isLocalDirectory = isLocalFolder && !!page.isFolder;
+  const isDragging = activeMainTreeDragId === String(item.index);
 
   const iconNode = (
     <TreeRowIcon
@@ -317,9 +324,11 @@ export function renderItem({
   const handleDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
     (
       interactive.onDragStart as
-        React.DragEventHandler<HTMLDivElement> | undefined
+        | React.DragEventHandler<HTMLDivElement>
+        | undefined
     )?.(e);
     if (!e.dataTransfer) return;
+    activeMainTreeDragId = String(item.index);
 
     const ghost = document.createElement("div");
     ghost.className = "main-tree-drag-ghost";
@@ -332,20 +341,27 @@ export function renderItem({
     const label = document.createElement("span");
     label.textContent = title || "无标题";
     ghost.appendChild(label);
+    const grip = document.createElement("i");
+    grip.className = "main-tree-drag-ghost-grip";
+    grip.textContent = "⋮";
+    ghost.appendChild(grip);
     document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 12, 14);
+    e.dataTransfer.setDragImage(ghost, 18, 17);
     window.setTimeout(() => ghost.remove(), 0);
 
     if (rowEl instanceof HTMLElement) {
-      rowEl.style.opacity = "0.45";
-      e.currentTarget.addEventListener(
-        "dragend",
-        () => {
-          rowEl.style.opacity = "";
-        },
-        { once: true },
-      );
+      rowEl.classList.add("main-tree-row--dragging");
     }
+    e.currentTarget.addEventListener(
+      "dragend",
+      () => {
+        activeMainTreeDragId = null;
+        if (rowEl instanceof HTMLElement) {
+          rowEl.classList.remove("main-tree-row--dragging");
+        }
+      },
+      { once: true },
+    );
   };
 
   const toggleLocalDirectory = () => {
@@ -357,6 +373,13 @@ export function renderItem({
     if (isLocalDirectory) {
       e.preventDefault();
       e.stopPropagation();
+      const pageId = String(item.index);
+      if (pageId && pageId !== "root") {
+        onActivateLocalDirectory?.(
+          pageId,
+          e.metaKey || e.ctrlKey ? "permanent" : "preview",
+        );
+      }
       if (e.detail <= 1) toggleLocalDirectory();
       return;
     }
@@ -384,13 +407,13 @@ export function renderItem({
         "transition-colors duration-150",
         "outline-none",
         isPendingFolder
-          ? "bg-[var(--goose-interactive-selected)] text-foreground"
+          ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
           : isActive
-            ? "bg-[var(--goose-interactive-selected)] text-foreground"
+            ? "main-tree-row--selected"
             : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
         // drop 高亮：使用 workspace-drag-line token 调性，更克制
-        isOver &&
-          "bg-[hsl(var(--primary)/0.10)] ring-1 ring-[hsl(var(--primary)/0.38)] ring-inset",
+        isOver && "main-tree-row--drop-target",
+        isDragging && "main-tree-row--dragging",
       )}
       style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
     >
@@ -404,7 +427,11 @@ export function renderItem({
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (isLocalDirectory) return;
+          if (isLocalDirectory) {
+            // 双击文件夹：晋升永久标签（主页），与文件双击行为对齐
+            onActivateLocalDirectory?.(String(item.index), "permanent");
+            return;
+          }
           openPageFromSidebar(String(item.index), "permanent");
         }}
         aria-label={title}
@@ -529,15 +556,22 @@ export function renderDragBetweenLine({
 }: RenderDragBetweenLineArgs) {
   const depth = draggingPosition.depth ?? 0;
   const style = (lineProps.style ?? {}) as React.CSSProperties;
+  const hideExpandArrows = useSettings.getState().hideExpandArrows;
+  // 行结构：paddingLeft → (展开箭头槽位) → 图标。
+  // 蓝点必须以图标左缘为起点，避免落在箭头区被误读成“成为子页面”。
+  // 箭头槽：ml-1.5(6) + w-5(20) + gap-0.5(2) = 28
+  const ARROW_SLOT = 6 + 20 + 2;
+  const lineStart =
+    depth * INDENT + ROW_PADDING_LEFT + (hideExpandArrows ? 0 : ARROW_SLOT);
   return (
     <div
       {...lineProps}
       style={{
         ...style,
-        marginLeft: depth * INDENT + ROW_PADDING_LEFT + 20,
+        marginLeft: lineStart,
         marginRight: 8,
       }}
-      className="h-[2px] rounded-full bg-[hsl(var(--primary))] shadow-[0_0_8px_hsl(var(--primary)/0.35)]"
+      className="main-tree-drop-between-line h-[2px] rounded-full"
     />
   );
 }

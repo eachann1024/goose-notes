@@ -7,7 +7,6 @@
  */
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import * as LucideIcons from "lucide-react";
 import { useState } from "react";
 import type {
@@ -29,6 +28,9 @@ import { InlineOverflowRevealText } from "../InlineOverflowRevealText";
 import { SidebarContextMenu } from "../SidebarContextMenu";
 import { LocalFileIcon } from "../local-file-icon";
 import { TREE_INDENT } from "./useTreeDnd";
+
+// 与主树 MainTreeItem.ROW_PADDING_LEFT 对齐，保证收藏行与页面树选中条同宽起点
+const ROW_PADDING_LEFT = 6;
 
 const DEFAULT_NOTEBOOK = "default-notebook";
 
@@ -119,14 +121,8 @@ export function SortablePageRow({
   revealResetSignal,
   titleRevealDisabled,
 }: SortablePageRowProps) {
-  const {
-    setNodeRef,
-    attributes,
-    listeners,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id, disabled: !dragEnabled });
+  const { setNodeRef, attributes, listeners, transition, isDragging } =
+    useSortable({ id: item.id, disabled: !dragEnabled });
   const guardedListeners = dragEnabled
     ? {
         ...listeners,
@@ -156,13 +152,11 @@ export function SortablePageRow({
   const isLocalFolder = isLocalNotebook;
   const iconName = page.icon;
 
-  const dndTransform = CSS.Transform.toString(transform);
+  // 拖动时原行留在树中作为位置锚点，真正跟随指针的内容由 DragOverlay 渲染。
+  // 这能保留父子结构和原始位置，避免整行“被拔走”后只剩一块空白。
   const virtualTransform =
     typeof rowStyle.transform === "string" ? rowStyle.transform : "";
-  const mergedTransform =
-    isDragging && dndTransform
-      ? `${virtualTransform} ${dndTransform}`.trim()
-      : virtualTransform;
+  const mergedTransform = virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
 
   const handleAddChild = (e: MouseEvent) => {
@@ -265,15 +259,16 @@ export function SortablePageRow({
       }}
       className={cn(
         "goose-sidebar-tree-row group relative px-0",
-        isDragging && "z-20 pointer-events-none",
+        isDragging &&
+          "goose-sidebar-tree-row--dragging z-20 pointer-events-none",
       )}
     >
       {isNestDropTarget && (
-        <div className="pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px] bg-[hsl(var(--primary)/0.18)] ring-1 ring-[hsl(var(--primary)/0.52)] shadow-[0_0_0_1px_hsl(var(--background)/0.5)_inset] transition-all duration-100" />
+        <div className="sidebar-tree-nest-target pointer-events-none absolute -inset-x-0.5 -inset-y-[2px] z-10 rounded-[10px]" />
       )}
       {showDropLine && (
         <div
-          className="pointer-events-none absolute z-[35] h-[2px] rounded-full bg-[hsl(var(--primary))] shadow-[0_0_8px_hsl(var(--primary)/0.35)] transition-all duration-100"
+          className="sidebar-tree-drop-line pointer-events-none absolute z-[35] h-[2px] rounded-full"
           style={{
             left: dropLineLeft,
             right: 12,
@@ -288,13 +283,12 @@ export function SortablePageRow({
           data-goose-context-trigger="true"
           {...sortableHandlers}
           className={cn(
-            "relative z-20 flex items-center h-full pl-0 pr-1 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
+            "relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
-            isDragging && "opacity-60 cursor-grabbing",
+            isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive &&
               "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
-            isActive &&
-              "bg-[var(--goose-interactive-selected)] text-foreground",
+            isActive && "sidebar-tree-row--selected",
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -320,7 +314,7 @@ export function SortablePageRow({
         >
           <div
             className="flex items-center h-full flex-1 min-w-0"
-            style={{ paddingLeft: depth * TREE_INDENT }}
+            style={{ paddingLeft: depth * TREE_INDENT + ROW_PADDING_LEFT }}
           >
             {hideExpandArrows ? null : (
               <button
@@ -451,7 +445,7 @@ export function SortablePageRow({
               )}
             >
               {isNestDropTarget && (
-                <span className="mr-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-primary bg-[hsl(var(--primary)/0.14)]">
+                <span className="sidebar-tree-nest-label mr-1 rounded px-1.5 py-0.5 text-[10px] font-medium">
                   松手移入子页面
                 </span>
               )}
@@ -468,6 +462,46 @@ export function SortablePageRow({
           )}
         </div>
       </SidebarContextMenu>
+    </div>
+  );
+}
+
+export function TreeDragOverlay({
+  item,
+  width,
+  isLocalNotebook,
+}: {
+  item: FlatTreeItem;
+  width: number;
+  isLocalNotebook: boolean;
+}) {
+  const title = getPageTitle(item.page);
+
+  return (
+    <div
+      className="sidebar-tree-drag-overlay"
+      style={{ width: Math.max(160, Math.min(width - 18, 320)) }}
+      aria-hidden="true"
+    >
+      <span className="sidebar-tree-drag-overlay-leading">
+        {item.hasChildren ? (
+          <LucideIcons.ChevronRight className="h-3.5 w-3.5" />
+        ) : (
+          <span className="h-3.5 w-3.5" />
+        )}
+      </span>
+      <span className="sidebar-tree-drag-overlay-icon">
+        <LocalFileIcon
+          page={item.page}
+          iconName={item.page.icon}
+          isLocalFolder={isLocalNotebook}
+          hasChildren={item.hasChildren}
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        {title}
+      </span>
+      <LucideIcons.GripVertical className="sidebar-tree-drag-overlay-grip h-4 w-4 shrink-0" />
     </div>
   );
 }

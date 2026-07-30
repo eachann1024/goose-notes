@@ -22,7 +22,7 @@ import {
   LOCAL_FOLDER_TERMINAL_CANDIDATES,
   type LocalFolderOpenAppCandidate,
 } from "@/lib/local-folder-open-apps";
-import { shell } from "@/lib/utools/shell";
+import { getCachedAvailableOpenApps, shell } from "@/lib/utools/shell";
 import { fs } from "@/lib/utools/fs";
 import {
   scanUnreferencedLocalAssets,
@@ -489,13 +489,19 @@ export function SettingsLocalFolder({
 }: SettingsLocalFolderProps) {
   const [fileManagerOptions, setFileManagerOptions] = useState<
     LocalFolderOpenAppCandidate[]
-  >([]);
+  >(() => {
+    const cached = getCachedAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES);
+    return cached ? cached.filter((item) => item.id !== "finder") : [];
+  });
   const [editorOptions, setEditorOptions] = useState<
     LocalFolderOpenAppCandidate[]
-  >([]);
+  >(() => getCachedAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES) ?? []);
   const [terminalOptions, setTerminalOptions] = useState<
     LocalFolderOpenAppCandidate[]
-  >([]);
+  >(() => {
+    const cached = getCachedAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES);
+    return cached ? cached.filter((item) => item.id !== "terminal") : [];
+  });
   const systemDefaultLabels = useMemo(() => getSystemDefaultLabels(), []);
   const hiddenFoldersRefreshNonceRef = useRef(0);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
@@ -626,6 +632,33 @@ export function SettingsLocalFolder({
   useEffect(() => {
     let cancelled = false;
 
+    const applyAvailableApps = (
+      fileManagers: LocalFolderOpenAppCandidate[],
+      editors: LocalFolderOpenAppCandidate[],
+      terminals: LocalFolderOpenAppCandidate[],
+    ) => {
+      setFileManagerOptions(
+        fileManagers.filter((item) => item.id !== "finder"),
+      );
+      setEditorOptions(editors);
+      setTerminalOptions(terminals.filter((item) => item.id !== "terminal"));
+    };
+
+    const cachedFileManagers = getCachedAvailableOpenApps(
+      LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
+    );
+    const cachedEditors = getCachedAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES);
+    const cachedTerminals = getCachedAvailableOpenApps(
+      LOCAL_FOLDER_TERMINAL_CANDIDATES,
+    );
+
+    if (cachedFileManagers && cachedEditors && cachedTerminals) {
+      applyAvailableApps(cachedFileManagers, cachedEditors, cachedTerminals);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const loadAvailableApps = async () => {
       const [fileManagers, editors, terminals] = await Promise.all([
         shell.listAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES),
@@ -634,11 +667,7 @@ export function SettingsLocalFolder({
       ]);
 
       if (cancelled) return;
-      setFileManagerOptions(
-        fileManagers.filter((item) => item.id !== "finder"),
-      );
-      setEditorOptions(editors);
-      setTerminalOptions(terminals.filter((item) => item.id !== "terminal"));
+      applyAvailableApps(fileManagers, editors, terminals);
     };
 
     void loadAvailableApps();

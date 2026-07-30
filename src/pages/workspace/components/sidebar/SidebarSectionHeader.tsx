@@ -32,7 +32,7 @@ export function SidebarSectionHeader({
           className={cn(
             "group/page-tab relative inline-flex h-6 min-w-[42px] items-center justify-center overflow-hidden rounded-[7px] px-2 py-1 transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
             view === "pages"
-              ? "bg-[var(--goose-interactive-selected)] text-foreground"
+              ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
           aria-pressed={view === "pages"}
@@ -69,7 +69,7 @@ export function SidebarSectionHeader({
           className={cn(
             "rounded-[7px] px-2 py-1 transition-colors",
             view === "outline"
-              ? "bg-[var(--goose-interactive-selected)] text-foreground"
+              ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
           aria-pressed={view === "outline"}

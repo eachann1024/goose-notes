@@ -145,7 +145,7 @@ export function TrashList({
                   className={cn(
                     "group relative flex w-full items-center gap-2 rounded-[8px] px-4 text-left transition-colors duration-200 overflow-hidden text-sm font-medium",
                     highlightedPageId === page.id
-                      ? "bg-[var(--goose-interactive-selected)] text-foreground"
+                      ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                       : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
                   )}
                   onClick={() => {

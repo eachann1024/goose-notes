@@ -18,11 +18,6 @@ import { HistoryVersionList } from "../history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 
-const SIDEBAR_SIDE_GAP_LEFT = 0;
-const SIDEBAR_SIDE_GAP_RIGHT = 9;
-const SIDEBAR_CONTENT_WIDTH_OFFSET =
-  SIDEBAR_SIDE_GAP_LEFT + SIDEBAR_SIDE_GAP_RIGHT;
-
 type SidebarView = "pages" | "trash" | "outline";
 type SidebarDragGuideMode = "sort" | "nest-ready";
 
@@ -77,8 +72,8 @@ export function Sidebar({
     null,
   );
 
-  // 历史模式：临时整体替换 Sidebar 中段（页面树/大纲），但 Header/Footer 与
-  // currentView/scrollAreaRef 等 state 保持，退出后页面树原状回到上次的滚动与选中。
+  // 历史模式：整块侧栏主体替换为页面历史模块（隐藏笔记本 Header），
+  // Footer 与 currentView/scrollAreaRef 等 state 保持，退出后页面树回到上次状态。
   const historyActivePageId = useHistoryView((s) => s.active);
   const exitHistoryView = useHistoryView((s) => s.exit);
   const inHistoryMode =
@@ -229,81 +224,86 @@ export function Sidebar({
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
-        <SidebarHeader
-          dragGuide={dragGuide}
-          selectedPageId={selectedPageId}
-          onOpenPinnedPage={() => {
-            setCurrentView("pages");
-            setShowSettings(false);
-          }}
-        />
-
         {inHistoryMode ? (
+          // 历史模式：整块侧栏主体交给页面历史模块，不露出笔记本切换器。
           <HistoryVersionList />
-        ) : currentView === "trash" ? (
-          <div className="flex-1 overflow-hidden">
-            <TrashList
-              showHeader={false}
-              itemHeight={trashItemHeight}
-              selectedPageId={selectedTrashPageId}
-              onSelectPage={setSelectedTrashPageId}
-            />
-          </div>
         ) : (
           <>
-            <FavoritesSection
-              width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
-              rowHeight={rowHeight}
-              itemHeight={itemHeight}
-              onCreatePage={handleCreatePage}
+            <SidebarHeader
+              dragGuide={dragGuide}
+              selectedPageId={selectedPageId}
+              onOpenPinnedPage={() => {
+                setCurrentView("pages");
+                setShowSettings(false);
+              }}
             />
 
-            <div className="flex-1 min-h-0 flex flex-col">
-              <div className="mt-1 shrink-0">
-                <SidebarSectionHeader
-                  title={isLocalFolder ? "本地" : "页面"}
-                  onSearch={handleSearch}
-                  onCreate={handleCreatePage}
-                  createTitle={isLocalFolder ? "新建文件" : "新建页面"}
-                  view={currentView}
-                  onSwitchToPages={() => {
-                    if (currentView === "pages" && activeNotebookId) {
-                      setExpanded(activeNotebookId, []);
-                    } else {
-                      setCurrentView("pages");
-                    }
-                  }}
-                  onSwitchToOutline={() => {
-                    closeNotebookAiIfFullscreen();
-                    setCurrentView("outline");
-                  }}
+            {currentView === "trash" ? (
+              <div className="flex-1 overflow-hidden">
+                <TrashList
+                  showHeader={false}
+                  itemHeight={trashItemHeight}
+                  selectedPageId={selectedTrashPageId}
+                  onSelectPage={setSelectedTrashPageId}
                 />
               </div>
-              {currentView === "pages" ? (
-                <div
-                  ref={scrollAreaRef}
-                  className="pl-0 pr-[9px] flex-1 min-h-0 flex flex-col"
-                >
-                  <SidebarMainTree
-                    activeNotebookId={activeNotebookId}
-                    selectedPageId={selectedPageId}
-                    width={width - SIDEBAR_CONTENT_WIDTH_OFFSET}
-                    rowHeight={rowHeight}
-                    itemHeight={itemHeight}
-                    viewportHeight={scrollAreaHeight}
-                    onCreatePage={handleCreatePage}
-                  />
+            ) : (
+              <>
+                <FavoritesSection
+                  width={width}
+                  rowHeight={rowHeight}
+                  itemHeight={itemHeight}
+                  onCreatePage={handleCreatePage}
+                />
+
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <div className="mt-1 shrink-0">
+                    <SidebarSectionHeader
+                      title={isLocalFolder ? "本地" : "页面"}
+                      onSearch={handleSearch}
+                      onCreate={handleCreatePage}
+                      createTitle={isLocalFolder ? "新建文件" : "新建页面"}
+                      view={currentView}
+                      onSwitchToPages={() => {
+                        if (currentView === "pages" && activeNotebookId) {
+                          setExpanded(activeNotebookId, []);
+                        } else {
+                          setCurrentView("pages");
+                        }
+                      }}
+                      onSwitchToOutline={() => {
+                        closeNotebookAiIfFullscreen();
+                        setCurrentView("outline");
+                      }}
+                    />
+                  </div>
+                  {currentView === "pages" ? (
+                    <div
+                      ref={scrollAreaRef}
+                      className="pl-0 flex-1 min-h-0 flex flex-col"
+                    >
+                      <SidebarMainTree
+                        activeNotebookId={activeNotebookId}
+                        selectedPageId={selectedPageId}
+                        width={width}
+                        rowHeight={rowHeight}
+                        itemHeight={itemHeight}
+                        viewportHeight={scrollAreaHeight}
+                        onCreatePage={handleCreatePage}
+                      />
+                    </div>
+                  ) : (
+                    <div className="pl-0 pr-[9px] flex-1 min-h-0 overflow-hidden">
+                      <SidebarOutline
+                        editorRef={editorRef}
+                        scrollContainerRef={scrollContainerRef}
+                        pageId={activePageId}
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="pl-0 pr-[9px] flex-1 min-h-0 overflow-hidden">
-                  <SidebarOutline
-                    editorRef={editorRef}
-                    scrollContainerRef={scrollContainerRef}
-                    pageId={activePageId}
-                  />
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </>
         )}
       </div>

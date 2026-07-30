@@ -2,6 +2,12 @@ import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsShortcuts } from "./settings/SettingsShortcuts";
 import { SettingsLocalFolder } from "./SettingsLocalFolder";
+import {
+  LOCAL_FOLDER_EDITOR_CANDIDATES,
+  LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
+  LOCAL_FOLDER_TERMINAL_CANDIDATES,
+} from "@/lib/local-folder-open-apps";
+import { shell } from "@/lib/utools/shell";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
@@ -40,6 +46,7 @@ import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
 import { UToolsAdapter } from "@/lib/utools";
 import type { ExportOptions } from "@/lib/export";
 import { uToolsStorage as dataStorage } from "@/lib/storage";
+import * as LucideIcons from "lucide-react";
 import { ExternalLink } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
@@ -105,13 +112,51 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const prewarmLocalFolderOpenApps = () => {
+      if (cancelled) return;
+      void Promise.all([
+        shell.listAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES),
+        shell.listAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES),
+        shell.listAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES),
+      ]);
+    };
+
+    const schedule =
+      typeof window !== "undefined" && typeof window.requestIdleCallback === "function"
+        ? () => {
+            idleId = window.requestIdleCallback(() => {
+              prewarmLocalFolderOpenApps();
+            });
+          }
+        : () => {
+            timeoutId = setTimeout(prewarmLocalFolderOpenApps, 0);
+          };
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [open]);
+
   const {
     theme,
     setTheme,
     codeStyle,
     setCodeStyle,
-    globalEditorFullWidth,
-    setGlobalEditorFullWidth,
     tableEvenColumnWidth,
     setTableEvenColumnWidth,
     searchProviders,
@@ -124,6 +169,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     ai,
     setOpenSearchInUtools,
     setAIEnabled,
+    setAIReadGlobalPrompt,
+    setAIReadLocalSkills,
     setAISelectedModelId,
     saveAICustomConfig,
     setUToolsWindowHeight,
@@ -169,8 +216,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setTheme: s.setTheme,
       codeStyle: s.codeStyle,
       setCodeStyle: s.setCodeStyle,
-      globalEditorFullWidth: s.globalEditorFullWidth,
-      setGlobalEditorFullWidth: s.setGlobalEditorFullWidth,
       tableEvenColumnWidth: s.tableEvenColumnWidth,
       setTableEvenColumnWidth: s.setTableEvenColumnWidth,
       searchProviders: s.searchProviders,
@@ -183,6 +228,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       ai: s.ai,
       setOpenSearchInUtools: s.setOpenSearchInUtools,
       setAIEnabled: s.setAIEnabled,
+      setAIReadGlobalPrompt: s.setAIReadGlobalPrompt,
+      setAIReadLocalSkills: s.setAIReadLocalSkills,
       setAISelectedModelId: s.setAISelectedModelId,
       saveAICustomConfig: s.saveAICustomConfig,
       setUToolsWindowHeight: s.setUToolsWindowHeight,
@@ -758,8 +805,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setTheme={setTheme}
                 codeStyle={codeStyle}
                 setCodeStyle={setCodeStyle}
-                globalEditorFullWidth={globalEditorFullWidth}
-                setGlobalEditorFullWidth={setGlobalEditorFullWidth}
                 tableEvenColumnWidth={tableEvenColumnWidth}
                 setTableEvenColumnWidth={setTableEvenColumnWidth}
                 customFonts={customFonts}
@@ -779,6 +824,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 ai={ai}
                 enabled={ai.enabled}
                 setEnabled={setAIEnabled}
+                setReadGlobalPrompt={setAIReadGlobalPrompt}
+                setReadLocalSkills={setAIReadLocalSkills}
                 selectedModelId={ai.selectedModelId}
                 setSelectedModelId={setAISelectedModelId}
                 saveCustomConfig={saveAICustomConfig}

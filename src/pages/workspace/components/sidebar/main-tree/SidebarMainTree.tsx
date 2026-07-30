@@ -12,7 +12,6 @@ import type { Page } from "@/types";
 import { toast } from "@/components/ui/sonner";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
-import { useTabs } from "@/stores/useTabs";
 import {
   useSidebarView,
   selectExpandedIds,
@@ -34,6 +33,7 @@ import {
   openPageFromSidebar,
   shouldSuppressSidebarSelect,
 } from "@/lib/sidebarPageNavigation";
+import { isPageTitleAutoFocusProtected } from "@/lib/page-title-focus";
 import "./main-tree.css";
 
 interface SidebarMainTreeProps {
@@ -64,6 +64,11 @@ export function SidebarMainTree({
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
   const [pendingFolder, setPendingFolder] = useState<Page | null>(null);
+  const [pendingTreeSelection, setPendingTreeSelection] = useState<{
+    notebookId: string;
+    pageId: string;
+    previousHighlightedPageId: string | null;
+  } | null>(null);
 
   const notebook = activeNotebookId
     ? useNotebooks.getState().notebooks[activeNotebookId]
@@ -106,6 +111,10 @@ export function SidebarMainTree({
 
   const highlightedPageId =
     selectedPageId !== undefined ? selectedPageId : activePageId;
+  const pendingSelectedId =
+    pendingTreeSelection?.notebookId === activeNotebookId
+      ? pendingTreeSelection.pageId
+      : null;
 
   const startCreateLocalFolder = useCallback(
     (parentId?: string) => {
@@ -131,7 +140,6 @@ export function SidebarMainTree({
         isFolder: true,
         localPendingCreate: "folder",
         isLocked: false,
-        isFullWidth: false,
         fontSize: "default",
         fontFamily: "default",
         createdAt: now,
@@ -230,11 +238,13 @@ export function SidebarMainTree({
 
   const viewState = useMemo(() => {
     const highlightSelection =
-      highlightedPageId && items[highlightedPageId]
-        ? [highlightedPageId]
-        : selectedId
-          ? [selectedId]
-          : [];
+      pendingSelectedId && items[pendingSelectedId]
+        ? [pendingSelectedId]
+        : highlightedPageId && items[highlightedPageId]
+          ? [highlightedPageId]
+          : selectedId
+            ? [selectedId]
+            : [];
     return {
       main: {
         expandedItems: expandedIds,
@@ -242,7 +252,31 @@ export function SidebarMainTree({
         focusedItem: (focusedId ?? undefined) as TreeItemIndex | undefined,
       },
     };
-  }, [expandedIds, focusedId, selectedId, highlightedPageId, items]);
+  }, [
+    expandedIds,
+    focusedId,
+    selectedId,
+    highlightedPageId,
+    pendingSelectedId,
+    items,
+  ]);
+
+  useEffect(() => {
+    if (!pendingTreeSelection) return;
+    if (pendingTreeSelection.notebookId !== activeNotebookId) {
+      setPendingTreeSelection(null);
+      return;
+    }
+    // 页面切换会在标签激活后异步写入 activePageId。树先沿用本次点击的选择；
+    // 目标页落定后撤掉临时态。若期间跳到了第三个页面，则以新导航为准。
+    if (
+      highlightedPageId === pendingTreeSelection.pageId ||
+      (highlightedPageId !== pendingTreeSelection.previousHighlightedPageId &&
+        highlightedPageId !== pendingTreeSelection.pageId)
+    ) {
+      setPendingTreeSelection(null);
+    }
+  }, [activeNotebookId, highlightedPageId, pendingTreeSelection]);
 
   useEffect(() => {
     if (!expandPageId || !activeNotebookId) return;
@@ -265,6 +299,7 @@ export function SidebarMainTree({
       setExpanded(activeNotebookId, merged);
     }
     const timer = window.setTimeout(() => {
+      if (isPageTitleAutoFocusProtected(expandPageId)) return;
       treeRef.current?.focusItem(expandPageId);
     }, 80);
     setExpandPageId(null);
@@ -300,6 +335,7 @@ export function SidebarMainTree({
       setExpanded(activeNotebookId, merged);
     }
     const timer = window.setTimeout(() => {
+      if (isPageTitleAutoFocusProtected(activePageId)) return;
       treeRef.current?.focusItem(activePageId);
     }, 80);
     return () => window.clearTimeout(timer);
@@ -329,6 +365,22 @@ export function SidebarMainTree({
       expandedIds,
       localDirectoryHasChildren,
     ],
+  );
+
+  const activateLocalDirectory = useCallback(
+    (pageId: string, mode: "preview" | "permanent") => {
+      if (!activeNotebookId || !isLocalFolderDirectoryPage(pageId)) return;
+      // activePageId 会等标签切换链完成后才更新；先建立本次点击的即时视觉选择，
+      // 避免展开挂载子项时旧 activePageId 让旧子项闪现高亮。
+      setPendingTreeSelection({
+        notebookId: activeNotebookId,
+        pageId,
+        previousHighlightedPageId: highlightedPageId ?? null,
+      });
+      setSelectedView(activeNotebookId, pageId);
+      openPageFromSidebar(pageId, mode);
+    },
+    [activeNotebookId, highlightedPageId, setSelectedView],
   );
 
   if (shouldShowLocalSkeleton) {
@@ -533,7 +585,9 @@ export function SidebarMainTree({
               if (!page) return;
               e.preventDefault();
               e.stopPropagation();
-              if (isLocalFolderDirectoryPage(pageId)) return;
+              if (isLocalFolderDirectoryPage(pageId)) {
+                toggleLocalDirectory(pageId);
+              }
               openPageFromSidebar(pageId, "permanent");
             }}
           >
@@ -584,7 +638,6 @@ export function SidebarMainTree({
                 if (!verticalKeyboardNavigationRef.current) return;
                 verticalKeyboardNavigationRef.current = false;
                 if (pageId === "root" || !pages[pageId]) return;
-                if (isLocalFolderDirectoryPage(pageId)) return;
                 setSelectedView(activeNotebookId, pageId);
                 openPageFromSidebar(pageId, "preview");
               }}
@@ -601,7 +654,6 @@ export function SidebarMainTree({
                 if (!page) return;
                 if (isLocalFolderDirectoryPage(last)) {
                   toggleLocalDirectory(last);
-                  return;
                 }
                 const { meta, ctrl } = lastClickModRef.current;
                 if (meta || ctrl) {
@@ -615,7 +667,6 @@ export function SidebarMainTree({
                 if (id === "root") return;
                 if (isLocalFolderDirectoryPage(id)) {
                   toggleLocalDirectory(id);
-                  return;
                 }
                 openPageFromSidebar(id, "preview");
               }}
@@ -626,6 +677,7 @@ export function SidebarMainTree({
                   onCreateLocalFolder: startCreateLocalFolder,
                   onCommitPendingFolder: commitPendingFolder,
                   onCancelPendingFolder: cancelPendingFolder,
+                  onActivateLocalDirectory: activateLocalDirectory,
                 })
               }
               renderItemArrow={renderItemArrow}

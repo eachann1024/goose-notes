@@ -356,7 +356,7 @@ export function SidebarHeader({
                               "animate-in fade-in-0 zoom-in-95",
                               // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
                               isActive
-                                ? "bg-[var(--goose-interactive-selected)] text-foreground shadow-sm"
+                                ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm"
                                 : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}

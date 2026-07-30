@@ -126,7 +126,9 @@ export function InlineOverflowRevealText({
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute left-0 top-0 z-40 whitespace-nowrap",
-            active ? "text-foreground" : "text-foreground dark:text-foreground/92",
+            active
+              ? "text-[var(--goose-interactive-selected-fg)]"
+              : "text-foreground dark:text-foreground/92",
           )}
         >
           {revealText}
