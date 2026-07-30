@@ -21,7 +21,6 @@ interface SettingsShortcutsProps {
   resetAppShortcuts: () => void
   singleTabMode: boolean
 }
-
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]"
 
@@ -39,6 +38,18 @@ const FIXED_SHORTCUT_VALUES = [
   "Mod+0",
   "F3",
   "Shift+F3",
+  // 浏览器/编辑器固定行为不可被自定义动作覆盖。
+  "Mod+S",
+  "Mod+B",
+  "Mod+I",
+  "Mod+U",
+  "Mod+E",
+  "Mod+K",
+  "Mod+Shift+S",
+  "Mod+A",
+  "Mod+Z",
+  "Mod+Shift+Z",
+  "Mod+Y",
 ]
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -76,18 +87,19 @@ export function getAllConfiguredShortcuts(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   excludeId: string,
+  isMac = isMacPlatform(),
 ): string[] {
   const shortcuts = FIXED_SHORTCUT_VALUES.map((shortcut) =>
-    normalizeShortcutForConflict(shortcut),
+    normalizeShortcutForConflict(shortcut, isMac),
   )
   for (const [id, s] of Object.entries(appShortcuts)) {
-    if (id !== excludeId && s) shortcuts.push(normalizeShortcutForConflict(s))
+    if (id !== excludeId && s) shortcuts.push(normalizeShortcutForConflict(s, isMac))
   }
   if (excludeId !== "close-tab" && closeTabShortcut) {
-    shortcuts.push(normalizeShortcutForConflict(closeTabShortcut))
+    shortcuts.push(normalizeShortcutForConflict(closeTabShortcut, isMac))
   }
   if (excludeId !== "search-panel-close" && searchPanelCloseShortcut) {
-    shortcuts.push(normalizeShortcutForConflict(searchPanelCloseShortcut))
+    shortcuts.push(normalizeShortcutForConflict(searchPanelCloseShortcut, isMac))
   }
   return shortcuts
 }
@@ -149,6 +161,17 @@ const FIXED_SHORTCUTS = [
   { label: "重置字号", shortcut: "Mod+0" },
   { label: "继续查找（F3）", shortcut: "F3" },
   { label: "反向继续查找", shortcut: "Shift+F3" },
+  { label: "手动保存", shortcut: "Mod+S" },
+  { label: "加粗", shortcut: "Mod+B" },
+  { label: "斜体", shortcut: "Mod+I" },
+  { label: "下划线", shortcut: "Mod+U" },
+  { label: "行内代码", shortcut: "Mod+E" },
+  { label: "链接", shortcut: "Mod+K" },
+  { label: "删除线", shortcut: "Mod+Shift+S" },
+  { label: "全选", shortcut: "Mod+A" },
+  { label: "撤销", shortcut: "Mod+Z" },
+  { label: "重做", shortcut: "Mod+Shift+Z" },
+  { label: "重做（Windows）", shortcut: "Mod+Y" },
 ]
 
 function KbdShortcut({ shortcut }: { shortcut: string }) {

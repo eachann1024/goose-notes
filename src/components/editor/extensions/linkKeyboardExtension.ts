@@ -2,6 +2,7 @@ import { createExtension } from "@blocknote/core";
 import { getEditorPlatform } from "@/components/editor/platform/context";
 import type { EditorSettings } from "@/components/editor/platform/hostContext";
 import type { MutableRefObject } from "react";
+import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 
 type LinkShortcutEvent = Pick<
   KeyboardEvent,
@@ -13,12 +14,17 @@ type LinkShortcutEvent = Pick<
   | "shiftKey"
   | "repeat"
   | "defaultPrevented"
->;
+> &
+  Partial<Pick<KeyboardEvent, "isComposing" | "keyCode" | "which">> & {
+    nativeEvent?: Pick<KeyboardEvent, "isComposing" | "keyCode" | "which">;
+  };
 
 /** uTools Windows WebView 中不依赖 ProseMirror 缓存的平台判断，直接匹配实际按键。 */
 export function isPrimaryLinkShortcutEvent(event: LinkShortcutEvent) {
   return (
     !event.defaultPrevented &&
+    !isImeKeyboardEvent(event.nativeEvent ?? {}) &&
+    !isImeKeyboardEvent(event) &&
     !event.repeat &&
     !event.altKey &&
     !event.shiftKey &&
@@ -35,7 +41,7 @@ function normalizeExternalUrl(url: string): string {
 }
 
 export const createGooseLinkKeyboardExtension = (
-  settingsRef: MutableRefObject<EditorSettings>
+  settingsRef: MutableRefObject<EditorSettings>,
 ) =>
   createExtension({
     key: "goose-link-keyboard",

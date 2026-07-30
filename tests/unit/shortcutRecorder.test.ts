@@ -29,14 +29,20 @@ function shortcutEvent(init: {
 }
 
 test("shortcut recorder supports Space and defers modifier-only input", () => {
-  expect(getShortcutFromKeyEvent(shortcutEvent({ key: " ", code: "Space" }))).toBe("Space");
+  expect(
+    getShortcutFromKeyEvent(shortcutEvent({ key: " ", code: "Space" })),
+  ).toBe("Space");
   expect(
     getShortcutFromKeyEvent(
       shortcutEvent({ key: " ", code: "Space", metaKey: true, shiftKey: true }),
     ),
   ).toBe("Meta+Shift+Space");
-  expect(getShortcutFromKeyEvent(shortcutEvent({ key: "Meta", metaKey: true }))).toBe("");
-  expect(getShortcutFromKeyEvent(shortcutEvent({ key: "Control", ctrlKey: true }))).toBe("");
+  expect(
+    getShortcutFromKeyEvent(shortcutEvent({ key: "Meta", metaKey: true })),
+  ).toBe("");
+  expect(
+    getShortcutFromKeyEvent(shortcutEvent({ key: "Control", ctrlKey: true })),
+  ).toBe("");
 });
 
 test("shortcut recorder keeps the plus key unambiguous", () => {
@@ -68,6 +74,25 @@ test("configured shortcut conflicts include fixed shortcuts", () => {
   expect(configured).toContain(normalizeShortcutForConflict("Ctrl+Tab"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+G"));
   expect(configured).toContain(normalizeShortcutForConflict("Shift+F3"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+S"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+B"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+K"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Z"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+Z"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Y"));
+});
+
+test("Windows reserves editor and save shortcuts without blocking unrelated shortcuts", () => {
+  const configured = getAllConfiguredShortcuts({}, "", "", "unused", false);
+  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+B", false));
+  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+K", false));
+  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+S", false));
+  expect(configured).not.toContain(
+    normalizeShortcutForConflict("Ctrl+D", false),
+  );
+  expect(configured).not.toContain(
+    normalizeShortcutForConflict("Alt+K", false),
+  );
 });
 
 test("fixed shortcuts adapt to the current operating system", () => {

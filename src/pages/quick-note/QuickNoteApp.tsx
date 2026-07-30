@@ -35,7 +35,11 @@ import { quickNoteWindow } from "@/lib/utools/quickNoteWindow";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { QuickNoteSlotSwitcher } from "./QuickNoteSlotSwitcher";
-import { getQuickNoteSlotShortcut } from "./quickNoteShortcuts";
+import {
+  getQuickNoteSlotShortcut,
+  shouldQuickNoteEditableTargetOwnShortcut,
+} from "./quickNoteShortcuts";
+import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { formatShortcut, getPlatformKind } from "@/lib/utils";
 
 const POSITION_POLL_MS = 120;
@@ -306,8 +310,13 @@ export function QuickNoteApp() {
   // Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y 重做；Cmd/Ctrl +/- 缩放编辑界面（0 复位）。
   useEffect(() => {
     const onShortcutKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+      if (e.defaultPrevented || isImeKeyboardEvent(e)) return;
       if (e.key === "Escape") return;
+      if (
+        shouldQuickNoteEditableTargetOwnShortcut(e.target as HTMLElement | null)
+      ) {
+        return;
+      }
 
       const shortcutSlot = getQuickNoteSlotShortcut(e);
       if (shortcutSlot !== null) {
@@ -360,12 +369,7 @@ export function QuickNoteApp() {
       }
     };
     const onEscapeKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key !== "Escape" ||
-        e.defaultPrevented ||
-        e.isComposing ||
-        e.keyCode === 229
-      ) {
+      if (e.key !== "Escape" || e.defaultPrevented || isImeKeyboardEvent(e)) {
         return;
       }
       e.preventDefault();
@@ -472,7 +476,12 @@ export function QuickNoteApp() {
           onBlur={() => finishRename(true)}
           onKeyDown={(event) => {
             // 中文输入法按 Enter 确认候选词时不能提前提交；keyCode 229 兼容旧 Chromium。
-            if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+            if (
+              isImeKeyboardEvent(event.nativeEvent) ||
+              isImeKeyboardEvent(event)
+            ) {
+              return;
+            }
             if (event.key === "Enter") {
               event.preventDefault();
               event.stopPropagation();

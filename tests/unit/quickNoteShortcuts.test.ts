@@ -1,5 +1,8 @@
 import { expect, test } from "playwright/test";
-import { getQuickNoteSlotShortcut } from "../../src/pages/quick-note/quickNoteShortcuts";
+import {
+  getQuickNoteSlotShortcut,
+  shouldQuickNoteEditableTargetOwnShortcut,
+} from "../../src/pages/quick-note/quickNoteShortcuts";
 
 function shortcutEvent(
   overrides: Partial<Parameters<typeof getQuickNoteSlotShortcut>[0]>,
@@ -68,4 +71,48 @@ test("existing Cmd/Ctrl slot shortcuts remain available", () => {
       true,
     ),
   ).toBe(3);
+});
+
+test("native rename controls own undo, redo, and slot shortcuts", () => {
+  for (const tagName of ["INPUT", "TEXTAREA", "SELECT"]) {
+    expect(
+      shouldQuickNoteEditableTargetOwnShortcut({
+        tagName,
+        isContentEditable: false,
+      }),
+    ).toBe(true);
+  }
+  expect(
+    shouldQuickNoteEditableTargetOwnShortcut({
+      tagName: "DIV",
+      isContentEditable: true,
+    }),
+  ).toBe(true);
+});
+
+test("native controls keep their shortcuts even when nested in the editor", () => {
+  expect(
+    shouldQuickNoteEditableTargetOwnShortcut({
+      tagName: "INPUT",
+      isContentEditable: false,
+      closest: (selector) => (selector === ".bn-editor" ? {} : null),
+    }),
+  ).toBe(true);
+});
+
+test("quick-note editor body keeps persistent undo and slot shortcuts", () => {
+  expect(
+    shouldQuickNoteEditableTargetOwnShortcut({
+      tagName: "DIV",
+      isContentEditable: true,
+      closest: (selector) => (selector === ".bn-editor" ? {} : null),
+    }),
+  ).toBe(false);
+  expect(
+    shouldQuickNoteEditableTargetOwnShortcut({
+      tagName: "SPAN",
+      isContentEditable: false,
+      closest: (selector) => (selector === ".bn-editor" ? {} : null),
+    }),
+  ).toBe(false);
 });

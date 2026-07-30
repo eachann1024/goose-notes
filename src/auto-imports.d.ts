@@ -434,6 +434,7 @@ declare global {
   const shouldIgnoreLocalRelativePath: typeof import('./lib/local-folder-scanner').shouldIgnoreLocalRelativePath
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
+  const shouldSkipAppHotkeyEvent: typeof import('./hooks/useImeInput').shouldSkipAppHotkeyEvent
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
   const shouldUploadViaImageStorage: typeof import('./components/editor/utils/pasteClipboardImage').shouldUploadViaImageStorage
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText

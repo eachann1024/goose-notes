@@ -16,6 +16,10 @@ import {
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import {
+  isImeKeyboardEvent,
+  shouldSkipAppHotkeyEvent,
+} from "@/hooks/useImeInput";
 
 type HotkeyEntry = {
   id: string;
@@ -23,6 +27,7 @@ type HotkeyEntry = {
   match: (event: KeyboardEvent) => boolean;
   when?: (event: KeyboardEvent) => boolean;
   handler: (event: KeyboardEvent) => void;
+  allowRepeat?: boolean;
 };
 
 export function useAppHotkeys() {
@@ -114,6 +119,7 @@ export function useAppHotkeys() {
       // F3 → editor find navigation
       {
         id: "find-nav-f3",
+        allowRepeat: true,
         match: (event) => event.key === "F3",
         handler: (event) => {
           event.preventDefault();
@@ -132,9 +138,7 @@ export function useAppHotkeys() {
           !event.repeat &&
           !event.metaKey &&
           !event.shiftKey &&
-          (event.key === "," ||
-            event.key === "，" ||
-            event.code === "Comma") &&
+          (event.key === "," || event.key === "，" || event.code === "Comma") &&
           (fixedShortcuts.openSettings === "Ctrl+,"
             ? event.ctrlKey && !event.altKey
             : event.altKey && !event.ctrlKey),
@@ -201,6 +205,7 @@ export function useAppHotkeys() {
       // so we cannot use matchShortcut('Mod+G') (it would reject cmd+shift+g).
       {
         id: "editor-find-nav-g",
+        allowRepeat: true,
         match: (event) =>
           (event.metaKey || event.ctrlKey) &&
           !event.altKey &&
@@ -391,7 +396,10 @@ export function useAppHotkeys() {
           if ("button" in event && (event.button === 3 || event.button === 4)) {
             return true;
           }
-          return !isInEditableTarget || shortcutHasModifier(closeTabShortcutRef.current);
+          return (
+            !isInEditableTarget ||
+            shortcutHasModifier(closeTabShortcutRef.current)
+          );
         },
         handler: (event) => {
           event.preventDefault();
@@ -499,11 +507,16 @@ export function useAppHotkeys() {
         return closeTabShortcutRef.current;
       }
       return entry.shortcutId
-        ? appShortcutsRef.current[entry.shortcutId] ?? ""
+        ? (appShortcutsRef.current[entry.shortcutId] ?? "")
         : "";
     };
 
     const dispatcher = (event: KeyboardEvent) => {
+      if (isImeKeyboardEvent(event)) {
+        pendingModifierOnlyEntry = null;
+        return;
+      }
+
       // 快捷键录制输入框内的按键一律放行，否则已配置的快捷键会在
       // capture 阶段被吞掉，导致用户无法重新录制同名/相近的快捷键
       const target = event.target as HTMLElement | null;
@@ -523,6 +536,7 @@ export function useAppHotkeys() {
       }
 
       for (const entry of entries) {
+        if (shouldSkipAppHotkeyEvent(event, entry.allowRepeat)) continue;
         const shortcut = getShortcutForEntry(entry);
         if (
           !getModifierOnlyShortcut(shortcut) ||
@@ -536,6 +550,7 @@ export function useAppHotkeys() {
       }
 
       for (const entry of entries) {
+        if (shouldSkipAppHotkeyEvent(event, entry.allowRepeat)) continue;
         if (!entry.match(event)) continue;
         if (entry.when && !entry.when(event)) continue;
         entry.handler(event);
@@ -547,6 +562,7 @@ export function useAppHotkeys() {
       const entry = pendingModifierOnlyEntry;
       pendingModifierOnlyEntry = null;
       if (!entry) return;
+      if (isImeKeyboardEvent(event)) return;
 
       const target = event.target as HTMLElement | null;
       if (target?.closest?.("[data-shortcut-recorder]")) return;
@@ -576,7 +592,8 @@ export function useAppHotkeys() {
       }
 
       // 搜索面板关闭键由 CommandPalette 自己处理；这里不抢先执行默认导航。
-      if (matchMouseShortcut(event, searchPanelCloseShortcutRef.current)) return;
+      if (matchMouseShortcut(event, searchPanelCloseShortcutRef.current))
+        return;
 
       // 未将侧键分配给其他动作时，保持浏览器式的后退 / 前进体验。
       event.preventDefault();

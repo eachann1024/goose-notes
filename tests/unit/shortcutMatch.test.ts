@@ -103,6 +103,21 @@ test("recorded plus shortcuts can be matched", () => {
   ).toBe(true);
 });
 
+test("navigation bracket shortcuts use physical codes on localized layouts", () => {
+  expect(
+    matchShortcut(
+      keyboardEvent({ key: "å", code: "BracketLeft", ctrlKey: true }),
+      "Mod+[",
+    ),
+  ).toBe(true);
+  expect(
+    matchShortcut(
+      keyboardEvent({ key: "¨", code: "BracketRight", ctrlKey: true }),
+      "Mod+]",
+    ),
+  ).toBe(true);
+});
+
 test("mouse side buttons use stable shortcut names", () => {
   expect(getShortcutFromMouseEvent({ button: 3 })).toBe("MouseBack");
   expect(getShortcutFromMouseEvent({ button: 4 })).toBe("MouseForward");

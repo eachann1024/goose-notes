@@ -25,6 +25,14 @@ export function isImeKeyboardEvent(event: ImeKeyboardEventLike) {
   );
 }
 
+/** 全局快捷键默认忽略输入法组合态和长按重复；连续导航可显式放行 repeat。 */
+export function shouldSkipAppHotkeyEvent(
+  event: ImeKeyboardEventLike & { repeat?: boolean },
+  allowRepeat = false,
+) {
+  return isImeKeyboardEvent(event) || (event.repeat === true && !allowRepeat);
+}
+
 export function isDuplicateCompositionEndChange(
   compositionEndValue: string | null,
   nextValue: string,

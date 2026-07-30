@@ -44,3 +44,23 @@ test("link shortcut uses KeyK when an old WebView reports a localized key", () =
     ),
   ).toBe(true);
 });
+
+test("link shortcut ignores modern and legacy IME keyboard events", () => {
+  expect(
+    isPrimaryLinkShortcutEvent(
+      shortcutEvent({ ctrlKey: true, isComposing: true }),
+    ),
+  ).toBe(false);
+  expect(
+    isPrimaryLinkShortcutEvent(shortcutEvent({ ctrlKey: true, keyCode: 229 })),
+  ).toBe(false);
+  expect(
+    isPrimaryLinkShortcutEvent(shortcutEvent({ ctrlKey: true, which: 229 })),
+  ).toBe(false);
+  expect(
+    isPrimaryLinkShortcutEvent({
+      ...shortcutEvent({ ctrlKey: true }),
+      nativeEvent: { isComposing: true, keyCode: 0, which: 0 },
+    }),
+  ).toBe(false);
+});

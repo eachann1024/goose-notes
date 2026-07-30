@@ -127,5 +127,7 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   let codeKey = "";
   if (/^Key[A-Z]$/.test(code)) codeKey = code.slice(3).toLowerCase();
   else if (/^Digit[0-9]$/.test(code)) codeKey = code.slice(5);
+  else if (code === "BracketLeft") codeKey = "[";
+  else if (code === "BracketRight") codeKey = "]";
   return !!codeKey && codeKey === keyToken;
 }
