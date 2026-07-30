@@ -275,6 +275,23 @@ test("段内 hardBreak 与文本换行转 br", () => {
   ).toContain("<br>");
 });
 
+test("导出时移除编辑器对象替换字符，避免出现 OBJ 标识", () => {
+  const theme = getCardTheme("github-light");
+  const inlineHtml = renderInline(
+    [{ type: "text", text: "AI Agent\uFFFC：", styles: {} }],
+    theme,
+  );
+  const cardHtml = buildStyledHTML({
+    title: "规划\uFFFCRC",
+    blocksHtml: `<p>${inlineHtml}</p>`,
+    theme,
+  });
+
+  expect(inlineHtml).toBe("AI Agent：");
+  expect(cardHtml).toContain("规划RC");
+  expect(cardHtml).not.toContain("\uFFFC");
+});
+
 test("链接 type=link 递归 content 不丢文字", () => {
   const theme = getCardTheme("github-light");
   const html = renderInline(

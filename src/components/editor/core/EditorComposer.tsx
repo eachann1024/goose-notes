@@ -15,11 +15,14 @@ import {
   TableHandlesController,
   useEditorState,
   useExtensionState,
+  type FloatingUIOptions,
 } from "@blocknote/react";
 import {
+  autoUpdate as floatingAutoUpdate,
   flip as floatingFlip,
   offset as floatingOffset,
   shift as floatingShift,
+  size as floatingSize,
 } from "@floating-ui/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -34,8 +37,9 @@ import {
   shouldRenderFormattingToolbar,
 } from "@/components/editor/toolbars/formatting";
 import { FixedFormattingToolbarController } from "@/components/editor/toolbars/formatting/FixedFormattingToolbarController";
-import { AIExtension, AIMenuController } from "@blocknote/xl-ai";
+import { AIExtension } from "@blocknote/xl-ai";
 import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
+import { GooseAIMenuController } from "@/components/editor/ai/GooseAIMenuController";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
@@ -292,28 +296,49 @@ export function EditorComposer({
   const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
   const formattingToolbarOpen =
     !suppressFormattingToolbar &&
-    (formattingToolbarAiActive ||
-      (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed));
+    !formattingToolbarAiActive &&
+    formattingToolbarStoreOpen &&
+    formattingToolbarSelectionAllowed;
 
-  const formattingToolbarFloatingOptions = useMemo(
-    () => ({
+  const formattingToolbarFloatingOptions = useMemo<FloatingUIOptions>(() => {
+    const boundary = editorContainerRef.current ?? undefined;
+    const overflowOptions = { boundary, padding: 8 };
+
+    return {
       useFloatingOptions: {
         open: formattingToolbarOpen,
-        // 默认落在完整选区下方，避免覆盖被选文字或越过正文顶边压到页头。
-        // 底部空间不足时再翻到上方；shift 同时兜住窄窗口与多标签布局的横向边界。
-        placement: "bottom-start" as const,
+        strategy: "fixed" as const,
+        // 默认落在完整选区下方并以选区中点为锚，避免左右对齐操作让工具栏贴边。
+        // 底部空间不足时再翻到上方；边界取编辑器与视口的交集，避免靠边选区溢出。
+        placement: "bottom" as const,
         middleware: [
           floatingOffset(10),
           floatingFlip({
-            fallbackPlacements: ["top-start"],
-            padding: 8,
+            ...overflowOptions,
+            fallbackPlacements: ["top"],
           }),
-          floatingShift({ padding: 8 }),
+          floatingShift(overflowOptions),
+          floatingSize({
+            ...overflowOptions,
+            apply({ availableWidth, elements }) {
+              // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
+              // 写到 Floating UI 外壳，工具栏自身无需依赖新 CSS 特性，兼容旧 uTools 内核。
+              elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+              elements.floating.style.overflowX = "auto";
+            },
+          }),
         ],
+        // 选区是虚拟锚点。段落对齐等事务会改变其 DOM 几何，却不会改变
+        // ProseMirror 的 from/to；逐帧检测可在同一帧布局完成后立即刷新位置。
+        // 同时覆盖滚动、缩放、窗口变化和工具栏自身尺寸变化。
+        whileElementsMounted(reference, floating, update) {
+          return floatingAutoUpdate(reference, floating, update, {
+            animationFrame: true,
+          });
+        },
       },
-    }),
-    [formattingToolbarOpen],
-  );
+    };
+  }, [editorContainerRef, formattingToolbarOpen]);
 
   const slashMenuFloatingOptions = useMemo(
     () =>
@@ -410,6 +435,7 @@ export function EditorComposer({
           <FormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
             floatingUIOptions={formattingToolbarFloatingOptions}
+            portalElement={null}
           />
         )}
         <LinkToolbarController linkToolbar={EditorLinkToolbar} />
@@ -448,7 +474,7 @@ export function EditorComposer({
         />
         {/* 紧凑编辑器构建不挂 AI 菜单。 */}
         {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
-          <AIMenuController aiMenu={GooseAIMenu} />
+          <GooseAIMenuController aiMenu={GooseAIMenu} />
         )}
       </BlockNoteView>
       {linkPopoverOpen && (

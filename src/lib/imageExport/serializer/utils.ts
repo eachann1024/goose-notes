@@ -1,5 +1,15 @@
+const OBJECT_REPLACEMENT_CHARACTER = /\uFFFC/g;
+
+/**
+ * U+FFFC 是编辑器内部用于表示内联原子节点的占位符。它不属于用户文本，
+ * 某些字体会把它绘制成虚线框中的 “OBJ”，因此导出前统一移除。
+ */
+export function stripEditorObjectReplacementCharacters(value: string): string {
+  return value.replace(OBJECT_REPLACEMENT_CHARACTER, "");
+}
+
 export function escapeHtml(value: string): string {
-  return value
+  return stripEditorObjectReplacementCharacters(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

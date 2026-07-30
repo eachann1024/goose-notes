@@ -467,7 +467,7 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
                 {isHeaderRow ? (
                   <DropdownMenuItem
                     onClick={() => handleToggleHeaderRow(false)}
-                    className="bg-[var(--goose-interactive-selected)] text-foreground"
+                    className="bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                   >
                     <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
                     取消标题行

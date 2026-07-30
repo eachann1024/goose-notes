@@ -160,13 +160,16 @@ export function ImageLightbox({
         getImageBlockIdByIndex(editor.document as any[], imageIndex);
       const block = blockId ? editor.getBlock(blockId) : null;
       const blockElement = getImageBlockElement(img, container);
+      const anchorElement = __GOOSE_EDITOR_COMPACT__
+        ? (blockElement ?? img)
+        : img;
 
       setSelectedImage({
         blockId,
         src: getImageSrc(img),
         alt: img.alt || img.getAttribute("alt") || "",
         index: imageIndex,
-        rect: (blockElement ?? img).getBoundingClientRect(),
+        rect: anchorElement.getBoundingClientRect(),
         alignment: getImageAlignmentFromBlock(block),
       });
     },
@@ -351,6 +354,16 @@ export function ImageLightbox({
     await openLightboxAtImage(img);
   }, [editorContainerRef, openLightboxAtImage, selectedImage]);
 
+  const getSelectedImageRect = useCallback(() => {
+    const container = editorContainerRef.current;
+    const current = selectedImageRef.current;
+    if (!container || !current) return null;
+    return (
+      getImageElements(container)[current.index]?.getBoundingClientRect() ??
+      null
+    );
+  }, [editorContainerRef]);
+
   const handleSelectedImageDownload = useCallback(async () => {
     if (!selectedImage) return;
     await downloadImage(selectedImage.src);
@@ -370,6 +383,12 @@ export function ImageLightbox({
           handleSelectedImageZoom={handleSelectedImageZoom}
           handleSelectedImageCopy={handleSelectedImageCopy}
           handleSelectedImageDownload={handleSelectedImageDownload}
+          floatingBoundary={
+            !__GOOSE_EDITOR_COMPACT__ ? editorContainerRef.current : undefined
+          }
+          getReferenceRect={
+            !__GOOSE_EDITOR_COMPACT__ ? getSelectedImageRect : undefined
+          }
         />
       )}
       {slides.length > 0 && (

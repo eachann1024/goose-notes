@@ -6,7 +6,16 @@ import {
   Download,
   Maximize2,
 } from "lucide-react";
-import type { MouseEventHandler, ReactNode } from "react";
+import { useEffect, type MouseEventHandler, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import {
+  autoUpdate,
+  flip,
+  offset,
+  shift,
+  size,
+  useFloating,
+} from "@floating-ui/react";
 import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 import {
@@ -31,6 +40,8 @@ interface ImageToolbarProps {
   handleSelectedImageZoom: () => void;
   handleSelectedImageCopy: () => void;
   handleSelectedImageDownload: () => void;
+  floatingBoundary?: HTMLElement | null;
+  getReferenceRect?: () => DOMRect | null;
 }
 
 const imageToolButtonClass =
@@ -39,11 +50,13 @@ const imageToolButtonClass =
 function ImageToolButton({
   label,
   className,
+  pressed,
   onClick,
   children,
 }: {
   label: string;
   className?: string;
+  pressed?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
   children: ReactNode;
 }) {
@@ -53,6 +66,7 @@ function ImageToolButton({
         <button
           type="button"
           aria-label={label}
+          aria-pressed={pressed}
           onClick={onClick}
           className={cn(imageToolButtonClass, className)}
         >
@@ -72,17 +86,60 @@ export function ImageToolbar({
   handleSelectedImageZoom,
   handleSelectedImageCopy,
   handleSelectedImageDownload,
+  floatingBoundary,
+  getReferenceRect,
 }: ImageToolbarProps) {
-  return (
+  const usesFloatingPosition = Boolean(getReferenceRect);
+  const overflowOptions = {
+    boundary: floatingBoundary ?? undefined,
+    padding: 8,
+  };
+  const { refs, floatingStyles } = useFloating({
+    open: usesFloatingPosition,
+    strategy: "fixed",
+    placement: "top",
+    middleware: [
+      offset(10),
+      flip({ ...overflowOptions, fallbackPlacements: ["bottom"] }),
+      shift(overflowOptions),
+      size({
+        ...overflowOptions,
+        apply({ availableWidth, elements }) {
+          elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+          elements.floating.style.overflowX = "auto";
+        },
+      }),
+    ],
+    whileElementsMounted(reference, floating, update) {
+      return autoUpdate(reference, floating, update, {
+        animationFrame: true,
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!getReferenceRect) return;
+    refs.setPositionReference({
+      getBoundingClientRect: () => getReferenceRect() ?? selectedImage.rect,
+      contextElement: floatingBoundary ?? undefined,
+    });
+  }, [floatingBoundary, getReferenceRect, refs, selectedImage.rect]);
+
+  const toolbar = (
     <TooltipProvider delayDuration={400} skipDelayDuration={100}>
       <div
+        ref={usesFloatingPosition ? refs.setFloating : undefined}
         data-goose-image-toolbar
         className="fixed z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]"
-        style={{
-          top: Math.max(8, selectedImage.rect.top - 42),
-          left: selectedImage.rect.left + selectedImage.rect.width / 2,
-          transform: "translateX(-50%)",
-        }}
+        style={
+          usesFloatingPosition
+            ? floatingStyles
+            : {
+                top: Math.max(8, selectedImage.rect.top - 42),
+                left: selectedImage.rect.left + selectedImage.rect.width / 2,
+                transform: "translateX(-50%)",
+              }
+        }
         onMouseDown={(e) => e.preventDefault()}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -101,10 +158,13 @@ export function ImageToolbar({
           <ImageToolButton
             key={alignment}
             label={label}
+            pressed={selectedImage.alignment === alignment}
             onClick={() => applyImageAlignment(alignment)}
             className={
               selectedImage.alignment === alignment
-                ? "bg-accent text-foreground"
+                ? usesFloatingPosition
+                  ? "goose-toolbar-control-active"
+                  : "bg-accent text-foreground"
                 : undefined
             }
           >
@@ -126,4 +186,8 @@ export function ImageToolbar({
       </div>
     </TooltipProvider>
   );
+
+  return usesFloatingPosition && typeof document !== "undefined"
+    ? createPortal(toolbar, document.body)
+    : toolbar;
 }

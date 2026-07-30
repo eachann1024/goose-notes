@@ -131,7 +131,7 @@ export function CodeBlockToolbar({
     "cursor-pointer rounded-md",
   );
   const chipActiveClass =
-    "border-[var(--goose-block-subtle-border)] bg-[var(--goose-interactive-selected)] text-foreground hover:bg-[var(--goose-interactive-selected)]";
+    "border-[var(--goose-block-subtle-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]";
   const iconSize = "h-3.5 w-3.5";
 
   return (

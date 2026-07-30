@@ -6,7 +6,6 @@ import {
 } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TextSelection } from "prosemirror-state";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
@@ -79,7 +78,12 @@ export function EditorFormattingToolbar() {
   });
 
   const aiActive = useFormattingToolbarAi((s) => s.active);
-  const setAiActive = useFormattingToolbarAi((s) => s.setActive);
+  const activateFormattingToolbarAi = useFormattingToolbarAi(
+    (state) => state.activate,
+  );
+  const resetFormattingToolbarAi = useFormattingToolbarAi(
+    (state) => state.reset,
+  );
 
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
@@ -88,8 +92,6 @@ export function EditorFormattingToolbar() {
 
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
   const bindTooltip = useCallback<BindTooltip>(
     (id) => ({
@@ -111,22 +113,8 @@ export function EditorFormattingToolbar() {
     setActiveTooltip(null);
   }, [isScrolling, isContextMenuOpen]);
 
-  // Clear AI mode + fake selection on unmount (e.g. when toolbar unmounts)
-  useEffect(() => {
-    return () => {
-      if (savedSelectionRef.current) {
-        try {
-          setFakeSelection(editor, null);
-        } catch {
-          /* ignore */
-        }
-      }
-      setAiActive(false);
-    };
-  }, [editor, setAiActive]);
-
   // xl-ai 接管：旧自家 AiPanel 不再触发，AI 按钮改为打开 xl-ai 的 AIMenu。
-  // 保留 selection 保存逻辑（用于聚焦/退出还原），但跳过 setAiActive。
+  // 保存 selection 作为 AI 浮层锚点，并在菜单生命周期内隐藏格式工具栏。
   const handleAiActivate = useCallback(() => {
     try {
       const { selection } = editor.prosemirrorState;
@@ -158,53 +146,27 @@ export function EditorFormattingToolbar() {
       }
 
       const saved = { from: selection.from, to: selection.to };
-      savedSelectionRef.current = saved;
       setFakeSelection(editor, saved);
+      activateFormattingToolbarAi(saved);
 
       const blockId = editor.getTextCursorPosition().block.id;
       setActiveTooltip(null);
       aiExtension?.openAIMenuAtBlock(blockId);
     } catch {
-      /* ignore */
+      try {
+        setFakeSelection(editor, null);
+      } catch {
+        /* ignore */
+      }
+      resetFormattingToolbarAi();
     }
-  }, [editor, aiExtension, aiSettings]);
-
-  const handleAiClose = useCallback(() => {
-    const savedSel = savedSelectionRef.current;
-    try {
-      setFakeSelection(editor, null);
-    } catch {
-      /* ignore */
-    }
-    savedSelectionRef.current = null;
-    setAiActive(false);
-
-    // 把 ProseMirror 选区恢复到原始范围并把焦点交还给 editor。
-    // 否则点击空白后 editor 失焦：1) 选区高亮消失；2) Mod-z 快捷键
-    // 进不到 ProseMirror，导致撤销整体失灵。
-    if (savedSel) {
-      requestAnimationFrame(() => {
-        try {
-          const view = (editor as any).prosemirrorView;
-          if (!view) return;
-          const { state } = view;
-          const docSize = state.doc.content.size;
-          const from = Math.min(savedSel.from, docSize);
-          const to = Math.min(savedSel.to, docSize);
-          if (from !== to) {
-            const tr = state.tr.setSelection(
-              TextSelection.create(state.doc, from, to),
-            );
-            tr.setMeta("addToHistory", false);
-            view.dispatch(tr);
-          }
-          view.focus();
-        } catch {
-          /* ignore */
-        }
-      });
-    }
-  }, [editor, setAiActive]);
+  }, [
+    activateFormattingToolbarAi,
+    aiExtension,
+    aiSettings,
+    editor,
+    resetFormattingToolbarAi,
+  ]);
 
   const isBold = markStates.bold;
   const isItalic = markStates.italic;
@@ -279,6 +241,9 @@ export function EditorFormattingToolbar() {
       <div
         ref={menuRef}
         data-formatting-toolbar
+        data-goose-floating-toolbar={
+          !__GOOSE_EDITOR_COMPACT__ ? "true" : undefined
+        }
         onMouseDown={(e) => {
           // Allow native focus on the AI textarea; everything else uses onClick.
           const target = e.target as HTMLElement | null;

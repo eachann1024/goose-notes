@@ -156,7 +156,11 @@ export function EditorSideMenu() {
         top,
         left: anchorLeft,
         opacity: 1,
-        transform: "translate(-100%, -50%)",
+        // 与 Cmd +/- 调整的编辑器字号保持同一缩放比例；以正文侧为锚点，
+        // 避免把手缩放后与当前 block 的间距和垂直中心发生漂移。
+        transform:
+          "translate(-100%, -50%) scale(var(--editor-scale, 1))",
+        transformOrigin: "right center",
         pointerEvents: "auto",
       }}
       onMouseDown={(e) => e.stopPropagation()}
