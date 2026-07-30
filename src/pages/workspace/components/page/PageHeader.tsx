@@ -108,7 +108,7 @@ function SortableTabItem({
             "group flex h-8 min-w-12 max-w-[120px] flex-[0_1_120px] @container items-center gap-1 rounded-[8px] px-2 text-sm transition-colors",
             isDragging && "opacity-60",
             isActive
-              ? "min-w-24 bg-[var(--goose-interactive-selected)] text-foreground"
+              ? "min-w-24 bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
           )}
         >
@@ -239,8 +239,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
-  const isLocalItem = !!page?.localFilePath;
-  const { lastSavedAt, getPage } = usePages();
+  const { getPage } = usePages();
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const notebooks = useNotebooks((state) => state.notebooks);
   // 本地文件夹页没有 page.icon 元数据；仅 uTools 内置库页在顶栏放紧凑图标入口
@@ -300,7 +299,6 @@ export function PageHeader({
   const aiFullscreenOpen =
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
   const aiHeaderActions = useAiHeaderActions();
-  const [showSaved, setShowSaved] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const tabsScrollerRef = useRef<HTMLDivElement>(null);
   const closeTabShortcutLabel = closeTabShortcut
@@ -316,14 +314,6 @@ export function PageHeader({
     : "";
   const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
   const [sidebarExpandAttention, setSidebarExpandAttention] = useState(false);
-
-  useEffect(() => {
-    if (lastSavedAt && isLocalItem) {
-      setShowSaved(true);
-      const timer = setTimeout(() => setShowSaved(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastSavedAt, isLocalItem]);
 
   useEffect(() => {
     if (!prevSidebarCollapsedRef.current && sidebarCollapsed) {
@@ -601,7 +591,7 @@ export function PageHeader({
                           key={tab.id}
                           className={cn(
                             "flex items-center gap-2 text-[13px]",
-                            isActive && "bg-[var(--goose-interactive-selected)] text-foreground",
+                            isActive && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
                           )}
                           onSelect={() => {
                             onBeforeActivateTab?.();
@@ -657,18 +647,6 @@ export function PageHeader({
         )}
       </div>
       <div className="ml-2 flex shrink-0 items-center gap-1">
-        {/* 全屏 AI 右上角是关闭/新建/更多，裸 ✓ 贴着 × 会像「确认/取消」，此处改用文案提示 */}
-        {page && !page.trashedAt && showSaved && (
-          <span
-            className="inline-flex h-8 shrink-0 items-center gap-1 px-1.5 text-[11px] text-muted-foreground/70 animate-in fade-in zoom-in-95"
-            title="已保存"
-            aria-live="polite"
-          >
-            <LucideIcons.Check className="h-3 w-3" strokeWidth={1.8} />
-            <span>已保存</span>
-          </span>
-        )}
-
         {/* 侧栏模式：入口仍在标题栏右侧；回收站页隐藏 */}
         {showAiOnActions && !page?.trashedAt && (
           <TooltipProvider delayDuration={600}>

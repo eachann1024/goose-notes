@@ -11,17 +11,19 @@
  * 点击进入行内编辑：Enter/失焦提交，Esc 取消。
  * 新建页会通过 requestPageTitleFocus 自动进入编辑，光标落在文件名末尾。
  * 提交后调用 usePages.renameLocalPageFile(pageId, newBaseName)。
- * 重名/空名/非法字符 → sonner toast 提示，标题回退原值。
+ * 空名保存为「未命名」；重名/非法字符 → sonner toast 提示，标题回退原值。
  */
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
 import { sanitizeFilenameSegment, splitFilePath } from "@/lib/local-title-binding";
+import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 import {
   completePageTitleFocus,
   isPageTitleFocusRequested,
   subscribePageTitleFocus,
 } from "@/lib/page-title-focus";
+import { useImeInput } from "@/hooks/useImeInput";
 
 interface LocalFileTitleProps {
   pageId: string;
@@ -37,14 +39,20 @@ export function LocalFileTitle({
   // Derive display name from the current file path (re-derives on pageId change / rename).
   const displayName = (() => {
     const { base } = splitFilePath(localFilePath);
-    return base || "无标题";
+    return base || UNTITLED_PAGE_TITLE;
   })();
 
   const [initiallyFocused] = useState(() =>
     isPageTitleFocusRequested(pageId),
   );
   const [editing, setEditing] = useState(initiallyFocused);
-  const [editValue, setEditValue] = useState(displayName);
+  const {
+    value: editValue,
+    valueRef: editValueRef,
+    setValue: setEditValue,
+    isComposing,
+    inputProps: imeInputProps,
+  } = useImeInput(displayName);
   const inputRef = useRef<HTMLInputElement>(null);
   const skipNextBlurCommitRef = useRef(false);
 
@@ -66,12 +74,7 @@ export function LocalFileTitle({
   }, [displayName]);
 
   const commitRename = useCallback(async () => {
-    const trimmed = editValue.trim();
-    if (!trimmed) {
-      toast.error("文件名不能为空");
-      cancelEditing();
-      return;
-    }
+    const trimmed = editValueRef.current.trim() || UNTITLED_PAGE_TITLE;
 
     const sanitized = sanitizeFilenameSegment(trimmed);
     if (!sanitized) {
@@ -94,7 +97,7 @@ export function LocalFileTitle({
     } catch (err) {
       toast.error((err as Error).message ?? "重命名失败");
     }
-  }, [editValue, localFilePath, pageId, cancelEditing]);
+  }, [editValueRef, localFilePath, pageId, cancelEditing]);
 
   // 新建页标题聚焦：多次重试抢过编辑器 body 的程序性 focus。
   useEffect(() => {
@@ -153,6 +156,7 @@ export function LocalFileTitle({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (isComposing(e)) return;
       if (e.key === "Enter") {
         e.preventDefault();
         skipNextBlurCommitRef.current = true;
@@ -165,7 +169,7 @@ export function LocalFileTitle({
         cancelEditing();
       }
     },
-    [commitRename, cancelEditing, onEnterBelow],
+    [commitRename, cancelEditing, isComposing, onEnterBelow],
   );
 
   if (editing) {
@@ -181,9 +185,10 @@ export function LocalFileTitle({
         <input
           ref={inputRef}
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          {...imeInputProps}
           onKeyDown={handleKeyDown}
           onBlur={() => {
+            if (isComposing()) return;
             // 新建页切换期间编辑器会短暂抢焦；聚焦请求尚未完成时忽略这次
             // 程序性 blur，避免提前退出编辑态。
             if (isPageTitleFocusRequested(pageId)) return;
