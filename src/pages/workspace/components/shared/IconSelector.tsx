@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+import { focusIconSelectorOnOpen } from "./iconSelectorFocus";
+
 interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   value?: string;
   onChange: (icon: string | undefined) => void;
@@ -419,6 +421,15 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
         side="bottom"
         collisionPadding={10}
         container={portalContainer ?? undefined}
+        onOpenAutoFocus={(event) => {
+          const activeCategoryIndex = ICON_CATEGORIES.findIndex(
+            (category) => category.id === activeCategory,
+          );
+          focusIconSelectorOnOpen(
+            event,
+            categoryButtonRefs.current[activeCategoryIndex] ?? null,
+          );
+        }}
       >
         <style>{`
           .goose-icon-selector-grid {
