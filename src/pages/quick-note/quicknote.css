@@ -42,7 +42,7 @@ body,
 }
 
 /* 鼠标离开顶栏后，当前便签名始终以实色显示在左上角。
-   进入顶部热区时直接让位给保存 / 帮助按钮，不做半透明叠加。 */
+   进入顶部热区时直接让位给帮助按钮，不做半透明叠加。 */
 .quicknote-slot-name-display {
   position: absolute;
   z-index: 1;
@@ -411,8 +411,8 @@ body,
 
 /* 当前项：轻高亮芯，不用实心白底+外阴影 */
 .quicknote-slot-btn[data-active="true"] {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.1);
+  color: #4f46e5;
+  background: #e0e7ff;
   box-shadow: none;
 }
 
@@ -423,16 +423,20 @@ body,
 
 .quicknote-slot-btn:focus-visible {
   outline: none;
-  color: hsl(var(--foreground));
+  color: #4f46e5;
   box-shadow:
     0 0 0 2px hsl(var(--goose-editor-bg)),
-    0 0 0 3.5px hsl(var(--foreground) / 0.28);
+    0 0 0 3.5px #6366f1;
 }
 
 .dark .quicknote-slot-btn[data-active="true"] {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.14);
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.2);
   box-shadow: none;
+}
+
+.dark .quicknote-slot-btn:focus-visible {
+  color: #a5b4fc;
 }
 
 .dark .quicknote-slot-switcher {

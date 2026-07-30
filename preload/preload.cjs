@@ -12,6 +12,7 @@ const {
   extractMarkdownTitle,
   extractTextFromPageContent,
   extractTitleFromPageContent,
+  getNextOffset,
   parsePersistedNotebooks,
   searchNoteItems,
   sortNoteItems,
@@ -337,11 +338,42 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     path.join(os.homedir(), "Applications"),
   ];
 
+  const commandExistsCache = new Map(); // command -> boolean
+  const macAppExistsCache = new Map(); // bundle path -> boolean
+  const listAvailableOpenAppsCache = new Map(); // signature -> resolved candidates
+
+  const getCandidatesSignature = (candidates) =>
+    candidates
+      .map((c) =>
+        [
+          c?.id,
+          c?.appName,
+          (Array.isArray(c?.aliases) ? c.aliases : []).join("|"),
+          (Array.isArray(c?.commands) ? c.commands : []).join("|"),
+          c?.kind,
+        ].join("~"),
+      )
+      .join(";;");
+
+  const macAppExists = (bundlePath) => {
+    if (macAppExistsCache.has(bundlePath)) {
+      return macAppExistsCache.get(bundlePath);
+    }
+    let exists = false;
+    try {
+      exists = fs.existsSync(bundlePath);
+    } catch {
+      exists = false;
+    }
+    macAppExistsCache.set(bundlePath, exists);
+    return exists;
+  };
+
   const resolveMacAppName = (candidate) => {
     for (const name of getCandidateNames(candidate)) {
       const bundleName = `${name}.app`;
       for (const root of macApplicationRoots()) {
-        if (fs.existsSync(path.join(root, bundleName))) {
+        if (macAppExists(path.join(root, bundleName))) {
           return name;
         }
       }
@@ -351,13 +383,20 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   const commandExists = (command) => {
     if (typeof command !== "string" || !command.trim()) return false;
+    const normalized = command.trim();
+    if (commandExistsCache.has(normalized)) {
+      return commandExistsCache.get(normalized);
+    }
     try {
-      const result = spawnSync("/bin/zsh", ["-lc", `command -v ${quoteShellArg(command.trim())}`], {
+      const result = spawnSync("/bin/zsh", ["-lc", `command -v ${quoteShellArg(normalized)}`], {
         timeout: 1000,
         stdio: "ignore",
       });
-      return result.status === 0;
+      const exists = result.status === 0;
+      commandExistsCache.set(normalized, exists);
+      return exists;
     } catch {
+      commandExistsCache.set(normalized, false);
       return false;
     }
   };
@@ -381,11 +420,32 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     return null;
   };
 
+  const yieldToEventLoop = () =>
+    new Promise((resolve) => {
+      if (typeof setImmediate === "function") {
+        setImmediate(resolve);
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
+
   const listAvailableOpenApps = async (candidates) => {
     if (!Array.isArray(candidates)) return [];
-    return candidates
-      .map(resolveOpenAppCandidate)
-      .filter(Boolean);
+    const key = `${process.platform}::${getCandidatesSignature(candidates)}`;
+    if (listAvailableOpenAppsCache.has(key)) {
+      return listAvailableOpenAppsCache.get(key);
+    }
+    const resolved = [];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const item = resolveOpenAppCandidate(candidates[i]);
+      if (item) resolved.push(item);
+      // 分片让出事件循环，避免首次探测整段同步卡死 UI。
+      if (i < candidates.length - 1 && (i + 1) % 3 === 0) {
+        await yieldToEventLoop();
+      }
+    }
+    listAvailableOpenAppsCache.set(key, resolved);
+    return resolved;
   };
 
   const finishChildLaunch = (child, resolve, fallback) => {
@@ -477,6 +537,44 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
   };
 
+  const isKeroApp = (appName) =>
+    path.basename(appName).replace(/\.app$/i, "").toLowerCase() === "kero";
+
+  // Kero does not register folders as documents. Its supported external entry
+  // point is the Finder service advertised in Kero's Info.plist, so `open -a`
+  // would launch the app without creating a project for the requested folder.
+  const openKeroAtPath = (dirPath) =>
+    new Promise((resolve) => {
+      const script = `
+        ObjC.import("AppKit");
+        function run(argv) {
+          const pasteboard = $.NSPasteboard.pasteboardWithUniqueName;
+          pasteboard.clearContents;
+          pasteboard.declareTypesOwner(
+            $(["NSFilenamesPboardType"]),
+            null
+          );
+          pasteboard.setPropertyListForType(
+            $(argv),
+            "NSFilenamesPboardType"
+          );
+          if (!$.NSPerformService("New Kero Project Here", pasteboard)) {
+            throw new Error("Kero Finder service is unavailable");
+          }
+        }
+      `;
+      try {
+        const child = spawn("/usr/bin/osascript", ["-l", "JavaScript", "-e", script, dirPath], {
+          detached: true,
+          stdio: "ignore",
+        });
+        finishChildLaunch(child, resolve);
+      } catch (err) {
+        console.error("[gooseFs] openKeroAtPath failed:", err);
+        resolve(false);
+      }
+    });
+
   const openTerminalAtPath = (targetPath, terminalCommand) => {
     return new Promise((resolve) => {
       const dirPath = resolveDirectoryTarget(targetPath);
@@ -485,6 +583,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       try {
         if (process.platform === "darwin") {
           const appName = command || "Terminal";
+          if (command && isKeroApp(command)) {
+            void openKeroAtPath(dirPath).then(resolve);
+            return;
+          }
           const child = spawn("open", ["-a", appName, dirPath], {
             detached: true,
             stdio: "ignore",
@@ -820,6 +922,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       return {
         total: paged.total,
         items,
+        nextOffset: getNextOffset(
+          paged.total,
+          clampOffset(params.offset, 0),
+          paged.items.length,
+        ),
       };
     });
 
@@ -845,6 +952,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       return {
         total: paged.total,
         items,
+        nextOffset: getNextOffset(
+          paged.total,
+          clampOffset(params.offset, 0),
+          paged.items.length,
+        ),
       };
     });
 
@@ -972,6 +1084,50 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
       visit(url, MAX_REDIRECTS);
     });
+  };
+
+  const MAX_AI_CONTEXT_FILE_BYTES = 256 * 1024;
+  const MAX_LOCAL_SKILLS = 100;
+  const readLocalSkillFiles = () => {
+    const root = path.join(os.homedir(), ".agents", "skills");
+    const results = [];
+    const visit = (dir, depth = 0) => {
+      if (depth > 8) return;
+      let entries = [];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (results.length >= MAX_LOCAL_SKILLS) return;
+        const entryPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          visit(entryPath, depth + 1);
+        } else if (entry.isFile() && entry.name === "SKILL.md") {
+          try {
+            if (fs.statSync(entryPath).size > MAX_AI_CONTEXT_FILE_BYTES) continue;
+            results.push({ path: entryPath, content: fs.readFileSync(entryPath, "utf-8") });
+          } catch {}
+        }
+      }
+    };
+    visit(root);
+    return results;
+  };
+
+  // 只暴露固定的全局提示词与 Skill 根目录，不接受前端传入任意路径。
+  window.gooseAiContext = {
+    readGlobalPrompt: () => {
+      try {
+        const agentsPath = path.join(os.homedir(), "AGENTS.md");
+        if (fs.statSync(agentsPath).size > MAX_AI_CONTEXT_FILE_BYTES) return null;
+        return fs.readFileSync(agentsPath, "utf-8");
+      } catch {
+        return null;
+      }
+    },
+    listLocalSkills: readLocalSkillFiles,
   };
 
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）

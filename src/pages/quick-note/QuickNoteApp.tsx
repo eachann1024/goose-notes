@@ -6,13 +6,15 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { X, HelpCircle, Pencil, Save } from "lucide-react";
+import { X, HelpCircle, Pencil } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,
-  getActiveDraftContent,
   getQuickNoteSlotName,
+  loadQuickNoteSlotNames,
+  persistQuickNoteSlotNames,
+  updateQuickNoteSlotName,
   clampQuickNoteZoom,
   QUICKNOTE_MIN_WIDTH,
   QUICKNOTE_MIN_HEIGHT,
@@ -44,7 +46,6 @@ const POSITION_SETTLE_MS = 720;
  *
  * 小窗是「草稿便签」：不直接对应一条真实笔记，编辑内容只落到草稿存储
  * （useQuickNote.drafts[activeSlot]），不写进 pages、不进笔记列表 / 搜索、不自动存盘成文件。
- * 用户点左上角「保存到笔记本」才把当前槽位草稿整体入库成一条真实笔记，随后清空该槽位。
  *
  * 支持 1–5 五个独立草稿槽位，各自持久化。切换槽位时重挂编辑器加载对应草稿。
  *
@@ -61,13 +62,10 @@ export function QuickNoteApp() {
 
   const activeSlot = useQuickNote((s) => s.activeSlot);
   const drafts = useQuickNote((s) => s.drafts);
-  const slotNames = useQuickNote((s) => s.slotNames);
   const setActiveSlot = useQuickNote((s) => s.setActiveSlot);
-  const setSlotName = useQuickNote((s) => s.setSlotName);
   const setDraftContent = useQuickNote((s) => s.setDraftContent);
   const undoDraft = useQuickNote((s) => s.undoDraft);
   const redoDraft = useQuickNote((s) => s.redoDraft);
-  const saveDraftToNotebook = useQuickNote((s) => s.saveDraftToNotebook);
   const setWindowSize = useQuickNote((s) => s.setWindowSize);
   const setWindowPosition = useQuickNote((s) => s.setWindowPosition);
   const setEditorZoom = useQuickNote((s) => s.setEditorZoom);
@@ -89,6 +87,11 @@ export function QuickNoteApp() {
   const [renamingSlot, setRenamingSlot] = useState<QuickNoteSlot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameFinishingRef = useRef(false);
+  const [slotNames, setSlotNames] = useState(() =>
+    loadQuickNoteSlotNames(useQuickNote.getState().slotNames),
+  );
+  const slotNamesRef = useRef(slotNames);
 
   const helpShortcuts = useMemo(() => {
     const platform = getPlatformKind();
@@ -161,6 +164,7 @@ export function QuickNoteApp() {
   const startRename = useCallback(
     (slot: QuickNoteSlot) => {
       flushEditor();
+      renameFinishingRef.current = false;
       setHelpOpen(false);
       setRenameValue(getQuickNoteSlotName(slot, slotNames));
       setRenamingSlot(slot);
@@ -170,12 +174,27 @@ export function QuickNoteApp() {
 
   const finishRename = useCallback(
     (save: boolean) => {
-      if (renamingSlot === null) return;
-      if (save) setSlotName(renamingSlot, renameValue);
+      if (renamingSlot === null || renameFinishingRef.current) return;
+      renameFinishingRef.current = true;
+      if (save) {
+        const next = updateQuickNoteSlotName(
+          slotNamesRef.current,
+          renamingSlot,
+          renameValue,
+        );
+        if (next !== slotNamesRef.current) {
+          slotNamesRef.current = next;
+          setSlotNames(next);
+          persistQuickNoteSlotNames(next);
+        }
+      }
       setRenamingSlot(null);
-      requestAnimationFrame(() => editorRef.current?.editor?.focus?.());
+      requestAnimationFrame(() => {
+        renameFinishingRef.current = false;
+        editorRef.current?.editor?.focus?.();
+      });
     },
-    [renameValue, renamingSlot, setSlotName],
+    [renameValue, renamingSlot],
   );
 
   useEffect(() => {
@@ -264,55 +283,6 @@ export function QuickNoteApp() {
     }
     quickNoteWindow.close();
   }, [flushEditor, setWindowPosition]);
-
-  // 保存到笔记本：B 插件(standalone)→ redirect 回传 A 落库；A 插件 → 原本地落库。
-  const handleSave = () => {
-    flushEditor();
-    const isStandalone =
-      typeof window !== "undefined" &&
-      window.__GOOSE_QUICKNOTE_STANDALONE__ === true;
-
-    if (isStandalone) {
-      // B 插件：取最新草稿内容（getState() 绕过闭包，拿到 onChange 实时更新值）。
-      const content = getActiveDraftContent(useQuickNote.getState());
-      if (isQuickNoteDraftEmpty(content)) {
-        toast.info("便签是空的，没有需要保存的内容");
-        return;
-      }
-      const ok = quickNoteWindow.redirectSaveToMainApp(content);
-      if (ok) {
-        toast.success("已发送到鹅的笔记");
-        useQuickNote.getState().clearDraft();
-        // 清空编辑器到空白便签：重置内容并聚焦。
-        requestAnimationFrame(() => {
-          editorRef.current?.editor?.replaceBlocks?.(
-            editorRef.current.editor.document,
-            buildQuickNoteDraftPage(null).content as never,
-          );
-          editorRef.current?.editor?.focus?.();
-        });
-      } else {
-        toast.error("无法发送到主应用，请确认鹅的笔记已安装");
-      }
-      return;
-    }
-
-    // A 插件（非 standalone）：原本地落库逻辑不变。
-    const id = saveDraftToNotebook();
-    if (id) {
-      toast.success("已保存到笔记本");
-    } else {
-      toast.info("便签是空的，没有需要保存的内容");
-    }
-    // 清空编辑器到空白便签：重置内容并聚焦。
-    requestAnimationFrame(() => {
-      editorRef.current?.editor?.replaceBlocks?.(
-        editorRef.current.editor.document,
-        buildQuickNoteDraftPage(null).content as never,
-      );
-      editorRef.current?.editor?.focus?.();
-    });
-  };
 
   // 首帧：聚焦光标到编辑器。
   useEffect(() => {
@@ -501,6 +471,8 @@ export function QuickNoteApp() {
           onChange={(event) => setRenameValue(event.target.value)}
           onBlur={() => finishRename(true)}
           onKeyDown={(event) => {
+            // 中文输入法按 Enter 确认候选词时不能提前提交；keyCode 229 兼容旧 Chromium。
+            if (event.nativeEvent.isComposing || event.keyCode === 229) return;
             if (event.key === "Enter") {
               event.preventDefault();
               event.stopPropagation();
@@ -518,16 +490,6 @@ export function QuickNoteApp() {
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="保存到笔记本"
-            title="保存到笔记本"
-            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-            onClick={handleSave}
-          >
-            <Save className="h-3.5 w-3.5" />
-          </button>
           <Popover open={helpOpen} onOpenChange={setHelpOpen}>
             <PopoverTrigger asChild>
               <button
@@ -564,10 +526,6 @@ export function QuickNoteApp() {
               </button>
               <ul className="quicknote-help-list text-muted-foreground">
                 <li>
-                  <b className="text-foreground">保存</b>
-                  ：点左上角保存为正式笔记；成功后清空当前便签。
-                </li>
-                <li>
                   <b className="text-foreground">切换</b>
                   ：顶部 1–5 是五个独立便签。悬停展开，点击或拖动切换；也可按
                   {helpShortcuts.switchSlots}
@@ -584,8 +542,11 @@ export function QuickNoteApp() {
                 </li>
                 <li>
                   <b className="text-foreground">收起</b>
-                  ：小窗始终置顶；按{" "}
-                  {formatShortcut("Esc", getPlatformKind())} 或点右上角
+                  ：小窗始终置顶；按 {formatShortcut(
+                    "Esc",
+                    getPlatformKind(),
+                  )}{" "}
+                  或点右上角
                   <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
                   收起。草稿、位置、尺寸和缩放都会保留。
                 </li>
