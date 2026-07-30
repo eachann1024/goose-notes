@@ -1,3 +1,5 @@
+import { sanitizeCssColor } from "../blockPropsMarker";
+
 /**
  * 给一组 inline 节点统一附加样式（用于 <u>…</u> / <span style> 内部嵌套解析后合并样式）。
  * 纯字符串节点会被提升为 styled text 节点。
@@ -29,6 +31,27 @@ function toLinkContent(nodes: any[]): any[] {
   });
 }
 
+/**
+ * 只读取行内颜色相关声明；忽略其他 CSS，避免把块级 text-align 等属性
+ * 误当成行内样式写回编辑器。
+ */
+function parseSpanColorStyles(style: string): Record<string, string> {
+  const styles: Record<string, string> = {};
+  const colorMatch = style.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i);
+  const textColor = sanitizeCssColor(colorMatch?.[1]);
+  if (textColor) {
+    styles.textColor = textColor;
+  }
+
+  const bgMatch = style.match(/(?:^|;)\s*background-color\s*:\s*([^;]+)/i);
+  const backgroundColor = sanitizeCssColor(bgMatch?.[1]);
+  if (backgroundColor) {
+    styles.backgroundColor = backgroundColor;
+  }
+
+  return styles;
+}
+
 export function parseInlineMarkdown(text: string): any[] {
   const result: any[] = [];
   if (!text) return result;
@@ -37,7 +60,7 @@ export function parseInlineMarkdown(text: string): any[] {
   //         **bold** > *italic* > ~~strike~~ > `code` > [link](url)
   // <u> 与 <span> 内部递归解析，支持下划线/颜色与其他标记的嵌套组合
   const regex =
-    /(\$((?:\\\$|[^\$])+?)\$|<u>(.+?)<\/u>|<span\s+style="([^"]+)">(.+?)<\/span>|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/g;
+    /(\$((?:\\\$|[^\$])+?)\$|<u>(.+?)<\/u>|<span\b([^>]*)>(.+?)<\/span>|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/gi;
   let lastIndex = 0;
   let match;
 
@@ -58,21 +81,19 @@ export function parseInlineMarkdown(text: string): any[] {
       // <u>underline</u>：内部递归，整体附加 underline
       result.push(...applyStyles(parseInlineMarkdown(match[3]), { underline: true }));
     } else if (match[4] !== undefined && match[5] !== undefined) {
-      // <span style="…">…</span>：内部递归，整体附加颜色样式
-      const style = match[4];
-      const styles: Record<string, any> = {};
-
-      const colorMatch = style.match(/(?:^|;)\s*color:\s*([^;]+)/);
-      if (colorMatch) {
-        styles.textColor = colorMatch[1].trim();
+      // Obsidian 等常见写法允许 style 在任意属性位置，且单双引号皆可。
+      const styleAttribute = match[4].match(
+        /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/i,
+      );
+      if (styleAttribute) {
+        const styles = parseSpanColorStyles(
+          styleAttribute[1] ?? styleAttribute[2] ?? "",
+        );
+        result.push(...applyStyles(parseInlineMarkdown(match[5]), styles));
+      } else {
+        // 非样式 span 仍保留其中的 Markdown 行内格式，避免吞掉内容。
+        result.push(...parseInlineMarkdown(match[5]));
       }
-
-      const bgMatch = style.match(/background-color:\s*([^;]+)/);
-      if (bgMatch) {
-        styles.backgroundColor = bgMatch[1].trim();
-      }
-
-      result.push(...applyStyles(parseInlineMarkdown(match[5]), styles));
     } else if (match[6] !== undefined) {
       // ==highlight== → yellow
       result.push({

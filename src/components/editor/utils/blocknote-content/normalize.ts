@@ -178,9 +178,42 @@ function repairDetachedListMarkers(blocks: PartialBlock[]): PartialBlock[] {
 }
 
 export function normalizeBlocks(blocks: any[] | undefined): PartialBlock[] {
-  return repairDetachedListMarkers(
-    (blocks ?? []).flatMap((block) => normalizeBlock(block)),
+  return normalizeRedundantNumberedListStarts(
+    repairDetachedListMarkers(
+      (blocks ?? []).flatMap((block) => normalizeBlock(block)),
+    ),
   );
+}
+
+/**
+ * BlockNote 只在一段连续有序列表的首项读取 `props.start`。后续项上的 start
+ * 平时虽然不影响显示，但当前面的列表项被删除、它变成首项后就会突然生效，造成
+ * 「删掉 1. 后仍显示 2.」的错觉。
+ *
+ * 因此只移除同一 sibling run 内后续项的冗余 start；被非列表块隔开的新 run、
+ * 以及每个嵌套 blockGroup 的首项仍保留显式起始序号。
+ */
+function normalizeRedundantNumberedListStarts(
+  blocks: PartialBlock[],
+): PartialBlock[] {
+  let previousWasNumbered = false;
+
+  return blocks.map((block) => {
+    const isNumbered = block.type === "numberedListItem";
+    const hasRedundantStart =
+      isNumbered &&
+      previousWasNumbered &&
+      (block.props as Record<string, unknown> | undefined)?.start != null;
+
+    previousWasNumbered = isNumbered;
+    if (!hasRedundantStart) return block;
+
+    const { start: _start, ...props } = block.props as Record<string, unknown>;
+    return {
+      ...block,
+      ...(Object.keys(props).length > 0 ? { props } : { props: undefined }),
+    } as PartialBlock;
+  });
 }
 
 function normalizeQuoteBlock(block: any): PartialBlock[] {

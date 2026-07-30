@@ -300,12 +300,19 @@ export function markdownToJsonContent(markdown: string): any {
       );
 
       if (calloutMatch) {
+        const calloutLines: string[] = [calloutMatch[2]];
+        i++;
+        // 本地文件夹的块级 wrapper 会让多行 callout 的后续行保持 `> ` 前缀；
+        // 与普通多行引用一致地合并，避免第二行被拆成独立 quote 块。
+        while (i < lines.length && lines[i].trim().startsWith(">")) {
+          calloutLines.push(lines[i].trim().slice(1).trim());
+          i++;
+        }
         content.push({
           type: "callout",
           props: { icon: calloutMatch[1] },
-          content: parseInlineMarkdown(calloutMatch[2]),
+          content: parseInlineMarkdown(calloutLines.join("\n")),
         });
-        i++;
         continue;
       }
 

@@ -2,6 +2,12 @@ import type { BlockNoteContent } from "@/components/editor/utils/blocknote-conte
 import { importFromMarkdown } from "@/lib/export/markdown/parse";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
 import {
+  canonicalizeBlockPropsMarkers,
+  encodeBlockPropsMarkers,
+  restoreBlockPropsMarkers,
+  unwrapLocalBlockPropsWrappers,
+} from "@/lib/export/markdown/blockPropsMarker";
+import {
   decodeUnsupportedMarkdownForDisk,
   encodeUnsupportedMarkdownForEditor,
   extractFrontmatter,
@@ -58,17 +64,6 @@ const CALLOUT_REPAIR = {
   CAUTION: { icon: "🚧", fallback: "谨慎操作" },
 } as const;
 const TOGGLE_HEADING_MARKER = /^<!--[ \t]*goose-note:native-toggle-heading=([^\s]+)[ \t]*-->/i;
-const BLOCK_PROPS_MARKER = /^<!--[ \t]*goose-note:native-block-props=([^\s]+)[ \t]*-->/i;
-const INLINE_BLOCK_TYPES = new Set([
-  "paragraph",
-  "heading",
-  "bulletListItem",
-  "numberedListItem",
-  "checkListItem",
-  "toggleListItem",
-  "quote",
-  "callout",
-]);
 
 type ToggleHeadingMetadata = {
   level: 1 | 2 | 3;
@@ -110,62 +105,6 @@ function decodeToggleHeadingMarker(value: string): ToggleHeadingMetadata | null 
   }
 }
 
-function nativeBlockProps(props: Record<string, unknown> | undefined) {
-  const metadata: Record<string, string> = {};
-  const alignment = props?.textAlignment;
-  const textColor = props?.textColor;
-  const backgroundColor = props?.backgroundColor;
-  if (typeof alignment === "string" && alignment !== "left") {
-    metadata.textAlignment = alignment;
-  }
-  if (typeof textColor === "string" && textColor !== "default") {
-    metadata.textColor = textColor;
-  }
-  if (typeof backgroundColor === "string" && backgroundColor !== "default") {
-    metadata.backgroundColor = backgroundColor;
-  }
-  return metadata;
-}
-
-function prependInlineMarker(content: unknown, marker: string) {
-  if (Array.isArray(content)) return [marker, ...content];
-  if (typeof content === "string") return [marker, content];
-  return [marker];
-}
-
-function encodeNativeBlockProps(block: NativeMarkdownBlock) {
-  if (!block.type || !INLINE_BLOCK_TYPES.has(block.type)) return block.content;
-  const metadata = nativeBlockProps(block.props);
-  if (Object.keys(metadata).length === 0) return block.content;
-  return prependInlineMarker(
-    block.content,
-    `<!-- goose-note:native-block-props=${encodeURIComponent(JSON.stringify(metadata))} -->`,
-  );
-}
-
-function stripInlineMarker(
-  content: unknown,
-  pattern: RegExp,
-): { encoded: string; content: unknown[] } | null {
-  if (!Array.isArray(content) || content.length === 0) return null;
-  const first = content[0];
-  const raw = typeof first === "string"
-    ? first
-    : first && typeof first === "object" && typeof (first as { text?: unknown }).text === "string"
-      ? String((first as { text: string }).text)
-      : "";
-  const match = raw.match(pattern);
-  if (!match) return null;
-  const remainder = raw.replace(pattern, "");
-  const next = [...content];
-  if (remainder) {
-    next[0] = typeof first === "string" ? remainder : { ...first, text: remainder };
-  } else {
-    next.shift();
-  }
-  return { encoded: match[1], content: next };
-}
-
 /**
  * Markdown 没有“可折叠标题”语义。原生目标把它映射为标准 HTML details，
  * 并仅在 summary 内放一个版本化语义标记；正文仍是可被其他 Markdown 工具阅读的内容。
@@ -190,7 +129,7 @@ function encodeNativeOnlyBlocks(blocks: BlockNoteContent): BlockNoteContent {
     }
     return {
       ...block,
-      content: encodeNativeBlockProps(block),
+      ...encodeBlockPropsMarkers([block] as BlockNoteContent)[0],
       ...(children ? { children } : {}),
     };
   }) as BlockNoteContent;
@@ -220,7 +159,8 @@ function stripToggleHeadingMarker(content: unknown): {
 }
 
 function restoreNativeOnlyBlocks(blocks: BlockNoteContent): BlockNoteContent {
-  return (blocks as NativeMarkdownBlock[]).map((block) => {
+  const restoredProps = restoreBlockPropsMarkers(blocks) as NativeMarkdownBlock[];
+  return restoredProps.map((block) => {
     const children = Array.isArray(block.children)
       ? restoreNativeOnlyBlocks(block.children as BlockNoteContent)
       : undefined;
@@ -237,20 +177,6 @@ function restoreNativeOnlyBlocks(blocks: BlockNoteContent): BlockNoteContent {
           content: toggleHeading.content,
           ...(children ? { children } : {}),
         };
-      }
-    }
-    const encodedProps = stripInlineMarker(block.content, BLOCK_PROPS_MARKER);
-    if (encodedProps) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(encodedProps.encoded)) as Record<string, unknown>;
-        const metadata = nativeBlockProps(parsed);
-        block = {
-          ...block,
-          props: { ...(block.props ?? {}), ...metadata },
-          content: encodedProps.content,
-        };
-      } catch {
-        // 标记损坏时保留可见 Markdown 内容，不让元数据阻断文件加载。
       }
     }
     // 共享解析器为兼容旧 schema 会把 standalone `---` 留成字面量段落；
@@ -326,6 +252,8 @@ function unorderedListMarkers(markdown: string) {
 
 function canonicalize(markdown: string, profile: MarkdownSerializationProfile) {
   let result = stripTrailingLineBreaks(normalizeLineEndings(markdown));
+  result = unwrapLocalBlockPropsWrappers(result);
+  result = canonicalizeBlockPropsMarkers(result);
   if (profile.unorderedListMarker) {
     result = mapOutsideFencedCode(result, (line) => line.replace(UNORDERED_LIST_ITEM, "$1*$2"));
   }
@@ -367,7 +295,9 @@ function withFrontmatter(frontmatter: string | null, body: string) {
 
 function parseCandidate(markdown: string): (ParsedMarkdownCandidate & { success: boolean }) {
   const { frontmatter, body } = extractFrontmatter(markdown);
-  const imported = importFromMarkdown(encodeUnsupportedMarkdownForEditor(body), undefined, {
+  const imported = importFromMarkdown(encodeUnsupportedMarkdownForEditor(
+    unwrapLocalBlockPropsWrappers(body),
+  ), undefined, {
     preserveStructure: true,
   });
   return {

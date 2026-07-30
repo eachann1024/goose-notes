@@ -1,5 +1,6 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { isBlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { sanitizeCssColor, wrapLocalBlockPropsMarkdown } from "./blockPropsMarker";
 
 const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
   Lightbulb: "💡",
@@ -59,19 +60,39 @@ function serializeCodeFenceInfo(
   return tokens.join(" ");
 }
 
+function serializeInlineText(
+  text: string,
+  styles: Record<string, any>,
+): string {
+  const hasUnderline = styles.underline === true;
+  const textColor = sanitizeCssColor(styles.textColor);
+  const backgroundColor = sanitizeCssColor(styles.backgroundColor);
+  const hasColor = textColor && textColor !== "default";
+  const hasBg = backgroundColor && backgroundColor !== "default";
+  const isYellowHighlight = hasBg && backgroundColor === "yellow" && !hasColor;
+
+  if (styles.bold) text = `**${text}**`;
+  if (styles.italic) text = `*${text}*`;
+  if (styles.strike) text = `~~${text}~~`;
+  if (styles.code) text = `\`${text}\``;
+  if (isYellowHighlight) {
+    text = `==${text}==`;
+  } else if (hasColor || hasBg) {
+    const parts: string[] = [];
+    if (hasColor) parts.push(`color:${textColor}`);
+    if (hasBg) parts.push(`background-color:${backgroundColor}`);
+    text = `<span style="${escapeHtmlAttribute(parts.join("; "))}">${text}</span>`;
+  }
+  return hasUnderline ? `<u>${text}</u>` : text;
+}
+
 function extractLinkText(linkContent: any): string {
   if (typeof linkContent === "string") return linkContent;
   if (!Array.isArray(linkContent)) return "";
   return linkContent
     .map((child: any) => {
       if (typeof child === "string") return child;
-      let text = child?.text || "";
-      const styles = child?.styles || {};
-      if (styles.bold) text = `**${text}**`;
-      if (styles.italic) text = `*${text}*`;
-      if (styles.strike) text = `~~${text}~~`;
-      if (styles.code) text = `\`${text}\``;
-      return text;
+      return serializeInlineText(child?.text || "", child?.styles || {});
     })
     .join("");
 }
@@ -100,32 +121,7 @@ function blockNoteInlineToText(content: any): string {
         const linkText = extractLinkText(item.content);
         return `[${linkText}](${item.href || ""})`;
       }
-      let text = item.text || "";
-      const styles = item.styles || {};
-      // inline 样式序列化：underline → <u>，textColor/backgroundColor → <span style="…">，
-      // 高亮 backgroundColor=yellow → ==…==，其他颜色组合走 span
-      const hasUnderline = styles.underline === true;
-      const hasColor = styles.textColor && styles.textColor !== "default";
-      const hasBg =
-        styles.backgroundColor && styles.backgroundColor !== "default";
-      const isYellowHighlight =
-        hasBg && styles.backgroundColor === "yellow" && !hasColor;
-
-      if (styles.bold) text = `**${text}**`;
-      if (styles.italic) text = `*${text}*`;
-      if (styles.strike) text = `~~${text}~~`;
-      if (styles.code) text = `\`${text}\``;
-      if (isYellowHighlight) {
-        text = `==${text}==`;
-      } else if (hasColor || hasBg) {
-        // canonical 形式无空格（color:red）；parse 侧带/不带空格都接受
-        const parts: string[] = [];
-        if (hasColor) parts.push(`color:${styles.textColor}`);
-        if (hasBg) parts.push(`background-color:${styles.backgroundColor}`);
-        text = `<span style="${parts.join("; ")}">${text}</span>`;
-      }
-      if (hasUnderline) text = `<u>${text}</u>`;
-      return text;
+      return serializeInlineText(item.text || "", item.styles || {});
     })
     .join("");
 }
@@ -185,7 +181,7 @@ function serializeListItemBlock(
     marker = "- ";
     childIndentWidth = 2;
   }
-  let line = `${indent}${marker}${text}`;
+  let line = wrapLocalBlockPropsMarkdown(item, `${indent}${marker}${text}`);
   if (Array.isArray(item.children) && item.children.length > 0) {
     const childMd = serializeBlocks(
       item.children,
@@ -397,7 +393,14 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "callout": {
       const icon = block.props?.icon ?? block.attrs?.emoji;
-      result = `> [!INFO] ${resolveCalloutIcon(icon)} ${text}`;
+      result = text
+        .split("\n")
+        .map((line, index) => (
+          index === 0
+            ? `> [!INFO] ${resolveCalloutIcon(icon)} ${line}`
+            : `> ${line}`
+        ))
+        .join("\n");
       break;
     }
 
@@ -513,6 +516,8 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     default:
       result = text;
   }
+
+  result = wrapLocalBlockPropsMarkdown(block, result);
 
   // 通用 children 追加（如 isToggleable 折叠标题的子块）：
   // 用空行分隔保证 md → blocks → md 二轮收敛（子块重读后成为兄弟块，输出不再变化）
