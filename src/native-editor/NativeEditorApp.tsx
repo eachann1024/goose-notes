@@ -122,7 +122,6 @@ function createNativePage(
     workspaceId: "native-macos",
     content,
     isLocked: false,
-    isFullWidth: payload.fullWidth,
     fontSize: "default",
     fontFamily: font === "sans" ? "default" : font,
     localFilePath: payload.pageID,
@@ -328,7 +327,6 @@ export function NativeEditorApp() {
       if (current) {
         setCurrentPage({
           ...current,
-          isFullWidth: preferences.fullWidth,
           fontFamily:
             preferences.editorFont === "sans"
               ? "default"
@@ -936,7 +934,6 @@ export function NativeEditorApp() {
     () => ({
       theme: appearance,
       editorFontSize: fontSize,
-      globalEditorFullWidth: fullWidth,
       tableEvenColumnWidth: true,
       customFonts: {
         default: { label: null, font: null },

@@ -14,19 +14,20 @@ const defaultToastClassNames = {
   //    并让关闭按钮点击失效。
   // 2. 不要加 !opacity-100 —— sonner 靠 opacity:0 隐藏过期/超出堆叠数的
   //    toast（data-visible=false），强制不透明会让"幽灵 toast"留在屏幕上且点不动。
-  // 3. 不要加 !w-auto/!min-w-fit —— 挂载瞬间宽度塌缩会让 sonner 把竖排文字的高度
-  //    记成 --initial-height，导致堆叠偏移错乱。
+  // 3. 宽度由 goose-toast.css 控制：max-content + max-width，避免固定 356px。
   toast:
-    "group goose-toast !bg-background/95 dark:!bg-background/90 !text-foreground !border !border-border/70 dark:!border-border/80 !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !overflow-hidden",
+    // uTools 旧内核不支持 hsl(var(--x)/alpha)，避免 bg-*/95、border-*/70 退化成实色
+    "group goose-toast !bg-[rgba(255,255,255,0.95)] dark:!bg-[rgba(18,18,20,0.92)] !text-foreground !border !border-[rgba(15,23,42,0.12)] dark:!border-[rgba(255,255,255,0.14)] !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !overflow-hidden",
   title: "!text-foreground !opacity-100 !font-semibold",
   description: "!text-muted-foreground",
   actionButton:
-    "!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-lg !px-3.5 !h-8 !text-xs !font-semibold !border !border-primary/20 transition-all duration-150",
+    "!bg-primary !text-primary-foreground hover:!brightness-95 !rounded-lg !px-3.5 !h-8 !text-xs !font-semibold !border !border-[rgba(15,23,42,0.12)] transition-all duration-150",
   cancelButton:
-    "!bg-muted !text-muted-foreground hover:!bg-muted/85 !rounded-lg !px-3 !h-8 !text-xs !font-medium",
+    "!bg-muted !text-muted-foreground hover:!brightness-95 !rounded-lg !px-3 !h-8 !text-xs !font-medium",
   // 轻量关闭：无粗边框，默认细 X，hover 才淡底高亮
+  // hover 背景必须用 rgba，禁止 foreground/8 —— 旧内核会退化成实心黑圆
   closeButton:
-    "!absolute !left-auto !right-1.5 !top-1/2 !transform-none !translate-x-0 !-translate-y-1/2 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 hover:!bg-foreground/8 !text-muted-foreground hover:!text-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
+    "goose-toast-close !absolute !left-auto !right-1.5 !top-1/2 !transform-none !translate-x-0 !-translate-y-1/2 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground hover:!text-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
   error:
     "goose-toast-error !border-[rgba(200,25,46,0.18)] dark:!border-[rgba(255,109,125,0.18)]",
   success: "goose-toast-success",
@@ -132,7 +133,7 @@ const Toaster = ({ className, toastOptions, icons, ...props }: ToasterProps) => 
 
 /**
  * 全局唯一 toast 入口。
- * 错误态强制走 goose-toast-error（红字 + 圆底! + 右下角蜘蛛纹），
+ * 错误态强制走 goose-toast-error（红字 + 圆底!，干净无装饰纹理），
  * 业务侧不得绕过这套视觉。
  */
 const toast = Object.assign(
