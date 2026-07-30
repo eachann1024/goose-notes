@@ -23,6 +23,7 @@ import {
   offset as floatingOffset,
   shift as floatingShift,
   size as floatingSize,
+  type Middleware,
 } from "@floating-ui/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -45,6 +46,7 @@ import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
+import { isPrimaryLinkShortcutEvent } from "@/components/editor/extensions/linkKeyboardExtension";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 import { useSettings } from "@/stores/useSettings";
 
@@ -58,6 +60,7 @@ import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
 import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
 import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
+import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
 import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
 import {
   useEditorPageContext,
@@ -156,6 +159,30 @@ export function EditorComposer({
   const handleEditorKeyDownCapture = (
     event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
+    const target = event.target as HTMLElement | null;
+    const isPrimaryLinkShortcut =
+      editable &&
+      isPrimaryLinkShortcutEvent(event) &&
+      !!target?.closest(".bn-editor");
+
+    // 不依赖 ProseMirror keymap 在模块加载时缓存的 navigator.platform。
+    // uTools 的 Windows WebView 偶尔会让 Mod-k 错配，capture 兜底直接按实际
+    // Ctrl/Meta 状态处理；已有链接仍保持“再次按下即移除”的既有行为。
+    if (isPrimaryLinkShortcut) {
+      const url = editor.getSelectedLinkUrl();
+      const selectedText = editor.getSelectedText();
+      if (url || selectedText) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (url) {
+          editor.deleteLink();
+        } else {
+          document.dispatchEvent(new CustomEvent("goose-open-link-popover"));
+        }
+        return;
+      }
+    }
+
     if (
       (!__GOOSE_EDITOR_AI__ && __HOST_TARGET__ !== "native-editor") ||
       event.key !== " " ||
@@ -173,7 +200,6 @@ export function EditorComposer({
       return;
     }
 
-    const target = event.target as HTMLElement | null;
     if (!target?.closest(".bn-editor")) return;
 
     let block: any;
@@ -303,6 +329,61 @@ export function EditorComposer({
   const formattingToolbarFloatingOptions = useMemo<FloatingUIOptions>(() => {
     const boundary = editorContainerRef.current ?? undefined;
     const overflowOptions = { boundary, padding: 8 };
+    const avoidSelectionOverlap: Middleware = {
+      name: "gooseAvoidSelectionOverlap",
+      fn({ placement, rects, elements }) {
+        const editorRect = editorContainerRef.current?.getBoundingClientRect();
+        const viewportWidth = document.documentElement.clientWidth;
+        const viewportHeight = document.documentElement.clientHeight;
+        const padding = 8;
+        const left = Math.max(padding, editorRect?.left ?? padding);
+        const top = Math.max(padding, editorRect?.top ?? padding);
+        const right = Math.min(
+          viewportWidth - padding,
+          editorRect?.right ?? viewportWidth - padding,
+        );
+        const bottom = Math.min(
+          viewportHeight - padding,
+          editorRect?.bottom ?? viewportHeight - padding,
+        );
+        const reference = {
+          top: rects.reference.y,
+          right: rects.reference.x + rects.reference.width,
+          bottom: rects.reference.y + rects.reference.height,
+          left: rects.reference.x,
+          width: rects.reference.width,
+          height: rects.reference.height,
+        };
+        const next = findNonOverlappingToolbarPosition({
+          reference,
+          floating: rects.floating,
+          boundary: {
+            top,
+            right,
+            bottom,
+            left,
+            width: Math.max(0, right - left),
+            height: Math.max(0, bottom - top),
+          },
+          preferredSide: placement.split("-")[0] as
+            | "top"
+            | "bottom"
+            | "left"
+            | "right",
+          // 工具栏阴影向外延伸；16px 间距也避免 Windows 下阴影压住选中文字。
+          gap: 16,
+        });
+
+        if (!next) {
+          elements.floating.style.visibility = "hidden";
+          elements.floating.style.pointerEvents = "none";
+          return {};
+        }
+        elements.floating.style.visibility = "visible";
+        elements.floating.style.pointerEvents = "auto";
+        return next;
+      },
+    };
 
     return {
       useFloatingOptions: {
@@ -312,7 +393,7 @@ export function EditorComposer({
         // 底部空间不足时再翻到上方；边界取编辑器与视口的交集，避免靠边选区溢出。
         placement: "bottom" as const,
         middleware: [
-          floatingOffset(10),
+          floatingOffset(16),
           floatingFlip({
             ...overflowOptions,
             fallbackPlacements: ["top"],
@@ -327,6 +408,9 @@ export function EditorComposer({
               elements.floating.style.overflowX = "auto";
             },
           }),
+          // 最后一层硬约束：工具栏必须完整留在编辑区/视口交集内，且不与
+          // 完整选区相交；覆盖 Windows 旧内核的多行选区坐标差异。
+          avoidSelectionOverlap,
         ],
         // 选区是虚拟锚点。段落对齐等事务会改变其 DOM 几何，却不会改变
         // ProseMirror 的 from/to；逐帧检测可在同一帧布局完成后立即刷新位置。

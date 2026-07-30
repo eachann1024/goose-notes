@@ -3,6 +3,30 @@ import { getEditorPlatform } from "@/components/editor/platform/context";
 import type { EditorSettings } from "@/components/editor/platform/hostContext";
 import type { MutableRefObject } from "react";
 
+type LinkShortcutEvent = Pick<
+  KeyboardEvent,
+  | "key"
+  | "code"
+  | "ctrlKey"
+  | "metaKey"
+  | "altKey"
+  | "shiftKey"
+  | "repeat"
+  | "defaultPrevented"
+>;
+
+/** uTools Windows WebView 中不依赖 ProseMirror 缓存的平台判断，直接匹配实际按键。 */
+export function isPrimaryLinkShortcutEvent(event: LinkShortcutEvent) {
+  return (
+    !event.defaultPrevented &&
+    !event.repeat &&
+    !event.altKey &&
+    !event.shiftKey &&
+    (event.ctrlKey || event.metaKey) &&
+    (event.key.toLowerCase() === "k" || event.code === "KeyK")
+  );
+}
+
 function normalizeExternalUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return "";

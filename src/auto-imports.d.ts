@@ -249,6 +249,7 @@ declare global {
   const extractTitleFromContent: typeof import('./components/editor/utils/content-text-extractor').extractTitleFromContent
   const fetchCustomAIModels: typeof import('./lib/ai-provider/index').fetchCustomAIModels
   const fileStorage: typeof import('./lib/fileStorage').fileStorage
+  const findNonOverlappingToolbarPosition: typeof import('./components/editor/utils/formattingToolbarPosition').findNonOverlappingToolbarPosition
   const findPseudoStructureMarkers: typeof import('./lib/ai-write/index').findPseudoStructureMarkers
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
@@ -606,6 +607,9 @@ declare global {
   // @ts-ignore
   export type { BlockNoteContent, LegacyPageContent, PageContent } from './components/editor/utils/blocknote-content/index'
   import('./components/editor/utils/blocknote-content/index')
+  // @ts-ignore
+  export type { ToolbarRect, ToolbarPoint } from './components/editor/utils/formattingToolbarPosition'
+  import('./components/editor/utils/formattingToolbarPosition')
   // @ts-ignore
   export type { SlashMenuPagePolicy } from './components/editor/utils/slashMenuPolicy'
   import('./components/editor/utils/slashMenuPolicy')
