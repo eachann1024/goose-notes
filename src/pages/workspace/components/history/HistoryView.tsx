@@ -310,9 +310,8 @@ function useHistoryViewLogic() {
 }
 
 /**
- * 版本列表（嵌入 Sidebar 中段，临时替换页面树/大纲）。
+ * 页面历史模块（历史模式下占据整块侧栏主体，替换笔记本头 + 页面树/大纲）。
  * 不自带宽度/背景/边框——靠 Sidebar 父容器提供（Sidebar 已是 shell-bg）。
- * 顶部带一个与 SidebarSectionHeader 同款节奏的小标题"页面历史"，
  * 退出按钮在主区 HistoryToolbar 上，这里不重复放。
  */
 export function HistoryVersionList() {
@@ -320,12 +319,15 @@ export function HistoryVersionList() {
     useHistoryViewLogic();
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col" aria-label="历史版本列表">
-      <div className="mt-1 shrink-0 px-3 py-2 flex items-center gap-1.5">
-        <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground/70" />
-        <span className="text-[11px] text-muted-foreground/80 font-medium">
-          页面历史
-        </span>
+    <div className="flex-1 min-h-0 flex flex-col" aria-label="页面历史">
+      <div className="shrink-0 px-3 pt-3 pb-2">
+        <div className="flex items-center gap-1.5">
+          <LucideIcons.History className="h-3.5 w-3.5 text-[var(--goose-interactive-selected-fg)]" />
+          <span className="text-[12px] font-medium text-foreground">页面历史</span>
+        </div>
+        <p className="mt-1 truncate whitespace-nowrap text-[11px] leading-none text-muted-foreground">
+          选择时间点预览后还原
+        </p>
       </div>
       {isEmpty ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
@@ -339,71 +341,120 @@ export function HistoryVersionList() {
         </div>
       ) : (
         <ScrollArea className="flex-1">
-          <div className="py-2">
+          <div className="py-1 pb-4">
             {groups.map((group) => (
-              <div key={group.label}>
-                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider px-3 py-1.5">
+              <div key={group.label} className="mb-1">
+                <div className="px-3 py-1.5 text-[10px] tracking-wider text-muted-foreground/55">
                   {group.label}
                 </div>
-                <div className="px-2 flex flex-col gap-0.5">
-                  {group.items.map((v) => {
+                <div className="px-2">
+                  {group.items.map((v, index) => {
                     const isSelected = selectedVersionId === v.versionId;
+                    const isFirst = index === 0;
+                    const isLast = index === group.items.length - 1;
                     const delta = v.charDelta;
                     const deltaText =
                       delta === 0 ? null : delta > 0 ? `+${delta}` : `${delta}`;
+                    const detailTitle = [
+                      new Date(v.createdAt).toLocaleString("zh-CN"),
+                      triggerLabel(v.trigger),
+                      `${v.charCount} 字`,
+                      deltaText ? `变化 ${deltaText}` : null,
+                      v.label || null,
+                      v.isMilestone ? "里程碑" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+
                     return (
                       <div
                         key={v.versionId}
                         className={cn(
-                          "w-full rounded-[10px] transition-colors duration-150 group relative",
+                          "group relative rounded-[10px] transition-colors duration-150",
                           isSelected
-                            ? "bg-[hsl(var(--goose-selected-bg))]"
-                            : "hover:bg-[hsl(var(--goose-selected-bg))]/60",
+                            ? "bg-[var(--goose-interactive-selected)]"
+                            : "hover:bg-[var(--goose-interactive-hover)]",
                         )}
                       >
+                        {/* 绝对定位轨道：覆盖整行高度（含 padding），相邻项首尾相接不断线 */}
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute bottom-0 left-1.5 top-0 z-[1] flex w-4 items-center justify-center"
+                        >
+                          {!isFirst ? (
+                            <span className="absolute bottom-1/2 left-1/2 top-0 w-px -translate-x-1/2 bg-border/70" />
+                          ) : null}
+                          {!isLast ? (
+                            <span className="absolute bottom-0 left-1/2 top-1/2 w-px -translate-x-1/2 bg-border/70" />
+                          ) : null}
+                          <span
+                            className={cn(
+                              "relative z-[1] h-2 w-2 rounded-full border",
+                              isSelected
+                                ? "border-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected-fg)]"
+                                : "border-border bg-[hsl(var(--goose-shell-bg))]",
+                            )}
+                          />
+                        </span>
                         <button
                           type="button"
+                          title={detailTitle}
                           aria-current={isSelected ? "true" : undefined}
                           aria-label={`查看 ${group.label} ${formatTime(v.createdAt)} 的历史版本`}
                           onClick={() => {
                             closeNotebookAiIfFullscreen();
                             select(v.versionId);
                           }}
-                          className="w-full text-left rounded-[10px] px-3 py-2 cursor-pointer"
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-[10px] py-1.5 pl-8 pr-10 text-left"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs">
-                                {formatTime(v.createdAt)}
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate text-xs leading-none tabular-nums",
+                              isSelected
+                                ? "font-medium text-[var(--goose-interactive-selected-fg)]"
+                                : "text-foreground",
+                            )}
+                          >
+                            {formatTime(v.createdAt)}
+                            {v.label ? (
+                              <span
+                                className={cn(
+                                  "ml-1.5 truncate text-[11px] font-normal leading-none",
+                                  isSelected
+                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {v.label}
                               </span>
-                              {v.label && (
-                                <span className="text-[11px] text-muted-foreground/70 truncate">
-                                  {v.label}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {deltaText && (
-                                <span
-                                  className={
-                                    delta > 0
-                                      ? "text-[10px] text-foreground/60"
-                                      : "text-[10px] text-muted-foreground/50"
-                                  }
-                                >
-                                  {deltaText}
-                                </span>
-                              )}
-                              {v.isMilestone && (
-                                <LucideIcons.Pin className="h-3 w-3 text-foreground/70" />
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-0.5 pr-10">
-                            <span className="text-[10px] text-muted-foreground/50">
-                              {triggerLabel(v.trigger)} · {v.charCount} 字
-                            </span>
-                          </div>
+                            ) : null}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {deltaText ? (
+                              <span
+                                className={cn(
+                                  "text-[10px] leading-none tabular-nums",
+                                  isSelected
+                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
+                                    : delta > 0
+                                      ? "text-foreground/55"
+                                      : "text-muted-foreground/55",
+                                )}
+                              >
+                                {deltaText}
+                              </span>
+                            ) : null}
+                            {v.isMilestone ? (
+                              <LucideIcons.Pin
+                                className={cn(
+                                  "h-3 w-3",
+                                  isSelected
+                                    ? "text-[var(--goose-interactive-selected-fg)]"
+                                    : "text-foreground/65",
+                                )}
+                              />
+                            ) : null}
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -413,7 +464,7 @@ export function HistoryVersionList() {
                           onClick={() =>
                             handleToggleMilestone(v.versionId, !v.isMilestone)
                           }
-                          className="absolute right-3 bottom-2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-foreground cursor-pointer select-none"
+                          className="absolute right-2 top-1/2 z-[2] -translate-y-1/2 cursor-pointer select-none rounded px-1 py-0.5 text-[10px] leading-none text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 bg-[hsl(var(--goose-shell-bg))]"
                         >
                           {v.isMilestone ? "取消" : "标记"}
                         </button>
@@ -423,7 +474,6 @@ export function HistoryVersionList() {
                 </div>
               </div>
             ))}
-            <div className="h-4" />
           </div>
         </ScrollArea>
       )}
@@ -431,14 +481,9 @@ export function HistoryVersionList() {
   );
 }
 
-/**
- * 历史模式顶栏：替代 PageHeader。
- * 高度 h-11 与 PageHeader 节奏对齐。
- */
 export function HistoryToolbar() {
   const {
     pageTitle,
-    selectedEntry,
     selectedVersionId,
     selectedStatus,
     exit,
@@ -457,46 +502,19 @@ export function HistoryToolbar() {
         返回
       </Button>
 
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs text-muted-foreground/70 shrink-0">
-          历史 ·
-        </span>
-        <span className="text-sm font-medium truncate">{pageTitle}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <LucideIcons.History className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="truncate text-sm font-medium">{pageTitle}</span>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {selectedEntry && (
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
-            <span className="hidden md:inline">
-              {new Date(selectedEntry.createdAt).toLocaleString("zh-CN")}
-            </span>
-            <span className="px-1.5 py-0.5 rounded-[10px] bg-[hsl(var(--goose-selected-bg))] text-foreground/60">
-              {triggerLabel(selectedEntry.trigger)}
-            </span>
-            {selectedEntry.charDelta !== 0 && (
-              <span
-                className={
-                  selectedEntry.charDelta > 0
-                    ? "text-foreground/60"
-                    : "text-muted-foreground/50"
-                }
-              >
-                {selectedEntry.charDelta > 0 ? "+" : ""}
-                {selectedEntry.charDelta}
-              </span>
-            )}
-          </div>
-        )}
-        <Button
-          size="sm"
-          className="h-7 px-3 text-xs"
-          disabled={!selectedVersionId || selectedStatus !== "ready"}
-          onClick={handleRestore}
-        >
-          还原此版本
-        </Button>
-      </div>
+      <Button
+        size="sm"
+        className="h-7 shrink-0 px-3 text-xs"
+        disabled={!selectedVersionId || selectedStatus !== "ready"}
+        onClick={handleRestore}
+      >
+        还原此版本
+      </Button>
     </header>
   );
 }

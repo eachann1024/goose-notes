@@ -26,7 +26,6 @@ test.beforeEach(() => {
         workspaceId,
         isFolder: false,
         isLocked: false,
-        isFullWidth: false,
         fontSize: "default",
         fontFamily: "default",
         content: [{ type: "paragraph", content: "foo" }],

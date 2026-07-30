@@ -61,7 +61,7 @@ function OutlineTreeNode({
           "w-full text-left text-xs leading-5 rounded-md px-2 py-1 transition-colors duration-150",
           "hover:bg-[var(--goose-interactive-hover)]",
           isActive
-            ? "bg-[var(--goose-interactive-selected)] text-foreground font-medium"
+            ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] font-medium"
             : "text-muted-foreground/80",
         )}
         style={{ paddingLeft: `${8 + depth * 14}px` }}

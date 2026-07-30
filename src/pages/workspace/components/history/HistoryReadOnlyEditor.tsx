@@ -4,7 +4,6 @@ import { zh } from "@blocknote/core/locales";
 import * as LucideIcons from "lucide-react";
 import "@blocknote/react/style.css";
 import { useSettings } from "@/stores/useSettings";
-import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import {
   createEditorSafeContent,
@@ -36,14 +35,9 @@ export function HistoryReadOnlyEditor({
   content,
   versionKey,
 }: HistoryReadOnlyEditorProps) {
-  const { globalEditorFullWidth, tableEvenColumnWidth, theme } = useSettings();
+  const { tableEvenColumnWidth, theme } = useSettings();
   const { activePageId } = usePages();
-  const { notebooks } = useNotebooks();
   const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-  const activeNotebook = activePage ? notebooks[activePage.workspaceId] : undefined;
-  const isEditorFullWidth = Boolean(
-    activeNotebook?.editorFullWidth ?? globalEditorFullWidth,
-  );
   const effectiveTheme = useResolvedTheme(theme);
   const [renderError, setRenderError] = useState(false);
 
@@ -123,13 +117,13 @@ export function HistoryReadOnlyEditor({
     );
   }
 
-  // 与主 Editor 在 WorkspaceLayout 内的包裹一致；父级 page-scroll-container 全宽为 px-14、窄栏为 px-8
+  // 与主 Editor 在 WorkspaceLayout 内的全宽包裹一致。
   return (
     <div
       data-font-family={activePage?.fontFamily ?? "default"}
       className={cn(
         "workspace-editor-surface mt-1 flex min-h-0 w-full flex-1 flex-col pt-1 pb-12",
-        isEditorFullWidth ? "max-w-full" : "w-full max-w-4xl mx-auto",
+        "max-w-full",
         tableEvenColumnWidth && "goose-table-even-column-width",
       )}
     >
