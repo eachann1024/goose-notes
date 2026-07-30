@@ -8,6 +8,12 @@ import {
 import { normalizeBatchPlanInput } from "../../src/lib/notebook-ai/batch-plan/input";
 import { updateBatchPlanSelection } from "../../src/lib/notebook-ai/batch-plan/journal";
 import { writeBatchPlanJournal } from "../../src/lib/notebook-ai/batch-plan/journal";
+import {
+  executeBatchPlan,
+  executeBatchPlanInputSchema,
+  prepareBatchPlanForApproval,
+  repairExecuteBatchPlanInput,
+} from "../../src/lib/notebook-ai/batch-plan/tool";
 import type { BatchPlanInput } from "../../src/lib/notebook-ai/batch-plan/types";
 import { buildAiPageContent } from "../../src/lib/notebook-ai/markdown";
 import { getPageTitle } from "../../src/components/editor/utils/page-title";
@@ -37,7 +43,6 @@ function makePage(
     workspaceId: "batch-notebook",
     content: content(text),
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,
@@ -222,6 +227,69 @@ test("批量计划兼容 plan.changes 与 action 形式", () => {
   });
 });
 
+test("批量工具公开 schema 只接受 canonical 操作", () => {
+  expect(
+    executeBatchPlanInputSchema.safeParse({
+      title: "更新账号",
+      summary: "补充正文",
+      operations: [
+        { type: "edit", pageId: "account-page", markdown: "新的正文" },
+      ],
+    }).success,
+  ).toBe(true);
+
+  expect(
+    executeBatchPlanInputSchema.safeParse({
+      title: "截图",
+      summary: "这不是笔记操作",
+      operations: [{ type: "create", title: "截图", markdown: { url: "x" } }],
+    }).success,
+  ).toBe(false);
+});
+
+test("批量工具只确定性修复 changes/action 旧格式", () => {
+  const repaired = repairExecuteBatchPlanInput(
+    JSON.stringify({
+      plan: {
+        title: "整理笔记",
+        summary: "合并旧页",
+        changes: [
+          { action: "edit_page", pageId: "old-page", markdown: "合并后的正文" },
+          { action: "delete", pageId: "obsolete-page" },
+        ],
+      },
+    }),
+  );
+
+  expect(repaired).not.toBeNull();
+  expect(JSON.parse(repaired ?? "{}")).toEqual({
+    title: "整理笔记",
+    summary: "合并旧页",
+    operations: [
+      { type: "edit", pageId: "old-page", markdown: "合并后的正文" },
+      { type: "delete", pageIds: ["obsolete-page"] },
+    ],
+  });
+});
+
+test("批量工具拒绝 XML、空计划和未知操作修复", () => {
+  expect(repairExecuteBatchPlanInput("<plan><changes /></plan>")).toBeNull();
+  expect(
+    repairExecuteBatchPlanInput(
+      JSON.stringify({ title: "空", summary: "空", changes: [] }),
+    ),
+  ).toBeNull();
+  expect(
+    repairExecuteBatchPlanInput(
+      JSON.stringify({
+        title: "未知",
+        summary: "未知",
+        changes: [{ action: "screenshot", url: "https://example.com/a.png" }],
+      }),
+    ),
+  ).toBeNull();
+});
+
 test("待审批计划会保留在持久化消息中，重开会话后仍可继续", () => {
   const messages = [
     {
@@ -329,6 +397,79 @@ test("冻结计划在审批/执行前零写入，并保存每个目标页的 rev
   });
   expect(textOf(pageA.id)).toContain("旧内容 A");
   expect(textOf(pageB.id)).toContain("旧内容 B");
+});
+
+test("批量工具准备审批后正常返回，不依赖 SDK approval 等待", async () => {
+  const pageA = makePage("batch-tool-a", "旧内容 A", { updatedAt: 11 });
+  const pageB = makePage("batch-tool-b", "旧内容 B", { updatedAt: 22 });
+  installState({ [pageA.id]: pageA, [pageB.id]: pageB });
+  const { toolCallId, runId } = ids("tool-approval");
+
+  expect("needsApproval" in executeBatchPlan).toBe(false);
+
+  const result = await prepareBatchPlanForApproval(
+    {
+      runId,
+      title: "汇总并删除旧页面",
+      summary: "先等待用户审批",
+      operations: [
+        {
+          type: "edit",
+          pageId: pageA.id,
+          markdown: "合并后的新内容",
+        },
+        {
+          type: "delete",
+          pageIds: [pageB.id],
+        },
+      ],
+    },
+    { toolCallId, notebookId: "batch-notebook" },
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    needsApproval: true,
+    toolCallId,
+    runId,
+    status: "prepared",
+    operationCount: 2,
+  });
+  expect(writeCalls).toBe(0);
+  expect(textOf(pageA.id)).toContain("旧内容 A");
+  expect(usePages.getState().pages[pageB.id].trashedAt).toBeUndefined();
+});
+
+test("单页编辑也只准备审批，不会直接写入", async () => {
+  const page = makePage("single-approval-page", "原始内容", { updatedAt: 7 });
+  installState({ [page.id]: page });
+  const { toolCallId, runId } = ids("single-approval");
+
+  const result = await prepareBatchPlanForApproval(
+    {
+      runId,
+      title: "整理公司账号",
+      summary: "调整当前页面格式",
+      operations: [
+        {
+          type: "edit",
+          pageId: page.id,
+          markdown: "整理后的内容",
+        },
+      ],
+    },
+    { toolCallId, notebookId: "batch-notebook" },
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    needsApproval: true,
+    status: "prepared",
+    operationCount: 1,
+  });
+  expect(writeCalls).toBe(0);
+  expect(textOf(page.id)).toContain("原始内容");
+  expect(textOf(page.id)).not.toContain("整理后的内容");
 });
 
 test("冻结后任一版本变化会在 preflight 整批拒绝，零页面写入", async () => {
@@ -494,6 +635,41 @@ test("执行后用户编辑会让整批撤回冲突，且不会覆盖用户内�
   expect(undone.journal.status).toBe("undo-conflicted");
   expect(textOf(page.id)).toContain("用户后续编辑");
   expect(writeCalls).toBe(1);
+});
+
+test("本地文件正文审批执行后不会注入文件名 H1", async () => {
+  const localPage = makePage("batch-local-edit", "本地旧内容", {
+    localFilePath: "/tmp/goose-batch/公司账号.md",
+  });
+  installState({ [localPage.id]: localPage }, "local-folder");
+  const { toolCallId, runId } = ids("local-edit");
+
+  const prepared = await prepareBatchPlan({
+    toolCallId,
+    runId,
+    notebookId: "batch-notebook",
+    input: plan([
+      {
+        type: "edit",
+        operationId: "edit-local",
+        pageId: localPage.id,
+        markdown: "## 人员账号\n\n整理后的本地正文",
+      },
+    ]),
+  });
+
+  expect(prepared.ok).toBe(true);
+  expect(writeCalls).toBe(0);
+  const result = await executePreparedBatchPlan(toolCallId, runId);
+  expect(result.ok, result.ok ? undefined : result.error).toBe(true);
+  const blocks = usePages.getState().pages[localPage.id].content as Array<{
+    type?: string;
+    props?: { level?: number };
+    content?: unknown;
+  }>;
+  expect(blocks[0]).toMatchObject({ type: "heading", props: { level: 2 } });
+  expect(JSON.stringify(blocks)).toContain("人员账号");
+  expect(JSON.stringify(blocks)).not.toContain("公司账号");
 });
 
 test("本地文件夹删除计划在冻结阶段即标记为 invalid，且零写入", async () => {

@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { NotebookAiAgentContext } from "../types";
-import { executePreparedBatchPlan, prepareBatchPlan } from "./executor";
+import { prepareBatchPlan } from "./executor";
 import { normalizeBatchPlanInput } from "./input";
 
 const optionalOperationId = z
@@ -10,169 +10,234 @@ const optionalOperationId = z
   .optional()
   .describe("可选的操作唯一标识；省略时由应用自动生成");
 
-const typedOperationSchema = z.union([
+const canonicalOperationSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.enum(["create", "create_page", "createPage"]),
+    type: z.literal("create"),
     operationId: optionalOperationId,
     title: z.string().min(1),
     markdown: z.string().min(1),
     parentId: z.string().min(1).optional(),
-  }),
+  }).strict(),
   z.object({
-    type: z.enum(["edit", "edit_page", "editPage"]),
+    type: z.literal("edit"),
     operationId: optionalOperationId,
     pageId: z.string().min(1),
     markdown: z.string().min(1),
     title: z.string().min(1).optional(),
-  }),
+  }).strict(),
   z.object({
-    type: z.enum(["delete", "delete_page", "deletePage"]),
+    type: z.literal("delete"),
     operationId: optionalOperationId,
-    pageIds: z
-      .array(z.string().min(1))
-      .min(1)
-      .optional()
-      .describe("要删除的一个或多个页面 ID"),
-    pageId: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("仅删除一个页面时可用，应用会转换成 pageIds"),
-  }),
+    pageIds: z.array(z.string().min(1)).min(1),
+  }).strict(),
 ]);
 
-const actionOperationSchema = z.union([
-  z.object({
-    action: z.literal("create"),
-    operationId: optionalOperationId,
-    title: z.string().min(1),
-    markdown: z.string().min(1),
-    parentId: z.string().min(1).optional(),
-  }),
-  z.object({
-    action: z.literal("edit"),
-    operationId: optionalOperationId,
-    pageId: z.string().min(1),
-    markdown: z.string().min(1),
-    title: z.string().min(1).optional(),
-  }),
-  z.object({
-    action: z.literal("delete"),
-    operationId: optionalOperationId,
-    pageIds: z.array(z.string().min(1)).min(1).optional(),
-    pageId: z.string().min(1).optional(),
-    title: z.string().min(1).optional(),
-  }),
-]);
-
-const operationSchema = z.union([
-  typedOperationSchema,
-  actionOperationSchema,
-]);
-
-const inputSchema = z.union([
-  z.object({
+/** 模型可见的唯一工具契约；旧格式只在 repair hook 内部兼容。 */
+export const executeBatchPlanInputSchema = z
+  .object({
     runId: z.string().min(1).optional(),
-    title: z.string().min(1).optional(),
-    summary: z.string().min(1).optional(),
-    operations: z.array(operationSchema).min(1).max(50),
-  }),
-  z.object({
-    plan: z.object({
-      runId: z.string().min(1).optional(),
-      title: z.string().min(1).optional(),
-      summary: z.string().min(1).optional(),
-      changes: z.array(operationSchema).min(1).max(50),
-    }),
-  }),
-]);
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    operations: z.array(canonicalOperationSchema).min(1).max(50),
+  })
+  .strict();
+
+type CanonicalOperation = z.infer<typeof canonicalOperationSchema>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function canonicalType(value: unknown) {
+  switch (value) {
+    case "create":
+    case "create_page":
+    case "createPage":
+      return "create" as const;
+    case "edit":
+    case "edit_page":
+    case "editPage":
+      return "edit" as const;
+    case "delete":
+    case "delete_page":
+    case "deletePage":
+      return "delete" as const;
+    default:
+      return null;
+  }
+}
+
+function parseChanges(value: unknown): unknown[] | null {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function repairOperation(value: unknown): CanonicalOperation | null {
+  if (!isRecord(value)) return null;
+  const fromType = value.type === undefined ? null : canonicalType(value.type);
+  const fromAction = value.action === undefined ? null : canonicalType(value.action);
+  if (
+    (value.type !== undefined && !fromType) ||
+    (value.action !== undefined && !fromAction) ||
+    (!fromType && !fromAction) ||
+    (fromType && fromAction && fromType !== fromAction)
+  ) {
+    return null;
+  }
+  const type = fromType ?? fromAction;
+  if (!type) return null;
+
+  const operationId = typeof value.operationId === "string" ? value.operationId : undefined;
+  if (type === "create") {
+    return {
+      type,
+      ...(operationId ? { operationId } : {}),
+      title: value.title as string,
+      markdown: value.markdown as string,
+      ...(typeof value.parentId === "string" ? { parentId: value.parentId } : {}),
+    };
+  }
+  if (type === "edit") {
+    return {
+      type,
+      ...(operationId ? { operationId } : {}),
+      pageId: value.pageId as string,
+      markdown: value.markdown as string,
+      ...(typeof value.title === "string" ? { title: value.title } : {}),
+    };
+  }
+
+  const pageIds = Array.isArray(value.pageIds)
+    ? value.pageIds
+    : typeof value.pageId === "string"
+      ? [value.pageId]
+      : value.pageIds;
+  return {
+    type,
+    ...(operationId ? { operationId } : {}),
+    pageIds: pageIds as string[],
+  };
+}
 
 /**
- * 仅供跨页或至少两项写操作使用。输入必须是模型已经完整生成的冻结结果；
- * needsApproval 会持久化零写入计划，批准后 execute 才真正改动页面。
+ * 只修复可证明等价的旧批量计划。不会从 Markdown/XML/空内容推断写入操作。
  */
-export const executeBatchPlan = tool({
-  description:
-    "执行一个需要用户批准的跨页批量写入计划。仅用于至少 2 项写操作或跨页批量操作；必须提供完整、冻结的 create/edit/delete 结果，不能用于单页即时编辑。推荐使用顶层 runId/title/summary/operations；operationId 可省略；删除单页可传 pageId，删除多页传 pageIds。兼容 create_page/delete_page 和 plan.changes 形式。",
-  inputSchema,
-  needsApproval: async (input, { experimental_context, toolCallId }) => {
-    const context = experimental_context as NotebookAiAgentContext;
-    const normalized = normalizeBatchPlanInput(input, {
-      fallbackRunId: `batch-${toolCallId}`,
-      fallbackTitle: "批量变更计划",
-    });
-    if (!normalized) return true;
-    const { runId, ...planInput } = normalized;
+export function repairExecuteBatchPlanInput(input: string): string | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(input);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value)) return null;
+
+  const plan = isRecord(value.plan) ? value.plan : null;
+  const source = value.changes !== undefined ? value : plan;
+  if (!source || source.changes === undefined) return null;
+  const changes = parseChanges(source.changes);
+  if (!changes || changes.length === 0) return null;
+
+  const operations = changes.map(repairOperation);
+  if (operations.some((operation) => !operation)) return null;
+  const candidate = {
+    ...(typeof (source.runId ?? value.runId) === "string"
+      ? { runId: source.runId ?? value.runId }
+      : {}),
+    title: source.title ?? value.title,
+    summary: source.summary ?? value.summary,
+    operations,
+  };
+  const parsed = executeBatchPlanInputSchema.safeParse(candidate);
+  return parsed.success ? JSON.stringify(parsed.data) : null;
+}
+
+/**
+ * 所有笔记写操作都必须通过此入口。输入是模型已经完整生成的冻结结果。
+ * 工具 execute 只冻结并持久化零写入计划；真正执行由审批卡在用户批准后触发。
+ *
+ * 不使用 AI SDK 的 needsApproval：旧 uTools Chromium 在大工具参数结束后偶发无法
+ * 收到 approval-request，导致模型已完成但 UI 永久停在 streaming。应用本来就有
+ * 独立的本地审批执行器，因此直接返回 prepared 状态更简单也更可靠。
+ */
+export async function prepareBatchPlanForApproval(
+  input: unknown,
+  options: {
+    toolCallId: string;
+    notebookId: string;
+  },
+) {
+  const fallbackRunId = `batch-${options.toolCallId}`;
+  const normalized = normalizeBatchPlanInput(input, {
+    fallbackRunId,
+    fallbackTitle: "笔记变更计划",
+  });
+  if (!normalized) {
+    return {
+      ok: false as const,
+      needsApproval: false,
+      toolCallId: options.toolCallId,
+      runId: fallbackRunId,
+      status: "invalid" as const,
+      error: "批量计划参数不完整",
+      operationCount: 0,
+    };
+  }
+
+  const { runId, ...planInput } = normalized;
+  try {
     const prepared = await prepareBatchPlan({
-      toolCallId,
+      toolCallId: options.toolCallId,
       runId,
-      notebookId: context.notebookId,
+      notebookId: options.notebookId,
       input: planInput,
     });
-    // 即使冻结校验失败也请求一次批准：这样 execute 能返回明确的 invalid 状态，
-    // 而不是让 SDK 把它当成普通工具调用直接执行。
-    void prepared;
-    return true;
-  },
-  execute: async (input, { toolCallId }) => {
-    const fallbackRunId = `batch-${toolCallId}`;
-    const normalized = normalizeBatchPlanInput(input, {
-      fallbackRunId,
-      fallbackTitle: "批量变更计划",
+    if (!prepared.ok) {
+      return {
+        ok: false as const,
+        needsApproval: false,
+        toolCallId: options.toolCallId,
+        runId,
+        status: "invalid" as const,
+        error: prepared.error,
+        operationCount: normalized.operations.length,
+      };
+    }
+    return {
+      ok: true as const,
+      needsApproval: true,
+      toolCallId: options.toolCallId,
+      runId,
+      status: "prepared" as const,
+      operationCount: normalized.operations.length,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      needsApproval: false,
+      toolCallId: options.toolCallId,
+      runId,
+      status: "invalid" as const,
+      error: error instanceof Error ? error.message : "批量计划准备失败",
+      operationCount: normalized.operations.length,
+    };
+  }
+}
+
+export const executeBatchPlan = tool({
+  description:
+    '准备笔记变更审批计划；只生成审批卡，不立即写入。参数格式：{title:"整理笔记",summary:"更新账号页",operations:[{type:"edit",pageId:"page-1",markdown:"新正文"}]}。返回后停止，等待用户审批。',
+  inputSchema: executeBatchPlanInputSchema,
+  execute: async (input, { experimental_context, toolCallId }) => {
+    const context = experimental_context as NotebookAiAgentContext;
+    return prepareBatchPlanForApproval(input, {
+      toolCallId,
+      notebookId: context.notebookId,
     });
-    if (!normalized) {
-      return {
-        ok: false,
-        toolCallId,
-        runId: fallbackRunId,
-        status: "invalid",
-        error: "批量计划参数不完整",
-        appliedCount: 0,
-        selectedCount: 0,
-        canUndo: false,
-        results: [],
-      };
-    }
-    let result;
-    try {
-      result = await executePreparedBatchPlan(toolCallId, normalized.runId);
-    } catch (error) {
-      return {
-        ok: false,
-        toolCallId,
-        runId: normalized.runId,
-        status: "invalid",
-        error: error instanceof Error ? error.message : "批量计划执行失败",
-        appliedCount: 0,
-        selectedCount: 0,
-        canUndo: false,
-        results: [],
-      };
-    }
-    const appliedCount = result.results.filter((item) => item.ok).length;
-    const selectedCount = result.journal.selectedOperationIds.length;
-    const canUndo = result.ok && result.journal.status === "completed";
-    return result.ok
-      ? {
-          ok: true,
-          toolCallId,
-          runId: normalized.runId,
-          status: result.journal.status,
-          appliedCount,
-          selectedCount,
-          canUndo,
-          results: result.results,
-        }
-      : {
-          ok: false,
-          toolCallId,
-          runId: normalized.runId,
-          status: result.journal.status,
-          error: result.error,
-          appliedCount,
-          selectedCount,
-          canUndo,
-          results: result.results,
-        };
   },
 });

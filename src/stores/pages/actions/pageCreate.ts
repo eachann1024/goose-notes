@@ -28,8 +28,11 @@ import type { StoreSet, StoreGet } from "./hydrate";
 import { flushEditorContent } from "./flushEditor";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useSettings } from "@/stores/useSettings";
+import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 
-const initialContent: JSONContent = createEmptyBlockNoteContent();
+const initialContent: JSONContent = createEmptyBlockNoteContent(
+  UNTITLED_PAGE_TITLE,
+);
 
 /**
  * 新建页聚焦策略：
@@ -49,7 +52,9 @@ function focusNewPage(pageId: string) {
   }
 }
 
-export function createDefaultPageContent(title = ""): JSONContent {
+export function createDefaultPageContent(
+  title = UNTITLED_PAGE_TITLE,
+): JSONContent {
   return createEmptyBlockNoteContent(title);
 }
 
@@ -115,7 +120,6 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
       content: ONBOARDING_PAGE_CONTENT,
       isFolder: false,
       isLocked: false,
-      isFullWidth: false,
       fontSize: "default",
       fontFamily: "default",
       createdAt: now,
@@ -130,7 +134,6 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
       content: ONBOARDING_CHILD_PAGE_CONTENT,
       isFolder: false,
       isLocked: false,
-      isFullWidth: false,
       fontSize: "default",
       fontFamily: "default",
       createdAt: now + 1,
@@ -145,7 +148,6 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
       content: ONBOARDING_SECOND_CHILD_CONTENT,
       isFolder: false,
       isLocked: false,
-      isFullWidth: false,
       fontSize: "default",
       fontFamily: "default",
       createdAt: now + 2,
@@ -219,7 +221,6 @@ export const createPageRecordAction = (
     content: clonePageContent(content),
     isFolder: false,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: now,
@@ -246,7 +247,7 @@ export const createLocalPageAction = async (
   const id = await get().createLocalPageRecord({
     workspaceId,
     parentId,
-    title: "无标题",
+    title: UNTITLED_PAGE_TITLE,
     content: createEmptyLocalPageContent(),
   });
   if (!id) return null;
@@ -295,8 +296,9 @@ export const createLocalPageRecordAction = async (
   };
 
   const now = Date.now();
-  const normalizedTitle =
-    ((title || "新页面").trim() || "新页面").replace(/[\\/:*?"<>|]/g, "_");
+  const normalizedTitle = (
+    (title || UNTITLED_PAGE_TITLE).trim() || UNTITLED_PAGE_TITLE
+  ).replace(/[\\/:*?"<>|]/g, "_");
   const parentPath = resolveParentPath();
   const parentPage = parentId ? get().pages[parentId] : undefined;
   const storedParentId =
@@ -345,7 +347,6 @@ export const createLocalPageRecordAction = async (
     content: cloneLocalPageContent(content),
     isFolder: false,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     localFilePath: filePath,
@@ -428,7 +429,6 @@ export const createLocalFolderRecordAction = async (
     },
     isFolder: true,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     localFilePath: folderPath,

@@ -2,7 +2,12 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { v4 as uuidv4 } from "uuid";
-import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
+import {
+  buildAiPageContent,
+  normalizeAiMarkdown,
+} from "@/lib/notebook-ai/markdown";
+import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import {
   getPageContentSignature,
@@ -12,6 +17,7 @@ import {
 } from "@/lib/notebook-ai/pageWriteGuard";
 import { recordHistorySnapshot } from "@/lib/history/snapshot";
 import { reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
+import type { JSONContent } from "@/types";
 import { readBatchPlanJournal, writeBatchPlanJournal } from "./journal";
 import type {
   BatchOperationResult,
@@ -431,6 +437,17 @@ function plannedContent(
   >,
   journal: BatchPlanJournal,
 ) {
+  if (operation.type === "edit") {
+    const page = journal.before[operation.pageId].page;
+    if (page.localFilePath) {
+      const markdown = normalizeAiMarkdown(operation.markdown).trim();
+      const content = markdown ? importMarkdownFragment(markdown) : [];
+      return normalizePageContent(content, {
+        ensureFirstTitle: false,
+      }) as JSONContent;
+    }
+  }
+
   const title =
     operation.type === "create"
       ? operation.title

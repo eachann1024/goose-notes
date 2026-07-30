@@ -22,7 +22,6 @@ function createPage(overrides: Partial<Page> = {}): Page {
     workspaceId: notebookId,
     content: content("原内容"),
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,

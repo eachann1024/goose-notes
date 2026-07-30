@@ -25,7 +25,6 @@ function createPage(id: string, content: JSONContent): Page {
     workspaceId: notebookId,
     content,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,
@@ -258,6 +257,47 @@ test("乱序 output 事件不会阻止稍后的 execute 建页", async () => {
 
   expect(result).toEqual({ ok: true, pageId: "page-1" });
   expect(createCount).toBe(1);
+});
+
+test("updatePage 完成事件重复到达时不会再次写入页面", async () => {
+  const toolCallId = "tool-update-output-replayed";
+  const pageId = "existing-page";
+  toolCallIds.push(toolCallId);
+  let writeCount = 0;
+
+  usePages.setState({
+    pages: {
+      [pageId]: createPage(pageId, [
+        { type: "heading", props: { level: 1 }, content: "现有页面" },
+        { type: "paragraph", content: "已由工具写入的正文" },
+      ]),
+    },
+    activePageId: pageId,
+    writePageContent: async () => {
+      writeCount += 1;
+      return true;
+    },
+  });
+
+  const completedPart = {
+    type: "tool-updatePage",
+    toolCallId,
+    state: "output-available",
+    input: {
+      pageId,
+      markdown: "已由工具写入的正文",
+    },
+    output: { pageId, title: "现有页面", ok: true },
+  } as unknown as StreamingWritePart;
+
+  await handleStreamingWritePart(completedPart, { notebookId });
+  await handleStreamingWritePart(completedPart, { notebookId });
+
+  expect(writeCount).toBe(0);
+  expect(usePages.getState().pages[pageId].updatedAt).toBe(1);
+  expect(JSON.stringify(usePages.getState().pages[pageId].content)).toContain(
+    "已由工具写入的正文",
+  );
 });
 
 test("打开标签失败时仍返回已创建页面并完成最终写入", async () => {
