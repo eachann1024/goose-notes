@@ -187,8 +187,6 @@ export function SettingsShortcuts({
 }: SettingsShortcutsProps) {
   const [confirmReset, setConfirmReset] = useState(false)
 
-  const closeTabDefaultLabel = formatShortcut(DEFAULT_CLOSE_TAB_SHORTCUT)
-
   const handleReset = () => {
     if (!confirmReset) {
       setConfirmReset(true)
@@ -302,7 +300,7 @@ export function SettingsShortcuts({
         {!singleTabMode && <ShortcutField
           id="close-tab-shortcut"
           title="关闭快捷键"
-          description={`默认 ${closeTabDefaultLabel}。按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。`}
+          description="默认留空。设置后，按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。"
           value={closeTabShortcut}
           onChange={safeSetCloseTab}
           resetValue={DEFAULT_CLOSE_TAB_SHORTCUT}

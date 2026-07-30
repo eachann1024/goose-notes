@@ -25,6 +25,44 @@ function isModifierToken(token: string) {
   return token === "ctrl" || token === "meta" || token === "alt" || token === "shift";
 }
 
+export type ModifierShortcut = "ctrl" | "meta" | "alt" | "shift";
+
+export function getModifierOnlyShortcut(
+  shortcut: string,
+): ModifierShortcut | "" {
+  const parts = shortcut
+    .split("+")
+    .map(normalizeShortcutToken)
+    .filter(Boolean);
+  if (parts.length !== 1 || !isModifierToken(parts[0])) return "";
+  return parts[0] as ModifierShortcut;
+}
+
+export function matchModifierOnlyShortcutKeyDown(
+  event: Pick<
+    KeyboardEvent,
+    "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey"
+  >,
+  shortcut: string,
+) {
+  const modifier = getModifierOnlyShortcut(shortcut);
+  if (!modifier || normalizeShortcutToken(event.key) !== modifier) return false;
+  return (
+    event.ctrlKey === (modifier === "ctrl") &&
+    event.metaKey === (modifier === "meta") &&
+    event.altKey === (modifier === "alt") &&
+    event.shiftKey === (modifier === "shift")
+  );
+}
+
+export function matchModifierOnlyShortcutKey(
+  event: Pick<KeyboardEvent, "key">,
+  shortcut: string,
+) {
+  const modifier = getModifierOnlyShortcut(shortcut);
+  return !!modifier && normalizeShortcutToken(event.key) === modifier;
+}
+
 export function shortcutHasModifier(shortcut: string) {
   return shortcut
     .split("+")
@@ -81,7 +119,7 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
 
   const keyToken = parts.find((part) => !isModifierToken(part));
   const eventKey = normalizeShortcutToken(event.key);
-  // 旧版本可能持久化了 modifier-only 配置；它们不应劫持单独的修饰键。
+  // 单独修饰键需等到 keyup 才能确认它没有组成组合键，由上层分发器处理。
   if (!keyToken) return false;
   if (!isModifierToken(eventKey) && eventKey === keyToken) return true;
   // macOS 上 Option 组合键的 event.key 是变音字符（如 ⌥W → "∑"），用 event.code 兜底

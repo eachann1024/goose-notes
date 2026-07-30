@@ -7,7 +7,10 @@ import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 import {
+  getModifierOnlyShortcut,
   matchMouseShortcut,
+  matchModifierOnlyShortcutKey,
+  matchModifierOnlyShortcutKeyDown,
   matchShortcut,
   shortcutHasModifier,
 } from "@/lib/shortcut-match";
@@ -489,20 +492,9 @@ export function useAppHotkeys() {
       },
     ];
 
-    const dispatcher = (event: KeyboardEvent) => {
-      // 快捷键录制输入框内的按键一律放行，否则已配置的快捷键会在
-      // capture 阶段被吞掉，导致用户无法重新录制同名/相近的快捷键
-      const target = event.target as HTMLElement | null;
-      if (target?.closest?.("[data-shortcut-recorder]")) return;
-      for (const entry of entries) {
-        if (!entry.match(event)) continue;
-        if (entry.when && !entry.when(event)) continue;
-        entry.handler(event);
-        return;
-      }
-    };
+    let pendingModifierOnlyEntry: HotkeyEntry | null = null;
 
-    const getMouseShortcutForEntry = (entry: HotkeyEntry) => {
+    const getShortcutForEntry = (entry: HotkeyEntry) => {
       if (entry.shortcutId === "close-tab") {
         return closeTabShortcutRef.current;
       }
@@ -511,13 +503,67 @@ export function useAppHotkeys() {
         : "";
     };
 
+    const dispatcher = (event: KeyboardEvent) => {
+      // 快捷键录制输入框内的按键一律放行，否则已配置的快捷键会在
+      // capture 阶段被吞掉，导致用户无法重新录制同名/相近的快捷键
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) {
+        pendingModifierOnlyEntry = null;
+        return;
+      }
+
+      if (
+        pendingModifierOnlyEntry &&
+        !matchModifierOnlyShortcutKey(
+          event,
+          getShortcutForEntry(pendingModifierOnlyEntry),
+        )
+      ) {
+        pendingModifierOnlyEntry = null;
+      }
+
+      for (const entry of entries) {
+        const shortcut = getShortcutForEntry(entry);
+        if (
+          !getModifierOnlyShortcut(shortcut) ||
+          !matchModifierOnlyShortcutKeyDown(event, shortcut)
+        ) {
+          continue;
+        }
+        if (entry.when && !entry.when(event)) return;
+        pendingModifierOnlyEntry = entry;
+        return;
+      }
+
+      for (const entry of entries) {
+        if (!entry.match(event)) continue;
+        if (entry.when && !entry.when(event)) continue;
+        entry.handler(event);
+        return;
+      }
+    };
+
+    const handleModifierOnlyKeyUp = (event: KeyboardEvent) => {
+      const entry = pendingModifierOnlyEntry;
+      pendingModifierOnlyEntry = null;
+      if (!entry) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) return;
+      const shortcut = getShortcutForEntry(entry);
+      if (!matchModifierOnlyShortcutKey(event, shortcut)) return;
+      if (entry.when && !entry.when(event)) return;
+      entry.handler(event);
+    };
+
     const handleMouseSideButton = (event: MouseEvent) => {
+      pendingModifierOnlyEntry = null;
       if (event.button !== 3 && event.button !== 4) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest?.("[data-shortcut-recorder]")) return;
 
       for (const entry of entries) {
-        const shortcut = getMouseShortcutForEntry(entry);
+        const shortcut = getShortcutForEntry(entry);
         if (!shortcut || !matchMouseShortcut(event, shortcut)) continue;
         const compatibleEvent = event as unknown as KeyboardEvent;
         if (entry.when && !entry.when(compatibleEvent)) {
@@ -548,12 +594,20 @@ export function useAppHotkeys() {
       event.stopPropagation();
     };
 
+    const clearPendingModifierOnlyEntry = () => {
+      pendingModifierOnlyEntry = null;
+    };
+
     document.addEventListener("keydown", dispatcher, true);
+    document.addEventListener("keyup", handleModifierOnlyKeyUp, true);
+    window.addEventListener("blur", clearPendingModifierOnlyEntry);
     window.addEventListener("mousedown", handleMouseSideButton, true);
     window.addEventListener("mouseup", suppressMouseSideButton, true);
     window.addEventListener("auxclick", suppressMouseSideButton, true);
     return () => {
       document.removeEventListener("keydown", dispatcher, true);
+      document.removeEventListener("keyup", handleModifierOnlyKeyUp, true);
+      window.removeEventListener("blur", clearPendingModifierOnlyEntry);
       window.removeEventListener("mousedown", handleMouseSideButton, true);
       window.removeEventListener("mouseup", suppressMouseSideButton, true);
       window.removeEventListener("auxclick", suppressMouseSideButton, true);

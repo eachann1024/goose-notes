@@ -6,6 +6,7 @@ import {
 } from "../../src/pages/workspace/components/sidebar/settings/SettingsShortcuts";
 import { getFixedAppShortcuts } from "../../src/lib/fixed-app-shortcuts";
 import { DEFAULT_APP_SHORTCUTS } from "../../src/stores/settings/slices/shortcutsSlice";
+import { DEFAULT_CLOSE_TAB_SHORTCUT } from "../../src/stores/settings/types";
 
 function shortcutEvent(init: {
   key: string;
@@ -27,7 +28,7 @@ function shortcutEvent(init: {
   };
 }
 
-test("shortcut recorder supports Space and ignores modifier-only input", () => {
+test("shortcut recorder supports Space and defers modifier-only input", () => {
   expect(getShortcutFromKeyEvent(shortcutEvent({ key: " ", code: "Space" }))).toBe("Space");
   expect(
     getShortcutFromKeyEvent(
@@ -77,4 +78,8 @@ test("fixed shortcuts adapt to the current operating system", () => {
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("newNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("saveNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("reopenTab");
+});
+
+test("new users start without a close-tab shortcut", () => {
+  expect(DEFAULT_CLOSE_TAB_SHORTCUT).toBe("");
 });

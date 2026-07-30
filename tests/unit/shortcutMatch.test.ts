@@ -1,7 +1,10 @@
 import { expect, test } from "playwright/test";
 import {
+  getModifierOnlyShortcut,
   getShortcutFromMouseEvent,
   matchMouseShortcut,
+  matchModifierOnlyShortcutKey,
+  matchModifierOnlyShortcutKeyDown,
   matchShortcut,
   shortcutHasModifier,
 } from "../../src/lib/shortcut-match";
@@ -55,7 +58,7 @@ test("shortcutHasModifier distinguishes modified shortcuts from text keys", () =
   expect(shortcutHasModifier("W")).toBe(false);
 });
 
-test("modifier-only legacy shortcuts never intercept a bare modifier key", () => {
+test("modifier-only shortcuts wait for the dedicated keyup dispatcher", () => {
   expect(
     matchShortcut(
       keyboardEvent({ key: "Meta", code: "MetaLeft", metaKey: true }),
@@ -68,6 +71,27 @@ test("modifier-only legacy shortcuts never intercept a bare modifier key", () =>
       "Ctrl",
     ),
   ).toBe(false);
+});
+
+test("modifier-only shortcuts match an exact modifier press and release", () => {
+  const ctrlDown = keyboardEvent({
+    key: "Control",
+    code: "ControlLeft",
+    ctrlKey: true,
+  });
+  const ctrlWithShift = keyboardEvent({
+    key: "Control",
+    code: "ControlLeft",
+    ctrlKey: true,
+    shiftKey: true,
+  });
+
+  expect(getModifierOnlyShortcut("Control")).toBe("ctrl");
+  expect(getModifierOnlyShortcut("Ctrl+W")).toBe("");
+  expect(matchModifierOnlyShortcutKeyDown(ctrlDown, "Ctrl")).toBe(true);
+  expect(matchModifierOnlyShortcutKeyDown(ctrlWithShift, "Ctrl")).toBe(false);
+  expect(matchModifierOnlyShortcutKey({ key: "Control" }, "Ctrl")).toBe(true);
+  expect(matchModifierOnlyShortcutKey({ key: "Shift" }, "Ctrl")).toBe(false);
 });
 
 test("recorded plus shortcuts can be matched", () => {

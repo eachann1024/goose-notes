@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import * as LucideIcons from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -89,10 +89,16 @@ export function ShortcutField({
   resetValue,
 }: ShortcutFieldProps) {
   const [isCapturing, setIsCapturing] = useState(false)
+  const pendingModifierRef = useRef("")
+  const modifierUsedInChordRef = useRef(false)
   const displayValue = value ? formatShortcut(value) : ""
   const hintText = isCapturing
     ? "正在监听，可按键盘快捷键或鼠标侧键"
     : "点击输入框后，按键盘快捷键或鼠标侧键"
+  const resetPendingModifier = () => {
+    pendingModifierRef.current = ""
+    modifierUsedInChordRef.current = false
+  }
 
   return (
     <div className={`space-y-2 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
@@ -116,8 +122,14 @@ export function ShortcutField({
             "h-9 text-sm transition-colors",
             isCapturing && "placeholder:text-[var(--goose-color-capture-hint)]",
           )}
-          onFocus={() => setIsCapturing(true)}
-          onBlur={() => setIsCapturing(false)}
+          onFocus={() => {
+            resetPendingModifier()
+            setIsCapturing(true)
+          }}
+          onBlur={() => {
+            resetPendingModifier()
+            setIsCapturing(false)
+          }}
           onMouseDown={(event) => {
             const shortcut = getShortcutFromMouseEvent(event.nativeEvent)
             if (!shortcut) return
@@ -158,8 +170,40 @@ export function ShortcutField({
 
             event.preventDefault()
             event.stopPropagation()
+
+            const isModifierKey = MODIFIER_KEYS.has(event.key.toLowerCase())
+            if (isModifierKey) {
+              const modifier = normalizeShortcutKey(event.key)
+              if (!pendingModifierRef.current) {
+                pendingModifierRef.current = modifier
+                modifierUsedInChordRef.current = false
+              } else if (pendingModifierRef.current !== modifier) {
+                modifierUsedInChordRef.current = true
+              }
+              return
+            }
+
+            if (pendingModifierRef.current) {
+              modifierUsedInChordRef.current = true
+            }
             const shortcut = getShortcutFromKeyEvent(event)
             if (shortcut) onChange(shortcut)
+          }}
+          onKeyUp={(event) => {
+            if (!MODIFIER_KEYS.has(event.key.toLowerCase())) return
+            event.preventDefault()
+            event.stopPropagation()
+
+            const modifier = normalizeShortcutKey(event.key)
+            if (
+              pendingModifierRef.current === modifier &&
+              !modifierUsedInChordRef.current
+            ) {
+              onChange(modifier)
+            }
+            if (pendingModifierRef.current === modifier) {
+              resetPendingModifier()
+            }
           }}
         />
         {resetValue !== undefined && (
