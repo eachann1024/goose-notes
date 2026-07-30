@@ -4,8 +4,10 @@
 
 /* ---------- Popover 卡片（input + items 共用容器） ---------- */
 .bn-combobox {
-  width: 320px;
-  max-width: min(360px, 92vw);
+  /* xl-ai 的基础样式在构建产物中会晚于此文件加载并写入 width: 100%。
+     固定覆盖，避免选区浮层宽度退化成输入框的 intrinsic width。 */
+  width: 320px !important;
+  max-width: min(360px, 92vw) !important;
   padding: 6px;
   gap: 2px;
   border-radius: 14px;
@@ -97,7 +99,7 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  color: #10b981; /* 与 AiButton 同色（formatting toolbar） */
+  color: hsl(var(--primary)); /* 与 AiButton 共用项目主题强调色 */
 }
 
 .bn-combobox .bn-combobox-icon svg {
@@ -133,10 +135,15 @@
   transition: background-color 100ms ease-out;
 }
 
-.bn-suggestion-menu-item:hover,
-.bn-suggestion-menu-item[aria-selected="true"] {
+.bn-suggestion-menu-item:hover {
   background: hsl(var(--accent)) !important;
   color: hsl(var(--accent-foreground));
+}
+
+/* 键盘选中项与全局列表选中态同级：鸢尾靛蓝浅底 + 强调文字 */
+.bn-suggestion-menu-item[aria-selected="true"] {
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg);
 }
 
 /* 左侧图标容器 */
@@ -150,9 +157,12 @@
   color: hsl(var(--muted-foreground));
 }
 
-.bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"],
-.bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+.bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"] {
   color: hsl(var(--foreground));
+}
+
+.bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: var(--goose-interactive-selected-fg);
 }
 
 .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-section svg {

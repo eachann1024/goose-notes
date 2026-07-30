@@ -17,8 +17,6 @@ interface CustomSlashMenuProps {
 
 const KEYBOARD_NAV_IGNORE_MOUSE_MS = 700;
 const SCROLL_ANIM_MS = 180;
-const SCROLL_EDGE_PADDING_PX = 10;
-
 function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
 }
@@ -28,27 +26,24 @@ function clampScrollTop(container: HTMLElement, top: number): number {
   return Math.max(0, Math.min(top, max));
 }
 
-function scrollTopToRevealItem(
+function scrollTopToCenterItem(
   container: HTMLElement,
   itemEl: HTMLElement,
+  movingDown: boolean,
+  movingUp: boolean,
 ): number | null {
-  const viewTop = container.scrollTop;
-  const viewBottom = viewTop + container.clientHeight;
-  const pad = SCROLL_EDGE_PADDING_PX;
-  const itemTop = itemEl.offsetTop;
-  const itemBottom = itemTop + itemEl.offsetHeight;
-
-  if (itemTop >= viewTop + pad && itemBottom <= viewBottom - pad) {
+  const itemCenter = itemEl.offsetTop + itemEl.offsetHeight / 2;
+  const viewportCenter = container.scrollTop + container.clientHeight / 2;
+  if (
+    (!movingDown || itemCenter < viewportCenter) &&
+    (!movingUp || itemCenter > viewportCenter)
+  ) {
     return null;
   }
-
-  let next = viewTop;
-  if (itemTop < viewTop + pad) {
-    next = itemTop - pad;
-  } else if (itemBottom > viewBottom - pad) {
-    next = itemBottom - container.clientHeight + pad;
-  }
-  return clampScrollTop(container, next);
+  return clampScrollTop(
+    container,
+    itemCenter - container.clientHeight / 2,
+  );
 }
 
 interface ScrollTween {
@@ -65,6 +60,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     const suggestionMenu = useExtension(SuggestionMenu);
     const ignoreMouseEnterUntilRef = useRef(0);
     const lastKeyboardNavAtRef = useRef(0);
+    const previousSelectedIndexRef = useRef(selectedIndex);
     const scrollTweenRef = useRef<ScrollTween | null>(null);
     const scrollRafRef = useRef(0);
     const suppressHoverTimerRef = useRef<number | null>(null);
@@ -193,18 +189,32 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       ) as HTMLElement | null;
       if (!selectedEl) return;
 
-      const target = scrollTopToRevealItem(container, selectedEl);
-      if (target === null) return;
-
+      const previousIndex = previousSelectedIndexRef.current;
+      previousSelectedIndexRef.current = selectedIndex;
       const fromKeyboard =
         Date.now() - lastKeyboardNavAtRef.current < KEYBOARD_NAV_IGNORE_MOUSE_MS;
-      if (fromKeyboard) {
-        startScrollTo(target);
-      } else {
-        cancelScrollAnimation();
-        container.scrollTop = target;
-      }
-    }, [selectedIndex, startScrollTo, cancelScrollAnimation]);
+      if (!fromKeyboard) return;
+
+      const wrappedToStart =
+        previousIndex === selectableIndexes[selectableIndexes.length - 1] &&
+        selectedIndex === selectableIndexes[0];
+      const wrappedToEnd =
+        previousIndex === selectableIndexes[0] &&
+        selectedIndex === selectableIndexes[selectableIndexes.length - 1];
+      const target = wrappedToStart
+        ? 0
+        : wrappedToEnd
+          ? container.scrollHeight - container.clientHeight
+          : scrollTopToCenterItem(
+              container,
+              selectedEl,
+              selectedIndex > previousIndex,
+              selectedIndex < previousIndex,
+            );
+      if (target === null) return;
+
+      startScrollTo(target);
+    }, [selectedIndex, selectableIndexes, startScrollTo]);
 
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
@@ -306,7 +316,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                         index === selectedIndex
                           ? lite
                             ? "bg-transparent text-[hsl(var(--foreground))]"
-                            : "bg-accent"
+                            : "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                           : "bg-transparent",
                       )}
                       onMouseEnter={() => {
@@ -329,7 +339,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                               index === selectedIndex
                                 ? lite
                                   ? "text-[hsl(var(--foreground))]"
-                                  : "text-accent-foreground"
+                                  : "text-[var(--goose-interactive-selected-fg)]"
                                 : "text-muted-foreground",
                             )}
                           >
@@ -350,7 +360,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                               : index === selectedIndex
                                 ? lite
                                   ? "text-[hsl(var(--foreground))]"
-                                  : "text-accent-foreground"
+                                  : "text-[var(--goose-interactive-selected-fg)]"
                                 : "text-foreground",
                           )}
                         >

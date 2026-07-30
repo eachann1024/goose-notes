@@ -42,9 +42,9 @@ export interface AiTargetSelection {
   source: AiTargetSource;
 }
 
-export interface AiTargetRef extends AiFileReferenceAttrs {
+export type AiTargetRef = Omit<AiFileReferenceAttrs, "role"> & {
   role: "destination";
-}
+};
 
 export interface AiStickyTarget {
   pageId: string;
@@ -122,7 +122,12 @@ function collectNeighborText(
 
   while (cursor >= 0 && cursor < tokens.length && remaining > 0) {
     const token = tokens[cursor];
-    const text = token.type === "text" ? token.text : `@${token.reference.titleSnapshot}`;
+    const text =
+      token.type === "text"
+        ? token.text
+        : token.type === "reference"
+          ? `@${token.reference.titleSnapshot}`
+          : `[图片 ${token.image.fileName}]`;
     if (text) {
       const slice =
         direction === "before"
@@ -218,6 +223,18 @@ export function resolveAiTargetReference(payload: AiComposerPayload): {
   for (let index = 0; index < payload.tokens.length; index += 1) {
     const token = payload.tokens[index];
     if (token.type !== "reference") continue;
+
+    const explicitRole = token.role ?? token.reference.role;
+    if (explicitRole === "context") continue;
+    if (explicitRole === "target") {
+      return {
+        tokenIndex: index,
+        reference: {
+          ...token.reference,
+          role: "destination",
+        },
+      };
+    }
 
     const before = normalizeSemanticText(collectNeighborText(payload.tokens, index, "before"));
     const after = normalizeSemanticText(collectNeighborText(payload.tokens, index, "after"));
@@ -461,6 +478,7 @@ export function resolveAiTargetFromSelection(params: {
       promptText: "",
       freeformText: "",
       references: [],
+      images: [],
       tokens: [],
     },
     selection: params.selection,
