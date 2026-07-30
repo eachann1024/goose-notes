@@ -15,7 +15,6 @@ export interface AppearanceSliceState {
   theme: Theme;
   codeStyle: CodeStyle;
   defaultCodeBlockWrap: boolean;
-  globalEditorFullWidth: boolean;
   tableEvenColumnWidth: boolean;
   customFonts: CustomFonts;
   uiFontSize: UIFontSize;
@@ -37,7 +36,6 @@ export interface AppearanceSliceActions {
   toggleDarkMode: () => void;
   setCodeStyle: (style: CodeStyle) => void;
   setDefaultCodeBlockWrap: (enabled: boolean) => void;
-  setGlobalEditorFullWidth: (enabled: boolean) => void;
   setTableEvenColumnWidth: (enabled: boolean) => void;
   setCustomLabel: (
     type: "default" | "serif" | "mono",
@@ -68,7 +66,6 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   theme: "system",
   codeStyle: "github",
   defaultCodeBlockWrap: false,
-  globalEditorFullWidth: false,
   tableEvenColumnWidth: true,
   customFonts: {
     default: { label: null, font: null },
@@ -122,8 +119,6 @@ export function createAppearanceSlice(
     },
     setDefaultCodeBlockWrap: (defaultCodeBlockWrap) =>
       set({ defaultCodeBlockWrap }),
-    setGlobalEditorFullWidth: (globalEditorFullWidth) =>
-      set({ globalEditorFullWidth }),
     setTableEvenColumnWidth: (tableEvenColumnWidth) =>
       set({ tableEvenColumnWidth }),
     setCustomLabel: (type, label) =>

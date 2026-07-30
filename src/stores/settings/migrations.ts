@@ -12,5 +12,8 @@ export function migrateSettingsPersistedState(
     state.singleTabMode = false;
   }
 
+  // 全宽已成为常规笔记的固定布局，不再保留可切换的持久化设置。
+  delete state.globalEditorFullWidth;
+
   return state;
 }

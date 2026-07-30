@@ -240,14 +240,15 @@
 
 @layer base {
   :root {
-    --goose-shell-bg: 0 0% 97.25%;
+    --goose-shell-bg: 0 0% 95.69%; /* #f4f4f4 */
     --goose-selected-bg: 60 6.67% 94.12%;
     --goose-interactive-hover: hsl(var(--goose-selected-bg) / 0.76);
-    --goose-interactive-selected: hsl(60 5% 88%);
+    /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，uTools 旧内核安全） */
+    --goose-interactive-selected: #e0e7ff;
+    --goose-interactive-selected-fg: #4f46e5;
     --goose-interactive-selected-border: transparent;
-    /* 图标小方块落在 hover/选中行上时的底色：浅色下行高亮(88%)比方块默认底(94%/.76)更深，
-       方块会融进背景"消失"，必须比 selected 再深一档保持层次 */
-    --goose-icon-chip-on-selected: hsl(60 4% 82%);
+    /* 图标徽章/小方块底色：鸢尾靛蓝徽章底 */
+    --goose-icon-chip-on-selected: #eef2ff;
     /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
     --goose-pin-accent: #ef4444;
     /* 语义实色变量——替代 Tailwind 裸调色板色，uTools 旧内核 oklch 解析失败兜底 */
@@ -262,19 +263,19 @@
     --goose-color-lock-text: #713f12; /* 已锁定/已删除徽章文字 */
     --goose-color-restore-hover: #d97706; /* 恢复按钮 hover 背景琥珀 */
     --goose-color-capture-hint: #ef4444; /* 快捷键捕获提示占位符红 */
-    --goose-ai-approval-check-bg: #737373;
+    --goose-ai-approval-check-bg: #6366f1;
     --goose-ai-approval-check-fg: #ffffff;
     /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，uTools 旧内核会回退成刺眼实色 */
     --goose-block-subtle-bg: #f3f2f1;
     --goose-block-subtle-border: #e8e7e5;
     --goose-block-subtle-hover: #ebeae8;
     --goose-block-subtle-inset: #f7f6f5;
-    --goose-callout-accent: #a8a8a8;
+    --goose-callout-accent: #6366f1;
     --goose-callout-bg: #f7f6f3;
     --goose-callout-border: #e9e9e7;
-    --goose-inline-code-bg: #ebeae8;
-    --goose-inline-code-fg: #eb5757;
-    --goose-inline-code-border-hover: #d9d9d9;
+    --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
+    --goose-inline-code-fg: var(--goose-interactive-selected-fg);
+    --goose-inline-code-border-hover: #c7d2fe;
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 43%;
     --background: var(--goose-shell-bg);
@@ -283,7 +284,7 @@
     --card-foreground: 0 0% 12%;
     --popover: var(--goose-editor-bg);
     --popover-foreground: 0 0% 12%;
-    --primary: 0 0% 49.8%;
+    --primary: 239 84% 67%;
     --primary-foreground: 0 0% 99%;
     --secondary: var(--goose-selected-bg);
     --secondary-foreground: 0 0% 18%;
@@ -295,7 +296,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 86%;
     --input: 0 0% 86%;
-    --ring: 0 0% 48%;
+    --ring: 239 84% 67%;
     --radius: 0.75rem;
     --radius-notion-slash: 18px;
     --radius-notion-slash-item: 12px;
@@ -322,10 +323,12 @@
        基于 shell-bg(12.55%) 只抬亮一档，贴合深色背景不突兀；hover 比 shell 微亮，
        selected 再亮一点点，块感克制。 */
     --goose-interactive-hover: hsl(0 0% 17%);
-    --goose-interactive-selected: hsl(0 0% 25%);
+    /* 暗色鸢尾靛蓝：浅底用 rgba 直写（uTools 旧内核安全） */
+    --goose-interactive-selected: rgba(99, 102, 241, 0.2);
+    --goose-interactive-selected-fg: #a5b4fc;
     --goose-interactive-selected-border: transparent;
-    /* 深色下方块(17%)本就比行高亮(25%)深，保持原值即可 */
-    --goose-icon-chip-on-selected: hsl(0 0% 17%);
+    /* 暗色图标徽章底 */
+    --goose-icon-chip-on-selected: rgba(99, 102, 241, 0.14);
     --goose-pin-accent: #f87171;
     /* 深色模式语义实色变量覆盖 */
     --goose-color-danger: #f87171;
@@ -339,18 +342,18 @@
     --goose-color-lock-text: #fef9c3;
     --goose-color-restore-hover: #b45309;
     --goose-color-capture-hint: #f87171;
-    --goose-ai-approval-check-bg: #a3a3a3;
-    --goose-ai-approval-check-fg: #1f1f1f;
+    --goose-ai-approval-check-bg: #6366f1;
+    --goose-ai-approval-check-fg: #ffffff;
     --goose-block-subtle-bg: #252525;
     --goose-block-subtle-border: #363636;
     --goose-block-subtle-hover: #2e2e2e;
     --goose-block-subtle-inset: #222222;
-    --goose-callout-accent: #6b6b6b;
+    --goose-callout-accent: #6366f1;
     --goose-callout-bg: #2f2f2f;
     --goose-callout-border: #3d3d3d;
-    --goose-inline-code-bg: #2a2a2a;
-    --goose-inline-code-fg: #ff7b7b;
-    --goose-inline-code-border-hover: #404040;
+    --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
+    --goose-inline-code-fg: var(--goose-interactive-selected-fg);
+    --goose-inline-code-border-hover: #4b4e81;
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 0 0% 66%;
     --background: var(--goose-shell-bg);
@@ -359,8 +362,8 @@
     --card-foreground: 0 0% 90%;
     --popover: 60 2.2% 19.5%;
     --popover-foreground: 0 0% 90%;
-    --primary: 0 0% 58%;
-    --primary-foreground: 0 0% 10%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 99%;
     --secondary: var(--goose-selected-bg);
     --secondary-foreground: 210 40% 90%;
     --muted: var(--goose-selected-bg);
@@ -371,7 +374,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 24%;
     --input: 0 0% 24%;
-    --ring: 0 0% 62%;
+    --ring: 239 84% 67%;
     --workspace-drag-line-color: hsl(var(--primary));
     --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.42);
   }
@@ -899,6 +902,20 @@
   }
 }
 
+/* 空闲态：极轻的漂浮 + 微旋，让入口始终有“活着”的感觉 */
+@keyframes ai-icon-idle-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  30% {
+    transform: translate3d(0, -0.6px, 0) rotate(2.2deg);
+  }
+  62% {
+    transform: translate3d(0, 0.45px, 0) rotate(-1.6deg);
+  }
+}
+
 @keyframes ai-icon-pop {
   0% {
     transform: scale(1);
@@ -1040,7 +1057,7 @@
   border-color: rgba(149, 243, 216, 0.65);
 }
 
-/* 未选中：与顶栏 PageIconButton 一致，透明底、无描边；选中靠星云特效，不画选中边框 */
+/* 默认透明底；hover 与顶栏其它图标一致起底；选中仍不画边框，靠发光/缩放 */
 .ai-icon-button {
   position: relative;
   isolation: isolate;
@@ -1049,10 +1066,13 @@
   box-shadow: none;
   border: none;
   color: hsl(var(--muted-foreground) / 0.75);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .ai-icon-button:hover {
-  background: transparent;
+  background: var(--goose-interactive-hover);
   color: hsl(var(--foreground));
 }
 
@@ -1068,7 +1088,7 @@
 }
 
 .ai-icon-button[aria-pressed="true"]:hover {
-  background: transparent;
+  background: var(--goose-interactive-hover);
 }
 
 .ai-icon-button .ai-icon {
@@ -1078,8 +1098,16 @@
     transform 180ms ease;
 }
 
+/* 空闲：glyph 轻微漂浮；streaming / done 走各自关键帧，不叠 idle */
+.ai-icon-button .ai-icon[data-ai-state="idle"] .ai-icon-glyph {
+  transform-origin: 12px 12px;
+  transform-box: fill-box;
+  animation: ai-icon-idle-float 3.8s ease-in-out infinite;
+}
+
 .ai-icon-button:hover .ai-icon {
   filter: saturate(1.4) contrast(1.22) brightness(1.08);
+  transform: scale(1.06);
 }
 
 .ai-icon-button[aria-pressed="true"] .ai-icon {
@@ -1089,6 +1117,10 @@
   transform: scale(1.08);
 }
 
+.ai-icon-button[aria-pressed="true"]:hover .ai-icon {
+  transform: scale(1.1);
+}
+
 .dark .ai-icon-button {
   background: transparent;
   box-shadow: none;
@@ -1096,7 +1128,7 @@
 }
 
 .dark .ai-icon-button:hover {
-  background: transparent;
+  background: var(--goose-interactive-hover);
   color: hsl(var(--foreground) / 0.9);
 }
 
@@ -1107,7 +1139,7 @@
 }
 
 .dark .ai-icon-button[aria-pressed="true"]:hover {
-  background: transparent;
+  background: var(--goose-interactive-hover);
 }
 
 .dark .ai-icon-button .ai-icon {
@@ -1124,12 +1156,14 @@
 
 .dark .ai-icon-button:hover .ai-icon {
   filter: saturate(1.22) contrast(1.12) brightness(1.12);
+  transform: scale(1.06);
 }
 
 .dark .ai-icon-button[aria-pressed="true"]:hover .ai-icon {
   filter: saturate(1.6) contrast(1.25) brightness(1.32)
     drop-shadow(0 0 6px rgba(99, 215, 255, 0.95))
     drop-shadow(0 0 14px rgba(159, 134, 255, 0.6));
+  transform: scale(1.1);
 }
 
 /* AI 运行时把星云状态延展到整条顶栏；空闲或仅打开面板时完全撤回。 */
@@ -1213,6 +1247,7 @@
 
   .ai-icon[data-ai-state] .ai-icon-glyph,
   .ai-icon[data-ai-state] .ai-icon-flash,
+  .ai-icon-button .ai-icon[data-ai-state="idle"] .ai-icon-glyph,
   .ai-header-nebula-streaming,
   .ai-header-nebula-streaming::before,
   .ai-header-nebula-streaming::after,
@@ -1449,4 +1484,13 @@ body[data-scroll-locked]
     animation: none;
     opacity: 0.6;
   }
+}
+
+/* 启动恢复首帧（data-startup-settling 存在期间）：
+   禁用所有过渡，组件直接呈现恢复后的状态，不从默认值播动画追赶。
+   标记由 bootstrap 在渲染前写入、App 挂载稳定后移除。 */
+html[data-startup-settling] *,
+html[data-startup-settling] *::before,
+html[data-startup-settling] *::after {
+  transition-property: none !important;
 }

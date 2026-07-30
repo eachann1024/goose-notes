@@ -9,8 +9,6 @@ interface SettingsAppearanceProps {
   setTheme: (theme: "light" | "dark" | "system") => void;
   codeStyle: CodeStyle;
   setCodeStyle: (style: CodeStyle) => void;
-  globalEditorFullWidth: boolean;
-  setGlobalEditorFullWidth: (enabled: boolean) => void;
   tableEvenColumnWidth: boolean;
   setTableEvenColumnWidth: (enabled: boolean) => void;
   customFonts: Record<
@@ -90,8 +88,6 @@ export function SettingsAppearance({
   setTheme,
   codeStyle,
   setCodeStyle,
-  globalEditorFullWidth,
-  setGlobalEditorFullWidth,
   tableEvenColumnWidth,
   setTableEvenColumnWidth,
   customFonts,
@@ -140,7 +136,7 @@ export function SettingsAppearance({
                     aria-label="浅色模式"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "light" && "bg-background shadow-sm",
+                      theme === "light" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("light")}
                   >
@@ -157,7 +153,7 @@ export function SettingsAppearance({
                     aria-label="深色模式"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "dark" && "bg-background shadow-sm",
+                      theme === "dark" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("dark")}
                   >
@@ -174,7 +170,7 @@ export function SettingsAppearance({
                     aria-label="跟随系统"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "system" && "bg-background shadow-sm",
+                      theme === "system" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("system")}
                   >
@@ -210,7 +206,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "small" && "bg-background shadow-sm",
+                uiFontSize === "small" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
               )}
               onClick={() => setUIFontSize("small")}
             >
@@ -221,7 +217,7 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "normal" && "bg-background shadow-sm",
+                uiFontSize === "normal" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
               )}
               onClick={() => setUIFontSize("normal")}
             >
@@ -233,37 +229,10 @@ export function SettingsAppearance({
 
       <SettingsSectionCard
         title="编辑器布局"
-        description="你可以一键让所有记事本都使用更开阔的编辑宽度。"
+        description="调整表格、折叠标题等编辑器显示方式。"
       >
         <div
           className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-        >
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.StretchHorizontal
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label
-                htmlFor="global-editor-full-width"
-                className="cursor-pointer"
-              >
-                全局默认全宽
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              仅用于未单独设置宽度的记事本；记事本自己的设置优先。
-            </p>
-          </div>
-          <Switch
-            id="global-editor-full-width"
-            checked={globalEditorFullWidth}
-            onCheckedChange={setGlobalEditorFullWidth}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-        <div
-          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">
@@ -336,7 +305,7 @@ export function SettingsAppearance({
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 displayedCodeStyle === t.value
-                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
+                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                   : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
             >

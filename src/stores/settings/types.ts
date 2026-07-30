@@ -33,6 +33,8 @@ export interface UToolsSettings {
 
 export interface AISettings {
   enabled: boolean;
+  readGlobalPrompt: boolean;
+  readLocalSkills: boolean;
   selectedModelId: string | null;
   workspaceSelectedModelId: string | null;
   workspaceReasoningLevel: AIReasoningLevel;
@@ -103,7 +105,7 @@ export const EDITOR_FONT_SIZE_MAX = 24;
 export const EDITOR_FONT_SIZE_DEFAULT = 16;
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N";
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K";
-export const DEFAULT_CLOSE_TAB_SHORTCUT = "Alt+W";
+export const DEFAULT_CLOSE_TAB_SHORTCUT = "";
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = "";
 export const UTOOLS_WINDOW_HEIGHT_MIN = 600;
 export const UTOOLS_WINDOW_HEIGHT_MAX = 1200;
@@ -473,6 +475,10 @@ export function normalizeAISettings(
 
   return {
     enabled: Boolean(ai?.enabled),
+    readGlobalPrompt:
+      typeof ai?.readGlobalPrompt === "boolean" ? ai.readGlobalPrompt : true,
+    readLocalSkills:
+      typeof ai?.readLocalSkills === "boolean" ? ai.readLocalSkills : true,
     selectedModelId,
     workspaceSelectedModelId: storedWorkspaceSelectedModelId,
     workspaceReasoningLevel: normalizeAIReasoningLevel(
