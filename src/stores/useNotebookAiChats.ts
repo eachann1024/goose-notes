@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { prepareNotebookAiMessagesForPersistence } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { uToolsStorage } from "@/lib/storage";
+import type { JSONContent } from "@/types";
 
 /** 每个会话最多保留的消息条数 */
 const MAX_MESSAGES_PER_CONVERSATION = 60;
@@ -11,6 +12,68 @@ const MAX_NOTEBOOKS = 20;
 /** 超过此时长未活跃的会话视为归档：再次打开 AI 进入空白新会话，旧会话留在历史里 */
 export const CONVERSATION_STALE_MS = 6 * 60 * 60 * 1000;
 const NOTEBOOK_AI_CHATS_STORAGE_VERSION = 1;
+
+/**
+ * 持久化输入草稿时去掉图片 token：File/blob 无法跨进程恢复，
+ * 保留残缺 chip 会导致发送时丢图却看似还在。
+ */
+export function stripComposerDraftImages(
+  content: JSONContent | null | undefined,
+): JSONContent | null {
+  if (!content || typeof content !== "object") return null;
+  const blocks = Array.isArray(content.content) ? content.content : null;
+  if (!blocks || blocks.length === 0) return null;
+
+  const nextBlocks = blocks
+    .map((block: unknown) => {
+      if (!block || typeof block !== "object") return null;
+      const blockRecord = block as { content?: unknown } & Record<
+        string,
+        unknown
+      >;
+      const nodes = Array.isArray(blockRecord.content)
+        ? blockRecord.content
+        : [];
+      const nextNodes = nodes.filter((node: unknown) => {
+        if (!node || typeof node !== "object") return false;
+        return (node as { type?: string }).type !== "aiImageAttachment";
+      });
+      if (nextNodes.length === 0) {
+        // 保留纯空段落没有意义
+        return null;
+      }
+      return { ...blockRecord, content: nextNodes };
+    })
+    .filter(Boolean);
+
+  if (nextBlocks.length === 0) return null;
+  return { type: "doc", content: nextBlocks };
+}
+
+/** 草稿是否包含用户可见内容（文本或引用 chip） */
+export function composerDraftHasContent(
+  content: JSONContent | null | undefined,
+): boolean {
+  const cleaned = stripComposerDraftImages(content);
+  if (!cleaned?.content?.length) return false;
+
+  for (const block of cleaned.content) {
+    if (!block || typeof block !== "object") continue;
+    const nodes = Array.isArray((block as { content?: unknown }).content)
+      ? ((block as { content: unknown[] }).content ?? [])
+      : [];
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+      const type = (node as { type?: string }).type;
+      if (type === "aiFileReference") return true;
+      if (type === "text") {
+        const text = (node as { text?: unknown }).text;
+        if (typeof text === "string" && text.trim().length > 0) return true;
+      }
+    }
+  }
+  return false;
+}
 
 export interface NotebookAiConversation {
   id: string;
@@ -29,6 +92,11 @@ export interface NotebookAiNotebookChatState {
 interface NotebookAiChatsPersistedState {
   /** notebookId -> 多会话状态 */
   chats: Record<string, NotebookAiNotebookChatState>;
+  /**
+   * 输入框草稿（按笔记本隔离）。
+   * 关面板 / 切页 / 退出插件后恢复文本与 @ 引用；图片不持久化。
+   */
+  composerDrafts: Record<string, JSONContent | null>;
 }
 
 interface LegacyNotebookAiChatState {
@@ -60,6 +128,11 @@ export interface NotebookAiChatsState extends NotebookAiChatsPersistedState {
   ) => string;
   /** 激活已存在的会话；会话不存在时不修改状态 */
   setActiveConversation: (notebookId: string, conversationId: string) => void;
+  /**
+   * 删除指定会话；删除激活会话时回退到剩余会话中最新的一条。
+   * 笔记本下已无会话且无输入草稿时，一并移除该笔记本的记录。
+   */
+  deleteConversation: (notebookId: string, conversationId: string) => void;
   /** 更新指定会话的消息 */
   setMessages: (
     notebookId: string,
@@ -68,6 +141,15 @@ export interface NotebookAiChatsState extends NotebookAiChatsPersistedState {
   ) => void;
   /** 清空全部笔记本会话记录（数据重置/整包恢复使用） */
   clearAllChats: () => void;
+  /** 读取指定笔记本的输入草稿（已去掉无法恢复的图片 token） */
+  getComposerDraft: (notebookId: string) => JSONContent | null;
+  /** 写入输入草稿；传 null 或空内容则清除 */
+  setComposerDraft: (
+    notebookId: string,
+    content: JSONContent | null | undefined,
+  ) => void;
+  /** 清除指定笔记本的输入草稿 */
+  clearComposerDraft: (notebookId: string) => void;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -220,12 +302,27 @@ function migrateLegacyNotebookChatState(
   };
 }
 
+function normalizeComposerDrafts(
+  value: unknown,
+): Record<string, JSONContent | null> {
+  if (!isRecord(value)) return {};
+  const next: Record<string, JSONContent | null> = {};
+  for (const [notebookId, draft] of Object.entries(value)) {
+    if (!notebookId) continue;
+    const cleaned = stripComposerDraftImages(
+      draft as JSONContent | null | undefined,
+    );
+    if (cleaned) next[notebookId] = cleaned;
+  }
+  return next;
+}
+
 /** Zustand persist v0（单会话）到 v1（多会话）的兼容迁移。 */
 export function migrateNotebookAiChatsState(
   persistedState: unknown,
 ): NotebookAiChatsPersistedState {
   if (!isRecord(persistedState) || !isRecord(persistedState.chats)) {
-    return { chats: {} };
+    return { chats: {}, composerDrafts: {} };
   }
 
   const chats = Object.fromEntries(
@@ -242,13 +339,17 @@ export function migrateNotebookAiChatsState(
     }),
   );
 
-  return { chats: pruneNotebookChats(chats) };
+  return {
+    chats: pruneNotebookChats(chats),
+    composerDrafts: normalizeComposerDrafts(persistedState.composerDrafts),
+  };
 }
 
 export const useNotebookAiChats = create<NotebookAiChatsState>()(
   persist(
     (set, get) => ({
       chats: {},
+      composerDrafts: {},
 
       getActiveConversationId: (notebookId) => {
         return get().chats[notebookId]?.activeConversationId ?? null;
@@ -415,6 +516,45 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
         });
       },
 
+      deleteConversation: (notebookId, conversationId) => {
+        set((state) => {
+          const notebookChat = state.chats[notebookId];
+          if (!notebookChat?.conversations[conversationId]) return state;
+
+          const now = Date.now();
+          const { [conversationId]: _removed, ...remainingConversations } =
+            notebookChat.conversations;
+          const remainingList = Object.values(remainingConversations);
+          const newestRemaining = [...remainingList].sort(
+            (left, right) => right.updatedAt - left.updatedAt,
+          )[0];
+          const nextActiveConversationId =
+            notebookChat.activeConversationId === conversationId
+              ? (newestRemaining?.id ?? null)
+              : notebookChat.activeConversationId;
+
+          const hasDraft = Boolean(
+            composerDraftHasContent(state.composerDrafts[notebookId]),
+          );
+          if (remainingList.length === 0 && !hasDraft) {
+            // 无会话且无草稿：连同笔记本记录一起移除，保持 LRU 语义干净
+            const { [notebookId]: _removedChat, ...restChats } = state.chats;
+            return { chats: restChats };
+          }
+
+          return {
+            chats: {
+              ...state.chats,
+              [notebookId]: {
+                activeConversationId: nextActiveConversationId,
+                conversations: remainingConversations,
+                updatedAt: now,
+              },
+            },
+          };
+        });
+      },
+
       setMessages: (notebookId, conversationId, messages) => {
         set((state) => {
           const now = Date.now();
@@ -449,7 +589,38 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
         });
       },
 
-      clearAllChats: () => set({ chats: {} }),
+      clearAllChats: () => set({ chats: {}, composerDrafts: {} }),
+
+      getComposerDraft: (notebookId) => {
+        return stripComposerDraftImages(get().composerDrafts[notebookId]);
+      },
+
+      setComposerDraft: (notebookId, content) => {
+        const cleaned = stripComposerDraftImages(content);
+        set((state) => {
+          const previous = state.composerDrafts[notebookId] ?? null;
+          if (!cleaned) {
+            if (previous == null) return state;
+            const { [notebookId]: _removed, ...rest } = state.composerDrafts;
+            return { composerDrafts: rest };
+          }
+          if (previous === cleaned) return state;
+          return {
+            composerDrafts: {
+              ...state.composerDrafts,
+              [notebookId]: cleaned,
+            },
+          };
+        });
+      },
+
+      clearComposerDraft: (notebookId) => {
+        set((state) => {
+          if (!(notebookId in state.composerDrafts)) return state;
+          const { [notebookId]: _removed, ...rest } = state.composerDrafts;
+          return { composerDrafts: rest };
+        });
+      },
     }),
     {
       name: "goose-note-notebook-ai-chats",
@@ -458,8 +629,11 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
       skipHydration: true,
       migrate: (persistedState: unknown) =>
         migrateNotebookAiChatsState(persistedState),
-      // 只持久化 chats，不持久化函数
-      partialize: (state) => ({ chats: state.chats }),
+      // 只持久化数据字段，不持久化函数
+      partialize: (state) => ({
+        chats: state.chats,
+        composerDrafts: state.composerDrafts,
+      }),
     },
   ),
 );

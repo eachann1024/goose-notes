@@ -16,7 +16,61 @@ function createMessage(index: number, displayText = `消息 ${index}`) {
 }
 
 test.beforeEach(() => {
-  useNotebookAiChats.setState({ chats: {} });
+  useNotebookAiChats.setState({ chats: {}, composerDrafts: {} });
+});
+
+test("输入草稿按笔记本读写，空内容会清除", () => {
+  const store = useNotebookAiChats.getState();
+  store.setComposerDraft("nb-draft", {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "未发送的草稿" }],
+      },
+    ],
+  });
+
+  expect(store.getComposerDraft("nb-draft")).toMatchObject({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "未发送的草稿" }],
+      },
+    ],
+  });
+
+  store.setComposerDraft("nb-draft", {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "带图 " },
+          {
+            type: "aiImageAttachment",
+            attrs: {
+              imageId: "img-1",
+              fileName: "a.png",
+              mediaType: "image/png",
+              size: 12,
+            },
+          },
+        ],
+      },
+    ],
+  });
+  // 图片 token 不落盘
+  expect(JSON.stringify(store.getComposerDraft("nb-draft"))).not.toContain(
+    "aiImageAttachment",
+  );
+  expect(JSON.stringify(store.getComposerDraft("nb-draft"))).toContain(
+    "带图",
+  );
+
+  store.clearComposerDraft("nb-draft");
+  expect(store.getComposerDraft("nb-draft")).toBeNull();
 });
 
 test("持久化配置保留原 key 并启用 v1 迁移", () => {
@@ -90,6 +144,146 @@ test("每条非空会话独立保存、切换并最多保留 60 条消息", () =
   store.setActiveConversation("notebookA", firstConversationId);
   expect(store.getActiveConversationId("notebookA")).toBe(firstConversationId);
   expect(store.getConversationMessages("notebookA")).toHaveLength(60);
+});
+
+test("删除非激活会话后历史列表不再返回它，激活指针不变", () => {
+  const store = useNotebookAiChats.getState();
+  const firstId = store.createConversation("notebookA");
+  store.setMessages("notebookA", firstId, [createMessage(1, "会话一")]);
+  const secondId = store.createConversation("notebookA");
+  store.setMessages("notebookA", secondId, [createMessage(2, "会话二")]);
+
+  store.setActiveConversation("notebookA", firstId);
+  store.deleteConversation("notebookA", secondId);
+
+  expect(
+    store.listConversations("notebookA").map((item) => item.id),
+  ).toEqual([firstId]);
+  expect(store.getActiveConversationId("notebookA")).toBe(firstId);
+});
+
+test("删除激活会话后激活指针回退到剩余最新会话", () => {
+  const store = useNotebookAiChats.getState();
+  const olderId = store.createConversation("notebookA");
+  store.setMessages("notebookA", olderId, [createMessage(1, "较早会话")]);
+  const newerId = store.createConversation("notebookA");
+  store.setMessages("notebookA", newerId, [createMessage(2, "较新会话")]);
+
+  // newerId 是激活且 updatedAt 最新的会话，删除后应回退到 olderId
+  expect(store.getActiveConversationId("notebookA")).toBe(newerId);
+  store.deleteConversation("notebookA", newerId);
+
+  expect(store.getActiveConversationId("notebookA")).toBe(olderId);
+  expect(store.getConversationMessages("notebookA")).toHaveLength(1);
+});
+
+test("三条会话时删除激活的最新会话，激活指针回退到次新的会话", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationA = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationA, [createMessage(1, "会话 A")]);
+  const conversationB = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationB, [createMessage(2, "会话 B")]);
+  const conversationC = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationC, [createMessage(3, "会话 C")]);
+
+  // 控制 updatedAt 严格递增：A < B < C
+  const base = Date.now() - 10_000;
+  useNotebookAiChats.setState((state) => {
+    const notebookChat = state.chats.notebookA;
+    const touch = (id: string, updatedAt: number) => ({
+      ...notebookChat.conversations[id],
+      updatedAt,
+    });
+    return {
+      chats: {
+        ...state.chats,
+        notebookA: {
+          ...notebookChat,
+          conversations: {
+            [conversationA]: touch(conversationA, base),
+            [conversationB]: touch(conversationB, base + 1),
+            [conversationC]: touch(conversationC, base + 2),
+          },
+        },
+      },
+    };
+  });
+
+  // 激活 C 后删除 C，应回退到剩余中 updatedAt 最新的 B 而非 A
+  store.setActiveConversation("notebookA", conversationC);
+  useNotebookAiChats.setState((state) => {
+    const notebookChat = state.chats.notebookA;
+    return {
+      chats: {
+        ...state.chats,
+        notebookA: {
+          ...notebookChat,
+          conversations: {
+            ...notebookChat.conversations,
+            [conversationC]: {
+              ...notebookChat.conversations[conversationC],
+              updatedAt: base + 2,
+            },
+          },
+        },
+      },
+    };
+  });
+
+  store.deleteConversation("notebookA", conversationC);
+
+  expect(store.getActiveConversationId("notebookA")).toBe(conversationB);
+  expect(
+    store.listConversations("notebookA").map((item) => item.id),
+  ).toEqual([conversationB, conversationA]);
+});
+
+test("删除最后一条会话后激活指针为 null，无草稿时移除笔记本记录", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationId = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationId, [createMessage(1)]);
+
+  store.deleteConversation("notebookA", conversationId);
+
+  expect(store.getActiveConversationId("notebookA")).toBeNull();
+  expect(useNotebookAiChats.getState().chats["notebookA"]).toBeUndefined();
+});
+
+test("删除最后一条会话但有输入草稿时保留笔记本记录", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationId = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationId, [createMessage(1)]);
+  store.setComposerDraft("notebookA", {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "未发送的草稿" }],
+      },
+    ],
+  });
+
+  store.deleteConversation("notebookA", conversationId);
+
+  expect(store.getActiveConversationId("notebookA")).toBeNull();
+  expect(useNotebookAiChats.getState().chats["notebookA"]).toBeDefined();
+  expect(store.getComposerDraft("notebookA")).not.toBeNull();
+});
+
+test("删除不存在的会话不抛错、不影响其他数据", () => {
+  const store = useNotebookAiChats.getState();
+  const conversationId = store.createConversation("notebookA");
+  store.setMessages("notebookA", conversationId, [createMessage(1)]);
+
+  expect(() =>
+    store.deleteConversation("notebookA", "missing-conversation"),
+  ).not.toThrow();
+  expect(() =>
+    store.deleteConversation("missing-notebook", conversationId),
+  ).not.toThrow();
+
+  expect(store.getActiveConversationId("notebookA")).toBe(conversationId);
+  expect(store.listConversations("notebookA")).toHaveLength(1);
 });
 
 test("不存在的会话不能被激活", () => {
