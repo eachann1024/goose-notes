@@ -13,19 +13,12 @@ export const NOTEBOOK_SKILLS = {
   createNoote: {
     description: "在当前笔记本新建页面",
     content: createNooteSkill.trim(),
-    tools: ["createPage", "executeBatchPlan"],
+    tools: ["executeBatchPlan"],
   },
   updateNote: {
     description: "改写、追加或重命名页面",
     content: updateNoteSkill.trim(),
-    tools: [
-      "readPage",
-      "updatePage",
-      "replaceInPage",
-      "appendToPage",
-      "renamePage",
-      "executeBatchPlan",
-    ],
+    tools: ["readPage", "executeBatchPlan"],
   },
   deleteNote: {
     description: "把当前笔记本中的页面移入垃圾箱",
@@ -34,7 +27,6 @@ export const NOTEBOOK_SKILLS = {
       "listPages",
       "searchNotes",
       "readPage",
-      "deletePages",
       "executeBatchPlan",
     ],
   },

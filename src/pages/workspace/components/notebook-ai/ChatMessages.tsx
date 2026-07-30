@@ -7,7 +7,6 @@ import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import {
   Check,
-  FileText,
   Image as ImageIcon,
   MessageSquareText,
   Sparkles,
@@ -27,6 +26,7 @@ import {
   type ToolDisplayPart,
 } from "./toolProgressVisibility";
 import type { EditorRef } from "@/components/editor/core/Editor";
+import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { cn } from "@/lib/utils";
@@ -99,6 +99,73 @@ function getUserDisplayText(message: NotebookAiMessage) {
     return rawText.slice("用户输入：".length).trim();
   }
   return rawText;
+}
+
+type UserMessageSegment =
+  | { type: "text"; text: string }
+  | { type: "reference"; reference: AiFileReferenceAttrs; key: string };
+
+/**
+ * 把 displayText 里的 `@标题` 拆成与输入框一致的内联 chip 片段。
+ * 同位置优先匹配更长标题，避免短标题抢匹配。
+ */
+function buildUserMessageSegments(
+  text: string,
+  references: AiFileReferenceAttrs[],
+): UserMessageSegment[] {
+  if (!text) return [];
+  if (references.length === 0) return [{ type: "text", text }];
+
+  const needles = references
+    .map((reference) => ({
+      reference,
+      needle: `@${reference.titleSnapshot}`,
+    }))
+    .filter((item) => item.needle.length > 1);
+
+  if (needles.length === 0) return [{ type: "text", text }];
+
+  const segments: UserMessageSegment[] = [];
+  let cursor = 0;
+  let refOccurrence = 0;
+
+  while (cursor < text.length) {
+    let match: {
+      index: number;
+      length: number;
+      reference: AiFileReferenceAttrs;
+    } | null = null;
+
+    for (const { reference, needle } of needles) {
+      const index = text.indexOf(needle, cursor);
+      if (index === -1) continue;
+      if (
+        !match ||
+        index < match.index ||
+        (index === match.index && needle.length > match.length)
+      ) {
+        match = { index, length: needle.length, reference };
+      }
+    }
+
+    if (!match) {
+      segments.push({ type: "text", text: text.slice(cursor) });
+      break;
+    }
+
+    if (match.index > cursor) {
+      segments.push({ type: "text", text: text.slice(cursor, match.index) });
+    }
+
+    segments.push({
+      type: "reference",
+      reference: match.reference,
+      key: `${match.reference.pageId}-${refOccurrence++}`,
+    });
+    cursor = match.index + match.length;
+  }
+
+  return segments;
 }
 
 function getUserImageParts(message: NotebookAiMessage) {
@@ -356,35 +423,11 @@ export function ChatMessages({
             const imageParts = getUserImageParts(msg);
             const persistedImages = msg.metadata?.imageAttachments ?? [];
             const references = msg.metadata?.references ?? [];
+            const textSegments = buildUserMessageSegments(text, references);
             return (
               <div key={msg.id} className="flex justify-end">
-                {/* V3：用户浅色气泡 */}
+                {/* V3：用户浅色气泡；@ 引用嵌在正文行内，样式对齐输入框 chip */}
                 <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
-                  {references.length > 0 ? (
-                    <div
-                      className="flex flex-wrap justify-end gap-1.5"
-                      aria-label="本条消息引用的文件"
-                    >
-                      {references.map((reference) => (
-                        <button
-                          key={reference.pageId}
-                          type="button"
-                          onClick={() => onOpenPage(reference.pageId)}
-                          className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-[7px] bg-background/45 px-2 text-[11px] text-muted-foreground outline-none transition-colors hover:bg-background/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                          title={`打开“${reference.titleSnapshot}”`}
-                          aria-label={`打开引用文件：${reference.titleSnapshot}`}
-                        >
-                          <FileText
-                            className="h-3 w-3 shrink-0"
-                            strokeWidth={1.75}
-                          />
-                          <span className="max-w-[180px] truncate">
-                            {reference.titleSnapshot}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                   {imageParts.length > 0 ? (
                     <div className="flex flex-wrap justify-end gap-1.5">
                       {imageParts.map((image, index) => (
@@ -414,7 +457,40 @@ export function ChatMessages({
                       ))}
                     </div>
                   ) : null}
-                  {text ? <div className="select-text">{text}</div> : null}
+                  {textSegments.length > 0 ? (
+                    <div className="notebook-ai-message-inline select-text">
+                      {textSegments.map((segment, index) => {
+                        if (segment.type === "text") {
+                          return (
+                            <span
+                              key={`text-${index}`}
+                              className="notebook-ai-message-inline-text"
+                            >
+                              {segment.text}
+                            </span>
+                          );
+                        }
+                        return (
+                          <button
+                            key={segment.key}
+                            type="button"
+                            onClick={() =>
+                              onOpenPage(segment.reference.pageId)
+                            }
+                            className={cn(
+                              "ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded px-1.5 text-[11px] font-medium leading-none outline-none",
+                              "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border",
+                              "hover:bg-[var(--goose-interactive-hover)] focus-visible:ring-2 focus-visible:ring-ring",
+                            )}
+                            title={`打开“${segment.reference.titleSnapshot}”`}
+                            aria-label={`打开引用文件：${segment.reference.titleSnapshot}`}
+                          >
+                            @{segment.reference.titleSnapshot}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );

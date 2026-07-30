@@ -97,7 +97,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
                   {option.label}
                 </span>
                 {isDefault ? (
-                  <span className="shrink-0 rounded-[4px] bg-[var(--goose-interactive-selected)] px-1 py-px text-[10px] text-muted-foreground">
+                  <span className="shrink-0 rounded-[4px] bg-[var(--goose-interactive-selected)] px-1 py-px text-[10px] text-[var(--goose-interactive-selected-fg)]">
                     默认
                   </span>
                 ) : null}

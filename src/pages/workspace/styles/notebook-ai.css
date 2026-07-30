@@ -6,6 +6,94 @@
  * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
  */
 
+/* ── AI 行内 chip：统一 flex 垂直居中 ──────────────────────
+ * 规则：父级 flex + items-center，子级 inline-flex + items-center。
+ * 禁止 top/translate 像素偏移，禁止只靠 vertical-align 硬调。
+ * contenteditable 无法整行 flex（会破坏 caret/换行），故 chip 高度
+ * 与行高一致，自身用 flex 居中内容，与相邻文字天然对齐。
+ */
+[data-ai-composer-editor="true"] .ai-composer-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* 与 default variant leading-[20px] 同高 */
+  height: 20px;
+  line-height: 1;
+  max-width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  position: static;
+  top: auto;
+  vertical-align: middle;
+}
+
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] .ai-composer-chip {
+  /* 与 panel leading-6 (24px) 同高 */
+  height: 24px;
+}
+
+/* ── 用户气泡：chip 与正文父级 flex 垂直居中 ── */
+.notebook-ai-message-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.25rem;
+  row-gap: 0.2rem;
+  /* 取消继承 leading-relaxed，避免行盒虚高 */
+  line-height: 1.4;
+}
+
+.notebook-ai-message-inline-text {
+  display: inline-flex;
+  align-items: center;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.notebook-ai-message-inline .ai-composer-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 20px;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1;
+  max-width: 100%;
+  position: static;
+  top: auto;
+  vertical-align: unset;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-thumb {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-remove svg {
+  display: block;
+}
+
 .ai-md {
   line-height: 1.65;
   word-break: break-word;

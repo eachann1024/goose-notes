@@ -35,6 +35,8 @@ interface SettingsAIProps {
   ai: AISettings;
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
+  setReadGlobalPrompt: (enabled: boolean) => void;
+  setReadLocalSkills: (enabled: boolean) => void;
   selectedModelId: string | null;
   setSelectedModelId: (modelId: string | null) => void;
   saveCustomConfig: (config: {
@@ -88,6 +90,8 @@ export function SettingsAI({
   ai,
   enabled,
   setEnabled,
+  setReadGlobalPrompt,
+  setReadLocalSkills,
   selectedModelId,
   setSelectedModelId,
   saveCustomConfig,
@@ -402,6 +406,37 @@ export function SettingsAI({
             checked={enabled}
             onCheckedChange={setEnabled}
           />
+        </div>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.FolderCog className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            本地 AI 上下文
+          </span>
+        }
+        description="控制是否从用户主目录读取全局提示词与 Skill。/ 调用 Skill，@ 引用笔记或本地文件。"
+      >
+        <div className="space-y-2">
+          <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+            <div className="space-y-1">
+              <Label htmlFor="ai-read-global-prompt" className="cursor-pointer text-sm font-medium text-foreground">
+                读取全局提示词
+              </Label>
+              <div className="text-xs leading-5 text-muted-foreground">固定读取 ~/AGENTS.md，并加入 AI 系统提示词。</div>
+            </div>
+            <Switch id="ai-read-global-prompt" checked={ai.readGlobalPrompt} onCheckedChange={setReadGlobalPrompt} />
+          </div>
+          <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+            <div className="space-y-1">
+              <Label htmlFor="ai-read-local-skills" className="cursor-pointer text-sm font-medium text-foreground">
+                读取本地 Skill
+              </Label>
+              <div className="text-xs leading-5 text-muted-foreground">固定读取 ~/.agents/skills/，在输入框用 / 调用。</div>
+            </div>
+            <Switch id="ai-read-local-skills" checked={ai.readLocalSkills} onCheckedChange={setReadLocalSkills} />
+          </div>
         </div>
       </SettingsSectionCard>
 

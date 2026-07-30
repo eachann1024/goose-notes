@@ -82,7 +82,6 @@ export interface EditorSettings {
   theme: "light" | "dark" | "system";
   /** 正文字号（px）；由宿主同步到编辑器的 CSS 变量。 */
   editorFontSize: number;
-  globalEditorFullWidth: boolean;
   tableEvenColumnWidth: boolean;
   customFonts: EditorCustomFonts;
   defaultCodeBlockWrap: boolean;
@@ -109,7 +108,7 @@ export interface EditorPageContext {
   page: Page;
   /** 宿主决定正文是按原始块处理，还是应用页面级规范化规则。 */
   contentMode: "raw" | "normalized";
-  /** 宿主预算 notebook.editorFullWidth ?? globalEditorFullWidth */
+  /** 宿主决定编辑器是否使用全宽。 */
   isEditorFullWidth: boolean;
   /** 替换 updatePage（去抖在宿主或编辑器内皆可）。silent=true 时宿主跳过标脏与写盘（切页/normalize 路径）。 */
   onContentChange: (

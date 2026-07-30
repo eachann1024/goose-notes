@@ -19,6 +19,7 @@ import {
   readBatchPlanJournal,
 } from "@/lib/notebook-ai/batch-plan";
 import { cn } from "@/lib/utils";
+import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
 
 type BatchOperation =
   | {
@@ -50,6 +51,7 @@ type BatchPlanInput = {
 
 type BatchPlanOutput = {
   ok?: boolean;
+  needsApproval?: boolean;
   toolCallId?: string;
   runId?: string;
   status?: string;
@@ -101,7 +103,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseInput(value: unknown, toolCallId?: string): BatchPlanInput {
   const normalized = normalizeBatchPlanInput(value, {
     fallbackRunId: toolCallId ? `batch-${toolCallId}` : undefined,
-    fallbackTitle: "批量变更计划",
+    fallbackTitle: "笔记变更计划",
   });
   if (!normalized) return {};
   return {
@@ -195,7 +197,9 @@ export function ApprovalPlanCard({
     [input.runId, part.state, part.toolCallId],
   );
   const invalidPlanError =
-    preparedJournal?.status === "invalid" ? preparedJournal.error : undefined;
+    preparedJournal?.status === "invalid"
+      ? formatNotebookAiError(preparedJournal.error, { phase: "prepare" })
+      : undefined;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(operations.map((operation) => operation.operationId)),
   );
@@ -219,12 +223,20 @@ export function ApprovalPlanCard({
       ),
     [operations],
   );
-  const isApprovalRequested = part.state === "approval-requested";
+  const isPreparedApproval =
+    part.state === "output-available" &&
+    output.status === "prepared" &&
+    output.needsApproval === true;
+  const isApprovalRequested =
+    part.state === "approval-requested" || isPreparedApproval;
   const isApprovalResponded = part.state === "approval-responded";
   const isDenied =
     part.state === "output-denied" ||
     (isApprovalResponded && part.approval?.approved === false);
-  const isComplete = part.state === "output-available" && output.ok === true;
+  const isComplete =
+    part.state === "output-available" &&
+    output.ok === true &&
+    !isPreparedApproval;
   const isPersistedUndone = output.status === "undone";
   const hasError =
     Boolean(invalidPlanError) ||
@@ -238,8 +250,10 @@ export function ApprovalPlanCard({
     !submitting;
 
   const respond = async (approved: boolean) => {
-    const approvalId = part.approval?.id;
     const toolCallId = part.toolCallId;
+    const approvalId =
+      part.approval?.id ??
+      (toolCallId ? `batch-approval-${toolCallId}` : undefined);
     const runId = input.runId;
     if (!approvalId || !toolCallId || !runId || submitting) return;
     setSubmitting(true);
@@ -270,7 +284,7 @@ export function ApprovalPlanCard({
   return (
     <section
       className="notebook-ai-approval-plan overflow-hidden rounded-[10px] border border-border bg-background"
-      aria-label="AI 批量变更计划"
+      aria-label="AI 笔记变更计划"
     >
       <div className="border-b border-border px-3 py-2.5">
         <div className="flex items-start gap-2.5">
@@ -279,7 +293,7 @@ export function ApprovalPlanCard({
               "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
               deleteCount > 0
                 ? "bg-[var(--goose-color-danger-subtle-bg)] text-[var(--goose-color-danger-focus)]"
-                : "bg-[var(--goose-interactive-selected)] text-foreground",
+                : "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
             )}
           >
             {isComplete ? (
@@ -295,7 +309,7 @@ export function ApprovalPlanCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[13px] font-semibold text-foreground">
-                {input.title?.trim() || "批量变更计划"}
+                {input.title?.trim() || "笔记变更计划"}
               </h3>
               <span
                 className={cn(
@@ -329,9 +343,9 @@ export function ApprovalPlanCard({
               </p>
             ) : null}
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-              <span>{operations.length} 项操作</span>
-              <span>{selectedIds.size} 项将执行</span>
-              {deleteCount > 0 ? (
+              <span>{invalidPlanError ? 0 : operations.length} 项操作</span>
+              <span>{invalidPlanError ? 0 : selectedIds.size} 项将执行</span>
+              {!invalidPlanError && deleteCount > 0 ? (
                 <span className="text-[var(--goose-color-danger-focus)]">
                   含 {deleteCount} 个删除目标
                 </span>
@@ -341,90 +355,92 @@ export function ApprovalPlanCard({
         </div>
       </div>
 
-      <fieldset className="divide-y divide-border">
-        <legend className="sr-only">选择要批准的批量操作</legend>
-        {operations.map((operation, index) => {
-          const meta = operationMeta(operation);
-          const Icon = meta.icon;
-          const checked = selectedIds.has(operation.operationId);
-          const expanded = expandedIds.has(operation.operationId);
-          const detailId = `approval-plan-${part.toolCallId}-${index}`;
-          return (
-            <div key={operation.operationId} className="px-3 py-2.5">
-              <div className="flex items-start gap-2.5">
-                <label className="mt-0.5 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center">
-                  <input
-                    type="checkbox"
-                    className="notebook-ai-plan-checkbox"
-                    checked={checked}
-                    disabled={!isApprovalRequested}
-                    onChange={(event) => {
-                      setSelectedIds((current) => {
-                        const next = new Set(current);
-                        if (event.target.checked)
-                          next.add(operation.operationId);
-                        else next.delete(operation.operationId);
-                        return next;
-                      });
-                    }}
-                    aria-label={`${checked ? "取消" : "选择"}${meta.label}《${meta.title}》`}
-                  />
-                </label>
-                <Icon
-                  className={cn(
-                    "mt-0.5 h-3.5 w-3.5 shrink-0",
-                    meta.danger
-                      ? "text-[var(--goose-color-danger-focus)]"
-                      : "text-muted-foreground",
-                  )}
-                  strokeWidth={1.75}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-medium text-foreground">
-                        {meta.label}
-                      </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {meta.title}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() =>
-                        setExpandedIds((current) => {
+      {!invalidPlanError ? (
+        <fieldset className="divide-y divide-border">
+          <legend className="sr-only">选择要批准的笔记操作</legend>
+          {operations.map((operation, index) => {
+            const meta = operationMeta(operation);
+            const Icon = meta.icon;
+            const checked = selectedIds.has(operation.operationId);
+            const expanded = expandedIds.has(operation.operationId);
+            const detailId = `approval-plan-${part.toolCallId}-${index}`;
+            return (
+              <div key={operation.operationId} className="px-3 py-2.5">
+                <div className="flex items-start gap-2.5">
+                  <label className="mt-0.5 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center">
+                    <input
+                      type="checkbox"
+                      className="notebook-ai-plan-checkbox"
+                      checked={checked}
+                      disabled={!isApprovalRequested}
+                      onChange={(event) => {
+                        setSelectedIds((current) => {
                           const next = new Set(current);
-                          if (expanded) next.delete(operation.operationId);
-                          else next.add(operation.operationId);
+                          if (event.target.checked)
+                            next.add(operation.operationId);
+                          else next.delete(operation.operationId);
                           return next;
-                        })
-                      }
-                      aria-expanded={expanded}
-                      aria-controls={detailId}
-                      aria-label={`${expanded ? "收起" : "展开"}${meta.label}预览`}
-                    >
-                      {expanded ? (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
-                  {expanded ? (
-                    <div
-                      id={detailId}
-                      className="mt-2 whitespace-pre-wrap break-words rounded-[7px] bg-[var(--goose-interactive-hover)] px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground"
-                    >
-                      {meta.detail}
+                        });
+                      }}
+                      aria-label={`${checked ? "取消" : "选择"}${meta.label}《${meta.title}》`}
+                    />
+                  </label>
+                  <Icon
+                    className={cn(
+                      "mt-0.5 h-3.5 w-3.5 shrink-0",
+                      meta.danger
+                        ? "text-[var(--goose-color-danger-focus)]"
+                        : "text-muted-foreground",
+                    )}
+                    strokeWidth={1.75}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium text-foreground">
+                          {meta.label}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {meta.title}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() =>
+                          setExpandedIds((current) => {
+                            const next = new Set(current);
+                            if (expanded) next.delete(operation.operationId);
+                            else next.add(operation.operationId);
+                            return next;
+                          })
+                        }
+                        aria-expanded={expanded}
+                        aria-controls={detailId}
+                        aria-label={`${expanded ? "收起" : "展开"}${meta.label}预览`}
+                      >
+                        {expanded ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                      </button>
                     </div>
-                  ) : null}
+                    {expanded ? (
+                      <div
+                        id={detailId}
+                        className="mt-2 whitespace-pre-wrap break-words rounded-[7px] bg-[var(--goose-interactive-hover)] px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground"
+                      >
+                        {meta.detail}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </fieldset>
+            );
+          })}
+        </fieldset>
+      ) : null}
 
       <div className="border-t border-border px-3 py-2.5">
         {isApprovalRequested ? (
@@ -475,9 +491,12 @@ export function ApprovalPlanCard({
             className="text-[11px] text-[var(--goose-color-danger-focus)]"
             role="alert"
           >
-            {part.errorText ||
-              output.error ||
-              "批量执行失败，已尝试恢复此前完成的操作。"}
+            {formatNotebookAiError(part.errorText || output.error, {
+              phase:
+                isApprovalResponded || part.approval?.approved === true
+                  ? "execute"
+                  : "prepare",
+            })}
           </p>
         ) : isComplete ? (
           <div className="flex flex-wrap items-center justify-between gap-2">

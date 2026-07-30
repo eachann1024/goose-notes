@@ -289,9 +289,14 @@ export async function handleStreamingWritePart(
     toolCallId: string;
     state: string;
     input?: unknown;
+    output?: unknown;
   };
-  const { toolCallId, state, input } = partData;
+  const { toolCallId, state, input, output } = partData;
   const isCreatePage = part.type === "tool-createPage";
+
+  // React 会在后续文本分片到达时重复传入已经完成的工具 part。
+  // 终态只处理一次，避免同一个 updatePage 随每个文本分片重复刷新或落盘。
+  if (stoppedToolCalls.has(toolCallId)) return;
 
   if (state.includes("error") || state.includes("denied")) {
     cleanupWriterSession(toolCallId);
@@ -375,7 +380,8 @@ export async function handleStreamingWritePart(
         // 若最终 title 与建页时不同，writeFinalFrame 里 buildPageContent 会用最新 title 覆盖
         if (session) await writeFinalFrame(md, title, session);
       } else {
-        // updatePage：从 input 取 pageId
+        // updatePage.execute 已经完成最终落盘；UI 层只负责刷新一次活动编辑器。
+        // 不能在这里再次写入，否则最终回复的每个文本分片都会重复保存整篇页面。
         const pageId =
           input && typeof input === "object"
             ? ((input as Record<string, unknown>).pageId as string | undefined)
@@ -383,27 +389,11 @@ export async function handleStreamingWritePart(
         const targetPageId =
           pageId ?? ctx.currentPageId ?? usePages.getState().activePageId;
         if (!targetPageId) return;
-
-        const md = inputMarkdown ?? "";
-        if (!md.trim()) return;
-        const page = usePages.getState().pages[targetPageId];
-        if (!page) return;
-
-        const { getPageTitle } =
-          await import("@/components/editor/utils/page-title");
-        const title = getPageTitle(page);
-        // updatePage 没有对应 session，用临时 session 对象（follow 默认 true）
-        const tmpSession: WriterSession = {
-          pageId: targetPageId,
-          notebookId: ctx.notebookId,
-          title,
-          lastScheduled: 0,
-          throttleTimer: null,
-          lastMarkdown: md,
-          follow: true,
-          wheelCleanup: null,
-        };
-        await writeFinalFrame(md, title, tmpSession);
+        const result =
+          output && typeof output === "object"
+            ? (output as Record<string, unknown>)
+            : null;
+        if (result?.ok === true) reloadEditorIfActive(targetPageId);
       }
     } finally {
       cleanupWriterSession(toolCallId);

@@ -18,6 +18,8 @@ export interface AISliceState {
 
 export interface AISliceActions {
   setAIEnabled: (enabled: boolean) => void;
+  setAIReadGlobalPrompt: (enabled: boolean) => void;
+  setAIReadLocalSkills: (enabled: boolean) => void;
   setAISelectedModelId: (modelId: string | null) => void;
   setAIWorkspaceSelectedModelId: (modelId: string | null) => void;
   setAIWorkspaceReasoningLevel: (level: AIReasoningLevel) => void;
@@ -34,6 +36,8 @@ export type AISlice = AISliceState & AISliceActions;
 export const AI_INITIAL_STATE: AISliceState = {
   ai: {
     enabled: false,
+    readGlobalPrompt: true,
+    readLocalSkills: true,
     selectedModelId: null,
     workspaceSelectedModelId: null,
     workspaceReasoningLevel: "default",
@@ -60,6 +64,10 @@ export function createAISlice(set: SetFn): AISlice {
         const nextAI = { ...state.ai, enabled };
         return { ai: nextAI };
       }),
+    setAIReadGlobalPrompt: (readGlobalPrompt) =>
+      set((state) => ({ ai: { ...state.ai, readGlobalPrompt } })),
+    setAIReadLocalSkills: (readLocalSkills) =>
+      set((state) => ({ ai: { ...state.ai, readLocalSkills } })),
     setAISelectedModelId: (selectedModelId) =>
       set((state) => {
         const nextAI = { ...state.ai, selectedModelId };

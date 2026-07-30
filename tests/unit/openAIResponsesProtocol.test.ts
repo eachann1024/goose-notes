@@ -121,6 +121,8 @@ test("已保存的 AI 服务配置 rehydrate 后完整保留", () => {
   });
 
   expect(normalized.enabled).toBe(true);
+  expect(normalized.readGlobalPrompt).toBe(true);
+  expect(normalized.readLocalSkills).toBe(true);
   expect(normalized.customProtocol).toBe("openai-responses");
   expect(normalized.customOpenAIResponsesBaseURL).toBe(
     "https://proxy.example.test/v1",
@@ -136,6 +138,16 @@ test("已保存的 AI 服务配置 rehydrate 后完整保留", () => {
     "gpt-4.1",
     "gpt-4.1-mini",
   ]);
+});
+
+test("本地 AI 上下文开关可独立关闭", () => {
+  const normalized = normalizeAISettings({
+    readGlobalPrompt: false,
+    readLocalSkills: false,
+  });
+
+  expect(normalized.readGlobalPrompt).toBe(false);
+  expect(normalized.readLocalSkills).toBe(false);
 });
 
 test("Claude 协议配置 rehydrate 后保留 Base URL / Key / 默认模型", () => {

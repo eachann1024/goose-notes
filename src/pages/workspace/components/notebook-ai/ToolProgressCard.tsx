@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
 
 interface ToolProgressPart {
   type: string;
@@ -17,6 +18,7 @@ interface ToolProgressPart {
   input?: unknown;
   output?: unknown;
   errorText?: string;
+  approval?: { approved?: boolean };
 }
 
 interface ToolProgressCardProps {
@@ -57,11 +59,18 @@ function isInputOnly(part: ToolProgressPart) {
   return INPUT_ONLY_STATES.has(part.state ?? "");
 }
 
-function getStepStatus(
+export function getToolProgressStepStatus(
   part: ToolProgressPart,
   isMessageStreaming?: boolean,
 ): ProgressStep["status"] {
   if (part.state === "output-error" || part.errorText) return "error";
+  if (
+    part.type === "tool-executeBatchPlan" &&
+    part.state === "output-available" &&
+    readObject(part.output)?.ok === false
+  ) {
+    return "error";
+  }
   if (part.state === "approval-requested") return "done";
   if (isInputOnly(part)) return isMessageStreaming ? "running" : "waiting";
   return "done";
@@ -119,7 +128,8 @@ function getStepText(
 
   if (part.type === "tool-searchWeb") {
     const query = truncate(asString(input?.query) || "关键词");
-    if (outputError) return { label: "联网搜索", detail: outputError };
+    if (outputError)
+      return { label: "联网搜索", detail: formatNotebookAiError(outputError) };
     return {
       label: "联网搜索",
       detail: output ? `已完成“${query}”的联网搜索` : `正在搜索“${query}”`,
@@ -135,7 +145,8 @@ function getStepText(
         return "网页";
       }
     })();
-    if (outputError) return { label: "读取网页", detail: outputError };
+    if (outputError)
+      return { label: "读取网页", detail: formatNotebookAiError(outputError) };
     return {
       label: "读取网页",
       detail: output
@@ -145,7 +156,8 @@ function getStepText(
   }
 
   if (part.type === "tool-readPage") {
-    if (outputError) return { label: "读取笔记", detail: outputError };
+    if (outputError)
+      return { label: "读取笔记", detail: formatNotebookAiError(outputError) };
     return {
       label: "读取笔记",
       detail: title ? `已读取《${truncate(title)}》` : "正在读取当前笔记",
@@ -203,7 +215,7 @@ function getStepText(
     return {
       label: "追加内容",
       detail: outputError
-        ? outputError
+        ? formatNotebookAiError(outputError)
         : ok
           ? title
             ? `已追加到《${truncate(title)}》`
@@ -219,7 +231,7 @@ function getStepText(
     return {
       label: "重命名页面",
       detail: outputError
-        ? outputError
+        ? formatNotebookAiError(outputError)
         : ok
           ? title
             ? `已重命名为《${truncate(title)}》`
@@ -238,7 +250,7 @@ function getStepText(
     return {
       label: "删除页面",
       detail: outputError
-        ? outputError
+        ? formatNotebookAiError(outputError)
         : deletedCount === undefined
           ? "正在把页面移入垃圾箱"
           : `已删除 ${deletedCount} 个页面`,
@@ -251,15 +263,24 @@ function getStepText(
       : Array.isArray(readObject(input?.plan)?.changes)
         ? (readObject(input?.plan)?.changes as unknown[]).length
         : 0;
-    if (part.state === "output-error" || part.errorText) {
+    const executionFailed =
+      part.state === "output-error" ||
+      Boolean(part.errorText) ||
+      (part.state === "output-available" && output?.ok === false);
+    if (executionFailed) {
       return {
         label: "生成批量计划",
-        detail: "计划参数未通过校验，正在等待 AI 修正",
+        detail: formatNotebookAiError(part.errorText || output?.error, {
+          phase: part.approval?.approved === true ? "execute" : "prepare",
+        }),
       };
     }
     if (
       part.state === "approval-requested" ||
-      part.state === "approval-responded"
+      part.state === "approval-responded" ||
+      (part.state === "output-available" &&
+        output?.status === "prepared" &&
+        output?.needsApproval === true)
     ) {
       return {
         label: "生成批量计划",
@@ -316,7 +337,7 @@ function buildSteps(
 ): ProgressStep[] {
   return parts.map((part) => ({
     ...getStepText(part),
-    status: getStepStatus(part, isMessageStreaming),
+    status: getToolProgressStepStatus(part, isMessageStreaming),
   }));
 }
 

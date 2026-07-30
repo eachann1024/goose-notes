@@ -101,8 +101,9 @@ export function isNotebookAiFullscreenOpen(): boolean {
 }
 
 /**
- * 从侧栏打开页面时调用：若 AI 全屏覆盖主区域，先关掉 AI，
+ * 从侧栏打开页面时调用：若 AI 全屏覆盖主区域，只关掉面板 UI，
  * 让用户回到对应页面标签（与点标签栏 onBeforeActivateTab 一致）。
+ * 不会中止后台会话：请求生命周期由 NotebookAiSessionProvider 持有。
  */
 export function closeNotebookAiIfFullscreen(): void {
   if (!isNotebookAiFullscreenOpen()) return;

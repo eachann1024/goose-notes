@@ -10,7 +10,9 @@ import {
   Clock3,
   History as HistoryIcon,
   MessageSquareText,
+  Trash2,
 } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import {
   Popover,
   PopoverContent,
@@ -25,6 +27,8 @@ export interface ConversationHistoryListProps {
   onSelectConversation: (conversationId: string) => void;
   /** 选中后回调（用于关闭外层菜单） */
   onDidSelect?: () => void;
+  /** 删除会话回调；未提供时不显示删除按钮 */
+  onDeleteConversation?: (conversationId: string) => void;
   className?: string;
   compact?: boolean;
 }
@@ -138,10 +142,51 @@ function PortalHoverTip({
   );
 }
 
+/** 正在等待 toast 确认的会话删除，防止重复触发 */
+const conversationDeleteInFlight = new Set<string>();
+
+/** 删除会话：走全局 sonner toast 确认，确认后回调执行真实删除 */
+function requestDeleteConversation(
+  conversationId: string,
+  summary: string,
+  onConfirm: () => void,
+) {
+  if (conversationDeleteInFlight.has(conversationId)) return;
+  const trimmedSummary = summary.trim() || "新会话";
+  const displaySummary =
+    trimmedSummary.length > 20 ? `${trimmedSummary.slice(0, 20)}…` : trimmedSummary;
+  const toastId = `delete-ai-conversation:${conversationId}`;
+
+  // 从弹出确认 toast 起就占位，保证同一会话同时只有一个待确认 toast
+  conversationDeleteInFlight.add(conversationId);
+  toast.warning(`删除会话「${displaySummary}」？`, {
+    id: toastId,
+    duration: 8000,
+    onDismiss: () => {
+      conversationDeleteInFlight.delete(conversationId);
+    },
+    onAutoClose: () => {
+      conversationDeleteInFlight.delete(conversationId);
+    },
+    action: {
+      label: "确认删除",
+      onClick: () => {
+        try {
+          onConfirm();
+          toast.success("已删除会话", { id: toastId });
+        } finally {
+          conversationDeleteInFlight.delete(conversationId);
+        }
+      },
+    },
+  });
+}
+
 export function ConversationHistoryList({
   notebookId,
   onSelectConversation,
   onDidSelect,
+  onDeleteConversation,
   className,
   compact = false,
 }: ConversationHistoryListProps) {
@@ -162,6 +207,19 @@ export function ConversationHistoryList({
       onSelectConversation(conversationId);
     }
     onDidSelect?.();
+  };
+
+  const confirmDeleteConversation = (
+    event: MouseEvent<HTMLElement>,
+    conversationId: string,
+    summary: string,
+  ) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!onDeleteConversation) return;
+    requestDeleteConversation(conversationId, summary, () => {
+      onDeleteConversation(conversationId);
+    });
   };
 
   if (conversations.length === 0) {
@@ -187,12 +245,18 @@ export function ConversationHistoryList({
         return (
           <PortalHoverTip key={conversation.id} content={summary}>
             {({ onMouseEnter, onMouseLeave }) => (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => selectConversation(conversation.id)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  selectConversation(conversation.id);
+                }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
-                className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
+                className="group flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
                 aria-current={isActive ? "true" : undefined}
               >
                 <div className="min-w-0 flex-1 overflow-hidden">
@@ -212,7 +276,20 @@ export function ConversationHistoryList({
                     当前
                   </span>
                 ) : null}
-              </button>
+                {onDeleteConversation ? (
+                  <button
+                    type="button"
+                    aria-label="删除会话"
+                    title="删除会话"
+                    onClick={(event) =>
+                      confirmDeleteConversation(event, conversation.id, summary)
+                    }
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground opacity-0 outline-none transition-[opacity,color,background-color] hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger-focus)] focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  </button>
+                ) : null}
+              </div>
             )}
           </PortalHoverTip>
         );
@@ -267,12 +344,6 @@ export function ConversationHistoryPopover({
         sideOffset={6}
         className="w-72 max-w-72 overflow-hidden p-0"
       >
-        <div className="px-3 py-2.5">
-          <div className="text-sm font-medium text-foreground">历史会话</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            切换当前笔记本的 AI 会话
-          </div>
-        </div>
         <ConversationHistoryList
           notebookId={notebookId}
           onSelectConversation={onSelectConversation}
