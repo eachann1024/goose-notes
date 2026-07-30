@@ -1,4 +1,5 @@
 import path from "path";
+import { rmSync } from "node:fs";
 import { defineConfig, createLogger } from "vite";
 import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
@@ -195,6 +196,13 @@ export default defineConfig({
     __GOOSE_EDITOR_AI__: JSON.stringify(!isQuicknoteBuild),
   },
   plugins: [
+    {
+      name: "exclude-guide-assets-from-utools",
+      closeBundle() {
+        const outDir = isQuicknoteBuild ? "dist-quicknote" : "dist";
+        rmSync(path.resolve(__dirname, outDir, "guide"), { recursive: true, force: true });
+      },
+    },
     codeInspectorPlugin({
       bundler: "vite",
       hideConsole: true,

@@ -1,7 +1,5 @@
 # 鹅的笔记 · goose-note
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-
 A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
 
 本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 uTools 插件运行，也支持浏览器端使用。
@@ -64,11 +62,10 @@ bun run test:e2e    # 浏览器端到端测试
 bun run build
 ```
 
-## 🤝 贡献
+## 🔒 项目状态
 
-欢迎贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解开发流程与规范，并遵守
-[行为准则](./CODE_OF_CONDUCT.md)。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
+本项目是闭源专有软件，不接受未经授权的使用、复制、修改或分发，也不接受外部代码贡献。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
 
 ## 📄 许可证
 
-[MIT](./LICENSE) © eachann
+专有软件，未经授权不得使用、复制、修改或分发。详见 [LICENSE](./LICENSE)。

@@ -1,7 +1,9 @@
-# Contributing to goose-note
+# Internal development guide
 
-Thanks for your interest in contributing! This document explains how to get set
-up and the conventions this project follows.
+goose-note is proprietary software and does not accept external code
+contributions. This document is retained for authorized maintainers and
+collaborators only. Access to the source code does not grant permission to use,
+copy, modify, or distribute it; see [LICENSE](./LICENSE).
 
 ## Development setup
 
@@ -20,7 +22,7 @@ bun run build
 
 Node.js `>=20` is required if you run the toolchain without Bun.
 
-## Before opening a pull request
+## Before opening an internal pull request
 
 Run the same checks CI runs, locally:
 
@@ -32,7 +34,8 @@ bun run test:e2e    # browser end-to-end suite
 bun run build       # full production build
 ```
 
-All three must pass. CI runs them on every pull request to `main` and `dev`.
+All checks must pass. CI runs them on every internal pull request to `main` and
+`dev`.
 
 ## Branching & commits
 
@@ -52,13 +55,13 @@ All three must pass. CI runs them on every pull request to `main` and `dev`.
 
 ## Reporting bugs & requesting features
 
-Use the issue templates under **Issues → New issue**. Please include reproduction
-steps, your environment (OS, uTools version or browser), and expected vs. actual
-behavior.
+Authorized collaborators should use the private project tracker and include
+reproduction steps, the environment (OS, uTools version or browser), and
+expected versus actual behavior.
 
 ## Maintainer review checklist
 
-Use this when reviewing contributor PRs (AI assistants: skill `oss-pr-reviewer` + `references/goose-note.md`).
+Use this when reviewing internal pull requests.
 
 1. **Correct diff** — Review the PR’s real remote head (not a stale local branch with the same name).
 2. **Merge gate** — `typecheck`, `lint`, and full `build` (includes the quick-note plugin build).

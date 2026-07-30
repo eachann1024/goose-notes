@@ -59,6 +59,10 @@ declare global {
 
   interface Window {
     utools?: any;
+    gooseAiContext?: {
+      readGlobalPrompt: () => string | null;
+      listLocalSkills: () => Array<{ path: string; content: string }>;
+    };
     gooseFs?: GooseFs;
     gooseWeb?: {
       fetchText: (url: string) => Promise<{

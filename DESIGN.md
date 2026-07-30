@@ -6,7 +6,7 @@ colors:
   shell-bg: "#f7f7f7"
   editor-bg: "#ffffff"
   selected-bg: "#f1f1ef"
-  primary: "#7e7e7e"
+  primary: "#6366f1"
   foreground: "#1e1e1e"
   muted-foreground: "#6d6d6d"
   border: "#dbdbdb"
@@ -119,10 +119,10 @@ components:
 
 ## 2. Colors
 
-鹅的笔记使用单色调色板，依靠明度差异而非色相差异构建层次。AI 区域是唯一的彩色例外。
+鹅的笔记以中性色为基底，依靠明度差异构建层次；唯一的 UI 强调色是鸢尾靛蓝。AI 区域是唯一的多彩例外。
 
 ### Primary
-- **Neutral Graphite** (#7e7e7e): 主色调，用于按钮填充、关键操作。不饱和、无情绪，让内容本身成为焦点。
+- **Iris Indigo** (#6366f1 / hsl 239 84% 67%): 主色调，用于主按钮填充、开关 ON、focus 指示。激活导航/选中项用浅底 #e0e7ff + 强调文字 #4f46e5，图标徽章底 #eef2ff；暗色对应：填充 #6366f1、强调文字 #a5b4fc、浅底 rgba(99,102,241,0.20)、徽章底 rgba(99,102,241,0.14)。克制、单一色相，让内容本身成为焦点。
 
 ### Secondary
 - *(无独立 secondary accent。层次由明度差异承担)*
@@ -145,7 +145,7 @@ components:
 
 ### Named Rules
 
-**The One Color Rule.** 任何非 AI 区域，屏幕上同时出现的彩色像素应趋近于零。灰色是默认，白色是画布，黑色是文字。AI 区域的多彩是刻意打破规则的信号——它告诉用户"这里发生了不同的事"。
+**The One Color Rule.** 任何非 AI 区域，屏幕上同时出现的彩色应只有鸢尾靛蓝一种色相。灰色是默认，白色是画布，黑色是文字，靛蓝只承担强调角色（主按钮、开关 ON、激活项、focus）。AI 区域的多彩是刻意打破规则的信号——它告诉用户"这里发生了不同的事"。
 
 **The Warmth-Not-Color Rule.** 层次由明度和极微的暖色 tint 区分，不是由色相。goose-selected-bg 比 shell-bg 暗 3%，暖 6°，这个差异几乎无法被有意识察觉，但手指能"感觉"到。
 
@@ -199,7 +199,7 @@ components:
 
 ### Buttons
 - **Shape:** 温和圆角 (10px radius)，内边距紧凑 (10px 纵向，16px 横向)。
-- **Primary:** 石墨灰填充 (#7e7e7e)，白色文字。默认状态带 Button Press 投影。Hover 时背景色轻微加深 (bg-primary/90)。
+- **Primary:** 鸢尾靛蓝填充 (#6366f1)，白色文字。默认状态带 Button Press 投影。Hover 时背景色轻微加深 (bg-primary/90)。
 - **Outline:** 透明填充，用 Inset Border 模拟细边框。Hover 时背景转为 Selected Parchment。
 - **Ghost:** 完全透明，无投影。Hover 时同 Outline。
 - **Secondary:** Selected Parchment 底色，带更弱的 inset border。用于非主要操作。
@@ -208,7 +208,7 @@ components:
 
 ### Inputs / Fields
 - **Style:** 圆角 10px，透明边框，用 Inset Border 创造压痕感。背景同 Shell。
-- **Focus:** ring-2 ring-ring (灰蓝色 focus 指示)，ring-offset-1。这是极少数使用 ring 的场景。
+- **Focus:** ring-2 ring-ring (鸢尾靛蓝 focus 指示)，ring-offset-1。这是极少数使用 ring 的场景。
 - **Placeholder:** Faded Ink 色。
 - **Disabled:** cursor-not-allowed，opacity-50。
 
