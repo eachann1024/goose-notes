@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const {
   extractTextFromPageContent,
   extractTitleFromPageContent,
+  getNextOffset,
   parsePersistedNotebooks,
   searchNoteItems,
   stripMarkdownSyntax,
@@ -56,6 +57,13 @@ test("搜索排序标题命中优先于正文命中", () => {
   assert.deepEqual(results[0].matchedFields, ["title"]);
   assert.equal(results[1].id, "1");
   assert.deepEqual(results[1].matchedFields, ["content"]);
+});
+
+test("分页偏移量仅在还有结果时返回", () => {
+  assert.equal(getNextOffset(12, 0, 5), 5);
+  assert.equal(getNextOffset(12, 5, 5), 10);
+  assert.equal(getNextOffset(12, 10, 2), null);
+  assert.equal(getNextOffset(0, 0, 0), null);
 });
 
 test("解析 Zustand 持久化记事本结构", () => {

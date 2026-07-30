@@ -2,7 +2,6 @@
   "pluginName": "鹅的笔记",
   "description": "本地化的Notion风格笔记",
   "author": "Antigravity",
-  "homepage": "https://github.com/your-repo",
   "version": "0.0.1",
   "logo": "logo.png",
   "pluginSetting": {
@@ -172,6 +171,14 @@
           "total": {
             "type": "integer"
           },
+          "nextOffset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "下一页的 offset；为 null 时没有更多结果。"
+          },
           "items": {
             "type": "array",
             "items": {
@@ -232,7 +239,8 @@
         },
         "required": [
           "total",
-          "items"
+          "items",
+          "nextOffset"
         ]
       }
     },
@@ -268,6 +276,11 @@
             "maximum": 500,
             "description": "单次返回的最大数量，默认 50。"
           },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "分页偏移量，默认 0。"
+          },
           "include_trashed": {
             "type": "boolean",
             "description": "是否包含回收站中的应用内笔记，默认 false。"
@@ -283,6 +296,14 @@
         "properties": {
           "total": {
             "type": "integer"
+          },
+          "nextOffset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "下一页的 offset；为 null 时没有更多结果。"
           },
           "items": {
             "type": "array",
@@ -359,7 +380,8 @@
         },
         "required": [
           "total",
-          "items"
+          "items",
+          "nextOffset"
         ]
       }
     },

@@ -166,6 +166,15 @@ function sortNoteItems(items, sortBy) {
   return nextItems;
 }
 
+function getNextOffset(total, offset, returnedCount) {
+  const safeTotal = Math.max(0, Number(total) || 0);
+  const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+  const safeReturnedCount = Math.max(0, Math.floor(Number(returnedCount) || 0));
+  const nextOffset = safeOffset + safeReturnedCount;
+
+  return nextOffset < safeTotal ? nextOffset : null;
+}
+
 function searchNoteItems(items, query) {
   const normalizedQuery = normalizeWhitespace(query).toLowerCase();
   if (!normalizedQuery) return [];
@@ -211,6 +220,7 @@ module.exports = {
   extractMarkdownTitle,
   extractTextFromPageContent,
   extractTitleFromPageContent,
+  getNextOffset,
   parsePersistedNotebooks,
   searchNoteItems,
   sortNoteItems,
