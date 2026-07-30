@@ -81,7 +81,7 @@ export const gooseFirstTitleEnterExtension = createExtension({
         offset,
         contentSize,
         undefined,
-        "\uFFFC",
+        "",
       );
       const [inserted] = editor.insertBlocks(
         [
@@ -100,7 +100,7 @@ export const gooseFirstTitleEnterExtension = createExtension({
         0,
         offset,
         undefined,
-        "\uFFFC",
+        "",
       );
       editor.updateBlock(headingBlock, {
         content: textBefore ? [{ type: "text", text: textBefore }] : "",

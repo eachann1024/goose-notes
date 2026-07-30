@@ -27,6 +27,17 @@ type BlockHit = {
   selTo: number;
 };
 
+type SelectionRange = {
+  from: number;
+  to: number;
+};
+
+type BlockContentRange = {
+  from: number;
+  to: number;
+  isTextblock: boolean;
+};
+
 type BlockLike = {
   id: string;
   children?: BlockLike[];
@@ -37,35 +48,71 @@ type FlatBlock = {
   parentId: string | null;
 };
 
-/** 收集选区跨越的所有顶层 blockContainer 内容块，及选区在每块内的覆盖区间。 */
+/**
+ * 只有选区与块的实际内容有正长度交集时，才认为该块被选中。
+ *
+ * ProseMirror 的 blockContainer 范围还包含容器开闭边界。文本选区端点正好落在
+ * 上一块行尾时，会与该容器范围“有交集”，但并未覆盖其任何正文。
+ */
+export function hasPositiveBlockContentOverlap(
+  selection: SelectionRange,
+  content: BlockContentRange,
+): boolean {
+  if (selection.from >= selection.to) return false;
+
+  if (content.isTextblock) {
+    if (content.from < content.to) {
+      return (
+        Math.max(selection.from, content.from) <
+        Math.min(selection.to, content.to)
+      );
+    }
+
+    // 空文本块没有可覆盖的字符；只在选区真正跨过整个空块时纳入。
+    return selection.from < content.from && selection.to > content.to;
+  }
+
+  return (
+    Math.max(selection.from, content.from) < Math.min(selection.to, content.to)
+  );
+}
+
+function getBlockContentRange(
+  node: PMNode,
+  pos: number,
+): BlockContentRange | null {
+  const content = node.firstChild;
+  if (!content) return null;
+
+  if (content.isTextblock) {
+    const from = pos + 2; // blockContainer(+1) → 内容节点(+1) → inline 首位
+    return { from, to: from + content.content.size, isTextblock: true };
+  }
+
+  const from = pos + 1; // 非文本块按内容节点本身的范围判断。
+  return { from, to: from + content.nodeSize, isTextblock: false };
+}
+
+/** 收集选区跨越的所有 blockContainer 文本内容块，及选区在每块内的覆盖区间。 */
 function collectSelectedBlocks(state: EditorState): BlockHit[] {
   const { from, to } = state.selection;
   const hits: BlockHit[] = [];
 
   state.doc.descendants((node: PMNode, pos: number) => {
     if (node.type.name !== "blockContainer") return true;
-    const content = node.firstChild;
-    if (!content || !content.isTextblock) return true; // 仅处理 inline 内容块
+    const range = getBlockContentRange(node, pos);
+    if (!range?.isTextblock) return true; // 仅用于删除 inline 内容
 
-    const contentFrom = pos + 2; // blockContainer(+1) → 内容节点(+1) → 内部首位
-    const contentTo = contentFrom + content.content.size;
-
-    // 该内容块与选区有交集？
-    const overlapFrom = Math.max(from, contentFrom);
-    const overlapTo = Math.min(to, contentTo);
-    if (overlapFrom <= overlapTo && overlapTo >= contentFrom && overlapFrom <= contentTo) {
-      // 有重叠（含零长度边界接触；零长度的端点块跳过，避免空删）
-      if (overlapFrom < overlapTo) {
-        hits.push({
-          id: String(node.attrs.id),
-          contentFrom,
-          contentTo,
-          selFrom: overlapFrom,
-          selTo: overlapTo,
-        });
-      }
+    if (hasPositiveBlockContentOverlap({ from, to }, range)) {
+      hits.push({
+        id: String(node.attrs.id),
+        contentFrom: range.from,
+        contentTo: range.to,
+        selFrom: Math.max(from, range.from),
+        selTo: Math.min(to, range.to),
+      });
     }
-    return false; // 不下钻嵌套块（嵌套子块由上层处理足够覆盖常见场景）
+    return true; // 继续下钻，嵌套 blockGroup 中的子块需要独立判断。
   });
 
   return hits;
@@ -123,14 +170,13 @@ function collectSelectedBlockIdsFromPm(state: EditorState): string[] {
   state.doc.descendants((node: PMNode, pos: number) => {
     if (node.type.name !== "blockContainer") return true;
     const id = node.attrs.id;
-    if (!id) return false;
+    if (!id) return true;
 
-    const nodeFrom = pos;
-    const nodeTo = pos + node.nodeSize;
-    if (Math.max(from, nodeFrom) < Math.min(to, nodeTo)) {
+    const range = getBlockContentRange(node, pos);
+    if (range && hasPositiveBlockContentOverlap({ from, to }, range)) {
       ids.push(String(id));
     }
-    return false;
+    return true;
   });
 
   return ids;
@@ -156,18 +202,15 @@ function hasSelectedAncestor(
   return false;
 }
 
-function deleteSelectedBlocks(editor: any): boolean {
+export function deleteSelectedBlocks(editor: any): boolean {
   const state = editor.prosemirrorState as EditorState;
   if (state.selection.empty) return false;
 
-  const selection = editor.getSelection?.();
-  const selectionBlocks = selection?.blocks ?? [];
-  const selectedBlocks =
-    selectionBlocks.length >= 2
-      ? selectionBlocks
-      : collectSelectedBlockIdsFromPm(state)
-          .map((id) => editor.getBlock?.(id))
-          .filter(Boolean);
+  // BlockNote getSelection() 会把仅接触容器边界的端点块也算进 blocks；
+  // 这里必须以 PM 内容区间的正长度交集为准。
+  const selectedBlocks = collectSelectedBlockIdsFromPm(state)
+    .map((id) => editor.getBlock?.(id))
+    .filter(Boolean);
   if (selectedBlocks.length < 2) return false;
 
   const firstBlockId = editor.document[0]?.id as string | undefined;

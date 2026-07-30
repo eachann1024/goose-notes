@@ -21,6 +21,38 @@
   color: inherit;
 }
 
+/* 常规笔记本浮动工具栏：pressed 状态使用主题 primary 实心底。
+   背景规则包含颜色 A；其内部 A 有实际文字色，不继承下面的 foreground。
+   !important 用于稳定压过按钮自带 hover:bg-muted，避免选中态 hover 退化。 */
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  button[data-state="on"],
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  button[aria-pressed="true"],
+.goose-toolbar-control-active,
+.goose-toolbar-control-active:hover {
+  background: hsl(var(--primary)) !important;
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  button[data-state="on"]:not([data-goose-preserve-icon-color="true"]),
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  button[aria-pressed="true"]:not([data-goose-preserve-icon-color="true"]),
+.goose-toolbar-control-active,
+.goose-toolbar-control-active:hover {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.goose-toolbar-control-active {
+  border-radius: 0.375rem;
+}
+
+/* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
+[data-goose-image-toolbar]
+  button:not(:disabled):not([aria-disabled="true"]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
 /* 节点选中仍保留编辑器行为与工具栏，但不绘制 BlockNote / ProseMirror
    默认的蓝色外框。该共享样式同时覆盖主窗与速记小窗。 */
 .bn-editor .ProseMirror-selectednode,
@@ -250,7 +282,7 @@
   width: 100%;
 }
 
-/* 全宽态（uTools 主窗默认铺满 / 用户手动开全宽）左右留白：
+/* uTools 主窗固定全宽布局的左右留白：
    全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
    需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
    注：折叠标题箭头与 side menu 同锚内容左缘、向同侧展开，留白只整体右移、消不掉两者
@@ -273,6 +305,25 @@
 
 .workspace-editor-surface .bn-block-outer:last-child {
   margin-bottom: 0;
+}
+
+/* 三类列表 marker 共用正文首行的光学中心轴。
+   原生 checkbox / 列表字形的墨迹中心会比中文正文低约 0.04em；用 em
+   轻微上移后，在 Cmd +/- 的所有字号下都保持一致，且不改变 marker 槽布局。 */
+.workspace-editor-surface {
+  --goose-list-marker-optical-offset-y: -0.04em;
+}
+
+.workspace-editor-surface
+  .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input {
+  transform: translateY(var(--goose-list-marker-optical-offset-y));
 }
 
 /*
@@ -299,7 +350,9 @@
       + .bn-block-group
   ) {
   --goose-list-marker-axis-x: 10.5px;
-  --goose-list-marker-axis-y: calc(0.75em + 3px);
+  --goose-list-marker-axis-y: calc(
+    0.75em + 3px + var(--goose-list-marker-optical-offset-y)
+  );
   --goose-list-marker-clearance-y: 0.25em;
   --goose-list-next-marker-clearance-y: 0.25em;
   position: relative;
@@ -320,6 +373,23 @@
     > .bn-block-content[data-content-type="checkListItem"] + .bn-block-group
   ) {
   --goose-list-marker-clearance-y: 0.5em;
+}
+
+/* 仅常规笔记本无序列表：一级实心圆点半径为 0.2109375em，连接线从
+   圆点外缘再退让 0.3125em；两者均随编辑器字号缩放。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-block:has(
+    > .bn-block-content[data-content-type="bulletListItem"] + .bn-block-group
+  ) {
+  --goose-list-marker-axis-x: 10.3px;
+  --goose-list-marker-axis-y: calc(0.75em + 3px);
+  --goose-bullet-marker-radius: 0.2109375em;
+  --goose-bullet-line-gap: 0.3125em;
+  --goose-list-marker-clearance-y: calc(
+    var(--goose-bullet-marker-radius) + var(--goose-bullet-line-gap)
+  );
+  --goose-list-next-marker-clearance-y: var(--goose-list-marker-clearance-y);
 }
 
 .workspace-editor-surface
@@ -345,6 +415,17 @@
   pointer-events: none;
 }
 
+/* 默认 bottom 只收在末级圆点中心；无序列表需对称退到圆点外缘 5px。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-block:has(
+    > .bn-block-content[data-content-type="bulletListItem"] + .bn-block-group
+  )::after {
+  bottom: calc(
+    var(--goose-list-marker-axis-y) + var(--goose-list-marker-clearance-y)
+  );
+}
+
 /* 圆点和数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
    保持 4px 总内边距和正文起点不变，仅在槽内做光学右移。 */
 .workspace-editor-surface
@@ -352,8 +433,71 @@
     [data-content-type="bulletListItem"],
     [data-content-type="numberedListItem"]
   )::before {
-  padding-left: 1px;
-  padding-right: 3px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 1.5em;
+  padding-left: 0.0625em;
+  padding-right: 0.1875em;
+}
+
+/* 飞书式列表圆点：不用字体字形，直接在正文首行高 1.5em 的 marker 槽内
+   绘制几何圆。圆心固定在 0.75em，和正文首行的几何中心严格同轴；
+   默认 16px 正文下一级圆点直径为 6.75px，并随编辑器字号同步缩放。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "" !important;
+  width: 1.5em;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  background-image: radial-gradient(
+    circle at 10.3px 50%,
+    currentColor 0,
+    currentColor 0.2109375em,
+    transparent 0.2109375em
+  );
+  background-repeat: no-repeat;
+  line-height: 1.5;
+  transform: none;
+}
+
+/* 光标所在列表行的 marker 使用产品现有强调前景色。强调色令牌为实色，
+   避免 uTools 旧 Chromium 对 hsl(var(...)/alpha) 的错误回退。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-list-marker
+  > .bn-block
+  > .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.workspace-shell
+  .workspace-editor-surface
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-list-marker
+  > .bn-block
+  > .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input {
+  accent-color: var(--goose-interactive-selected-fg);
+}
+
+.workspace-shell
+  .workspace-editor-surface
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-list-marker
+  > .bn-block
+  > .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input:not(:checked) {
+  border-radius: 0.2em;
+  outline: 1px solid var(--goose-interactive-selected-fg);
+  outline-offset: -1px;
 }
 
 /* 下一同级 marker 的上边缘决定主干终点。 */
@@ -435,7 +579,7 @@
 }
 
 /* 一级子无序列表始终使用空心圆，不依赖父项是否也是无序列表。
-   BlockNote 默认只处理 bullet → bullet；混合父子列表会错误回退成实心圆。 */
+   外径略小于父级实心圆，圆环保持足够厚度，尺寸与视觉重量都逐级收敛。 */
 .workspace-editor-surface
   .bn-editor
   > .bn-block-group
@@ -445,7 +589,15 @@
   > .bn-block-outer
   > .bn-block
   > .bn-block-content[data-content-type="bulletListItem"]::before {
-  content: "◦" !important;
+  content: "" !important;
+  background-image: radial-gradient(
+    circle at 10.3px 50%,
+    transparent 0,
+    transparent 0.1125em,
+    currentColor 0.1125em,
+    currentColor 0.196875em,
+    transparent 0.196875em
+  );
 }
 
 /* 第二级子无序列表继续使用方点，保持层级可辨识。 */
@@ -461,7 +613,11 @@
   > .bn-block-outer
   > .bn-block
   > .bn-block-content[data-content-type="bulletListItem"]::before {
-  content: "▪\FE0E" !important;
+  content: "" !important;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: calc(10.3px - 0.16875em) 50%;
+  background-size: 0.3375em 0.3375em;
+  background-repeat: no-repeat;
 }
 
 /*
@@ -1234,6 +1390,46 @@
   vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary] {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  code[data-goose-inline-code-caret-active],
+.quicknote-editor-surface
+  .bn-inline-content
+  code[data-goose-inline-code-caret-active] {
+  caret-color: transparent !important;
+}
+
+.workspace-editor-surface [data-goose-inline-code-caret-active].ProseMirror,
+.quicknote-editor-surface [data-goose-inline-code-caret-active].ProseMirror {
+  caret-color: transparent !important;
+}
+
+.goose-inline-code-visual-caret {
+  position: fixed;
+  z-index: 100;
+  width: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 1;
+  pointer-events: none;
 }
 
 /* 链接内的行内代码：去掉文字下划线（背景色已足够区分），链接本身仍可点 */

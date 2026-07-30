@@ -5,6 +5,7 @@ import { customFileBlock } from "../blocks/file/customFileBlock";
 import { customImageBlock } from "../blocks/image/customImageBlock";
 import { customVideoBlock } from "../blocks/video/videoBlock";
 import { codeBlockSpec } from "@/components/editor/blocks/code/codeBlockSpec";
+import { gooseEditorStyleSpecs } from "@/components/editor/inline-code/InlineCodeComponent";
 
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {
@@ -21,4 +22,5 @@ export const editorSchema = BlockNoteSchema.create({
     file: customFileBlock,
     codeBlock: codeBlockSpec,
   },
+  styleSpecs: gooseEditorStyleSpecs,
 });

@@ -10,6 +10,10 @@ import {
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
+import {
+  goosePrivateSelectionDocumentStateBuilder,
+  gooseSelectionScopedStreamToolsProvider,
+} from "@/components/editor/ai/selectionPrivacy";
 import { zh as aiZh } from "@blocknote/xl-ai/locales";
 import { createGooseAITransport } from "@/components/editor/ai/transport/blocknoteAITransport";
 import { zh } from "@blocknote/core/locales";
@@ -76,11 +80,14 @@ import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensio
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
+import { createGooseNumberedListStartNormalizationExtension } from "@/components/editor/extensions/numberedListStartNormalizationExtension";
 import { createGooseBodyParagraphGuardExtension } from "@/components/editor/extensions/bodyParagraphGuardExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
+import { gooseInlineCodeBoundaryNavigationExtension } from "@/components/editor/extensions/inlineCodeBoundaryNavigationExtension";
+import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
@@ -264,6 +271,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         createGooseBodyParagraphGuardExtension(usesRawEditorContentRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
+        gooseInlineCodeBoundaryNavigationExtension,
+        gooseActiveListMarkerExtension,
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
@@ -278,6 +287,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseToggleHeadingAutoCollectExtension(),
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
+        createGooseNumberedListStartNormalizationExtension(
+          usesRawEditorContentRef,
+        ),
         createGooseSlashMenuReconcileExtension(
           usesRawEditorContentRef,
           editorInstanceRef,
@@ -297,6 +309,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
                     aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
                   getCustomFetch: () => platformRef.current.ai.customFetch,
                 }),
+                documentStateBuilder:
+                  goosePrivateSelectionDocumentStateBuilder,
+                streamToolsProvider: gooseSelectionScopedStreamToolsProvider,
               }),
             ]),
       ],
