@@ -16,6 +16,7 @@ import type { StoreSet, StoreGet } from "../hydrate";
 import { cloneLocalPageContent } from "../pageCreate";
 import { markSelfMoved } from "./move";
 import {
+  allocateUniqueLocalBaseName,
   findDuplicateLocalFileOwner,
   localFilePathExists,
 } from "./pathGuards";
@@ -200,20 +201,25 @@ export async function renameLocalPageFileAction(
     return pageId;
   }
 
-  const nextFilePath = `${dir}/${sanitized}${ext}`;
-
   if (typeof window === "undefined" || !window.gooseFs) {
     throw new Error("文件系统不可用");
   }
 
   const fs = window.gooseFs;
-  const duplicatePage = findDuplicateLocalFileOwner(
+  // 与新建页一致：撞名时自动 `名称 (1)` / `名称 (2)`，不抛错打断用户
+  const uniqueBase = await allocateUniqueLocalBaseName(
+    fs,
     get().pages,
     pageId,
-    nextFilePath,
+    dir,
+    sanitized,
+    ext,
+    page.localFilePath,
   );
-  if (duplicatePage || await localFilePathExists(fs, nextFilePath)) {
-    throw new Error(`已存在同名文件：${sanitized}${ext}`);
+  const nextFilePath = `${dir}/${uniqueBase}${ext}`;
+  // 解析后仍与当前基名相同（例如「foo (1)」→「foo」但「foo」已被占，落回自身）
+  if (uniqueBase === base) {
+    return pageId;
   }
 
   // 先让编辑器的 800ms 防抖立即提交到 store，再写完已经排队的旧路径内容。

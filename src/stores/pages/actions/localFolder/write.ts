@@ -5,6 +5,7 @@ import {
   decodeUnsupportedMarkdownForDisk,
 } from "@/lib/markdown-raw-guard";
 import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
+import { encodeLocalBlockPropsWrappers } from "@/lib/export/markdown/blockPropsMarker";
 import { isLocalFolderPage } from "../../persistence";
 import {
   isLocalMdUnchanged,
@@ -339,7 +340,11 @@ const saveLocalPageContentUnlocked = async (
 
 
   const { blocksToMarkdown } = await import("@/lib/export");
-  const markdownContent = await blocksToMarkdown(processedContent as any);
+  // 本地文件夹以可见的块级 span 持久化样式，Obsidian Live Preview 也会实际应用。
+  // 普通导出、AI 上下文与 native-editor 仍各自使用原有序列化策略。
+  const markdownContent = await blocksToMarkdown(
+    encodeLocalBlockPropsWrappers(processedContent as any),
+  );
 
   // scanner 抽出 frontmatter 后不入编辑器，保存时 prepend 回去。
   // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked），

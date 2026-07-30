@@ -416,7 +416,6 @@ export const addSingleLocalPageAction = async (
     content: parsed.content,
     isFolder: false,
     isLocked: parsed.isLocked,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: parsed.fontFamily,
     localFilePath: filePath,

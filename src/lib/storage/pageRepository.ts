@@ -15,7 +15,11 @@ const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 type LocalPageMetaFields = Pick<
   Page,
-  "isFavorite" | "favoriteOrder" | "icon" | "isPinned" | "pinnedAt"
+  | "isFavorite"
+  | "favoriteOrder"
+  | "icon"
+  | "isPinned"
+  | "pinnedAt"
 >;
 
 export type PersistedPageDoc = Page;
@@ -90,7 +94,6 @@ const normalizeLocalPageMeta = (
   if (typeof fields.pinnedAt === "number") {
     doc.pinnedAt = fields.pinnedAt;
   }
-
   const hasMeta =
     doc.isFavorite === true ||
     typeof doc.favoriteOrder === "number" ||
@@ -123,7 +126,11 @@ export const saveInternalPage = (page: Page): void => {
 /** 从 db 读取单条内部页快照（跨窗同步用：另一窗写盘后重读最新）。 */
 export const loadInternalPage = (pageId: string): Page | null => {
   const doc = UToolsAdapter.db.get<PersistedPageDoc>(getPageDocId(pageId));
-  return doc?.data ? clonePage(doc.data) : null;
+  if (!doc?.data) return null;
+  const { isFullWidth: _legacyFullWidth, ...page } = clonePage(
+    doc.data as PersistedPageDoc & { isFullWidth?: boolean },
+  );
+  return page;
 };
 
 export const removeInternalPage = (pageId: string): void => {
@@ -167,7 +174,10 @@ export const loadPagesFromStorage = (): HydratedPagesPayload => {
     Object.fromEntries(
       pageDocs.map((doc) => {
         const pageId = doc._id.slice(PAGE_DOC_PREFIX.length);
-        return [pageId, clonePage(doc.data)];
+        const { isFullWidth: _legacyFullWidth, ...page } = clonePage(
+          doc.data as PersistedPageDoc & { isFullWidth?: boolean },
+        );
+        return [pageId, page];
       }),
     ),
   );
@@ -175,7 +185,10 @@ export const loadPagesFromStorage = (): HydratedPagesPayload => {
   const localPageMetas = Object.fromEntries(
     localMetaDocs.map((doc) => {
       const pageId = doc._id.slice(LOCAL_PAGE_META_DOC_PREFIX.length);
-      return [pageId, clonePage(doc.data)];
+      const { isFullWidth: _legacyFullWidth, ...metadata } = clonePage(
+        doc.data as PersistedLocalPageMetaDoc & { isFullWidth?: boolean },
+      );
+      return [pageId, metadata];
     }),
   );
 

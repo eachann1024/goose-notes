@@ -12,6 +12,31 @@ const getGooseFsShellBridge = (): GooseFsShellBridge | null =>
     ? (window as Window & { gooseFs?: GooseFsShellBridge }).gooseFs ?? null
     : null;
 
+const listAvailableOpenAppsResolvedCache = new Map<string, LocalFolderOpenAppCandidate[]>();
+const listAvailableOpenAppsPendingCache = new Map<string, Promise<LocalFolderOpenAppCandidate[]>>();
+
+const getCandidatesSignature = (candidates: LocalFolderOpenAppCandidate[]): string =>
+  candidates
+    .map((c) =>
+      [
+        c.id,
+        c.appName,
+        (c.aliases || []).join("|"),
+        (c.commands || []).join("|"),
+        c.kind,
+      ].join("~"),
+    )
+    .join(";;");
+
+export const getCachedAvailableOpenApps = <T extends LocalFolderOpenAppCandidate>(
+  candidates: T[],
+): T[] | null => {
+  if (!Array.isArray(candidates) || candidates.length === 0) return [];
+  const cached = listAvailableOpenAppsResolvedCache.get(getCandidatesSignature(candidates));
+  return cached ? (cached as T[]) : null;
+};
+
+
 export const shell = {
   copyText: (text: string): void => {
     const utools = getUToolsApi();
@@ -102,13 +127,35 @@ export const shell = {
   listAvailableOpenApps: async <T extends LocalFolderOpenAppCandidate>(
     candidates: T[],
   ): Promise<T[]> => {
+    if (!Array.isArray(candidates) || candidates.length === 0) return [];
+    const key = getCandidatesSignature(candidates);
+    const resolved = listAvailableOpenAppsResolvedCache.get(key);
+    if (resolved) {
+      return resolved as T[];
+    }
+
+    const pendingCached = listAvailableOpenAppsPendingCache.get(key);
+    if (pendingCached) {
+      return (await pendingCached) as T[];
+    }
+
     const gooseFs = getGooseFsShellBridge();
     if (!gooseFs?.listAvailableOpenApps) return [];
-    try {
-      return await gooseFs.listAvailableOpenApps(candidates);
-    } catch {
-      return [];
-    }
+
+    const pending = (async () => {
+      try {
+        const result = await gooseFs.listAvailableOpenApps!(candidates);
+        listAvailableOpenAppsResolvedCache.set(key, result);
+        return result;
+      } catch {
+        return [];
+      } finally {
+        listAvailableOpenAppsPendingCache.delete(key);
+      }
+    })();
+
+    listAvailableOpenAppsPendingCache.set(key, pending);
+    return (await pending) as T[];
   },
 
   getDownloadsPath: (): string | null => {
@@ -120,4 +167,12 @@ export const shell = {
       return null;
     }
   },
+};
+
+export const warmLocalFolderOpenApps = async (
+  candidateGroups: LocalFolderOpenAppCandidate[][],
+): Promise<void> => {
+  await Promise.all(
+    candidateGroups.map((candidates) => shell.listAvailableOpenApps(candidates)),
+  );
 };

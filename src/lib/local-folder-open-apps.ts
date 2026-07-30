@@ -81,6 +81,7 @@ export const LOCAL_FOLDER_TERMINAL_CANDIDATES: LocalFolderOpenAppCandidate[] = [
   { id: "rio", label: "Rio", appName: "Rio", commands: ["rio"], kind: "terminal" },
   { id: "cmux", label: "Cmux", appName: "Cmux", commands: ["cmux"], kind: "terminal" },
   { id: "otty", label: "Otty", appName: "Otty", commands: ["otty"], kind: "terminal" },
+  { id: "kero", label: "Kero", appName: "Kero", kind: "terminal" },
 ];
 
 export function formatLocalFolderOpenAppName(value: string, fallback: string): string {

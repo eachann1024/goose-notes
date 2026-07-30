@@ -32,7 +32,6 @@ export const buildLocalPageMetadata = (
   if (typeof source.pinnedAt === "number") {
     metadata.pinnedAt = source.pinnedAt;
   }
-
   return Object.keys(metadata).length > 0 ? metadata : null;
 };
 

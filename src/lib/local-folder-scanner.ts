@@ -3,6 +3,10 @@ import {
   extractFrontmatter,
 } from "@/lib/markdown-raw-guard";
 import { parseLocalFrontmatterBlob } from "@/lib/local-frontmatter";
+import {
+  restoreBlockPropsMarkers,
+  unwrapLocalBlockPropsWrappers,
+} from "@/lib/export/markdown/blockPropsMarker";
 import { setLocalMdSnapshot } from "@/lib/local-md-snapshot";
 import {
   type LocalPageIdMap,
@@ -135,7 +139,6 @@ function buildFolderPage(
     },
     isFolder: true,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     localFilePath: entry.path,
@@ -179,7 +182,11 @@ export async function parseLocalMarkdownContent(
   // 4) 从 frontmatter 恢复 goose-font / goose-locked（解析失败则默认，blob 仍原样保留）
   const { frontmatter, body } = extractFrontmatter(markdown);
   const fmSettings = parseLocalFrontmatterBlob(frontmatter).settings;
-  const encodedBody = encodeUnsupportedMarkdownForEditor(body);
+  // 先拆本地文件夹专用的最外层块级 span，再交给通用 inline parser，
+  // 避免它把 wrapper 与内部颜色 span 误配成嵌套行内样式。
+  const encodedBody = encodeUnsupportedMarkdownForEditor(
+    unwrapLocalBlockPropsWrappers(body),
+  );
   const { importFromMarkdown } = await import("@/lib/export");
   const imported = importFromMarkdown(encodedBody, fallbackTitle, {
     preserveStructure: true,
@@ -187,7 +194,7 @@ export async function parseLocalMarkdownContent(
   const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
 
   return {
-    content: importedBlocks as unknown as JSONContent,
+    content: restoreBlockPropsMarkers(importedBlocks as any) as unknown as JSONContent,
     frontmatter: frontmatter || undefined,
     fontFamily: fmSettings.fontFamily,
     isLocked: fmSettings.isLocked,
@@ -228,7 +235,6 @@ async function buildMarkdownPage(
     content: parsed.content,
     isFolder: false,
     isLocked: parsed.isLocked,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: parsed.fontFamily,
     localFilePath: entry.path,
