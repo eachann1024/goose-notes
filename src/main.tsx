@@ -224,6 +224,11 @@ import "./index.css";
 import "./fonts.css";
 import { applyFontVariables } from "./lib/fontLoader";
 import {
+  applyAppearanceScaleVariables,
+  clearStartupSettling,
+  markStartupSettling,
+} from "./lib/appearance";
+import {
   migrateCodeStyleTo2026,
   runCodeStyleMigration2026,
 } from "./lib/code-style-migration";
@@ -424,7 +429,12 @@ export const bootstrap = async (
   // 仍保留：initHostFs（编辑器文件能力）、设置/字体（主题）、保存守卫（关窗 flush 草稿）。
   const { lean = false, beforeInit } = options;
   const root = createRoot(rootElement);
-  root.render(<BootstrapScreen lean={lean} />);
+  // 主工作区在恢复完成前保持 index.html 的空 root，不提交启动页或首页。
+  // uTools 会先显示 BrowserWindow，任何提前 render 都会成为用户看见的错误首帧。
+  // 速记是独立入口，继续沿用原有的草稿初始化页，不受主工作区门控影响。
+  if (lean) {
+    root.render(<BootstrapScreen lean />);
+  }
 
   try {
     await beforeInit?.();
@@ -505,16 +515,52 @@ export const bootstrap = async (
 
     const settings = useSettings.getState();
     applyFontVariables(settings.customFonts);
+    // 首帧前同步落定界面字号与编辑器缩放：窗口一出现就处于上次状态，
+    // 不再先按 100% 布局、等 App effect 再跳回（用户看到的“突兀缩小”）。
+    applyAppearanceScaleVariables({
+      uiFontSize: settings.uiFontSize,
+      editorFontSize: settings.editorFontSize,
+    });
 
-    root.render(
-      <ErrorBoundary
-        fallback={(error) => <BootstrapScreen lean={lean} error={error} />}
-      >
-        {renderRoot()}
-      </ErrorBoundary>,
-    );
+    const renderApplication = () => {
+      // 首帧稳定前禁用过渡：内部组件不会从默认值播动画追赶到恢复值。
+      // 解除由主 App 挂载后的 releaseStartupSettlingAfterPaint 完成；
+      // 速记小窗（lean）是独立根组件，不做门控也不标记。
+      if (!lean) {
+        markStartupSettling();
+      }
+      root.render(
+        <ErrorBoundary
+          fallback={(error) => {
+            // 渲染失败时不会有 App 挂载来解除标记，这里兜底清理（幂等）。
+            clearStartupSettling();
+            return <BootstrapScreen lean={lean} error={error} />;
+          }}
+        >
+          {renderRoot()}
+        </ErrorBoundary>,
+      );
+    };
+
+    if (lean) {
+      renderApplication();
+    } else {
+      const { prepareWorkspaceStartup, renderWorkspaceAfterStartup } =
+        await import("@/lib/workspaceStartup");
+      const startupResult = await renderWorkspaceAfterStartup({
+        prepare: prepareWorkspaceStartup,
+        render: renderApplication,
+        renderError: (error) => {
+          console.error("[bootstrap] 工作区恢复失败", error);
+          clearStartupSettling();
+          root.render(<BootstrapScreen lean={false} error={error} />);
+        },
+      });
+      if (startupResult === "error") return;
+    }
   } catch (error) {
     console.error("[bootstrap] 初始化失败", error);
+    clearStartupSettling();
     root.render(<BootstrapScreen lean={lean} error={error} />);
     return;
   }

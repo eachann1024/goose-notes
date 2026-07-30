@@ -1,8 +1,5 @@
 import { useEffect } from "react";
-import {
-  activateNotebook,
-  resolveNotebookLandingPageId,
-} from "@/lib/notebookNavigation";
+import { activateNotebook } from "@/lib/notebookNavigation";
 import { UToolsAdapter } from "@/lib/utools";
 import { useSettings } from "@/stores/useSettings";
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
@@ -10,6 +7,10 @@ import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { fs } from "@/lib/utools/fs";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import {
+  clearWorkspaceStartupSelection,
+  restoreLastNoteIfNeeded,
+} from "@/lib/workspaceStartup";
 
 type UToolsPluginEnterDetail = {
   code?: string;
@@ -25,24 +26,8 @@ const applyUToolsWindowHeight = () => {
   }
 };
 
-const restoreLastNoteIfNeeded = () => {
-  const pagesStore = usePages.getState();
-  if (pagesStore.activePageId) return;
-
-  const targetPageId = resolveNotebookLandingPageId(
-    useNotebooks.getState().activeNotebookId,
-  );
-  if (!targetPageId) return;
-
-  useTabs.getState().openTab(targetPageId);
-};
-
 const clearActivePageForBlankEntry = () => {
-  useTabs.setState({ activeTabId: null });
-  const pagesStore = usePages.getState();
-  if (!pagesStore.activePageId) return;
-
-  void pagesStore.setActivePage(null);
+  clearWorkspaceStartupSelection();
 };
 
 export function usePluginEvents() {

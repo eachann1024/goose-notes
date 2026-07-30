@@ -3,18 +3,14 @@ import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
-import {
-  useSettings,
-  EDITOR_FONT_SIZE_DEFAULT,
-} from "@/stores/useSettings";
+import { useSettings } from "@/stores/useSettings";
 import { useAppHotkeys } from "./hooks/useAppHotkeys";
 import { usePluginEvents } from "./hooks/usePluginEvents";
 import { useNativeContextMenuGuard } from "./hooks/useNativeContextMenuGuard";
-
-const UI_FONT_SIZE_MAP = {
-  small: 14,
-  normal: 16,
-} as const;
+import {
+  applyAppearanceScaleVariables,
+  releaseStartupSettlingAfterPaint,
+} from "@/lib/appearance";
 
 function App() {
   const {
@@ -34,6 +30,12 @@ function App() {
 
   // 订阅插件/本地关联事件
   const { restoreLastNoteIfNeeded, clearActivePageForBlankEntry } = usePluginEvents();
+
+  // 首帧稳定后解除启动过渡禁用（bootstrap 在渲染前已打上标记；
+  // 若未标记则该调用是无副作用的清理）。
+  useEffect(() => {
+    releaseStartupSettlingAfterPaint();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,21 +107,8 @@ function App() {
   }, [hydrated, singleTabMode]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    const targetSize = UI_FONT_SIZE_MAP[uiFontSize] ?? UI_FONT_SIZE_MAP.small;
-    root.style.setProperty("font-size", `${targetSize}px`);
-  }, [uiFontSize]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    root.style.setProperty("--editor-font-size", `${editorFontSize}px`);
-    root.style.setProperty(
-      "--editor-scale",
-      (editorFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),
-    );
-  }, [editorFontSize]);
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize });
+  }, [uiFontSize, editorFontSize]);
 
   useEffect(() => {
     applyFontVariables(customFonts);
