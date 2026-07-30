@@ -3,14 +3,22 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import {
   buildAiFileReferenceAttrs,
-  formatAiReferenceContextBlock,
   getAiReferenceSuggestionItems,
+  normalizeAiComposerPayload,
   resolveAiReferenceContexts,
   type AiComposerPayload,
   type AiFileReferenceAttrs,
   type AiReferenceSuggestionItem,
+  type ResolvedAiReferenceContext,
 } from "@/components/editor/ai/composer/referenceLookup";
-import type { NotebookAiMessageMetadata } from "./types";
+import { resolveInvokedLocalSkill } from "./localContext";
+import { useSettings } from "@/stores/useSettings";
+import type {
+  NotebookAiContextBudgetTier,
+  NotebookAiContextDiagnostics,
+  NotebookAiContextMode,
+  NotebookAiMessageMetadata,
+} from "./types";
 
 function dedupeReferences(references: AiFileReferenceAttrs[]) {
   const seen = new Set<string>();
@@ -56,15 +64,118 @@ export function getNotebookAiReferenceSuggestions(
   }).filter((item) => !item.isFolder);
 }
 
-function resolveContextBlock(references: AiFileReferenceAttrs[]) {
-  if (references.length === 0) return "";
-  return formatAiReferenceContextBlock(
-    resolveAiReferenceContexts(
-      references,
-      usePages.getState().pages,
-      useNotebooks.getState().notebooks,
-    ),
+export const NOTEBOOK_AI_CONTEXT_CHARACTER_BUDGETS: Record<
+  NotebookAiContextBudgetTier,
+  number
+> = {
+  "summary-standard": 12_000,
+  "full-text-standard": 30_000,
+};
+
+const FULL_TEXT_INTENT_PATTERN =
+  /(全文|原文|逐段|逐句|逐字|完整内容|完整阅读|通读|精确汇总|精确总结|准确汇总|准确总结|逐条提取|全文翻译|全文改写|verbatim|full[ -]?text|paragraph[ -]?by[ -]?paragraph|exact (?:summary|wording)|quote (?:the )?original)/i;
+
+/** 仅根据用户指令决定上下文级别，不读取 store，便于调用方预览和单测。 */
+export function selectNotebookAiContextMode(promptText: string): NotebookAiContextMode {
+  return FULL_TEXT_INTENT_PATTERN.test(promptText)
+    ? "full-text"
+    : "structure-summary";
+}
+
+export function getNotebookAiContextBudgetTier(
+  mode: NotebookAiContextMode,
+): NotebookAiContextBudgetTier {
+  return mode === "full-text" ? "full-text-standard" : "summary-standard";
+}
+
+function formatResolvedContext(
+  context: ResolvedAiReferenceContext,
+  index: number,
+  mode: NotebookAiContextMode,
+) {
+  const sourceLabel =
+    context.sourceType === "local-file" ? "本地文件" : "应用页面";
+  const header = [
+    `[引用 ${index + 1}]`,
+    `标题：${context.title}`,
+    `来源：${sourceLabel} · ${context.notebookName}`,
+    `位置：${context.location}`,
+  ];
+  if (context.readStatus === "error") {
+    return [
+      ...header,
+      "状态：读取失败",
+      `错误：${context.errorMessage || "未知错误"}`,
+    ].join("\n");
+  }
+  const content =
+    mode === "full-text" ? context.contentText : context.structureSummary;
+  return [...header, content || "（空白内容）"].join("\n");
+}
+
+export interface NotebookAiContextSelection {
+  mode: NotebookAiContextMode;
+  budgetTier: NotebookAiContextBudgetTier;
+  characterBudget: number;
+  contextBlock: string;
+  diagnostics: NotebookAiContextDiagnostics;
+}
+
+/**
+ * 将已解析引用按意图分级并应用总字符预算。纯函数不记录或返回 diagnostics 中的正文。
+ */
+export function buildNotebookAiContextSelection(params: {
+  promptText: string;
+  contexts: ResolvedAiReferenceContext[];
+  uniqueReferenceCount?: number;
+  occurrenceCount?: number;
+  imageCount?: number;
+}): NotebookAiContextSelection {
+  const mode = selectNotebookAiContextMode(params.promptText);
+  const budgetTier = getNotebookAiContextBudgetTier(mode);
+  const characterBudget = NOTEBOOK_AI_CONTEXT_CHARACTER_BUDGETS[budgetTier];
+  const unboundedBlock = params.contexts
+    .map((context, index) => formatResolvedContext(context, index, mode))
+    .join("\n\n");
+  const contextBlock = unboundedBlock.slice(0, characterBudget);
+  const readyCount = params.contexts.filter(
+    (context) => context.readStatus === "ready",
+  ).length;
+  const failedCount = params.contexts.length - readyCount;
+
+  return {
+    mode,
+    budgetTier,
+    characterBudget,
+    contextBlock,
+    diagnostics: {
+      uniqueReferenceCount:
+        params.uniqueReferenceCount ?? params.contexts.length,
+      occurrenceCount: params.occurrenceCount ?? params.contexts.length,
+      summaryCount: mode === "structure-summary" ? readyCount : 0,
+      fullTextCount: mode === "full-text" ? readyCount : 0,
+      failedCount,
+      contextCharacters: contextBlock.length,
+      budgetTier,
+      characterBudget,
+      imageCount: params.imageCount,
+    },
+  };
+}
+
+function resolveContextSelection(params: {
+  promptText: string;
+  references: AiFileReferenceAttrs[];
+  uniqueReferenceCount: number;
+  occurrenceCount: number;
+  imageCount?: number;
+}) {
+  const contexts = resolveAiReferenceContexts(
+    params.references,
+    usePages.getState().pages,
+    useNotebooks.getState().notebooks,
   );
+  return buildNotebookAiContextSelection({ ...params, contexts });
 }
 
 function getImplicitPage(notebookId: string, currentPageId?: string | null) {
@@ -97,31 +208,64 @@ export function buildNotebookAiUserMessage(params: {
 } {
   const currentPageId =
     params.currentPageId ?? getCurrentNotebookAiPageId(params.notebookId);
-  const references = dedupeReferences(params.payload.references);
+  const normalized = normalizeAiComposerPayload(params.payload);
+  const isAvailableReference = (reference: AiFileReferenceAttrs) => {
+    const page = usePages.getState().pages[reference.pageId];
+    return Boolean(
+      page &&
+        page.workspaceId === params.notebookId &&
+        !page.trashedAt &&
+        !page.isFolder,
+    );
+  };
+  const references = dedupeReferences(normalized.resources).filter(
+    isAvailableReference,
+  );
+  const explicitContextReferences = dedupeReferences(
+    normalized.contextReferences,
+  ).filter(isAvailableReference);
   const implicitPage =
     params.useImplicitPage !== false && references.length === 0
       ? getImplicitPage(params.notebookId, currentPageId)
       : undefined;
+  // target 只用于后续工具写入定位，不把其正文作为本轮读取上下文。
   const contextReferences =
-    references.length > 0 ? references : implicitPage ? [implicitPage] : [];
-  const contextBlock = resolveContextBlock(contextReferences);
-  const contextIntro =
-    references.length > 0
-      ? "用户为本轮选择了以下笔记作为上下文。请优先基于这些内容回答，并根据用户指令确定需要读取或修改的目标。"
+    explicitContextReferences.length > 0
+      ? explicitContextReferences
       : implicitPage
-        ? "用户没有 @ 其它笔记。默认把当前活动页签对应的笔记作为本轮关联页面；“当前页 / 本文 / 这篇”都指向该页面。"
-        : "";
+        ? [implicitPage]
+        : [];
   const displayText = params.payload.promptText.trim();
+  const invokedSkill = useSettings.getState().ai.readLocalSkills
+    ? resolveInvokedLocalSkill(displayText)
+    : null;
+  const contextSelection = resolveContextSelection({
+    promptText: displayText,
+    references: contextReferences,
+    uniqueReferenceCount: references.length || (implicitPage ? 1 : 0),
+    occurrenceCount: normalized.occurrences.length || (implicitPage ? 1 : 0),
+    imageCount: params.payload.images?.length,
+  });
+  const contextBlock = contextSelection.contextBlock;
+  const contextIntro =
+    explicitContextReferences.length > 0
+      ? `用户为本轮选择了以下笔记作为上下文。已按${contextSelection.mode === "full-text" ? "全文" : "结构摘要"}模式读取；请优先基于这些内容回答。`
+      : implicitPage
+        ? `用户没有 @ 其它笔记。默认把当前活动页签对应的笔记作为本轮关联页面，并按${contextSelection.mode === "full-text" ? "全文" : "结构摘要"}模式读取；“当前页 / 本文 / 这篇”都指向该页面。`
+        : "";
   const modelText = [
     "用户输入：",
     displayText,
+    invokedSkill
+      ? `用户通过 /${invokedSkill.name} 显式调用以下本地 Skill。请遵循其说明执行：\n\n${invokedSkill.content}`
+      : "",
     contextBlock
       ? [
           "本轮笔记上下文：",
           contextIntro,
           contextBlock,
           implicitPage
-            ? `默认工具目标 pageId：${implicitPage.pageId}。readPage、updatePage、replaceInPage、appendToPage、renamePage 省略 pageId 时应操作这个页面。`
+            ? `默认变更目标 pageId：${implicitPage.pageId}。修改前先 readPage，再通过 executeBatchPlan 提交审批计划。`
             : "",
         ]
           .filter(Boolean)
@@ -138,6 +282,7 @@ export function buildNotebookAiUserMessage(params: {
       displayText,
       references: references.length > 0 ? references : undefined,
       implicitPage,
+      diagnostics: contextSelection.diagnostics,
     },
   };
 }

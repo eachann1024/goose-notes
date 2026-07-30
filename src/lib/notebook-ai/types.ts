@@ -3,10 +3,31 @@ import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/refer
 import type { NotebookAiTools } from "./tools";
 import type { NotebookSkillId } from "./skills";
 
+export type NotebookAiContextMode = "structure-summary" | "full-text";
+
+export type NotebookAiContextBudgetTier =
+  | "summary-standard"
+  | "full-text-standard";
+
+/** 不包含笔记正文，可安全持久化用于诊断上下文成本与读取失败。 */
+export interface NotebookAiContextDiagnostics {
+  uniqueReferenceCount: number;
+  occurrenceCount: number;
+  summaryCount: number;
+  fullTextCount: number;
+  failedCount: number;
+  contextCharacters: number;
+  budgetTier: NotebookAiContextBudgetTier;
+  characterBudget: number;
+  /** 图片由实际发送附件的调用方补充或覆盖。 */
+  imageCount?: number;
+}
+
 export interface NotebookAiMessageMetadata {
   displayText?: string;
   references?: AiFileReferenceAttrs[];
   implicitPage?: AiFileReferenceAttrs;
+  diagnostics?: NotebookAiContextDiagnostics;
   imageAttachments?: Array<{
     filename: string;
     mediaType: string;
