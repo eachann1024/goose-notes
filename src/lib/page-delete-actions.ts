@@ -109,7 +109,7 @@ export async function deletePageWithUndo(pageId: string) {
   useTabs.getState().removeDeletedPage(pageId);
 
   if (isLocalFolder) {
-    toast.success(`已删除「${pageTitle}」，已移入系统回收站`, {
+    toast.success(`「${pageTitle}」已移入回收站`, {
       duration: 3000,
     });
     return;

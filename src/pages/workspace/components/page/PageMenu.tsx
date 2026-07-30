@@ -33,10 +33,8 @@ function getEditorSelectedBlocks(): BlockNoteContent {
 export function PageMenu() {
   const { activePageId, getPage, updatePage, createPage, setActivePage } =
     usePages();
-  const { activeNotebookId, notebooks, updateNotebook } = useNotebooks();
-  const { globalEditorFullWidth } = useSettings();
+  const { activeNotebookId } = useNotebooks();
   const page = activePageId ? getPage(activePageId) : undefined;
-  const notebook = page ? notebooks[page.workspaceId] : undefined;
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const isLocalItem = Boolean(page?.localFilePath);
@@ -220,12 +218,8 @@ export function PageMenu() {
                 )}
               </button>
             </div>
-          </section>
 
-          <div className="mx-1 my-1.5 h-px bg-border" />
-
-          {/* Switches Section — 整行可点，含文字区域 */}
-          <DropdownMenuGroup>
+            {/* 页面锁定同属页面状态，连续呈现，避免用分割线制造多余层级。 */}
             <div
               role="button"
               tabIndex={0}
@@ -251,50 +245,7 @@ export function PageMenu() {
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-
-            <div
-              role="button"
-              tabIndex={0}
-              className="grid min-h-10 cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2.5 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-              onClick={() => {
-                if (!notebook) return;
-                updateNotebook(notebook.id, {
-                  editorFullWidth: !(
-                    notebook.editorFullWidth ?? globalEditorFullWidth
-                  ),
-                });
-              }}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
-                e.preventDefault();
-                if (!notebook) return;
-                updateNotebook(notebook.id, {
-                  editorFullWidth: !(
-                    notebook.editorFullWidth ?? globalEditorFullWidth
-                  ),
-                });
-              }}
-            >
-              <LucideIcons.ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 truncate">
-                全宽显示
-                <span className="text-muted-foreground">（当前记事本）</span>
-              </span>
-              <Switch
-                aria-label="全宽显示（当前记事本）"
-                checked={Boolean(
-                  notebook?.editorFullWidth ?? globalEditorFullWidth,
-                )}
-                onCheckedChange={(checked) => {
-                  if (!notebook) return;
-                  updateNotebook(notebook.id, { editorFullWidth: checked });
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </DropdownMenuGroup>
-
-          <div className="mx-1 my-1.5 h-px bg-border" />
+          </section>
 
           {/* Import */}
           {!isLocalItem && (
@@ -366,6 +317,7 @@ export function PageMenu() {
 
             <DropdownMenuItem
               className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs"
+              disabled={page?.isFolder}
               onSelect={() => {
                 const pid = activePageId;
                 // 进入历史模式前 flush，避免 200ms debounce 内的最新编辑丢失
@@ -385,13 +337,13 @@ export function PageMenu() {
           </DropdownMenuGroup>
 
           <DropdownMenuItem
-            className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
+            className="group grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
             onClick={() => void deletePageWithUndo(activePageId)}
           >
             {isLocalItem ? (
-              <LucideIcons.FileX className="h-4 w-4" />
+              <LucideIcons.FileX className="h-4 w-4 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
             ) : (
-              <LucideIcons.Trash2 className="h-4 w-4" />
+              <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
             )}
             <span className="min-w-0 truncate">
               {isLocalItem ? "移到系统回收站" : "移至垃圾箱"}

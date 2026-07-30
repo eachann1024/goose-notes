@@ -1,7 +1,15 @@
 import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { useEffect, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { toast } from "@/components/ui/sonner";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
@@ -40,16 +48,94 @@ const isEmptyContent = (
 function AiCrystalFx() {
   return (
     <span className="page-empty-ai-fx" aria-hidden="true">
-      <span className="page-empty-ai-crystal-core" />
-      <span className="page-empty-ai-crystal-mesh" />
-      <span className="page-empty-ai-crystal-corner tl" />
-      <span className="page-empty-ai-crystal-corner tr" />
-      <span className="page-empty-ai-crystal-corner bl" />
-      <span className="page-empty-ai-crystal-corner br" />
-      <span className="page-empty-ai-crystal-dot" />
-      <span className="page-empty-ai-crystal-dot d2" />
+      <span className="page-empty-ai-orb page-empty-ai-orb--a" />
+      <span className="page-empty-ai-orb page-empty-ai-orb--b" />
+      <span className="page-empty-ai-orb page-empty-ai-orb--c" />
+      <span className="page-empty-ai-sheen" />
+      <span className="page-empty-ai-spark page-empty-ai-spark--1" />
+      <span className="page-empty-ai-spark page-empty-ai-spark--2" />
+      <span className="page-empty-ai-spark page-empty-ai-spark--3" />
     </span>
   );
+}
+
+type AiTiltStyle = CSSProperties & {
+  "--ai-tilt-x"?: string;
+  "--ai-tilt-y"?: string;
+  "--ai-glare-x"?: string;
+  "--ai-glare-y"?: string;
+};
+
+function useAiChipTilt(enabled: boolean) {
+  const reduceMotion = useMemo(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+  const [tiltStyle, setTiltStyle] = useState<AiTiltStyle>({
+    "--ai-tilt-x": "0deg",
+    "--ai-tilt-y": "0deg",
+    "--ai-glare-x": "50%",
+    "--ai-glare-y": "50%",
+  });
+  const frameRef = useRef<number | null>(null);
+  const targetRef = useRef({ x: 0, y: 0, gx: 50, gy: 50 });
+
+  const flushTilt = useCallback(() => {
+    frameRef.current = null;
+    const { x, y, gx, gy } = targetRef.current;
+    setTiltStyle({
+      "--ai-tilt-x": `${x.toFixed(2)}deg`,
+      "--ai-tilt-y": `${y.toFixed(2)}deg`,
+      "--ai-glare-x": `${gx.toFixed(1)}%`,
+      "--ai-glare-y": `${gy.toFixed(1)}%`,
+    });
+  }, []);
+
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (!enabled || reduceMotion) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const px = (event.clientX - rect.left) / rect.width;
+      const py = (event.clientY - rect.top) / rect.height;
+      const nx = Math.min(1, Math.max(0, px));
+      const ny = Math.min(1, Math.max(0, py));
+      // 轻微 3D tilt：像陀螺仪/磁力跟随，而不是整张卡大幅翻转
+      targetRef.current = {
+        x: (0.5 - ny) * 14,
+        y: (nx - 0.5) * 16,
+        gx: nx * 100,
+        gy: ny * 100,
+      };
+      if (frameRef.current == null) {
+        frameRef.current = window.requestAnimationFrame(flushTilt);
+      }
+    },
+    [enabled, flushTilt, reduceMotion],
+  );
+
+  const onPointerLeave = useCallback(() => {
+    if (!enabled || reduceMotion) return;
+    targetRef.current = { x: 0, y: 0, gx: 50, gy: 50 };
+    if (frameRef.current != null) {
+      window.cancelAnimationFrame(frameRef.current);
+    }
+    frameRef.current = window.requestAnimationFrame(flushTilt);
+  }, [enabled, flushTilt, reduceMotion]);
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current != null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    tiltStyle: enabled && !reduceMotion ? tiltStyle : undefined,
+    onPointerMove: enabled ? onPointerMove : undefined,
+    onPointerLeave: enabled ? onPointerLeave : undefined,
+  };
 }
 
 export function PageEmptyState() {
@@ -68,6 +154,7 @@ export function PageEmptyState() {
   } = useNotebooks();
   const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
   const aiEnabled = useSettings((s) => s.ai.enabled);
+  const aiTilt = useAiChipTilt(aiEnabled);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
 
@@ -291,21 +378,27 @@ export function PageEmptyState() {
                     void action.onClick();
                   }}
                   type="button"
+                  onPointerMove={isAi ? aiTilt.onPointerMove : undefined}
+                  onPointerLeave={isAi ? aiTilt.onPointerLeave : undefined}
                   className={cn(
                     "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--border))] hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--goose-editor-bg))] dark:hover:bg-[var(--goose-interactive-hover)] dark:hover:border-[hsl(var(--border))] dark:hover:shadow-[0_16px_34px_rgba(2,6,23,0.48)]",
+                    isAi && "page-empty-ai-card",
                   )}
+                  style={isAi ? aiTilt.tiltStyle : undefined}
                 >
                   <div
                     className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] bg-[hsl(var(--goose-selected-bg))] flex items-center justify-center mb-3 sm:mb-4 transition-[background-color,box-shadow,transform] duration-200 ease-out group-hover:scale-105 group-hover:bg-[var(--goose-interactive-selected)] group-hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-selected-bg))] dark:group-hover:bg-[var(--goose-interactive-selected)] dark:group-hover:shadow-[0_10px_22px_rgba(0,0,0,0.26)]",
-                      isAi && "page-empty-ai-chip group-hover:scale-105",
+                      "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] flex items-center justify-center mb-3 sm:mb-4 transition-[background-color,box-shadow,transform] duration-200 ease-out",
+                      isAi
+                        ? "page-empty-ai-chip"
+                        : "bg-[hsl(var(--goose-selected-bg))] group-hover:scale-105 group-hover:bg-[var(--goose-interactive-selected)] group-hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-selected-bg))] dark:group-hover:bg-[var(--goose-interactive-selected)] dark:group-hover:shadow-[0_10px_22px_rgba(0,0,0,0.26)]",
                     )}
                   >
                     {isAi ? <AiCrystalFx /> : null}
                     <Icon
                       className={cn(
                         "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-foreground",
-                        isAi && "page-empty-ai-icon text-foreground/75",
+                        isAi && "page-empty-ai-icon",
                       )}
                     />
                   </div>

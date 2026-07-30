@@ -1,295 +1,311 @@
 /**
- * 空状态 AI 入口 · V4 晶格星河
- * 方 chip 与其它入口一体；常驻细微绚丽动效；深浅色分 token。
+ * 空状态 AI 入口 · V5 星云 tilt
+ * 去掉取景框四角；高饱和光晕；图标轻微 3D tilt（陀螺仪/磁力跟随感）。
  * 注意：uTools 旧内核勿用 hsl(var(--x)/alpha)，一律用 rgba/hex 实色。
  */
 
+.page-empty-ai-card {
+  --ai-tilt-x: 0deg;
+  --ai-tilt-y: 0deg;
+  --ai-glare-x: 50%;
+  --ai-glare-y: 50%;
+  perspective: 720px;
+  transform-style: preserve-3d;
+}
+
 .page-empty-ai-chip {
-  --empty-ai-crystal-1: #a78bfa;
+  --empty-ai-crystal-1: #d946ef;
   --empty-ai-crystal-2: #22d3ee;
-  --empty-ai-crystal-3: #f59e0b;
-  --empty-ai-crystal-grid: rgba(79, 70, 229, 0.1);
-  --empty-ai-crystal-corner: #7c3aed;
-  --empty-ai-crystal-corner-glow: rgba(124, 58, 237, 0.55);
-  --empty-ai-crystal-ring: rgba(124, 58, 237, 0.3);
-  --empty-ai-crystal-bloom: rgba(14, 165, 233, 0.25);
-  --empty-ai-crystal-wash: rgba(251, 191, 36, 0.12);
-  --empty-ai-crystal-icon: #5b21b6;
+  --empty-ai-crystal-3: #fbbf24;
+  --empty-ai-crystal-4: #34d399;
+  --empty-ai-crystal-bloom: rgba(56, 189, 248, 0.42);
+  --empty-ai-crystal-bloom-hot: rgba(236, 72, 153, 0.38);
+  --empty-ai-crystal-icon: #6d28d9;
+  --empty-ai-crystal-icon-glow: rgba(217, 70, 239, 0.55);
 
   position: relative;
   overflow: visible;
-  box-shadow:
-    0 0 0 1px var(--empty-ai-crystal-ring),
-    0 0 18px var(--empty-ai-crystal-bloom);
+  isolation: isolate;
+  border: none;
   background:
     radial-gradient(
-      circle at 50% 40%,
-      var(--empty-ai-crystal-wash),
-      transparent 65%
+      circle at 28% 24%,
+      rgba(255, 255, 255, 0.92),
+      transparent 42%
     ),
-    hsl(var(--goose-selected-bg));
+    radial-gradient(
+      circle at 72% 78%,
+      rgba(251, 191, 36, 0.28),
+      transparent 48%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(217, 70, 239, 0.22),
+      rgba(34, 211, 238, 0.24) 48%,
+      rgba(251, 191, 36, 0.2)
+    );
+  box-shadow:
+    0 10px 24px rgba(56, 189, 248, 0.18),
+    0 0 28px rgba(217, 70, 239, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transform:
+    translateZ(18px)
+    rotateX(var(--ai-tilt-x))
+    rotateY(var(--ai-tilt-y))
+    scale(1.02);
+  transform-style: preserve-3d;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease;
+  will-change: transform;
+}
+
+.page-empty-ai-card:hover .page-empty-ai-chip,
+.page-empty-ai-card:focus-visible .page-empty-ai-chip {
+  box-shadow:
+    0 14px 30px rgba(56, 189, 248, 0.24),
+    0 0 36px rgba(236, 72, 153, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .dark .page-empty-ai-chip {
-  --empty-ai-crystal-1: #c4b5fd;
+  --empty-ai-crystal-1: #f0abfc;
   --empty-ai-crystal-2: #67e8f9;
   --empty-ai-crystal-3: #fde68a;
-  --empty-ai-crystal-grid: rgba(255, 255, 255, 0.08);
-  --empty-ai-crystal-corner: #f5d0fe;
-  --empty-ai-crystal-corner-glow: rgba(245, 208, 254, 0.8);
-  --empty-ai-crystal-ring: rgba(196, 181, 253, 0.4);
-  --empty-ai-crystal-bloom: rgba(103, 232, 249, 0.3);
-  --empty-ai-crystal-wash: rgba(253, 230, 138, 0.15);
+  --empty-ai-crystal-4: #6ee7b7;
+  --empty-ai-crystal-bloom: rgba(103, 232, 249, 0.45);
+  --empty-ai-crystal-bloom-hot: rgba(244, 114, 182, 0.42);
   --empty-ai-crystal-icon: #faf5ff;
+  --empty-ai-crystal-icon-glow: rgba(244, 114, 182, 0.7);
+
+  background:
+    radial-gradient(
+      circle at 30% 22%,
+      rgba(255, 255, 255, 0.2),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 74% 78%,
+      rgba(253, 230, 138, 0.22),
+      transparent 50%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(217, 70, 239, 0.34),
+      rgba(34, 211, 238, 0.3) 48%,
+      rgba(251, 191, 36, 0.24)
+    );
+  box-shadow:
+    0 12px 28px rgba(2, 6, 23, 0.45),
+    0 0 30px rgba(103, 232, 249, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .page-empty-ai-chip .page-empty-ai-icon {
   position: relative;
   z-index: 3;
   color: var(--empty-ai-crystal-icon);
-  filter: drop-shadow(0 0 6px var(--empty-ai-crystal-bloom));
-  animation: page-empty-ai-crystal-icon 4s ease-in-out infinite;
+  filter:
+    saturate(1.55)
+    drop-shadow(0 0 8px var(--empty-ai-crystal-icon-glow));
+  transform:
+    translateZ(28px)
+    translate3d(
+      calc((var(--ai-glare-x) - 50%) * 0.08px),
+      calc((var(--ai-glare-y) - 50%) * 0.08px),
+      0
+    );
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 200ms ease;
+  animation: page-empty-ai-icon-breathe 3.6s ease-in-out infinite;
 }
 
 .page-empty-ai-fx {
   position: absolute;
-  inset: -10px;
+  inset: -14px;
   z-index: 0;
   pointer-events: none;
-  border-radius: 14px;
+  border-radius: 18px;
+  overflow: visible;
+  transform: translateZ(0);
 }
 
-.page-empty-ai-crystal-mesh {
+.page-empty-ai-orb {
   position: absolute;
-  inset: 4px;
-  border-radius: 12px;
-  background:
-    linear-gradient(90deg, var(--empty-ai-crystal-grid) 1px, transparent 1px) 0
-      0 / 8px 8px,
-    linear-gradient(0deg, var(--empty-ai-crystal-grid) 1px, transparent 1px) 0 0 /
-      8px 8px;
-  opacity: 0.55;
-  animation: page-empty-ai-mesh-drift 6s linear infinite;
-  -webkit-mask-image: radial-gradient(
-    circle at 50% 50%,
-    #000 20%,
-    transparent 75%
-  );
-  mask-image: radial-gradient(circle at 50% 50%, #000 20%, transparent 75%);
+  border-radius: 9999px;
+  filter: blur(10px);
+  opacity: 0.88;
+  mix-blend-mode: screen;
+  animation: page-empty-ai-orb-drift 5.8s ease-in-out infinite;
 }
 
-.page-empty-ai-crystal-core {
-  position: absolute;
-  inset: 8px;
-  border-radius: 10px;
-  background: linear-gradient(
-    135deg,
-    var(--empty-ai-crystal-1),
-    var(--empty-ai-crystal-2),
-    var(--empty-ai-crystal-3),
-    var(--empty-ai-crystal-1)
-  );
-  background-size: 300% 300%;
-  animation: page-empty-ai-crystal-flow 5s ease infinite;
-  opacity: 0.55;
-  filter: blur(6px);
-  z-index: 0;
-}
-
-.page-empty-ai-crystal-corner {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  z-index: 3;
-}
-
-.page-empty-ai-crystal-corner::before,
-.page-empty-ai-crystal-corner::after {
-  content: "";
-  position: absolute;
-  background: var(--empty-ai-crystal-corner);
-  box-shadow: 0 0 8px var(--empty-ai-crystal-corner-glow);
-  border-radius: 1px;
-}
-
-.page-empty-ai-crystal-corner::before {
-  width: 12px;
-  height: 2px;
-}
-
-.page-empty-ai-crystal-corner::after {
-  width: 2px;
-  height: 12px;
-}
-
-.page-empty-ai-crystal-corner.tl {
+.page-empty-ai-orb--a {
+  width: 34px;
+  height: 34px;
   top: 2px;
-  left: 2px;
-  animation: page-empty-ai-crystal-corner 2.8s ease-in-out infinite;
+  left: 0;
+  background: radial-gradient(
+    circle,
+    var(--empty-ai-crystal-1) 0%,
+    transparent 70%
+  );
 }
 
-.page-empty-ai-crystal-corner.tr {
-  top: 2px;
-  right: 2px;
-  animation: page-empty-ai-crystal-corner 2.8s ease-in-out infinite 0.7s;
-}
-
-.page-empty-ai-crystal-corner.tr::before {
-  right: 0;
-  left: auto;
-}
-
-.page-empty-ai-crystal-corner.tr::after {
-  right: 0;
-  left: auto;
-}
-
-.page-empty-ai-crystal-corner.bl {
-  bottom: 2px;
-  left: 2px;
-  animation: page-empty-ai-crystal-corner 2.8s ease-in-out infinite 1.4s;
-}
-
-.page-empty-ai-crystal-corner.bl::before {
-  bottom: 0;
-  top: auto;
-}
-
-.page-empty-ai-crystal-corner.bl::after {
-  bottom: 0;
-  top: auto;
-}
-
-.page-empty-ai-crystal-corner.br {
-  bottom: 2px;
-  right: 2px;
-  animation: page-empty-ai-crystal-corner 2.8s ease-in-out infinite 2.1s;
-}
-
-.page-empty-ai-crystal-corner.br::before {
-  bottom: 0;
-  top: auto;
-  right: 0;
-  left: auto;
-}
-
-.page-empty-ai-crystal-corner.br::after {
-  bottom: 0;
-  top: auto;
-  right: 0;
-  left: auto;
-}
-
-.page-empty-ai-crystal-dot {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 6px var(--empty-ai-crystal-corner-glow);
-  animation: page-empty-ai-square-walk 5.2s linear infinite;
-  opacity: 0.9;
-}
-
-.page-empty-ai-crystal-dot.d2 {
-  width: 2px;
-  height: 2px;
-  background: var(--empty-ai-crystal-2);
-  animation-duration: 6.5s;
+.page-empty-ai-orb--b {
+  width: 30px;
+  height: 30px;
+  right: -2px;
+  top: 10px;
+  background: radial-gradient(
+    circle,
+    var(--empty-ai-crystal-2) 0%,
+    transparent 72%
+  );
+  animation-duration: 6.8s;
   animation-direction: reverse;
 }
 
-@keyframes page-empty-ai-mesh-drift {
-  to {
-    background-position: 8px 8px, 8px 8px;
-  }
+.page-empty-ai-orb--c {
+  width: 28px;
+  height: 28px;
+  left: 14px;
+  bottom: -2px;
+  background: radial-gradient(
+    circle,
+    var(--empty-ai-crystal-3) 0%,
+    transparent 70%
+  );
+  animation-duration: 7.4s;
 }
 
-@keyframes page-empty-ai-crystal-flow {
-  0% {
-    background-position: 0% 40%;
-  }
-  50% {
-    background-position: 100% 60%;
-  }
-  100% {
-    background-position: 0% 40%;
-  }
+.page-empty-ai-sheen {
+  position: absolute;
+  inset: 6px;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at var(--ai-glare-x) var(--ai-glare-y),
+      rgba(255, 255, 255, 0.78),
+      rgba(255, 255, 255, 0.12) 28%,
+      transparent 58%
+    ),
+    linear-gradient(
+      125deg,
+      rgba(255, 255, 255, 0.38),
+      transparent 42%,
+      rgba(255, 255, 255, 0.08)
+    );
+  opacity: 0.85;
+  mix-blend-mode: soft-light;
+  transform: translateZ(8px);
 }
 
-@keyframes page-empty-ai-crystal-corner {
+.dark .page-empty-ai-sheen {
+  background:
+    radial-gradient(
+      circle at var(--ai-glare-x) var(--ai-glare-y),
+      rgba(255, 255, 255, 0.42),
+      rgba(255, 255, 255, 0.08) 30%,
+      transparent 60%
+    ),
+    linear-gradient(
+      125deg,
+      rgba(255, 255, 255, 0.18),
+      transparent 42%,
+      rgba(255, 255, 255, 0.05)
+    );
+}
+
+.page-empty-ai-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow:
+    0 0 8px var(--empty-ai-crystal-bloom-hot),
+    0 0 14px var(--empty-ai-crystal-bloom);
+  animation: page-empty-ai-spark 3.2s ease-in-out infinite;
+}
+
+.page-empty-ai-spark--1 {
+  top: 8px;
+  right: 10px;
+}
+
+.page-empty-ai-spark--2 {
+  left: 8px;
+  bottom: 12px;
+  width: 3px;
+  height: 3px;
+  background: var(--empty-ai-crystal-2);
+  animation-delay: 0.7s;
+  animation-duration: 3.8s;
+}
+
+.page-empty-ai-spark--3 {
+  right: 14px;
+  bottom: 8px;
+  width: 2px;
+  height: 2px;
+  background: var(--empty-ai-crystal-3);
+  animation-delay: 1.3s;
+  animation-duration: 4.4s;
+}
+
+@keyframes page-empty-ai-orb-drift {
   0%,
   100% {
-    opacity: 0.4;
-    transform: scale(0.92);
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
   }
-  50% {
+  35% {
+    transform: translate3d(4px, -3px, 0) scale(1.12);
     opacity: 1;
-    transform: scale(1.08);
+  }
+  70% {
+    transform: translate3d(-3px, 4px, 0) scale(0.94);
+    opacity: 0.8;
   }
 }
 
-@keyframes page-empty-ai-crystal-icon {
+@keyframes page-empty-ai-icon-breathe {
   0%,
   100% {
-    filter: drop-shadow(0 0 4px var(--empty-ai-crystal-bloom));
+    filter:
+      saturate(1.55)
+      drop-shadow(0 0 6px var(--empty-ai-crystal-icon-glow));
   }
   50% {
-    filter: drop-shadow(0 0 10px var(--empty-ai-crystal-corner-glow));
+    filter:
+      saturate(1.8)
+      drop-shadow(0 0 12px var(--empty-ai-crystal-bloom-hot));
   }
 }
 
-/* 沿正方形四边：上 → 右 → 下 → 左 */
-@keyframes page-empty-ai-square-walk {
+@keyframes page-empty-ai-spark {
   0%,
   100% {
-    top: 0;
-    left: 0;
-    transform: translate(0, 0);
+    opacity: 0.35;
+    transform: scale(0.8);
   }
-  24.5% {
-    top: 0;
-    left: 100%;
-    transform: translate(-100%, 0);
-  }
-  25% {
-    top: 0;
-    left: 100%;
-    transform: translate(-100%, 0);
-  }
-  49.5% {
-    top: 100%;
-    left: 100%;
-    transform: translate(-100%, -100%);
-  }
-  50% {
-    top: 100%;
-    left: 100%;
-    transform: translate(-100%, -100%);
-  }
-  74.5% {
-    top: 100%;
-    left: 0;
-    transform: translate(0, -100%);
-  }
-  75% {
-    top: 100%;
-    left: 0;
-    transform: translate(0, -100%);
-  }
-  99.5% {
-    top: 0;
-    left: 0;
-    transform: translate(0, 0);
+  45% {
+    opacity: 1;
+    transform: scale(1.25);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-empty-ai-crystal-mesh,
-  .page-empty-ai-crystal-core,
-  .page-empty-ai-crystal-corner,
-  .page-empty-ai-crystal-dot,
-  .page-empty-ai-chip .page-empty-ai-icon {
+  .page-empty-ai-chip {
+    transform: none;
+    transition: none;
+  }
+
+  .page-empty-ai-chip .page-empty-ai-icon,
+  .page-empty-ai-orb,
+  .page-empty-ai-spark {
     animation: none !important;
+    transform: none;
   }
 }

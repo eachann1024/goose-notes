@@ -7,7 +7,7 @@ const selectableCardVariants = cva(
   {
     variants: {
       selected: {
-        true: "border-transparent bg-[var(--goose-interactive-selected)]",
+        true: "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
         false: "border-transparent hover:bg-[var(--goose-interactive-hover)]",
       },
       tone: {
