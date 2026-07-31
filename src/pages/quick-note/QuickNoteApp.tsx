@@ -486,7 +486,9 @@ export function QuickNoteApp() {
       data-transient-visible={titlebarTransientVisible ? "true" : "false"}
       data-help-open={helpOpen ? "true" : "false"}
     >
-      <div className="quicknote-titlebar-trigger" aria-hidden="true" />
+      <div className="quicknote-titlebar-trigger" aria-hidden="true">
+        <span className="quicknote-titlebar-handle" />
+      </div>
       {renamingSlot !== null && (
         <input
           ref={renameInputRef}

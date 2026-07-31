@@ -31,7 +31,12 @@ body,
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* 顶栏是固定覆层，不参与正文布局；仅顶部 7px 触发区常驻接收指针。 */
+.dark .quicknote-titlebar-handle {
+  background: #555552;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* 顶栏是固定覆层，不参与正文布局；顶部 10px 触发区内常驻一个中性手柄。 */
 .quicknote-titlebar-reveal-zone {
   position: fixed;
   z-index: 20;
@@ -48,8 +53,24 @@ body,
   top: 0;
   right: 0;
   left: 0;
-  height: 7px;
+  height: 10px;
   pointer-events: auto;
+}
+
+.quicknote-titlebar-handle {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 64px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d8d8d5;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition:
+    opacity 140ms ease,
+    transform 160ms ease;
 }
 
 /* 当前便签名常驻左侧，同时作为原有使用说明弹层的入口。 */
@@ -143,6 +164,16 @@ body,
   pointer-events: auto;
 }
 
+.quicknote-titlebar-reveal-zone:hover .quicknote-titlebar-handle,
+.quicknote-titlebar-reveal-zone:focus-within .quicknote-titlebar-handle,
+.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
+  .quicknote-titlebar-handle,
+.quicknote-titlebar-reveal-zone[data-help-open="true"]
+  .quicknote-titlebar-handle {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-2px);
+}
+
 /* 改名时顶部只保留全宽输入框：隐藏整个标题栏，不让中间数字
    或两侧按钮在 focus-within 规则下重新出现。 */
 .quicknote-titlebar-reveal-zone[data-renaming="true"] .quicknote-titlebar {
@@ -182,8 +213,10 @@ body,
     color 150ms ease;
 }
 
-.quicknote-titlebar-left:hover .quicknote-help-trigger,
-.quicknote-titlebar-left:focus-within .quicknote-help-trigger,
+.quicknote-titlebar-reveal-zone:hover .quicknote-help-trigger,
+.quicknote-titlebar-reveal-zone:focus-within .quicknote-help-trigger,
+.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
+  .quicknote-help-trigger,
 .quicknote-titlebar-reveal-zone[data-help-open="true"]
   .quicknote-help-trigger {
   opacity: 1;
@@ -236,7 +269,7 @@ body,
   color: hsl(var(--foreground));
 }
 
-/* 顶栏不占布局；正文从视口顶部开始，只有 7px 触发区接收指针。 */
+/* 顶栏不占布局；正文从视口顶部开始，只有 10px 触发区接收指针。 */
 .quicknote-editor-surface {
   box-sizing: border-box;
   height: 100%;
@@ -561,10 +594,16 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .quicknote-titlebar,
+  .quicknote-titlebar-handle,
   .quicknote-slot-switcher,
   .quicknote-slot-btn,
   .quicknote-slot-name-text,
-  .quicknote-slot-btn-label {
+  .quicknote-slot-btn-label,
+  .quicknote-collect-chip,
+  .quicknote-collect-shelf,
+  .quicknote-collect-icon-btn,
+  .quicknote-collect-simulate-btn,
+  .quicknote-collect-stop-text-btn {
     animation: none;
     transition: none;
   }

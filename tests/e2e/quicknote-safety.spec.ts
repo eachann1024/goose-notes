@@ -26,7 +26,10 @@ test.describe("quick-note draft safety", () => {
       const trigger = document.querySelector<HTMLElement>(
         ".quicknote-titlebar-trigger",
       );
-      if (!root || !topbar || !switcher || !editor || !trigger) {
+      const handle = document.querySelector<HTMLElement>(
+        ".quicknote-titlebar-handle",
+      );
+      if (!root || !topbar || !switcher || !editor || !trigger || !handle) {
         return null;
       }
 
@@ -35,11 +38,19 @@ test.describe("quick-note draft safety", () => {
       const switcherRect = switcher.getBoundingClientRect();
       const editorRect = editor.getBoundingClientRect();
       const triggerRect = trigger.getBoundingClientRect();
+      const handleRect = handle.getBoundingClientRect();
 
       return {
         topbarHeight: topbarRect.height,
         titlebarOpacity: getComputedStyle(topbar).opacity,
         triggerHeight: triggerRect.height,
+        handleWidth: handleRect.width,
+        handleHeight: handleRect.height,
+        handleOpacity: getComputedStyle(handle).opacity,
+        handleCenterDelta:
+          handleRect.left +
+          handleRect.width / 2 -
+          (rootRect.left + rootRect.width / 2),
         switcherWidth: switcherRect.width,
         switcherHeight: switcherRect.height,
         switcherCenterDelta:
@@ -53,20 +64,30 @@ test.describe("quick-note draft safety", () => {
     expect(layout).not.toBeNull();
     expect(layout!.topbarHeight).toBe(46);
     expect(layout!.titlebarOpacity).toBe("0");
-    expect(layout!.triggerHeight).toBe(7);
+    expect(layout!.triggerHeight).toBe(10);
+    expect(layout!.handleWidth).toBe(64);
+    expect(layout!.handleHeight).toBe(5);
+    expect(layout!.handleOpacity).toBe("1");
+    expect(Math.abs(layout!.handleCenterDelta)).toBeLessThan(1);
     expect(layout!.switcherWidth).toBe(120);
     expect(layout!.switcherHeight).toBe(26);
     expect(Math.abs(layout!.switcherCenterDelta)).toBeLessThan(1);
     expect(layout!.editorStartsAtViewportTop).toBe(true);
 
     const titlebar = page.locator(".quicknote-titlebar");
-    await page.locator(".quicknote-titlebar-trigger").hover();
+    const handle = page.locator(".quicknote-titlebar-handle");
+    const helpTrigger = page.getByRole("button", { name: "使用说明" });
+    await handle.hover();
     await expect(titlebar).toHaveCSS("opacity", "1");
+    await expect(handle).toHaveCSS("opacity", "0");
+    await expect(helpTrigger).toHaveCSS("opacity", "1");
     await titlebar.hover({ position: { x: 200, y: 20 } });
     await page.waitForTimeout(2300);
     await expect(titlebar).toHaveCSS("opacity", "1");
+    await expect(helpTrigger).toHaveCSS("opacity", "1");
     await page.mouse.move(200, 120);
     await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
 
     await page.keyboard.press("Control+2");
     await expect(
@@ -76,6 +97,8 @@ test.describe("quick-note draft safety", () => {
       page.locator("[data-sonner-toast].quicknote-slot-switch-toast"),
     ).toHaveCount(0);
     await expect(titlebar).toHaveCSS("opacity", "1");
+    await expect(handle).toHaveCSS("opacity", "0");
+    await expect(helpTrigger).toHaveCSS("opacity", "1");
 
     const activeBackground = await page
       .getByRole("radio", { name: "便签 2，空白" })
@@ -83,6 +106,7 @@ test.describe("quick-note draft safety", () => {
     expect(activeBackground).toBe("rgb(255, 255, 255)");
     await page.waitForTimeout(2400);
     await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     const reducedMotion = await page
