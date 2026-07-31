@@ -19,7 +19,7 @@ import { useFormattingToolbarAi } from "@/components/editor/state/formattingTool
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
-  selectionHasNonFormattableBlock,
+  selectionDisallowsFormattingToolbar,
   selectionIsInsideFirstTitleBlock,
   selectionIsInsideHeadingBlock,
   shouldRenderFormattingToolbar,
@@ -60,7 +60,8 @@ export function EditorFormattingToolbar() {
 
       return {
         hasTextSelection: !selection.empty && selectedText.length > 0,
-        hasNonFormattableBlock: selectionHasNonFormattableBlock(editor),
+        disallowsFormattingToolbar:
+          selectionDisallowsFormattingToolbar(editor),
       };
     },
   });
@@ -226,7 +227,7 @@ export function EditorFormattingToolbar() {
   if (
     !aiActive &&
     (!selectionState.hasTextSelection ||
-      selectionState.hasNonFormattableBlock ||
+      selectionState.disallowsFormattingToolbar ||
       isInTitleOne)
   ) {
     return null;

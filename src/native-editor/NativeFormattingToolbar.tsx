@@ -13,7 +13,7 @@ import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/components/editor/hooks/useGlobalScrollActivity";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import {
-  selectionHasNonFormattableBlock,
+  selectionDisallowsFormattingToolbar,
   selectionIsInsideFirstTitleBlock,
   selectionIsInsideHeadingBlock,
   shouldRenderFormattingToolbar,
@@ -42,7 +42,8 @@ export function EditorFormattingToolbar() {
       const selectedText = doc.textBetween(selection.from, selection.to, "\n", "\n").trim();
       return {
         hasTextSelection: !selection.empty && selectedText.length > 0,
-        hasNonFormattableBlock: selectionHasNonFormattableBlock(editor),
+        disallowsFormattingToolbar:
+          selectionDisallowsFormattingToolbar(editor),
       };
     },
   });
@@ -106,7 +107,7 @@ export function EditorFormattingToolbar() {
   }, [editor, selectedBlocks]);
 
   if (!selectionState.hasTextSelection
-    || selectionState.hasNonFormattableBlock
+    || selectionState.disallowsFormattingToolbar
     || isInTitleOne) return null;
   const shouldHide = isScrolling || isContextMenuOpen;
 

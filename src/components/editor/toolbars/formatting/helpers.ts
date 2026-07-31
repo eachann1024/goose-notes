@@ -163,6 +163,43 @@ export function selectionHasNonFormattableBlock(
   return hasSelectedText && entirelyNonFormattable;
 }
 
+/** 选区中的全部文字是否都带有行内代码样式。 */
+export function selectionIsEntirelyInlineCode(
+  editor: BlockNoteEditor<any, any, any>,
+): boolean {
+  const { selection, doc } = editor.prosemirrorState;
+  if (selection.empty) return false;
+
+  let hasSelectedText = false;
+  let entirelyInlineCode = true;
+
+  doc.nodesBetween(selection.from, selection.to, (node: any, pos: number) => {
+    if (!entirelyInlineCode) return false;
+    if (!node.isText) return true;
+
+    const selectedFrom = Math.max(selection.from, pos);
+    const selectedTo = Math.min(selection.to, pos + node.nodeSize);
+    if (selectedFrom >= selectedTo) return false;
+
+    hasSelectedText = true;
+    if (!node.marks.some((mark: any) => mark.type.name === "code")) {
+      entirelyInlineCode = false;
+    }
+    return false;
+  });
+
+  return hasSelectedText && entirelyInlineCode;
+}
+
+export function selectionDisallowsFormattingToolbar(
+  editor: BlockNoteEditor<any, any, any>,
+): boolean {
+  return (
+    selectionHasNonFormattableBlock(editor) ||
+    selectionIsEntirelyInlineCode(editor)
+  );
+}
+
 /**
  * 选区是否完全落在标题一（文档物理首块、heading level 1）内部。
  * 跨块选区（含 Cmd+A 全选）返回 false，保证全选时工具栏可用。
@@ -232,8 +269,8 @@ export function shouldRenderFormattingToolbar(
   // 截获，setState 后 useEditorState 也不会重新计算 position）。
   // 走自有 Popover 方案的代价较大，目前保留原行为：表格内编辑直接走右键菜单。
   if (selectionTouchesTable(selection)) return false;
-  // 代码块或其它 NON_FORMATTABLE_TYPES 内选中时直接禁用工具栏（第一道闸）。
-  if (selectionHasNonFormattableBlock(editor)) return false;
+  // 代码块、媒体块或纯行内代码选区不触发格式工具栏。
+  if (selectionDisallowsFormattingToolbar(editor)) return false;
 
   return true;
 }
