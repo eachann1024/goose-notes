@@ -104,6 +104,10 @@ function useHistoryViewLogic() {
     useState<BlockNoteContent | null>(null);
   const [selectedStatus, setSelectedStatus] =
     useState<SelectedHistoryStatus>("idle");
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [pendingMilestoneVersionId, setPendingMilestoneVersionId] = useState<
+    string | null
+  >(null);
 
   // 加载版本索引
   useEffect(() => {
@@ -224,13 +228,14 @@ function useHistoryViewLogic() {
   );
 
   const handleRestore = () => {
-    if (!pageId || !selectedVersionId) return;
+    if (!pageId || !selectedVersionId || isRestoring) return;
     const current = getPage(pageId);
     if (!current) return;
     const ok = window.confirm(
       "将当前内容覆盖为此版本？\n当前内容会自动保留为一次「操作前」快照，可随时撤回。",
     );
     if (!ok) return;
+    setIsRestoring(true);
 
     try {
       flushEditorContent(true);
@@ -252,11 +257,13 @@ function useHistoryViewLogic() {
       .then((result) => {
         if (!result || result.content == null) {
           toast.error("无法读取该版本");
+          setIsRestoring(false);
           return;
         }
         const safeContent = createSafeHistoryContent(result.content);
         if (!safeContent) {
           toast.error("该历史版本格式异常，无法还原");
+          setIsRestoring(false);
           return;
         }
         const updates: Parameters<typeof updatePage>[1] = {
@@ -271,30 +278,39 @@ function useHistoryViewLogic() {
         }
         updatePage(pageId, updates);
         toast.success("已还原，当前内容已保留为「操作前」版本");
+        setIsRestoring(false);
         exit();
       })
       .catch(() => {
         toast.error("无法读取该版本");
+        setIsRestoring(false);
       });
   };
 
   const handleToggleMilestone = (versionId: string, willBe: boolean) => {
-    if (!pageId) return;
+    if (!pageId || pendingMilestoneVersionId) return;
+    setPendingMilestoneVersionId(versionId);
     if (willBe) {
       markMilestone(pageId, versionId)
         .then(() => {
           toast.success("已标记为里程碑");
           bumpRefresh();
         })
-        .catch((err) => console.error("[history] markMilestone failed:", err));
+        .catch((err) => {
+          console.error("[history] markMilestone failed:", err);
+          toast.error("标记失败，请重试");
+        })
+        .finally(() => setPendingMilestoneVersionId(null));
     } else {
       unmarkMilestone(pageId, versionId)
         .then(() => {
           bumpRefresh();
         })
-        .catch((err) =>
-          console.error("[history] unmarkMilestone failed:", err),
-        );
+        .catch((err) => {
+          console.error("[history] unmarkMilestone failed:", err);
+          toast.error("取消标记失败，请重试");
+        })
+        .finally(() => setPendingMilestoneVersionId(null));
     }
   };
 
@@ -308,6 +324,8 @@ function useHistoryViewLogic() {
     selectedEntry,
     selectedContent,
     selectedStatus,
+    isRestoring,
+    pendingMilestoneVersionId,
     exit,
     select,
     handleRestore,
@@ -321,8 +339,14 @@ function useHistoryViewLogic() {
  * 退出按钮在主区 HistoryToolbar 上，这里不重复放。
  */
 export function HistoryVersionList() {
-  const { groups, isEmpty, selectedVersionId, select, handleToggleMilestone } =
-    useHistoryViewLogic();
+  const {
+    groups,
+    isEmpty,
+    selectedVersionId,
+    pendingMilestoneVersionId,
+    select,
+    handleToggleMilestone,
+  } = useHistoryViewLogic();
 
   return (
     <div className="flex-1 min-h-0 flex flex-col" aria-label="页面历史">
@@ -342,7 +366,7 @@ export function HistoryVersionList() {
           <LucideIcons.History className="h-10 w-10 text-muted-foreground/20" />
           <p className="text-xs text-muted-foreground/60">暂无历史版本</p>
           <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
-            停笔 15 秒或心跳 30 秒自动保存
+            停笔后合并保存，自动版本至少间隔 5 分钟
             <br />
             仅空白/换行变化不计入
           </p>
@@ -358,6 +382,8 @@ export function HistoryVersionList() {
                 <div className="px-2">
                   {group.items.map((v, index) => {
                     const isSelected = selectedVersionId === v.versionId;
+                    const isMilestonePending =
+                      pendingMilestoneVersionId === v.versionId;
                     const isFirst = index === 0;
                     const isLast = index === group.items.length - 1;
                     const delta = v.charDelta;
@@ -378,7 +404,7 @@ export function HistoryVersionList() {
                       <div
                         key={v.versionId}
                         className={cn(
-                          "group relative rounded-[10px] transition-colors duration-150",
+                          "history-version-item group relative rounded-[10px] transition-colors duration-150",
                           isSelected
                             ? "bg-[var(--goose-interactive-selected)]"
                             : "hover:bg-[var(--goose-interactive-hover)]",
@@ -408,12 +434,19 @@ export function HistoryVersionList() {
                           type="button"
                           title={detailTitle}
                           aria-current={isSelected ? "true" : undefined}
+                          data-selected={isSelected ? "true" : "false"}
                           aria-label={`查看 ${group.label} ${formatTime(v.createdAt)} 的历史版本`}
                           onClick={() => {
                             closeNotebookAiIfFullscreen();
                             select(v.versionId);
                           }}
-                          className="flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-[10px] py-2.5 pl-8 pr-11 text-left"
+                          className={cn(
+                            "flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-[10px] py-1.5 pl-8 pr-11 text-left transition-[background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
+                            "history-version-row",
+                            isSelected
+                              ? "hover:bg-[var(--goose-interactive-selected)] hover:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-fg)] active:bg-[var(--goose-interactive-selected)] active:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]"
+                              : "hover:bg-[var(--goose-control-hover-bg)] active:bg-[var(--goose-interactive-selected)]",
+                          )}
                         >
                           <span
                             className={cn(
@@ -456,29 +489,42 @@ export function HistoryVersionList() {
                         </button>
                         <button
                           type="button"
+                          disabled={isMilestonePending}
+                          data-marked={v.isMilestone ? "true" : "false"}
+                          aria-busy={isMilestonePending || undefined}
                           aria-pressed={v.isMilestone}
                           aria-label={
-                            v.isMilestone ? "取消标记此版本" : "标记此版本"
+                            isMilestonePending
+                              ? v.isMilestone
+                                ? "正在取消标记此版本"
+                                : "正在标记此版本"
+                              : v.isMilestone
+                                ? "取消标记此版本"
+                                : "标记此版本"
                           }
                           onClick={(event) => {
                             event.stopPropagation();
                             handleToggleMilestone(v.versionId, !v.isMilestone);
                           }}
                           className={cn(
-                            "absolute right-1 top-1/2 z-[2] flex h-[32px] w-[32px] -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-colors duration-150",
+                            "history-star-control group/star absolute right-1 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color,opacity,transform] duration-150 hover:bg-[var(--goose-control-hover-bg)] active:scale-95 active:bg-[var(--goose-interactive-selected)] disabled:cursor-wait disabled:opacity-70",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                            v.isMilestone
+                            v.isMilestone || isMilestonePending
                               ? "opacity-100"
                               : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100",
                           )}
                         >
-                          <LucideIcons.Star
-                            className={cn(
-                              "h-4 w-4 text-muted-foreground",
-                              v.isMilestone &&
-                                "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
-                            )}
-                          />
+                          {isMilestonePending ? (
+                            <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : (
+                            <LucideIcons.Star
+                              className={cn(
+                                "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
+                                v.isMilestone &&
+                                  "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)] group-hover/star:text-[var(--goose-color-favorite)]",
+                              )}
+                            />
+                          )}
                         </button>
                       </div>
                     );
@@ -494,15 +540,22 @@ export function HistoryVersionList() {
 }
 
 export function HistoryToolbar() {
-  const { pageTitle, selectedVersionId, selectedStatus, exit, handleRestore } =
-    useHistoryViewLogic();
+  const {
+    pageTitle,
+    selectedVersionId,
+    selectedStatus,
+    isRestoring,
+    exit,
+    handleRestore,
+  } = useHistoryViewLogic();
 
   return (
     <header className="h-11 px-3 flex items-center gap-3 shrink-0 bg-[hsl(var(--goose-editor-bg))]">
       <Button
         variant="secondary"
         size="sm"
-        className="h-8 px-3 text-xs gap-1.5 text-foreground shadow-none hover:bg-accent hover:text-accent-foreground"
+        aria-label="返回编辑页面"
+        className="history-secondary-control h-8 px-3 text-xs gap-1.5 text-foreground shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
         onClick={exit}
       >
         <LucideIcons.ArrowLeft className="h-3.5 w-3.5" />
@@ -515,11 +568,28 @@ export function HistoryToolbar() {
 
       <Button
         size="sm"
-        className="h-7 shrink-0 px-3 text-xs"
-        disabled={!selectedVersionId || selectedStatus !== "ready"}
+        aria-label={
+          isRestoring
+            ? "正在还原此版本"
+            : selectedStatus === "loading"
+              ? "正在读取历史版本"
+              : "还原此版本"
+        }
+        aria-busy={isRestoring || selectedStatus === "loading" || undefined}
+        className="history-primary-control h-7 shrink-0 px-3 text-xs transition-[background-color,box-shadow,transform] hover:bg-[var(--goose-primary-hover-bg)] active:translate-y-px active:bg-[var(--goose-primary-active-bg)] active:shadow-none"
+        disabled={
+          !selectedVersionId || selectedStatus !== "ready" || isRestoring
+        }
         onClick={handleRestore}
       >
-        还原此版本
+        {isRestoring || selectedStatus === "loading" ? (
+          <>
+            <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            {isRestoring ? "正在还原" : "正在读取"}
+          </>
+        ) : (
+          "还原此版本"
+        )}
       </Button>
     </header>
   );
@@ -631,9 +701,9 @@ export function HistoryReader() {
           action={
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="mt-1 h-8 gap-1.5 rounded-[10px] text-xs"
+              className="history-secondary-control mt-1 h-8 gap-1.5 rounded-[10px] text-xs shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
               onClick={reset}
             >
               <LucideIcons.RotateCcw className="h-3.5 w-3.5" />

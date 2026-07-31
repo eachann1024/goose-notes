@@ -247,6 +247,10 @@
     --goose-interactive-selected: #e0e7ff;
     --goose-interactive-selected-fg: #4f46e5;
     --goose-interactive-selected-border: transparent;
+    /* 紧凑按钮状态：实色，避免 uTools 旧内核解析 hsl(var(...)/alpha) 失败 */
+    --goose-control-hover-bg: #ebeae8;
+    --goose-primary-hover-bg: #4f46e5;
+    --goose-primary-active-bg: #4338ca;
     /* 图标徽章/小方块底色：鸢尾靛蓝徽章底 */
     --goose-icon-chip-on-selected: #eef2ff;
     /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
@@ -327,6 +331,9 @@
     --goose-interactive-selected: rgba(99, 102, 241, 0.2);
     --goose-interactive-selected-fg: #a5b4fc;
     --goose-interactive-selected-border: transparent;
+    --goose-control-hover-bg: #2e2e2e;
+    --goose-primary-hover-bg: #4f46e5;
+    --goose-primary-active-bg: #4338ca;
     /* 暗色图标徽章底 */
     --goose-icon-chip-on-selected: rgba(99, 102, 241, 0.14);
     --goose-pin-accent: #f87171;
