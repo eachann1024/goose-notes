@@ -1402,18 +1402,37 @@
   width: 36px;
   height: 36px;
   margin: 0;
+  padding: 0;
   border-radius: 9px;
   color: rgba(255, 255, 255, 0.9);
   filter: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
   transition:
     background-color 140ms ease,
     color 140ms ease,
     transform 140ms ease;
 }
 
-.goose-image-lightbox .yarl__button:hover {
+.goose-image-lightbox .yarl__button svg,
+.goose-image-lightbox .yarl__icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: none;
+}
+
+.goose-image-lightbox .yarl__button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+}
+
+.goose-image-lightbox .yarl__button:disabled {
+  color: rgba(255, 255, 255, 0.34);
+  background: transparent;
+  cursor: default;
 }
 
 .goose-image-lightbox .yarl__button:focus-visible {

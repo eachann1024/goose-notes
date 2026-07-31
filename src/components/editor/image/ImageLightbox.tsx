@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
-import { Copy, Download, X } from "lucide-react";
+import { Copy, Download, X, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
@@ -407,6 +407,13 @@ export function ImageLightbox({
             scrollToZoom: true,
             doubleClickDelay: 250,
           }}
+          labels={{
+            "Zoom in": "放大",
+            "Zoom out": "缩小",
+            Close: "关闭",
+            Next: "下一张",
+            Previous: "上一张",
+          }}
           carousel={{ finite: slides.length <= 1, padding: "48px" }}
           controller={{ closeOnBackdropClick: true, closeOnPullDown: true }}
           animation={{ fade: 220, swipe: 280 }}
@@ -437,6 +444,12 @@ export function ImageLightbox({
             ],
           }}
           render={{
+            iconZoomIn: () => (
+              <ZoomIn size={18} strokeWidth={1.75} aria-hidden="true" />
+            ),
+            iconZoomOut: () => (
+              <ZoomOut size={18} strokeWidth={1.75} aria-hidden="true" />
+            ),
             buttonClose: () => (
               <button
                 key="close"
