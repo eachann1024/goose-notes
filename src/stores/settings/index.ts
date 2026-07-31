@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uToolsStorage } from "@/lib/storage";
+import { applyAccentColor } from "@/lib/accentColor";
 import { normalizeCardThemeId } from "@/lib/imageExport";
 
 import type {
@@ -12,6 +13,7 @@ import type {
 } from "./types";
 import {
   normalizeCodeStyle,
+  normalizeAccentColor,
   resolveCodeTheme,
   normalizeUIFontSize,
   normalizeAutoCloseInactiveTabsHours,
@@ -103,7 +105,7 @@ function applyCodeStyle(codeStyle: CodeStyle) {
   }
 }
 
-const applyFns = { applyTheme, applyCodeStyle };
+const applyFns = { applyTheme, applyAccentColor, applyCodeStyle };
 const getApply = () => applyFns;
 
 export const useSettings = create<SettingsState>()(
@@ -130,16 +132,22 @@ export const useSettings = create<SettingsState>()(
     {
       name: "goose-note-settings",
       version: 2,
-      migrate: (persistedState) => migrateSettingsPersistedState(persistedState),
+      migrate: (persistedState) =>
+        migrateSettingsPersistedState(persistedState),
       storage: createJSONStorage(() => uToolsStorage),
       skipHydration: true,
       onRehydrateStorage: () => (state) => {
         const theme = state?.theme || "system";
+        const accentColor = normalizeAccentColor(state?.accentColor);
         const codeStyle = normalizeCodeStyle(
           state?.codeStyle as string | undefined,
         );
         applyTheme(theme);
+        applyAccentColor(accentColor);
         applyCodeStyle(codeStyle);
+        if (state && state.accentColor !== accentColor) {
+          useSettings.setState({ accentColor });
+        }
         if (state && state.codeStyle !== codeStyle) {
           useSettings.setState({ codeStyle });
         }
@@ -331,7 +339,8 @@ export const useSettings = create<SettingsState>()(
           }
 
           const storedDesktop = state.desktop as
-            Partial<DesktopSettings> | undefined;
+            | Partial<DesktopSettings>
+            | undefined;
           const mergedDesktop: DesktopSettings = {
             wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
             wakeHotkeyEnabled: storedDesktop?.wakeHotkeyEnabled ?? true,
@@ -423,6 +432,7 @@ if (typeof window !== "undefined") {
   const initThemes = () => {
     const state = useSettings.getState();
     applyTheme(state.theme);
+    applyAccentColor(state.accentColor);
     applyCodeStyle(state.codeStyle);
   };
 
@@ -437,6 +447,7 @@ if (typeof window !== "undefined") {
 export type {
   SearchProvider,
   Theme,
+  AccentColor,
   CodeStyle,
   UToolsSettings,
   AISettings,
@@ -465,6 +476,8 @@ export {
   UTOOLS_WINDOW_HEIGHT_MAX,
   UTOOLS_WINDOW_HEIGHT_DEFAULT,
   DEFAULT_SEARCH_PROVIDERS,
+  ACCENT_COLORS,
+  DEFAULT_ACCENT_COLOR,
 } from "./types";
 
 export { DEFAULT_APP_SHORTCUTS } from "./slices/shortcutsSlice";

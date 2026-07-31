@@ -1,4 +1,5 @@
-import type { CodeStyle } from "@/stores/useSettings";
+import type { CSSProperties, KeyboardEvent } from "react";
+import type { AccentColor, CodeStyle } from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
@@ -7,6 +8,8 @@ import { formatShortcut } from "@/lib/utils";
 interface SettingsAppearanceProps {
   theme: "light" | "dark" | "system";
   setTheme: (theme: "light" | "dark" | "system") => void;
+  accentColor: AccentColor;
+  setAccentColor: (accentColor: AccentColor) => void;
   codeStyle: CodeStyle;
   setCodeStyle: (style: CodeStyle) => void;
   tableEvenColumnWidth: boolean;
@@ -28,6 +31,107 @@ interface SettingsAppearanceProps {
   hideExpandArrows: boolean;
   setHideExpandArrows: (hidden: boolean) => void;
 }
+
+type AccentOption = {
+  value: AccentColor;
+  label: string;
+  previewLight: string;
+  previewDark: string;
+  lightSurface: string;
+  lightForeground: string;
+  darkSurface: string;
+  darkForeground: string;
+};
+
+const accentOptions: AccentOption[] = [
+  {
+    value: "iris",
+    label: "鸢尾",
+    previewLight: "#6366f1",
+    previewDark: "#a5b4fc",
+    lightSurface: "#e0e7ff",
+    lightForeground: "#4f46e5",
+    darkSurface: "rgba(99, 102, 241, 0.2)",
+    darkForeground: "#a5b4fc",
+  },
+  {
+    value: "ocean",
+    label: "海蓝",
+    previewLight: "#3b82f6",
+    previewDark: "#93c5fd",
+    lightSurface: "#dbeafe",
+    lightForeground: "#2563eb",
+    darkSurface: "rgba(59, 130, 246, 0.2)",
+    darkForeground: "#93c5fd",
+  },
+  {
+    value: "teal",
+    label: "青碧",
+    previewLight: "#0f766e",
+    previewDark: "#5eead4",
+    lightSurface: "#ccfbf1",
+    lightForeground: "#0f766e",
+    darkSurface: "rgba(20, 184, 166, 0.2)",
+    darkForeground: "#5eead4",
+  },
+  {
+    value: "pine",
+    label: "松绿",
+    previewLight: "#15803d",
+    previewDark: "#86efac",
+    lightSurface: "#dcfce7",
+    lightForeground: "#15803d",
+    darkSurface: "rgba(34, 197, 94, 0.2)",
+    darkForeground: "#86efac",
+  },
+  {
+    value: "amber",
+    label: "琥珀",
+    previewLight: "#b45309",
+    previewDark: "#fbbf24",
+    lightSurface: "#fef3c7",
+    lightForeground: "#b45309",
+    darkSurface: "rgba(245, 158, 11, 0.2)",
+    darkForeground: "#fbbf24",
+  },
+  {
+    value: "coral",
+    label: "朱砂",
+    previewLight: "#c2410c",
+    previewDark: "#fdba74",
+    lightSurface: "#ffedd5",
+    lightForeground: "#c2410c",
+    darkSurface: "rgba(249, 115, 22, 0.2)",
+    darkForeground: "#fdba74",
+  },
+  {
+    value: "rose",
+    label: "莓红",
+    previewLight: "#be123c",
+    previewDark: "#fda4af",
+    lightSurface: "#ffe4e6",
+    lightForeground: "#be123c",
+    darkSurface: "rgba(244, 63, 94, 0.2)",
+    darkForeground: "#fda4af",
+  },
+  {
+    value: "grape",
+    label: "葡萄",
+    previewLight: "#7e22ce",
+    previewDark: "#d8b4fe",
+    lightSurface: "#f3e8ff",
+    lightForeground: "#7e22ce",
+    darkSurface: "rgba(168, 85, 247, 0.2)",
+    darkForeground: "#d8b4fe",
+  },
+];
+
+type AccentOptionStyle = CSSProperties & {
+  "--goose-accent-option-light-surface": string;
+  "--goose-accent-option-light-fg": string;
+  "--goose-accent-option-dark-surface": string;
+  "--goose-accent-option-dark-fg": string;
+};
 
 const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
   {
@@ -86,6 +190,8 @@ const APPEARANCE_SWITCH_CLASS =
 export function SettingsAppearance({
   theme,
   setTheme,
+  accentColor,
+  setAccentColor,
   codeStyle,
   setCodeStyle,
   tableEvenColumnWidth,
@@ -102,6 +208,49 @@ export function SettingsAppearance({
     customFonts[type].font || DEFAULT_FONT_NAMES[type];
   const displayedCodeStyle =
     LEGACY_CODE_STYLE_DISPLAY_MAP[codeStyle] ?? codeStyle;
+  const accentRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [focusedAccentIndex, setFocusedAccentIndex] = useState(() =>
+    Math.max(
+      0,
+      accentOptions.findIndex((option) => option.value === accentColor),
+    ),
+  );
+
+  const focusAccentOption = (index: number) => {
+    const nextIndex = (index + accentOptions.length) % accentOptions.length;
+    setFocusedAccentIndex(nextIndex);
+    accentRefs.current[nextIndex]?.focus();
+  };
+
+  const handleAccentKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      focusAccentOption(index + 1);
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      focusAccentOption(index - 1);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusAccentOption(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      focusAccentOption(accentOptions.length - 1);
+      return;
+    }
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      setAccentColor(accentOptions[index].value);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -136,7 +285,8 @@ export function SettingsAppearance({
                     aria-label="浅色模式"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "light" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      theme === "light" &&
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("light")}
                   >
@@ -153,7 +303,8 @@ export function SettingsAppearance({
                     aria-label="深色模式"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "dark" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      theme === "dark" &&
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("dark")}
                   >
@@ -170,7 +321,8 @@ export function SettingsAppearance({
                     aria-label="跟随系统"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "system" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      theme === "system" &&
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
                     )}
                     onClick={() => setTheme("system")}
                   >
@@ -180,6 +332,93 @@ export function SettingsAppearance({
                 <TooltipContent side="bottom">跟随系统</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+        </div>
+
+        <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+          <div className="mb-3 flex items-start gap-3">
+            <LucideIcons.Palette
+              className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            <div>
+              <div
+                id="appearance-accent-color-label"
+                className="text-sm font-medium text-foreground"
+              >
+                强调色
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                用于按钮、链接、选中项和焦点状态
+              </p>
+            </div>
+          </div>
+          <div
+            role="radiogroup"
+            aria-labelledby="appearance-accent-color-label"
+            className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+          >
+            {accentOptions.map((option, index) => {
+              const selected = accentColor === option.value;
+              const style: AccentOptionStyle = {
+                "--goose-accent-option-light-surface": option.lightSurface,
+                "--goose-accent-option-light-fg": option.lightForeground,
+                "--goose-accent-option-dark-surface": option.darkSurface,
+                "--goose-accent-option-dark-fg": option.darkForeground,
+              };
+
+              return (
+                <button
+                  key={option.value}
+                  ref={(node) => {
+                    accentRefs.current[index] = node;
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={`${option.label}${option.value === "iris" ? "（默认）" : ""}`}
+                  data-state={selected ? "checked" : "unchecked"}
+                  tabIndex={focusedAccentIndex === index ? 0 : -1}
+                  style={style}
+                  onFocus={() => setFocusedAccentIndex(index)}
+                  onKeyDown={(event) => handleAccentKeyDown(event, index)}
+                  onClick={() => {
+                    setFocusedAccentIndex(index);
+                    setAccentColor(option.value);
+                  }}
+                  className="goose-accent-option flex h-11 min-w-0 items-center gap-2 rounded-[10px] px-2.5 text-left text-xs font-medium text-foreground transition-[background-color,color,box-shadow,transform]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="relative h-5 w-5 shrink-0 overflow-hidden rounded-full shadow-[inset_0_0_0_1px_rgba(15,23,42,0.12)]"
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 w-1/2"
+                      style={{ backgroundColor: option.previewLight }}
+                    />
+                    <span
+                      className="absolute inset-y-0 right-0 w-1/2"
+                      style={{ backgroundColor: option.previewDark }}
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {option.label}
+                  </span>
+                  {option.value === "iris" && (
+                    <span className="shrink-0 text-[10px] font-normal opacity-65">
+                      默认
+                    </span>
+                  )}
+                  <LucideIcons.Check
+                    aria-hidden="true"
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      selected ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -206,7 +445,8 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "small" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                uiFontSize === "small" &&
+                  "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
               )}
               onClick={() => setUIFontSize("small")}
             >
@@ -217,7 +457,8 @@ export function SettingsAppearance({
               variant="ghost"
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "normal" && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                uiFontSize === "normal" &&
+                  "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
               )}
               onClick={() => setUIFontSize("normal")}
             >

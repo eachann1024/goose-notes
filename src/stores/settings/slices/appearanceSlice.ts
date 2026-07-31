@@ -1,5 +1,12 @@
-import type { Theme, CodeStyle, CustomFonts, UIFontSize } from "../types";
+import type {
+  AccentColor,
+  Theme,
+  CodeStyle,
+  CustomFonts,
+  UIFontSize,
+} from "../types";
 import {
+  DEFAULT_ACCENT_COLOR,
   EDITOR_FONT_SIZE_MIN,
   EDITOR_FONT_SIZE_MAX,
   EDITOR_FONT_SIZE_DEFAULT,
@@ -13,6 +20,7 @@ import {
 
 export interface AppearanceSliceState {
   theme: Theme;
+  accentColor: AccentColor;
   codeStyle: CodeStyle;
   defaultCodeBlockWrap: boolean;
   tableEvenColumnWidth: boolean;
@@ -33,6 +41,7 @@ export interface AppearanceSliceState {
 
 export interface AppearanceSliceActions {
   setTheme: (theme: Theme) => void;
+  setAccentColor: (accentColor: AccentColor) => void;
   toggleDarkMode: () => void;
   setCodeStyle: (style: CodeStyle) => void;
   setDefaultCodeBlockWrap: (enabled: boolean) => void;
@@ -64,6 +73,7 @@ export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions;
 
 export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   theme: "system",
+  accentColor: DEFAULT_ACCENT_COLOR,
   codeStyle: "github",
   defaultCodeBlockWrap: false,
   tableEvenColumnWidth: true,
@@ -88,6 +98,7 @@ type SetFn = (
 ) => void;
 type GetApplyFns = () => {
   applyTheme: (theme: Theme) => void;
+  applyAccentColor: (accentColor: AccentColor) => void;
   applyCodeStyle: (codeStyle: CodeStyle) => void;
 };
 
@@ -100,6 +111,10 @@ export function createAppearanceSlice(
     setTheme: (theme) => {
       set({ theme });
       getApply().applyTheme(theme);
+    },
+    setAccentColor: (accentColor) => {
+      set({ accentColor });
+      getApply().applyAccentColor(accentColor);
     },
     toggleDarkMode: () => {
       set((state) => {

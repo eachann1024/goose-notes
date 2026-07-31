@@ -1,11 +1,50 @@
 import { expect, test } from "playwright/test";
 import {
+  normalizeAccentColor,
   normalizeCodeStyle,
   resolveCodeTheme,
 } from "../../src/stores/settings/types";
 import { APPEARANCE_INITIAL_STATE } from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
+import { applyAccentColor } from "../../src/lib/accentColor";
+
+test("强调色默认保持现有鸢尾配色，非法持久化值安全回退", () => {
+  expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("iris");
+  expect(normalizeAccentColor(undefined)).toBe("iris");
+  expect(normalizeAccentColor("unknown")).toBe("iris");
+  expect(normalizeAccentColor("ocean")).toBe("ocean");
+  expect(normalizeAccentColor("grape")).toBe("grape");
+});
+
+test("应用强调色只写入根节点 data-goose-accent 属性", () => {
+  const attributes = new Map<string, string>();
+  const previousDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      documentElement: {
+        setAttribute: (name: string, value: string) =>
+          attributes.set(name, value),
+      },
+    },
+  });
+
+  try {
+    applyAccentColor("rose");
+    expect(attributes.get("data-goose-accent")).toBe("rose");
+    expect(attributes.size).toBe(1);
+  } finally {
+    if (previousDocument === undefined) {
+      delete (globalThis as { document?: Document }).document;
+    } else {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: previousDocument,
+      });
+    }
+  }
+});
 
 test("GitHub 是默认且第一优先的代码风格", () => {
   expect(APPEARANCE_INITIAL_STATE.codeStyle).toBe("github");

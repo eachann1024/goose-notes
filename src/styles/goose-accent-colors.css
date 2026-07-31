@@ -1,0 +1,359 @@
+/*
+ * 产品强调色 preset。所有关键交互色均为静态 HSL 通道、hex 或 rgba，
+ * 不依赖 oklch / color-mix / hsl(var(...)/alpha)，兼容 uTools 旧 Chromium。
+ * 无 data-goose-accent 时继续使用 index.css 的现有鸢尾 fallback。
+ */
+
+:root[data-goose-accent="iris"] {
+  --primary: 239 84% 67%;
+  --ring: 239 84% 67%;
+  --goose-primary-hover-bg: #4f46e5;
+  --goose-primary-active-bg: #4338ca;
+  --goose-interactive-selected: #e0e7ff;
+  --goose-interactive-selected-fg: #4f46e5;
+  --goose-icon-chip-on-selected: #eef2ff;
+  --goose-inline-code-bg: #eef2ff;
+  --goose-inline-code-fg: #4f46e5;
+  --goose-inline-code-border-hover: #c7d2fe;
+  --goose-callout-accent: #6366f1;
+  --goose-ai-approval-check-bg: #6366f1;
+  --goose-accent-link: #4f46e5;
+  --goose-accent-link-hover: #4338ca;
+  --goose-accent-focus: #6366f1;
+  --goose-accent-drag-line: #6366f1;
+  --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+.dark[data-goose-accent="iris"] {
+  --primary: 239 84% 67%;
+  --ring: 239 84% 67%;
+  --goose-primary-hover-bg: #4f46e5;
+  --goose-primary-active-bg: #4338ca;
+  --goose-interactive-selected: rgba(99, 102, 241, 0.2);
+  --goose-interactive-selected-fg: #a5b4fc;
+  --goose-icon-chip-on-selected: rgba(99, 102, 241, 0.14);
+  --goose-inline-code-bg: rgba(99, 102, 241, 0.14);
+  --goose-inline-code-fg: #a5b4fc;
+  --goose-inline-code-border-hover: #4b4e81;
+  --goose-callout-accent: #6366f1;
+  --goose-ai-approval-check-bg: #6366f1;
+  --goose-accent-link: #a5b4fc;
+  --goose-accent-link-hover: #c7d2fe;
+  --goose-accent-focus: #6366f1;
+  --goose-accent-drag-line: #6366f1;
+  --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.42);
+}
+
+:root[data-goose-accent="ocean"] {
+  --primary: 217 91% 60%;
+  --ring: 217 91% 60%;
+  --goose-primary-hover-bg: #2563eb;
+  --goose-primary-active-bg: #1d4ed8;
+  --goose-interactive-selected: #dbeafe;
+  --goose-interactive-selected-fg: #2563eb;
+  --goose-icon-chip-on-selected: #eff6ff;
+  --goose-inline-code-bg: #eff6ff;
+  --goose-inline-code-fg: #2563eb;
+  --goose-inline-code-border-hover: #bfdbfe;
+  --goose-callout-accent: #3b82f6;
+  --goose-ai-approval-check-bg: #3b82f6;
+  --goose-accent-link: #2563eb;
+  --goose-accent-link-hover: #1d4ed8;
+  --goose-accent-focus: #3b82f6;
+  --goose-accent-drag-line: #3b82f6;
+  --goose-accent-drag-glow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.dark[data-goose-accent="ocean"] {
+  --primary: 217 91% 60%;
+  --ring: 217 91% 60%;
+  --goose-primary-hover-bg: #2563eb;
+  --goose-primary-active-bg: #1d4ed8;
+  --goose-interactive-selected: rgba(59, 130, 246, 0.2);
+  --goose-interactive-selected-fg: #93c5fd;
+  --goose-icon-chip-on-selected: rgba(59, 130, 246, 0.14);
+  --goose-inline-code-bg: rgba(59, 130, 246, 0.14);
+  --goose-inline-code-fg: #93c5fd;
+  --goose-inline-code-border-hover: #315985;
+  --goose-callout-accent: #3b82f6;
+  --goose-ai-approval-check-bg: #3b82f6;
+  --goose-accent-link: #93c5fd;
+  --goose-accent-link-hover: #bfdbfe;
+  --goose-accent-focus: #3b82f6;
+  --goose-accent-drag-line: #3b82f6;
+  --goose-accent-drag-glow: 0 0 8px rgba(59, 130, 246, 0.42);
+}
+
+:root[data-goose-accent="teal"] {
+  --primary: 175 77% 26%;
+  --ring: 175 77% 26%;
+  --goose-primary-hover-bg: #0f766e;
+  --goose-primary-active-bg: #115e59;
+  --goose-interactive-selected: #ccfbf1;
+  --goose-interactive-selected-fg: #0f766e;
+  --goose-icon-chip-on-selected: #f0fdfa;
+  --goose-inline-code-bg: #f0fdfa;
+  --goose-inline-code-fg: #0f766e;
+  --goose-inline-code-border-hover: #99f6e4;
+  --goose-callout-accent: #0f766e;
+  --goose-ai-approval-check-bg: #0f766e;
+  --goose-accent-link: #0f766e;
+  --goose-accent-link-hover: #115e59;
+  --goose-accent-focus: #0f766e;
+  --goose-accent-drag-line: #0f766e;
+  --goose-accent-drag-glow: 0 0 8px rgba(15, 118, 110, 0.4);
+}
+
+.dark[data-goose-accent="teal"] {
+  --primary: 175 77% 26%;
+  --ring: 175 77% 26%;
+  --goose-primary-hover-bg: #0f766e;
+  --goose-primary-active-bg: #115e59;
+  --goose-interactive-selected: rgba(20, 184, 166, 0.2);
+  --goose-interactive-selected-fg: #5eead4;
+  --goose-icon-chip-on-selected: rgba(20, 184, 166, 0.14);
+  --goose-inline-code-bg: rgba(20, 184, 166, 0.14);
+  --goose-inline-code-fg: #5eead4;
+  --goose-inline-code-border-hover: #285f59;
+  --goose-callout-accent: #0f766e;
+  --goose-ai-approval-check-bg: #0f766e;
+  --goose-accent-link: #5eead4;
+  --goose-accent-link-hover: #99f6e4;
+  --goose-accent-focus: #0f766e;
+  --goose-accent-drag-line: #0f766e;
+  --goose-accent-drag-glow: 0 0 8px rgba(20, 184, 166, 0.42);
+}
+
+:root[data-goose-accent="pine"] {
+  --primary: 142 72% 29%;
+  --ring: 142 72% 29%;
+  --goose-primary-hover-bg: #15803d;
+  --goose-primary-active-bg: #166534;
+  --goose-interactive-selected: #dcfce7;
+  --goose-interactive-selected-fg: #15803d;
+  --goose-icon-chip-on-selected: #f0fdf4;
+  --goose-inline-code-bg: #f0fdf4;
+  --goose-inline-code-fg: #15803d;
+  --goose-inline-code-border-hover: #bbf7d0;
+  --goose-callout-accent: #15803d;
+  --goose-ai-approval-check-bg: #15803d;
+  --goose-accent-link: #15803d;
+  --goose-accent-link-hover: #166534;
+  --goose-accent-focus: #15803d;
+  --goose-accent-drag-line: #15803d;
+  --goose-accent-drag-glow: 0 0 8px rgba(21, 128, 61, 0.4);
+}
+
+.dark[data-goose-accent="pine"] {
+  --primary: 142 72% 29%;
+  --ring: 142 72% 29%;
+  --goose-primary-hover-bg: #15803d;
+  --goose-primary-active-bg: #166534;
+  --goose-interactive-selected: rgba(34, 197, 94, 0.2);
+  --goose-interactive-selected-fg: #86efac;
+  --goose-icon-chip-on-selected: rgba(34, 197, 94, 0.14);
+  --goose-inline-code-bg: rgba(34, 197, 94, 0.14);
+  --goose-inline-code-fg: #86efac;
+  --goose-inline-code-border-hover: #315f40;
+  --goose-callout-accent: #15803d;
+  --goose-ai-approval-check-bg: #15803d;
+  --goose-accent-link: #86efac;
+  --goose-accent-link-hover: #bbf7d0;
+  --goose-accent-focus: #15803d;
+  --goose-accent-drag-line: #15803d;
+  --goose-accent-drag-glow: 0 0 8px rgba(34, 197, 94, 0.42);
+}
+
+:root[data-goose-accent="amber"] {
+  --primary: 26 90% 37%;
+  --ring: 26 90% 37%;
+  --goose-primary-hover-bg: #b45309;
+  --goose-primary-active-bg: #92400e;
+  --goose-interactive-selected: #fef3c7;
+  --goose-interactive-selected-fg: #b45309;
+  --goose-icon-chip-on-selected: #fffbeb;
+  --goose-inline-code-bg: #fffbeb;
+  --goose-inline-code-fg: #b45309;
+  --goose-inline-code-border-hover: #fde68a;
+  --goose-callout-accent: #b45309;
+  --goose-ai-approval-check-bg: #b45309;
+  --goose-accent-link: #b45309;
+  --goose-accent-link-hover: #92400e;
+  --goose-accent-focus: #b45309;
+  --goose-accent-drag-line: #b45309;
+  --goose-accent-drag-glow: 0 0 8px rgba(180, 83, 9, 0.4);
+}
+
+.dark[data-goose-accent="amber"] {
+  --primary: 26 90% 37%;
+  --ring: 26 90% 37%;
+  --goose-primary-hover-bg: #b45309;
+  --goose-primary-active-bg: #92400e;
+  --goose-interactive-selected: rgba(245, 158, 11, 0.2);
+  --goose-interactive-selected-fg: #fbbf24;
+  --goose-icon-chip-on-selected: rgba(245, 158, 11, 0.14);
+  --goose-inline-code-bg: rgba(245, 158, 11, 0.14);
+  --goose-inline-code-fg: #fbbf24;
+  --goose-inline-code-border-hover: #6b5428;
+  --goose-callout-accent: #b45309;
+  --goose-ai-approval-check-bg: #b45309;
+  --goose-accent-link: #fbbf24;
+  --goose-accent-link-hover: #fde68a;
+  --goose-accent-focus: #b45309;
+  --goose-accent-drag-line: #b45309;
+  --goose-accent-drag-glow: 0 0 8px rgba(245, 158, 11, 0.42);
+}
+
+:root[data-goose-accent="coral"] {
+  --primary: 17 87% 40%;
+  --ring: 17 87% 40%;
+  --goose-primary-hover-bg: #c2410c;
+  --goose-primary-active-bg: #9a3412;
+  --goose-interactive-selected: #ffedd5;
+  --goose-interactive-selected-fg: #c2410c;
+  --goose-icon-chip-on-selected: #fff7ed;
+  --goose-inline-code-bg: #fff7ed;
+  --goose-inline-code-fg: #c2410c;
+  --goose-inline-code-border-hover: #fed7aa;
+  --goose-callout-accent: #c2410c;
+  --goose-ai-approval-check-bg: #c2410c;
+  --goose-accent-link: #c2410c;
+  --goose-accent-link-hover: #9a3412;
+  --goose-accent-focus: #c2410c;
+  --goose-accent-drag-line: #c2410c;
+  --goose-accent-drag-glow: 0 0 8px rgba(194, 65, 12, 0.4);
+}
+
+.dark[data-goose-accent="coral"] {
+  --primary: 17 87% 40%;
+  --ring: 17 87% 40%;
+  --goose-primary-hover-bg: #c2410c;
+  --goose-primary-active-bg: #9a3412;
+  --goose-interactive-selected: rgba(249, 115, 22, 0.2);
+  --goose-interactive-selected-fg: #fdba74;
+  --goose-icon-chip-on-selected: rgba(249, 115, 22, 0.14);
+  --goose-inline-code-bg: rgba(249, 115, 22, 0.14);
+  --goose-inline-code-fg: #fdba74;
+  --goose-inline-code-border-hover: #75462b;
+  --goose-callout-accent: #c2410c;
+  --goose-ai-approval-check-bg: #c2410c;
+  --goose-accent-link: #fdba74;
+  --goose-accent-link-hover: #fed7aa;
+  --goose-accent-focus: #c2410c;
+  --goose-accent-drag-line: #c2410c;
+  --goose-accent-drag-glow: 0 0 8px rgba(249, 115, 22, 0.42);
+}
+
+:root[data-goose-accent="rose"] {
+  --primary: 347 77% 41%;
+  --ring: 347 77% 41%;
+  --goose-primary-hover-bg: #be123c;
+  --goose-primary-active-bg: #9f1239;
+  --goose-interactive-selected: #ffe4e6;
+  --goose-interactive-selected-fg: #be123c;
+  --goose-icon-chip-on-selected: #fff1f2;
+  --goose-inline-code-bg: #fff1f2;
+  --goose-inline-code-fg: #be123c;
+  --goose-inline-code-border-hover: #fecdd3;
+  --goose-callout-accent: #be123c;
+  --goose-ai-approval-check-bg: #be123c;
+  --goose-accent-link: #be123c;
+  --goose-accent-link-hover: #9f1239;
+  --goose-accent-focus: #be123c;
+  --goose-accent-drag-line: #be123c;
+  --goose-accent-drag-glow: 0 0 8px rgba(190, 18, 60, 0.4);
+}
+
+.dark[data-goose-accent="rose"] {
+  --primary: 347 77% 41%;
+  --ring: 347 77% 41%;
+  --goose-primary-hover-bg: #be123c;
+  --goose-primary-active-bg: #9f1239;
+  --goose-interactive-selected: rgba(244, 63, 94, 0.2);
+  --goose-interactive-selected-fg: #fda4af;
+  --goose-icon-chip-on-selected: rgba(244, 63, 94, 0.14);
+  --goose-inline-code-bg: rgba(244, 63, 94, 0.14);
+  --goose-inline-code-fg: #fda4af;
+  --goose-inline-code-border-hover: #713643;
+  --goose-callout-accent: #be123c;
+  --goose-ai-approval-check-bg: #be123c;
+  --goose-accent-link: #fda4af;
+  --goose-accent-link-hover: #fecdd3;
+  --goose-accent-focus: #be123c;
+  --goose-accent-drag-line: #be123c;
+  --goose-accent-drag-glow: 0 0 8px rgba(244, 63, 94, 0.42);
+}
+
+:root[data-goose-accent="grape"] {
+  --primary: 272 72% 47%;
+  --ring: 272 72% 47%;
+  --goose-primary-hover-bg: #7e22ce;
+  --goose-primary-active-bg: #6b21a8;
+  --goose-interactive-selected: #f3e8ff;
+  --goose-interactive-selected-fg: #7e22ce;
+  --goose-icon-chip-on-selected: #faf5ff;
+  --goose-inline-code-bg: #faf5ff;
+  --goose-inline-code-fg: #7e22ce;
+  --goose-inline-code-border-hover: #e9d5ff;
+  --goose-callout-accent: #7e22ce;
+  --goose-ai-approval-check-bg: #7e22ce;
+  --goose-accent-link: #7e22ce;
+  --goose-accent-link-hover: #6b21a8;
+  --goose-accent-focus: #7e22ce;
+  --goose-accent-drag-line: #7e22ce;
+  --goose-accent-drag-glow: 0 0 8px rgba(126, 34, 206, 0.4);
+}
+
+.dark[data-goose-accent="grape"] {
+  --primary: 272 72% 47%;
+  --ring: 272 72% 47%;
+  --goose-primary-hover-bg: #7e22ce;
+  --goose-primary-active-bg: #6b21a8;
+  --goose-interactive-selected: rgba(168, 85, 247, 0.2);
+  --goose-interactive-selected-fg: #d8b4fe;
+  --goose-icon-chip-on-selected: rgba(168, 85, 247, 0.14);
+  --goose-inline-code-bg: rgba(168, 85, 247, 0.14);
+  --goose-inline-code-fg: #d8b4fe;
+  --goose-inline-code-border-hover: #69428a;
+  --goose-callout-accent: #7e22ce;
+  --goose-ai-approval-check-bg: #7e22ce;
+  --goose-accent-link: #d8b4fe;
+  --goose-accent-link-hover: #e9d5ff;
+  --goose-accent-focus: #7e22ce;
+  --goose-accent-drag-line: #7e22ce;
+  --goose-accent-drag-glow: 0 0 8px rgba(168, 85, 247, 0.42);
+}
+
+/* 强调色 radio 的状态使用扁平选择器，避免旧 uTools 内核忽略嵌套 hover。 */
+.goose-accent-option:hover {
+  background: var(--goose-accent-option-light-surface) !important;
+}
+
+.goose-accent-option:active {
+  transform: translateY(1px);
+}
+
+.goose-accent-option[data-state="checked"] {
+  background: var(--goose-accent-option-light-surface) !important;
+  color: var(--goose-accent-option-light-fg) !important;
+  box-shadow: inset 0 0 0 1px var(--goose-accent-option-light-fg) !important;
+}
+
+.goose-accent-option:focus-visible {
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px var(--goose-accent-option-light-fg) !important;
+}
+
+.dark .goose-accent-option:hover,
+.dark .goose-accent-option[data-state="checked"] {
+  background: var(--goose-accent-option-dark-surface) !important;
+  color: var(--goose-accent-option-dark-fg) !important;
+}
+
+.dark .goose-accent-option[data-state="checked"] {
+  box-shadow: inset 0 0 0 1px var(--goose-accent-option-dark-fg) !important;
+}
+
+.dark .goose-accent-option:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--goose-accent-option-dark-fg) !important;
+}

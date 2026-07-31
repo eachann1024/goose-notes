@@ -780,10 +780,10 @@ body,
 
 .quicknote-slot-btn:focus-visible {
   outline: none;
-  color: #4f46e5;
+  color: var(--goose-interactive-selected-fg);
   box-shadow:
     0 0 0 2px hsl(var(--goose-editor-bg)),
-    0 0 0 3.5px #6366f1;
+    0 0 0 3.5px var(--goose-accent-focus);
 }
 
 .dark .quicknote-slot-btn[data-active="true"] {
@@ -795,7 +795,7 @@ body,
 }
 
 .dark .quicknote-slot-btn:focus-visible {
-  color: #a5b4fc;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .dark .quicknote-slot-switcher {

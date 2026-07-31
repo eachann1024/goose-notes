@@ -14,6 +14,18 @@ export interface SearchProvider {
   isCustom?: boolean;
 }
 export type Theme = "light" | "dark" | "system";
+export const ACCENT_COLORS = [
+  "iris",
+  "ocean",
+  "teal",
+  "pine",
+  "amber",
+  "coral",
+  "rose",
+  "grape",
+] as const;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+export const DEFAULT_ACCENT_COLOR: AccentColor = "iris";
 
 export type CodeStyle =
   | "default"
@@ -222,6 +234,13 @@ export function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
     return codeStyle;
   }
   return "github";
+}
+
+export function normalizeAccentColor(accentColor: unknown): AccentColor {
+  return typeof accentColor === "string" &&
+    (ACCENT_COLORS as readonly string[]).includes(accentColor)
+    ? (accentColor as AccentColor)
+    : DEFAULT_ACCENT_COLOR;
 }
 
 export function resolveCodeTheme(

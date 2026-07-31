@@ -47,8 +47,8 @@
     hsl(218 22% 52% / 0) 100%
   );
   --workspace-resize-line-glow: none;
-  --workspace-drag-line-color: hsl(var(--primary));
-  --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.4);
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
   --workspace-main-shadow:
     0 0 0 1px rgba(15, 23, 42, 0.03), 0 0 8px rgba(15, 23, 42, 0.05);
   background: hsl(var(--goose-shell-bg));
@@ -76,8 +76,8 @@
     hsl(210 20% 95% / 0) 100%
   );
   --workspace-resize-line-glow: none;
-  --workspace-drag-line-color: hsl(var(--primary));
-  --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.42);
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
   --workspace-main-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 12px rgba(0, 0, 0, 0.32);
 }

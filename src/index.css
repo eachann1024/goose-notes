@@ -15,6 +15,7 @@
 @import "@heroui/styles";
 
 @import "./styles/goose-toast.css";
+@import "./styles/goose-accent-colors.css";
 
 /* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
 @source "../node_modules/streamdown/dist/index.js";
@@ -280,6 +281,11 @@
     --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
     --goose-inline-code-fg: var(--goose-interactive-selected-fg);
     --goose-inline-code-border-hover: #c7d2fe;
+    --goose-accent-link: #4f46e5;
+    --goose-accent-link-hover: #4338ca;
+    --goose-accent-focus: #6366f1;
+    --goose-accent-drag-line: #6366f1;
+    --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.4);
     --goose-editor-bg: 0 0% 100%;
     --goose-nav-title: 0 0% 43%;
     --background: var(--goose-shell-bg);
@@ -361,6 +367,11 @@
     --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
     --goose-inline-code-fg: var(--goose-interactive-selected-fg);
     --goose-inline-code-border-hover: #4b4e81;
+    --goose-accent-link: #a5b4fc;
+    --goose-accent-link-hover: #c7d2fe;
+    --goose-accent-focus: #6366f1;
+    --goose-accent-drag-line: #6366f1;
+    --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.42);
     --goose-editor-bg: 60 2.2% 18%;
     --goose-nav-title: 0 0% 66%;
     --background: var(--goose-shell-bg);
@@ -728,7 +739,12 @@
 
   /* 链接 */
   & a {
-    @apply text-foreground underline underline-offset-2 opacity-80 hover:opacity-100;
+    color: var(--goose-accent-link);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+  & a:hover {
+    color: var(--goose-accent-link-hover);
   }
 
   /* 粗体 / 斜体 */

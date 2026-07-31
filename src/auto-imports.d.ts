@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const ACCENT_COLORS: typeof import('./stores/settings/index').ACCENT_COLORS
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN
@@ -36,6 +37,7 @@ declare global {
   const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
+  const DEFAULT_ACCENT_COLOR: typeof import('./stores/settings/index').DEFAULT_ACCENT_COLOR
   const DEFAULT_APP_SHORTCUTS: typeof import('./stores/settings/index').DEFAULT_APP_SHORTCUTS
   const DEFAULT_CLAUDE_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_CLAUDE_BASE_URL
   const DEFAULT_CLOSE_TAB_SHORTCUT: typeof import('./stores/settings/index').DEFAULT_CLOSE_TAB_SHORTCUT
@@ -166,6 +168,7 @@ declare global {
   const VIDEO_OUTPUT_MIME: typeof import('./lib/videoProcessor').VIDEO_OUTPUT_MIME
   const WELCOME_TAB_PAGE_ID: typeof import('./stores/useTabs').WELCOME_TAB_PAGE_ID
   const activateNotebook: typeof import('./lib/notebookNavigation').activateNotebook
+  const applyAccentColor: typeof import('./lib/accentColor').applyAccentColor
   const applyAppearanceScaleVariables: typeof import('./lib/appearance').applyAppearanceScaleVariables
   const applyBlockTypeTransformToEditor: typeof import('./lib/ai-write/index').applyBlockTypeTransformToEditor
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
@@ -531,7 +534,7 @@ declare global {
   export type { QuickNoteSlot, QuickNoteDrafts, QuickNoteSlotNames } from './stores/useQuickNote'
   import('./stores/useQuickNote')
   // @ts-ignore
-  export type { SettingsState, SearchProvider, Theme, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
+  export type { SettingsState, SearchProvider, Theme, AccentColor, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
   export type { TabType, TabItem } from './stores/useTabs'

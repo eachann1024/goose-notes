@@ -589,7 +589,7 @@ export function EditorComposer({
           <button
             type="button"
             onClick={handleLinkPopoverSubmit}
-            className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]"
           >
             确认
           </button>

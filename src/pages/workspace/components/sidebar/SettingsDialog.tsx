@@ -129,7 +129,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     };
 
     const schedule =
-      typeof window !== "undefined" && typeof window.requestIdleCallback === "function"
+      typeof window !== "undefined" &&
+      typeof window.requestIdleCallback === "function"
         ? () => {
             idleId = window.requestIdleCallback(() => {
               prewarmLocalFolderOpenApps();
@@ -155,6 +156,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const {
     theme,
     setTheme,
+    accentColor,
+    setAccentColor,
     codeStyle,
     setCodeStyle,
     tableEvenColumnWidth,
@@ -214,6 +217,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     useShallow((s) => ({
       theme: s.theme,
       setTheme: s.setTheme,
+      accentColor: s.accentColor,
+      setAccentColor: s.setAccentColor,
       codeStyle: s.codeStyle,
       setCodeStyle: s.setCodeStyle,
       tableEvenColumnWidth: s.tableEvenColumnWidth,
@@ -607,6 +612,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       _hasHydrated: true,
     });
     useSettings.getState().setTheme("system");
+    useSettings.getState().setAccentColor(APPEARANCE_INITIAL_STATE.accentColor);
     useSettings.getState().setCodeStyle("default");
     resetAppsBanner();
   };
@@ -803,6 +809,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <SettingsAppearance
                 theme={theme}
                 setTheme={setTheme}
+                accentColor={accentColor}
+                setAccentColor={setAccentColor}
                 codeStyle={codeStyle}
                 setCodeStyle={setCodeStyle}
                 tableEvenColumnWidth={tableEvenColumnWidth}
