@@ -531,6 +531,7 @@ body,
 
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
 .quicknote-root .page-scroll-container {
+  scrollbar-color: transparent transparent;
   scrollbar-width: thin;
   overflow-x: hidden;
 }
@@ -539,11 +540,19 @@ body,
   height: 0;
 }
 .quicknote-root .page-scroll-container::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.25);
+  background: transparent;
   border-radius: 3px;
 }
+.quicknote-root .page-scroll-container:hover,
+.quicknote-root .page-scroll-container:focus-within {
+  scrollbar-color: rgba(115, 115, 115, 0.28) transparent;
+}
+.quicknote-root .page-scroll-container:hover::-webkit-scrollbar-thumb,
+.quicknote-root .page-scroll-container:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(115, 115, 115, 0.28);
+}
 .quicknote-root .page-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
+  background: rgba(82, 82, 82, 0.45);
 }
 
 /* 说明层受 Radix 计算出的可用高度约束。标题和改名入口固定，正文在矮窗中滚动。 */
