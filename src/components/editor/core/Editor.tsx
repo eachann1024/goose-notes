@@ -322,7 +322,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         ...zh,
         placeholders: {
           ...zh.placeholders,
-          default: "输入 / 或 、来展开菜单...",
+          // 速记小窗打开即可输入，不用长提示抢占空白草稿的视觉焦点。
+          // 常规笔记本仍保留菜单入口提示。
+          default: __GOOSE_LITE__ ? "" : "输入 / 或 、来展开菜单...",
           toggleListItem: "",
         },
         // 空折叠块展开后的提示行（默认「空的切换区。点击添加区块。」太生硬）
