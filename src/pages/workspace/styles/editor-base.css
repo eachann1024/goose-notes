@@ -9,6 +9,28 @@
   line-height: 1.7;
 }
 
+/*
+ * 编辑器上下文 UI 的统一 opt-in。
+ *
+ * 该类只放在定位外壳的内层 surface 上：CSS zoom 会同时缩放排版盒、
+ * 绘制和命中区，外层 fixed/absolute 坐标仍保持在 viewport 坐标系中。
+ * 这比 transform: scale 更适合 Floating UI，也避免覆盖 translate/rotate。
+ */
+.goose-editor-context-ui {
+  zoom: var(--editor-ui-scale, 1);
+}
+
+/* 防御性约束：独立浮层误嵌套时只允许最外层应用一次缩放。 */
+.goose-editor-context-ui .goose-editor-context-ui {
+  zoom: 1;
+}
+
+/* 位于编辑器 DOM/portalElement 内的控件已经继承速记小窗的局部 zoom，
+   因此这里只补常规编辑字号带来的基准比例，避免 quicknote 双重缩放。 */
+.goose-editor-inline-context-ui {
+  zoom: var(--editor-scale, 1);
+}
+
 .goose-blocknote-editor ::selection,
 .bn-editor ::selection {
   background-color: rgba(35, 131, 226, 0.28);

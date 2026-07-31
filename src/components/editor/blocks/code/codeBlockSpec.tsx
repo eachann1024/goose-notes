@@ -2,7 +2,10 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
-import { createHighlightPlugin, type Parser } from "@/components/editor/find/highlightPlugin";
+import {
+  createHighlightPlugin,
+  type Parser,
+} from "@/components/editor/find/highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
 import { Fragment } from "prosemirror-model";
@@ -78,16 +81,9 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   docker: "dockerfile",
 };
 
-const SKIP_HIGHLIGHT_LANGUAGES = new Set([
-  "none",
-]);
+const SKIP_HIGHLIGHT_LANGUAGES = new Set(["none"]);
 
-const AUTO_HIGHLIGHT_LANGUAGES = new Set([
-  "plain",
-  "plaintext",
-  "text",
-  "txt",
-]);
+const AUTO_HIGHLIGHT_LANGUAGES = new Set(["plain", "plaintext", "text", "txt"]);
 
 function normalizeHighlightLanguage(language: string | undefined) {
   const normalized = (language || "text").trim().toLowerCase();
@@ -105,9 +101,13 @@ function createRegexDecorations(
     for (const match of content.matchAll(regex)) {
       if (match.index === undefined || !match[0]) continue;
       decorations.push(
-        Decoration.inline(pos + 1 + match.index, pos + 1 + match.index + match[0].length, {
-          class: className,
-        }),
+        Decoration.inline(
+          pos + 1 + match.index,
+          pos + 1 + match.index + match[0].length,
+          {
+            class: className,
+          },
+        ),
       );
     }
   });
@@ -144,7 +144,8 @@ function createRegexCaptureDecorations(
 const mermaidParser: Parser = ({ content, pos }) =>
   createRegexDecorations(content, pos, [
     {
-      regex: /\b(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|subgraph|end|participant|actor|as|loop|alt|else|opt|par|and|rect|note|over|title|section)\b/g,
+      regex:
+        /\b(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|subgraph|end|participant|actor|as|loop|alt|else|opt|par|and|rect|note|over|title|section)\b/g,
       className: "hljs-keyword",
     },
     {
@@ -157,12 +158,7 @@ const mermaidParser: Parser = ({ content, pos }) =>
     },
   ]);
 
-const SHELL_HIGHLIGHT_LANGUAGES = new Set([
-  "bash",
-  "shell",
-  "sh",
-  "zsh",
-]);
+const SHELL_HIGHLIGHT_LANGUAGES = new Set(["bash", "shell", "sh", "zsh"]);
 
 const shellCommandParser: Parser = ({ content, pos }) =>
   createRegexCaptureDecorations(content, pos, [
@@ -208,7 +204,8 @@ const codeBlockHighlightParser: Parser = (options) => {
 
   try {
     const useLanguage =
-      !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguagesSet.has(language)
+      !AUTO_HIGHLIGHT_LANGUAGES.has(language) &&
+      loadedLanguagesSet.has(language)
         ? language
         : undefined;
 
@@ -256,9 +253,14 @@ const codeBlockTabIndentExtension = createExtension(({ editor }) => ({
       const { block } = editor.getTextCursorPosition();
       if (block.type !== "codeBlock") return;
 
-      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
-        outdent: event.shiftKey,
-      });
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
       editor.updateBlock(block.id, { content: next.text } as any);
 
       event.preventDefault();
@@ -266,10 +268,14 @@ const codeBlockTabIndentExtension = createExtension(({ editor }) => ({
     };
 
     const target = root instanceof Document ? root : dom.ownerDocument;
-    target.addEventListener("keydown", handleKeyDown, { capture: true, signal });
+    target.addEventListener("keydown", handleKeyDown, {
+      capture: true,
+      signal,
+    });
   },
   keyboardShortcuts: {
-    Tab: ({ editor }) => editor.transact((tr) => applyCodeBlockIndentTransaction(tr, false)),
+    Tab: ({ editor }) =>
+      editor.transact((tr) => applyCodeBlockIndentTransaction(tr, false)),
     "Shift-Tab": ({ editor }) =>
       editor.transact((tr) => applyCodeBlockIndentTransaction(tr, true)),
   },
@@ -370,9 +376,15 @@ function getCodeDomSelection() {
   if (!selection || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
   const codeElement =
-    getClosestElement(range.commonAncestorContainer)?.closest<HTMLElement>(".goose-code-content") ??
-    getClosestElement(range.startContainer)?.closest<HTMLElement>(".goose-code-content") ??
-    getClosestElement(range.endContainer)?.closest<HTMLElement>(".goose-code-content");
+    getClosestElement(range.commonAncestorContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    ) ??
+    getClosestElement(range.startContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    ) ??
+    getClosestElement(range.endContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    );
 
   if (!codeElement) return null;
 
@@ -394,19 +406,26 @@ function getCodeDomSelection() {
   return {
     codeElement,
     text: nodeListToCodeText(Array.from(codeElement.childNodes)),
-    start: nodeListToCodeText(Array.from(beforeStart.cloneContents().childNodes)).length,
-    end: nodeListToCodeText(Array.from(beforeEnd.cloneContents().childNodes)).length,
+    start: nodeListToCodeText(
+      Array.from(beforeStart.cloneContents().childNodes),
+    ).length,
+    end: nodeListToCodeText(Array.from(beforeEnd.cloneContents().childNodes))
+      .length,
   };
 }
 
 function isComposingKeyboardEvent(event: KeyboardEvent | React.KeyboardEvent) {
   return Boolean(
     (event as KeyboardEvent).isComposing ||
-      (event as React.KeyboardEvent).nativeEvent?.isComposing,
+    (event as React.KeyboardEvent).nativeEvent?.isComposing,
   );
 }
 
-function setCodeDomSelectionOffsets(codeElement: HTMLElement, start: number, end: number) {
+function setCodeDomSelectionOffsets(
+  codeElement: HTMLElement,
+  start: number,
+  end: number,
+) {
   const selection = window.getSelection();
   if (!selection) return;
 
@@ -480,7 +499,8 @@ function applyCodeBlockIndentTransaction(tr: any, outdent: boolean) {
   const contentStart = $from.start(fromCodeDepth);
   const domSelection = getCodeDomSelection();
   const currentText =
-    domSelection?.text ?? codeBlockNode.textBetween(0, codeBlockNode.content.size, "\n", "\n");
+    domSelection?.text ??
+    codeBlockNode.textBetween(0, codeBlockNode.content.size, "\n", "\n");
   const selectionStart = domSelection?.start ?? $from.pos - contentStart;
   const selectionEnd = domSelection?.end ?? $to.pos - contentStart;
   const next = indentCodeSelection(currentText, selectionStart, selectionEnd, {
@@ -488,7 +508,11 @@ function applyCodeBlockIndentTransaction(tr: any, outdent: boolean) {
   });
   const replacement = codeTextToInlineFragment(tr.doc.type.schema, next.text);
 
-  tr.replaceWith(contentStart, contentStart + codeBlockNode.content.size, replacement);
+  tr.replaceWith(
+    contentStart,
+    contentStart + codeBlockNode.content.size,
+    replacement,
+  );
   tr.setSelection(
     TextSelection.create(
       tr.doc,
@@ -574,7 +598,8 @@ function CodeBlockComponent({
   const language = (block.props.language as string) || "text";
   const wrap = block.props.wrap === true;
   const collapsed = block.props.collapsed === true;
-  const summary = typeof block.props.summary === "string" ? block.props.summary : "";
+  const summary =
+    typeof block.props.summary === "string" ? block.props.summary : "";
   const isEditable = editor.isEditable;
 
   const [isEditingSummary, setIsEditingSummary] = useState(false);
@@ -672,18 +697,30 @@ function CodeBlockComponent({
     const applyTabIndent = (event: KeyboardEvent | React.KeyboardEvent) => {
       if (event.key !== "Tab" || isComposingKeyboardEvent(event)) return;
       const domSelection = getCodeDomSelection();
-      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement)) return;
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement))
+        return;
 
-      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
-        outdent: event.shiftKey,
-      });
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
       event.preventDefault();
       event.stopPropagation();
       editor.updateBlock(block.id, { content: next.text });
       window.requestAnimationFrame(() => {
-        const codeElement = rootRef.current?.querySelector<HTMLElement>(".goose-code-content");
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(
+          ".goose-code-content",
+        );
         if (codeElement) {
-          setCodeDomSelectionOffsets(codeElement, next.selectionStart, next.selectionEnd);
+          setCodeDomSelectionOffsets(
+            codeElement,
+            next.selectionStart,
+            next.selectionEnd,
+          );
         }
       });
       if ("stopImmediatePropagation" in event) {
@@ -709,20 +746,33 @@ function CodeBlockComponent({
 
   const handleCodeKeyDownCapture = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Tab" || isComposingKeyboardEvent(event) || !isEditable) return;
+      if (event.key !== "Tab" || isComposingKeyboardEvent(event) || !isEditable)
+        return;
       const domSelection = getCodeDomSelection();
-      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement)) return;
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement))
+        return;
 
-      const next = indentCodeSelection(domSelection.text, domSelection.start, domSelection.end, {
-        outdent: event.shiftKey,
-      });
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
       event.preventDefault();
       event.stopPropagation();
       editor.updateBlock(block.id, { content: next.text });
       window.requestAnimationFrame(() => {
-        const codeElement = rootRef.current?.querySelector<HTMLElement>(".goose-code-content");
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(
+          ".goose-code-content",
+        );
         if (codeElement) {
-          setCodeDomSelectionOffsets(codeElement, next.selectionStart, next.selectionEnd);
+          setCodeDomSelectionOffsets(
+            codeElement,
+            next.selectionStart,
+            next.selectionEnd,
+          );
         }
       });
     },
@@ -739,23 +789,32 @@ function CodeBlockComponent({
           theme === "dark" ||
           (theme === "system" &&
             window.matchMedia("(prefers-color-scheme: dark)").matches);
-        const svg = await renderMermaidSvgForExport(text, isDark ? "dark" : "light");
+        const svg = await renderMermaidSvgForExport(
+          text,
+          isDark ? "dark" : "light",
+        );
         downloadTextFile(svg, "mermaid.svg", "image/svg+xml;charset=utf-8");
         return;
       } catch {}
     }
 
-    downloadTextFile(text, language === "math" ? "formula.tex" : "code.txt", "text/plain;charset=utf-8");
+    downloadTextFile(
+      text,
+      language === "math" ? "formula.tex" : "code.txt",
+      "text/plain;charset=utf-8",
+    );
   }, [getCodeContent, language, theme]);
 
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
   // 紧凑编辑器构建不渲染 math/mermaid 预览，退化为可编辑源码。
   const isMathOrMermaid =
-    !__GOOSE_EDITOR_COMPACT__ && (language === "math" || language === "mermaid");
+    !__GOOSE_EDITOR_COMPACT__ &&
+    (language === "math" || language === "mermaid");
   const canPreview = isMathOrMermaid && textContent.trim().length > 0;
   const shouldShowPreview = canPreview && previewMode === "preview";
-  const shouldShowSource = !isMathOrMermaid || previewMode === "code" || !canPreview;
+  const shouldShowSource =
+    !isMathOrMermaid || previewMode === "code" || !canPreview;
   const showLineNumbers = !isMathOrMermaid && !wrap;
   const visualTitle = language === "math" ? "Math" : "Mermaid";
 
@@ -791,7 +850,10 @@ function CodeBlockComponent({
       onKeyDownCapture={handleCodeKeyDownCapture}
     >
       {/* Toolbar row */}
-      <div className="goose-code-toolbar-row" contentEditable={false}>
+      <div
+        className="goose-editor-inline-context-ui goose-code-toolbar-row"
+        contentEditable={false}
+      >
         <div className="goose-code-toolbar-left flex items-center gap-0.5 min-w-0 flex-1">
           {isMathOrMermaid ? (
             <div className="goose-code-visual-title">{visualTitle}</div>
@@ -904,7 +966,15 @@ function CodeBlockComponent({
             <code
               ref={contentRef}
               className="goose-code-content hljs"
-              style={wrap ? { whiteSpace: "break-spaces", wordBreak: "break-word", overflowWrap: "anywhere" } : undefined}
+              style={
+                wrap
+                  ? {
+                      whiteSpace: "break-spaces",
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere",
+                    }
+                  : undefined
+              }
             />
           </pre>
           {shouldShowPreview && (
@@ -914,7 +984,9 @@ function CodeBlockComponent({
               className="goose-code-preview select-none cursor-pointer bg-transparent"
               onDoubleClick={() => setIsPreviewLightboxOpen(true)}
             >
-              {language === "math" && <MathView value={textContent} displayMode={true} />}
+              {language === "math" && (
+                <MathView value={textContent} displayMode={true} />
+              )}
               {language === "mermaid" && <MermaidView value={textContent} />}
             </div>
           )}
@@ -965,8 +1037,12 @@ function CodeBlockComponent({
                       onClick={() => setShowLatexHint(false)}
                       className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)]"
                     >
-                      <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
-                      <code className="text-[11px] font-mono text-foreground break-all">{s.code}</code>
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {s.label}
+                      </span>
+                      <code className="text-[11px] font-mono text-foreground break-all">
+                        {s.code}
+                      </code>
                     </button>
                   ))}
                 </div>
@@ -993,7 +1069,11 @@ export const codeBlockSpec = createReactBlockSpec(
   },
   {
     render: ({ block, contentRef, editor }) => (
-      <CodeBlockComponent block={block} contentRef={contentRef} editor={editor} />
+      <CodeBlockComponent
+        block={block}
+        contentRef={contentRef}
+        editor={editor}
+      />
     ),
     // 粘贴/导入识别 <pre><code> → 还原为代码块(否则自定义 spec 覆盖了默认 codeBlock 的
     // 解析规则,从网页/富文本复制的代码块会因无 parse 而降级成普通段落)。
@@ -1016,7 +1096,8 @@ export const codeBlockSpec = createReactBlockSpec(
         if (m) language = m[1];
       }
       const normalized = language
-        ? LANGUAGE_ALIASES[language.trim().toLowerCase()] ?? language.trim().toLowerCase()
+        ? (LANGUAGE_ALIASES[language.trim().toLowerCase()] ??
+          language.trim().toLowerCase())
         : "text";
       return { language: normalized };
     },
@@ -1024,7 +1105,10 @@ export const codeBlockSpec = createReactBlockSpec(
       const lang = (block.props?.language || "text").trim();
       return (
         <pre>
-          <code ref={contentRef} className={lang ? `language-${lang}` : undefined} />
+          <code
+            ref={contentRef}
+            className={lang ? `language-${lang}` : undefined}
+          />
         </pre>
       );
     },

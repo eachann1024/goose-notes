@@ -22,7 +22,8 @@ const altKeyLabel = isMac ? "⌥" : "Alt";
 /** 把手与正文左缘的间距（px） */
 const SIDE_MENU_CONTENT_GAP = 6;
 const SIDEBAR_INTERACTION_SELECTOR = ".workspace-sidebar-pane, .rct-main-tree";
-const SIDEBAR_HOVER_SELECTOR = ".workspace-sidebar-pane:hover, .rct-main-tree:hover";
+const SIDEBAR_HOVER_SELECTOR =
+  ".workspace-sidebar-pane:hover, .rct-main-tree:hover";
 
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
@@ -47,14 +48,17 @@ export function EditorSideMenu() {
   // 折叠标题的折叠箭头悬挂在内容左缘外侧，与 side menu(+/拖拽把手)同列重叠
   // （留白消不掉，因二者同锚内容左缘、向同侧展开）。折叠标题整块不显示 side menu，
   // 加块/拖拽改走其它入口。toggleListItem 箭头是行内 marker、不重叠，不受影响。
-  const headingProps = (block as { props?: { isToggleable?: boolean; n?: boolean } })
-    ?.props;
+  const headingProps = (
+    block as { props?: { isToggleable?: boolean; n?: boolean } }
+  )?.props;
   const isToggleableHeading =
     block?.type === "heading" &&
     Boolean(headingProps?.isToggleable ?? headingProps?.n);
 
   useEffect(() => {
-    const updateSidebarInteracting = (target: EventTarget | null = document.activeElement) => {
+    const updateSidebarInteracting = (
+      target: EventTarget | null = document.activeElement,
+    ) => {
       const element = target instanceof Element ? target : null;
       const activeElement = document.activeElement;
       const next =
@@ -146,20 +150,17 @@ export function EditorSideMenu() {
   return createPortal(
     <div
       className={cn(
-        "bn-side-menu fixed z-[70] flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1",
-        "shadow-[0_1px_2px_hsl(var(--foreground)/0.05),0_8px_22px_hsl(var(--foreground)/0.06)]",
+        "bn-side-menu fixed z-[70]",
         "transition-[opacity,transform] duration-150 ease-out",
-        "dark:border-white/12 dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)]",
         "[body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none",
       )}
       style={{
         top,
         left: anchorLeft,
         opacity: 1,
-        // 与 Cmd +/- 调整的编辑器字号保持同一缩放比例；以正文侧为锚点，
-        // 避免把手缩放后与当前 block 的间距和垂直中心发生漂移。
-        transform:
-          "translate(-100%, -50%) scale(var(--editor-scale, 1))",
+        // 缩放由 goose-editor-context-ui 统一处理；此处只保留定位平移，
+        // 避免与缩放契约叠加 transform。
+        transform: "translate(-100%, -50%)",
         transformOrigin: "right center",
         pointerEvents: "auto",
       }}
@@ -177,52 +178,54 @@ export function EditorSideMenu() {
         e.stopPropagation();
       }}
     >
-      <TooltipProvider delayDuration={600} disableHoverableContent>
-        <Tooltip
-          open={addTipOpen && shouldShow && !isDragging}
-          onOpenChange={setAddTipOpen}
+      <div className="goose-editor-inline-context-ui flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1 shadow-[0_1px_2px_hsl(var(--foreground)/0.05),0_8px_22px_hsl(var(--foreground)/0.06)] dark:border-white/12 dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)]">
+        <TooltipProvider delayDuration={600} disableHoverableContent>
+          <Tooltip
+            open={addTipOpen && shouldShow && !isDragging}
+            onOpenChange={setAddTipOpen}
+          >
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleAdd}
+                className={cn(
+                  "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
+                  "transition-colors hover:bg-muted/80 hover:text-foreground",
+                )}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent editorContext side="bottom" align="start">
+              <div className="flex flex-col gap-1 whitespace-nowrap">
+                <span>
+                  <span className="text-[hsl(var(--foreground))]">点击</span>{" "}
+                  在下方添加块
+                </span>
+                <span>
+                  <span className="text-[hsl(var(--foreground))]">
+                    {altKeyLabel} 点击
+                  </span>{" "}
+                  在上方添加块
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <button
+          type="button"
+          draggable
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className={cn(
+            "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
+            "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
+            "transition-colors hover:bg-muted/80 hover:text-foreground active:cursor-grabbing",
+          )}
         >
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={handleAdd}
-              className={cn(
-                "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
-                "transition-colors hover:bg-muted/80 hover:text-foreground",
-              )}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start">
-            <div className="flex flex-col gap-1 whitespace-nowrap">
-              <span>
-                <span className="text-[hsl(var(--foreground))]">点击</span>{" "}
-                在下方添加块
-              </span>
-              <span>
-                <span className="text-[hsl(var(--foreground))]">
-                  {altKeyLabel} 点击
-                </span>{" "}
-                在上方添加块
-              </span>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <button
-        type="button"
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        className={cn(
-          "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
-          "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
-          "transition-colors hover:bg-muted/80 hover:text-foreground active:cursor-grabbing",
-        )}
-      >
-        <GripVertical className="h-3.5 w-3.5" />
-      </button>
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>,
     portalTarget,
   );

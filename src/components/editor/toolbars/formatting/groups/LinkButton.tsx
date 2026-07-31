@@ -96,6 +96,7 @@ export function LinkButton({
       <PopoverContent
         align="center"
         side="top"
+        editorContext
         className="w-72 p-2"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >

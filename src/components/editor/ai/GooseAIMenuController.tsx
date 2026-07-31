@@ -7,13 +7,7 @@ import {
   useExtensionState,
   type FloatingUIOptions,
 } from "@blocknote/react";
-import {
-  autoUpdate,
-  flip,
-  offset,
-  shift,
-  size,
-} from "@floating-ui/react";
+import { autoUpdate, flip, offset, shift, size } from "@floating-ui/react";
 import { AIExtension, AIMenu, type AIMenuProps } from "@blocknote/xl-ai";
 import { TextSelection } from "prosemirror-state";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
@@ -160,13 +154,18 @@ export function GooseAIMenuController({
       },
       focusManagerProps: {
         disabled: false,
-        getInsideElements: () =>
-          editor.domElement ? [editor.domElement] : [],
+        getInsideElements: () => (editor.domElement ? [editor.domElement] : []),
       },
     };
   }, [ai, aiMenuState, blockId, editor.domElement, open, selection]);
 
-  const content = open ? <Component /> : null;
+  // GenericPopover 的外层负责 viewport 定位；缩放只放在内层 surface，
+  // 避免 CSS zoom 同时放大 Floating UI 计算出的 fixed 坐标。
+  const content = open ? (
+    <div className="goose-editor-context-ui bn-root bn-mantine">
+      <Component />
+    </div>
+  ) : null;
 
   if (selection) {
     return (
@@ -181,11 +180,7 @@ export function GooseAIMenuController({
   }
 
   return (
-    <BlockPopover
-      blockId={blockId}
-      portalElement={null}
-      {...floatingUIOptions}
-    >
+    <BlockPopover blockId={blockId} portalElement={null} {...floatingUIOptions}>
       {content}
     </BlockPopover>
   );

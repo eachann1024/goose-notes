@@ -18,6 +18,7 @@ import {
 } from "@floating-ui/react";
 import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import {
   Tooltip,
   TooltipContent,
@@ -94,7 +95,7 @@ export function ImageToolbar({
     boundary: floatingBoundary ?? undefined,
     padding: 8,
   };
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, update } = useFloating({
     open: usesFloatingPosition,
     strategy: "fixed",
     placement: "top",
@@ -125,12 +126,19 @@ export function ImageToolbar({
     });
   }, [floatingBoundary, getReferenceRect, refs, selectedImage.rect]);
 
+  useEffect(() => {
+    if (!usesFloatingPosition) return;
+    window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+    return () =>
+      window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+  }, [update, usesFloatingPosition]);
+
   const toolbar = (
     <TooltipProvider delayDuration={400} skipDelayDuration={100}>
       <div
         ref={usesFloatingPosition ? refs.setFloating : undefined}
         data-goose-image-toolbar
-        className="fixed z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]"
+        className="fixed z-[20000]"
         style={
           usesFloatingPosition
             ? floatingStyles
@@ -148,41 +156,51 @@ export function ImageToolbar({
         role="toolbar"
         aria-label="图片操作"
       >
-        {(
-          [
-            ["left", "左对齐", AlignLeft],
-            ["center", "居中对齐", AlignCenter],
-            ["right", "右对齐", AlignRight],
-          ] as const
-        ).map(([alignment, label, Icon]) => (
-          <ImageToolButton
-            key={alignment}
-            label={label}
-            pressed={selectedImage.alignment === alignment}
-            onClick={() => applyImageAlignment(alignment)}
-            className={
-              selectedImage.alignment === alignment
-                ? usesFloatingPosition
-                  ? "goose-toolbar-control-active"
-                  : "bg-accent text-foreground"
-                : undefined
-            }
-          >
-            <Icon className="h-[15px] w-[15px]" />
+        <div
+          className={cn(
+            "flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]",
+            usesFloatingPosition && "goose-editor-context-ui",
+          )}
+        >
+          {(
+            [
+              ["left", "左对齐", AlignLeft],
+              ["center", "居中对齐", AlignCenter],
+              ["right", "右对齐", AlignRight],
+            ] as const
+          ).map(([alignment, label, Icon]) => (
+            <ImageToolButton
+              key={alignment}
+              label={label}
+              pressed={selectedImage.alignment === alignment}
+              onClick={() => applyImageAlignment(alignment)}
+              className={
+                selectedImage.alignment === alignment
+                  ? usesFloatingPosition
+                    ? "goose-toolbar-control-active"
+                    : "bg-accent text-foreground"
+                  : undefined
+              }
+            >
+              <Icon className="h-[15px] w-[15px]" />
+            </ImageToolButton>
+          ))}
+
+          <div className="mx-0.5 h-5 w-px bg-border/70" />
+
+          <ImageToolButton label="放大图片" onClick={handleSelectedImageZoom}>
+            <Maximize2 className="h-[15px] w-[15px]" />
           </ImageToolButton>
-        ))}
-
-        <div className="mx-0.5 h-5 w-px bg-border/70" />
-
-        <ImageToolButton label="放大图片" onClick={handleSelectedImageZoom}>
-          <Maximize2 className="h-[15px] w-[15px]" />
-        </ImageToolButton>
-        <ImageToolButton label="复制图片" onClick={handleSelectedImageCopy}>
-          <Copy className="h-[15px] w-[15px]" />
-        </ImageToolButton>
-        <ImageToolButton label="下载图片" onClick={handleSelectedImageDownload}>
-          <Download className="h-[15px] w-[15px]" />
-        </ImageToolButton>
+          <ImageToolButton label="复制图片" onClick={handleSelectedImageCopy}>
+            <Copy className="h-[15px] w-[15px]" />
+          </ImageToolButton>
+          <ImageToolButton
+            label="下载图片"
+            onClick={handleSelectedImageDownload}
+          >
+            <Download className="h-[15px] w-[15px]" />
+          </ImageToolButton>
+        </div>
       </div>
     </TooltipProvider>
   );

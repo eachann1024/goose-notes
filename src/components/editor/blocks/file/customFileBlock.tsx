@@ -91,7 +91,7 @@ function CustomFileBlockContent({
         handleRenameCancel();
       }
     },
-    [handleRenameCommit, handleRenameCancel]
+    [handleRenameCommit, handleRenameCancel],
   );
 
   if (showLoader) {
@@ -137,7 +137,7 @@ function CustomFileBlockContent({
           <span className="goose-file-block-name">{block.props.name}</span>
         )}
       </div>
-      <div className="goose-file-block-actions">
+      <div className="goose-editor-inline-context-ui goose-file-block-actions">
         <button
           type="button"
           className="goose-file-block-action-btn"
@@ -171,7 +171,9 @@ export const customFileBlock = createReactBlockSpec(createFileBlockConfig(), {
   meta: {
     fileBlockAccept: ["*/*"],
   },
-  render: (props) => <CustomFileBlockContent block={props.block} editor={props.editor} />,
+  render: (props) => (
+    <CustomFileBlockContent block={props.block} editor={props.editor} />
+  ),
   parse: fileParse(),
   toExternalHTML: ({ block }) => {
     if (!block.props.url) {

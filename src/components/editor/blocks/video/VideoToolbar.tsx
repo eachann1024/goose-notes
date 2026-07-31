@@ -68,13 +68,21 @@ export function VideoToolbar({
   onDownload,
   onDelete,
 }: VideoToolbarProps) {
+  const parsedScale = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--editor-ui-scale",
+    ),
+  );
+  const uiScale =
+    Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
+
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={100}>
       <div
         data-goose-video-toolbar
-        className="fixed z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]"
+        className="fixed z-[20000]"
         style={{
-          top: Math.max(8, rect.top - 42),
+          top: Math.max(8, rect.top - 42 * uiScale),
           left: rect.left + rect.width / 2,
           transform: "translateX(-50%)",
         }}
@@ -86,45 +94,47 @@ export function VideoToolbar({
         role="toolbar"
         aria-label="视频操作"
       >
-        {editable &&
-          (
-            [
-              ["left", "左对齐", AlignLeft],
-              ["center", "居中对齐", AlignCenter],
-              ["right", "右对齐", AlignRight],
-            ] as const
-          ).map(([value, label, Icon]) => (
-            <VideoToolButton
-              key={value}
-              label={label}
-              onClick={() => onAlign(value)}
-              className={
-                alignment === value ? "bg-accent text-foreground" : undefined
-              }
-            >
-              <Icon className="h-[15px] w-[15px]" />
+        <div className="goose-editor-context-ui flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]">
+          {editable &&
+            (
+              [
+                ["left", "左对齐", AlignLeft],
+                ["center", "居中对齐", AlignCenter],
+                ["right", "右对齐", AlignRight],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <VideoToolButton
+                key={value}
+                label={label}
+                onClick={() => onAlign(value)}
+                className={
+                  alignment === value ? "bg-accent text-foreground" : undefined
+                }
+              >
+                <Icon className="h-[15px] w-[15px]" />
+              </VideoToolButton>
+            ))}
+
+          {editable && <div className="mx-0.5 h-5 w-px bg-border/70" />}
+
+          {editable && (
+            <VideoToolButton label="更换视频" onClick={onReplace}>
+              <RefreshCw className="h-[15px] w-[15px]" />
             </VideoToolButton>
-          ))}
-
-        {editable && <div className="mx-0.5 h-5 w-px bg-border/70" />}
-
-        {editable && (
-          <VideoToolButton label="更换视频" onClick={onReplace}>
-            <RefreshCw className="h-[15px] w-[15px]" />
+          )}
+          <VideoToolButton label="下载视频" onClick={onDownload}>
+            <Download className="h-[15px] w-[15px]" />
           </VideoToolButton>
-        )}
-        <VideoToolButton label="下载视频" onClick={onDownload}>
-          <Download className="h-[15px] w-[15px]" />
-        </VideoToolButton>
-        {editable && (
-          <VideoToolButton
-            label="删除视频"
-            onClick={onDelete}
-            className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
-          >
-            <Trash2 className="h-[15px] w-[15px]" />
-          </VideoToolButton>
-        )}
+          {editable && (
+            <VideoToolButton
+              label="删除视频"
+              onClick={onDelete}
+              className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+            >
+              <Trash2 className="h-[15px] w-[15px]" />
+            </VideoToolButton>
+          )}
+        </div>
       </div>
     </TooltipProvider>
   );

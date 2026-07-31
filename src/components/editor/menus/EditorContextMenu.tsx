@@ -13,10 +13,16 @@ import {
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportSelectionToImage } from "@/lib/imageExport";
-import { extractBlockNoteTitle, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import {
+  extractBlockNoteTitle,
+  type BlockNoteContent,
+} from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
-import { looksLikeMarkdownFragment, normalizeMarkdownPasteText } from "@/components/editor/utils/clipboard";
+import {
+  looksLikeMarkdownFragment,
+  normalizeMarkdownPasteText,
+} from "@/components/editor/utils/clipboard";
 import { cn, formatShortcut } from "@/lib/utils";
 
 // 展示型块在这些类型上右键无意义，阻断编辑器右键菜单（含浏览器默认菜单）
@@ -50,8 +56,12 @@ interface EditorContextMenuProps {
   page: any;
   editorContainerRef: React.RefObject<HTMLDivElement | null>;
   handleEditorBlankMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
-  handleEditorPasteCapture: (event: React.ClipboardEvent<HTMLDivElement>) => void;
-  handleEditorKeyDownCapture?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  handleEditorPasteCapture: (
+    event: React.ClipboardEvent<HTMLDivElement>,
+  ) => void;
+  handleEditorKeyDownCapture?: (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => void;
   searchProviders: any[];
   customActions: any[];
   effectiveTheme: "light" | "dark";
@@ -87,7 +97,11 @@ export function EditorContextMenu({
     [searchProviders],
   );
   const enabledCustomActions = useMemo(
-    () => customActions.filter((action) => action.isEnabled && action.name.trim() && action.command.trim()),
+    () =>
+      customActions.filter(
+        (action) =>
+          action.isEnabled && action.name.trim() && action.command.trim(),
+      ),
     [customActions],
   );
 
@@ -95,11 +109,15 @@ export function EditorContextMenu({
     let text = "";
     try {
       text = editor.getSelectedText() || "";
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     if (!text.trim()) {
       try {
         text = document.getSelection()?.toString() || "";
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     const trimmedText = text.trim();
     setSelectedText(trimmedText);
@@ -112,7 +130,10 @@ export function EditorContextMenu({
         const $from = pmSel.$from;
         let inBlock = false;
         for (let d = $from.depth; d > 0; d--) {
-          if ($from.node(d).type.name === "blockContainer") { inBlock = true; break; }
+          if ($from.node(d).type.name === "blockContainer") {
+            inBlock = true;
+            break;
+          }
         }
         if (inBlock) {
           const selected = editor.getSelection();
@@ -120,7 +141,9 @@ export function EditorContextMenu({
             blocks = selected.blocks as BlockNoteContent;
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       if (blocks.length <= 1) {
         blocks = [];
       }
@@ -132,7 +155,9 @@ export function EditorContextMenu({
   const handleContextPaste = useCallback(async () => {
     if (!editable) return;
     try {
-      const text = normalizeMarkdownPasteText(await navigator.clipboard.readText());
+      const text = normalizeMarkdownPasteText(
+        await navigator.clipboard.readText(),
+      );
       if (!text) return;
       if (looksLikeMarkdownFragment(text)) {
         editor.pasteMarkdown(text);
@@ -159,7 +184,10 @@ export function EditorContextMenu({
     });
   }, [editable, editor, platform]);
 
-  const handleSelectionThemeConfirm = (themeId: CardThemeId, watermarkConfig: WatermarkConfig) => {
+  const handleSelectionThemeConfirm = (
+    themeId: CardThemeId,
+    watermarkConfig: WatermarkConfig,
+  ) => {
     const blocks = selectedBlocksRef.current;
     if (!Array.isArray(blocks) || blocks.length === 0) return;
     const title = extractBlockNoteTitle(page?.content) || "选中内容";
@@ -168,7 +196,11 @@ export function EditorContextMenu({
 
   return (
     <>
-      <ContextMenu onOpenChange={(open) => { if (open) handleContextMenuOpen(); }}>
+      <ContextMenu
+        onOpenChange={(open) => {
+          if (open) handleContextMenuOpen();
+        }}
+      >
         <ContextMenuTrigger asChild>
           <div
             ref={editorContainerRef}
@@ -192,11 +224,16 @@ export function EditorContextMenu({
             {children}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-[180px]">
+        <ContextMenuContent editorContext className="w-[180px]">
           {selectedText && activeSearchProviders.length > 0 && (
             <>
-              <ContextMenuItem disabled className="max-w-[168px] truncate text-xs text-muted-foreground">
-                {selectedText.length > 20 ? `${selectedText.slice(0, 20)}...` : selectedText}
+              <ContextMenuItem
+                disabled
+                className="max-w-[168px] truncate text-xs text-muted-foreground"
+              >
+                {selectedText.length > 20
+                  ? `${selectedText.slice(0, 20)}...`
+                  : selectedText}
               </ContextMenuItem>
               <ContextMenuSeparator />
               {activeSearchProviders.map((provider) => (
@@ -210,8 +247,8 @@ export function EditorContextMenu({
                     void platform.shell.openUrl(url, openLinksInHost);
                   }}
                 >
-                  <LucideIcons.Search className="mr-2 h-4 w-4" />
-                  用 {provider.name} 搜索
+                  <LucideIcons.Search className="mr-2 h-4 w-4" />用{" "}
+                  {provider.name} 搜索
                 </ContextMenuItem>
               ))}
               <ContextMenuSeparator />
@@ -224,13 +261,16 @@ export function EditorContextMenu({
                   <LucideIcons.Zap className="mr-2 h-4 w-4" />
                   快捷动作
                 </ContextMenuSubTrigger>
-                <ContextMenuSubContent>
+                <ContextMenuSubContent editorContext>
                   {enabledCustomActions.map((action) => (
                     <ContextMenuItem
                       key={action.id}
                       onSelect={() => {
                         const label = action.pluginName
-                          ? [action.pluginName, action.command] as [string, string]
+                          ? ([action.pluginName, action.command] as [
+                              string,
+                              string,
+                            ])
                           : action.command;
                         redirectAction?.(label, selectedText);
                       }}
@@ -250,7 +290,9 @@ export function EditorContextMenu({
             >
               <LucideIcons.Scissors className="mr-2 h-4 w-4" />
               剪切
-              <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+X")}</span>
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
+                {formatShortcut("Mod+X")}
+              </span>
             </ContextMenuItem>
           )}
           <ContextMenuItem
@@ -259,15 +301,17 @@ export function EditorContextMenu({
           >
             <LucideIcons.Copy className="mr-2 h-4 w-4" />
             拷贝
-            <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+C")}</span>
+            <span className="ml-auto text-xs tracking-widest text-muted-foreground">
+              {formatShortcut("Mod+C")}
+            </span>
           </ContextMenuItem>
           {editable && (
-            <ContextMenuItem
-              onSelect={handleContextPaste}
-            >
+            <ContextMenuItem onSelect={handleContextPaste}>
               <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
               粘贴
-              <span className="ml-auto text-xs tracking-widest text-muted-foreground">{formatShortcut("Mod+V")}</span>
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
+                {formatShortcut("Mod+V")}
+              </span>
             </ContextMenuItem>
           )}
           {selectedBlocks.length > 0 && (

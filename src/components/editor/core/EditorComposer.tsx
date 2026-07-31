@@ -48,6 +48,7 @@ import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkT
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
 import { isPrimaryLinkShortcutEvent } from "@/components/editor/extensions/linkKeyboardExtension";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { useSettings } from "@/stores/useSettings";
 
 // Sub-component and modular utility imports
@@ -405,10 +406,27 @@ export function EditorComposer({
             ...overflowOptions,
             apply({ availableWidth, elements }) {
               // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
-              // Floating UI 外壳只负责宽度约束；滚动由工具栏内部行承接。
+              // Floating UI 外壳使用 viewport 像素；内层 surface 使用 CSS zoom，
+              // 因此其布局宽度必须除以有效比例，绘制后的宽度才不会越过边界。
               // 旧 uTools 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
-              elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+              const parsedScale = Number.parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--editor-ui-scale",
+                ),
+              );
+              const uiScale =
+                Number.isFinite(parsedScale) && parsedScale > 0
+                  ? parsedScale
+                  : 1;
+              const safeAvailableWidth = Math.max(0, availableWidth);
+              elements.floating.style.maxWidth = `${safeAvailableWidth}px`;
               elements.floating.style.overflowX = "visible";
+              const toolbar = elements.floating.querySelector<HTMLElement>(
+                "[data-formatting-toolbar]",
+              );
+              if (toolbar) {
+                toolbar.style.maxWidth = `${safeAvailableWidth / uiScale}px`;
+              }
             },
           }),
           // 最后一层硬约束：工具栏必须完整留在编辑区/视口交集内，且不与
@@ -419,9 +437,14 @@ export function EditorComposer({
         // ProseMirror 的 from/to；逐帧检测可在同一帧布局完成后立即刷新位置。
         // 同时覆盖滚动、缩放、窗口变化和工具栏自身尺寸变化。
         whileElementsMounted(reference, floating, update) {
-          return floatingAutoUpdate(reference, floating, update, {
+          const cleanup = floatingAutoUpdate(reference, floating, update, {
             animationFrame: true,
           });
+          window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+          return () => {
+            window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+            cleanup();
+          };
         },
       },
     };
@@ -567,32 +590,34 @@ export function EditorComposer({
       {linkPopoverOpen && (
         <div
           ref={linkPopoverRef}
-          className="absolute z-[20020] flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+          className="absolute z-[20020]"
           style={{ top: 8, left: "50%", transform: "translateX(-50%)" }}
         >
-          <input
-            value={linkPopoverUrl}
-            onChange={(e) => setLinkPopoverUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleLinkPopoverSubmit();
-              }
-              if (e.key === "Escape") {
-                setLinkPopoverOpen(false);
-              }
-            }}
-            placeholder="https://..."
-            autoFocus
-            className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-          />
-          <button
-            type="button"
-            onClick={handleLinkPopoverSubmit}
-            className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]"
-          >
-            确认
-          </button>
+          <div className="goose-editor-inline-context-ui flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]">
+            <input
+              value={linkPopoverUrl}
+              onChange={(e) => setLinkPopoverUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleLinkPopoverSubmit();
+                }
+                if (e.key === "Escape") {
+                  setLinkPopoverOpen(false);
+                }
+              }}
+              placeholder="https://..."
+              autoFocus
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            />
+            <button
+              type="button"
+              onClick={handleLinkPopoverSubmit}
+              className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]"
+            >
+              确认
+            </button>
+          </div>
         </div>
       )}
       <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />

@@ -44,6 +44,7 @@
   :root {
     --editor-font-size: var(--type-body);
     --editor-scale: 1;
+    --editor-ui-scale: 1;
     --editor-module-sm-font-size: calc(14px * var(--editor-scale));
     --editor-module-xs-font-size: calc(12px * var(--editor-scale));
     --editor-module-2xs-font-size: calc(11px * var(--editor-scale));

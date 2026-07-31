@@ -22,7 +22,11 @@ async function captureImage(
     const echarts = await import("echarts");
     const instance = echarts.getInstanceByDom(el);
     if (instance) {
-      return instance.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "transparent" });
+      return instance.getDataURL({
+        type: "png",
+        pixelRatio: 2,
+        backgroundColor: "transparent",
+      });
     }
   }
   return toPng(el, { pixelRatio: 2 });
@@ -35,7 +39,8 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
 
     const capture = useCallback(async () => {
       if (onCapture) return onCapture();
-      if (!targetRef?.current || !blockType) throw new Error("No capture method available");
+      if (!targetRef?.current || !blockType)
+        throw new Error("No capture method available");
       return captureImage(targetRef.current, blockType);
     }, [onCapture, targetRef, blockType]);
 
@@ -95,7 +100,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
     }, [capture, onCapture, targetRef]);
 
     return (
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[9999] pointer-events-none">
+      <div className="goose-editor-inline-context-ui absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[9999] pointer-events-none">
         <button
           type="button"
           onClick={handleCopy}

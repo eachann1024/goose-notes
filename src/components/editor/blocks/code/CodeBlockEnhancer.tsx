@@ -9,6 +9,7 @@ import {
 import { createPortal } from "react-dom";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 
 type CodeBlockEntry = {
   id: string;
@@ -36,6 +37,13 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
   );
 
   const rect = entry.element.getBoundingClientRect();
+  const parsedScale = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--editor-ui-scale",
+    ),
+  );
+  const uiScale =
+    Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
   const codeEl = entry.element.querySelector("code") as HTMLElement | null;
   const language = entry.block.props?.language || "text";
 
@@ -85,21 +93,23 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
       className="goose-code-floating-toolbar fixed z-[45] transition-[opacity,transform] duration-150 ease-out"
       contentEditable={false}
       style={{
-        top: Math.max(8, rect.top + 6),
-        left: Math.max(8, rect.right - 8),
+        top: Math.max(8, rect.top + 6 * uiScale),
+        left: Math.max(8, rect.right - 8 * uiScale),
         transform: "translateX(-100%)",
         animation: "fade-scale-in 150ms ease-out",
       }}
     >
-      <CodeBlockToolbar
-        language={language}
-        onLanguageChange={handleLanguageChange}
-        getCodeContent={getCodeContent}
-        onFormat={handleFormat}
-        wrap={wrap}
-        onWrapChange={handleWrapChange}
-        editable={editor.isEditable}
-      />
+      <div className="goose-editor-context-ui">
+        <CodeBlockToolbar
+          language={language}
+          onLanguageChange={handleLanguageChange}
+          getCodeContent={getCodeContent}
+          onFormat={handleFormat}
+          wrap={wrap}
+          onWrapChange={handleWrapChange}
+          editable={editor.isEditable}
+        />
+      </div>
     </div>,
     document.body,
   );
@@ -113,7 +123,9 @@ export function CodeBlockEnhancer({ editor }: { editor: any }) {
   const didInitRef = useRef(false);
 
   const collectEntries = useCallback(() => {
-    const container = document.querySelector(".goose-blocknote-editor, .bn-editor");
+    const container = document.querySelector(
+      ".goose-blocknote-editor, .bn-editor",
+    );
     if (!container) {
       return [];
     }
@@ -171,6 +183,7 @@ export function CodeBlockEnhancer({ editor }: { editor: any }) {
     const unsubscribe = editor.onChange?.(() => refresh());
     window.addEventListener("scroll", refresh, true);
     window.addEventListener("resize", refresh);
+    window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, refresh);
 
     return () => {
       stopped = true;
@@ -183,6 +196,7 @@ export function CodeBlockEnhancer({ editor }: { editor: any }) {
       if (typeof unsubscribe === "function") unsubscribe();
       window.removeEventListener("scroll", refresh, true);
       window.removeEventListener("resize", refresh);
+      window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, refresh);
     };
   }, [editor, refresh]);
 

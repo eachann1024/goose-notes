@@ -1,8 +1,20 @@
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useExtension } from "@blocknote/react";
 import { SuggestionMenu } from "@blocknote/core/extensions";
 import { cn } from "@/components/editor/utils/cn";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/editor/ui/tooltip";
 import { Kbd } from "@/components/editor/ui/kbd";
 import { Button } from "@/components/editor/ui/button";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
@@ -40,10 +52,7 @@ function scrollTopToCenterItem(
   ) {
     return null;
   }
-  return clampScrollTop(
-    container,
-    itemCenter - container.clientHeight / 2,
-  );
+  return clampScrollTop(container, itemCenter - container.clientHeight / 2);
 }
 
 interface ScrollTween {
@@ -192,7 +201,8 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       const previousIndex = previousSelectedIndexRef.current;
       previousSelectedIndexRef.current = selectedIndex;
       const fromKeyboard =
-        Date.now() - lastKeyboardNavAtRef.current < KEYBOARD_NAV_IGNORE_MOUSE_MS;
+        Date.now() - lastKeyboardNavAtRef.current <
+        KEYBOARD_NAV_IGNORE_MOUSE_MS;
       if (!fromKeyboard) return;
 
       const wrappedToStart =
@@ -273,8 +283,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
         <div
           data-notion-slash-surface="true"
           className={cn(
-            "z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
-            !lite && "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
+            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
+            !lite &&
+              "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
             lite
               ? "max-h-[inherit] w-[248px] rounded-xl p-1"
               : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
@@ -296,7 +307,10 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                     return (
                       <div
                         key={`divider-${index}`}
-                        className={cn("mx-2 h-px bg-border/60", lite ? "my-0.5" : "my-1")}
+                        className={cn(
+                          "mx-2 h-px bg-border/60",
+                          lite ? "my-0.5" : "my-1",
+                        )}
                       />
                     );
                   }
@@ -307,7 +321,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       variant="ghost"
                       data-index={index}
                       data-goose-slash-item={lite ? "" : undefined}
-                      data-goose-slash-selected={lite && index === selectedIndex ? "true" : undefined}
+                      data-goose-slash-selected={
+                        lite && index === selectedIndex ? "true" : undefined
+                      }
                       className={cn(
                         "relative flex h-auto w-full items-center justify-start text-left outline-none transition-colors whitespace-normal",
                         lite
@@ -321,7 +337,8 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       )}
                       onMouseEnter={() => {
                         if (suppressItemHover) return;
-                        if (Date.now() < ignoreMouseEnterUntilRef.current) return;
+                        if (Date.now() < ignoreMouseEnterUntilRef.current)
+                          return;
                         setSelectedIndex(index);
                       }}
                       onClick={() => selectItem(index)}
@@ -346,7 +363,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                             {item.icon}
                           </span>
                         ) : (
-                          <span className="text-xs font-semibold text-muted-foreground">T</span>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            T
+                          </span>
                         )}
                       </div>
 
@@ -379,7 +398,10 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       </div>
 
                       {item.badge && (
-                        <Kbd shortcut={item.badge} className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none" />
+                        <Kbd
+                          shortcut={item.badge}
+                          className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none"
+                        />
                       )}
                     </Button>
                   );
@@ -388,9 +410,13 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                   return (
                     <Tooltip key={item.title ?? index}>
                       <TooltipTrigger asChild>
-                        <span className="block w-full cursor-not-allowed">{button}</span>
+                        <span className="block w-full cursor-not-allowed">
+                          {button}
+                        </span>
                       </TooltipTrigger>
-                      <TooltipContent side="right">{item.disabledReason}</TooltipContent>
+                      <TooltipContent editorContext side="right">
+                        {item.disabledReason}
+                      </TooltipContent>
                     </Tooltip>
                   );
                 })}

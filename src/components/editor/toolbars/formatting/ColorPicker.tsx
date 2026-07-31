@@ -1,5 +1,5 @@
 import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 
 interface PositionState {
   top: number;
@@ -209,6 +210,28 @@ export function FormattingToolbarColorPicker() {
   );
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  const updatePanelPosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const scale = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue(
+        "--editor-ui-scale",
+      ),
+    );
+    const effectiveScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    const panelHeight = 280 * effectiveScale;
+    const gap = 8 * effectiveScale;
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceAbove >= panelHeight || spaceAbove > spaceBelow;
+
+    setPosition({
+      top: showAbove ? rect.top - gap : rect.bottom + gap,
+      left: rect.left + rect.width / 2,
+      showAbove,
+    });
+  }, []);
+
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -221,23 +244,22 @@ export function FormattingToolbarColorPicker() {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
 
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const panelHeight = 280;
-      const spaceAbove = rect.top;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const showAbove = spaceAbove >= panelHeight || spaceAbove > spaceBelow;
-
-      setPosition({
-        top: showAbove ? rect.top - 8 : rect.bottom + 8,
-        left: rect.left + rect.width / 2,
-        showAbove,
-      });
-    }
+    updatePanelPosition();
 
     setIsMounted(true);
     setIsOpen(true);
   };
+
+  useEffect(() => {
+    if (!isMounted) return;
+    const update = () => updatePanelPosition();
+    window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+      window.removeEventListener("resize", update);
+    };
+  }, [isMounted, updatePanelPosition]);
 
   const handleMouseLeave = () => {
     hoverTimeoutRef.current = setTimeout(() => {
@@ -343,7 +365,7 @@ export function FormattingToolbarColorPicker() {
   const panelContent = isMounted ? (
     <div
       className={cn(
-        "fixed z-[20000] w-fit rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] transition-all duration-180 ease-out dark:border-white/20",
+        "fixed z-[20000] w-fit transition-all duration-180 ease-out",
         isOpen
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none",
@@ -367,7 +389,7 @@ export function FormattingToolbarColorPicker() {
         e.stopPropagation();
       }}
     >
-      <div className="flex flex-col gap-1">
+      <div className="goose-editor-context-ui flex flex-col gap-1 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] dark:border-white/20">
         <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
           文本颜色
         </div>

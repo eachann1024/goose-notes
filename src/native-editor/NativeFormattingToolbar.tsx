@@ -149,7 +149,7 @@ export function EditorFormattingToolbar() {
           event.preventDefault();
           event.stopPropagation();
         }}
-        className="z-[20000] w-auto transition-[opacity,transform] duration-150 ease-out"
+        className="goose-editor-context-ui z-[20000] w-auto transition-[opacity,transform] duration-150 ease-out"
         style={{
           opacity: shouldHide ? 0 : 1,
           transform: shouldHide ? "scale(0.96)" : "scale(1)",

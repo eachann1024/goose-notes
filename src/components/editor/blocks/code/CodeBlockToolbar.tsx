@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/editor/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useFormatCode } from "@/components/editor/hooks/useFormatCode";
 import { useEditorPlatform } from "@/components/editor/platform/context";
@@ -86,7 +86,8 @@ export function CodeBlockToolbar({
     if (!search) return POPULAR_LANGUAGES;
     const lowerSearch = search.toLowerCase();
     const fuzzyMatch = (text: string) => {
-      let si = 0, ti = 0;
+      let si = 0,
+        ti = 0;
       const lt = text.toLowerCase();
       while (si < lowerSearch.length && ti < lt.length) {
         if (lowerSearch[si] === lt[ti]) si++;
@@ -98,7 +99,8 @@ export function CodeBlockToolbar({
       const displayName = LANGUAGE_DISPLAY_NAMES[lang] || lang;
       return fuzzyMatch(lang) || fuzzyMatch(displayName);
     }).sort((a, b) => {
-      const aN = a.toLowerCase(), bN = b.toLowerCase();
+      const aN = a.toLowerCase(),
+        bN = b.toLowerCase();
       const aD = (LANGUAGE_DISPLAY_NAMES[a] || a).toLowerCase();
       const bD = (LANGUAGE_DISPLAY_NAMES[b] || b).toLowerCase();
       if (aN === lowerSearch) return -1;
@@ -120,7 +122,9 @@ export function CodeBlockToolbar({
     else setSearch("");
   }, [isOpen]);
 
-  const canFormat = FORMAT_SUPPORTED_LANGUAGES.includes((language || "").toLowerCase());
+  const canFormat = FORMAT_SUPPORTED_LANGUAGES.includes(
+    (language || "").toLowerCase(),
+  );
   const isMathOrMermaid = language === "math" || language === "mermaid";
   const hasVisualPreview = isMathOrMermaid && Boolean(onPreviewModeChange);
   const chipClass = cn(
@@ -161,6 +165,7 @@ export function CodeBlockToolbar({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
+                editorContext
                 className="w-48 max-h-64 overflow-y-auto text-xs"
               >
                 <div className="pb-2">
@@ -174,7 +179,9 @@ export function CodeBlockToolbar({
                   />
                 </div>
                 {!search && (
-                  <DropdownMenuLabel className="text-xs">常用语言</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs">
+                    常用语言
+                  </DropdownMenuLabel>
                 )}
                 {filteredLanguages.map((lang) => (
                   <DropdownMenuItem
@@ -185,7 +192,8 @@ export function CodeBlockToolbar({
                     }}
                     className={cn(
                       "text-xs",
-                      lang.toLowerCase() === language.toLowerCase() && "bg-accent",
+                      lang.toLowerCase() === language.toLowerCase() &&
+                        "bg-accent",
                     )}
                   >
                     {LANGUAGE_DISPLAY_NAMES[lang] || lang}
@@ -251,13 +259,20 @@ export function CodeBlockToolbar({
                     aria-label={copied ? "已复制" : "复制代码"}
                   >
                     {copied ? (
-                      <LucideIcons.Check className={cn("h-3.5 w-3.5", "text-[var(--goose-color-success)]")} />
+                      <LucideIcons.Check
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          "text-[var(--goose-color-success)]",
+                        )}
+                      />
                     ) : (
                       <LucideIcons.Copy className="h-3.5 w-3.5" />
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{copied ? "已复制" : "复制代码"}</TooltipContent>
+                <TooltipContent>
+                  {copied ? "已复制" : "复制代码"}
+                </TooltipContent>
               </Tooltip>
 
               <div
@@ -310,7 +325,11 @@ export function CodeBlockToolbar({
                   size="sm"
                   aria-label={wrap ? "取消换行" : "自动换行"}
                   onClick={() => onWrapChange(!wrap)}
-                  className={cn("h-6 w-6 p-0", chipClass, wrap && chipActiveClass)}
+                  className={cn(
+                    "h-6 w-6 p-0",
+                    chipClass,
+                    wrap && chipActiveClass,
+                  )}
                 >
                   {wrap ? (
                     <LucideIcons.AlignJustify className={iconSize} />
@@ -334,7 +353,9 @@ export function CodeBlockToolbar({
                   className={cn("h-6 w-6 p-0", chipClass)}
                 >
                   {isLoading ? (
-                    <LucideIcons.Loader2 className={cn(iconSize, "animate-spin")} />
+                    <LucideIcons.Loader2
+                      className={cn(iconSize, "animate-spin")}
+                    />
                   ) : (
                     <LucideIcons.Sparkles className={iconSize} />
                   )}
@@ -354,7 +375,12 @@ export function CodeBlockToolbar({
                   className={cn("h-6 w-6 p-0", chipClass)}
                 >
                   {copied ? (
-                    <LucideIcons.Check className={cn(iconSize, "text-[var(--goose-color-success)]")} />
+                    <LucideIcons.Check
+                      className={cn(
+                        iconSize,
+                        "text-[var(--goose-color-success)]",
+                      )}
+                    />
                   ) : (
                     <LucideIcons.Copy className={iconSize} />
                   )}

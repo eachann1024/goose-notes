@@ -42,6 +42,7 @@ import type {
   NativeAISelectionReplacement,
   SaveAcknowledgement,
 } from "./types";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 
 type SaveVisualState = "idle" | "saving" | "saved" | "failed" | "conflict";
 
@@ -322,6 +323,17 @@ export function NativeEditorApp() {
         "--editor-scale",
         (nextFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),
       );
+      const editorUiScale = (nextFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(
+        4,
+      );
+      if (root.style.getPropertyValue("--editor-ui-scale") !== editorUiScale) {
+        root.style.setProperty("--editor-ui-scale", editorUiScale);
+        window.dispatchEvent(
+          new CustomEvent(EDITOR_UI_SCALE_CHANGE_EVENT, {
+            detail: { scale: editorUiScale },
+          }),
+        );
+      }
       root.style.colorScheme = preferences.appearance;
       const current = pageRef.current;
       if (current) {
@@ -757,11 +769,15 @@ export function NativeEditorApp() {
     [matchesCurrentEnvelope],
   );
 
-  const applyNativeAISelection = useCallback((replacement: NativeAISelectionReplacement) => {
-    if (!matchesCurrentEnvelope(replacement) || modeRef.current !== "blocks") return false;
-    const editor = editorRef.current?.editor;
-    return editor ? applyAISelection(editor, replacement) : false;
-  }, [matchesCurrentEnvelope]);
+  const applyNativeAISelection = useCallback(
+    (replacement: NativeAISelectionReplacement) => {
+      if (!matchesCurrentEnvelope(replacement) || modeRef.current !== "blocks")
+        return false;
+      const editor = editorRef.current?.editor;
+      return editor ? applyAISelection(editor, replacement) : false;
+    },
+    [matchesCurrentEnvelope],
+  );
 
   const clear = useCallback(
     (envelope: BridgeEnvelope) => {
@@ -1001,10 +1017,16 @@ export function NativeEditorApp() {
         });
         return;
       }
-      setAIUnavailableMessage("AI 生成功能需要在原生应用中配置服务后才能使用。");
+      setAIUnavailableMessage(
+        "AI 生成功能需要在原生应用中配置服务后才能使用。",
+      );
     };
     window.addEventListener("goose-note:native-ai-entry", showUnavailableAI);
-    return () => window.removeEventListener("goose-note:native-ai-entry", showUnavailableAI);
+    return () =>
+      window.removeEventListener(
+        "goose-note:native-ai-entry",
+        showUnavailableAI,
+      );
   }, []);
 
   const reload = () => {
@@ -1123,7 +1145,9 @@ export function NativeEditorApp() {
           {aiUnavailableMessage && (
             <div className="native-ai-notice" role="status">
               <span>{aiUnavailableMessage}</span>
-              <button type="button" onClick={() => setAIUnavailableMessage("")}>知道了</button>
+              <button type="button" onClick={() => setAIUnavailableMessage("")}>
+                知道了
+              </button>
             </div>
           )}
           {isLoadingPage ? (

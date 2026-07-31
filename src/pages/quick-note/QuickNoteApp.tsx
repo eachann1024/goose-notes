@@ -42,6 +42,11 @@ import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { formatShortcut, getPlatformKind } from "@/lib/utils";
 import { QuickNoteCollectPreview } from "./QuickNoteCollectPreview";
 import { getQuickNoteCollectVariant } from "./quickNoteCollectDetector";
+import { useSettings } from "@/stores/settings";
+import {
+  computeEditorUiScale,
+  EDITOR_UI_SCALE_CHANGE_EVENT,
+} from "@/lib/appearance";
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
@@ -82,6 +87,21 @@ export function QuickNoteApp() {
 
   // 编辑界面缩放（持久化：下次开窗沿用上次 Cmd +/- 的程度）。
   const zoom = useQuickNote((s) => s.editorZoom);
+  const editorFontSize = useSettings((s) => s.editorFontSize);
+
+  // 速记运行在独立 WebView：全局编辑字号与小窗局部缩放共同决定工具条等
+  // 编辑器 UI 的有效尺寸。卸载时不清理，避免复用窗口期间退回错误的默认值。
+  useEffect(() => {
+    const root = document.documentElement;
+    const scale = computeEditorUiScale(editorFontSize, zoom);
+    if (root.style.getPropertyValue("--editor-ui-scale") === scale) return;
+    root.style.setProperty("--editor-ui-scale", scale);
+    window.dispatchEvent(
+      new CustomEvent(EDITOR_UI_SCALE_CHANGE_EVENT, {
+        detail: { scale },
+      }),
+    );
+  }, [editorFontSize, zoom]);
 
   /**
    * 撤销/重做后递增，迫使 EditorHostBridge 用最新 drafts 重建。
@@ -668,9 +688,7 @@ export function QuickNoteApp() {
           </div>
         </EditorHostBridge>
       </div>
-      {collectVariant && (
-        <QuickNoteCollectPreview variant={collectVariant} />
-      )}
+      {collectVariant && <QuickNoteCollectPreview variant={collectVariant} />}
       <Toaster
         className="quicknote-toaster"
         position="bottom-center"

@@ -439,6 +439,9 @@
   :root {
     --editor-font-size: 16px;
     --editor-scale: 1;
+    /* 编辑器上下文 UI 的统一缩放契约。浮层通过显式 opt-in 使用，
+       不影响设置、侧栏、Dialog、Toast 等全局界面。 */
+    --editor-ui-scale: 1;
     --editor-module-sm-font-size: calc(14px * var(--editor-scale));
     --editor-module-xs-font-size: calc(12px * var(--editor-scale));
     --editor-module-2xs-font-size: calc(11px * var(--editor-scale));

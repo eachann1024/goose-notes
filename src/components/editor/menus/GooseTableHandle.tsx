@@ -5,14 +5,8 @@ import {
   EMPTY_CELL_WIDTH,
   type PartialTableContent,
 } from "@blocknote/core";
-import {
-  TableHandlesExtension,
-} from "@blocknote/core/extensions";
-import {
-  CellSelection,
-  deleteRow,
-  selectedRect,
-} from "prosemirror-tables";
+import { TableHandlesExtension } from "@blocknote/core/extensions";
+import { CellSelection, deleteRow, selectedRect } from "prosemirror-tables";
 import {
   useBlockNoteEditor,
   useExtension,
@@ -105,7 +99,8 @@ export function GooseTableExtendButton({
       movedMouse.current = true;
 
       const diff =
-        (isColumnHandle ? event.clientX : event.clientY) - editingState.startPos;
+        (isColumnHandle ? event.clientX : event.clientY) -
+        editingState.startPos;
       const croppedCount = isColumnHandle
         ? (editingState.originalCroppedContent.rows[0]?.cells.length ?? 0)
         : editingState.originalCroppedContent.rows.length;
@@ -121,7 +116,11 @@ export function GooseTableExtendButton({
           diff / (isColumnHandle ? EMPTY_CELL_WIDTH : EMPTY_CELL_HEIGHT),
         );
 
-      if (nextCount < croppedCount || nextCount <= 0 || nextCount === currentCount) {
+      if (
+        nextCount < croppedCount ||
+        nextCount <= 0 ||
+        nextCount === currentCount
+      ) {
         return;
       }
 
@@ -175,7 +174,7 @@ export function GooseTableExtendButton({
     <button
       type="button"
       className={cn(
-        "goose-table-extend-button",
+        "goose-editor-inline-context-ui goose-table-extend-button",
         isColumnHandle
           ? "goose-table-extend-button-columns"
           : "goose-table-extend-button-rows",
@@ -212,17 +211,23 @@ function getInsertedColumnRows(
   block: any,
   insertIndex: number,
 ) {
-  const rowsWithTrailingColumn = tableHandles.addRowsOrColumns(block, "columns", 1);
+  const rowsWithTrailingColumn = tableHandles.addRowsOrColumns(
+    block,
+    "columns",
+    1,
+  );
 
-  return block.content.rows.map((row: { cells: unknown[] }, rowIndex: number) => {
-    const cells = [...row.cells];
-    const blankCell = rowsWithTrailingColumn[rowIndex]?.cells.at(-1) ?? "";
-    cells.splice(insertIndex, 0, cloneTableCell(blankCell));
-    return {
-      ...row,
-      cells,
-    };
-  });
+  return block.content.rows.map(
+    (row: { cells: unknown[] }, rowIndex: number) => {
+      const cells = [...row.cells];
+      const blankCell = rowsWithTrailingColumn[rowIndex]?.cells.at(-1) ?? "";
+      cells.splice(insertIndex, 0, cloneTableCell(blankCell));
+      return {
+        ...row,
+        cells,
+      };
+    },
+  );
 }
 
 function getDeletedColumnRows(
@@ -232,7 +237,9 @@ function getDeletedColumnRows(
 ) {
   return content.rows.map((row) => ({
     ...row,
-    cells: row.cells.filter((_, cellIndex) => cellIndex < fromIndex || cellIndex >= toIndex),
+    cells: row.cells.filter(
+      (_, cellIndex) => cellIndex < fromIndex || cellIndex >= toIndex,
+    ),
   }));
 }
 
@@ -246,9 +253,16 @@ function getUpdatedColumnWidths(
 
   const nextColumnWidths = [...columnWidths];
   if (action.type === "insert") {
-    nextColumnWidths.splice(action.index, 0, columnWidths[action.index] ?? columnWidths.at(-1));
+    nextColumnWidths.splice(
+      action.index,
+      0,
+      columnWidths[action.index] ?? columnWidths.at(-1),
+    );
   } else {
-    nextColumnWidths.splice(action.fromIndex, action.toIndex - action.fromIndex);
+    nextColumnWidths.splice(
+      action.fromIndex,
+      action.toIndex - action.fromIndex,
+    );
   }
   return nextColumnWidths;
 }
@@ -269,7 +283,10 @@ function getEvenColumnWidths(columnCount: number, tableWidth: number) {
   return widths;
 }
 
-export function GooseTableHandle({ orientation, hideOtherElements }: TableHandleProps) {
+export function GooseTableHandle({
+  orientation,
+  hideOtherElements,
+}: TableHandleProps) {
   const editor = useBlockNoteEditor<any, any, any>();
   const { features } = useEditorSettings();
   const tableHandles = useExtension(TableHandlesExtension);
@@ -277,7 +294,9 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
   const [open, setOpen] = useState(false);
 
   const index = state
-    ? orientation === "column" ? state.colIndex : state.rowIndex
+    ? orientation === "column"
+      ? state.colIndex
+      : state.rowIndex
     : undefined;
   const isRow = orientation === "row";
   const isHeaderRow = Boolean(state?.block.content.headerRows);
@@ -310,7 +329,8 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
 
   const updateTableColumns = useCallback(
     (action: "add-left" | "add-right" | "delete") => {
-      if (!state?.block || !tableHandles || index === undefined || isRow) return;
+      if (!state?.block || !tableHandles || index === undefined || isRow)
+        return;
 
       const block = state.block;
       const content = block.content as PartialTableContent<any, any>;
@@ -383,18 +403,29 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
     } else {
       updateTableColumns("delete");
     }
-  }, [editor, index, isRow, orientation, state?.block, tableHandles, updateTableColumns]);
+  }, [
+    editor,
+    index,
+    isRow,
+    orientation,
+    state?.block,
+    tableHandles,
+    updateTableColumns,
+  ]);
 
-  const handleToggleHeaderRow = useCallback((checked: boolean | "indeterminate") => {
-    if (!state?.block || !isRow || index !== 0) return;
-    editor.updateBlock(state.block, {
-      ...state.block,
-      content: {
-        ...state.block.content,
-        headerRows: checked === true ? 1 : undefined,
-      } as any,
-    });
-  }, [editor, index, isRow, state?.block]);
+  const handleToggleHeaderRow = useCallback(
+    (checked: boolean | "indeterminate") => {
+      if (!state?.block || !isRow || index !== 0) return;
+      editor.updateBlock(state.block, {
+        ...state.block,
+        content: {
+          ...state.block.content,
+          headerRows: checked === true ? 1 : undefined,
+        } as any,
+      });
+    },
+    [editor, index, isRow, state?.block],
+  );
 
   const handleEvenColumnWidth = useCallback(() => {
     if (!state?.block) return;
@@ -444,22 +475,45 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="goose-table-handle-btn"
+          className="goose-editor-inline-context-ui goose-table-handle-btn"
           draggable
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          style={orientation === "column" ? { transform: "rotate(0.25turn)" } : undefined}
+          style={
+            orientation === "column"
+              ? { transform: "rotate(0.25turn)" }
+              : undefined
+          }
         >
           <LucideIcons.GripVertical className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-40" side={isRow ? "right" : "bottom"} align="start">
+      <DropdownMenuContent
+        editorContext
+        className="w-40"
+        side={isRow ? "right" : "bottom"}
+        align="start"
+      >
         {isRow ? (
           <>
-            <DropdownMenuItem onClick={() => tableHandles?.addRowOrColumn(index!, { orientation: "row", side: "above" })}>
+            <DropdownMenuItem
+              onClick={() =>
+                tableHandles?.addRowOrColumn(index!, {
+                  orientation: "row",
+                  side: "above",
+                })
+              }
+            >
               <LucideIcons.ArrowUp className="mr-2 h-4 w-4" /> 上方添加行
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => tableHandles?.addRowOrColumn(index!, { orientation: "row", side: "below" })}>
+            <DropdownMenuItem
+              onClick={() =>
+                tableHandles?.addRowOrColumn(index!, {
+                  orientation: "row",
+                  side: "below",
+                })
+              }
+            >
               <LucideIcons.ArrowDown className="mr-2 h-4 w-4" /> 下方添加行
             </DropdownMenuItem>
             {index === 0 && features.tablePresentationControls && (
@@ -478,7 +532,9 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
                     设为标题行
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => runMenuAction(handleEvenColumnWidth)}>
+                <DropdownMenuItem
+                  onClick={() => runMenuAction(handleEvenColumnWidth)}
+                >
                   <LucideIcons.AlignJustify className="mr-2 h-4 w-4" />
                   两端对齐
                 </DropdownMenuItem>
@@ -490,10 +546,18 @@ export function GooseTableHandle({ orientation, hideOtherElements }: TableHandle
           </>
         ) : (
           <>
-            <DropdownMenuItem onClick={() => runMenuAction(() => updateTableColumns("add-left"))}>
+            <DropdownMenuItem
+              onClick={() =>
+                runMenuAction(() => updateTableColumns("add-left"))
+              }
+            >
               <LucideIcons.ArrowLeft className="mr-2 h-4 w-4" /> 左侧添加列
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => runMenuAction(() => updateTableColumns("add-right"))}>
+            <DropdownMenuItem
+              onClick={() =>
+                runMenuAction(() => updateTableColumns("add-right"))
+              }
+            >
               <LucideIcons.ArrowRight className="mr-2 h-4 w-4" /> 右侧添加列
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => runMenuAction(handleDelete)}>

@@ -17,6 +17,7 @@ import {
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 
 function VideoUrlInput({
   block,
@@ -146,10 +147,15 @@ function VideoBlockContent({
     document.addEventListener("pointerdown", handlePointerDown, true);
     window.addEventListener("scroll", updateToolbarRect, true);
     window.addEventListener("resize", updateToolbarRect);
+    window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, updateToolbarRect);
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
       window.removeEventListener("scroll", updateToolbarRect, true);
       window.removeEventListener("resize", updateToolbarRect);
+      window.removeEventListener(
+        EDITOR_UI_SCALE_CHANGE_EVENT,
+        updateToolbarRect,
+      );
     };
   }, [selected, updateToolbarRect]);
 

@@ -88,7 +88,7 @@ export function EditorLinkToolbar({
   if (editing) {
     return (
       <div
-        className="flex w-[480px] max-w-[min(480px,80vw)] items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+        className="goose-editor-inline-context-ui flex w-[480px] max-w-[min(480px,80vw)] items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
         onMouseDown={(e) => {
           const target = e.target as HTMLElement;
           if (target.closest("input, textarea")) return;
@@ -136,11 +136,7 @@ export function EditorLinkToolbar({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Button
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={handleSave}
-          >
+          <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSave}>
             保存
           </Button>
           <Button
@@ -162,7 +158,7 @@ export function EditorLinkToolbar({
 
   return (
     <div
-      className="flex items-center gap-px rounded-lg border border-border/80 bg-popover px-0.5 py-0.5 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+      className="goose-editor-inline-context-ui flex items-center gap-px rounded-lg border border-border/80 bg-popover px-0.5 py-0.5 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
       onMouseDown={(e) => e.preventDefault()}
       onContextMenu={(e) => {
         e.preventDefault();

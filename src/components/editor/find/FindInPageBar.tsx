@@ -68,66 +68,68 @@ export function FindInPageBar({
   return (
     <div
       data-goose-find-in-page
-      className="fixed right-2 top-2 z-[20500] flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur"
+      className="fixed right-2 top-2 z-[20500]"
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <LucideIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <input
-        ref={inputRef}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            handleStep(event.shiftKey ? -1 : 1);
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-        placeholder="页内查找"
-        className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-      />
-      <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-muted-foreground">
-        {currentDisplay}/{total}
-      </span>
-      <button
-        type="button"
-        title={caseSensitive ? "区分大小写：开" : "区分大小写：关"}
-        className={cn(
-          "inline-flex h-6 min-w-6 items-center justify-center rounded px-1 text-xs hover:bg-accent",
-          caseSensitive && "bg-accent text-accent-foreground",
-        )}
-        onClick={() => setCaseSensitive((value) => !value)}
-      >
-        Aa
-      </button>
-      <button
-        type="button"
-        title={`上一个（${formatShortcut("Shift+Enter")}）`}
-        className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
-        disabled={total === 0}
-        onClick={() => handleStep(-1)}
-      >
-        <LucideIcons.ChevronUp className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title={`下一个（${formatShortcut("Enter")}）`}
-        className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
-        disabled={total === 0}
-        onClick={() => handleStep(1)}
-      >
-        <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        title={`关闭（${formatShortcut("Esc")}）`}
-        className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
-        onClick={onClose}
-      >
-        <LucideIcons.X className="h-3.5 w-3.5" />
-      </button>
+      <div className="goose-editor-inline-context-ui flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur">
+        <LucideIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handleStep(event.shiftKey ? -1 : 1);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              onClose();
+            }
+          }}
+          placeholder="页内查找"
+          className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-muted-foreground">
+          {currentDisplay}/{total}
+        </span>
+        <button
+          type="button"
+          title={caseSensitive ? "区分大小写：开" : "区分大小写：关"}
+          className={cn(
+            "inline-flex h-6 min-w-6 items-center justify-center rounded px-1 text-xs hover:bg-accent",
+            caseSensitive && "bg-accent text-accent-foreground",
+          )}
+          onClick={() => setCaseSensitive((value) => !value)}
+        >
+          Aa
+        </button>
+        <button
+          type="button"
+          title={`上一个（${formatShortcut("Shift+Enter")}）`}
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
+          disabled={total === 0}
+          onClick={() => handleStep(-1)}
+        >
+          <LucideIcons.ChevronUp className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title={`下一个（${formatShortcut("Enter")}）`}
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent disabled:opacity-50"
+          disabled={total === 0}
+          onClick={() => handleStep(1)}
+        >
+          <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title={`关闭（${formatShortcut("Esc")}）`}
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
+          onClick={onClose}
+        >
+          <LucideIcons.X className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

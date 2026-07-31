@@ -78,6 +78,7 @@ declare global {
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MIN
+  const EDITOR_UI_SCALE_CHANGE_EVENT: typeof import('./lib/appearance').EDITOR_UI_SCALE_CHANGE_EVENT
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
@@ -203,6 +204,7 @@ declare global {
   const composerDraftHasContent: typeof import('./stores/useNotebookAiChats').composerDraftHasContent
   const compressIfNeeded: typeof import('./lib/imageProcessor').compressIfNeeded
   const compressImage: typeof import('./lib/imageProcessor').compressImage
+  const computeEditorUiScale: typeof import('./lib/appearance').computeEditorUiScale
   const confirmLocalDelete: typeof import('./lib/confirm-local-delete').confirmLocalDelete
   const consumePageTitleFocus: typeof import('./lib/page-title-focus').consumePageTitleFocus
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
