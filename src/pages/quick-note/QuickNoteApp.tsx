@@ -6,8 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { X, HelpCircle, Pencil } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
+import { X, Pencil } from "lucide-react";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,
@@ -251,13 +250,6 @@ export function QuickNoteApp() {
       setPreviewSlot(null);
       if (slot === useQuickNote.getState().activeSlot) return;
       setActiveSlot(slot);
-      if (source === "shortcut") {
-        toast.info(`已切换到便签 ${slot}`, {
-          id: "quicknote-slot-switch",
-          className: "quicknote-slot-switch-toast",
-          duration: 1200,
-        });
-      }
       if (source !== "switcher-keyboard") {
         requestAnimationFrame(() => {
           editorRef.current?.editor?.focus?.();
@@ -457,13 +449,6 @@ export function QuickNoteApp() {
       className="quicknote-titlebar-reveal-zone"
       data-renaming={renamingSlot === null ? "false" : "true"}
     >
-      <div
-        className="quicknote-slot-name-display"
-        aria-live="polite"
-        title={displaySlotName}
-      >
-        {displaySlotName}
-      </div>
       {renamingSlot !== null && (
         <input
           ref={renameInputRef}
@@ -495,78 +480,76 @@ export function QuickNoteApp() {
         />
       )}
       <div
-        className="quicknote-titlebar flex h-9 items-center justify-between gap-1 px-2"
+        className="quicknote-titlebar"
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
-        <div className="flex items-center gap-1">
-          <Popover open={helpOpen} onOpenChange={setHelpOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label="使用说明"
-                title="使用说明"
-                className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              side="bottom"
-              collisionPadding={8}
-              className="quicknote-help-popover w-72 text-xs"
-              onCloseAutoFocus={(event) => event.preventDefault()}
+        <Popover open={helpOpen} onOpenChange={setHelpOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="使用说明"
+              title={`${displaySlotName} · 使用说明`}
+              className="quicknote-slot-name-display quicknote-titlebar-btn"
+              style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
             >
-              <div className="quicknote-help-heading">
-                <div className="text-sm font-medium">速记便签</div>
-                <p>内容只保留在当前便签，不会自动进入笔记本。</p>
-              </div>
-              <button
-                type="button"
-                className="quicknote-help-rename flex w-full items-center gap-2 text-left text-xs text-foreground"
-                onClick={() => startRename(activeSlot)}
-              >
-                <Pencil className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">重命名当前便签</span>
-                <span className="max-w-24 truncate text-muted-foreground">
-                  {getQuickNoteSlotName(activeSlot, slotNames)}
-                </span>
-              </button>
-              <ul className="quicknote-help-list text-muted-foreground">
-                <li>
-                  <b className="text-foreground">切换</b>
-                  ：顶部 1–5 是五个独立便签。悬停展开，点击或拖动切换；也可按
-                  {helpShortcuts.switchSlots}
-                  {helpShortcuts.alternateSwitchSlots
-                    ? `，或 ${helpShortcuts.alternateSwitchSlots}`
-                    : ""}
-                  。
-                </li>
-                <li>
-                  <b className="text-foreground">编辑</b>：
-                  {helpShortcuts.zoomIn} / {helpShortcuts.zoomOut} 缩放，
-                  {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
-                  {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
-                </li>
-                <li>
-                  <b className="text-foreground">收起</b>
-                  ：小窗始终置顶；按 {formatShortcut(
-                    "Esc",
-                    getPlatformKind(),
-                  )}{" "}
-                  或点右上角
-                  <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
-                  收起。草稿、位置、尺寸和缩放都会保留。
-                </li>
-              </ul>
-            </PopoverContent>
-          </Popover>
-        </div>
+              {displaySlotName}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            side="bottom"
+            collisionPadding={8}
+            className="quicknote-help-popover w-72 text-xs"
+            onCloseAutoFocus={(event) => event.preventDefault()}
+          >
+            <div className="quicknote-help-heading">
+              <div className="text-sm font-medium">速记便签</div>
+              <p>内容只保留在当前便签，不会自动进入笔记本。</p>
+            </div>
+            <button
+              type="button"
+              className="quicknote-help-rename flex w-full items-center gap-2 text-left text-xs text-foreground"
+              onClick={() => startRename(activeSlot)}
+            >
+              <Pencil className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">重命名当前便签</span>
+              <span className="max-w-24 truncate text-muted-foreground">
+                {getQuickNoteSlotName(activeSlot, slotNames)}
+              </span>
+            </button>
+            <ul className="quicknote-help-list text-muted-foreground">
+              <li>
+                <b className="text-foreground">切换</b>
+                ：顶部 1–5 是五个独立便签。点击或拖动切换；也可按
+                {helpShortcuts.switchSlots}
+                {helpShortcuts.alternateSwitchSlots
+                  ? `，或 ${helpShortcuts.alternateSwitchSlots}`
+                  : ""}
+                。
+              </li>
+              <li>
+                <b className="text-foreground">编辑</b>：{helpShortcuts.zoomIn}{" "}
+                / {helpShortcuts.zoomOut} 缩放，
+                {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
+                {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
+              </li>
+              <li>
+                <b className="text-foreground">收起</b>
+                ：小窗始终置顶；按 {formatShortcut(
+                  "Esc",
+                  getPlatformKind(),
+                )}{" "}
+                或点右上角
+                <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
+                收起。草稿、位置、尺寸和缩放都会保留。
+              </li>
+            </ul>
+          </PopoverContent>
+        </Popover>
 
-        {/* 绝对居中，避免左右按钮宽度差导致视觉偏移 */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex h-9 items-center justify-center">
-          <div className="pointer-events-auto">
+        {/* 绝对居中，避免左右内容宽度差导致视觉偏移 */}
+        <div className="quicknote-slot-switcher-positioner">
+          <div className="quicknote-slot-switcher-interactive">
             <QuickNoteSlotSwitcher
               activeSlot={activeSlot}
               occupiedSlots={occupiedSlots}
@@ -578,11 +561,11 @@ export function QuickNoteApp() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="quicknote-titlebar-actions">
           <button
             type="button"
             aria-label="关闭"
-            className="quicknote-titlebar-btn flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="quicknote-titlebar-btn quicknote-close-btn"
             style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
             onClick={() => persistPlacementThenClose()}
           >

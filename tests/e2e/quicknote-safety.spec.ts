@@ -8,6 +8,82 @@ async function openCleanQuickNote(page: import("playwright/test").Page) {
 }
 
 test.describe("quick-note draft safety", () => {
+  test("keeps the slot switcher visible, centered, and synced", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 408, height: 759 });
+    await openCleanQuickNote(page);
+
+    const layout = await page.evaluate(() => {
+      const root = document.querySelector<HTMLElement>(".quicknote-root");
+      const topbar = document.querySelector<HTMLElement>(".quicknote-titlebar");
+      const title = document.querySelector<HTMLElement>(
+        ".quicknote-slot-name-display",
+      );
+      const switcher = document.querySelector<HTMLElement>(
+        ".quicknote-slot-switcher",
+      );
+      const close = document.querySelector<HTMLElement>(".quicknote-close-btn");
+      const editor = document.querySelector<HTMLElement>(
+        ".page-scroll-container",
+      );
+      if (!root || !topbar || !title || !switcher || !close || !editor) {
+        return null;
+      }
+
+      const rootRect = root.getBoundingClientRect();
+      const topbarRect = topbar.getBoundingClientRect();
+      const titleRect = title.getBoundingClientRect();
+      const switcherRect = switcher.getBoundingClientRect();
+      const closeRect = close.getBoundingClientRect();
+      const editorRect = editor.getBoundingClientRect();
+      const centerY = (rect: DOMRect) => rect.top + rect.height / 2;
+
+      return {
+        topbarHeight: topbarRect.height,
+        titleLeft: titleRect.left - rootRect.left,
+        closeRight: rootRect.right - closeRect.right,
+        switcherWidth: switcherRect.width,
+        switcherHeight: switcherRect.height,
+        switcherCenterDelta:
+          switcherRect.left +
+          switcherRect.width / 2 -
+          (rootRect.left + rootRect.width / 2),
+        titleCenterDelta: centerY(titleRect) - centerY(topbarRect),
+        switcherCenterYDelta: centerY(switcherRect) - centerY(topbarRect),
+        closeCenterDelta: centerY(closeRect) - centerY(topbarRect),
+        editorStartsAfterTopbar: editorRect.top >= topbarRect.bottom,
+        switcherVisibility: getComputedStyle(switcher).visibility,
+      };
+    });
+
+    expect(layout).not.toBeNull();
+    expect(layout!.topbarHeight).toBe(46);
+    expect(layout!.titleLeft).toBe(16);
+    expect(layout!.closeRight).toBe(12);
+    expect(layout!.switcherWidth).toBe(132);
+    expect(layout!.switcherHeight).toBe(28);
+    expect(Math.abs(layout!.switcherCenterDelta)).toBeLessThan(1);
+    expect(Math.abs(layout!.titleCenterDelta)).toBeLessThan(1);
+    expect(Math.abs(layout!.switcherCenterYDelta)).toBeLessThan(1);
+    expect(Math.abs(layout!.closeCenterDelta)).toBeLessThan(1);
+    expect(layout!.editorStartsAfterTopbar).toBe(true);
+    expect(layout!.switcherVisibility).toBe("visible");
+
+    await page.keyboard.press("Control+2");
+    await expect(
+      page.getByRole("radio", { name: "便签 2，空白" }),
+    ).toBeChecked();
+    await expect(
+      page.locator("[data-sonner-toast].quicknote-slot-switch-toast"),
+    ).toHaveCount(0);
+
+    const activeBackground = await page
+      .getByRole("radio", { name: "便签 2，空白" })
+      .evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(activeBackground).toBe("rgb(255, 255, 255)");
+  });
+
   test("fills the remaining viewport without a focus outline", async ({
     page,
   }) => {

@@ -35,38 +35,35 @@ body,
    因此任何缩放档位都不会把首块压到便签名下面。 */
 .quicknote-titlebar-reveal-zone {
   position: relative;
-  flex: 0 0 36px;
-  height: 36px;
+  flex: 0 0 46px;
+  height: 46px;
   width: 100%;
   z-index: 20;
 }
 
-/* 鼠标离开顶栏后，当前便签名始终以实色显示在左上角。
-   进入顶部热区时直接让位给帮助按钮，不做半透明叠加。 */
+/* 当前便签名常驻左侧，同时作为原有使用说明弹层的入口。 */
 .quicknote-slot-name-display {
-  position: absolute;
-  z-index: 1;
-  top: 0;
-  left: 8px;
   display: flex;
   align-items: center;
-  max-width: min(180px, calc(50vw - 36px));
-  height: 36px;
+  flex: 0 1 auto;
+  max-width: min(96px, calc(50vw - 82px));
+  height: 26px;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
-  background: hsl(var(--goose-editor-bg));
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: hsl(var(--foreground));
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1;
-  opacity: 1;
-  pointer-events: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.quicknote-titlebar-reveal-zone:hover .quicknote-slot-name-display,
-.quicknote-titlebar-reveal-zone:focus-within .quicknote-slot-name-display {
-  visibility: hidden;
+.quicknote-slot-name-display:hover {
+  color: hsl(var(--foreground));
 }
 
 .quicknote-slot-name-input {
@@ -90,34 +87,20 @@ body,
   box-shadow: none;
 }
 
-/* 标题栏控件默认隐藏，鼠标进入固定标题行后淡入。标题行本身始终占位；
-   控件仍作为拖动区，按钮单独 no-drag（见组件内联 style）。 */
+/* 标题栏常驻：左标题、中间便签分段器、右关闭按钮严格占用同一 46px 行。 */
 .quicknote-titlebar {
   position: absolute;
   inset: 0;
+  display: flex;
+  align-items: center;
+  height: 46px;
+  padding: 0 12px 0 16px;
   -webkit-user-select: none;
   user-select: none;
-  /* 顶栏下方拉一层与编辑器同色的渐变，避免浮现时直接压住正文造成割裂感。 */
-  background: linear-gradient(
-    to bottom,
-    hsl(var(--goose-editor-bg)) 60%,
-    hsl(var(--goose-editor-bg) / 0)
-  );
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: auto;
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
-}
-/* 进入固定热区时立即显示；离开时仍保留短暂淡出，避免掠过顶部产生闪烁。 */
-.quicknote-titlebar-reveal-zone:hover .quicknote-titlebar,
-.quicknote-titlebar-reveal-zone:focus-within .quicknote-titlebar,
-.quicknote-titlebar:hover,
-.quicknote-titlebar:focus-within {
+  background: hsl(var(--goose-editor-bg));
   opacity: 1;
-  transform: translateY(0);
-  transition-duration: 0s;
+  transform: none;
+  pointer-events: auto;
 }
 
 /* 改名时顶部只保留全宽输入框：隐藏整个标题栏，不让中间数字
@@ -133,6 +116,48 @@ body,
   cursor: default;
 }
 
+.quicknote-slot-switcher-positioner {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 28px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.quicknote-slot-switcher-interactive {
+  pointer-events: auto;
+}
+
+.quicknote-titlebar-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.quicknote-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.quicknote-close-btn:hover {
+  background: hsl(var(--goose-selected-bg));
+  color: hsl(var(--foreground));
+}
+
 /* 标题行已在缩放层外固定占位，编辑区无需再用可缩放的顶部 padding 补偿。
    共享编辑器自身的 8px 顶部内边距提供标题与首块之间的呼吸空间。 */
 .quicknote-editor-surface {
@@ -145,13 +170,13 @@ body,
 }
 
 /* BlockNote 的 contenteditable 默认只按内容撑高。小窗直接让编辑面填满
-   视口扣除标题行（36px）、surface 底部内边距（16px）与 workspace 顶部内边距
+   视口扣除标题行（46px）、surface 底部内边距（16px）与 workspace 顶部内边距
    （8px）后的剩余空间。不改 bn-container 的布局，避免其内部空工具栏宿主
    被 BlockNote 的 flex-basis: 100% 额外撑出一整屏。 */
 .quicknote-editor-surface .bn-editor {
   box-sizing: border-box;
-  min-height: calc(100vh - 60px);
-  min-height: calc(100dvh - 60px);
+  min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 70px);
 }
 
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
@@ -190,15 +215,6 @@ body,
   max-width: calc(100vw - 48px) !important;
   margin-inline: 0 !important;
   transform: translate(-50%, -50%) !important;
-}
-
-/* 快捷键切换便签时，在右上角给出轻量确认；点击/拖动切换不触发提示。 */
-.quicknote-toaster[data-sonner-toaster]
-  [data-sonner-toast].quicknote-slot-switch-toast {
-  left: auto !important;
-  right: 16px !important;
-  top: 48px !important;
-  transform: none !important;
 }
 
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
@@ -350,20 +366,21 @@ body,
 }
 
 /* ── 1–5 便签切换器 ─────────────────────────────────────────────
- * 顶栏居中，随标题栏整体浮现，始终完整显示 1–5。
- * 不再有收起态；整组保留灰色胶囊底，当前槽位用轻高亮区分。
+ * 顶栏绝对居中并常驻；浅灰分段器内，当前槽位使用白底高亮。
+ * 使用静态 rgba / hex，避免 uTools 旧内核解析 alpha 变量异常。
  */
 .quicknote-slot-switcher {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  height: 24px;
+  width: 132px;
+  height: 28px;
   padding: 2px;
-  border-radius: 999px;
-  background: hsl(var(--foreground) / 0.06);
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.07);
+  border: 1px solid #dedede;
+  border-radius: 9px;
+  background: #f1f1ef;
+  box-shadow: none;
 }
 
 .quicknote-slot-btn {
@@ -372,16 +389,16 @@ body,
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 22px;
-  height: 20px;
+  width: 25px;
+  height: 22px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 7px;
   background: transparent;
-  color: hsl(var(--muted-foreground));
+  color: #85827e;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   line-height: 1;
@@ -409,16 +426,19 @@ body,
   text-align: center;
 }
 
-/* 当前项：轻高亮芯，不用实心白底+外阴影 */
+/* 当前项：白底高亮，与确认稿一致。 */
 .quicknote-slot-btn[data-active="true"] {
-  color: #4f46e5;
-  background: #e0e7ff;
-  box-shadow: none;
+  color: #1e1e1e;
+  background: #ffffff;
+  font-weight: 600;
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.14),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 
 .quicknote-slot-btn:not([data-active="true"]):hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.05);
+  color: #343434;
+  background: #e8e8e6;
 }
 
 .quicknote-slot-btn:focus-visible {
@@ -430,9 +450,11 @@ body,
 }
 
 .dark .quicknote-slot-btn[data-active="true"] {
-  color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.2);
-  box-shadow: none;
+  color: #f5f5f4;
+  background: #454542;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .dark .quicknote-slot-btn:focus-visible {
@@ -440,8 +462,9 @@ body,
 }
 
 .dark .quicknote-slot-switcher {
-  background: hsl(var(--foreground) / 0.1);
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.1);
+  border-color: #4a4a47;
+  background: #373735;
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
