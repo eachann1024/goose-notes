@@ -9,11 +9,13 @@ import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
 import { applyAccentColor } from "../../src/lib/accentColor";
 
-test("强调色默认保持现有鸢尾配色，非法持久化值安全回退", () => {
-  expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("iris");
-  expect(normalizeAccentColor(undefined)).toBe("iris");
-  expect(normalizeAccentColor("unknown")).toBe("iris");
+test("强调色默认使用黑白配色，非法持久化值安全回退", () => {
+  expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("mono");
+  expect(normalizeAccentColor(undefined)).toBe("mono");
+  expect(normalizeAccentColor("unknown")).toBe("mono");
   expect(normalizeAccentColor("ocean")).toBe("ocean");
+  expect(normalizeAccentColor("mono")).toBe("mono");
+  expect(normalizeAccentColor("teal")).toBe("mono");
   expect(normalizeAccentColor("grape")).toBe("grape");
 });
 

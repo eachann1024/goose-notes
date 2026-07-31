@@ -45,6 +45,16 @@ type AccentOption = {
 
 const accentOptions: AccentOption[] = [
   {
+    value: "mono",
+    label: "黑白",
+    previewLight: "#171717",
+    previewDark: "#f5f5f5",
+    lightSurface: "#e5e5e5",
+    lightForeground: "#171717",
+    darkSurface: "rgba(255, 255, 255, 0.16)",
+    darkForeground: "#f5f5f5",
+  },
+  {
     value: "iris",
     label: "鸢尾",
     previewLight: "#6366f1",
@@ -63,16 +73,6 @@ const accentOptions: AccentOption[] = [
     lightForeground: "#2563eb",
     darkSurface: "rgba(59, 130, 246, 0.2)",
     darkForeground: "#93c5fd",
-  },
-  {
-    value: "teal",
-    label: "青碧",
-    previewLight: "#0f766e",
-    previewDark: "#5eead4",
-    lightSurface: "#ccfbf1",
-    lightForeground: "#0f766e",
-    darkSurface: "rgba(20, 184, 166, 0.2)",
-    darkForeground: "#5eead4",
   },
   {
     value: "pine",
@@ -376,7 +376,7 @@ export function SettingsAppearance({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  aria-label={`${option.label}${option.value === "iris" ? "（默认）" : ""}`}
+                  aria-label={option.label}
                   data-state={selected ? "checked" : "unchecked"}
                   tabIndex={focusedAccentIndex === index ? 0 : -1}
                   style={style}
@@ -404,11 +404,6 @@ export function SettingsAppearance({
                   <span className="min-w-0 flex-1 truncate">
                     {option.label}
                   </span>
-                  {option.value === "iris" && (
-                    <span className="shrink-0 text-[10px] font-normal opacity-65">
-                      默认
-                    </span>
-                  )}
                   <LucideIcons.Check
                     aria-hidden="true"
                     className={cn(

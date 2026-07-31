@@ -15,9 +15,9 @@ export interface SearchProvider {
 }
 export type Theme = "light" | "dark" | "system";
 export const ACCENT_COLORS = [
+  "mono",
   "iris",
   "ocean",
-  "teal",
   "pine",
   "amber",
   "coral",
@@ -25,7 +25,7 @@ export const ACCENT_COLORS = [
   "grape",
 ] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
-export const DEFAULT_ACCENT_COLOR: AccentColor = "iris";
+export const DEFAULT_ACCENT_COLOR: AccentColor = "mono";
 
 export type CodeStyle =
   | "default"
@@ -237,6 +237,7 @@ export function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
 }
 
 export function normalizeAccentColor(accentColor: unknown): AccentColor {
+  if (accentColor === "teal") return "mono";
   return typeof accentColor === "string" &&
     (ACCENT_COLORS as readonly string[]).includes(accentColor)
     ? (accentColor as AccentColor)
