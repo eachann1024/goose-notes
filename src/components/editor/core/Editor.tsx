@@ -84,6 +84,7 @@ import { createGooseNumberedListStartNormalizationExtension } from "@/components
 import { createGooseBodyParagraphGuardExtension } from "@/components/editor/extensions/bodyParagraphGuardExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
 import { gooseMarkdownInputRulesExtension } from "@/components/editor/inputrules/markdownInputRules";
+import { gooseDividerInputRuleExtension } from "@/components/editor/inputrules/dividerInputRule";
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseInlineCodeBoundaryNavigationExtension } from "@/components/editor/extensions/inlineCodeBoundaryNavigationExtension";
@@ -265,6 +266,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       disableExtensions: [
         "quote-block-shortcuts",
         "toggle-list-item-shortcuts",
+        "divider-block-shortcuts",
       ],
       extensions: [
         createGooseFirstTitleGuardExtension(usesRawEditorContentRef),
@@ -298,6 +300,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseFindInPageExtension,
+        gooseDividerInputRuleExtension(),
         // 紧凑编辑器构建不挂 AI 扩展，避免加载不需要的模型依赖。
         ...(!__GOOSE_EDITOR_AI__
           ? []
