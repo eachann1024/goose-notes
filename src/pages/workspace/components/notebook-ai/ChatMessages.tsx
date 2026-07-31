@@ -427,7 +427,7 @@ export function ChatMessages({
                     onClick={() => onOpenPage(segment.reference.pageId)}
                     className={cn(
                       "ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded px-1.5 text-[11px] font-medium leading-none outline-none",
-                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border",
+                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
                       "hover:bg-[var(--goose-interactive-hover)] focus-visible:ring-2 focus-visible:ring-ring",
                     )}
                     title={`打开“${segment.reference.titleSnapshot}”`}
