@@ -540,7 +540,7 @@ export function PageHeader({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-[36px] w-[36px] shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                       onClick={onOpenSearch}
                     >
                       <LucideIcons.Plus className="h-4 w-4" />
