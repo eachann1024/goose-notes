@@ -1,4 +1,5 @@
 import type { CardTheme } from "../themes";
+import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 import {
   escapeHtml,
   BLOCKNOTE_TEXT_COLORS,
@@ -7,26 +8,6 @@ import {
   BLOCKNOTE_BACKGROUND_COLORS_DARK,
   resolveExportColor,
 } from "./utils";
-
-const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
-  Lightbulb: "💡",
-  AlertTriangle: "⚠️",
-  CircleAlert: "❗",
-  CircleCheck: "✅",
-  Flame: "🔥",
-  Pin: "📌",
-  MessageSquare: "💬",
-  Target: "🎯",
-  Rocket: "🚀",
-  Star: "⭐",
-  Bell: "🔔",
-  Bug: "🐛",
-};
-
-function resolveCalloutIcon(raw: string | undefined): string {
-  if (!raw) return "💡";
-  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
-}
 
 function textPalette(theme?: CardTheme) {
   return theme?.mode === "dark" ? BLOCKNOTE_TEXT_COLORS_DARK : BLOCKNOTE_TEXT_COLORS;

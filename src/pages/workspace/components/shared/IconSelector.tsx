@@ -27,6 +27,8 @@ interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   onFirstOpen?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** 编辑器内弹出时，给弹层补上 goose-editor-context-ui，避免被编辑器裁切/层级压住 */
+  editorContext?: boolean;
 }
 
 interface CuratedIcon {
@@ -243,6 +245,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   onFirstOpen,
   open: controlledOpen,
   onOpenChange,
+  editorContext = false,
 }: IconSelectorProps<T>) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -416,7 +419,10 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
         <PopoverTrigger asChild>{children}</PopoverTrigger>
       )}
       <PopoverContent
-        className="w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden rounded-[14px] border border-border/40 bg-popover p-0 text-foreground shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)]"
+        className={cn(
+          "w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden rounded-[14px] border border-border/40 bg-popover p-0 text-foreground shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)]",
+          editorContext && "goose-editor-context-ui",
+        )}
         align="start"
         side="bottom"
         collisionPadding={10}

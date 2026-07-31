@@ -11,28 +11,9 @@ import {
   AlignmentType,
   convertInchesToTwip,
 } from "docx";
+import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 import { extractInlineItems, inlineToTextRuns } from "./docxStyles";
 import { resolveImageToBuffer } from "./docxImages";
-
-const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
-  Lightbulb: "💡",
-  AlertTriangle: "⚠️",
-  CircleAlert: "❗",
-  CircleCheck: "✅",
-  Flame: "🔥",
-  Pin: "📌",
-  MessageSquare: "💬",
-  Target: "🎯",
-  Rocket: "🚀",
-  Star: "⭐",
-  Bell: "🔔",
-  Bug: "🐛",
-};
-
-function resolveCalloutIcon(raw: string | undefined): string {
-  if (!raw) return "💡";
-  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
-}
 
 export async function processBlockChildren(
   blocks: any[],

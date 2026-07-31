@@ -9,26 +9,7 @@
 
 import type { Text } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
-
-const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
-  Lightbulb: "💡",
-  AlertTriangle: "⚠️",
-  CircleAlert: "❗",
-  CircleCheck: "✅",
-  Flame: "🔥",
-  Pin: "📌",
-  MessageSquare: "💬",
-  Target: "🎯",
-  Rocket: "🚀",
-  Star: "⭐",
-  Bell: "🔔",
-  Bug: "🐛",
-};
-
-function resolveCalloutIcon(raw: string | undefined): string {
-  if (!raw) return "💡";
-  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
-}
+import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 
 const PIXELS_PER_POINT = 0.75;
 const FONT_SIZE = 16;
