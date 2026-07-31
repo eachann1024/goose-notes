@@ -38,8 +38,9 @@ export function SidebarFooter({
   const isDark = useResolvedTheme(theme) === "dark";
 
   const btnClass =
-    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground [&_svg]:block";
-  const activeClass = "text-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected)]";
+    "sidebar-footer-control inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-[background-color,color,box-shadow,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)] [&_svg]:block";
+  const activeClass =
+    "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]";
 
   return (
     <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
@@ -52,6 +53,7 @@ export function SidebarFooter({
                 className={cn(btnClass, sidebarCollapsed && activeClass)}
                 aria-label="收起侧栏"
                 aria-pressed={sidebarCollapsed}
+                data-active={sidebarCollapsed ? "true" : "false"}
                 onClick={toggleSidebarCollapsed}
               >
                 <LucideIcons.PanelLeft className="h-4 w-4" />
@@ -77,6 +79,10 @@ export function SidebarFooter({
               !isSettingsOpen && currentView === "trash" && activeClass,
             )}
             aria-label="垃圾箱"
+            aria-pressed={!isSettingsOpen && currentView === "trash"}
+            data-active={
+              !isSettingsOpen && currentView === "trash" ? "true" : "false"
+            }
             onClick={onSwitchToTrash}
           >
             <LucideIcons.Trash2 className="h-4 w-4" />
@@ -86,6 +92,8 @@ export function SidebarFooter({
           type="button"
           className={cn(btnClass, isSettingsOpen && activeClass)}
           aria-label="设置"
+          aria-pressed={isSettingsOpen}
+          data-active={isSettingsOpen ? "true" : "false"}
           onClick={onOpenSettings}
         >
           <LucideIcons.Settings className="h-4 w-4" />
@@ -95,6 +103,7 @@ export function SidebarFooter({
         type="button"
         className={cn(btnClass)}
         aria-label={isDark ? "切换到亮色模式" : "切换到暗色模式"}
+        data-active="false"
         onClick={toggleDarkMode}
       >
         {isDark ? (
