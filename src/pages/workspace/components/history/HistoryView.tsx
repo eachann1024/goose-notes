@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { usePages } from "@/stores/usePages";
 import { resolveHistoryBackend } from "@/lib/history/backend";
+import { filterAdjacentDuplicateHistoryEntries } from "@/lib/history/dedupe";
 import {
   markMilestone,
   recordHistorySnapshot,
@@ -114,8 +115,13 @@ function useHistoryViewLogic() {
     const backend = resolveHistoryBackend(pageId);
     backend
       .loadIndex(pageId)
-      .then((idx) => {
-        if (!cancelled) setIndex(idx);
+      .then(async (idx) => {
+        const versions = await filterAdjacentDuplicateHistoryEntries(
+          pageId,
+          idx.versions,
+          backend,
+        );
+        if (!cancelled) setIndex({ ...idx, versions });
       })
       .catch(() => {
         if (!cancelled)
@@ -323,7 +329,9 @@ export function HistoryVersionList() {
       <div className="shrink-0 px-3 pt-3 pb-2">
         <div className="flex items-center gap-1.5">
           <LucideIcons.History className="h-3.5 w-3.5 text-[var(--goose-interactive-selected-fg)]" />
-          <span className="text-[12px] font-medium text-foreground">页面历史</span>
+          <span className="text-[12px] font-medium text-foreground">
+            页面历史
+          </span>
         </div>
         <p className="mt-1 truncate whitespace-nowrap text-[11px] leading-none text-muted-foreground">
           选择时间点预览后还原
@@ -405,7 +413,7 @@ export function HistoryVersionList() {
                             closeNotebookAiIfFullscreen();
                             select(v.versionId);
                           }}
-                          className="flex w-full cursor-pointer items-center gap-2 rounded-[10px] py-1.5 pl-8 pr-10 text-left"
+                          className="flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-[10px] py-2.5 pl-8 pr-11 text-left"
                         >
                           <span
                             className={cn(
@@ -444,29 +452,33 @@ export function HistoryVersionList() {
                                 {deltaText}
                               </span>
                             ) : null}
-                            {v.isMilestone ? (
-                              <LucideIcons.Pin
-                                className={cn(
-                                  "h-3 w-3",
-                                  isSelected
-                                    ? "text-[var(--goose-interactive-selected-fg)]"
-                                    : "text-foreground/65",
-                                )}
-                              />
-                            ) : null}
                           </span>
                         </button>
                         <button
                           type="button"
+                          aria-pressed={v.isMilestone}
                           aria-label={
-                            v.isMilestone ? "取消里程碑" : "标记里程碑"
+                            v.isMilestone ? "取消标记此版本" : "标记此版本"
                           }
-                          onClick={() =>
-                            handleToggleMilestone(v.versionId, !v.isMilestone)
-                          }
-                          className="absolute right-2 top-1/2 z-[2] -translate-y-1/2 cursor-pointer select-none rounded px-1 py-0.5 text-[10px] leading-none text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 bg-[hsl(var(--goose-shell-bg))]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleToggleMilestone(v.versionId, !v.isMilestone);
+                          }}
+                          className={cn(
+                            "absolute right-1 top-1/2 z-[2] flex h-[32px] w-[32px] -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-colors duration-150",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                            v.isMilestone
+                              ? "opacity-100"
+                              : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100",
+                          )}
                         >
-                          {v.isMilestone ? "取消" : "标记"}
+                          <LucideIcons.Star
+                            className={cn(
+                              "h-4 w-4 text-muted-foreground",
+                              v.isMilestone &&
+                                "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                            )}
+                          />
                         </button>
                       </div>
                     );
@@ -482,20 +494,15 @@ export function HistoryVersionList() {
 }
 
 export function HistoryToolbar() {
-  const {
-    pageTitle,
-    selectedVersionId,
-    selectedStatus,
-    exit,
-    handleRestore,
-  } = useHistoryViewLogic();
+  const { pageTitle, selectedVersionId, selectedStatus, exit, handleRestore } =
+    useHistoryViewLogic();
 
   return (
-    <header className="h-11 px-3 flex items-center gap-3 border-b border-border/50 shrink-0 bg-[hsl(var(--goose-shell-bg))]">
+    <header className="h-11 px-3 flex items-center gap-3 shrink-0 bg-[hsl(var(--goose-editor-bg))]">
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
-        className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+        className="h-8 px-3 text-xs gap-1.5 text-foreground shadow-none hover:bg-accent hover:text-accent-foreground"
         onClick={exit}
       >
         <LucideIcons.ArrowLeft className="h-3.5 w-3.5" />
@@ -503,7 +510,6 @@ export function HistoryToolbar() {
       </Button>
 
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <LucideIcons.History className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate text-sm font-medium">{pageTitle}</span>
       </div>
 
