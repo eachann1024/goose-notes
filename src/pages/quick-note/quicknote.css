@@ -326,6 +326,209 @@ body,
   transform: translate(-50%, -50%) !important;
 }
 
+/* ── 双 Shift「采集」预览 ───────────────────────────────────────
+ * 仅 collectVariant 查询参数存在时渲染。原型只在会话内计数，不写真实笔记。
+ * 新样式使用静态 rgba / hex，兼容 uTools 的旧 Chromium 内核。
+ */
+.quicknote-collect-chip {
+  position: absolute;
+  z-index: 24;
+  top: 5px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 27px;
+  max-width: calc(100% - 168px);
+  padding: 3px 4px 3px 8px;
+  border: 1px solid rgba(16, 185, 129, 0.26);
+  border-radius: 999px;
+  background: rgba(236, 253, 245, 0.98);
+  color: #065f46;
+  box-shadow: 0 2px 8px rgba(6, 95, 70, 0.1);
+  font-size: 11px;
+  line-height: 1;
+  animation: quicknote-collect-enter 180ms ease-out;
+}
+
+.quicknote-root[data-collect-variant="chip"] .quicknote-slot-name-display {
+  max-width: calc(100% - 202px);
+}
+
+.quicknote-collect-pulse {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.quicknote-collect-chip-label,
+.quicknote-collect-shelf-state {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.quicknote-collect-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.13);
+  color: #047857;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.quicknote-collect-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #047857;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.quicknote-collect-icon-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.quicknote-collect-icon-btn:hover {
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.quicknote-collect-stop-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.quicknote-collect-icon-btn:focus-visible,
+.quicknote-collect-simulate-btn:focus-visible,
+.quicknote-collect-stop-text-btn:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 1px;
+}
+
+.quicknote-collect-shelf {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  flex: 0 0 42px;
+  min-width: 0;
+  height: 42px;
+  padding: 6px 8px 6px 10px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(248, 250, 252, 0.98);
+  color: #334155;
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.05);
+  font-size: 11px;
+  line-height: 1;
+  animation: quicknote-collect-shelf-enter 200ms ease-out;
+}
+
+.quicknote-collect-shelf-recent {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: #64748b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quicknote-collect-simulate-btn,
+.quicknote-collect-stop-text-btn {
+  flex: 0 0 auto;
+  height: 26px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 24px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.quicknote-collect-simulate-btn:hover,
+.quicknote-collect-stop-text-btn:hover {
+  border-color: rgba(5, 150, 105, 0.35);
+  background: #ffffff;
+}
+
+.quicknote-collect-stop-text-btn {
+  color: #b91c1c;
+}
+
+.dark .quicknote-collect-chip {
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(6, 78, 59, 0.96);
+  color: #d1fae5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.dark .quicknote-collect-count {
+  background: rgba(52, 211, 153, 0.16);
+  color: #a7f3d0;
+}
+
+.dark .quicknote-collect-icon-btn {
+  color: #a7f3d0;
+}
+
+.dark .quicknote-collect-shelf {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.98);
+  color: #e2e8f0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.22);
+}
+
+.dark .quicknote-collect-shelf-recent {
+  color: #94a3b8;
+}
+
+.dark .quicknote-collect-simulate-btn,
+.dark .quicknote-collect-stop-text-btn {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(30, 41, 59, 0.96);
+  color: #e2e8f0;
+}
+
+.dark .quicknote-collect-stop-text-btn {
+  color: #fca5a5;
+}
+
+@keyframes quicknote-collect-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes quicknote-collect-shelf-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
 .quicknote-root .page-scroll-container {
   scrollbar-width: thin;

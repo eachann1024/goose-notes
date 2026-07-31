@@ -40,6 +40,8 @@ import {
 } from "./quickNoteShortcuts";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { formatShortcut, getPlatformKind } from "@/lib/utils";
+import { QuickNoteCollectPreview } from "./QuickNoteCollectPreview";
+import { getQuickNoteCollectVariant } from "./quickNoteCollectDetector";
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
@@ -58,6 +60,10 @@ const TITLEBAR_SWITCH_REVEAL_MS = 2200;
  */
 export function QuickNoteApp() {
   const editorRef = useRef<EditorRef>(null);
+  const collectVariant = useMemo(
+    () => getQuickNoteCollectVariant(window.location.search),
+    [],
+  );
   /** 撤销/重做重挂编辑器后，只静默一次同一槽位且与恢复内容签名一致的初始化同步。 */
   const restoredContentSignatureRef = useRef<{
     slot: QuickNoteSlot;
@@ -635,7 +641,10 @@ export function QuickNoteApp() {
   );
 
   return (
-    <div className="quicknote-root relative flex h-screen w-screen flex-col bg-[hsl(var(--goose-editor-bg))]">
+    <div
+      className="quicknote-root relative flex h-screen w-screen flex-col bg-[hsl(var(--goose-editor-bg))]"
+      data-collect-variant={collectVariant ?? undefined}
+    >
       {headerBar}
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto page-scroll-container">
         <EditorHostBridge
@@ -659,6 +668,9 @@ export function QuickNoteApp() {
           </div>
         </EditorHostBridge>
       </div>
+      {collectVariant && (
+        <QuickNoteCollectPreview variant={collectVariant} />
+      )}
       <Toaster
         className="quicknote-toaster"
         position="bottom-center"
