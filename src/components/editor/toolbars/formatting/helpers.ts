@@ -114,7 +114,7 @@ function selectionTouchesTable(selection: any): boolean {
 export function selectionHasNonFormattableBlock(
   editor: BlockNoteEditor<any, any, any>,
 ): boolean {
-  const { selection } = editor.prosemirrorState;
+  const { selection, doc } = editor.prosemirrorState;
 
   const nearestNonFormattable = ($pos: any) => {
     for (let d = $pos.depth; d > 0; d -= 1) {
@@ -125,8 +125,42 @@ export function selectionHasNonFormattableBlock(
   };
 
   const fromNode = nearestNonFormattable(selection.$from);
-  if (!fromNode) return false;
-  return fromNode === nearestNonFormattable(selection.$to);
+  if (fromNode && fromNode === nearestNonFormattable(selection.$to)) {
+    return true;
+  }
+
+  if (selection.empty) return false;
+
+  // 整块选择（例如拖拽选中代码块或代码块独占文档时 Cmd+A）的端点会落在
+  // blockContainer / codeBlock 外侧，单看 $from、$to 的祖先会漏判。继续核对
+  // 选区实际覆盖的文本：只要所有被选文本都属于同一个不可格式化节点，就隐藏工具栏。
+  let coveredNode: any = null;
+  let hasSelectedText = false;
+  let entirelyNonFormattable = true;
+
+  doc.nodesBetween(selection.from, selection.to, (node: any, pos: number) => {
+    if (!entirelyNonFormattable) return false;
+    if (!node.isText) return true;
+
+    const selectedFrom = Math.max(selection.from, pos);
+    const selectedTo = Math.min(selection.to, pos + node.nodeSize);
+    if (selectedFrom >= selectedTo) return false;
+
+    hasSelectedText = true;
+    const nonFormattableNode = nearestNonFormattable(doc.resolve(selectedFrom));
+    if (!nonFormattableNode) {
+      entirelyNonFormattable = false;
+      return false;
+    }
+    if (coveredNode && coveredNode !== nonFormattableNode) {
+      entirelyNonFormattable = false;
+      return false;
+    }
+    coveredNode = nonFormattableNode;
+    return false;
+  });
+
+  return hasSelectedText && entirelyNonFormattable;
 }
 
 /**
