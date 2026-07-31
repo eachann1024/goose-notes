@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { ImagePlus, Send, Square } from "lucide-react";
+import { ComposerPrimitive } from "@assistant-ui/react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -58,7 +59,6 @@ interface ComposerProps {
     payload: AiComposerPayload,
     images: NotebookAiImageAttachment[],
   ) => boolean | void;
-  onStop: () => void;
   isStreaming: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -73,7 +73,6 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     {
       notebookId,
       onSend,
-      onStop,
       isStreaming,
       disabled,
       placeholder = "向 AI 提问，/ 调用 Skill，@ 引用笔记或本地文件…",
@@ -124,34 +123,31 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       setAutoFocusToken((token) => token + 1);
     }, [disabled, isStreaming, onSend, notebookId]);
 
-    const addImageFiles = useCallback(
-      (selectedFiles: File[]) => {
-        if (selectedFiles.length === 0) return;
+    const addImageFiles = useCallback((selectedFiles: File[]) => {
+      if (selectedFiles.length === 0) return;
 
-        const accepted = selectedFiles
-          .filter(isImageUploadFile)
-          .filter((file) =>
-            SUPPORTED_IMAGE_MEDIA_TYPES.has(resolveImageMimeForUpload(file)),
-          )
-          .map((file) => {
-            const mediaType = resolveImageMimeForUpload(file);
-            return file.type === mediaType
-              ? file
-              : new File([file], file.name, {
-                  type: mediaType,
-                  lastModified: file.lastModified,
-                });
-          });
+      const accepted = selectedFiles
+        .filter(isImageUploadFile)
+        .filter((file) =>
+          SUPPORTED_IMAGE_MEDIA_TYPES.has(resolveImageMimeForUpload(file)),
+        )
+        .map((file) => {
+          const mediaType = resolveImageMimeForUpload(file);
+          return file.type === mediaType
+            ? file
+            : new File([file], file.name, {
+                type: mediaType,
+                lastModified: file.lastModified,
+              });
+        });
 
-        if (accepted.length === 0) {
-          toast.error("请选择 PNG、JPEG、WebP 或 GIF 图片。");
-          return;
-        }
+      if (accepted.length === 0) {
+        toast.error("请选择 PNG、JPEG、WebP 或 GIF 图片。");
+        return;
+      }
 
-        inputRef.current?.insertImages(accepted);
-      },
-      [],
-    );
+      inputRef.current?.insertImages(accepted);
+    }, []);
 
     const handleImageInput = useCallback(
       (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,11 +187,12 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const canSend = !isStreaming && !disabled && !isEmpty;
 
     return (
-      <div
-        className={cn(
-          "shrink-0",
-          isFullscreen ? "px-6 py-3" : "px-3 py-2.5",
-        )}
+      <ComposerPrimitive.Root
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+        className={cn("shrink-0", isFullscreen ? "px-6 py-3" : "px-3 py-2.5")}
       >
         <div
           className={cn(
@@ -255,9 +252,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               </button>
 
               {isStreaming ? (
-                <button
-                  type="button"
-                  onClick={onStop}
+                <ComposerPrimitive.Cancel
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
                     "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
@@ -267,7 +262,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   title="停止生成"
                 >
                   <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </button>
+                </ComposerPrimitive.Cancel>
               ) : (
                 <button
                   type="button"
@@ -289,7 +284,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             </div>
           </div>
         </div>
-      </div>
+      </ComposerPrimitive.Root>
     );
   },
 );

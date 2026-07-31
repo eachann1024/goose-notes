@@ -96,7 +96,6 @@ export function NotebookAiPanel({
     messages,
     error,
     clearError,
-    stop,
     isBusy,
     isStreaming,
     unavailableReason,
@@ -390,7 +389,6 @@ export function NotebookAiPanel({
         key={`${notebookId}-${composerRevision}`}
         notebookId={notebookId}
         onSend={handleSend}
-        onStop={stop}
         isStreaming={isBusy}
         disabled={!!unavailableReason}
         placeholder={composerPlaceholder}

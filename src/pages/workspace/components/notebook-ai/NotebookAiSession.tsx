@@ -48,6 +48,7 @@ import type { NotebookAiPanelSelectionCapture } from "./useNotebookAiPanel";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
+import { NotebookAiAssistantRuntimeProvider } from "./AssistantUiRuntimeProvider";
 
 /** 流式响应持续无任何消息更新时自动收尾，避免旧 uTools 内核永久占用会话。 */
 const NOTEBOOK_AI_STREAM_IDLE_TIMEOUT_MS = 60_000;
@@ -667,8 +668,15 @@ export function NotebookAiSessionProvider({
   );
 
   return (
-    <NotebookAiSessionContext.Provider value={value}>
-      {children}
-    </NotebookAiSessionContext.Provider>
+    <NotebookAiAssistantRuntimeProvider
+      messages={messages}
+      isRunning={isStreaming}
+      isDisabled={Boolean(unavailableReason)}
+      onCancel={stop}
+    >
+      <NotebookAiSessionContext.Provider value={value}>
+        {children}
+      </NotebookAiSessionContext.Provider>
+    </NotebookAiAssistantRuntimeProvider>
   );
 }
