@@ -1,7 +1,7 @@
 /**
  * 消息列表组件 — Streamdown 渲染 text part，自动吸底，用户上滚暂停
  */
-import { Fragment, useEffect, useRef, useCallback } from "react";
+import { Fragment } from "react";
 import type { ComponentProps, RefObject } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
@@ -31,6 +31,7 @@ import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { cn } from "@/lib/utils";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import { AssistantUiThreadViewport } from "./AssistantUiThreadViewport";
 
 const ANIMATE_OPTIONS = {
   animation: "blurIn" as const,
@@ -307,55 +308,14 @@ export function ChatMessages({
   onBatchApproval,
   onBatchUndo,
 }: ChatMessagesProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const { onOpenPage } = useEditorPageContext();
-  const isUserScrolled = useRef(false);
-  const lastScrollTop = useRef(0);
   const isFullscreen = layout === "fullscreen";
-
-  const scrollToBottom = useCallback((force = false) => {
-    const el = containerRef.current;
-    if (!el) return;
-    if (force || !isUserScrolled.current) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, []);
-
-  // 检测用户手动上滚
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const diff = el.scrollTop - lastScrollTop.current;
-      lastScrollTop.current = el.scrollTop;
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      if (atBottom) {
-        isUserScrolled.current = false;
-      } else if (diff < 0) {
-        isUserScrolled.current = true;
-      }
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // 新消息到来时吸底
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // 流式结束后强制吸底
-  useEffect(() => {
-    if (!streamingMessageId) {
-      isUserScrolled.current = false;
-      scrollToBottom(true);
-    }
-  }, [streamingMessageId, scrollToBottom]);
 
   if (messages.length === 0) {
     return (
-      <div
-        ref={containerRef}
+      <AssistantUiThreadViewport
+        messages={messages}
+        isRunning={Boolean(streamingMessageId)}
         className={cn(
           "flex flex-1 items-center justify-center overflow-y-auto",
           isFullscreen ? "px-8" : "px-5",
@@ -396,13 +356,14 @@ export function ChatMessages({
               : "让它帮你整理、搜索、创作笔记。"}
           </p>
         </div>
-      </div>
+      </AssistantUiThreadViewport>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
+    <AssistantUiThreadViewport
+      messages={messages}
+      isRunning={Boolean(streamingMessageId)}
       className={cn(
         "notebook-ai-messages flex-1 overflow-y-auto [scrollbar-width:thin]",
         isFullscreen ? "px-6 py-5" : "px-3 py-3",
@@ -474,9 +435,7 @@ export function ChatMessages({
                           <button
                             key={segment.key}
                             type="button"
-                            onClick={() =>
-                              onOpenPage(segment.reference.pageId)
-                            }
+                            onClick={() => onOpenPage(segment.reference.pageId)}
                             className={cn(
                               "ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded px-1.5 text-[11px] font-medium leading-none outline-none",
                               "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border",
@@ -566,7 +525,11 @@ export function ChatMessages({
                       toolPart.state === "call" ||
                       toolPart.state === "partial-call"
                     ) {
-                      return <Fragment key={`batch-progress-${pi}`}>{progress}</Fragment>;
+                      return (
+                        <Fragment key={`batch-progress-${pi}`}>
+                          {progress}
+                        </Fragment>
+                      );
                     }
                     return (
                       <Fragment key={`approval-plan-${pi}`}>
@@ -607,6 +570,6 @@ export function ChatMessages({
           );
         })}
       </div>
-    </div>
+    </AssistantUiThreadViewport>
   );
 }
