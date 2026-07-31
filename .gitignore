@@ -10,9 +10,6 @@ lerna-debug.log*
 # Package manager: this project uses bun — bun.lock IS committed.
 # Global ~/.gitignore_global has `*.lock`, so force bun.lock back in.
 !bun.lock
-# Sites 的项目绑定需要随源码保存；全局忽略规则会隐藏点目录。
-!.openai/
-!.openai/hosting.json
 # Ignore lockfiles from other managers to prevent accidental drift.
 pnpm-lock.yaml
 package-lock.json
@@ -26,7 +23,6 @@ dist
 dist-ssr
 dist-quicknote/
 dist-native-editor/
-dist-guide/
 default.profraw
 # src/lib/build/ contains source (lite-empty.ts is the quicknote alias target),
 # NOT build output. Global ~/.gitignore_global has `build/` which would hide it.
@@ -55,6 +51,5 @@ skills-lock.json
 # ---- Local-only scratch ----
 tasks/
 scripts/*
-!scripts/build-guide-offline.mjs
 # stray verification screenshots in repo root
 /*.png

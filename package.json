@@ -11,12 +11,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:guide": "vite --config vite.guide.config.ts",
     "build": "tsc -b && vite build && GOOSE_BUILD_TARGET=quicknote vite build && node scripts/utools-build.js",
-    "build:guide": "vite build --config vite.guide.config.ts",
-    "build:guide:offline": "bun run build:guide && node scripts/build-guide-offline.mjs",
-    "preview:guide": "vite preview --config vite.guide.config.ts",
-    "build:site": "bun run build:guide && node hosting/prepare-guide.mjs",
     "build:native-editor": "vite build --config vite.native-editor.config.ts",
     "dev:native-editor": "bun run build:native-editor && node scripts/serve-native-editor.mjs --mock ${NATIVE_EDITOR_PORT:-6012}",
     "audit:native-editor": "node scripts/audit-native-editor.mjs",
