@@ -31,14 +31,25 @@ body,
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* 标题行固定占据第一行，并位于缩放层外。正文滚动区从其下方开始，
-   因此任何缩放档位都不会把首块压到便签名下面。 */
+/* 顶栏是固定覆层，不参与正文布局；仅顶部 7px 触发区常驻接收指针。 */
 .quicknote-titlebar-reveal-zone {
-  position: relative;
-  flex: 0 0 46px;
-  height: 46px;
-  width: 100%;
+  position: fixed;
   z-index: 20;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 46px;
+  pointer-events: none;
+}
+
+.quicknote-titlebar-trigger {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 7px;
+  pointer-events: auto;
 }
 
 /* 当前便签名常驻左侧，同时作为原有使用说明弹层的入口。 */
@@ -46,7 +57,7 @@ body,
   display: flex;
   align-items: center;
   flex: 0 1 auto;
-  max-width: min(96px, calc(50vw - 82px));
+  max-width: min(96px, calc(50vw - 76px));
   height: 26px;
   margin: 0;
   padding: 0;
@@ -66,9 +77,17 @@ body,
   color: hsl(var(--foreground));
 }
 
+.quicknote-slot-name-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .quicknote-slot-name-input {
-  position: absolute;
-  z-index: 3;
+  position: fixed;
+  z-index: 22;
   box-sizing: border-box;
   top: 4px;
   left: 8px;
@@ -85,21 +104,42 @@ body,
   font-weight: 500;
   line-height: 28px;
   box-shadow: none;
+  pointer-events: auto;
 }
 
-/* 标题栏常驻：左标题、中间便签分段器、右关闭按钮严格占用同一 46px 行。 */
+/* 顶栏默认隐藏；hover、键盘焦点、切换反馈和弹层打开时显示。 */
 .quicknote-titlebar {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
   display: flex;
   align-items: center;
   height: 46px;
   padding: 0 12px 0 16px;
   -webkit-user-select: none;
   user-select: none;
-  background: hsl(var(--goose-editor-bg));
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--goose-editor-bg)) 76%,
+    rgba(255, 255, 255, 0)
+  );
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.quicknote-titlebar-reveal-zone:hover .quicknote-titlebar,
+.quicknote-titlebar-reveal-zone:focus-within .quicknote-titlebar,
+.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
+  .quicknote-titlebar,
+.quicknote-titlebar-reveal-zone[data-help-open="true"] .quicknote-titlebar {
   opacity: 1;
-  transform: none;
+  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -116,15 +156,53 @@ body,
   cursor: default;
 }
 
+.quicknote-titlebar-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.quicknote-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0 0 0 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.quicknote-titlebar-left:hover .quicknote-help-trigger,
+.quicknote-titlebar-left:focus-within .quicknote-help-trigger,
+.quicknote-titlebar-reveal-zone[data-help-open="true"]
+  .quicknote-help-trigger {
+  opacity: 1;
+}
+
+.quicknote-help-trigger:hover {
+  background: hsl(var(--goose-selected-bg));
+  color: hsl(var(--foreground));
+}
+
 .quicknote-slot-switcher-positioner {
   position: absolute;
-  top: 9px;
+  top: 10px;
   left: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132px;
-  height: 28px;
+  width: 120px;
+  height: 26px;
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -158,8 +236,7 @@ body,
   color: hsl(var(--foreground));
 }
 
-/* 标题行已在缩放层外固定占位，编辑区无需再用可缩放的顶部 padding 补偿。
-   共享编辑器自身的 8px 顶部内边距提供标题与首块之间的呼吸空间。 */
+/* 顶栏不占布局；正文从视口顶部开始，只有 7px 触发区接收指针。 */
 .quicknote-editor-surface {
   box-sizing: border-box;
   height: 100%;
@@ -170,13 +247,12 @@ body,
 }
 
 /* BlockNote 的 contenteditable 默认只按内容撑高。小窗直接让编辑面填满
-   视口扣除标题行（46px）、surface 底部内边距（16px）与 workspace 顶部内边距
-   （8px）后的剩余空间。不改 bn-container 的布局，避免其内部空工具栏宿主
-   被 BlockNote 的 flex-basis: 100% 额外撑出一整屏。 */
+   视口扣除 surface 底部内边距（16px）与 workspace 顶部内边距（8px）后的
+   剩余空间；顶栏是覆层，不计入高度。 */
 .quicknote-editor-surface .bn-editor {
   box-sizing: border-box;
-  min-height: calc(100vh - 70px);
-  min-height: calc(100dvh - 70px);
+  min-height: calc(100vh - 24px);
+  min-height: calc(100dvh - 24px);
 }
 
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
@@ -366,19 +442,19 @@ body,
 }
 
 /* ── 1–5 便签切换器 ─────────────────────────────────────────────
- * 顶栏绝对居中并常驻；浅灰分段器内，当前槽位使用白底高亮。
+ * 顶栏显示时绝对居中；浅灰分段器内，当前槽位使用白底高亮。
  * 使用静态 rgba / hex，避免 uTools 旧内核解析 alpha 变量异常。
  */
 .quicknote-slot-switcher {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 132px;
-  height: 28px;
+  justify-content: space-between;
+  width: 120px;
+  height: 26px;
   padding: 2px;
   border: 1px solid #dedede;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #f1f1ef;
   box-shadow: none;
 }
@@ -389,15 +465,15 @@ body,
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 25px;
-  height: 22px;
+  width: 22px;
+  height: 20px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: #85827e;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -424,6 +500,22 @@ body,
   display: block;
   width: 100%;
   text-align: center;
+}
+
+.quicknote-slot-name-text,
+.quicknote-slot-btn[data-active="true"] .quicknote-slot-btn-label {
+  animation: quicknote-slot-content-in 180ms ease-out;
+}
+
+@keyframes quicknote-slot-content-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 当前项：白底高亮，与确认稿一致。 */
@@ -470,7 +562,10 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .quicknote-titlebar,
   .quicknote-slot-switcher,
-  .quicknote-slot-btn {
+  .quicknote-slot-btn,
+  .quicknote-slot-name-text,
+  .quicknote-slot-btn-label {
+    animation: none;
     transition: none;
   }
 }

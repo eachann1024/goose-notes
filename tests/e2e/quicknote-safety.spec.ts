@@ -8,7 +8,7 @@ async function openCleanQuickNote(page: import("playwright/test").Page) {
 }
 
 test.describe("quick-note draft safety", () => {
-  test("keeps the slot switcher visible, centered, and synced", async ({
+  test("reveals the compact overlay switcher without shifting the editor", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 408, height: 759 });
@@ -17,58 +17,56 @@ test.describe("quick-note draft safety", () => {
     const layout = await page.evaluate(() => {
       const root = document.querySelector<HTMLElement>(".quicknote-root");
       const topbar = document.querySelector<HTMLElement>(".quicknote-titlebar");
-      const title = document.querySelector<HTMLElement>(
-        ".quicknote-slot-name-display",
-      );
       const switcher = document.querySelector<HTMLElement>(
         ".quicknote-slot-switcher",
       );
-      const close = document.querySelector<HTMLElement>(".quicknote-close-btn");
       const editor = document.querySelector<HTMLElement>(
         ".page-scroll-container",
       );
-      if (!root || !topbar || !title || !switcher || !close || !editor) {
+      const trigger = document.querySelector<HTMLElement>(
+        ".quicknote-titlebar-trigger",
+      );
+      if (!root || !topbar || !switcher || !editor || !trigger) {
         return null;
       }
 
       const rootRect = root.getBoundingClientRect();
       const topbarRect = topbar.getBoundingClientRect();
-      const titleRect = title.getBoundingClientRect();
       const switcherRect = switcher.getBoundingClientRect();
-      const closeRect = close.getBoundingClientRect();
       const editorRect = editor.getBoundingClientRect();
-      const centerY = (rect: DOMRect) => rect.top + rect.height / 2;
+      const triggerRect = trigger.getBoundingClientRect();
 
       return {
         topbarHeight: topbarRect.height,
-        titleLeft: titleRect.left - rootRect.left,
-        closeRight: rootRect.right - closeRect.right,
+        titlebarOpacity: getComputedStyle(topbar).opacity,
+        triggerHeight: triggerRect.height,
         switcherWidth: switcherRect.width,
         switcherHeight: switcherRect.height,
         switcherCenterDelta:
           switcherRect.left +
           switcherRect.width / 2 -
           (rootRect.left + rootRect.width / 2),
-        titleCenterDelta: centerY(titleRect) - centerY(topbarRect),
-        switcherCenterYDelta: centerY(switcherRect) - centerY(topbarRect),
-        closeCenterDelta: centerY(closeRect) - centerY(topbarRect),
-        editorStartsAfterTopbar: editorRect.top >= topbarRect.bottom,
-        switcherVisibility: getComputedStyle(switcher).visibility,
+        editorStartsAtViewportTop: editorRect.top === rootRect.top,
       };
     });
 
     expect(layout).not.toBeNull();
     expect(layout!.topbarHeight).toBe(46);
-    expect(layout!.titleLeft).toBe(16);
-    expect(layout!.closeRight).toBe(12);
-    expect(layout!.switcherWidth).toBe(132);
-    expect(layout!.switcherHeight).toBe(28);
+    expect(layout!.titlebarOpacity).toBe("0");
+    expect(layout!.triggerHeight).toBe(7);
+    expect(layout!.switcherWidth).toBe(120);
+    expect(layout!.switcherHeight).toBe(26);
     expect(Math.abs(layout!.switcherCenterDelta)).toBeLessThan(1);
-    expect(Math.abs(layout!.titleCenterDelta)).toBeLessThan(1);
-    expect(Math.abs(layout!.switcherCenterYDelta)).toBeLessThan(1);
-    expect(Math.abs(layout!.closeCenterDelta)).toBeLessThan(1);
-    expect(layout!.editorStartsAfterTopbar).toBe(true);
-    expect(layout!.switcherVisibility).toBe("visible");
+    expect(layout!.editorStartsAtViewportTop).toBe(true);
+
+    const titlebar = page.locator(".quicknote-titlebar");
+    await page.locator(".quicknote-titlebar-trigger").hover();
+    await expect(titlebar).toHaveCSS("opacity", "1");
+    await titlebar.hover({ position: { x: 200, y: 20 } });
+    await page.waitForTimeout(2300);
+    await expect(titlebar).toHaveCSS("opacity", "1");
+    await page.mouse.move(200, 120);
+    await expect(titlebar).toHaveCSS("opacity", "0");
 
     await page.keyboard.press("Control+2");
     await expect(
@@ -77,11 +75,26 @@ test.describe("quick-note draft safety", () => {
     await expect(
       page.locator("[data-sonner-toast].quicknote-slot-switch-toast"),
     ).toHaveCount(0);
+    await expect(titlebar).toHaveCSS("opacity", "1");
 
     const activeBackground = await page
       .getByRole("radio", { name: "便签 2，空白" })
       .evaluate((element) => getComputedStyle(element).backgroundColor);
     expect(activeBackground).toBe("rgb(255, 255, 255)");
+    await page.waitForTimeout(2400);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const reducedMotion = await page
+      .locator(".quicknote-slot-name-text")
+      .evaluate((element) => ({
+        animationName: getComputedStyle(element).animationName,
+        transitionDuration: getComputedStyle(
+          document.querySelector(".quicknote-titlebar")!,
+        ).transitionDuration,
+      }));
+    expect(reducedMotion.animationName).toBe("none");
+    expect(reducedMotion.transitionDuration).toBe("0s");
   });
 
   test("fills the remaining viewport without a focus outline", async ({
@@ -148,7 +161,7 @@ test.describe("quick-note draft safety", () => {
     expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
   });
 
-  test("reserves the title row at the minimum editor zoom", async ({
+  test("keeps the title overlay out of editor layout at minimum zoom", async ({
     page,
   }) => {
     await openCleanQuickNote(page);
@@ -173,13 +186,15 @@ test.describe("quick-note draft safety", () => {
       return {
         titleBottom: titleRow.getBoundingClientRect().bottom,
         firstBlockTop: firstBlock.getBoundingClientRect().top,
+        surfaceTop: surface.getBoundingClientRect().top,
         zoom: getComputedStyle(surface).zoom,
       };
     });
 
     expect(layout).not.toBeNull();
     expect(layout!.zoom).toBe("0.7");
-    expect(layout!.firstBlockTop).toBeGreaterThanOrEqual(layout!.titleBottom);
+    expect(layout!.surfaceTop).toBe(0);
+    expect(layout!.firstBlockTop).toBeLessThan(layout!.titleBottom);
   });
 
   test("scrolls the help content when the window is too short", async ({
@@ -202,12 +217,13 @@ test.describe("quick-note draft safety", () => {
     expect(overflow.overflowY).toBe("auto");
   });
 
-  test("renames the active slot from its number and the help menu", async ({
+  test("renames the active slot from its title and the help menu", async ({
     page,
   }) => {
     await openCleanQuickNote(page);
 
-    await page.getByRole("radio", { name: "便签 1，空白" }).click();
+    await page.locator(".quicknote-titlebar-trigger").hover();
+    await page.getByRole("button", { name: "修改标签名称" }).click();
     const renameInput = page.getByRole("textbox", { name: "重命名便签 1" });
     await expect(renameInput).toBeVisible();
     await expect(page.locator(".quicknote-titlebar")).toBeHidden();
@@ -237,16 +253,16 @@ test.describe("quick-note draft safety", () => {
       const style = getComputedStyle(element);
       return {
         opacity: style.opacity,
-        backgroundColor: style.backgroundColor,
+        animationName: getComputedStyle(
+          element.querySelector(".quicknote-slot-name-text")!,
+        ).animationName,
       };
     });
     expect(nameStyle.opacity).toBe("1");
-    expect(nameStyle.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(nameStyle.animationName).toBe("quicknote-slot-content-in");
 
     await page.reload();
-    await page.locator(".page-scroll-container").hover({
-      position: { x: 120, y: 120 },
-    });
+    await page.locator(".quicknote-titlebar-trigger").hover();
     await expect(slotName).toHaveText("工作");
 
     await page.locator(".quicknote-titlebar-reveal-zone").hover();
@@ -255,9 +271,7 @@ test.describe("quick-note draft safety", () => {
     await expect(renameInput).toBeVisible();
     await renameInput.fill("灵感");
     await renameInput.press("Enter");
-    await page.locator(".page-scroll-container").hover({
-      position: { x: 120, y: 120 },
-    });
+    await page.locator(".quicknote-titlebar-trigger").hover();
     await expect(slotName).toHaveText("灵感");
   });
 

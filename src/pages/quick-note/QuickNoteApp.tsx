@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { X, Pencil } from "lucide-react";
+import { CircleAlert, X, Pencil } from "lucide-react";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,
@@ -43,6 +43,7 @@ import { formatShortcut, getPlatformKind } from "@/lib/utils";
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
+const TITLEBAR_SWITCH_REVEAL_MS = 2200;
 
 /**
  * 速记小窗根组件（独立窗口进程）。
@@ -87,6 +88,9 @@ export function QuickNoteApp() {
    */
   const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [titlebarTransientVisible, setTitlebarTransientVisible] =
+    useState(false);
+  const titlebarHideTimerRef = useRef<number | null>(null);
   const [renamingSlot, setRenamingSlot] = useState<QuickNoteSlot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +99,26 @@ export function QuickNoteApp() {
     loadQuickNoteSlotNames(useQuickNote.getState().slotNames),
   );
   const slotNamesRef = useRef(slotNames);
+
+  const revealTitlebarTransiently = useCallback(() => {
+    if (titlebarHideTimerRef.current !== null) {
+      window.clearTimeout(titlebarHideTimerRef.current);
+    }
+    setTitlebarTransientVisible(true);
+    titlebarHideTimerRef.current = window.setTimeout(() => {
+      titlebarHideTimerRef.current = null;
+      setTitlebarTransientVisible(false);
+    }, TITLEBAR_SWITCH_REVEAL_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (titlebarHideTimerRef.current !== null) {
+        window.clearTimeout(titlebarHideTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const helpShortcuts = useMemo(() => {
     const platform = getPlatformKind();
@@ -166,13 +190,14 @@ export function QuickNoteApp() {
 
   const startRename = useCallback(
     (slot: QuickNoteSlot) => {
+      revealTitlebarTransiently();
       flushEditor();
       renameFinishingRef.current = false;
       setHelpOpen(false);
       setRenameValue(getQuickNoteSlotName(slot, slotNames));
       setRenamingSlot(slot);
     },
-    [flushEditor, slotNames],
+    [flushEditor, revealTitlebarTransiently, slotNames],
   );
 
   const finishRename = useCallback(
@@ -192,12 +217,13 @@ export function QuickNoteApp() {
         }
       }
       setRenamingSlot(null);
+      revealTitlebarTransiently();
       requestAnimationFrame(() => {
         renameFinishingRef.current = false;
         editorRef.current?.editor?.focus?.();
       });
     },
-    [renameValue, renamingSlot],
+    [renameValue, renamingSlot, revealTitlebarTransiently],
   );
 
   useEffect(() => {
@@ -246,6 +272,7 @@ export function QuickNoteApp() {
       slot: QuickNoteSlot,
       source: "pointer" | "shortcut" | "switcher-keyboard",
     ) => {
+      revealTitlebarTransiently();
       flushEditor();
       setPreviewSlot(null);
       if (slot === useQuickNote.getState().activeSlot) return;
@@ -256,7 +283,15 @@ export function QuickNoteApp() {
         });
       }
     },
-    [flushEditor, setActiveSlot],
+    [flushEditor, revealTitlebarTransiently, setActiveSlot],
+  );
+
+  const handleHelpOpenChange = useCallback(
+    (open: boolean) => {
+      setHelpOpen(open);
+      if (!open) revealTitlebarTransiently();
+    },
+    [revealTitlebarTransiently],
   );
 
   /** 拖动预览：只改显示槽，不写 activeSlot。 */
@@ -448,7 +483,10 @@ export function QuickNoteApp() {
     <div
       className="quicknote-titlebar-reveal-zone"
       data-renaming={renamingSlot === null ? "false" : "true"}
+      data-transient-visible={titlebarTransientVisible ? "true" : "false"}
+      data-help-open={helpOpen ? "true" : "false"}
     >
+      <div className="quicknote-titlebar-trigger" aria-hidden="true" />
       {renamingSlot !== null && (
         <input
           ref={renameInputRef}
@@ -483,69 +521,87 @@ export function QuickNoteApp() {
         className="quicknote-titlebar"
         style={{ WebkitAppRegion: "drag" } as CSSProperties}
       >
-        <Popover open={helpOpen} onOpenChange={setHelpOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label="使用说明"
-              title={`${displaySlotName} · 使用说明`}
-              className="quicknote-slot-name-display quicknote-titlebar-btn"
-              style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+        <div className="quicknote-titlebar-left">
+          <button
+            type="button"
+            aria-label="修改标签名称"
+            title={`${displaySlotName} · 修改标签名称`}
+            className="quicknote-slot-name-display quicknote-titlebar-btn"
+            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+            onClick={() => startRename(activeSlot)}
+          >
+            <span
+              key={`${displaySlot}-${displaySlotName}`}
+              className="quicknote-slot-name-text"
             >
               {displaySlotName}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            side="bottom"
-            collisionPadding={8}
-            className="quicknote-help-popover w-72 text-xs"
-            onCloseAutoFocus={(event) => event.preventDefault()}
-          >
-            <div className="quicknote-help-heading">
-              <div className="text-sm font-medium">速记便签</div>
-              <p>内容只保留在当前便签，不会自动进入笔记本。</p>
-            </div>
-            <button
-              type="button"
-              className="quicknote-help-rename flex w-full items-center gap-2 text-left text-xs text-foreground"
-              onClick={() => startRename(activeSlot)}
+            </span>
+          </button>
+
+          <Popover open={helpOpen} onOpenChange={handleHelpOpenChange}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="使用说明"
+                title="使用说明"
+                className="quicknote-titlebar-btn quicknote-help-trigger"
+                style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+              >
+                <CircleAlert className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="bottom"
+              collisionPadding={8}
+              className="quicknote-help-popover w-72 text-xs"
+              onCloseAutoFocus={(event) => event.preventDefault()}
             >
-              <Pencil className="h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">重命名当前便签</span>
-              <span className="max-w-24 truncate text-muted-foreground">
-                {getQuickNoteSlotName(activeSlot, slotNames)}
-              </span>
-            </button>
-            <ul className="quicknote-help-list text-muted-foreground">
-              <li>
-                <b className="text-foreground">切换</b>
-                ：顶部 1–5 是五个独立便签。点击或拖动切换；也可按
-                {helpShortcuts.switchSlots}
-                {helpShortcuts.alternateSwitchSlots
-                  ? `，或 ${helpShortcuts.alternateSwitchSlots}`
-                  : ""}
-                。
-              </li>
-              <li>
-                <b className="text-foreground">编辑</b>：{helpShortcuts.zoomIn}{" "}
-                / {helpShortcuts.zoomOut} 缩放，
-                {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
-                {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
-              </li>
-              <li>
-                <b className="text-foreground">收起</b>
-                ：小窗始终置顶；按 {formatShortcut(
-                  "Esc",
-                  getPlatformKind(),
-                )}{" "}
-                或点右上角
-                <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
-                收起。草稿、位置、尺寸和缩放都会保留。
-              </li>
-            </ul>
-          </PopoverContent>
-        </Popover>
+              <div className="quicknote-help-heading">
+                <div className="text-sm font-medium">速记便签</div>
+                <p>内容只保留在当前便签，不会自动进入笔记本。</p>
+              </div>
+              <button
+                type="button"
+                className="quicknote-help-rename flex w-full items-center gap-2 text-left text-xs text-foreground"
+                onClick={() => startRename(activeSlot)}
+              >
+                <Pencil className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">重命名当前便签</span>
+                <span className="max-w-24 truncate text-muted-foreground">
+                  {getQuickNoteSlotName(activeSlot, slotNames)}
+                </span>
+              </button>
+              <ul className="quicknote-help-list text-muted-foreground">
+                <li>
+                  <b className="text-foreground">切换</b>
+                  ：顶部 1–5 是五个独立便签。点击或拖动切换；也可按
+                  {helpShortcuts.switchSlots}
+                  {helpShortcuts.alternateSwitchSlots
+                    ? `，或 ${helpShortcuts.alternateSwitchSlots}`
+                    : ""}
+                  。
+                </li>
+                <li>
+                  <b className="text-foreground">编辑</b>：
+                  {helpShortcuts.zoomIn} / {helpShortcuts.zoomOut} 缩放，
+                  {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
+                  {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
+                </li>
+                <li>
+                  <b className="text-foreground">收起</b>
+                  ：小窗始终置顶；按 {formatShortcut(
+                    "Esc",
+                    getPlatformKind(),
+                  )}{" "}
+                  或点右上角
+                  <X className="mx-0.5 inline h-3 w-3 align-text-bottom" />
+                  收起。草稿、位置、尺寸和缩放都会保留。
+                </li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* 绝对居中，避免左右内容宽度差导致视觉偏移 */}
         <div className="quicknote-slot-switcher-positioner">
