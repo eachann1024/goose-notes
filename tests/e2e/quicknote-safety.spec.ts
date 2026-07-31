@@ -43,10 +43,14 @@ test.describe("quick-note draft safety", () => {
       return {
         topbarHeight: topbarRect.height,
         titlebarOpacity: getComputedStyle(topbar).opacity,
+        triggerWidth: triggerRect.width,
         triggerHeight: triggerRect.height,
+        triggerTop: triggerRect.top - rootRect.top,
         handleWidth: handleRect.width,
         handleHeight: handleRect.height,
         handleOpacity: getComputedStyle(handle).opacity,
+        handleBackground: getComputedStyle(handle).backgroundColor,
+        handleZIndex: getComputedStyle(handle).zIndex,
         handleCenterDelta:
           handleRect.left +
           handleRect.width / 2 -
@@ -64,10 +68,14 @@ test.describe("quick-note draft safety", () => {
     expect(layout).not.toBeNull();
     expect(layout!.topbarHeight).toBe(46);
     expect(layout!.titlebarOpacity).toBe("0");
-    expect(layout!.triggerHeight).toBe(10);
-    expect(layout!.handleWidth).toBe(64);
-    expect(layout!.handleHeight).toBe(5);
+    expect(layout!.triggerWidth).toBe(72);
+    expect(layout!.triggerHeight).toBe(8);
+    expect(layout!.triggerTop).toBe(2);
+    expect(layout!.handleWidth).toBe(72);
+    expect(layout!.handleHeight).toBe(8);
     expect(layout!.handleOpacity).toBe("1");
+    expect(layout!.handleBackground).toBe("rgb(225, 225, 222)");
+    expect(layout!.handleZIndex).toBe("3");
     expect(Math.abs(layout!.handleCenterDelta)).toBeLessThan(1);
     expect(layout!.switcherWidth).toBe(120);
     expect(layout!.switcherHeight).toBe(26);
@@ -76,16 +84,83 @@ test.describe("quick-note draft safety", () => {
 
     const titlebar = page.locator(".quicknote-titlebar");
     const handle = page.locator(".quicknote-titlebar-handle");
+    const switcherInteractive = page.locator(
+      ".quicknote-slot-switcher-interactive",
+    );
     const helpTrigger = page.getByRole("button", { name: "使用说明" });
-    await handle.hover();
+    await page.mouse.move(204, 0);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
+    await page.mouse.move(204, 12);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
+    await page.mouse.move(20, 6);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
+    await page.mouse.move(100, 6);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
+    await expect(switcherInteractive).toHaveCSS("pointer-events", "none");
+    await page.mouse.move(204, 6);
     await expect(titlebar).toHaveCSS("opacity", "1");
     await expect(handle).toHaveCSS("opacity", "0");
     await expect(helpTrigger).toHaveCSS("opacity", "1");
+    await expect(switcherInteractive).toHaveCSS("pointer-events", "auto");
+    const actionLayout = await page
+      .locator(".quicknote-titlebar-actions")
+      .evaluate((actions) => {
+        const info = actions.querySelector<HTMLElement>(
+          ".quicknote-help-trigger",
+        );
+        const close = actions.querySelector<HTMLElement>(
+          ".quicknote-close-btn",
+        );
+        if (!info || !close) return null;
+        const infoRect = info.getBoundingClientRect();
+        const closeRect = close.getBoundingClientRect();
+        return {
+          infoRight: infoRect.right,
+          closeLeft: closeRect.left,
+          gap: closeRect.left - infoRect.right,
+          centerDelta:
+            infoRect.top +
+            infoRect.height / 2 -
+            (closeRect.top + closeRect.height / 2),
+        };
+      });
+    expect(actionLayout).not.toBeNull();
+    expect(actionLayout!.infoRight).toBeLessThanOrEqual(
+      actionLayout!.closeLeft,
+    );
+    expect(actionLayout!.gap).toBeGreaterThanOrEqual(0);
+    expect(actionLayout!.gap).toBeLessThanOrEqual(4);
+    expect(Math.abs(actionLayout!.centerDelta)).toBeLessThan(1);
     await titlebar.hover({ position: { x: 200, y: 20 } });
     await page.waitForTimeout(2300);
     await expect(titlebar).toHaveCSS("opacity", "1");
     await expect(helpTrigger).toHaveCSS("opacity", "1");
     await page.mouse.move(200, 120);
+    await expect(titlebar).toHaveCSS("opacity", "0");
+    await expect(handle).toHaveCSS("opacity", "1");
+
+    await page.mouse.move(204, 6);
+    await helpTrigger.click();
+    const helpIntro = page.getByText(
+      "内容只保留在当前便签，不会自动进入笔记本。",
+    );
+    await expect(helpIntro).toBeVisible();
+    const helpBounds = await page
+      .locator(".quicknote-help-popover")
+      .evaluate((popover) => {
+        const rect = popover.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      });
+    expect(helpBounds.left).toBeGreaterThanOrEqual(8);
+    expect(helpBounds.right).toBeLessThanOrEqual(400);
+    await page.keyboard.press("Escape");
+    await expect(helpIntro).toBeHidden();
+    await page.getByRole("textbox").first().focus();
+    await page.waitForTimeout(2400);
     await expect(titlebar).toHaveCSS("opacity", "0");
     await expect(handle).toHaveCSS("opacity", "1");
 

@@ -32,11 +32,10 @@ body,
 }
 
 .dark .quicknote-titlebar-handle {
-  background: #555552;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: #e1e1de;
 }
 
-/* 顶栏是固定覆层，不参与正文布局；顶部 10px 触发区内常驻一个中性手柄。 */
+/* 顶栏是固定覆层，不参与正文布局；只有顶部中央 72×8px 浅灰手柄响应悬停。 */
 .quicknote-titlebar-reveal-zone {
   position: fixed;
   z-index: 20;
@@ -50,30 +49,32 @@ body,
 .quicknote-titlebar-trigger {
   position: absolute;
   z-index: 2;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 10px;
+  top: 2px;
+  left: 50%;
+  width: 72px;
+  height: 8px;
   pointer-events: auto;
+  transform: translateX(-50%);
 }
 
 .quicknote-titlebar-handle {
   position: absolute;
-  top: 2px;
+  z-index: 3;
+  top: 0;
   left: 50%;
-  width: 64px;
-  height: 5px;
+  width: 72px;
+  height: 8px;
   border-radius: 999px;
-  background: #d8d8d5;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+  background: #e1e1de;
   opacity: 1;
+  pointer-events: auto;
   transform: translateX(-50%) translateY(0);
   transition:
     opacity 140ms ease,
     transform 160ms ease;
 }
 
-/* 当前便签名常驻左侧，同时作为原有使用说明弹层的入口。 */
+/* 当前便签名常驻左侧，同时作为改名入口。 */
 .quicknote-slot-name-display {
   display: flex;
   align-items: center;
@@ -198,9 +199,9 @@ body,
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  margin: 0 0 0 2px;
+  width: 26px;
+  height: 26px;
+  margin: 0;
   padding: 0;
   border: 0;
   border-radius: 7px;
@@ -217,8 +218,7 @@ body,
 .quicknote-titlebar-reveal-zone:focus-within .quicknote-help-trigger,
 .quicknote-titlebar-reveal-zone[data-transient-visible="true"]
   .quicknote-help-trigger,
-.quicknote-titlebar-reveal-zone[data-help-open="true"]
-  .quicknote-help-trigger {
+.quicknote-titlebar-reveal-zone[data-help-open="true"] .quicknote-help-trigger {
   opacity: 1;
 }
 
@@ -241,12 +241,23 @@ body,
 }
 
 .quicknote-slot-switcher-interactive {
+  pointer-events: none;
+}
+
+.quicknote-titlebar-reveal-zone:hover .quicknote-slot-switcher-interactive,
+.quicknote-titlebar-reveal-zone:focus-within
+  .quicknote-slot-switcher-interactive,
+.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
+  .quicknote-slot-switcher-interactive,
+.quicknote-titlebar-reveal-zone[data-help-open="true"]
+  .quicknote-slot-switcher-interactive {
   pointer-events: auto;
 }
 
 .quicknote-titlebar-actions {
   display: flex;
   align-items: center;
+  gap: 2px;
   margin-left: auto;
 }
 
@@ -269,7 +280,7 @@ body,
   color: hsl(var(--foreground));
 }
 
-/* 顶栏不占布局；正文从视口顶部开始，只有 10px 触发区接收指针。 */
+/* 顶栏不占布局；正文从视口顶部开始，只有中央 72×8px 手柄接收指针。 */
 .quicknote-editor-surface {
   box-sizing: border-box;
   height: 100%;

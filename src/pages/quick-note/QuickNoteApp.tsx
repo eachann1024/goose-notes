@@ -565,7 +565,23 @@ export function QuickNoteApp() {
               {displaySlotName}
             </span>
           </button>
+        </div>
 
+        {/* 绝对居中，避免左右内容宽度差导致视觉偏移 */}
+        <div className="quicknote-slot-switcher-positioner">
+          <div className="quicknote-slot-switcher-interactive">
+            <QuickNoteSlotSwitcher
+              activeSlot={activeSlot}
+              occupiedSlots={occupiedSlots}
+              slotNames={slotNames}
+              onChange={handleSwitchSlot}
+              onPreviewChange={handlePreviewSlot}
+              onRenameRequest={startRename}
+            />
+          </div>
+        </div>
+
+        <div className="quicknote-titlebar-actions">
           <Popover open={helpOpen} onOpenChange={handleHelpOpenChange}>
             <PopoverTrigger asChild>
               <button
@@ -579,7 +595,7 @@ export function QuickNoteApp() {
               </button>
             </PopoverTrigger>
             <PopoverContent
-              align="start"
+              align="end"
               side="bottom"
               collisionPadding={8}
               className="quicknote-help-popover w-72 text-xs"
@@ -629,23 +645,6 @@ export function QuickNoteApp() {
               </ul>
             </PopoverContent>
           </Popover>
-        </div>
-
-        {/* 绝对居中，避免左右内容宽度差导致视觉偏移 */}
-        <div className="quicknote-slot-switcher-positioner">
-          <div className="quicknote-slot-switcher-interactive">
-            <QuickNoteSlotSwitcher
-              activeSlot={activeSlot}
-              occupiedSlots={occupiedSlots}
-              slotNames={slotNames}
-              onChange={handleSwitchSlot}
-              onPreviewChange={handlePreviewSlot}
-              onRenameRequest={startRename}
-            />
-          </div>
-        </div>
-
-        <div className="quicknote-titlebar-actions">
           <button
             type="button"
             aria-label="关闭"
