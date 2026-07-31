@@ -18,7 +18,7 @@ export function ClearFormatButton({
           size="sm"
           onClick={onClear}
           aria-label="清除格式"
-          className="h-7 w-7 rounded-md p-0 text-foreground/90 hover:bg-muted"
+          className="goose-formatting-toolbar-control"
         >
           <LucideIcons.Eraser className="h-[15px] w-[15px]" />
         </Button>

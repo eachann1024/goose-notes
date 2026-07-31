@@ -89,10 +89,7 @@ type LastFormatColors = {
   backgroundColor?: string;
 };
 
-function isKnownColor(
-  value: unknown,
-  known: Set<string>,
-): value is string {
+function isKnownColor(value: unknown, known: Set<string>): value is string {
   return typeof value === "string" && known.has(value);
 }
 
@@ -130,10 +127,7 @@ function writeLastFormatColors(patch: LastFormatColors) {
     if (next.textColor === undefined && next.backgroundColor === undefined) {
       return;
     }
-    window.localStorage.setItem(
-      LAST_FORMAT_COLORS_KEY,
-      JSON.stringify(next),
-    );
+    window.localStorage.setItem(LAST_FORMAT_COLORS_KEY, JSON.stringify(next));
   } catch {
     // localStorage 不可用时静默失败，不影响颜色应用
   }
@@ -472,10 +466,7 @@ export function FormattingToolbarColorPicker() {
             aria-pressed={
               isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
             }
-            className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-md p-0 text-foreground/90 transition-colors hover:bg-muted",
-              "aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)]",
-            )}
+            className={cn("goose-formatting-toolbar-control")}
             aria-label="颜色选择"
             onContextMenu={(e) => {
               e.preventDefault();

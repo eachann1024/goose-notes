@@ -219,9 +219,11 @@ export function EditorComposer({
     event.preventDefault();
     event.stopPropagation();
     if (__HOST_TARGET__ === "native-editor") {
-      window.dispatchEvent(new CustomEvent("goose-note:native-ai-entry", {
-        detail: { source: "empty-paragraph" },
-      }));
+      window.dispatchEvent(
+        new CustomEvent("goose-note:native-ai-entry", {
+          detail: { source: "empty-paragraph" },
+        }),
+      );
       return;
     }
     const ai = editor.getExtension(AIExtension);
@@ -403,9 +405,10 @@ export function EditorComposer({
             ...overflowOptions,
             apply({ availableWidth, elements }) {
               // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
-              // 写到 Floating UI 外壳，工具栏自身无需依赖新 CSS 特性，兼容旧 uTools 内核。
+              // Floating UI 外壳只负责宽度约束；滚动由工具栏内部行承接。
+              // 旧 uTools 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
               elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
-              elements.floating.style.overflowX = "auto";
+              elements.floating.style.overflowX = "visible";
             },
           }),
           // 最后一层硬约束：工具栏必须完整留在编辑区/视口交集内，且不与

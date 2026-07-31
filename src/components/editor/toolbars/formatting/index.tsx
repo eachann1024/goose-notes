@@ -60,8 +60,7 @@ export function EditorFormattingToolbar() {
 
       return {
         hasTextSelection: !selection.empty && selectedText.length > 0,
-        disallowsFormattingToolbar:
-          selectionDisallowsFormattingToolbar(editor),
+        disallowsFormattingToolbar: selectionDisallowsFormattingToolbar(editor),
       };
     },
   });
@@ -258,8 +257,10 @@ export function EditorFormattingToolbar() {
           e.preventDefault();
           e.stopPropagation();
         }}
+        role="toolbar"
+        aria-label="文字格式"
         className={cn(
-          "z-[20000] rounded-[10px] border border-border/75 bg-popover shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-[opacity,transform,width] duration-150 ease-out dark:border-white/15 dark:bg-[#2f3437]",
+          "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",
         )}
         style={{
@@ -268,7 +269,7 @@ export function EditorFormattingToolbar() {
           pointerEvents: shouldHide ? "none" : "auto",
         }}
       >
-        <div className="flex items-center gap-0.5 p-1">
+        <div className="goose-formatting-toolbar-row">
           {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
             <>
               <AiButton
@@ -277,7 +278,7 @@ export function EditorFormattingToolbar() {
               />
               <Separator
                 orientation="vertical"
-                className="h-5 opacity-70 mx-0.5"
+                className="goose-formatting-toolbar-separator"
               />
             </>
           )}
@@ -300,7 +301,10 @@ export function EditorFormattingToolbar() {
           />
 
           {!isInHeading && (
-            <Separator orientation="vertical" className="h-5 opacity-70" />
+            <Separator
+              orientation="vertical"
+              className="goose-formatting-toolbar-separator"
+            />
           )}
 
           <LinkButton
@@ -309,7 +313,10 @@ export function EditorFormattingToolbar() {
             bindTooltip={bindTooltip}
           />
 
-          <Separator orientation="vertical" className="h-5 opacity-70" />
+          <Separator
+            orientation="vertical"
+            className="goose-formatting-toolbar-separator"
+          />
 
           <AlignGroup
             textAlignment={textAlignment}
@@ -317,7 +324,10 @@ export function EditorFormattingToolbar() {
             bindTooltip={bindTooltip}
           />
 
-          <Separator orientation="vertical" className="h-5 opacity-70" />
+          <Separator
+            orientation="vertical"
+            className="goose-formatting-toolbar-separator"
+          />
 
           <ClearFormatButton
             onClear={clearFormatting}

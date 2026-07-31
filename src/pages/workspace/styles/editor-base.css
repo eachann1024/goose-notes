@@ -21,29 +21,111 @@
   color: inherit;
 }
 
-/* 常规笔记本浮动工具栏：pressed 状态使用主题 primary 实心底。
-   背景规则包含颜色 A；其内部 A 有实际文字色，不继承下面的 foreground。
-   !important 用于稳定压过按钮自带 hover:bg-muted，避免选中态 hover 退化。 */
-[data-formatting-toolbar][data-goose-floating-toolbar="true"]
-  button[data-state="on"],
-[data-formatting-toolbar][data-goose-floating-toolbar="true"]
-  button[aria-pressed="true"],
-.goose-toolbar-control-active,
-.goose-toolbar-control-active:hover {
-  background: hsl(var(--primary)) !important;
+/* 共享格式工具栏
+   浮动外壳、固定底栏和按钮状态各自只在这里定义一次。浮动外壳不使用外投影：
+   uTools 旧内核会把「圆角元素 + 外投影 + 浮动层裁切」栅格化成直角灰块。
+   以清晰边框建立层级，避免用遮片修补渲染伪影。 */
+[data-formatting-toolbar] {
+  min-width: 0;
+  max-width: 100%;
+  color: hsl(var(--popover-foreground));
 }
 
-[data-formatting-toolbar][data-goose-floating-toolbar="true"]
-  button[data-state="on"]:not([data-goose-preserve-icon-color="true"]),
-[data-formatting-toolbar][data-goose-floating-toolbar="true"]
-  button[aria-pressed="true"]:not([data-goose-preserve-icon-color="true"]),
+[data-formatting-toolbar][data-goose-floating-toolbar="true"] {
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+}
+
+.goose-formatting-toolbar-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.goose-formatting-toolbar-row::-webkit-scrollbar {
+  display: none;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
+  background: var(--goose-interactive-hover);
+  color: hsl(var(--foreground));
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control[data-state="on"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-state="on"]:hover,
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"]:hover {
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  box-shadow: none !important;
+}
+
+/* 图片工具栏沿用既有的高对比选中态，不受文字格式栏的视觉收敛影响。 */
 .goose-toolbar-control-active,
 .goose-toolbar-control-active:hover {
+  border-radius: 0.375rem;
+  background: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
 }
 
-.goose-toolbar-control-active {
-  border-radius: 0.375rem;
+/* 颜色按钮内部自行呈现文本色，激活时只改变按钮底色。 */
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-goose-preserve-icon-color="true"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control-ai,
+[data-formatting-toolbar] .goose-formatting-toolbar-control-ai:hover {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-formatting-toolbar-separator {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 1px;
+  margin: 0 2px;
+  background: hsl(var(--border));
+  opacity: 0.8;
 }
 
 /* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
@@ -2191,12 +2273,6 @@
 /* 格式工具栏：固定底部居中，不跟随选区浮动 */
 .goose-formatting-toolbar-dock {
   pointer-events: none;
-}
-
-.goose-formatting-toolbar-dock [data-formatting-toolbar] {
-  box-shadow:
-    0 8px 22px rgba(15, 23, 42, 0.1),
-    0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 /* 设置是独立的全屏任务面。打开后统一收起编辑器上下文浮层，避免这些高层级

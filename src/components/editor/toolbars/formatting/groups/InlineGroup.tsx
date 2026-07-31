@@ -5,8 +5,7 @@ import { Separator } from "@/components/editor/ui/separator";
 import { useBlockNoteEditor } from "@blocknote/react";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 
-const ITEM_CLASS =
-  "h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground";
+const ITEM_CLASS = "goose-formatting-toolbar-control";
 
 export function InlineGroup({
   isUnderline,
@@ -40,7 +39,10 @@ export function InlineGroup({
         <ToolbarTooltip label="下划线" shortcut="Mod+U" />
       </Tooltip>
 
-      <Separator orientation="vertical" className="h-5 opacity-70" />
+      <Separator
+        orientation="vertical"
+        className="goose-formatting-toolbar-separator"
+      />
 
       <Tooltip {...bindTooltip("code")}>
         <TooltipTrigger asChild>
