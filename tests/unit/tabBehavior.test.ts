@@ -1,5 +1,9 @@
 import { BlockNoteEditor } from "@blocknote/core";
-import { TextSelection, type EditorState } from "@tiptap/pm/state";
+import {
+  AllSelection,
+  TextSelection,
+  type EditorState,
+} from "@tiptap/pm/state";
 import { expect, test } from "playwright/test";
 import {
   adjustSelectedBlockHierarchy,
@@ -129,5 +133,44 @@ test("单个代码块保留文本缩进，多块选区包含代码块时改为�
   expect(editor.getBlock("before")!.children.map((block) => block.id)).toEqual([
     "code",
     "after",
+  ]);
+});
+
+test("全选整个文档按 Tab 时不改变任何块结构", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "one", type: "numberedListItem", content: "第一项" },
+      { id: "two", type: "numberedListItem", content: "第二项" },
+      { id: "three", type: "numberedListItem", content: "第三项" },
+    ],
+  });
+  editor.transact((tr) => tr.setSelection(new AllSelection(tr.doc)));
+  const before = JSON.stringify(editor.document);
+
+  expect(adjustSelectedBlockHierarchy(editor, "nest")).toBe(true);
+
+  expect(JSON.stringify(editor.document)).toBe(before);
+  expect(editor.prosemirrorState.selection).toBeInstanceOf(AllSelection);
+});
+
+test("分级全选正文按 Tab 时不把正文嵌入页面标题", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "one", type: "numberedListItem", content: "第一项" },
+      { id: "two", type: "numberedListItem", content: "第二项" },
+      { id: "three", type: "numberedListItem", content: "第三项" },
+    ],
+  });
+  selectBlocks(editor, "one", "three");
+  const before = JSON.stringify(editor.document);
+
+  expect(adjustSelectedBlockHierarchy(editor, "nest")).toBe(true);
+
+  expect(JSON.stringify(editor.document)).toBe(before);
+  expect(editor.getSelection()!.blocks.map((block) => block.id)).toEqual([
+    "one",
+    "two",
+    "three",
   ]);
 });

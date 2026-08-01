@@ -33,6 +33,72 @@ export function shouldUseCodeBlockTabIndent(editor: {
   }
 }
 
+type HierarchyBlock = {
+  id: string;
+  type: string;
+  props?: { level?: number };
+  children?: HierarchyBlock[];
+};
+
+type BlockLocation = {
+  siblings: readonly HierarchyBlock[];
+  index: number;
+  parentId: string | null;
+};
+
+function findBlockLocation(
+  blocks: readonly HierarchyBlock[],
+  id: string,
+  parentId: string | null = null,
+): BlockLocation | null {
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    if (block.id === id) return { siblings: blocks, index, parentId };
+    const nested = findBlockLocation(block.children ?? [], id, block.id);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+function hasValidNestTarget(editor: {
+  document?: readonly HierarchyBlock[];
+  getSelection?: () => { blocks: HierarchyBlock[] } | undefined;
+}): boolean {
+  const document = editor.document;
+  const selectedBlocks = editor.getSelection?.()?.blocks;
+  if (!document || !selectedBlocks || selectedBlocks.length === 0) return true;
+
+  const locations = selectedBlocks.map((block) =>
+    findBlockLocation(document, block.id),
+  );
+  if (locations.some((location) => !location)) return false;
+
+  const first = locations[0]!;
+  if (first.index === 0) return false;
+
+  // 批量缩进只接受同一父级下连续的兄弟块，避免跨层选区被 liftItem 重排。
+  if (
+    locations.some(
+      (location, offset) =>
+        location!.parentId !== first.parentId ||
+        location!.siblings !== first.siblings ||
+        location!.index !== first.index + offset,
+    )
+  ) {
+    return false;
+  }
+
+  const previousSibling = first.siblings[first.index - 1];
+  const isPageTitle =
+    first.parentId === null &&
+    previousSibling.id === document[0]?.id &&
+    previousSibling.type === "heading" &&
+    previousSibling.props?.level === 1;
+
+  // 分级全选正文会排除 H1；页面标题不是正文块的合法缩进父级。
+  return !isPageTitle;
+}
+
 /**
  * 直接执行 BlockNote 的层级命令，避免多行选区打开格式工具栏后，BlockNote 默认
  * Tab 为了把焦点交给工具栏而跳过 nest/unnest。命令本身原生支持多块选区，
@@ -40,6 +106,8 @@ export function shouldUseCodeBlockTabIndent(editor: {
  */
 export function adjustSelectedBlockHierarchy(
   editor: {
+    document?: readonly HierarchyBlock[];
+    getSelection?: () => { blocks: HierarchyBlock[] } | undefined;
     canNestBlock: () => boolean;
     canUnnestBlock: () => boolean;
     nestBlock: () => void;
@@ -48,7 +116,9 @@ export function adjustSelectedBlockHierarchy(
   direction: "nest" | "unnest",
 ): boolean {
   if (direction === "nest") {
-    if (editor.canNestBlock()) editor.nestBlock();
+    if (hasValidNestTarget(editor) && editor.canNestBlock()) {
+      editor.nestBlock();
+    }
   } else if (editor.canUnnestBlock()) {
     editor.unnestBlock();
   }
