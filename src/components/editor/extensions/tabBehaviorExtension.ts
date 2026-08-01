@@ -1,9 +1,5 @@
 import { createExtension } from "@blocknote/core";
-import {
-  addRowAfter,
-  goToNextCell,
-  isInTable,
-} from "prosemirror-tables";
+import { addRowAfter, goToNextCell, isInTable } from "prosemirror-tables";
 import type { EditorView } from "prosemirror-view";
 
 const handleTableTab = (view: EditorView, direction: 1 | -1): boolean => {
@@ -24,10 +20,13 @@ const handleTableTab = (view: EditorView, direction: 1 | -1): boolean => {
   return true;
 };
 
-function isInCodeBlock(editor: {
+export function shouldUseCodeBlockTabIndent(editor: {
+  getSelection?: () => { blocks: { type: string }[] } | undefined;
   getTextCursorPosition: () => { block: { type: string } };
 }): boolean {
   try {
+    const selectedBlocks = editor.getSelection?.()?.blocks;
+    if (selectedBlocks && selectedBlocks.length > 1) return false;
     return editor.getTextCursorPosition().block.type === "codeBlock";
   } catch {
     return false;
@@ -35,11 +34,35 @@ function isInCodeBlock(editor: {
 }
 
 /**
+ * 直接执行 BlockNote 的层级命令，避免多行选区打开格式工具栏后，BlockNote 默认
+ * Tab 为了把焦点交给工具栏而跳过 nest/unnest。命令本身原生支持多块选区，
+ * 会保留顺序、子树与选区。
+ */
+export function adjustSelectedBlockHierarchy(
+  editor: {
+    canNestBlock: () => boolean;
+    canUnnestBlock: () => boolean;
+    nestBlock: () => void;
+    unnestBlock: () => void;
+  },
+  direction: "nest" | "unnest",
+): boolean {
+  if (direction === "nest") {
+    if (editor.canNestBlock()) editor.nestBlock();
+  } else if (editor.canUnnestBlock()) {
+    editor.unnestBlock();
+  }
+
+  // 无可调整层级时也消费 Tab，避免浏览器把焦点移出编辑器。
+  return true;
+}
+
+/**
  * Tab / Shift-Tab：
  * - 表格内：单元格导航
- * - 代码块内：放行给代码缩进扩展
- * - 可嵌套 / 可提升时：放行给 BlockNote 默认 nest/unnest
- *   （任意块类型，含段落嵌到列表项下成为子项）
+ * - 单个代码块内：放行给代码缩进扩展；跨块选区含代码块时仍调整块层级
+ * - 可嵌套 / 可提升时：直接调用 BlockNote nest/unnest；默认快捷键在多行选区
+ *   打开格式工具栏时会把 Tab 留给工具栏，无法执行层级调整
  * - 否则消费 Tab，避免焦点跳出编辑器
  */
 export const gooseTabBehaviorExtension = createExtension({
@@ -50,26 +73,20 @@ export const gooseTabBehaviorExtension = createExtension({
       if (view && handleTableTab(view, 1)) {
         return true;
       }
-      if (isInCodeBlock(editor)) {
+      if (shouldUseCodeBlockTabIndent(editor)) {
         return false;
       }
-      if (editor.canNestBlock()) {
-        return false;
-      }
-      return true;
+      return adjustSelectedBlockHierarchy(editor, "nest");
     },
     "Shift-Tab": ({ editor }) => {
       const view = editor.prosemirrorView;
       if (view && handleTableTab(view, -1)) {
         return true;
       }
-      if (isInCodeBlock(editor)) {
+      if (shouldUseCodeBlockTabIndent(editor)) {
         return false;
       }
-      if (editor.canUnnestBlock()) {
-        return false;
-      }
-      return true;
+      return adjustSelectedBlockHierarchy(editor, "unnest");
     },
   },
 });
