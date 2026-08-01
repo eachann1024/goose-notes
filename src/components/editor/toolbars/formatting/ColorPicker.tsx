@@ -85,29 +85,38 @@ const HIGHLIGHT_COLORS = [
   { name: "粉色背景", color: "pink" },
 ];
 
-/** 颜色名 → CSS 颜色值（用于预览，与 BlockNote COLORS_DEFAULT 保持一致） */
+/**
+ * 颜色名 → CSS 颜色值。
+ * 常规笔记本通过语义令牌与编辑区的明暗主题保持一致；速记小窗仍沿用原预览，
+ * 避免跨越 quicknote.css 的独立样式边界。
+ */
+const previewColor = (token: string, fallback: string) =>
+  typeof __GOOSE_LITE__ !== "undefined" && __GOOSE_LITE__
+    ? fallback
+    : `var(${token}, ${fallback})`;
+
 const COLOR_PREVIEW: Record<string, string> = {
-  gray: "#9b9a97",
-  brown: "#64473a",
-  red: "#e03e3e",
-  orange: "#d9730d",
-  yellow: "#dfab01",
-  green: "#4d6461",
-  blue: "#0b6e99",
-  purple: "#6940a5",
-  pink: "#ad1a72",
+  gray: previewColor("--goose-editor-highlight-gray-text", "#9b9a97"),
+  brown: previewColor("--goose-editor-highlight-brown-text", "#64473a"),
+  red: previewColor("--goose-editor-highlight-red-text", "#e03e3e"),
+  orange: previewColor("--goose-editor-highlight-orange-text", "#d9730d"),
+  yellow: previewColor("--goose-editor-highlight-yellow-text", "#dfab01"),
+  green: previewColor("--goose-editor-highlight-green-text", "#4d6461"),
+  blue: previewColor("--goose-editor-highlight-blue-text", "#0b6e99"),
+  purple: previewColor("--goose-editor-highlight-purple-text", "#6940a5"),
+  pink: previewColor("--goose-editor-highlight-pink-text", "#ad1a72"),
 };
 
 const BG_PREVIEW: Record<string, string> = {
-  gray: "#ebeced",
-  brown: "#e9e5e3",
-  red: "#fbe4e4",
-  orange: "#f6e9d9",
-  yellow: "#fbf3db",
-  green: "#ddedea",
-  blue: "#ddebf1",
-  purple: "#eae4f2",
-  pink: "#f4dfeb",
+  gray: previewColor("--goose-editor-highlight-gray-bg", "#ebeced"),
+  brown: previewColor("--goose-editor-highlight-brown-bg", "#e9e5e3"),
+  red: previewColor("--goose-editor-highlight-red-bg", "#fbe4e4"),
+  orange: previewColor("--goose-editor-highlight-orange-bg", "#f6e9d9"),
+  yellow: previewColor("--goose-editor-highlight-yellow-bg", "#fbf3db"),
+  green: previewColor("--goose-editor-highlight-green-bg", "#ddedea"),
+  blue: previewColor("--goose-editor-highlight-blue-bg", "#ddebf1"),
+  purple: previewColor("--goose-editor-highlight-purple-bg", "#eae4f2"),
+  pink: previewColor("--goose-editor-highlight-pink-bg", "#f4dfeb"),
 };
 
 const MIXED = "__mixed__";
