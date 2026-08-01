@@ -1,4 +1,5 @@
 @import "./pages/workspace/styles/editor-base.css";
+@import "./pages/workspace/styles/heading-block-background.css";
 @import "./pages/workspace/styles/code-themes.css";
 @import "katex/dist/katex.min.css";
 
