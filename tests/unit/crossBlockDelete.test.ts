@@ -5,6 +5,7 @@ import {
   deleteSelectedBlocks,
   hasPositiveBlockContentOverlap,
 } from "../../src/components/editor/extensions/crossBlockDeleteExtension";
+import { deleteEmptyNestedListItem } from "../../src/components/editor/extensions/emptyBlockBackspaceExtension";
 
 type ContentRange = { from: number; to: number };
 
@@ -116,4 +117,49 @@ test("空文本块只有被选区严格跨过时才算选中", () => {
       { from: 10, to: 10, isTextblock: true },
     ),
   ).toBe(true);
+});
+
+test("删除空的嵌套列表项时，后续兄弟仍留在原父项下", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      {
+        id: "parent",
+        type: "bulletListItem",
+        content: "功能应实现",
+        children: [
+          { id: "file", type: "bulletListItem", content: "文件支持" },
+          { id: "empty", type: "bulletListItem", content: "" },
+          { id: "context", type: "bulletListItem", content: "上下文配置" },
+          { id: "memory", type: "bulletListItem", content: "记忆" },
+        ],
+      },
+    ],
+  });
+
+  const empty = editor.getBlock("empty")!;
+  expect(deleteEmptyNestedListItem(editor, empty)).toBe(true);
+
+  const parent = editor.getBlock("parent")!;
+  expect(parent.children.map((child) => child.id)).toEqual([
+    "file",
+    "context",
+    "memory",
+  ]);
+  expect(editor.document.map((block) => block.id)).toEqual(["title", "parent"]);
+  expect(editor.getTextCursorPosition().block.id).toBe("file");
+});
+
+test("顶层空列表项继续交给原生退格逻辑", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "empty", type: "bulletListItem", content: "" },
+    ],
+  });
+
+  expect(deleteEmptyNestedListItem(editor, editor.getBlock("empty")!)).toBe(
+    false,
+  );
+  expect(editor.document.map((block) => block.id)).toEqual(["title", "empty"]);
 });

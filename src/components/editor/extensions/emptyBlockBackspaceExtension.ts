@@ -26,8 +26,10 @@ import {
  *   例外：空段落是折叠块（toggleListItem / isToggleable heading）的 child 时接管——
  *   只删本行、光标回上一行（首行回标题）末尾；默认 lift 会把空行提出折叠块且
  *   后续兄弟整体跟着出去挂到它下面，折叠块被掏空。
- * - 当前块是列表项（bullet/numbered/check）→ 默认，交给 BlockNote 原生
+ * - 顶层列表项（bullet/numbered/check）→ 默认，交给 BlockNote 原生
  *   降级逻辑（它们原生 Backspace 本就会变 paragraph / 调整缩进），避免与原生冲突。
+ * - 空的嵌套列表叶子项 → 只删除当前项，后续 siblings 继续留在原 parent.children；
+ *   BlockNote 默认 lift 会把后续兄弟一起提升到顶层，破坏列表层级。
  * - toggleListItem 且有 children → 整树删除（见下方整树删除逻辑）。
  * - toggleListItem 无 children → 默认（原生降级为 paragraph）。
  * - isToggleable heading 且有 children → 整树删除（见下方整树删除逻辑）。
@@ -57,9 +59,45 @@ const LIST_ITEM_TYPES = new Set([
   "checkListItem",
 ]);
 
+type NestedBlock = {
+  id: string;
+  type: string;
+  content?: unknown;
+  children?: NestedBlock[];
+};
+
 /** 块是否「有 inline 内容模型且当前为空」。void 块（image/file/divider）content 非数组 → false。 */
 function isInlineBlockEmpty(block: { content?: unknown }): boolean {
   return Array.isArray(block.content) && block.content.length === 0;
+}
+
+/**
+ * 删除空的嵌套列表叶子项，但不让后续兄弟随 ProseMirror lift 一起逃出父块。
+ * 顶层项、有内容的项、带子树的项全部放行给后续原生行为。
+ */
+export function deleteEmptyNestedListItem(
+  editor: any,
+  block: NestedBlock,
+): boolean {
+  if (!LIST_ITEM_TYPES.has(block.type)) return false;
+  if (!isInlineBlockEmpty(block)) return false;
+  if (block.children && block.children.length > 0) return false;
+
+  const parent = findParentBlock(editor.document as ToggleBlock[], block.id) as
+    | NestedBlock
+    | null
+    | undefined;
+  if (!parent || !Array.isArray(parent.children)) return false;
+
+  const index = parent.children.findIndex((child) => child.id === block.id);
+  if (index < 0) return false;
+  const target = index > 0 ? parent.children[index - 1] : parent;
+
+  editor.transact(() => {
+    editor.removeBlocks([block]);
+    editor.setTextCursorPosition(target, "end");
+  });
+  return true;
 }
 
 export const gooseEmptyBlockBackspaceExtension = createExtension({
@@ -81,6 +119,8 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
 
       // 首块红线：永不删除首块（通常是 H1 标题）。
       if (block.id === editor.document[0]?.id) return false;
+
+      if (deleteEmptyNestedListItem(editor, block)) return true;
 
       // 折叠块 children 内的空段落 → 只删除这一行，光标回上一行末尾
       // （第一行则回折叠块标题末尾）。默认 joinBackward/lift 会把空行提出
@@ -114,17 +154,23 @@ export const gooseEmptyBlockBackspaceExtension = createExtension({
       // tiptap undoInputRule 抢走、把触发字符还原回来（还多一个空格）。
       // 统一接管为原地降级，不还原触发文本。
       const pendingInputRuleUndo = state.plugins.some(
-        (p) => (p.spec as { isInputRules?: boolean }).isInputRules && p.getState(state),
+        (p) =>
+          (p.spec as { isInputRules?: boolean }).isInputRules &&
+          p.getState(state),
       );
 
       if (!pendingInputRuleUndo) {
-        // 普通列表项 → 交给 BlockNote 原生降级，避免冲突。
+        // 顶层或非空的普通列表项 → 交给 BlockNote 原生降级，避免冲突。
         if (LIST_ITEM_TYPES.has(block.type)) return false;
         // 内容非空 → 默认（非空块块内删除保持默认手感）。
         if (!isInlineBlockEmpty(block)) return false;
 
         // 空的 toggleListItem 有 children → 整树删除。
-        if (block.type === "toggleListItem" && block.children && block.children.length > 0) {
+        if (
+          block.type === "toggleListItem" &&
+          block.children &&
+          block.children.length > 0
+        ) {
           return deleteBlockTree(editor, block);
         }
 
