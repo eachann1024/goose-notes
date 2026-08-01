@@ -5,6 +5,10 @@ import { FilePanelExtension } from "@blocknote/core/extensions";
 import { toast } from "@/components/ui/sonner";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
+import {
   MediaLoadingPreview,
   MediaPlaceholder,
 } from "@/components/editor/blocks/shared/MediaPlaceholder";
@@ -27,6 +31,8 @@ function CustomFileBlockContent({
 }) {
   const showLoader = useUploadLoading(block.id);
   const platform = useEditorPlatform();
+  const { onOpenAttachment } = useEditorPageContext();
+  const { features } = useEditorSettings();
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState("");
 
@@ -58,6 +64,30 @@ function CustomFileBlockContent({
 
     triggerDownload(url, name);
   }, [block.props.url, block.props.name, platform]);
+
+  const handleOpen = useCallback(async () => {
+    const url = block.props.url as string;
+    const name = (block.props.name as string) || "download";
+    if (!url) return;
+
+    if (!features.openAttachmentsExternally || !onOpenAttachment) {
+      await handleDownload();
+      return;
+    }
+
+    const result = await onOpenAttachment(url, name);
+    if (!result.ok) {
+      toast.error("系统默认应用打开失败", {
+        description: result.error || "请下载后再打开",
+      });
+    }
+  }, [
+    block.props.name,
+    block.props.url,
+    features.openAttachmentsExternally,
+    handleDownload,
+    onOpenAttachment,
+  ]);
 
   const handleDelete = useCallback(() => {
     editor.removeBlocks([block]);
@@ -134,10 +164,27 @@ function CustomFileBlockContent({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="goose-file-block-name">{block.props.name}</span>
+          <button
+            type="button"
+            className="goose-file-block-name"
+            onClick={handleOpen}
+            title="使用系统默认应用打开"
+          >
+            {block.props.name}
+          </button>
         )}
       </div>
       <div className="goose-editor-inline-context-ui goose-file-block-actions">
+        {features.openAttachmentsExternally && (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleOpen}
+            title="使用系统默认应用打开"
+          >
+            <LucideIcons.ExternalLink size={16} strokeWidth={1.75} />
+          </button>
+        )}
         <button
           type="button"
           className="goose-file-block-action-btn"

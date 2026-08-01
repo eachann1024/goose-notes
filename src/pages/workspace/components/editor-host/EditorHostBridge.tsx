@@ -36,6 +36,8 @@ import {
 } from "@/components/editor/ai/composer/referenceLookup";
 import { utoolsEditorPlatform } from "@/lib/editor-platform/utools";
 import { UToolsAdapter } from "@/lib/utools";
+import { fileStorage } from "@/lib/fileStorage";
+import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
 
 interface EditorHostBridgeProps {
   /** 当前被编辑的页（替换编辑器内核对 usePages.activePageId/getPage 的直读）。 */
@@ -46,7 +48,10 @@ interface EditorHostBridgeProps {
    * 内容变更落库回调的覆盖。默认走 usePages.updatePage 落库；速记小窗草稿模式传入此项，
    * 把内容写到草稿存储而非真实 page（草稿不入 pages map、不进笔记列表）。
    */
-  onContentChangeOverride?: (content: BlockNoteContent, options?: { silent?: boolean }) => void;
+  onContentChangeOverride?: (
+    content: BlockNoteContent,
+    options?: { silent?: boolean },
+  ) => void;
   /** 宿主显式选择正文处理方式；本地文件默认 raw，应用页面默认 normalized。 */
   contentMode?: "raw" | "normalized";
   children: ReactNode;
@@ -83,6 +88,7 @@ export function EditorHostBridge({
       searchProviders,
       customActions,
       openLinksInHost: utools.openSearchInUtools,
+      useInternalImageViewer: utools.useInternalImageViewer,
       features: {
         tablePresentationControls: true,
         mermaidUnsafeHTML: true,
@@ -114,7 +120,10 @@ export function EditorHostBridge({
       page,
       contentMode,
       isEditorFullWidth,
-      onContentChange: (content: BlockNoteContent, options?: { silent?: boolean }) => {
+      onContentChange: (
+        content: BlockNoteContent,
+        options?: { silent?: boolean },
+      ) => {
         if (onContentChangeOverride) {
           onContentChangeOverride(content, options);
           return;
@@ -122,8 +131,7 @@ export function EditorHostBridge({
         const pagesStore = usePages.getState();
         const livePage = pagesStore.pages[page.id] ?? page;
         const contentToSave =
-          contentMode === "normalized" &&
-          useSettings.getState().singleTabMode
+          contentMode === "normalized" && useSettings.getState().singleTabMode
             ? withInternalPageTitle(content, getPageTitle(livePage))
             : content;
         pagesStore.updatePage(
@@ -143,17 +151,40 @@ export function EditorHostBridge({
           : null;
         return activePage?.localFilePath ?? null;
       },
+      onOpenAttachment: async (source, fileName) => {
+        if (source.startsWith("att-file:")) {
+          return fileStorage.open(source, { fileName, size: 0 });
+        }
+        const activeId = usePages.getState().activePageId;
+        const activePage = activeId
+          ? usePages.getState().pages[activeId]
+          : null;
+        return openResourceExternally({
+          source,
+          fileName,
+          pageLocalFilePath: activePage?.localFilePath ?? null,
+          platform: utoolsEditorPlatform,
+          loadInternalResource: (ref) =>
+            utoolsEditorPlatform.imageStorage.load(ref),
+        });
+      },
       searchPages: (query: string) => {
         const { pages } = usePages.getState();
         const { notebooks, activeNotebookId } = useNotebooks.getState();
-        return getAiReferenceSuggestionItems(query, pages, notebooks, activeNotebookId);
+        return getAiReferenceSuggestionItems(
+          query,
+          pages,
+          notebooks,
+          activeNotebookId,
+        );
       },
       resolvePageContexts: (refs) => {
         const { pages } = usePages.getState();
         const { notebooks } = useNotebooks.getState();
         return resolveAiReferenceContexts(refs, pages, notebooks);
       },
-      getLatestPage: (pageId: string) => usePages.getState().pages[pageId] ?? null,
+      getLatestPage: (pageId: string) =>
+        usePages.getState().pages[pageId] ?? null,
       onPromotePreview: () => useTabs.getState().promotePreviewTab(),
     }),
     [page, contentMode, isEditorFullWidth, onContentChangeOverride],

@@ -55,7 +55,7 @@
 
 [data-formatting-toolbar][data-goose-floating-toolbar="true"] {
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: 10px;
   background: hsl(var(--popover));
   box-shadow: none;
 }
@@ -146,6 +146,113 @@
   height: 18px;
   flex: 0 0 1px;
   margin: 0 2px;
+  background: hsl(var(--border));
+  opacity: 0.8;
+}
+
+/* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。
+   速记小窗使用底部停靠栏，命中区保持原尺寸。 */
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-row {
+  gap: 1px;
+  padding: 3px;
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  flex-basis: 26px;
+  border-radius: 6px;
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control
+  svg {
+  width: 14px;
+  height: 14px;
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-separator {
+  height: 16px;
+  margin: 0 1px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-row {
+  gap: 2px;
+  padding: 4px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  border-radius: 7px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control svg {
+  width: 15px;
+  height: 15px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-separator {
+  height: 18px;
+  margin: 0 2px;
+}
+
+/* 图片、视频等块级浮层共用同一密度；外层 goose-editor-context-ui 负责等比缩放。 */
+.goose-block-toolbar-surface {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-block-toolbar-control {
+  display: inline-flex;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.goose-block-toolbar-control:hover,
+.goose-block-toolbar-control:focus-visible {
+  background: var(--goose-interactive-hover);
+}
+
+.goose-block-toolbar-control:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+.goose-block-toolbar-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+.goose-block-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  margin: 0 1px;
   background: hsl(var(--border));
   opacity: 0.8;
 }
@@ -2092,12 +2199,22 @@
 }
 
 .goose-file-block-name {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
   font-size: 14px;
   line-height: 1.4;
+  text-align: start;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: hsl(var(--foreground));
+  cursor: pointer;
+}
+
+.goose-file-block-name:hover {
+  text-decoration: underline;
 }
 
 .goose-file-block-name-input {

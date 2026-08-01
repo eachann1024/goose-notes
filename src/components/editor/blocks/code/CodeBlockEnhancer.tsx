@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 
 type CodeBlockEntry = {
   id: string;
@@ -37,13 +38,6 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
   );
 
   const rect = entry.element.getBoundingClientRect();
-  const parsedScale = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue(
-      "--editor-ui-scale",
-    ),
-  );
-  const uiScale =
-    Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
   const codeEl = entry.element.querySelector("code") as HTMLElement | null;
   const language = entry.block.props?.language || "text";
 
@@ -93,8 +87,8 @@ function FloatingCodeToolbar({ entry, editor }: FloatingCodeToolbarProps) {
       className="goose-code-floating-toolbar fixed z-[45] transition-[opacity,transform] duration-150 ease-out"
       contentEditable={false}
       style={{
-        top: Math.max(8, rect.top + 6 * uiScale),
-        left: Math.max(8, rect.right - 8 * uiScale),
+        top: Math.max(8, rect.top + getScaledEditorUiPx(6)),
+        left: Math.max(8, rect.right - getScaledEditorUiPx(8)),
         transform: "translateX(-100%)",
         animation: "fade-scale-in 150ms ease-out",
       }}

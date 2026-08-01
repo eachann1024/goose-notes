@@ -62,6 +62,11 @@ import { editorSchema } from "@/components/editor/core/schema";
 import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
 import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
 import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
+import {
+  EDITOR_CONTEXT_UI_GAP,
+  getEditorUiScale,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
 import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
 import {
   useEditorPageContext,
@@ -121,6 +126,10 @@ type EditorComposerProps = {
   suppressFormattingToolbar?: boolean;
   usesRawEditorContent: boolean;
 };
+
+function getFormattingToolbarGap(): number {
+  return getScaledEditorUiPx(EDITOR_CONTEXT_UI_GAP);
+}
 
 export function EditorComposer({
   editor,
@@ -373,8 +382,8 @@ export function EditorComposer({
             | "bottom"
             | "left"
             | "right",
-          // 工具栏阴影向外延伸；16px 间距也避免 Windows 下阴影压住选中文字。
-          gap: 16,
+          // 工具栏没有外投影，只保留紧凑的视觉分隔；偏移随编辑器 UI 等比缩放。
+          gap: getFormattingToolbarGap(),
         });
 
         if (!next) {
@@ -396,7 +405,7 @@ export function EditorComposer({
         // 底部空间不足时再翻到上方；边界取编辑器与视口的交集，避免靠边选区溢出。
         placement: "bottom" as const,
         middleware: [
-          floatingOffset(16),
+          floatingOffset(() => getFormattingToolbarGap()),
           floatingFlip({
             ...overflowOptions,
             fallbackPlacements: ["top"],
@@ -409,15 +418,7 @@ export function EditorComposer({
               // Floating UI 外壳使用 viewport 像素；内层 surface 使用 CSS zoom，
               // 因此其布局宽度必须除以有效比例，绘制后的宽度才不会越过边界。
               // 旧 uTools 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
-              const parsedScale = Number.parseFloat(
-                getComputedStyle(document.documentElement).getPropertyValue(
-                  "--editor-ui-scale",
-                ),
-              );
-              const uiScale =
-                Number.isFinite(parsedScale) && parsedScale > 0
-                  ? parsedScale
-                  : 1;
+              const uiScale = getEditorUiScale();
               const safeAvailableWidth = Math.max(0, availableWidth);
               elements.floating.style.maxWidth = `${safeAvailableWidth}px`;
               elements.floating.style.overflowX = "visible";

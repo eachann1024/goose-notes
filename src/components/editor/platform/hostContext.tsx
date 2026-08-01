@@ -20,6 +20,7 @@ import type {
   ResolvedAiReferenceContext,
 } from "@/components/editor/ai/composer/referenceLookup";
 import type { EditorPlatform } from "./types";
+import type { OpenExternalResourceResult } from "@/components/editor/utils/openResourceExternally";
 
 export interface EditorFontConfig {
   label: string | null;
@@ -92,6 +93,8 @@ export interface EditorSettings {
   customActions: EditorCustomAction[];
   /** 链接是否交给宿主内置浏览能力；编辑器不识别具体宿主。 */
   openLinksInHost: boolean;
+  /** true 使用应用内灯箱；false 优先调用系统默认图片查看器。 */
+  useInternalImageViewer: boolean;
   features: EditorFeaturePolicy;
   /** 原生编辑器没有 Web 侧栏；默认 false，主工作区按自身状态注入。 */
   sidebarCollapsed?: boolean;
@@ -119,6 +122,11 @@ export interface EditorPageContext {
   onOpenPage: (pageId: string) => void;
   /** 图片相对路径解析：返回当前激活页的本地文件路径 */
   getActivePageLocalFilePath: () => string | null;
+  /** 宿主负责把持久化附件还原为真实文件并交给系统默认应用。 */
+  onOpenAttachment?: (
+    source: string,
+    fileName: string,
+  ) => Promise<OpenExternalResourceResult>;
   /** AI @mention 跨页能力（封装 usePages/useNotebooks 全量访问，编辑器不直接碰 store） */
   searchPages: (query: string) => AiReferenceSuggestionItem[];
   resolvePageContexts: (

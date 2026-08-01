@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
+import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 
 type VideoToolbarProps = {
   rect: DOMRect;
@@ -26,8 +27,7 @@ type VideoToolbarProps = {
   onDelete: () => void;
 };
 
-const toolButtonClass =
-  "inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none";
+const toolButtonClass = "goose-block-toolbar-control";
 
 function VideoToolButton({
   label,
@@ -68,21 +68,13 @@ export function VideoToolbar({
   onDownload,
   onDelete,
 }: VideoToolbarProps) {
-  const parsedScale = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue(
-      "--editor-ui-scale",
-    ),
-  );
-  const uiScale =
-    Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
-
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={100}>
       <div
         data-goose-video-toolbar
         className="fixed z-[20000]"
         style={{
-          top: Math.max(8, rect.top - 42 * uiScale),
+          top: Math.max(8, rect.top - getScaledEditorUiPx(40)),
           left: rect.left + rect.width / 2,
           transform: "translateX(-50%)",
         }}
@@ -94,7 +86,7 @@ export function VideoToolbar({
         role="toolbar"
         aria-label="视频操作"
       >
-        <div className="goose-editor-context-ui flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]">
+        <div className="goose-editor-context-ui goose-block-toolbar-surface animate-in fade-in-0 zoom-in-95 duration-150">
           {editable &&
             (
               [
@@ -115,7 +107,7 @@ export function VideoToolbar({
               </VideoToolButton>
             ))}
 
-          {editable && <div className="mx-0.5 h-5 w-px bg-border/70" />}
+          {editable && <div className="goose-block-toolbar-separator" />}
 
           {editable && (
             <VideoToolButton label="更换视频" onClick={onReplace}>

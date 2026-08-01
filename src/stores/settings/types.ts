@@ -40,6 +40,8 @@ export type CodeStyle =
 export interface UToolsSettings {
   globalSearchEnabled: boolean;
   openSearchInUtools: boolean;
+  /** 默认 false：图片交给系统默认查看器；开启后使用应用内灯箱。 */
+  useInternalImageViewer: boolean;
   windowHeight: number;
 }
 

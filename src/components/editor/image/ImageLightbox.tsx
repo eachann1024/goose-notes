@@ -8,7 +8,11 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { convertImageBlobToPng } from "@/lib/imageProcessor";
 import { useEditorPlatform } from "@/components/editor/platform/context";
-import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
+import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
 import {
   resolveImageSrc,
   getImageElements,
@@ -49,6 +53,7 @@ export function ImageLightbox({
   const selectedImageRef = useRef<SelectedImageState | null>(null);
   const platform = useEditorPlatform();
   const { getActivePageLocalFilePath } = useEditorPageContext();
+  const { useInternalImageViewer } = useEditorSettings();
 
   const cleanupObjectUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {
@@ -123,6 +128,51 @@ export function ImageLightbox({
     [editorContainerRef, buildSlides],
   );
 
+  const openImageAtElement = useCallback(
+    async (img: HTMLImageElement) => {
+      if (useInternalImageViewer) {
+        await openLightboxAtImage(img);
+        return;
+      }
+
+      const container = editorContainerRef.current;
+      if (!container) return;
+      const imageIndex = getImageElements(container).indexOf(img);
+      const blockId =
+        getBlockIdFromImage(img, container) ||
+        getImageBlockIdByIndex(editor.document as any[], imageIndex);
+      const block = blockId ? editor.getBlock(blockId) : null;
+      const rawSource =
+        (block?.props as { url?: string } | undefined)?.url || getImageSrc(img);
+      const result = await openResourceExternally({
+        source: rawSource,
+        fileName:
+          img.alt ||
+          img.getAttribute("alt") ||
+          (block?.props as { name?: string } | undefined)?.name ||
+          "image",
+        mimeType: "image/png",
+        pageLocalFilePath: getActivePageLocalFilePath(),
+        platform,
+        loadInternalResource: (source) => platform.imageStorage.load(source),
+      });
+      if (result.ok) return;
+
+      toast.error("系统图片查看器打开失败", {
+        description: `${result.error || "未知错误"}，已改用内置预览`,
+      });
+      await openLightboxAtImage(img);
+    },
+    [
+      editor,
+      editorContainerRef,
+      getActivePageLocalFilePath,
+      openLightboxAtImage,
+      platform,
+      useInternalImageViewer,
+    ],
+  );
+
   const handleImageDoubleClick = useCallback(
     async (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -134,9 +184,9 @@ export function ImageLightbox({
       event.preventDefault();
       event.stopPropagation();
 
-      await openLightboxAtImage(img);
+      await openImageAtElement(img);
     },
-    [openLightboxAtImage],
+    [openImageAtElement],
   );
 
   useEffect(() => {
@@ -166,7 +216,9 @@ export function ImageLightbox({
 
       setSelectedImage({
         blockId,
-        src: getImageSrc(img),
+        src:
+          (block?.props as { url?: string } | undefined)?.url ||
+          getImageSrc(img),
         alt: img.alt || img.getAttribute("alt") || "",
         index: imageIndex,
         rect: anchorElement.getBoundingClientRect(),
@@ -351,8 +403,8 @@ export function ImageLightbox({
     if (!container || !selectedImage) return;
     const img = getImageElements(container)[selectedImage.index];
     if (!img) return;
-    await openLightboxAtImage(img);
-  }, [editorContainerRef, openLightboxAtImage, selectedImage]);
+    await openImageAtElement(img);
+  }, [editorContainerRef, openImageAtElement, selectedImage]);
 
   const getSelectedImageRect = useCallback(() => {
     const container = editorContainerRef.current;
@@ -383,6 +435,9 @@ export function ImageLightbox({
           handleSelectedImageZoom={handleSelectedImageZoom}
           handleSelectedImageCopy={handleSelectedImageCopy}
           handleSelectedImageDownload={handleSelectedImageDownload}
+          openImageLabel={
+            useInternalImageViewer ? "放大图片" : "使用系统打开图片"
+          }
           floatingBoundary={
             !__GOOSE_EDITOR_COMPACT__ ? editorContainerRef.current : undefined
           }

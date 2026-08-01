@@ -75,6 +75,7 @@ declare global {
   const DropdownMenuSubContent: typeof import('./components/ui/dropdown-menu').DropdownMenuSubContent
   const DropdownMenuSubTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuSubTrigger
   const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
+  const EDITOR_CONTEXT_UI_GAP: typeof import('./components/editor/utils/editorContextUi').EDITOR_CONTEXT_UI_GAP
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MIN
@@ -277,6 +278,7 @@ declare global {
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
   const getDefaultCustomAIBaseURL: typeof import('./lib/ai-provider/index').getDefaultCustomAIBaseURL
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
+  const getEditorUiScale: typeof import('./components/editor/utils/editorContextUi').getEditorUiScale
   const getElementFromNode: typeof import('./components/editor/utils/selection').getElementFromNode
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
   const getFixedAppShortcuts: typeof import('./lib/fixed-app-shortcuts').getFixedAppShortcuts
@@ -293,6 +295,7 @@ declare global {
   const getQuickNoteSlotName: typeof import('./stores/useQuickNote').getQuickNoteSlotName
   const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
   const getRandomTip: typeof import('./lib/tips').getRandomTip
+  const getScaledEditorUiPx: typeof import('./components/editor/utils/editorContextUi').getScaledEditorUiPx
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
   const getSelectedImageUrl: typeof import('./components/editor/utils/selection').getSelectedImageUrl
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
@@ -364,6 +367,7 @@ declare global {
   const normalizeBlocks: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlocks
   const normalizeCardThemeId: typeof import('./lib/imageExport/index').normalizeCardThemeId
   const normalizeClipboardLineEndings: typeof import('./components/editor/utils/clipboard').normalizeClipboardLineEndings
+  const normalizeEditorUiScale: typeof import('./components/editor/utils/editorContextUi').normalizeEditorUiScale
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
   const normalizeMarkdownPasteText: typeof import('./components/editor/utils/clipboard').normalizeMarkdownPasteText
@@ -376,6 +380,7 @@ declare global {
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const openPageFromSidebar: typeof import('./lib/sidebarPageNavigation').openPageFromSidebar
+  const openResourceExternally: typeof import('./components/editor/utils/openResourceExternally').openResourceExternally
   const pageSettingsFromMarkdown: typeof import('./lib/local-frontmatter').pageSettingsFromMarkdown
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
   const parseLocalFrontmatterBlob: typeof import('./lib/local-frontmatter').parseLocalFrontmatterBlob
@@ -414,6 +419,7 @@ declare global {
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
+  const resolvePhysicalResourcePath: typeof import('./components/editor/utils/openResourceExternally').resolvePhysicalResourcePath
   const resolveTheme: typeof import('./hooks/useResolvedTheme').resolveTheme
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const restoreLastNoteIfNeeded: typeof import('./lib/workspaceStartup').restoreLastNoteIfNeeded
@@ -616,6 +622,9 @@ declare global {
   // @ts-ignore
   export type { ToolbarRect, ToolbarPoint } from './components/editor/utils/formattingToolbarPosition'
   import('./components/editor/utils/formattingToolbarPosition')
+  // @ts-ignore
+  export type { OpenExternalResourceResult } from './components/editor/utils/openResourceExternally'
+  import('./components/editor/utils/openResourceExternally')
   // @ts-ignore
   export type { SlashMenuPagePolicy } from './components/editor/utils/slashMenuPolicy'
   import('./components/editor/utils/slashMenuPolicy')

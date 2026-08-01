@@ -30,6 +30,8 @@ interface SettingsGeneralProps {
   removeCustomSearchProvider: (id: string) => void;
   openSearchInUtools: boolean;
   setOpenSearchInUtools: (enabled: boolean) => void;
+  useInternalImageViewer: boolean;
+  setUseInternalImageViewer: (enabled: boolean) => void;
   windowHeight: number;
   setWindowHeight: (height: number) => void;
   autoOpenLastNote: boolean;
@@ -68,6 +70,8 @@ export function SettingsGeneral({
   removeCustomSearchProvider,
   openSearchInUtools,
   setOpenSearchInUtools,
+  useInternalImageViewer,
+  setUseInternalImageViewer,
   windowHeight,
   setWindowHeight,
   autoOpenLastNote,
@@ -171,52 +175,54 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        {!singleTabMode && <div
-          className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <LucideIcons.TimerOff
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label
-                htmlFor="auto-close-inactive-tabs"
-                className="cursor-pointer"
-              >
-                自动关闭未访问标签
-              </Label>
+        {!singleTabMode && (
+          <div
+            className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <LucideIcons.TimerOff
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  strokeWidth={1.75}
+                />
+                <Label
+                  htmlFor="auto-close-inactive-tabs"
+                  className="cursor-pointer"
+                >
+                  自动关闭未访问标签
+                </Label>
+              </div>
+              <p className="mt-1 pl-7 text-xs text-muted-foreground">
+                开启后，超过设定时间未访问的普通标签会自动关闭；固定标签和当前标签会保留。
+              </p>
             </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              开启后，超过设定时间未访问的普通标签会自动关闭；固定标签和当前标签会保留。
-            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Input
+                type="number"
+                min={AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN}
+                max={AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX}
+                step={1}
+                value={autoCloseInactiveTabsHours}
+                disabled={!autoCloseInactiveTabs}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  if (Number.isFinite(next)) {
+                    setAutoCloseInactiveTabsHours(next);
+                  }
+                }}
+                className="h-8 w-20 text-right text-sm"
+                aria-label="自动关闭标签小时数"
+              />
+              <span className="text-xs text-muted-foreground">小时</span>
+              <Switch
+                id="auto-close-inactive-tabs"
+                checked={autoCloseInactiveTabs}
+                onCheckedChange={setAutoCloseInactiveTabs}
+                className={SETTINGS_SWITCH_CLASS}
+              />
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Input
-              type="number"
-              min={AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN}
-              max={AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX}
-              step={1}
-              value={autoCloseInactiveTabsHours}
-              disabled={!autoCloseInactiveTabs}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next)) {
-                  setAutoCloseInactiveTabsHours(next);
-                }
-              }}
-              className="h-8 w-20 text-right text-sm"
-              aria-label="自动关闭标签小时数"
-            />
-            <span className="text-xs text-muted-foreground">小时</span>
-            <Switch
-              id="auto-close-inactive-tabs"
-              checked={autoCloseInactiveTabs}
-              onCheckedChange={setAutoCloseInactiveTabs}
-              className={SETTINGS_SWITCH_CLASS}
-            />
-          </div>
-        </div>}
+        )}
       </SettingsSectionCard>
 
       <SettingsSectionCard title="搜索设置">
@@ -291,6 +297,33 @@ export function SettingsGeneral({
             id="open-in-utools"
             checked={openSearchInUtools ?? false}
             onCheckedChange={setOpenSearchInUtools}
+            className={SETTINGS_SWITCH_CLASS}
+          />
+        </div>
+        <div
+          className={`mt-2 flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <LucideIcons.Image
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label
+                htmlFor="use-internal-image-viewer"
+                className="cursor-pointer"
+              >
+                图片使用内置预览
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              默认关闭，由系统图片查看器打开；开启后使用鹅笔记内置灯箱。
+            </p>
+          </div>
+          <Switch
+            id="use-internal-image-viewer"
+            checked={useInternalImageViewer}
+            onCheckedChange={setUseInternalImageViewer}
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>

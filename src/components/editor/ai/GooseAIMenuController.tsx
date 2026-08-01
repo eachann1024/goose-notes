@@ -8,6 +8,7 @@ import {
   type FloatingUIOptions,
 } from "@blocknote/react";
 import { autoUpdate, flip, offset, shift, size } from "@floating-ui/react";
+import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 import { AIExtension, AIMenu, type AIMenuProps } from "@blocknote/xl-ai";
 import { TextSelection } from "prosemirror-state";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
@@ -93,12 +94,12 @@ export function GooseAIMenuController({
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
     const selectionMiddleware = [
-      offset(10),
+      offset(() => getScaledEditorUiPx(10)),
       flip({ fallbackPlacements: ["top-start"], padding: 8 }),
       shift({ padding: 8 }),
     ];
     const blockMiddleware = [
-      offset(10),
+      offset(() => getScaledEditorUiPx(10)),
       flip({ padding: 8 }),
       shift({ padding: 8 }),
       size({

@@ -962,6 +962,8 @@ export function NativeEditorApp() {
       searchProviders: [],
       customActions: [],
       openLinksInHost: false,
+      // 原生编辑器当前没有系统 openPath 桥，保留内置灯箱作为可用回退。
+      useInternalImageViewer: true,
       features: {
         tablePresentationControls: false,
         mermaidUnsafeHTML: false,

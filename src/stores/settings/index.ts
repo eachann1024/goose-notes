@@ -199,6 +199,10 @@ export const useSettings = create<SettingsState>()(
                 typeof state.utools.openSearchInUtools === "boolean"
                   ? state.utools.openSearchInUtools
                   : true,
+              useInternalImageViewer:
+                typeof state.utools.useInternalImageViewer === "boolean"
+                  ? state.utools.useInternalImageViewer
+                  : false,
               windowHeight: normalizedWindowHeight,
             }
           : null;

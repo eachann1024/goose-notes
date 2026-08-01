@@ -20,6 +20,10 @@ import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import {
+  EDITOR_CONTEXT_UI_GAP,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -41,12 +45,12 @@ interface ImageToolbarProps {
   handleSelectedImageZoom: () => void;
   handleSelectedImageCopy: () => void;
   handleSelectedImageDownload: () => void;
+  openImageLabel: string;
   floatingBoundary?: HTMLElement | null;
   getReferenceRect?: () => DOMRect | null;
 }
 
-const imageToolButtonClass =
-  "inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none";
+const imageToolButtonClass = "goose-block-toolbar-control";
 
 function ImageToolButton({
   label,
@@ -87,6 +91,7 @@ export function ImageToolbar({
   handleSelectedImageZoom,
   handleSelectedImageCopy,
   handleSelectedImageDownload,
+  openImageLabel,
   floatingBoundary,
   getReferenceRect,
 }: ImageToolbarProps) {
@@ -100,7 +105,7 @@ export function ImageToolbar({
     strategy: "fixed",
     placement: "top",
     middleware: [
-      offset(10),
+      offset(() => getScaledEditorUiPx(EDITOR_CONTEXT_UI_GAP)),
       flip({ ...overflowOptions, fallbackPlacements: ["bottom"] }),
       shift(overflowOptions),
       size({
@@ -143,7 +148,10 @@ export function ImageToolbar({
           usesFloatingPosition
             ? floatingStyles
             : {
-                top: Math.max(8, selectedImage.rect.top - 42),
+                top: Math.max(
+                  8,
+                  selectedImage.rect.top - getScaledEditorUiPx(40),
+                ),
                 left: selectedImage.rect.left + selectedImage.rect.width / 2,
                 transform: "translateX(-50%)",
               }
@@ -158,7 +166,7 @@ export function ImageToolbar({
       >
         <div
           className={cn(
-            "flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]",
+            "goose-block-toolbar-surface animate-in fade-in-0 zoom-in-95 duration-150",
             usesFloatingPosition && "goose-editor-context-ui",
           )}
         >
@@ -186,9 +194,12 @@ export function ImageToolbar({
             </ImageToolButton>
           ))}
 
-          <div className="mx-0.5 h-5 w-px bg-border/70" />
+          <div className="goose-block-toolbar-separator" />
 
-          <ImageToolButton label="放大图片" onClick={handleSelectedImageZoom}>
+          <ImageToolButton
+            label={openImageLabel}
+            onClick={handleSelectedImageZoom}
+          >
             <Maximize2 className="h-[15px] w-[15px]" />
           </ImageToolButton>
           <ImageToolButton label="复制图片" onClick={handleSelectedImageCopy}>
