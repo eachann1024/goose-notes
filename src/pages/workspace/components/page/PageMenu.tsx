@@ -1,6 +1,6 @@
 import { FontSelector } from "@/pages/workspace/components/shared/FontSelector";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
@@ -10,6 +10,8 @@ import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
+import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -31,6 +33,11 @@ function getEditorSelectedBlocks(): BlockNoteContent {
 }
 
 export function PageMenu() {
+  const editorUiScale = useEditorUiScale();
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === "undefined" ? 0 : window.innerWidth,
+    height: typeof window === "undefined" ? 0 : window.innerHeight,
+  }));
   const { activePageId, getPage, updatePage, createPage, setActivePage } =
     usePages();
   const { activeNotebookId } = useNotebooks();
@@ -38,6 +45,13 @@ export function PageMenu() {
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const isLocalItem = Boolean(page?.localFilePath);
+
+  useEffect(() => {
+    const updateViewport = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   const handleImport = async () => {
     try {
@@ -123,27 +137,39 @@ export function PageMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="max-h-[calc(100vh-24px)] w-[304px] overflow-y-auto p-2"
+          className="goose-editor-context-ui max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-[12px] p-1.5"
           align="end"
+          sideOffset={getScaledEditorUiPx(6, editorUiScale)}
+          style={{
+            maxHeight:
+              viewport.height <= 0
+                ? undefined
+                : `${Math.max(160, (viewport.height - 24) / editorUiScale)}px`,
+            maxWidth:
+              viewport.width <= 0
+                ? undefined
+                : `${Math.max(160, (viewport.width - 16) / editorUiScale)}px`,
+          }}
           forceMount
         >
           {/* Font Selector */}
-          <div className="px-1 py-2">
+          <div className="px-0.5 py-1">
             <FontSelector
               value={page.fontFamily}
+              compact
               onChange={(fontFamily) =>
                 updatePage(activePageId, { fontFamily })
               }
             />
           </div>
 
-          <div className="mx-1 my-1.5 h-px bg-border" />
+          <div className="mx-1 my-1 h-px bg-border" />
 
           <section aria-label="页面状态">
             <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
               页面状态
             </div>
-            <div className="grid grid-cols-2 gap-1.5 px-1 pb-0.5">
+            <div className="grid grid-cols-2 gap-1 px-1 pb-0.5">
               <button
                 type="button"
                 aria-pressed={page.isFavorite}
@@ -151,7 +177,7 @@ export function PageMenu() {
                   updatePage(activePageId, { isFavorite: !page.isFavorite })
                 }
                 className={cn(
-                  "relative grid min-h-[46px] grid-cols-[24px_minmax(0,1fr)] items-center gap-2 rounded-[10px] border px-2 py-1.5 pr-5 text-left transition-colors duration-150",
+                  "relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isFavorite
                     ? "border-[#ead39b] bg-[#fff8e6] text-[#8a621a] hover:bg-[#fff3d6] dark:border-[#654f23] dark:bg-[#3a2d16] dark:text-[#fbbf24] dark:hover:bg-[#44351a]"
@@ -160,14 +186,13 @@ export function PageMenu() {
               >
                 <span
                   className={cn(
-                    "grid h-6 w-6 place-items-center rounded-[8px]",
-                    page.isFavorite &&
-                      "bg-[#fff1c8] dark:bg-[#4b3919]",
+                    "grid h-5 w-5 place-items-center rounded-[7px]",
+                    page.isFavorite && "bg-[#fff1c8] dark:bg-[#4b3919]",
                   )}
                 >
                   <LucideIcons.Star
                     className={cn(
-                      "h-4 w-4 text-muted-foreground",
+                      "h-3.5 w-3.5 text-muted-foreground",
                       page.isFavorite &&
                         "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
                     )}
@@ -188,7 +213,7 @@ export function PageMenu() {
                   updatePage(activePageId, { isPinned: !page.isPinned })
                 }
                 className={cn(
-                  "relative grid min-h-[46px] grid-cols-[24px_minmax(0,1fr)] items-center gap-2 rounded-[10px] border px-2 py-1.5 pr-5 text-left transition-colors duration-150",
+                  "relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isPinned
                     ? "border-[#e8c0bc] bg-[#fff0ee] text-[#91433d] hover:bg-[#ffe7e4] dark:border-[#6b3734] dark:bg-[#3f2020] dark:text-[#f87171] dark:hover:bg-[#492525]"
@@ -197,14 +222,13 @@ export function PageMenu() {
               >
                 <span
                   className={cn(
-                    "grid h-6 w-6 place-items-center rounded-[8px]",
-                    page.isPinned &&
-                      "bg-[#ffe1dd] dark:bg-[#512827]",
+                    "grid h-5 w-5 place-items-center rounded-[7px]",
+                    page.isPinned && "bg-[#ffe1dd] dark:bg-[#512827]",
                   )}
                 >
                   <LucideIcons.Pin
                     className={cn(
-                      "h-4 w-4 text-muted-foreground",
+                      "h-3.5 w-3.5 text-muted-foreground",
                       page.isPinned &&
                         "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
                     )}
@@ -223,7 +247,7 @@ export function PageMenu() {
             <div
               role="button"
               tabIndex={0}
-              className="grid min-h-10 cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-[10px] px-2.5 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               onClick={() =>
                 updatePage(activePageId, { isLocked: !page.isLocked })
               }
@@ -234,7 +258,7 @@ export function PageMenu() {
                 }
               }}
             >
-              <LucideIcons.Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0 truncate">锁定页面</span>
               <Switch
                 aria-label="锁定页面"
@@ -251,10 +275,10 @@ export function PageMenu() {
           {!isLocalItem && (
             <DropdownMenuGroup>
               <DropdownMenuItem
-                className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs"
+                className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
                 onSelect={handleImport}
               >
-                <LucideIcons.Upload className="h-4 w-4 text-muted-foreground" />
+                <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="min-w-0 truncate">导入</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -262,13 +286,13 @@ export function PageMenu() {
 
           {/* Generate Image — standalone, before Export */}
           <DropdownMenuItem
-            className="page-menu-generate-image grid min-h-10 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground"
+            className="page-menu-generate-image grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs text-foreground"
             onSelect={() => {
               setSelectedBlocks(getEditorSelectedBlocks());
               setThemeSelectorOpen(true);
             }}
           >
-            <LucideIcons.Image className="h-4 w-4 text-muted-foreground" />
+            <LucideIcons.Image className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="page-menu-shimmer-text min-w-0 truncate font-medium text-foreground">
               {selectedBlocks.length > 0 ? "生成选中图片" : "生成图片"}
             </span>
@@ -277,11 +301,20 @@ export function PageMenu() {
           {/* Export submenu */}
           <DropdownMenuGroup>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 px-2.5 text-xs">
-                <LucideIcons.Download className="h-4 w-4 text-muted-foreground" />
+              <DropdownMenuSubTrigger className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-2 text-xs">
+                <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="min-w-0 truncate">导出</span>
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="min-w-[160px]">
+              <DropdownMenuSubContent
+                className="goose-editor-context-ui min-w-[144px] rounded-[12px] p-1"
+                sideOffset={getScaledEditorUiPx(4, editorUiScale)}
+                style={{
+                  maxHeight:
+                    viewport.height <= 0
+                      ? undefined
+                      : `${Math.max(120, (viewport.height - 16) / editorUiScale)}px`,
+                }}
+              >
                 <DropdownMenuItem
                   className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() => runExport("JSON", () => exportToJSON(page))}
@@ -316,7 +349,7 @@ export function PageMenu() {
             </DropdownMenuSub>
 
             <DropdownMenuItem
-              className="grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs"
+              className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
               disabled={page?.isFolder}
               onSelect={() => {
                 const pid = activePageId;
@@ -331,28 +364,28 @@ export function PageMenu() {
                 }, 80);
               }}
             >
-              <LucideIcons.History className="h-4 w-4 text-muted-foreground" />
+              <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="min-w-0 truncate">页面历史</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
           <DropdownMenuItem
-            className="group grid min-h-9 grid-cols-[20px_minmax(0,1fr)] gap-x-2 px-2.5 text-xs text-foreground data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
+            className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs text-foreground data-[highlighted]:text-[var(--goose-color-danger-focus)] focus:text-[var(--goose-color-danger-focus)]"
             onClick={() => void deletePageWithUndo(activePageId)}
           >
             {isLocalItem ? (
-              <LucideIcons.FileX className="h-4 w-4 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
+              <LucideIcons.FileX className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
             ) : (
-              <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
+              <LucideIcons.Trash2 className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-color-danger-focus)]" />
             )}
             <span className="min-w-0 truncate">
               {isLocalItem ? "移到系统回收站" : "移至垃圾箱"}
             </span>
           </DropdownMenuItem>
 
-          <div className="mx-1 mt-1.5 h-px bg-border" />
+          <div className="mx-1 mt-1 h-px bg-border" />
 
-          <div className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between gap-3 px-2 py-1 text-[10px] text-muted-foreground">
             <span>{countWords(page.content)} 字</span>
             <span className="min-w-0 truncate text-right">
               编辑于 {new Date(page.updatedAt).toLocaleString("zh-CN")}

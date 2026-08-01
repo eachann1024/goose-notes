@@ -484,6 +484,7 @@ declare global {
   const useEditorFind: typeof import('./components/editor/hooks/useEditorFind').useEditorFind
   const useEditorPaste: typeof import('./components/editor/hooks/useEditorPaste').useEditorPaste
   const useEditorShortcuts: typeof import('./components/editor/hooks/useEditorShortcuts').useEditorShortcuts
+  const useEditorUiScale: typeof import('./components/editor/hooks/useEditorUiScale').useEditorUiScale
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent
   const useFormatCode: typeof import('./components/editor/hooks/useFormatCode').useFormatCode

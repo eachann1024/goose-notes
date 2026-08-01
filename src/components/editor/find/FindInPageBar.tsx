@@ -3,6 +3,8 @@ import * as LucideIcons from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
 import { formatShortcut } from "@/lib/utils";
 import type { BlockNoteEditor } from "@blocknote/core";
+import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
+import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 import {
   clearFind,
   getFindState,
@@ -23,6 +25,7 @@ export function FindInPageBar({
   navigationRequest = null,
   onClose,
 }: FindInPageBarProps) {
+  const editorUiScale = useEditorUiScale();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -68,7 +71,11 @@ export function FindInPageBar({
   return (
     <div
       data-goose-find-in-page
-      className="fixed right-2 top-2 z-[20500]"
+      className="fixed z-[20500]"
+      style={{
+        right: getScaledEditorUiPx(8, editorUiScale),
+        top: getScaledEditorUiPx(8, editorUiScale),
+      }}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="goose-editor-inline-context-ui flex items-center gap-1 rounded-md border bg-background/95 px-2 py-1.5 shadow-md backdrop-blur">

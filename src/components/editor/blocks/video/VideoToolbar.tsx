@@ -7,6 +7,8 @@ import {
   Trash2,
 } from "lucide-react";
 import type { MouseEventHandler, ReactNode } from "react";
+import { useCallback, useEffect } from "react";
+import { flip, offset, shift, size, useFloating } from "@floating-ui/react";
 import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 import {
@@ -15,7 +17,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
-import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
+import {
+  EDITOR_CONTEXT_UI_GAP,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
+import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
 
 type VideoToolbarProps = {
   rect: DOMRect;
@@ -32,11 +38,15 @@ const toolButtonClass = "goose-block-toolbar-control";
 function VideoToolButton({
   label,
   className,
+  pressed,
+  tooltipSideOffset,
   onClick,
   children,
 }: {
   label: string;
   className?: string;
+  pressed?: boolean;
+  tooltipSideOffset: number;
   onClick: MouseEventHandler<HTMLButtonElement>;
   children: ReactNode;
 }) {
@@ -46,13 +56,14 @@ function VideoToolButton({
         <button
           type="button"
           aria-label={label}
+          aria-pressed={pressed}
           onClick={onClick}
           className={cn(toolButtonClass, className)}
         >
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8}>
+      <TooltipContent side="top" sideOffset={tooltipSideOffset}>
         {label}
       </TooltipContent>
     </Tooltip>
@@ -68,16 +79,43 @@ export function VideoToolbar({
   onDownload,
   onDelete,
 }: VideoToolbarProps) {
+  const editorUiScale = useEditorUiScale();
+  const overflowPadding = getScaledEditorUiPx(8, editorUiScale);
+  const { refs, floatingStyles, update } = useFloating({
+    strategy: "fixed",
+    placement: "top",
+    middleware: [
+      offset(getScaledEditorUiPx(EDITOR_CONTEXT_UI_GAP, editorUiScale)),
+      flip({ padding: overflowPadding, fallbackPlacements: ["bottom"] }),
+      shift({ padding: overflowPadding }),
+      size({
+        padding: overflowPadding,
+        apply({ availableWidth, elements }) {
+          elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+          elements.floating.style.overflowX = "auto";
+        },
+      }),
+    ],
+  });
+  const setFloating = useCallback(
+    (node: HTMLElement | null) => refs.setFloating(node),
+    [refs],
+  );
+
+  useEffect(() => {
+    refs.setPositionReference({
+      getBoundingClientRect: () => rect,
+    });
+    void update();
+  }, [rect, refs, update, editorUiScale]);
+
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={100}>
       <div
         data-goose-video-toolbar
+        ref={setFloating}
         className="fixed z-[20000]"
-        style={{
-          top: Math.max(8, rect.top - getScaledEditorUiPx(40)),
-          left: rect.left + rect.width / 2,
-          transform: "translateX(-50%)",
-        }}
+        style={floatingStyles}
         onMouseDown={(event) => event.preventDefault()}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -98,10 +136,9 @@ export function VideoToolbar({
               <VideoToolButton
                 key={value}
                 label={label}
+                pressed={alignment === value}
+                tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
                 onClick={() => onAlign(value)}
-                className={
-                  alignment === value ? "bg-accent text-foreground" : undefined
-                }
               >
                 <Icon className="h-[15px] w-[15px]" />
               </VideoToolButton>
@@ -110,16 +147,25 @@ export function VideoToolbar({
           {editable && <div className="goose-block-toolbar-separator" />}
 
           {editable && (
-            <VideoToolButton label="更换视频" onClick={onReplace}>
+            <VideoToolButton
+              label="更换视频"
+              tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+              onClick={onReplace}
+            >
               <RefreshCw className="h-[15px] w-[15px]" />
             </VideoToolButton>
           )}
-          <VideoToolButton label="下载视频" onClick={onDownload}>
+          <VideoToolButton
+            label="下载视频"
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+            onClick={onDownload}
+          >
             <Download className="h-[15px] w-[15px]" />
           </VideoToolButton>
           {editable && (
             <VideoToolButton
               label="删除视频"
+              tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
               onClick={onDelete}
               className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
             >

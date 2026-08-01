@@ -33,13 +33,13 @@
 
 .goose-blocknote-editor ::selection,
 .bn-editor ::selection {
-  background-color: rgba(35, 131, 226, 0.28);
+  background-color: var(--goose-interactive-selected);
   color: inherit;
 }
 
 .dark .goose-blocknote-editor ::selection,
 .dark .bn-editor ::selection {
-  background-color: rgba(35, 131, 226, 0.4);
+  background-color: var(--goose-interactive-selected);
   color: inherit;
 }
 
@@ -122,12 +122,13 @@
   box-shadow: none !important;
 }
 
-/* 图片工具栏沿用既有的高对比选中态，不受文字格式栏的视觉收敛影响。 */
-.goose-toolbar-control-active,
-.goose-toolbar-control-active:hover {
-  border-radius: 0.375rem;
-  background: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
+/* 块工具栏统一用语义化 pressed 状态接入产品强调色。
+   图片、视频以及后续新增块控件无需再各自维护激活色。 */
+.goose-block-toolbar-control[aria-pressed="true"],
+.goose-block-toolbar-control[aria-pressed="true"]:hover,
+.goose-block-toolbar-control[aria-pressed="true"]:focus-visible {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 /* 颜色按钮内部自行呈现文本色，激活时只改变按钮底色。 */
@@ -901,9 +902,9 @@
   border-top-color: hsl(var(--border) / 0.4);
 }
 
-/* ===== 链接样式：始终蓝色 + 下划线（含表格单元格内） ===== */
+/* ===== 链接样式：跟随产品强调色（含表格单元格内） ===== */
 .workspace-editor-surface a[data-inline-content-type="link"] {
-  color: #2563eb;
+  color: var(--goose-accent-link);
   text-decoration: underline;
   text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
@@ -913,15 +914,7 @@
 }
 
 .workspace-editor-surface a[data-inline-content-type="link"]:hover {
-  color: #1d4ed8;
-}
-
-.dark .workspace-editor-surface a[data-inline-content-type="link"] {
-  color: #60a5fa;
-}
-
-.dark .workspace-editor-surface a[data-inline-content-type="link"]:hover {
-  color: #93c5fd;
+  color: var(--goose-accent-link-hover);
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
@@ -2261,7 +2254,7 @@
 }
 
 .goose-file-block-action-btn:hover {
-  background-color: hsl(var(--accent));
+  background-color: var(--goose-interactive-hover);
   color: hsl(var(--foreground));
 }
 

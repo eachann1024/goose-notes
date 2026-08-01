@@ -23,6 +23,7 @@ import {
   EDITOR_CONTEXT_UI_GAP,
   getScaledEditorUiPx,
 } from "@/components/editor/utils/editorContextUi";
+import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
 import {
   Tooltip,
   TooltipContent,
@@ -57,12 +58,14 @@ function ImageToolButton({
   className,
   pressed,
   onClick,
+  tooltipSideOffset,
   children,
 }: {
   label: string;
   className?: string;
   pressed?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
+  tooltipSideOffset: number;
   children: ReactNode;
 }) {
   return (
@@ -78,7 +81,7 @@ function ImageToolButton({
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8}>
+      <TooltipContent side="top" sideOffset={tooltipSideOffset}>
         {label}
       </TooltipContent>
     </Tooltip>
@@ -95,10 +98,11 @@ export function ImageToolbar({
   floatingBoundary,
   getReferenceRect,
 }: ImageToolbarProps) {
+  const editorUiScale = useEditorUiScale();
   const usesFloatingPosition = Boolean(getReferenceRect);
   const overflowOptions = {
     boundary: floatingBoundary ?? undefined,
-    padding: 8,
+    padding: getScaledEditorUiPx(8, editorUiScale),
   };
   const { refs, floatingStyles, update } = useFloating({
     open: usesFloatingPosition,
@@ -164,12 +168,7 @@ export function ImageToolbar({
         role="toolbar"
         aria-label="图片操作"
       >
-        <div
-          className={cn(
-            "goose-block-toolbar-surface animate-in fade-in-0 zoom-in-95 duration-150",
-            usesFloatingPosition && "goose-editor-context-ui",
-          )}
-        >
+        <div className="goose-editor-context-ui goose-block-toolbar-surface animate-in fade-in-0 zoom-in-95 duration-150">
           {(
             [
               ["left", "左对齐", AlignLeft],
@@ -181,14 +180,8 @@ export function ImageToolbar({
               key={alignment}
               label={label}
               pressed={selectedImage.alignment === alignment}
+              tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
               onClick={() => applyImageAlignment(alignment)}
-              className={
-                selectedImage.alignment === alignment
-                  ? usesFloatingPosition
-                    ? "goose-toolbar-control-active"
-                    : "bg-accent text-foreground"
-                  : undefined
-              }
             >
               <Icon className="h-[15px] w-[15px]" />
             </ImageToolButton>
@@ -198,15 +191,21 @@ export function ImageToolbar({
 
           <ImageToolButton
             label={openImageLabel}
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
             onClick={handleSelectedImageZoom}
           >
             <Maximize2 className="h-[15px] w-[15px]" />
           </ImageToolButton>
-          <ImageToolButton label="复制图片" onClick={handleSelectedImageCopy}>
+          <ImageToolButton
+            label="复制图片"
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+            onClick={handleSelectedImageCopy}
+          >
             <Copy className="h-[15px] w-[15px]" />
           </ImageToolButton>
           <ImageToolButton
             label="下载图片"
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
             onClick={handleSelectedImageDownload}
           >
             <Download className="h-[15px] w-[15px]" />
