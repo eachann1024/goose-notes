@@ -42,7 +42,7 @@ const TooltipContent = React.forwardRef<
       {editorContext ? (
         <div
           className={cn(
-            "goose-editor-context-ui select-none overflow-hidden whitespace-nowrap rounded-[14px] border border-border/80 bg-popover px-2.5 py-1.5 text-[12px] font-medium leading-none text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-[1px] dark:border-white/20",
+            "goose-editor-tooltip-surface select-none overflow-hidden whitespace-nowrap border border-border/80 bg-popover font-medium leading-none text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-[1px] dark:border-white/20",
             className,
           )}
         >

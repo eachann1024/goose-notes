@@ -23,6 +23,46 @@ interface PositionState {
   showAbove: boolean;
 }
 
+const PANEL_BASE_WIDTH = 172;
+const PANEL_BASE_HEIGHT = 190;
+const PANEL_VIEWPORT_PADDING = 8;
+
+export function getColorPanelPosition({
+  trigger,
+  panelWidth,
+  panelHeight,
+  viewportWidth,
+  viewportHeight,
+  gap,
+}: {
+  trigger: Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width">;
+  panelWidth: number;
+  panelHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  gap: number;
+}): PositionState {
+  const padding = PANEL_VIEWPORT_PADDING;
+  const spaceAbove = trigger.top - padding;
+  const spaceBelow = viewportHeight - padding - trigger.bottom;
+  const showAbove =
+    spaceAbove >= panelHeight + gap ||
+    (spaceBelow < panelHeight + gap && spaceAbove > spaceBelow);
+  const halfWidth = panelWidth / 2;
+  const preferredLeft = trigger.left + trigger.width / 2;
+  const minLeft = padding + halfWidth;
+  const maxLeft = viewportWidth - padding - halfWidth;
+
+  return {
+    top: showAbove ? trigger.top - gap : trigger.bottom + gap,
+    left:
+      minLeft <= maxLeft
+        ? Math.min(Math.max(preferredLeft, minLeft), maxLeft)
+        : viewportWidth / 2,
+    showAbove,
+  };
+}
+
 /** BlockNote 命名颜色 —— 必须与 BlockNote CSS 中定义的颜色名一致 */
 const TEXT_COLORS = [
   { name: "默认", color: "default" },
@@ -219,6 +259,7 @@ export function FormattingToolbarColorPicker() {
     null,
   );
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const updatePanelPosition = useCallback(() => {
     if (!buttonRef.current) return;
@@ -229,17 +270,21 @@ export function FormattingToolbarColorPicker() {
       ),
     );
     const effectiveScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const panelHeight = 280 * effectiveScale;
+    const panelWidth =
+      panelRef.current?.offsetWidth ?? PANEL_BASE_WIDTH * effectiveScale;
+    const panelHeight =
+      panelRef.current?.offsetHeight ?? PANEL_BASE_HEIGHT * effectiveScale;
     const gap = 8 * effectiveScale;
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const showAbove = spaceAbove >= panelHeight || spaceAbove > spaceBelow;
-
-    setPosition({
-      top: showAbove ? rect.top - gap : rect.bottom + gap,
-      left: rect.left + rect.width / 2,
-      showAbove,
-    });
+    setPosition(
+      getColorPanelPosition({
+        trigger: rect,
+        panelWidth,
+        panelHeight,
+        viewportWidth: document.documentElement.clientWidth,
+        viewportHeight: document.documentElement.clientHeight,
+        gap,
+      }),
+    );
   }, []);
 
   useEffect(() => {
@@ -262,10 +307,12 @@ export function FormattingToolbarColorPicker() {
 
   useEffect(() => {
     if (!isMounted) return;
+    const frame = requestAnimationFrame(updatePanelPosition);
     const update = () => updatePanelPosition();
     window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
     window.addEventListener("resize", update);
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
       window.removeEventListener("resize", update);
     };
@@ -382,6 +429,7 @@ export function FormattingToolbarColorPicker() {
 
   const panelContent = isMounted ? (
     <div
+      ref={panelRef}
       className={cn(
         "fixed z-[20000] w-fit transition-all duration-180 ease-out",
         isOpen
@@ -407,11 +455,11 @@ export function FormattingToolbarColorPicker() {
         e.stopPropagation();
       }}
     >
-      <div className="goose-editor-context-ui flex flex-col gap-1 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] dark:border-white/20">
-        <div className="px-1 pt-0.5 text-[12px] font-semibold text-muted-foreground">
+      <div className="goose-color-picker-panel flex flex-col border border-border/75 bg-popover shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] dark:border-white/20">
+        <div className="goose-color-picker-title font-semibold text-muted-foreground">
           文本颜色
         </div>
-        <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1">
+        <div className="goose-color-picker-grid grid">
           {TEXT_COLORS.map((item, index) => (
             <Button
               key={item.color}
@@ -419,7 +467,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
+                "goose-color-picker-swatch border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
                 isTextColorActive && currentTextColor === item.color
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                   : "",
@@ -434,7 +482,7 @@ export function FormattingToolbarColorPicker() {
               }}
             >
               <div
-                className="font-serif text-[34px] leading-none scale-[0.56]"
+                className="goose-color-picker-letter font-serif leading-none"
                 style={{
                   color:
                     item.color === "default"
@@ -448,12 +496,12 @@ export function FormattingToolbarColorPicker() {
           ))}
         </div>
 
-        <div className="my-1 border-t border-border/60" />
+        <div className="goose-color-picker-divider border-t border-border/60" />
 
-        <div className="px-1 text-[12px] font-semibold text-muted-foreground">
+        <div className="goose-color-picker-title font-semibold text-muted-foreground">
           背景颜色
         </div>
-        <div className="grid grid-cols-[repeat(5,1.75rem)] gap-1 px-1 pb-0.5">
+        <div className="goose-color-picker-grid goose-color-picker-grid-last grid">
           {HIGHLIGHT_COLORS.map((item, index) => (
             <Button
               key={item.color}
@@ -461,7 +509,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "h-7 w-7 rounded-[6px] border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
+                "goose-color-picker-swatch border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
                 isBgColorActive && currentBgColor === item.color
                   ? "border-primary ring-1 ring-primary/25"
                   : "",
@@ -476,7 +524,7 @@ export function FormattingToolbarColorPicker() {
               }}
             >
               <div
-                className="h-5 w-5 rounded-[4px] border border-border/20"
+                className="goose-color-picker-background-swatch border border-border/20"
                 style={{
                   backgroundColor:
                     item.color === "default"

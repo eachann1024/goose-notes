@@ -64,7 +64,6 @@ import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/co
 import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
 import {
   EDITOR_CONTEXT_UI_GAP,
-  getEditorUiScale,
   getScaledEditorUiPx,
 } from "@/components/editor/utils/editorContextUi";
 import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
@@ -415,10 +414,9 @@ export function EditorComposer({
             ...overflowOptions,
             apply({ availableWidth, elements }) {
               // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
-              // Floating UI 外壳使用 viewport 像素；内层 surface 使用 CSS zoom，
-              // 因此其布局宽度必须除以有效比例，绘制后的宽度才不会越过边界。
+              // 工具栏直接使用缩放后的布局尺寸，Floating UI 与
+              // 按钮 DOMRect 共用同一套 viewport 坐标，无需再换算 CSS zoom。
               // 旧 uTools 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
-              const uiScale = getEditorUiScale();
               const safeAvailableWidth = Math.max(0, availableWidth);
               elements.floating.style.maxWidth = `${safeAvailableWidth}px`;
               elements.floating.style.overflowX = "visible";
@@ -426,7 +424,7 @@ export function EditorComposer({
                 "[data-formatting-toolbar]",
               );
               if (toolbar) {
-                toolbar.style.maxWidth = `${safeAvailableWidth / uiScale}px`;
+                toolbar.style.maxWidth = `${safeAvailableWidth}px`;
               }
             },
           }),

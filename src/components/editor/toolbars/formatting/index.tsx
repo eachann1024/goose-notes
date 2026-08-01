@@ -260,7 +260,10 @@ export function EditorFormattingToolbar() {
         role="toolbar"
         aria-label="文字格式"
         className={cn(
-          "goose-editor-context-ui z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
+          __GOOSE_EDITOR_COMPACT__
+            ? "goose-editor-context-ui"
+            : "goose-formatting-toolbar-scaled",
+          "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",
         )}
         style={{

@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 import { findNonOverlappingToolbarPosition } from "../../src/components/editor/utils/formattingToolbarPosition";
+import { getColorPanelPosition } from "../../src/components/editor/toolbars/formatting/ColorPicker";
 
 const boundary = {
   top: 8,
@@ -84,4 +85,30 @@ test("formatting toolbar hides when no non-overlapping position is reachable", (
       gap: 16,
     }),
   ).toBeNull();
+});
+
+test("color panel stays centered on its trigger in viewport coordinates", () => {
+  expect(
+    getColorPanelPosition({
+      trigger: { top: 104, right: 279, bottom: 143, left: 240, width: 39 },
+      panelWidth: 246,
+      panelHeight: 270,
+      viewportWidth: 914,
+      viewportHeight: 480,
+      gap: 12,
+    }),
+  ).toEqual({ top: 155, left: 259.5, showAbove: false });
+});
+
+test("color panel clamps to the viewport instead of shifting its anchor", () => {
+  expect(
+    getColorPanelPosition({
+      trigger: { top: 300, right: 40, bottom: 326, left: 14, width: 26 },
+      panelWidth: 220,
+      panelHeight: 180,
+      viewportWidth: 800,
+      viewportHeight: 600,
+      gap: 8,
+    }),
+  ).toEqual({ top: 292, left: 118, showAbove: true });
 });
