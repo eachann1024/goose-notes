@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import * as LucideIcons from "lucide-react";
 import {
   EMPTY_CELL_HEIGHT,
@@ -475,14 +481,15 @@ export function GooseTableHandle({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="goose-editor-inline-context-ui goose-table-handle-btn"
+          className="goose-editor-position-safe-trigger goose-table-handle-btn"
+          aria-label={isRow ? "行操作" : "列操作"}
           draggable
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           style={
-            orientation === "column"
-              ? { transform: "rotate(0.25turn)" }
-              : undefined
+            {
+              "--goose-popup-trigger-rotate": isRow ? "0turn" : "0.25turn",
+            } as CSSProperties
           }
         >
           <LucideIcons.GripVertical className="h-4 w-4" />
