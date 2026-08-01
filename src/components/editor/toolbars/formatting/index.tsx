@@ -294,14 +294,14 @@ export function EditorFormattingToolbar() {
             hideMarks={isInHeading}
           />
 
-          <FormattingToolbarColorPicker />
-
           <InlineGroup
             isUnderline={isUnderline}
             isCode={isCode}
             bindTooltip={bindTooltip}
             hideMarks={isInHeading}
           />
+
+          <FormattingToolbarColorPicker />
 
           {!isInHeading && (
             <Separator

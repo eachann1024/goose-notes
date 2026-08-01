@@ -2,11 +2,6 @@ import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/editor/ui/tooltip";
 import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
@@ -122,7 +117,8 @@ const MIXED = "__mixed__";
  * - 点文本色：只更新 lastTextColor（含 default）
  * - 点背景色：只更新 lastBackgroundColor（含 default / 无背景）
  * - 右键色对：同时更新两者
- * - 右键工具栏 A：分别复现已有记忆；两者都没有记录则 no-op
+ * - 右键工具栏 Palette：当前不是上次颜色时复现记忆；再次右键清除颜色
+ * - 两者都没有记录时 no-op
  * 使用 localStorage，跨笔记 / 重启可复用；读写对 SSR / 无 window 安全。
  */
 const LAST_FORMAT_COLORS_KEY = "goose-note:last-format-colors";
@@ -134,6 +130,19 @@ type LastFormatColors = {
   textColor?: string;
   backgroundColor?: string;
 };
+
+export function selectionUsesLastFormatColors(
+  selection: { textColor: string; backgroundColor: string },
+  last: LastFormatColors,
+): boolean {
+  const remembered = (["textColor", "backgroundColor"] as const).filter(
+    (key) => last[key] !== undefined,
+  );
+  return (
+    remembered.length > 0 &&
+    remembered.every((key) => selection[key] === last[key])
+  );
+}
 
 function isKnownColor(value: unknown, known: Set<string>): value is string {
   return typeof value === "string" && known.has(value);
@@ -345,22 +354,6 @@ export function FormattingToolbarColorPicker() {
   const isBgColorActive =
     !isBgMixed && currentBgColor && currentBgColor !== "default";
 
-  const previewTextColor = isTextMixed
-    ? undefined
-    : currentTextColor && currentTextColor !== "default"
-      ? COLOR_PREVIEW[currentTextColor]
-      : undefined;
-  const previewBgColor = isBgMixed
-    ? undefined
-    : currentBgColor && currentBgColor !== "default"
-      ? BG_PREVIEW[currentBgColor]
-      : undefined;
-
-  const mixedDotGradient =
-    "conic-gradient(#e03e3e 0deg 90deg, #dfab01 90deg 180deg, #0b6e99 180deg 270deg, #6940a5 270deg 360deg)";
-  const mixedBarGradient =
-    "repeating-linear-gradient(45deg, hsl(var(--foreground) / 0.45) 0 2px, transparent 2px 4px)";
-
   const applyTextColor = (color: string) => {
     if (color === "default") {
       editor.removeStyles({ textColor: true } as any);
@@ -406,6 +399,13 @@ export function FormattingToolbarColorPicker() {
   const applyLastFormatColors = () => {
     const last = readLastFormatColors();
     if (last.textColor === undefined && last.backgroundColor === undefined) {
+      return;
+    }
+    if (selectionUsesLastFormatColors(selectionColors, last)) {
+      editor.removeStyles({ textColor: true } as any);
+      if (!applyHeadingBlockBackground(editor, "default")) {
+        editor.removeStyles({ backgroundColor: true } as any);
+      }
       return;
     }
     if (last.textColor !== undefined) {
@@ -545,60 +545,22 @@ export function FormattingToolbarColorPicker() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Tooltip delayDuration={400}>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            ref={buttonRef}
-            data-goose-preserve-icon-color="true"
-            aria-pressed={
-              isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
-            }
-            className={cn("goose-formatting-toolbar-control")}
-            aria-label="颜色选择"
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              applyLastFormatColors();
-            }}
-          >
-            <span className="relative inline-flex h-[18px] w-[14px] items-center justify-center">
-              {isTextMixed ? (
-                <span
-                  className="block h-[12px] w-[12px] rounded-full"
-                  style={{ background: mixedDotGradient }}
-                />
-              ) : (
-                <span
-                  className="font-serif text-[15px] font-semibold leading-none"
-                  style={{ color: previewTextColor }}
-                >
-                  A
-                </span>
-              )}
-              <span
-                className="absolute -bottom-[1px] left-1/2 h-[2.5px] w-3 -translate-x-1/2 rounded-full"
-                style={{
-                  background: isBgMixed
-                    ? mixedBarGradient
-                    : (previewBgColor ?? "transparent"),
-                  border: isBgColorActive
-                    ? "1px solid hsl(var(--foreground) / 0.08)"
-                    : undefined,
-                }}
-              />
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          <div className="text-[12px] font-medium leading-none">
-            {isTextMixed || isBgMixed ? "颜色（混合）" : "颜色"}
-          </div>
-          <div className="mt-1 text-[11px] leading-none text-muted-foreground">
-            右键应用上次颜色
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      <button
+        type="button"
+        ref={buttonRef}
+        aria-pressed={
+          isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
+        }
+        className={cn("goose-formatting-toolbar-control")}
+        aria-label="颜色选择；右键切换上次颜色"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyLastFormatColors();
+        }}
+      >
+        <LucideIcons.Palette aria-hidden="true" />
+      </button>
       <Portal>{panelContent}</Portal>
     </div>
   );

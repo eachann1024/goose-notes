@@ -164,13 +164,13 @@ export function EditorFormattingToolbar() {
             bindTooltip={bindTooltip}
             hideMarks={isInHeading}
           />
-          <FormattingToolbarColorPicker />
           <InlineGroup
             isUnderline={markStates.underline}
             isCode={markStates.code}
             bindTooltip={bindTooltip}
             hideMarks={isInHeading}
           />
+          <FormattingToolbarColorPicker />
           {!isInHeading && (
             <Separator
               orientation="vertical"

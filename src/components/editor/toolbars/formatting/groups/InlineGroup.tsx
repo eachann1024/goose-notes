@@ -1,7 +1,6 @@
 import * as LucideIcons from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";
-import { Separator } from "@/components/editor/ui/separator";
 import { useBlockNoteEditor } from "@blocknote/react";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 
@@ -38,11 +37,6 @@ export function InlineGroup({
         </TooltipTrigger>
         <ToolbarTooltip label="下划线" shortcut="Mod+U" />
       </Tooltip>
-
-      <Separator
-        orientation="vertical"
-        className="goose-formatting-toolbar-separator"
-      />
 
       <Tooltip {...bindTooltip("code")}>
         <TooltipTrigger asChild>
