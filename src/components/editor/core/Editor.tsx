@@ -67,6 +67,7 @@ import {
   filterSlashMenuItems,
 } from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
+import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
 import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
@@ -278,6 +279,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
+        gooseCopyCurrentBlockExtension,
         createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
         gooseCodeBlockLinkStripExtension,

@@ -11,6 +11,11 @@ import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import {
+  applyHeadingBlockBackground,
+  getHeadingBackgroundSelectionState,
+  getToolbarTargetBlocks,
+} from "@/components/editor/toolbars/formatting/headingBlockBackground";
 
 interface PositionState {
   top: number;
@@ -145,6 +150,9 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
     editor,
     selector: ({ editor }) => {
       const { selection, doc } = editor.prosemirrorState;
+      const headingBackground = getHeadingBackgroundSelectionState(
+        getToolbarTargetBlocks(editor),
+      );
       const textColors = new Set<string>();
       const bgColors = new Set<string>();
       const from = selection.from;
@@ -156,8 +164,9 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
         const bc = marks.find((m: any) => m.type.name === "backgroundColor");
         return {
           textColor: (tc?.attrs.stringValue as string | undefined) ?? "default",
-          backgroundColor:
-            (bc?.attrs.stringValue as string | undefined) ?? "default",
+          backgroundColor: headingBackground.isHeadingSelection
+            ? headingBackground.backgroundColor
+            : ((bc?.attrs.stringValue as string | undefined) ?? "default"),
         };
       }
 
@@ -183,8 +192,9 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
             : textColors.size === 1
               ? [...textColors][0]
               : MIXED,
-        backgroundColor:
-          bgColors.size === 0
+        backgroundColor: headingBackground.isHeadingSelection
+          ? headingBackground.backgroundColor
+          : bgColors.size === 0
             ? "default"
             : bgColors.size === 1
               ? [...bgColors][0]
@@ -314,6 +324,10 @@ export function FormattingToolbarColorPicker() {
   };
 
   const applyBackgroundColor = (color: string) => {
+    if (applyHeadingBlockBackground(editor, color)) {
+      writeLastFormatColors({ backgroundColor: color });
+      return;
+    }
     if (color === "default") {
       editor.removeStyles({ backgroundColor: true } as any);
     } else {
@@ -332,7 +346,9 @@ export function FormattingToolbarColorPicker() {
     } else {
       editor.addStyles({ textColor: textColor });
     }
-    if (backgroundColor === "default") {
+    if (applyHeadingBlockBackground(editor, backgroundColor)) {
+      // 标题背景已按完整块应用。
+    } else if (backgroundColor === "default") {
       editor.removeStyles({ backgroundColor: true } as any);
     } else {
       editor.addStyles({ backgroundColor: backgroundColor });
@@ -354,7 +370,9 @@ export function FormattingToolbarColorPicker() {
       }
     }
     if (last.backgroundColor !== undefined) {
-      if (last.backgroundColor === "default") {
+      if (applyHeadingBlockBackground(editor, last.backgroundColor)) {
+        // 标题背景已按完整块应用。
+      } else if (last.backgroundColor === "default") {
         editor.removeStyles({ backgroundColor: true } as any);
       } else {
         editor.addStyles({ backgroundColor: last.backgroundColor });
