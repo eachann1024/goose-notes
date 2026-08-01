@@ -10,6 +10,9 @@ import {
   renderBlocks,
   renderInline,
 } from "../../src/lib/imageExport/serializer/renderer";
+import {
+  BLOCKNOTE_TEXT_COLORS_DARK,
+} from "../../src/lib/imageExport/serializer/utils";
 
 test("checkListItem 使用行高包裹盒 + em 尺寸 checkbox", () => {
   const theme = getCardTheme("brutalist");
@@ -247,7 +250,7 @@ test("Vercel 极黑浅色 accent 勾选对号用深色", () => {
   expect(html).toContain("color: #0a0a0a");
 });
 
-test("深色主题粉色文字映射到提亮色盘", () => {
+test("深色主题粉色文字映射到深色导出色盘", () => {
   const theme = getCardTheme("github-dark");
   const html = renderBlock(
     {
@@ -256,7 +259,7 @@ test("深色主题粉色文字映射到提亮色盘", () => {
     },
     theme,
   );
-  expect(html).toContain("#f472b6");
+  expect(html).toContain(BLOCKNOTE_TEXT_COLORS_DARK.pink);
 });
 
 test("空段落输出 empty-block 占位", () => {

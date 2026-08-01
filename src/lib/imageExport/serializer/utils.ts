@@ -40,36 +40,40 @@ export const BLOCKNOTE_BACKGROUND_COLORS: Record<string, string> = {
   pink: "#f4dfeb",
 };
 
-
-/** 深色卡片上的语义色：提亮色度，避免浅色盘在暗底上发闷、发脏 */
+/**
+ * 深色导出卡片与常规编辑器共用的语义色阶：
+ * 高明度文字 + 低明度同色表面，保证同色叠加仍清晰可读。
+ * tests/unit/editorDarkExportColors.test.ts 会校验此处与编辑器 CSS 令牌同步。
+ */
 export const BLOCKNOTE_TEXT_COLORS_DARK: Record<string, string> = {
-  gray: "#a1a1aa",
-  brown: "#d4a574",
-  red: "#f87171",
-  orange: "#fb923c",
-  yellow: "#fbbf24",
-  green: "#4ade80",
-  blue: "#60a5fa",
-  purple: "#c084fc",
-  pink: "#f472b6",
+  gray: "#d6d4cf",
+  brown: "#e7c1ad",
+  red: "#ffb4b8",
+  orange: "#ffc38f",
+  yellow: "#f0d77d",
+  green: "#9ddfba",
+  blue: "#9bd5f3",
+  purple: "#d0baf8",
+  pink: "#f1b6d7",
 };
 
 export const BLOCKNOTE_BACKGROUND_COLORS_DARK: Record<string, string> = {
-  gray: "rgba(161,161,170,0.22)",
-  brown: "rgba(212,165,116,0.22)",
-  red: "rgba(248,113,113,0.2)",
-  orange: "rgba(251,146,60,0.2)",
-  yellow: "rgba(251,191,36,0.18)",
-  green: "rgba(74,222,128,0.18)",
-  blue: "rgba(96,165,250,0.18)",
-  purple: "rgba(192,132,252,0.2)",
-  pink: "rgba(244,114,182,0.2)",
+  gray: "#3d3d3a",
+  brown: "#49352c",
+  red: "#512b31",
+  orange: "#50351f",
+  yellow: "#453a1e",
+  green: "#253f34",
+  blue: "#223f52",
+  purple: "#3b3055",
+  pink: "#4b2c42",
 };
 
 export function resolveExportColor(
   value: unknown,
   palette: Record<string, string>,
 ): string | null {
-  if (typeof value !== "string" || value === "" || value === "default") return null;
+  if (typeof value !== "string" || value === "" || value === "default")
+    return null;
   return palette[value] || value;
 }
