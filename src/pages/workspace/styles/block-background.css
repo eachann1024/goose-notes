@@ -1,0 +1,26 @@
+/* BlockNote 会把显式背景同步到父 .bn-block；这里统一收回父层底色，
+   避免背景覆盖标题间距、嵌套子块或其它不属于当前行的区域。 */
+.bn-block:has(> .bn-block-content[data-background-color]) {
+  background-color: transparent;
+}
+
+/* 左右各向编辑器现有留白借 6px，再用等量 padding 把内容放回原基线：
+   - 背景比原内容区宽 12px；
+   - 文字起点和实际可输入宽度不变；
+   - 显式使用物理方向属性，兼容 uTools 旧内核。 */
+.bn-block-content[data-background-color] {
+  box-sizing: border-box;
+  width: calc(100% + 12px);
+  margin-left: -6px;
+  margin-right: -6px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 4px;
+}
+
+/* BlockNote 标题默认用 18px padding-top 制造块间距。
+   有背景时把其中 15px 移到透明 margin，保留原总高度但不形成厚重色带。 */
+.bn-block-content[data-content-type="heading"][data-background-color] {
+  margin-top: 15px;
+  padding-top: 3px;
+}
