@@ -86,7 +86,13 @@ export function recoverQuickNoteDrafts(draftsRaw: unknown): {
     const current = drafts[slot];
     const alreadyCurrent =
       getContentSignature(current) === getContentSignature(entry.content);
-    if (!alreadyCurrent && !canApplyRecoveryEntry(entry, current)) {
+    if (alreadyCurrent) {
+      if (!acknowledgeRecoveryEntry("quicknote", String(slot), entry.revision)) {
+        pendingQuickNoteRecoveryRevisions.set(slot, entry.revision);
+      }
+      continue;
+    }
+    if (!canApplyRecoveryEntry(entry, current)) {
       conflictSlots.push(slot);
       continue;
     }
@@ -103,8 +109,15 @@ const quickNoteStorage: StateStorage = {
     const saved = setDbStorageItem(name, value);
     if (saved) {
       for (const [slot, revision] of pendingQuickNoteRecoveryRevisions) {
-        acknowledgeRecoveryEntry("quicknote", String(slot), revision);
-        if (pendingQuickNoteRecoveryRevisions.get(slot) === revision) {
+        const acknowledged = acknowledgeRecoveryEntry(
+          "quicknote",
+          String(slot),
+          revision,
+        );
+        if (
+          acknowledged &&
+          pendingQuickNoteRecoveryRevisions.get(slot) === revision
+        ) {
           pendingQuickNoteRecoveryRevisions.delete(slot);
         }
       }

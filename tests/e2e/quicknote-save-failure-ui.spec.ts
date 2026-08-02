@@ -62,7 +62,7 @@ test("keeps a retryable save failure away from edited content", async ({
   expect(layout).not.toBeNull();
   expect(layout!.toastTop).toBeGreaterThan(layout!.editedBottom);
   expect(layout!.overlap).toBe(false);
-  expect(layout!.toastBottom).toBeLessThanOrEqual(640 - 18 + 1);
+  expect(layout!.toastBottom).toBeLessThanOrEqual(640 - 30 + 1);
   expect(layout!.documentWidth).toBe(layout!.viewportWidth);
 
   await page.evaluate(() => {
@@ -75,4 +75,38 @@ test("keeps a retryable save failure away from edited content", async ({
   await page.keyboard.press("Enter");
   await expect(toast).toBeHidden();
   await expect(editor).toHaveText("保存失败时正文仍然可见");
+});
+
+test("stacks multiple save alerts inside a 320px safe area", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/quicknote.html");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.evaluate(async () => {
+    const { toast } = await import("/src/components/ui/sonner.tsx");
+    toast.warning("恢复提醒", { id: "stack-one", duration: 10_000 });
+    toast.error("保存失败", { id: "stack-two", duration: 10_000 });
+  });
+
+  const toasts = page.locator("[data-sonner-toast]");
+  await expect(toasts).toHaveCount(2);
+  const boxes = await toasts.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        transform: getComputedStyle(element).transform,
+      };
+    }),
+  );
+
+  for (const box of boxes) {
+    expect(box.left).toBeGreaterThanOrEqual(24);
+    expect(box.right).toBeLessThanOrEqual(296);
+    expect(box.transform).not.toBe("none");
+  }
+  expect(boxes[0].top).not.toBe(boxes[1].top);
 });

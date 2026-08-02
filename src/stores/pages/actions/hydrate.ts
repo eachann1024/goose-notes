@@ -11,10 +11,12 @@ import {
 } from "../types";
 import { isLocalFolderPage, seedLocalPageMetadataCache } from "../persistence";
 import {
+  acknowledgeRecoveryEntry,
   canApplyRecoveryEntry,
   listRecoveryEntries,
 } from "@/lib/storage/recoveryJournal";
 import { toast } from "@/components/ui/sonner";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import {
   repairLegacyTitleChildrenInPages,
   repairNormalizedContentInPages,
@@ -76,6 +78,12 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   for (const entry of listRecoveryEntries("internal-page")) {
     const current = recoveredPages[entry.id];
     if (!current) continue;
+    if (
+      getContentSignature(current.content) === getContentSignature(entry.content)
+    ) {
+      acknowledgeRecoveryEntry("internal-page", entry.id, entry.revision);
+      continue;
+    }
     if (!canApplyRecoveryEntry(entry, current.content, current.updatedAt)) {
       conflictCount += 1;
       continue;

@@ -92,6 +92,22 @@ test("a later explicit flush retries and clears content kept after failure", asy
   expect(pendingLocalSaveContents.has(PAGE_ID)).toBe(false);
 });
 
+test("ACK 失败时保留 pending revision 供后续重试", async () => {
+  const draft = content("saved-but-ack-failed");
+  pendingLocalSaveContents.set(PAGE_ID, draft);
+  pendingLocalSaveRevisions.set(PAGE_ID, 7);
+
+  await expect(
+    flushPendingLocalSaveByPageIdInternal(
+      PAGE_ID,
+      stateWithSave(async () => true),
+    ),
+  ).rejects.toThrow(`本地页面恢复日志确认未完成：${PAGE_ID}`);
+
+  expect(pendingLocalSaveContents.has(PAGE_ID)).toBe(false);
+  expect(pendingLocalSaveRevisions.get(PAGE_ID)).toBe(7);
+});
+
 test("discard prevents an in-flight failed save from restoring stale content", async () => {
   const draft = content("discard-me");
   let finishSave: ((saved: boolean) => void) | undefined;

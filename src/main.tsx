@@ -376,7 +376,25 @@ const setupSaveGuards = () => {
         .saveDirtyLocalPage(activePageId)
         .then((ok) => {
           if (ok) toast.success("已保存", { duration: 1200 });
-          else toast.info("内容已是最新", { duration: 1000 });
+          else {
+            toast.error("保存失败", {
+              id: `goose-manual-save-failed:${activePageId}`,
+              description: "内容仍在恢复备份中，请检查文件状态后重试。",
+              action: {
+                label: "重试",
+                onClick: () => {
+                  void usePages
+                    .getState()
+                    .saveDirtyLocalPage(activePageId)
+                    .then((retried) => {
+                      if (retried) toast.success("已保存", { duration: 1200 });
+                      else reportFlushFailure(new Error("manual save retry failed"));
+                    })
+                    .catch(reportFlushFailure);
+                },
+              },
+            });
+          }
         })
         .catch(reportFlushFailure);
       return;

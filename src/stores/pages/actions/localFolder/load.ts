@@ -21,11 +21,13 @@ import {
 import { resolveHistoryBackend } from "@/lib/history/backend";
 import { localPageMetadataCache } from "../../persistence";
 import {
+  acknowledgeRecoveryEntry,
   canApplyRecoveryEntry,
   listRecoveryEntries,
 } from "@/lib/storage/recoveryJournal";
 import { restorePendingLocalSave } from "../../folderSync";
 import { toast } from "@/components/ui/sonner";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import type { StoreSet, StoreGet } from "../hydrate";
 
 interface LocalFolderLoadTask {
@@ -289,6 +291,12 @@ const loadLocalFolderPagesOnce = async (
     for (const entry of listRecoveryEntries("local-file")) {
       const current = get().pages[entry.id];
       if (!current || current.workspaceId !== notebookId || current.isFolder) continue;
+      if (
+        getContentSignature(current.content) === getContentSignature(entry.content)
+      ) {
+        acknowledgeRecoveryEntry("local-file", entry.id, entry.revision);
+        continue;
+      }
       if (!canApplyRecoveryEntry(entry, current.content)) {
         conflictCount += 1;
         continue;

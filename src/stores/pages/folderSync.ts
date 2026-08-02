@@ -73,9 +73,15 @@ export const discardPendingLocalSave = (pageId: string) => {
   pendingLocalSaveContents.delete(pageId);
   const recoveryRevision = pendingLocalSaveRevisions.get(pageId);
   if (typeof recoveryRevision === "number") {
-    acknowledgeRecoveryEntry("local-file", pageId, recoveryRevision);
+    const acknowledged = acknowledgeRecoveryEntry(
+      "local-file",
+      pageId,
+      recoveryRevision,
+    );
+    if (acknowledged) pendingLocalSaveRevisions.delete(pageId);
+  } else {
+    pendingLocalSaveRevisions.delete(pageId);
   }
-  pendingLocalSaveRevisions.delete(pageId);
   const activeWrite = localSaveWriteChains.get(pageId);
   if (!activeWrite) {
     discardedPendingLocalSavePageIds.delete(pageId);
@@ -126,8 +132,15 @@ export const flushPendingLocalSaveByPageIdInternal = (
             throw new Error(`本地页面保存未完成：${pageId}`);
           }
           if (typeof savingRevision === "number") {
-            acknowledgeRecoveryEntry("local-file", pageId, savingRevision);
-            if (pendingLocalSaveRevisions.get(pageId) === savingRevision) {
+            const acknowledged = acknowledgeRecoveryEntry(
+              "local-file",
+              pageId,
+              savingRevision,
+            );
+            if (
+              acknowledged &&
+              pendingLocalSaveRevisions.get(pageId) === savingRevision
+            ) {
               pendingLocalSaveRevisions.delete(pageId);
             }
           }
@@ -143,6 +156,18 @@ export const flushPendingLocalSaveByPageIdInternal = (
           }
           throw err;
         }
+      }
+      const pendingRevision = pendingLocalSaveRevisions.get(pageId);
+      if (typeof pendingRevision === "number") {
+        const acknowledged = acknowledgeRecoveryEntry(
+          "local-file",
+          pageId,
+          pendingRevision,
+        );
+        if (!acknowledged) {
+          throw new Error(`本地页面恢复日志确认未完成：${pageId}`);
+        }
+        pendingLocalSaveRevisions.delete(pageId);
       }
     });
 
@@ -227,6 +252,7 @@ export const flushAllPendingLocalSavesInternal = async (
     ...localSaveDebounceTimers.keys(),
     ...localSaveMaxWaitTimers.keys(),
     ...localSaveWriteChains.keys(),
+    ...pendingLocalSaveRevisions.keys(),
   ]);
 
   await Promise.all(

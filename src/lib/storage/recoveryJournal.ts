@@ -1,9 +1,9 @@
 import type { JSONContent } from "@/types";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
+import { UToolsAdapter } from "@/lib/utools";
 import {
   getDbStorageItem,
   removeDbStorageItem,
-  setDbStorageItem,
 } from "./utoolsDbStorage";
 
 export type RecoverySource = "internal-page" | "local-file" | "quicknote";
@@ -14,55 +14,99 @@ export interface RecoveryJournalEntry {
   content: JSONContent | null;
   revision: number;
   updatedAt: number;
-  /** 写入恢复稿时主存储/磁盘中内容的签名，用来避免覆盖外部新版本。 */
+  /** 首次未 ACK 编辑时的持久化基线；连续编辑期间保持不变。 */
   baseSignature?: string;
   baseUpdatedAt?: number;
 }
 
-interface RecoveryJournalState {
+interface LegacyRecoveryJournalState {
   version: 1;
   entries: Record<string, RecoveryJournalEntry>;
 }
 
+interface RecoveryJournalDoc {
+  version: 2;
+  entry?: RecoveryJournalEntry;
+  /** ACK 使用同一文档 CAS 写墓碑，避免无 revision 删除误删并发新稿。 */
+  acknowledgedRevision?: number;
+}
+
 export const RECOVERY_JOURNAL_STORAGE_KEY = "goose-note:recovery-journal:v1";
+export const RECOVERY_JOURNAL_DOC_PREFIX = "gn:recovery:v2:";
 
-const entryKey = (source: RecoverySource, id: string) => `${source}:${id}`;
+const docId = (source: RecoverySource, id: string) =>
+  `${RECOVERY_JOURNAL_DOC_PREFIX}${source}:${encodeURIComponent(id)}`;
 
-const emptyJournal = (): RecoveryJournalState => ({ version: 1, entries: {} });
-
-const readState = (): RecoveryJournalState => {
+const readLegacyEntries = (): Record<string, RecoveryJournalEntry> => {
   const raw = getDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY);
-  if (!raw) return emptyJournal();
+  if (!raw) return {};
   try {
-    const parsed = JSON.parse(raw) as Partial<RecoveryJournalState>;
+    const parsed = JSON.parse(raw) as Partial<LegacyRecoveryJournalState>;
     return parsed.version === 1 && parsed.entries && typeof parsed.entries === "object"
-      ? { version: 1, entries: parsed.entries }
-      : emptyJournal();
+      ? parsed.entries
+      : {};
   } catch {
-    return emptyJournal();
+    return {};
   }
 };
 
-const writeState = (state: RecoveryJournalState): boolean => {
-  if (Object.keys(state.entries).length === 0) {
-    removeDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY);
-    return true;
+const putDocWithCas = (
+  source: RecoverySource,
+  id: string,
+  build: (current: RecoveryJournalDoc | null) => RecoveryJournalDoc | null,
+): RecoveryJournalDoc | null => {
+  const idForDb = docId(source, id);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const currentDoc = UToolsAdapter.db.get<RecoveryJournalDoc>(idForDb);
+    const next = build(currentDoc?.data ?? null);
+    if (!next) return null;
+    const result = UToolsAdapter.db.put(idForDb, next, currentDoc?._rev);
+    if (result.ok !== false) return next;
   }
-  return setDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY, JSON.stringify(state));
+  console.error("[recovery-journal] CAS put failed", source, id);
+  return null;
+};
+
+const migrateLegacyEntries = (): RecoveryJournalEntry[] => {
+  const legacyEntries = Object.values(readLegacyEntries());
+  if (legacyEntries.length === 0) return [];
+  let allMigrated = true;
+  for (const legacy of legacyEntries) {
+    const existing = UToolsAdapter.db.get<RecoveryJournalDoc>(
+      docId(legacy.source, legacy.id),
+    )?.data?.entry;
+    if (existing && existing.revision >= legacy.revision) continue;
+    const migrated = putDocWithCas(legacy.source, legacy.id, (current) => {
+      if (current?.entry && current.entry.revision >= legacy.revision) return current;
+      return { version: 2, entry: legacy };
+    });
+    if (!migrated) allMigrated = false;
+  }
+  if (allMigrated) removeDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY);
+  return legacyEntries;
 };
 
 export const listRecoveryEntries = (
   source?: RecoverySource,
-): RecoveryJournalEntry[] =>
-  Object.values(readState().entries).filter(
-    (entry) => !source || entry.source === source,
-  );
+): RecoveryJournalEntry[] => {
+  migrateLegacyEntries();
+  return UToolsAdapter.db
+    .allDocs<RecoveryJournalDoc>(RECOVERY_JOURNAL_DOC_PREFIX)
+    .flatMap((doc) => (doc.data.entry ? [doc.data.entry] : []))
+    .filter((entry) => !source || entry.source === source);
+};
 
 export const getRecoveryEntry = (
   source: RecoverySource,
   id: string,
-): RecoveryJournalEntry | null =>
-  readState().entries[entryKey(source, id)] ?? null;
+): RecoveryJournalEntry | null => {
+  const current = UToolsAdapter.db.get<RecoveryJournalDoc>(docId(source, id));
+  if (current?.data.entry) return current.data.entry;
+  migrateLegacyEntries();
+  return (
+    UToolsAdapter.db.get<RecoveryJournalDoc>(docId(source, id))?.data.entry ?? null
+  );
+};
 
 export const recordRecoveryEntry = (input: {
   source: RecoverySource;
@@ -72,36 +116,43 @@ export const recordRecoveryEntry = (input: {
   baseUpdatedAt?: number;
   now?: number;
 }): RecoveryJournalEntry | null => {
-  const state = readState();
-  const key = entryKey(input.source, input.id);
-  const previousRevision = state.entries[key]?.revision ?? 0;
-  const entry: RecoveryJournalEntry = {
-    source: input.source,
-    id: input.id,
-    content: input.content,
-    revision: previousRevision + 1,
-    updatedAt: input.now ?? Date.now(),
-    ...(input.baseSignature ? { baseSignature: input.baseSignature } : {}),
-    ...(typeof input.baseUpdatedAt === "number"
-      ? { baseUpdatedAt: input.baseUpdatedAt }
-      : {}),
-  };
-  state.entries[key] = entry;
-  return writeState(state) ? entry : null;
+  migrateLegacyEntries();
+  let written: RecoveryJournalEntry | null = null;
+  const result = putDocWithCas(input.source, input.id, (current) => {
+    const previous = current?.entry;
+    const lastRevision = previous?.revision ?? current?.acknowledgedRevision ?? 0;
+    written = {
+      source: input.source,
+      id: input.id,
+      content: input.content,
+      revision: lastRevision + 1,
+      updatedAt: input.now ?? Date.now(),
+      // WAL 未 ACK 前始终沿用首次持久化基线，不能随内存连续编辑漂移。
+      ...(previous?.baseSignature || input.baseSignature
+        ? { baseSignature: previous?.baseSignature ?? input.baseSignature }
+        : {}),
+      ...(typeof (previous?.baseUpdatedAt ?? input.baseUpdatedAt) === "number"
+        ? { baseUpdatedAt: previous?.baseUpdatedAt ?? input.baseUpdatedAt }
+        : {}),
+    };
+    return { version: 2, entry: written };
+  });
+  return result ? written : null;
 };
 
-/** 只有主存储确认的是同一版恢复稿时才清理，旧 ACK 不能清掉更新内容。 */
+/** 旧 ACK 通过文档 CAS 写墓碑；与新 record 冲突时会重读并拒绝，不能清掉新稿。 */
 export const acknowledgeRecoveryEntry = (
   source: RecoverySource,
   id: string,
   revision: number,
 ): boolean => {
-  const state = readState();
-  const key = entryKey(source, id);
-  const current = state.entries[key];
-  if (!current || current.revision !== revision) return false;
-  delete state.entries[key];
-  return writeState(state);
+  let acknowledged = false;
+  const result = putDocWithCas(source, id, (current) => {
+    if (!current?.entry || current.entry.revision !== revision) return null;
+    acknowledged = true;
+    return { version: 2, acknowledgedRevision: revision };
+  });
+  return Boolean(result && acknowledged);
 };
 
 export const moveRecoveryEntry = (
@@ -110,20 +161,31 @@ export const moveRecoveryEntry = (
   newId: string,
 ): boolean => {
   if (oldId === newId) return true;
-  const state = readState();
-  const oldKey = entryKey(source, oldId);
-  const current = state.entries[oldKey];
+  const current = getRecoveryEntry(source, oldId);
   if (!current) return true;
-  delete state.entries[oldKey];
-  state.entries[entryKey(source, newId)] = { ...current, id: newId };
-  return writeState(state);
+  const moved = putDocWithCas(source, newId, (target) => ({
+    version: 2,
+    entry: {
+      ...current,
+      id: newId,
+      revision: Math.max(
+        current.revision,
+        (target?.entry?.revision ?? target?.acknowledgedRevision ?? 0) + 1,
+      ),
+    },
+  }));
+  if (!moved?.entry) return false;
+  return acknowledgeRecoveryEntry(source, oldId, current.revision);
 };
 
 export const clearRecoveryJournalForTests = (): void => {
+  UToolsAdapter.db
+    .allDocs(RECOVERY_JOURNAL_DOC_PREFIX)
+    .forEach((doc) => UToolsAdapter.db.remove(doc._id));
   removeDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY);
 };
 
-/** 仅当目标仍是记录恢复稿时看到的版本，才允许把恢复内容放回内存。 */
+/** 仅当目标仍是首次未 ACK 编辑时的持久化版本，才允许恢复到内存。 */
 export const canApplyRecoveryEntry = (
   entry: RecoveryJournalEntry,
   currentContent: JSONContent | null | undefined,
