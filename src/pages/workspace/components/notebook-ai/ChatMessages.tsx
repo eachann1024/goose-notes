@@ -456,7 +456,6 @@ export function ChatMessages({
       progressToolParts,
       isStreaming,
     );
-    const firstProgressToolPart = progressToolParts[0];
 
     const TextPart = ({ text }: TextMessagePartProps) => (
       <div className="ai-md notebook-ai-message-text select-text text-sm text-foreground">
@@ -476,13 +475,6 @@ export function ChatMessages({
     const ToolPart = ({ artifact }: ToolCallMessagePartProps) => {
       const part = artifact as ToolDisplayPart | undefined;
       if (!part || !shouldShowToolPart(part, isStreaming)) return null;
-      const progress =
-        showToolProgress && part === firstProgressToolPart ? (
-          <ToolProgressCard
-            parts={progressToolParts}
-            isMessageStreaming={isStreaming}
-          />
-        ) : null;
       if (part.type === "tool-executeBatchPlan") {
         if (
           part.state === "input-streaming" ||
@@ -490,25 +482,17 @@ export function ChatMessages({
           part.state === "call" ||
           part.state === "partial-call"
         ) {
-          return progress;
+          return null;
         }
         return (
-          <div className="space-y-2">
-            {progress}
-            <ApprovalPlanCard
-              part={part}
-              onApprovalResponse={onBatchApproval}
-              onUndo={onBatchUndo}
-            />
-          </div>
+          <ApprovalPlanCard
+            part={part}
+            onApprovalResponse={onBatchApproval}
+            onUndo={onBatchUndo}
+          />
         );
       }
-      return (
-        <div className="space-y-2">
-          {progress}
-          {renderToolVisual(part, part.toolCallId ?? part.type, editorRef)}
-        </div>
-      );
+      return renderToolVisual(part, part.toolCallId ?? part.type, editorRef);
     };
 
     return (
@@ -519,6 +503,12 @@ export function ChatMessages({
           </span>
           <span>回答</span>
         </div>
+        {showToolProgress ? (
+          <ToolProgressCard
+            parts={progressToolParts}
+            isMessageStreaming={isStreaming}
+          />
+        ) : null}
         <MessagePrimitive.Parts
           components={{
             Text: TextPart,

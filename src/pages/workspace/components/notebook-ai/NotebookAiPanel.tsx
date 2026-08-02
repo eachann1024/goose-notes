@@ -26,7 +26,6 @@ import type { EditorRef } from "@/components/editor/core/Editor";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import {
-  composerDraftHasContent,
   useNotebookAiChats,
 } from "@/stores/useNotebookAiChats";
 import { ChatMessages } from "./ChatMessages";
@@ -49,6 +48,7 @@ import {
 import type { NotebookAiImageAttachment } from "./Composer";
 import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { cn } from "@/lib/utils";
+import { shouldSeedCurrentPageReference } from "./defaultComposerReference";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +91,10 @@ export function NotebookAiPanel({
 
   const { width, onDragHandleMouseDown } = usePanelWidth();
   const composerRef = useRef<ComposerHandle | null>(null);
+  // 页面数据可能晚于面板挂载完成；订阅活动页和页面表，确保空会话仍能补上当前笔记。
+  const activePageId = usePages((state) => state.activePageId);
+  const pages = usePages((state) => state.pages);
+  const notebooks = useNotebooks((state) => state.notebooks);
 
   const {
     messages,
@@ -112,24 +116,27 @@ export function NotebookAiPanel({
 
   // 初次打开和新建会话时锁定当时的当前页，作为可见、可移除的默认上下文。
   // 若已有持久化草稿，不再强插默认引用，避免覆盖用户未发送内容。
+  const currentPageId =
+    getCurrentNotebookAiPageId(notebookId) ??
+    (activePageId && pages[activePageId]?.workspaceId === notebookId
+      ? activePageId
+      : null);
   const initialReference = useMemo(() => {
-    const pageId = getCurrentNotebookAiPageId(notebookId);
-    const page = pageId ? usePages.getState().pages[pageId] : undefined;
-    return page
-      ? buildAiFileReferenceAttrs(page, useNotebooks.getState().notebooks)
-      : null;
-  }, [notebookId, composerRevision]);
+    const page = currentPageId ? pages[currentPageId] : undefined;
+    return page ? buildAiFileReferenceAttrs(page, notebooks) : null;
+  }, [currentPageId, notebooks, pages]);
 
-  // Composer 挂载（或 key 重挂载）后：无草稿时才植入当前页引用 chip
+  // Composer 挂载（或 key 重挂载）后：仅空会话且无草稿时植入当前页引用 chip。
+  // 已有消息的会话即使输入框为空，也不能被自动修改。
   useEffect(() => {
     if (!initialReference) return;
     const draft = useNotebookAiChats.getState().getComposerDraft(notebookId);
-    if (composerDraftHasContent(draft)) return;
+    if (!shouldSeedCurrentPageReference(messages.length, draft)) return;
     const timer = setTimeout(() => {
       composerRef.current?.insertReference(initialReference);
     }, 0);
     return () => clearTimeout(timer);
-  }, [initialReference, composerRevision, notebookId]);
+  }, [initialReference, messages.length, composerRevision, notebookId]);
 
   // 面板打开即聚焦输入框；已打开时重复触发「打开」走 goose-note:focus-ai-composer
   useEffect(() => {

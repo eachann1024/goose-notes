@@ -42,15 +42,17 @@
   align-items: center;
   column-gap: 0.25rem;
   row-gap: 0.2rem;
-  /* 取消继承 leading-relaxed，避免行盒虚高 */
-  line-height: 1.4;
+  /* 正文与 chip 共用精确行盒，避免 CJK 字形和按钮默认行高产生半像素错位。 */
+  min-height: 20px;
+  line-height: 20px;
 }
 
 .notebook-ai-message-inline-text {
   display: inline-flex;
   align-items: center;
+  min-height: 20px;
   white-space: pre-wrap;
-  line-height: 1.4;
+  line-height: 20px;
 }
 
 .notebook-ai-message-inline .ai-composer-chip {
@@ -59,10 +61,11 @@
   justify-content: center;
   box-sizing: border-box;
   height: 20px;
+  border: 0;
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
-  line-height: 1;
+  line-height: 20px;
   max-width: 100%;
   position: static;
   top: auto;
