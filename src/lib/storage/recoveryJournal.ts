@@ -155,14 +155,20 @@ export const acknowledgeRecoveryEntry = (
   return Boolean(result && acknowledged);
 };
 
+export type MoveRecoveryEntryResult =
+  | { ok: true; entry: RecoveryJournalEntry | null }
+  | { ok: false; error: string };
+
 export const moveRecoveryEntry = (
   source: RecoverySource,
   oldId: string,
   newId: string,
-): boolean => {
-  if (oldId === newId) return true;
+): MoveRecoveryEntryResult => {
+  if (oldId === newId) {
+    return { ok: true, entry: getRecoveryEntry(source, oldId) };
+  }
   const current = getRecoveryEntry(source, oldId);
-  if (!current) return true;
+  if (!current) return { ok: true, entry: null };
   const moved = putDocWithCas(source, newId, (target) => ({
     version: 2,
     entry: {
@@ -174,8 +180,13 @@ export const moveRecoveryEntry = (
       ),
     },
   }));
-  if (!moved?.entry) return false;
-  return acknowledgeRecoveryEntry(source, oldId, current.revision);
+  if (!moved?.entry) {
+    return { ok: false, error: "目标恢复日志写入失败" };
+  }
+  if (!acknowledgeRecoveryEntry(source, oldId, current.revision)) {
+    return { ok: false, error: "原恢复日志确认失败" };
+  }
+  return { ok: true, entry: moved.entry };
 };
 
 export const clearRecoveryJournalForTests = (): void => {

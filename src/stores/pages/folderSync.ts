@@ -231,17 +231,29 @@ export const migratePendingLocalSave = (
   oldPageId: string,
   newPageId: string,
   getState: () => PagesState,
-) => {
-  if (oldPageId === newPageId) return;
-  clearLocalSaveTimers(oldPageId);
+): { ok: true } | { ok: false; error: string } => {
+  if (oldPageId === newPageId) return { ok: true };
   const pending = pendingLocalSaveContents.get(oldPageId);
   const recoveryRevision = pendingLocalSaveRevisions.get(oldPageId);
+  if (!pending && typeof recoveryRevision !== "number") return { ok: true };
+
+  const moved = moveRecoveryEntry("local-file", oldPageId, newPageId);
+  if (!moved.ok) return moved;
+
+  clearLocalSaveTimers(oldPageId);
   pendingLocalSaveContents.delete(oldPageId);
   pendingLocalSaveRevisions.delete(oldPageId);
   if (pending) {
-    moveRecoveryEntry("local-file", oldPageId, newPageId);
-    queueLocalPageSave(newPageId, pending, getState, recoveryRevision);
+    queueLocalPageSave(
+      newPageId,
+      pending,
+      getState,
+      moved.entry?.revision ?? recoveryRevision,
+    );
+  } else if (moved.entry) {
+    pendingLocalSaveRevisions.set(newPageId, moved.entry.revision);
   }
+  return { ok: true };
 };
 
 export const flushAllPendingLocalSavesInternal = async (

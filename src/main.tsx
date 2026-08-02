@@ -309,7 +309,23 @@ const reportFlushFailure = (error: unknown) => {
   toast.error("仍有内容未完成保存", {
     id: "goose-pending-writes-failed",
     description: "最新内容已保留在恢复备份，请保持窗口打开后重试。",
+    action: {
+      label: "重试",
+      onClick: () => retryPendingWrites(),
+    },
   });
+};
+
+const retryPendingWrites = () => {
+  // 所有入口都复用 runFlushOnce：连续点击或生命周期事件只共享一个在途任务。
+  void runFlushOnce()
+    .then(() => {
+      toast.success("内容已保存", {
+        id: "goose-pending-writes-failed",
+        duration: 1200,
+      });
+    })
+    .catch(reportFlushFailure);
 };
 
 const flushFromLifecycle = () => {
@@ -377,23 +393,7 @@ const setupSaveGuards = () => {
         .then((ok) => {
           if (ok) toast.success("已保存", { duration: 1200 });
           else {
-            toast.error("保存失败", {
-              id: `goose-manual-save-failed:${activePageId}`,
-              description: "内容仍在恢复备份中，请检查文件状态后重试。",
-              action: {
-                label: "重试",
-                onClick: () => {
-                  void usePages
-                    .getState()
-                    .saveDirtyLocalPage(activePageId)
-                    .then((retried) => {
-                      if (retried) toast.success("已保存", { duration: 1200 });
-                      else reportFlushFailure(new Error("manual save retry failed"));
-                    })
-                    .catch(reportFlushFailure);
-                },
-              },
-            });
+            reportFlushFailure(new Error(`manual save failed: ${activePageId}`));
           }
         })
         .catch(reportFlushFailure);

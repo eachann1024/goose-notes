@@ -42,6 +42,11 @@ function renameLocalPageInStore(
     return oldPageId;
   }
 
+  const migration = migratePendingLocalSave(oldPageId, newPageId, get);
+  if (!migration.ok) {
+    throw new Error(`恢复日志迁移失败：${migration.error}`);
+  }
+
   set((state) => {
     const page = state.pages[oldPageId];
     if (!page) return state;
@@ -71,10 +76,6 @@ function renameLocalPageInStore(
         state.activePageId === oldPageId ? newPageId : state.activePageId,
     };
   });
-
-  // 防抖保存队列里挂在旧 id 上的待写内容迁到新 id，
-  // 避免计时器到期后按旧 id 查不到页面、内容丢失且脏标记清不掉。
-  migratePendingLocalSave(oldPageId, newPageId, get);
 
   // tabs 引用同步
   useTabs.setState((state) => ({

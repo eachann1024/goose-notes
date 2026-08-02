@@ -4,6 +4,7 @@ import {
   canApplyRecoveryEntry,
   getRecoveryEntry,
   listRecoveryEntries,
+  moveRecoveryEntry,
   RECOVERY_JOURNAL_STORAGE_KEY,
   recordRecoveryEntry,
 } from "../../src/lib/storage/recoveryJournal";
@@ -107,6 +108,47 @@ test("不同 source+id 使用独立文档，不会整包覆盖", () => {
   expect(
     Array.from(docs.keys()).filter((id) => id.startsWith("gn:recovery:v2:")),
   ).toHaveLength(2);
+});
+
+test("迁移到已有墓碑时返回目标的新 revision", () => {
+  installStorageRuntime();
+  const target = recordRecoveryEntry({
+    source: "local-file",
+    id: "target",
+    content: null,
+  })!;
+  expect(acknowledgeRecoveryEntry("local-file", "target", target.revision)).toBe(
+    true,
+  );
+  const source = recordRecoveryEntry({
+    source: "local-file",
+    id: "source",
+    content: [{ type: "paragraph", content: "pending" }] as any,
+  })!;
+
+  const moved = moveRecoveryEntry("local-file", "source", "target");
+  expect(moved.ok).toBe(true);
+  if (!moved.ok) return;
+  expect(moved.entry?.revision).toBeGreaterThan(target.revision);
+  expect(moved.entry?.content).toEqual(source.content);
+  expect(getRecoveryEntry("local-file", "source")).toBeNull();
+});
+
+test("迁移到已有恢复稿时以新 revision 返回源内容", () => {
+  installStorageRuntime();
+  recordRecoveryEntry({ source: "local-file", id: "source", content: null });
+  recordRecoveryEntry({ source: "local-file", id: "target", content: null });
+  const targetLatest = recordRecoveryEntry({
+    source: "local-file",
+    id: "target",
+    content: [{ type: "paragraph", content: "target-old" }] as any,
+  })!;
+
+  const moved = moveRecoveryEntry("local-file", "source", "target");
+  expect(moved.ok).toBe(true);
+  if (!moved.ok) return;
+  expect(moved.entry?.revision).toBe(targetLatest.revision + 1);
+  expect(moved.entry?.content).toBeNull();
 });
 
 test("旧 ACK 与新 record 冲突时不能清掉新稿", () => {

@@ -12,7 +12,12 @@ import {
   pendingLocalSaveContents,
   pendingLocalSaveRevisions,
   queueLocalPageSave,
+  migratePendingLocalSave,
 } from "../../src/stores/pages/folderSync";
+import {
+  getRecoveryEntry,
+  recordRecoveryEntry,
+} from "../../src/lib/storage/recoveryJournal";
 
 const PAGE_ID = "local-page";
 
@@ -36,6 +41,33 @@ function resetFolderSyncState() {
   pendingLocalSaveContents.clear();
   pendingLocalSaveRevisions.clear();
   localSaveWriteChains.clear();
+  delete (globalThis as any).window;
+}
+
+function installRecoveryRuntime() {
+  let rev = 0;
+  const docs = new Map<string, { _id: string; _rev: string; data: unknown }>();
+  (globalThis as any).window = {
+    utools: {
+      db: {
+        get: (id: string) => docs.get(id) ?? null,
+        put: (doc: { _id: string; _rev?: string; data: unknown }) => {
+          const current = docs.get(doc._id);
+          if (current && doc._rev !== current._rev) return { ok: false, error: "conflict" };
+          const stored = { ...doc, _rev: `rev-${++rev}` };
+          docs.set(doc._id, stored);
+          return { ok: true, id: doc._id, rev: stored._rev };
+        },
+        remove: (id: string) => {
+          docs.delete(id);
+          return { ok: true, id };
+        },
+        allDocs: (prefix = "") =>
+          Array.from(docs.values()).filter((doc) => doc._id.startsWith(prefix)),
+      },
+    },
+  };
+  return { docs, db: (globalThis as any).window.utools.db };
 }
 
 test.beforeEach(resetFolderSyncState);
@@ -106,6 +138,56 @@ test("ACK 失败时保留 pending revision 供后续重试", async () => {
 
   expect(pendingLocalSaveContents.has(PAGE_ID)).toBe(false);
   expect(pendingLocalSaveRevisions.get(PAGE_ID)).toBe(7);
+});
+
+test("恢复日志迁移失败时保留旧 pageId 的 pending 状态", () => {
+  const { db } = installRecoveryRuntime();
+  const draft = content("keep-old-id");
+  const entry = recordRecoveryEntry({
+    source: "local-file",
+    id: "old-id",
+    content: draft,
+  })!;
+  pendingLocalSaveContents.set("old-id", draft);
+  pendingLocalSaveRevisions.set("old-id", entry.revision);
+  const originalPut = db.put;
+  db.put = (doc: any) =>
+    doc._id.endsWith(":new-id")
+      ? { ok: false, error: "fault-injected" }
+      : originalPut(doc);
+
+  const result = migratePendingLocalSave("old-id", "new-id", stateWithSave(async () => true));
+
+  expect(result.ok).toBe(false);
+  expect(pendingLocalSaveContents.get("old-id")).toEqual(draft);
+  expect(pendingLocalSaveRevisions.get("old-id")).toBe(entry.revision);
+  expect(pendingLocalSaveContents.has("new-id")).toBe(false);
+  expect(getRecoveryEntry("local-file", "old-id")?.revision).toBe(entry.revision);
+});
+
+test("恢复日志迁移使用目标返回的新 revision", () => {
+  installRecoveryRuntime();
+  const target = recordRecoveryEntry({
+    source: "local-file",
+    id: "new-id",
+    content: null,
+  })!;
+  const draft = content("move-to-tombstone");
+  const source = recordRecoveryEntry({
+    source: "local-file",
+    id: "old-id",
+    content: draft,
+  })!;
+  pendingLocalSaveContents.set("old-id", draft);
+  pendingLocalSaveRevisions.set("old-id", source.revision);
+
+  const result = migratePendingLocalSave("old-id", "new-id", stateWithSave(async () => true));
+
+  expect(result.ok).toBe(true);
+  const moved = getRecoveryEntry("local-file", "new-id")!;
+  expect(moved.revision).toBeGreaterThan(target.revision);
+  expect(pendingLocalSaveRevisions.get("new-id")).toBe(moved.revision);
+  expect(pendingLocalSaveRevisions.has("old-id")).toBe(false);
 });
 
 test("discard prevents an in-flight failed save from restoring stale content", async () => {
