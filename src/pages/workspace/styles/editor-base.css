@@ -1648,7 +1648,7 @@
   }
 }
 
-/* ===== 行内代码（Notion 红字 + 浅灰底；变量见 index.css，含深色） ===== */
+/* ===== 行内代码（跟随当前强调色；变量见 index.css / goose-accent-colors.css） ===== */
 .workspace-editor-surface .bn-inline-content code,
 .quicknote-editor-surface .bn-inline-content code {
   background-color: var(--goose-inline-code-bg);
@@ -1677,6 +1677,19 @@
   vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+/* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
+  background-color: transparent;
+  color: var(--goose-inline-code-fg);
 }
 
 .workspace-editor-surface
@@ -1719,9 +1732,18 @@
   pointer-events: none;
 }
 
-/* 链接内的行内代码：去掉文字下划线（背景色已足够区分），链接本身仍可点 */
+/* 链接内的行内代码：去掉文字下划线，并保持强调色（不继承链接色） */
 .workspace-editor-surface a[data-inline-content-type="link"] code,
-.quicknote-editor-surface a[data-inline-content-type="link"] code {
+.quicknote-editor-surface a[data-inline-content-type="link"] code,
+.workspace-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content] {
+  color: var(--goose-inline-code-fg);
   text-decoration: none;
 }
 
@@ -1753,7 +1775,35 @@
   [data-content-type="table"]
   td
   .bn-inline-content
-  code {
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
   color: var(--goose-inline-code-fg);
 }
 
