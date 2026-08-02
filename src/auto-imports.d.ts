@@ -232,8 +232,10 @@ declare global {
   const emptyBlock: typeof import('./components/editor/utils/blocknote-content/index').emptyBlock
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const ensureBodyParagraphAfterTitle: typeof import('./components/editor/utils/blocknote-content/index').ensureBodyParagraphAfterTitle
+  const ensureEditorFontAvailable: typeof import('./lib/fontLoader').ensureEditorFontAvailable
   const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
   const ensureFirstTitleHeading: typeof import('./components/editor/utils/blocknote-content/index').ensureFirstTitleHeading
+  const ensurePersistentRemoteFont: typeof import('./lib/fontLoader').ensurePersistentRemoteFont
   const exportNotebooks: typeof import('./lib/export/index').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport/index').exportPageToImage
   const exportSelectionToImage: typeof import('./lib/imageExport/index').exportSelectionToImage

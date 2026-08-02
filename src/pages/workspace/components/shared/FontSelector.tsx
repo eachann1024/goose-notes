@@ -1,5 +1,8 @@
 import type { Page } from "@/types";
-import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
+import {
+  DEFAULT_FONT_NAMES,
+  ensureEditorFontAvailable,
+} from "@/lib/fontLoader";
 
 interface FontSelectorProps {
   value: Page["fontFamily"];
@@ -31,6 +34,15 @@ export function FontSelector({
   compact = false,
 }: FontSelectorProps) {
   const { customFonts } = useSettings();
+  const selectionRequestRef = useRef(0);
+
+  const selectFont = async (fontFamily: Page["fontFamily"]) => {
+    const requestId = ++selectionRequestRef.current;
+    await ensureEditorFontAvailable(fontFamily, customFonts);
+    if (requestId === selectionRequestRef.current) {
+      onChange(fontFamily);
+    }
+  };
 
   return (
     <div className={cn("flex gap-1", compact ? "p-0.5" : "p-1")}>
@@ -43,7 +55,7 @@ export function FontSelector({
           <button
             key={font.value}
             type="button"
-            onClick={() => onChange(font.value)}
+            onClick={() => void selectFont(font.value)}
             className={cn(
               "flex-1 rounded-md transition-all duration-200",
               compact ? "px-2 py-1.5" : "px-3 py-2",

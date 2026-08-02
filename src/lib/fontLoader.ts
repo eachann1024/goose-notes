@@ -6,11 +6,15 @@ export const DEFAULT_FONT_NAMES = {
   mono: "DM Mono",
 } as const;
 
-// 远程字体 URL（体积大，需预加载）
-const REMOTE_FONTS = [
-  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E9%B8%BF%E8%92%99%E9%BB%91%E4%BD%93-HarmonyOS%20Sans%20SC.woff2",
-  "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2",
-];
+const REMOTE_FONT_SOURCES = {
+  "HarmonyOS Sans SC":
+    "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E9%B8%BF%E8%92%99%E9%BB%91%E4%BD%93-HarmonyOS%20Sans%20SC.woff2",
+  仓耳今楷:
+    "https://cdn.jsdelivr.net/gh/eachann1024/Resources@d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2",
+} as const;
+
+const FONT_CACHE_NAME = "goose-note-fonts-v1";
+const persistentFontLoads = new Map<string, Promise<boolean>>();
 
 const trimFontName = (font: string) =>
   font.trim().replace(/^["']+|["']+$/g, "");
@@ -106,15 +110,124 @@ const joinFonts = (fonts: string[]) => fonts.filter(Boolean).join(", ");
  */
 export function preloadFonts() {
   if (typeof document === "undefined") return;
-  REMOTE_FONTS.forEach((url) => {
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "font";
-    link.type = "font/woff2";
-    link.href = url;
-    link.crossOrigin = "anonymous";
-    document.head.appendChild(link);
-  });
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "font";
+  link.type = "font/woff2";
+  link.href = REMOTE_FONT_SOURCES["HarmonyOS Sans SC"];
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
+
+  // 大体积仓耳今楷不走 link preload，否则每次打开都会再触发一次 CDN 匹配。
+  void ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
+}
+
+const openFontCache = async () => {
+  if (typeof caches === "undefined") return null;
+  try {
+    return await caches.open(FONT_CACHE_NAME);
+  } catch (error) {
+    console.warn("[fontLoader] 持久字体缓存不可用，回退浏览器缓存", error);
+    return null;
+  }
+};
+
+const fetchFontResponse = async (url: string, bypassCache = false) => {
+  const cache = await openFontCache();
+  if (!bypassCache && cache) {
+    const cached = await cache.match(url);
+    if (cached) return { response: cached, cache, fromPersistentCache: true };
+  }
+
+  const response = await fetch(url, { cache: "force-cache" });
+  if (!response.ok) {
+    throw new Error(`字体下载失败 (${response.status})`);
+  }
+  if (cache) {
+    try {
+      await cache.put(url, response.clone());
+    } catch (error) {
+      console.warn("[fontLoader] 字体写入持久缓存失败", error);
+    }
+  }
+  return { response, cache, fromPersistentCache: false };
+};
+
+const installRemoteFont = async (
+  family: keyof typeof REMOTE_FONT_SOURCES,
+  url: string,
+  bypassCache = false,
+) => {
+  const { response, cache, fromPersistentCache } = await fetchFontResponse(
+    url,
+    bypassCache,
+  );
+  try {
+    const face = new FontFace(family, await response.arrayBuffer(), {
+      style: "normal",
+      weight: "400",
+    });
+    await face.load();
+    document.fonts.add(face);
+    return true;
+  } catch (error) {
+    // 缓存项被截断或损坏时只清理该字体，重新拉取一次。
+    if (fromPersistentCache && cache && !bypassCache) {
+      await cache.delete(url).catch(() => false);
+      return installRemoteFont(family, url, true);
+    }
+    throw error;
+  }
+};
+
+/**
+ * 将大体积远程字体写入 Cache Storage，再从持久字节安装 FontFace。
+ * 同一进程内并发请求会复用同一 Promise，不会重复下载或解码。
+ */
+export function ensurePersistentRemoteFont(
+  family: keyof typeof REMOTE_FONT_SOURCES,
+) {
+  if (
+    typeof document === "undefined" ||
+    typeof FontFace === "undefined" ||
+    !("fonts" in document)
+  ) {
+    return Promise.resolve(false);
+  }
+
+  const existing = persistentFontLoads.get(family);
+  if (existing) return existing;
+
+  const load = installRemoteFont(family, REMOTE_FONT_SOURCES[family]).catch(
+    (error) => {
+      // 系统本地 @font-face 仍作为最后兜底：缓存 API 或 CDN 异常不应阻止工作区打开。
+      console.warn(`[fontLoader] ${family} 持久加载失败`, error);
+      persistentFontLoads.delete(family);
+      return false;
+    },
+  );
+  persistentFontLoads.set(family, load);
+  return load;
+}
+
+/** 在选中内置仓耳今楷的页面首帧前备好字体。 */
+export async function ensureEditorFontAvailable(
+  fontFamily: "default" | "serif" | "mono" | undefined,
+  customFonts: CustomFonts,
+) {
+  if (fontFamily !== "serif") return;
+
+  const serifFamilies = splitFontList(customFonts.serif.font);
+  const usesBuiltInSerif =
+    serifFamilies.length === 0 ||
+    serifFamilies.includes(DEFAULT_FONT_NAMES.serif);
+  if (usesBuiltInSerif) {
+    await ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
+    return;
+  }
+
+  // 用户填写的系统字体不需要进入网络缓存，但仍等它完成匹配再切换。
+  await waitForFonts(serifFamilies);
 }
 
 export function applyFontVariables(customFonts: CustomFonts) {

@@ -222,7 +222,11 @@ import type { ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
 import "./index.css";
 import "./fonts.css";
-import { applyFontVariables } from "./lib/fontLoader";
+import {
+  applyFontVariables,
+  DEFAULT_FONT_NAMES,
+  ensurePersistentRemoteFont,
+} from "./lib/fontLoader";
 import {
   applyAppearanceScaleVariables,
   clearStartupSettling,
@@ -557,6 +561,10 @@ export const bootstrap = async (
         },
       });
       if (startupResult === "error") return;
+
+      // 从持久缓存在后台安装大体积衬线字体：首次只下载一次，
+      // 后续切到任意衬线体页面时已可直接渲染，不发生字体替换重排。
+      void ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
     }
   } catch (error) {
     console.error("[bootstrap] 初始化失败", error);

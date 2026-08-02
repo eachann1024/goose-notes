@@ -1,4 +1,5 @@
 import { resolveNotebookLandingPageId } from "@/lib/notebookNavigation";
+import { ensureEditorFontAvailable } from "@/lib/fontLoader";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
@@ -38,10 +39,8 @@ export async function renderWorkspaceAfterStartup({
   }
 }
 
-const isVisiblePageInNotebook = (
-  page: Page | undefined,
-  notebookId: string,
-) => !!page && page.workspaceId === notebookId && !page.trashedAt;
+const isVisiblePageInNotebook = (page: Page | undefined, notebookId: string) =>
+  !!page && page.workspaceId === notebookId && !page.trashedAt;
 
 const resolveWorkspaceStartupPageId = (
   notebookId: string | null,
@@ -51,10 +50,7 @@ const resolveWorkspaceStartupPageId = (
   const notebooksStore = useNotebooks.getState();
   const pages = usePages.getState().pages;
   const lastPageId = notebooksStore.getLastActivePage(notebookId);
-  if (
-    lastPageId &&
-    isVisiblePageInNotebook(pages[lastPageId], notebookId)
-  ) {
+  if (lastPageId && isVisiblePageInNotebook(pages[lastPageId], notebookId)) {
     return lastPageId;
   }
 
@@ -130,8 +126,7 @@ export async function prepareWorkspaceStartup(): Promise<LastNoteRestoreResult> 
     activeNotebook?.source === "local-folder" &&
     activeNotebook.localPath
   ) {
-    const gooseFs =
-      typeof window !== "undefined" ? window.gooseFs : undefined;
+    const gooseFs = typeof window !== "undefined" ? window.gooseFs : undefined;
     if (!gooseFs) {
       clearWorkspaceStartupSelection();
       return "local-folder-unavailable";
@@ -167,5 +162,14 @@ export async function prepareWorkspaceStartup(): Promise<LastNoteRestoreResult> 
     }
   }
 
-  return restoreLastNoteIfNeeded();
+  const restoreResult = restoreLastNoteIfNeeded();
+  const activePageId = usePages.getState().activePageId;
+  const activePage = activePageId
+    ? usePages.getState().pages[activePageId]
+    : undefined;
+  await ensureEditorFontAvailable(
+    activePage?.fontFamily,
+    useSettings.getState().customFonts,
+  );
+  return restoreResult;
 }
