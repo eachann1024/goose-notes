@@ -7,6 +7,7 @@ import {
   normalizeSlotStacks,
   recordEditHistory,
   QUICKNOTE_UNDO_MAX,
+  budgetQuickNoteHistory,
 } from "../../src/lib/quicknote/undoHistory";
 import type { JSONContent } from "../../src/types";
 
@@ -39,6 +40,23 @@ test("recordEditHistory pushes previous and clears redo", () => {
   expect(second.recorded).toBe(true);
   expect(second.undo).toHaveLength(2);
   expect(contentEquals(second.undo[1], para("a"))).toBe(true);
+});
+
+test("持久化历史遵守总字节预算且保留各栈最新记录", () => {
+  const large = (label: string) => para(`${label}:${"x".repeat(20_000)}`);
+  const undo = createEmptySlotStacks();
+  const redo = createEmptySlotStacks();
+  undo[1] = [large("old"), large("new")];
+  redo[2] = [large("redo-old"), large("redo-new")];
+
+  const budgeted = budgetQuickNoteHistory(undo, redo, 90_000);
+  const serializedBytes =
+    JSON.stringify(budgeted.undoStacks).length * 2 +
+    JSON.stringify(budgeted.redoStacks).length * 2;
+
+  expect(serializedBytes).toBeLessThanOrEqual(91_000);
+  expect(JSON.stringify(budgeted.undoStacks[1])).toContain("new");
+  expect(JSON.stringify(budgeted.redoStacks[2])).toContain("redo-new");
 });
 
 test("recordEditHistory coalesces rapid edits", () => {

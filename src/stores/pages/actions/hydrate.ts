@@ -11,6 +11,11 @@ import {
 } from "../types";
 import { isLocalFolderPage, seedLocalPageMetadataCache } from "../persistence";
 import {
+  canApplyRecoveryEntry,
+  listRecoveryEntries,
+} from "@/lib/storage/recoveryJournal";
+import { toast } from "@/components/ui/sonner";
+import {
   repairLegacyTitleChildrenInPages,
   repairNormalizedContentInPages,
 } from "../migrations";
@@ -65,9 +70,27 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
     setDbStorageItem(NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY, "1");
   }
 
+  const recoveredPages = { ...contentRepairedPages };
+  let recoveredCount = 0;
+  let conflictCount = 0;
+  for (const entry of listRecoveryEntries("internal-page")) {
+    const current = recoveredPages[entry.id];
+    if (!current) continue;
+    if (!canApplyRecoveryEntry(entry, current.content, current.updatedAt)) {
+      conflictCount += 1;
+      continue;
+    }
+    recoveredPages[entry.id] = {
+      ...current,
+      content: entry.content ?? [],
+      updatedAt: Math.max(current.updatedAt, entry.updatedAt),
+    };
+    recoveredCount += 1;
+  }
+
   seedLocalPageMetadataCache(localPageMetas);
   set({
-    pages: contentRepairedPages,
+    pages: recoveredPages,
     activePageId: null,
     pendingNavigatePageId: null,
     expandPageId: null,
@@ -79,4 +102,16 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
     lastSavedAt: null,
     onboardingCompleted,
   });
+  if (recoveredCount > 0) {
+    toast.warning(`已恢复 ${recoveredCount} 篇未完成保存的笔记`, {
+      id: "goose-recovered-internal-pages",
+      description: "内容已放回编辑区，请确认后继续编辑或保存。",
+    });
+  }
+  if (conflictCount > 0) {
+    toast.warning("发现未自动覆盖的恢复稿", {
+      id: "goose-recovery-conflicts",
+      description: "主存储中有更新版本，恢复稿仍被保留。",
+    });
+  }
 };

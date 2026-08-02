@@ -124,7 +124,11 @@ const flushClosedPageSaves = (pageIds: string[]): void => {
   const pagesStore = usePages.getState();
   void Promise.all(
     pageIds.map(async (pageId) => {
-      await pagesStore.flushPendingLocalSaveByPageId(pageId);
+      try {
+        await pagesStore.flushPendingLocalSaveByPageId(pageId);
+      } catch (error) {
+        console.error("[tabs] closed page flush failed", pageId, error);
+      }
       const stillDirty = usePages.getState().dirtyLocalPageIds[pageId];
       if (stillDirty) {
         const page = usePages.getState().getPage(pageId);
@@ -134,7 +138,10 @@ const flushClosedPageSaves = (pageIds: string[]): void => {
         });
       }
     }),
-  );
+  ).catch((error) => {
+    // 单页错误已在任务内消费；这里仅兜底，避免关闭标签时产生未处理拒绝。
+    console.error("[tabs] closed pages flush failed", error);
+  });
 };
 
 interface PersistedTabs {

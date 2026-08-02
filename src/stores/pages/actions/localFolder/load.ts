@@ -20,6 +20,12 @@ import {
 } from "@/lib/local-page-idmap";
 import { resolveHistoryBackend } from "@/lib/history/backend";
 import { localPageMetadataCache } from "../../persistence";
+import {
+  canApplyRecoveryEntry,
+  listRecoveryEntries,
+} from "@/lib/storage/recoveryJournal";
+import { restorePendingLocalSave } from "../../folderSync";
+import { toast } from "@/components/ui/sonner";
 import type { StoreSet, StoreGet } from "../hydrate";
 
 interface LocalFolderLoadTask {
@@ -277,6 +283,43 @@ const loadLocalFolderPagesOnce = async (
       }
       return result;
     });
+
+    let recoveredCount = 0;
+    let conflictCount = 0;
+    for (const entry of listRecoveryEntries("local-file")) {
+      const current = get().pages[entry.id];
+      if (!current || current.workspaceId !== notebookId || current.isFolder) continue;
+      if (!canApplyRecoveryEntry(entry, current.content)) {
+        conflictCount += 1;
+        continue;
+      }
+      if (entry.content) {
+        restorePendingLocalSave(entry.id, entry.content, entry.revision);
+        set((state) => ({
+          pages: {
+            ...state.pages,
+            [entry.id]: { ...state.pages[entry.id], content: entry.content! },
+          },
+          dirtyLocalPageIds: {
+            ...state.dirtyLocalPageIds,
+            [entry.id]: true,
+          },
+        }));
+        recoveredCount += 1;
+      }
+    }
+    if (recoveredCount > 0) {
+      toast.warning(`已找回 ${recoveredCount} 篇未写盘的本地笔记`, {
+        id: `goose-recovered-local-pages:${notebookId}`,
+        description: "尚未覆盖磁盘文件，请确认内容后按保存。",
+      });
+    }
+    if (conflictCount > 0) {
+      toast.warning("本地文件已有外部更新", {
+        id: `goose-local-recovery-conflicts:${notebookId}`,
+        description: "恢复稿已保留，未自动覆盖磁盘新版本。",
+      });
+    }
     useNotebooks.getState().setLocalFolderLoadState(notebookId, {
       status: "ready",
       finishedAt: Date.now(),

@@ -1,6 +1,10 @@
 import type { JSONContent } from "@/types";
 import type { PagesState } from "./types";
 import { LOCAL_SAVE_DEBOUNCE_MS, LOCAL_SAVE_MAX_WAIT_MS } from "./types";
+import {
+  acknowledgeRecoveryEntry,
+  moveRecoveryEntry,
+} from "@/lib/storage/recoveryJournal";
 
 export const localSaveDebounceTimers = new Map<
   string,
@@ -11,6 +15,7 @@ export const localSaveMaxWaitTimers = new Map<
   ReturnType<typeof setTimeout>
 >();
 export const pendingLocalSaveContents = new Map<string, JSONContent>();
+export const pendingLocalSaveRevisions = new Map<string, number>();
 export const localSaveWriteChains = new Map<string, Promise<void>>();
 const discardedPendingLocalSavePageIds = new Set<string>();
 const localPageFileOperationTails = new Map<string, Promise<void>>();
@@ -66,6 +71,11 @@ export const clearLocalSaveTimers = (pageId: string) => {
 export const discardPendingLocalSave = (pageId: string) => {
   clearLocalSaveTimers(pageId);
   pendingLocalSaveContents.delete(pageId);
+  const recoveryRevision = pendingLocalSaveRevisions.get(pageId);
+  if (typeof recoveryRevision === "number") {
+    acknowledgeRecoveryEntry("local-file", pageId, recoveryRevision);
+  }
+  pendingLocalSaveRevisions.delete(pageId);
   const activeWrite = localSaveWriteChains.get(pageId);
   if (!activeWrite) {
     discardedPendingLocalSavePageIds.delete(pageId);
@@ -78,6 +88,16 @@ export const discardPendingLocalSave = (pageId: string) => {
     .catch(() => {
       // 原写入链的失败由其调用方处理；这里只负责清理 discard 标记。
     });
+};
+
+/** 启动恢复只放回内存 pending，不自动写盘；必须由后续编辑或显式保存确认。 */
+export const restorePendingLocalSave = (
+  pageId: string,
+  content: JSONContent,
+  recoveryRevision: number,
+): void => {
+  pendingLocalSaveContents.set(pageId, cloneJSONContent(content));
+  pendingLocalSaveRevisions.set(pageId, recoveryRevision);
 };
 
 export const flushPendingLocalSaveByPageIdInternal = (
@@ -95,6 +115,7 @@ export const flushPendingLocalSaveByPageIdInternal = (
           pendingLocalSaveContents.delete(pageId);
           continue;
         }
+        const savingRevision = pendingLocalSaveRevisions.get(pageId);
         pendingLocalSaveContents.delete(pageId);
         try {
           const saved = await getState().saveLocalPageContent(
@@ -103,6 +124,12 @@ export const flushPendingLocalSaveByPageIdInternal = (
           );
           if (!saved) {
             throw new Error(`本地页面保存未完成：${pageId}`);
+          }
+          if (typeof savingRevision === "number") {
+            acknowledgeRecoveryEntry("local-file", pageId, savingRevision);
+            if (pendingLocalSaveRevisions.get(pageId) === savingRevision) {
+              pendingLocalSaveRevisions.delete(pageId);
+            }
           }
         } catch (err) {
           // save 抛错或明确返回 false：保留待写内容，让显式 flush 感知失败，
@@ -133,10 +160,14 @@ export const queueLocalPageSave = (
   pageId: string,
   content: JSONContent,
   getState: () => PagesState,
+  recoveryRevision?: number,
 ) => {
   // discard 只针对用户明确放弃的旧快照；后续真实编辑应恢复正常自动保存。
   discardedPendingLocalSavePageIds.delete(pageId);
   pendingLocalSaveContents.set(pageId, content);
+  if (typeof recoveryRevision === "number") {
+    pendingLocalSaveRevisions.set(pageId, recoveryRevision);
+  }
 
   const runScheduledFlush = () => {
     void flushPendingLocalSaveByPageIdInternal(pageId, getState).catch(
@@ -179,9 +210,12 @@ export const migratePendingLocalSave = (
   if (oldPageId === newPageId) return;
   clearLocalSaveTimers(oldPageId);
   const pending = pendingLocalSaveContents.get(oldPageId);
+  const recoveryRevision = pendingLocalSaveRevisions.get(oldPageId);
   pendingLocalSaveContents.delete(oldPageId);
+  pendingLocalSaveRevisions.delete(oldPageId);
   if (pending) {
-    queueLocalPageSave(newPageId, pending, getState);
+    moveRecoveryEntry("local-file", oldPageId, newPageId);
+    queueLocalPageSave(newPageId, pending, getState, recoveryRevision);
   }
 };
 

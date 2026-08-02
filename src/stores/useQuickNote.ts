@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { StateStorage } from "zustand/middleware";
 import {
   getDbStorageItem,
   setDbStorageItem,
@@ -13,10 +14,19 @@ import {
   applyRedo,
   applyUndo,
   createEmptySlotStacks,
+  budgetQuickNoteHistory,
   normalizeSlotStacks,
   recordEditHistory,
 } from "@/lib/quicknote/undoHistory";
 import type { QuickNoteSlotStacks } from "@/lib/quicknote/undoHistory";
+import {
+  acknowledgeRecoveryEntry,
+  canApplyRecoveryEntry,
+  listRecoveryEntries,
+  recordRecoveryEntry,
+} from "@/lib/storage/recoveryJournal";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
+import { toast } from "@/components/ui/sonner";
 
 /**
  * 速记小窗状态（独立窗口进程内使用）。
@@ -39,6 +49,80 @@ export const QUICKNOTE_SLOTS: readonly QuickNoteSlot[] = [1, 2, 3, 4, 5];
 
 export type QuickNoteDrafts = Record<QuickNoteSlot, JSONContent | null>;
 export type QuickNoteSlotNames = Record<QuickNoteSlot, string>;
+
+const pendingQuickNoteRecoveryRevisions = new Map<QuickNoteSlot, number>();
+
+const recordQuickNoteRecovery = (
+  slot: QuickNoteSlot,
+  previous: JSONContent | null,
+  content: JSONContent | null,
+): void => {
+  const entry = recordRecoveryEntry({
+    source: "quicknote",
+    id: String(slot),
+    content,
+    baseSignature: getContentSignature(previous),
+  });
+  if (entry) {
+    pendingQuickNoteRecoveryRevisions.set(slot, entry.revision);
+    return;
+  }
+  toast.error("速记恢复备份写入失败", {
+    id: "goose-quicknote-journal-failed",
+    description: "请暂时不要关闭小窗，并复制重要内容后重试。",
+  });
+};
+
+export function recoverQuickNoteDrafts(draftsRaw: unknown): {
+  drafts: QuickNoteDrafts;
+  recoveredSlots: QuickNoteSlot[];
+  conflictSlots: QuickNoteSlot[];
+} {
+  const drafts = normalizeDrafts(draftsRaw);
+  const recoveredSlots: QuickNoteSlot[] = [];
+  const conflictSlots: QuickNoteSlot[] = [];
+  for (const entry of listRecoveryEntries("quicknote")) {
+    const slot = normalizeSlot(entry.id);
+    const current = drafts[slot];
+    const alreadyCurrent =
+      getContentSignature(current) === getContentSignature(entry.content);
+    if (!alreadyCurrent && !canApplyRecoveryEntry(entry, current)) {
+      conflictSlots.push(slot);
+      continue;
+    }
+    drafts[slot] = entry.content;
+    recoveredSlots.push(slot);
+    pendingQuickNoteRecoveryRevisions.set(slot, entry.revision);
+  }
+  return { drafts, recoveredSlots, conflictSlots };
+}
+
+const quickNoteStorage: StateStorage = {
+  getItem: (name) => uToolsStorage.getItem(name),
+  setItem: (name, value) => {
+    const saved = setDbStorageItem(name, value);
+    if (saved) {
+      for (const [slot, revision] of pendingQuickNoteRecoveryRevisions) {
+        acknowledgeRecoveryEntry("quicknote", String(slot), revision);
+        if (pendingQuickNoteRecoveryRevisions.get(slot) === revision) {
+          pendingQuickNoteRecoveryRevisions.delete(slot);
+        }
+      }
+      return;
+    }
+    toast.error("速记暂未保存", {
+      id: "goose-quicknote-save-failed",
+      description: "当前草稿已放入恢复备份，可点击重试。",
+      action: {
+        label: "重试",
+        onClick: () => {
+          useQuickNote.setState((state) => ({ drafts: { ...state.drafts } }));
+        },
+      },
+    });
+  },
+  removeItem: (name) => uToolsStorage.removeItem(name),
+};
 
 export function createEmptyQuickNoteDrafts(): QuickNoteDrafts {
   return { 1: null, 2: null, 3: null, 4: null, 5: null };
@@ -365,6 +449,7 @@ export const useQuickNote = create<QuickNoteState>()(
           const target = slot != null ? normalizeSlot(slot) : state.activeSlot;
           const previous = state.drafts[target] ?? null;
           const recordHistory = options?.recordHistory !== false;
+          recordQuickNoteRecovery(target, previous, content);
           if (!recordHistory) {
             return {
               drafts: { ...state.drafts, [target]: content },
@@ -402,6 +487,7 @@ export const useQuickNote = create<QuickNoteState>()(
         }
         // 撤销/重做本身不记入历史；并重置合并窗口，避免紧接着的 onChange 误合并
         lastUndoRecordAtBySlot[slot] = 0;
+        recordQuickNoteRecovery(slot, state.drafts[slot] ?? null, result.content);
         set({
           drafts: { ...state.drafts, [slot]: result.content },
           undoStacks: { ...state.undoStacks, [slot]: result.undo },
@@ -422,6 +508,7 @@ export const useQuickNote = create<QuickNoteState>()(
           return { content: state.drafts[slot] ?? null, applied: false };
         }
         lastUndoRecordAtBySlot[slot] = 0;
+        recordQuickNoteRecovery(slot, state.drafts[slot] ?? null, result.content);
         set({
           drafts: { ...state.drafts, [slot]: result.content },
           undoStacks: { ...state.undoStacks, [slot]: result.undo },
@@ -450,6 +537,7 @@ export const useQuickNote = create<QuickNoteState>()(
         set((state) => {
           const slot = state.activeSlot;
           const previous = state.drafts[slot] ?? null;
+          recordQuickNoteRecovery(slot, previous, null);
           // 清空也记一步，方便撤销恢复
           const hist = recordEditHistory({
             undo: state.undoStacks[slot] ?? [],
@@ -491,13 +579,12 @@ export const useQuickNote = create<QuickNoteState>()(
     {
       name: "goose-note:quicknote",
       version: 3,
-      storage: createJSONStorage(() => uToolsStorage),
+      storage: createJSONStorage(() => quickNoteStorage),
       partialize: (state) => ({
+        ...budgetQuickNoteHistory(state.undoStacks, state.redoStacks),
         activeSlot: state.activeSlot,
         drafts: state.drafts,
         slotNames: state.slotNames,
-        undoStacks: state.undoStacks,
-        redoStacks: state.redoStacks,
         pinned: true, // 强制置顶，写回恒 true
         editorZoom: state.editorZoom,
         windowWidth: state.windowWidth,
@@ -552,21 +639,40 @@ export const useQuickNote = create<QuickNoteState>()(
       // 兜底：缺 drafts / 脏 activeSlot 时仍能归一，避免 rehydrate 后崩溃
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Record<string, unknown>;
+        const recovery = recoverQuickNoteDrafts(
+          normalizeDrafts(
+            p.drafts,
+            (p.draftContent as JSONContent | null | undefined) ?? null,
+          ),
+        );
+        const history = budgetQuickNoteHistory(
+          p.undoStacks ?? (current as QuickNoteState).undoStacks,
+          p.redoStacks ?? (current as QuickNoteState).redoStacks,
+        );
+        if (recovery.recoveredSlots.length > 0) {
+          queueMicrotask(() =>
+            toast.warning("已恢复未完成保存的速记", {
+              id: "goose-quicknote-recovered",
+              description: "恢复内容已放回原便签槽位，请确认后继续编辑。",
+            }),
+          );
+        }
+        if (recovery.conflictSlots.length > 0) {
+          queueMicrotask(() =>
+            toast.warning("发现未自动覆盖的速记恢复稿", {
+              id: "goose-quicknote-recovery-conflict",
+              description: "现有草稿更新，恢复稿仍被安全保留。",
+            }),
+          );
+        }
         return {
           ...current,
           ...p,
           activeSlot: normalizeSlot(p.activeSlot ?? current.activeSlot),
-          drafts: normalizeDrafts(
-            p.drafts,
-            (p.draftContent as JSONContent | null | undefined) ?? null,
-          ),
+          drafts: recovery.drafts,
           slotNames: normalizeSlotNames(p.slotNames),
-          undoStacks: normalizeSlotStacks(
-            p.undoStacks ?? (current as QuickNoteState).undoStacks,
-          ),
-          redoStacks: normalizeSlotStacks(
-            p.redoStacks ?? (current as QuickNoteState).redoStacks,
-          ),
+          undoStacks: history.undoStacks,
+          redoStacks: history.redoStacks,
           pinned: true,
         } as typeof current;
       },

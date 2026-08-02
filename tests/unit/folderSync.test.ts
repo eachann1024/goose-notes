@@ -10,6 +10,7 @@ import {
   localSaveMaxWaitTimers,
   localSaveWriteChains,
   pendingLocalSaveContents,
+  pendingLocalSaveRevisions,
   queueLocalPageSave,
 } from "../../src/stores/pages/folderSync";
 
@@ -33,6 +34,7 @@ function resetFolderSyncState() {
     clearLocalSaveTimers(pageId);
   }
   pendingLocalSaveContents.clear();
+  pendingLocalSaveRevisions.clear();
   localSaveWriteChains.clear();
 }
 

@@ -114,15 +114,17 @@ const putStorageDoc = (name: string, value: string): boolean => {
   return true;
 };
 
-const removeStorageDoc = (name: string): void => {
+const removeStorageDoc = (name: string): boolean => {
   const id = getStorageDocId(name);
   const current = UToolsAdapter.db.get(id);
-  if (!current) return;
+  if (!current) return true;
 
   const result = UToolsAdapter.db.remove(id);
   if (result.ok === false) {
     console.error("[uToolsDbStorage] storage doc remove failed", name, result.error);
+    return false;
   }
+  return true;
 };
 
 const readCanonicalValue = (name: string): string | null => {
@@ -155,13 +157,13 @@ const writeCanonicalValue = (name: string, value: string): boolean => {
   return writeLocalStorageValue(name, value);
 };
 
-const deleteCanonicalValue = (name: string): void => {
+const deleteCanonicalValue = (name: string): boolean => {
   if (UToolsAdapter.isUTools) {
-    removeStorageDoc(name);
-    return;
+    return removeStorageDoc(name);
   }
 
   deleteLocalStorageValue(name);
+  return true;
 };
 
 const readPrimaryValue = (name: string): string | null => {
@@ -216,15 +218,18 @@ const readStorageValue = (name: string): string | null => {
   return null;
 };
 
-const writeStorageValue = (name: string, value: string): void => {
+const writeStorageValue = (name: string, value: string): boolean => {
   if (writeCanonicalValue(name, value)) {
     deletePrimaryValue(name);
+    return true;
   }
+  return false;
 };
 
-const deleteStorageValue = (name: string): void => {
-  deleteCanonicalValue(name);
+const deleteStorageValue = (name: string): boolean => {
+  const removed = deleteCanonicalValue(name);
   deletePrimaryValue(name);
+  return removed;
 };
 
 export const uToolsStorage: StateStorage = {
@@ -239,12 +244,12 @@ export const getDbStorageItem = (name: string): string | null => {
   return readStorageValue(name);
 };
 
-export const setDbStorageItem = (name: string, value: string): void => {
-  writeStorageValue(name, value);
+export const setDbStorageItem = (name: string, value: string): boolean => {
+  return writeStorageValue(name, value);
 };
 
-export const removeDbStorageItem = (name: string): void => {
-  deleteStorageValue(name);
+export const removeDbStorageItem = (name: string): boolean => {
+  return deleteStorageValue(name);
 };
 
 export const readDbStorageJSON = <T>(name: string, fallback: T): T => {
@@ -259,6 +264,6 @@ export const readDbStorageJSON = <T>(name: string, fallback: T): T => {
   }
 };
 
-export const writeDbStorageJSON = <T>(name: string, value: T): void => {
-  writeStorageValue(name, JSON.stringify(value));
+export const writeDbStorageJSON = <T>(name: string, value: T): boolean => {
+  return writeStorageValue(name, JSON.stringify(value));
 };

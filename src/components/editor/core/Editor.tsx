@@ -19,6 +19,7 @@ import { createGooseAITransport } from "@/components/editor/ai/transport/blockno
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
+import { commitPendingEditorChange } from "./editorPendingCommit";
 import {
   useEditorSettings,
   useEditorPageContext,
@@ -776,22 +777,30 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       const safePageId = targetPageId ?? pageIdForUpdateRef.current;
       if (!safePageId) return;
       debouncedUpdate.cancel();
-      if (safePageId !== pageIdForUpdateRef.current) return;
-      if (!pendingEditorChangeRef.current) return;
       const { content, signature } = readCurrentEditorContent();
-      pendingEditorChangeRef.current = false;
-      if (signature === syncedContentSignatureRef.current) return;
-      syncedContentSignatureRef.current = signature;
-      onContentChangeRef.current(content);
+      const result = commitPendingEditorChange({
+        targetPageId: safePageId,
+        currentPageId: pageIdForUpdateRef.current,
+        pending: pendingEditorChangeRef.current,
+        content,
+        signature,
+        syncedSignature: syncedContentSignatureRef.current,
+        commit: (nextContent) => onContentChangeRef.current(nextContent),
+      });
+      if (result === "committed" || result === "unchanged") {
+        pendingEditorChangeRef.current = false;
+      }
+      if (result === "committed") syncedContentSignatureRef.current = signature;
     },
     [debouncedUpdate, readCurrentEditorContent],
   );
 
   useEffect(() => {
     return () => {
-      debouncedUpdate.cancel();
+      // React 卸载仍处于同步阶段；先把最后一帧送入 store/journal，再取消定时器。
+      commitEditorContent(pageIdForUpdateRef.current ?? undefined);
     };
-  }, [debouncedUpdate]);
+  }, [commitEditorContent]);
 
   useEffect(() => {
     const handleFlush = (event: Event) => {

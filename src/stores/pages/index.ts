@@ -16,6 +16,12 @@ import {
   mergeLocalPageSettingsIntoFrontmatter,
 } from "@/lib/local-frontmatter";
 import { queueLocalPageSave } from "./folderSync";
+import { getContentSignature } from "@/components/editor/utils/blocknote-content";
+import {
+  acknowledgeRecoveryEntry,
+  recordRecoveryEntry,
+} from "@/lib/storage/recoveryJournal";
+import { toast } from "@/components/ui/sonner";
 
 // Re-export flushEditorContent for external consumers
 export { flushEditorContent } from "./actions/flushEditor";
@@ -108,6 +114,22 @@ export const usePages = create<PagesState>()((set, get) => ({
       isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
     const silent = options?.silent === true;
     const isLocal = isLocalFolderPage(page);
+    const isDurableContentEdit = Boolean(page) && "content" in updates && !silent;
+    const recoveryEntry = isDurableContentEdit
+      ? recordRecoveryEntry({
+          source: isLocal ? "local-file" : "internal-page",
+          id,
+          content: updates.content ?? null,
+          baseSignature: getContentSignature(page?.content ?? null),
+          baseUpdatedAt: page?.updatedAt,
+        })
+      : null;
+    if (isDurableContentEdit && !recoveryEntry) {
+      toast.error("无法写入恢复备份", {
+        id: "goose-recovery-journal-failed",
+        description: "请先不要关闭窗口，并复制重要内容后重试。",
+      });
+    }
     const shouldMergeFrontmatterSettings =
       isLocal &&
       !silent &&
@@ -197,7 +219,7 @@ export const usePages = create<PagesState>()((set, get) => ({
         set((s) => ({
           dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [id]: true },
         }));
-        queueLocalPageSave(id, contentForSave, get);
+        queueLocalPageSave(id, contentForSave, get, recoveryEntry?.revision);
       }
 
       return {
@@ -218,7 +240,15 @@ export const usePages = create<PagesState>()((set, get) => ({
       return;
     }
 
-    persistPageSnapshot(updatedPage);
+    const persisted = persistPageSnapshot(updatedPage);
+    if (persisted && recoveryEntry) {
+      acknowledgeRecoveryEntry("internal-page", id, recoveryEntry.revision);
+    } else if (!persisted) {
+      toast.error("内容暂未保存", {
+        id: `goose-page-save-failed:${id}`,
+        description: "最新内容已放入恢复备份，下次打开仍可找回。",
+      });
+    }
   },
 
   deletePage: (id, options) => deletePageAction(set, get, id, options),

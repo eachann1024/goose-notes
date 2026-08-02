@@ -2,7 +2,9 @@ import type { JSONContent } from "@/types";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 
 /** 每个槽位最多保留的撤销步数（超长期；超出淘汰最旧）。 */
-export const QUICKNOTE_UNDO_MAX = 200;
+export const QUICKNOTE_UNDO_MAX = 100;
+/** undo + redo 持久化总预算；当前草稿不计入且永不被淘汰。 */
+export const QUICKNOTE_HISTORY_MAX_BYTES = 512 * 1024;
 /** 连续输入合并窗口：窗口内多次编辑只记一步，避免每个字符一档。 */
 export const QUICKNOTE_UNDO_COALESCE_MS = 800;
 
@@ -71,6 +73,38 @@ export function normalizeSlotStacks(raw: unknown): QuickNoteSlotStacks {
     empty[slot] = clampStack(next);
   }
   return empty;
+}
+
+const stackBytes = (stack: Array<JSONContent | null>): number => {
+  try {
+    return JSON.stringify(stack).length * 2;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+};
+
+export function budgetQuickNoteHistory(
+  undoRaw: unknown,
+  redoRaw: unknown,
+  maxBytes = QUICKNOTE_HISTORY_MAX_BYTES,
+): { undoStacks: QuickNoteSlotStacks; redoStacks: QuickNoteSlotStacks } {
+  const undoStacks = normalizeSlotStacks(undoRaw);
+  const redoStacks = normalizeSlotStacks(redoRaw);
+  const stacks = ([1, 2, 3, 4, 5] as const).flatMap((slot) => [
+    undoStacks[slot],
+    redoStacks[slot],
+  ]);
+  let total = stacks.reduce((sum, stack) => sum + stackBytes(stack), 0);
+  while (total > maxBytes) {
+    const candidates = stacks.filter((stack) => stack.length > 0);
+    if (candidates.length === 0) break;
+    const target = candidates.reduce((largest, stack) =>
+      stackBytes(stack) > stackBytes(largest) ? stack : largest,
+    );
+    target.shift();
+    total = stacks.reduce((sum, stack) => sum + stackBytes(stack), 0);
+  }
+  return { undoStacks, redoStacks };
 }
 
 export interface RecordEditParams {

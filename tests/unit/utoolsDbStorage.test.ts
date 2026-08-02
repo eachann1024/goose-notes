@@ -85,3 +85,12 @@ test("uTools storage remove clears both canonical and legacy stores", () => {
   expect(dbStorage.has("goose-note-pages-meta")).toBe(false);
   expect(getDbStorageItem("goose-note-pages-meta")).toBeNull();
 });
+
+test("uTools storage reports a canonical write failure", () => {
+  installUToolsStorageRuntime();
+  const utools = (globalThis as any).window.utools;
+  utools.db.put = () => ({ ok: false, error: "fault-injected" });
+
+  expect(setDbStorageItem("critical", "draft")).toBe(false);
+  expect(getDbStorageItem("critical")).toBeNull();
+});

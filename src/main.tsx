@@ -304,6 +304,18 @@ const runFlushOnce = () => {
   return flushInFlight;
 };
 
+const reportFlushFailure = (error: unknown) => {
+  console.error("[save-guard] pending writes flush failed", error);
+  toast.error("仍有内容未完成保存", {
+    id: "goose-pending-writes-failed",
+    description: "最新内容已保留在恢复备份，请保持窗口打开后重试。",
+  });
+};
+
+const flushFromLifecycle = () => {
+  void runFlushOnce().catch(reportFlushFailure);
+};
+
 const hasVisiblePagesInNotebook = (
   notebookId: string | null,
   pages: ReturnType<typeof usePages.getState>["pages"],
@@ -360,38 +372,43 @@ const setupSaveGuards = () => {
         return;
       }
       // 内容已自动保存；显式保存会再确保落盘并应用「标题→文件名」重命名。
-      void pagesState.saveDirtyLocalPage(activePageId).then((ok) => {
-        if (ok) toast.success("已保存", { duration: 1200 });
-        else toast.info("内容已是最新", { duration: 1000 });
-      });
+      void pagesState
+        .saveDirtyLocalPage(activePageId)
+        .then((ok) => {
+          if (ok) toast.success("已保存", { duration: 1200 });
+          else toast.info("内容已是最新", { duration: 1000 });
+        })
+        .catch(reportFlushFailure);
       return;
     }
 
-    void runFlushOnce().then(() => {
-      toast.info("内容会自动保存，请放心", { duration: 1500 });
-    });
+    void runFlushOnce()
+      .then(() => {
+        toast.success("内容已保存", { duration: 1200 });
+      })
+      .catch(reportFlushFailure);
   };
 
   const handleVisibilityChange = () => {
     if (document.visibilityState === "hidden") {
-      void runFlushOnce();
+      flushFromLifecycle();
     }
   };
 
   const handleWindowBlur = () => {
-    void runFlushOnce();
+    flushFromLifecycle();
   };
 
   const handlePageHide = () => {
-    void runFlushOnce();
+    flushFromLifecycle();
   };
 
   const handleBeforeUnload = () => {
-    void runFlushOnce();
+    flushFromLifecycle();
   };
 
   const handlePluginOut = () => {
-    void runFlushOnce();
+    flushFromLifecycle();
   };
 
   document.addEventListener("keydown", handleManualSave, { capture: true });

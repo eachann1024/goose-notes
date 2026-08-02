@@ -5,7 +5,6 @@ import {
   writeDbStorageJSON,
 } from "./utoolsDbStorage";
 import { UToolsAdapter } from "../utools";
-import { toast } from "@/components/ui/sonner";
 
 export const PAGE_DOC_PREFIX = "gn:page:";
 export const LOCAL_PAGE_META_DOC_PREFIX = "gn:local-meta:";
@@ -45,17 +44,18 @@ const getLocalPageMetaDocId = (pageId: string) => `${LOCAL_PAGE_META_DOC_PREFIX}
 
 const clonePage = <T>(value: T): T => structuredClone(value) as T;
 
-const putDocWithRetry = <T>(id: string, data: T): void => {
+const putDocWithRetry = <T>(id: string, data: T): boolean => {
   const current = UToolsAdapter.db.get<T>(id);
   let result = UToolsAdapter.db.put(id, data, current?._rev);
-  if (result.ok !== false) return;
+  if (result.ok !== false) return true;
 
   const latest = UToolsAdapter.db.get<T>(id);
   result = UToolsAdapter.db.put(id, data, latest?._rev);
   if (result.ok === false) {
     console.error("[pageRepository] db.put failed", id, result.error);
-    toast.error("保存失败，请重试");
+    return false;
   }
+  return true;
 };
 
 const removeDoc = (id: string): void => {
@@ -119,8 +119,8 @@ const cleanupExpiredPages = (pages: Record<string, Page>): Record<string, Page> 
   return nextPages;
 };
 
-export const saveInternalPage = (page: Page): void => {
-  putDocWithRetry(getPageDocId(page.id), clonePage(page));
+export const saveInternalPage = (page: Page): boolean => {
+  return putDocWithRetry(getPageDocId(page.id), clonePage(page));
 };
 
 /** 从 db 读取单条内部页快照（跨窗同步用：另一窗写盘后重读最新）。 */
@@ -139,14 +139,14 @@ export const removeInternalPage = (pageId: string): void => {
 
 export const saveLocalPageMeta = (
   page: Pick<Page, "id" | "workspaceId" | "updatedAt"> & LocalPageMetaFields,
-): void => {
+): boolean => {
   const doc = normalizeLocalPageMeta(page.id, page.workspaceId, page, page.updatedAt);
   if (!doc) {
     removeLocalPageMeta(page.id);
-    return;
+    return true;
   }
 
-  putDocWithRetry(getLocalPageMetaDocId(page.id), doc);
+  return putDocWithRetry(getLocalPageMetaDocId(page.id), doc);
 };
 
 export const removeLocalPageMeta = (pageId: string): void => {
@@ -204,8 +204,8 @@ export const loadPagesFromStorage = (): HydratedPagesPayload => {
   };
 };
 
-export const savePagesMeta = (meta: PersistedPagesMetaState): void => {
-  writeDbStorageJSON(PAGES_META_STORAGE_KEY, meta);
+export const savePagesMeta = (meta: PersistedPagesMetaState): boolean => {
+  return writeDbStorageJSON(PAGES_META_STORAGE_KEY, meta);
 };
 
 export const removePagesMeta = (): void => {
