@@ -22,6 +22,16 @@ import { resolveHistoryBackend } from "@/lib/history/backend";
 import { localPageMetadataCache } from "../../persistence";
 import type { StoreSet, StoreGet } from "../hydrate";
 
+interface LocalFolderLoadTask {
+  fingerprint: string;
+  requestId: number;
+  promise: Promise<void>;
+}
+
+const localFolderLoadTasks = new Map<string, LocalFolderLoadTask>();
+const latestLocalFolderLoadRequest = new Map<string, number>();
+let localFolderLoadRequestSequence = 0;
+
 // 外部进程修改了文件后，把磁盘内容重新读入 store（不触发脏标记 / 自动保存）。
 // 若该文件有未保存的本地编辑（dirty）则跳过，避免覆盖用户输入。
 export const reloadLocalPageFromDiskAction = async (
@@ -100,12 +110,14 @@ export const reloadLocalPageFromDiskAction = async (
   }
 };
 
-export const loadLocalFolderPagesAction = async (
+const loadLocalFolderPagesOnce = async (
   set: StoreSet,
   get: StoreGet,
   notebookId: string,
   basePath: string,
-  options?: { showWelcome?: boolean },
+  options: { showWelcome?: boolean } | undefined,
+  hiddenFolders: string[],
+  requestId: number,
 ) => {
   if (typeof window === "undefined" || !window.gooseFs) return;
 
@@ -146,8 +158,12 @@ export const loadLocalFolderPagesAction = async (
       notebookId,
       basePath,
       gooseFs: window.gooseFs,
-      hiddenFolders: useSettings.getState().localFolderHiddenFolders,
+      hiddenFolders,
     });
+
+    // 同一记事本可能在启动恢复、点击切换和 watch 兜底中同时发起刷新。
+    // 只允许最新请求提交，避免较慢的旧扫描反向覆盖新目录状态。
+    if (latestLocalFolderLoadRequest.get(notebookId) !== requestId) return;
 
     set((state) => {
       const pagesOutsideNotebook = Object.fromEntries(
@@ -273,6 +289,7 @@ export const loadLocalFolderPagesAction = async (
       // 忽略
     }
   } catch (error) {
+    if (latestLocalFolderLoadRequest.get(notebookId) !== requestId) return;
     const message =
       error instanceof Error && error.message
         ? error.message
@@ -284,6 +301,53 @@ export const loadLocalFolderPagesAction = async (
     });
     throw error;
   }
+};
+
+export const loadLocalFolderPagesAction = (
+  set: StoreSet,
+  get: StoreGet,
+  notebookId: string,
+  basePath: string,
+  options?: { showWelcome?: boolean },
+): Promise<void> => {
+  if (typeof window === "undefined" || !window.gooseFs) {
+    return Promise.resolve();
+  }
+
+  const hiddenFolders = [
+    ...useSettings.getState().localFolderHiddenFolders,
+  ];
+  const fingerprint = JSON.stringify({
+    basePath,
+    hiddenFolders,
+    showWelcome: Boolean(options?.showWelcome),
+  });
+  const existing = localFolderLoadTasks.get(notebookId);
+  if (existing?.fingerprint === fingerprint) return existing.promise;
+
+  const requestId = ++localFolderLoadRequestSequence;
+  latestLocalFolderLoadRequest.set(notebookId, requestId);
+  const promise = loadLocalFolderPagesOnce(
+    set,
+    get,
+    notebookId,
+    basePath,
+    options,
+    hiddenFolders,
+    requestId,
+  ).finally(() => {
+    const current = localFolderLoadTasks.get(notebookId);
+    if (current?.requestId === requestId) {
+      localFolderLoadTasks.delete(notebookId);
+    }
+  });
+
+  localFolderLoadTasks.set(notebookId, {
+    fingerprint,
+    requestId,
+    promise,
+  });
+  return promise;
 };
 
 // ── 增量 watch 辅助：单页从 store 移除 ────────────────────────────────────────

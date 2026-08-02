@@ -106,6 +106,7 @@ type EditorComposerProps = {
   getSlashItems: (query: string) => Promise<any[]>;
   pageIdForUpdateRef: RefObject<string | null>;
   syncedContentSignatureRef: RefObject<string | null>;
+  pendingEditorChangeRef: RefObject<boolean>;
   debouncedUpdate: ((id: string) => void) & { cancel: () => void };
   /** 自上次程序化同步（切页/外部重载）以来用户是否真实交互过（见 Editor.tsx 意图门控）。 */
   userInteractedRef: RefObject<boolean>;
@@ -140,6 +141,7 @@ export function EditorComposer({
   getSlashItems,
   pageIdForUpdateRef,
   syncedContentSignatureRef,
+  pendingEditorChangeRef,
   debouncedUpdate,
   userInteractedRef,
   silentContentSync,
@@ -524,6 +526,7 @@ export function EditorComposer({
             silentContentSync(nextContent);
             return;
           }
+          pendingEditorChangeRef.current = true;
           debouncedUpdate(safePageId);
           if (userInteractedRef.current) {
             onPromotePreview?.();

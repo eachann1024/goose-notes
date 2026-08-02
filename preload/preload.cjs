@@ -1147,12 +1147,47 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
+    readDirAsync: async (dir) => {
+      try {
+        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        return entries.map((entry) => ({
+          name: entry.name,
+          isFile: entry.isFile(),
+          isDirectory: entry.isDirectory(),
+          path: path.join(dir, entry.name),
+        }));
+      } catch (err) {
+        console.error("[gooseFs] readDirAsync failed:", err);
+        return [];
+      }
+    },
+
     readFile: (filePath) => {
       try {
         return fs.readFileSync(filePath, "utf-8");
       } catch (err) {
         console.error("[gooseFs] readFile failed:", err);
         return null;
+      }
+    },
+
+    readFileAsync: async (filePath) => {
+      try {
+        return await fs.promises.readFile(filePath, "utf-8");
+      } catch (err) {
+        console.error("[gooseFs] readFileAsync failed:", err);
+        return null;
+      }
+    },
+
+    readFileStatAsync: async (filePath) => {
+      try {
+        const content = await fs.promises.readFile(filePath, "utf-8");
+        return { ok: true, content };
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        console.error("[gooseFs] readFileStatAsync failed:", err);
+        return { ok: false, error, content: null };
       }
     },
 
@@ -1213,6 +1248,15 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         return fs.existsSync(filePath);
       } catch (err) {
         console.error("[gooseFs] exists failed:", err);
+        return false;
+      }
+    },
+
+    existsAsync: async (filePath) => {
+      try {
+        await fs.promises.access(filePath);
+        return true;
+      } catch {
         return false;
       }
     },

@@ -47,6 +47,29 @@ interface LocalFolderEntry {
   path: string;
 }
 
+const SCAN_CPU_SLICE_MS = 8;
+
+/**
+ * Markdown 解析发生在渲染线程。批量扫描时定期让出一帧，避免旧版 uTools
+ * Chromium 因连续长任务把窗口判定为无响应。Node 单测环境回落到 setTimeout。
+ */
+function yieldToRenderer(): Promise<void> {
+  return new Promise((resolve) => {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function"
+    ) {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
+}
+
+function nowForScanBudget(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 export function buildLocalPageId(
   notebookId: string,
   basePath: string,
@@ -317,31 +340,51 @@ export async function scanLocalFolderPages({
       pendingFiles.push({ entry, fileId });
     }
 
-    // 并发批处理读文件+解析，每批最多 8 个，防 EMFILE，保持顺序
+    // 文件 IO 并发、Markdown 解析串行分片：既避免 EMFILE，也避免多个大文件
+    // 在同一个渲染帧里连续解析形成长任务。
     const BATCH_SIZE = 8;
     const now = Date.now();
     for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
       const batch = pendingFiles.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.allSettled(
-        batch.map(async ({ entry, fileId }) => {
-          const readResult = await readMarkdownFile(gooseFs, entry.path);
+      const readResults = await Promise.allSettled(
+        batch.map(({ entry }) => readMarkdownFile(gooseFs, entry.path)),
+      );
+
+      let sliceStartedAt = nowForScanBudget();
+      for (let batchIndex = 0; batchIndex < batch.length; batchIndex++) {
+        const pending = batch[batchIndex];
+        const readResult = readResults[batchIndex];
+        if (readResult.status === "rejected") {
+          console.error(
+            "[local-folder-scanner] 跳过文件读取失败:",
+            readResult.reason,
+          );
+          continue;
+        }
+
+        try {
           const page = await buildMarkdownPage(
             notebookId,
             basePath,
-            entry,
-            readResult,
+            pending.entry,
+            readResult.value,
             now,
-            fileId,
+            pending.fileId,
           );
           page.parentId = parentId;
-          return page;
-        }),
-      );
-      for (const result of batchResults) {
-        if (result.status === "fulfilled") {
-          pages.push(result.value);
-        } else {
-          console.error("[local-folder-scanner] 跳过文件解析失败:", result.reason);
+          pages.push(page);
+        } catch (error) {
+          console.error("[local-folder-scanner] 跳过文件解析失败:", error);
+        }
+
+        const hasMoreFiles =
+          batchIndex < batch.length - 1 || i + BATCH_SIZE < pendingFiles.length;
+        if (
+          hasMoreFiles &&
+          nowForScanBudget() - sliceStartedAt >= SCAN_CPU_SLICE_MS
+        ) {
+          await yieldToRenderer();
+          sliceStartedAt = nowForScanBudget();
         }
       }
     }

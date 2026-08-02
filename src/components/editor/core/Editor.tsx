@@ -169,6 +169,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
   const pageIdForUpdateRef = useRef<string | null>(null);
   const syncedContentSignatureRef = useRef<string | null>(null);
+  // 只有 BlockNote 真正触发了待提交的 onChange 才需要在切页时克隆整篇文档。
+  // 只读浏览后切到文件夹主页时直接跳过，避免大文件产生同步长任务。
+  const pendingEditorChangeRef = useRef(false);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const shiftPressedRef = useRef(false);
   pageIdForUpdateRef.current = page?.id ?? null;
@@ -415,6 +418,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       (targetPageId: string) => {
         if (targetPageId !== pageIdForUpdateRef.current) return;
         const { content, signature } = readCurrentEditorContent();
+        pendingEditorChangeRef.current = false;
         if (signature === syncedContentSignatureRef.current) return;
         syncedContentSignatureRef.current = signature;
         onContentChangeRef.current(content);
@@ -431,6 +435,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
     // 切页起点即重置：侧栏点击等切页前的 pointerdown 不应算进新页面的用户编辑。
     userInteractedRef.current = false;
+    pendingEditorChangeRef.current = false;
 
     debouncedUpdate.cancel();
 
@@ -772,7 +777,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       if (!safePageId) return;
       debouncedUpdate.cancel();
       if (safePageId !== pageIdForUpdateRef.current) return;
+      if (!pendingEditorChangeRef.current) return;
       const { content, signature } = readCurrentEditorContent();
+      pendingEditorChangeRef.current = false;
       if (signature === syncedContentSignatureRef.current) return;
       syncedContentSignatureRef.current = signature;
       onContentChangeRef.current(content);
@@ -903,6 +910,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       );
       const scrollTop = scrollContainer?.scrollTop;
       debouncedUpdate.cancel();
+      pendingEditorChangeRef.current = false;
       try {
         editor.replaceBlocks(editor.document, nextEditorContent as any);
       } catch (error) {
@@ -1016,6 +1024,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       getSlashItems={getSlashItems}
       pageIdForUpdateRef={pageIdForUpdateRef}
       syncedContentSignatureRef={syncedContentSignatureRef}
+      pendingEditorChangeRef={pendingEditorChangeRef}
       debouncedUpdate={debouncedUpdate}
       userInteractedRef={userInteractedRef}
       silentContentSync={silentContentSync}
