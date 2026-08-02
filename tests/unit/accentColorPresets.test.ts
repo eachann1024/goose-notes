@@ -90,3 +90,48 @@ test("编辑器与 AI 行内代码都消费强调色 token", () => {
   expect(aiCss).toContain("color: var(--goose-inline-code-fg);");
   expect(aiCss).toContain("color: var(--goose-accent-link);");
 });
+
+function getToken(rule: string, token: string): string {
+  const match = rule.match(new RegExp(`${token}:\\s*([^;]+);`));
+  return match?.[1]?.trim() ?? "";
+}
+
+test("深色行内代码 token 足够有色相和底色", () => {
+  const monoDark = getRule('.dark[data-goose-accent="mono"]');
+  const irisDark = getRule('.dark[data-goose-accent="iris"]');
+  const oceanDark = getRule('.dark[data-goose-accent="ocean"]');
+  const roseDark = getRule('.dark[data-goose-accent="rose"]');
+
+  for (const [name, rule] of [
+    ["mono", monoDark],
+    ["iris", irisDark],
+    ["ocean", oceanDark],
+    ["rose", roseDark],
+  ] as const) {
+    expect(getToken(rule, "--goose-inline-code-bg"), `${name} bg`).not.toBe("");
+    expect(getToken(rule, "--goose-inline-code-fg"), `${name} fg`).not.toBe("");
+    expect(
+      getToken(rule, "--goose-inline-code-border-hover"),
+      `${name} border`,
+    ).not.toBe("");
+  }
+
+  // 彩色 accent 不得再退回 0.14 淡底 / mono 灰字
+  for (const [name, rule] of [
+    ["iris", irisDark],
+    ["ocean", oceanDark],
+    ["rose", roseDark],
+  ] as const) {
+    const bg = getToken(rule, "--goose-inline-code-bg");
+    const fg = getToken(rule, "--goose-inline-code-fg");
+    expect(bg, `${name} dark bg too faint`).not.toMatch(/0\.14\)/);
+    expect(fg, `${name} dark fg must not be mono gray`).not.toBe("#f5f5f5");
+    expect(fg, `${name} dark fg must be hex color`).toMatch(/^#[0-9a-fA-F]{6}$/);
+  }
+
+  expect(getToken(irisDark, "--goose-inline-code-fg")).toBe("#c7d2fe");
+  expect(getToken(oceanDark, "--goose-inline-code-fg")).toBe("#bfdbfe");
+  expect(getToken(roseDark, "--goose-inline-code-fg")).toBe("#fecdd3");
+  expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(/^#f[a-f0-9]{5}$/i);
+  expect(getToken(monoDark, "--goose-inline-code-bg")).not.toBe("");
+});

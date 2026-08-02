@@ -366,9 +366,9 @@
     --goose-callout-accent: #6366f1;
     --goose-callout-bg: #2f2f2f;
     --goose-callout-border: #3d3d3d;
-    --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
-    --goose-inline-code-fg: var(--goose-interactive-selected-fg);
-    --goose-inline-code-border-hover: #4b4e81;
+    --goose-inline-code-bg: #3d3e64;
+    --goose-inline-code-fg: #c7d2fe;
+    --goose-inline-code-border-hover: #6366f1;
     --goose-accent-link: #a5b4fc;
     --goose-accent-link-hover: #c7d2fe;
     --goose-accent-focus: #6366f1;
