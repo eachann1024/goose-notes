@@ -74,6 +74,12 @@ export interface BatchPlanJournal {
   deleteBatchIdsByOperationId: Record<string, string>;
   /** prepare 时为内置笔记 create 操作预分配的稳定页面 ID。 */
   plannedPageIds: Record<string, string>;
+  /** 本地 create / rename 在审批时冻结的目标路径。 */
+  plannedLocalPaths: Record<string, string>;
+  /** 本地页面执行成功后的路径，用于撤回前冲突检查。 */
+  localPathAfterByPageId: Record<string, string>;
+  /** 本地 delete 的可恢复暂存路径；原文件不会直接永久删除。 */
+  localTrashPathsByPageId: Record<string, string>;
   /** 已创建页的 pageId，或已写入/删除页的执行后版本。 */
   after: Record<string, PageRevision>;
   createdPageIds: Record<string, string>;

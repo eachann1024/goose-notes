@@ -21,6 +21,9 @@ export function readBatchPlanJournal(
     affectedPageIdsByOperationId: journal.affectedPageIdsByOperationId ?? {},
     deleteBatchIdsByOperationId: journal.deleteBatchIdsByOperationId ?? {},
     plannedPageIds: journal.plannedPageIds ?? {},
+    plannedLocalPaths: journal.plannedLocalPaths ?? {},
+    localPathAfterByPageId: journal.localPathAfterByPageId ?? {},
+    localTrashPathsByPageId: journal.localTrashPathsByPageId ?? {},
   };
 }
 

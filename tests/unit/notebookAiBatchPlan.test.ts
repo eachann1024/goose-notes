@@ -672,7 +672,7 @@ test("本地文件正文审批执行后不会注入文件名 H1", async () => {
   expect(JSON.stringify(blocks)).not.toContain("公司账号");
 });
 
-test("本地文件夹删除计划在冻结阶段即标记为 invalid，且零写入", async () => {
+test("本地文件系统不可用时删除计划在冻结阶段即标记为 invalid，且零写入", async () => {
   const localPage = makePage("batch-local-delete", "本地内容", {
     localFilePath: "/tmp/goose-batch/a.md",
   });
@@ -690,7 +690,7 @@ test("本地文件夹删除计划在冻结阶段即标记为 invalid，且零写
 
   expect(prepared.ok).toBe(false);
   expect(prepared.journal?.status).toBe("invalid");
-  expect(prepared.error).toContain("不支持删除本地文件夹页面");
+  expect(prepared.error).toContain("本地文件系统不可用");
   expect(writeCalls).toBe(0);
   expect(usePages.getState().pages[localPage.id]).toBeDefined();
 });

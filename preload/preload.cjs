@@ -1261,6 +1261,14 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
+    realpathAsync: async (filePath) => {
+      try {
+        return await fs.promises.realpath(filePath);
+      } catch {
+        return null;
+      }
+    },
+
     watch: (dirPath, callback) => {
       try {
         // 如果已经存在监听器，先停止

@@ -41,6 +41,7 @@ declare global {
     writeFileAsync?: (path: string, content: string, encoding?: string) => Promise<boolean>;
     exists: (path: string) => boolean;
     existsAsync?: (path: string) => Promise<boolean>;
+    realpathAsync?: (path: string) => Promise<string | null>;
     watch: (dir: string, cb: any) => any;
     unwatch: (dir: string) => void;
     mkdir: (dir: string) => boolean | Promise<boolean>;
