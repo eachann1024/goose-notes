@@ -28,6 +28,7 @@ import {
 import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
 import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
 import { toast } from "@/components/ui/sonner";
+import { getCustomAIApiKey } from "@/lib/ai-provider";
 import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
 import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
@@ -124,13 +125,7 @@ export function EditorFormattingToolbar() {
         toast.error("AI 助手尚未开启，请先到设置中打开");
         return;
       }
-      const apiKey = (
-        aiSettings.customProtocol === "openai-responses"
-          ? aiSettings.customOpenAIResponsesApiKey
-          : aiSettings.customProtocol === "openai"
-            ? aiSettings.customOpenAIApiKey
-            : aiSettings.customClaudeApiKey
-      ).trim();
+      const apiKey = getCustomAIApiKey(aiSettings);
       if (!apiKey) {
         toast.error(
           '未填写 API Key。请前往"设置 → AI 助手 → AI 服务"检查配置。',
@@ -260,9 +255,10 @@ export function EditorFormattingToolbar() {
         role="toolbar"
         aria-label="文字格式"
         className={cn(
-          __GOOSE_EDITOR_COMPACT__
-            ? "goose-editor-context-ui"
-            : "goose-formatting-toolbar-scaled",
+          // 小窗底栏已用固定 px 尺寸，禁止再套 CSS zoom：
+          // uTools 旧内核会放大 zoom 祖先的 getBoundingClientRect，
+          // 导致 Portal 色板 / tooltip 错位（只露出「文本颜色」标题）。
+          !__GOOSE_EDITOR_COMPACT__ && "goose-formatting-toolbar-scaled",
           "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",
         )}

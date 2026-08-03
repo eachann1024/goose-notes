@@ -112,3 +112,17 @@ test("color panel clamps to the viewport instead of shifting its anchor", () => 
     }),
   ).toEqual({ top: 292, left: 118, showAbove: true });
 });
+
+test("color panel opens above a bottom-docked quicknote toolbar trigger", () => {
+  // 速记小窗底栏：触发器贴底，下方几乎没空间；必须向上展开完整色板。
+  expect(
+    getColorPanelPosition({
+      trigger: { top: 410, right: 180, bottom: 438, left: 152, width: 28 },
+      panelWidth: 172,
+      panelHeight: 190,
+      viewportWidth: 360,
+      viewportHeight: 480,
+      gap: 8,
+    }),
+  ).toEqual({ top: 402, left: 166, showAbove: true });
+});

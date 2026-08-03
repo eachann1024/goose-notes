@@ -40,9 +40,14 @@ export function getColorPanelPosition({
   const padding = PANEL_VIEWPORT_PADDING;
   const spaceAbove = trigger.top - padding;
   const spaceBelow = viewportHeight - padding - trigger.bottom;
-  const showAbove =
-    spaceAbove >= panelHeight + gap ||
-    (spaceBelow < panelHeight + gap && spaceAbove > spaceBelow);
+  const needed = panelHeight + gap;
+  // 底栏 / 小窗场景：触发器靠近视口下半区时优先向上展开，
+  // 避免色板开到窗口外只露出「文本颜色」标题，看起来像坏掉的 tooltip。
+  const nearBottom = trigger.bottom > viewportHeight * 0.55;
+  const showAbove = nearBottom
+    ? spaceAbove >= Math.min(needed, spaceBelow + 1) || spaceAbove > spaceBelow
+    : spaceAbove >= needed ||
+      (spaceBelow < needed && spaceAbove > spaceBelow);
   const halfWidth = panelWidth / 2;
   const preferredLeft = trigger.left + trigger.width / 2;
   const minLeft = padding + halfWidth;
@@ -464,7 +469,15 @@ export function FormattingToolbarColorPicker() {
         e.stopPropagation();
       }}
     >
-      <div className="goose-color-picker-panel flex flex-col border border-border/75 bg-popover shadow-[0_8px_22px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.05)] backdrop-blur-[1px] dark:border-white/20">
+      <div
+        className="goose-color-picker-panel flex flex-col border bg-popover dark:border-white/20"
+        // uTools 旧内核不吃 hsl(var(--x)/alpha)，用 rgba 投影避免整块实色遮住色板。
+        style={{
+          borderColor: "rgba(128,128,128,0.28)",
+          boxShadow:
+            "0 8px 22px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
+        }}
+      >
         <div className="goose-color-picker-title font-semibold text-muted-foreground">
           文本颜色
         </div>
@@ -476,7 +489,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
                 isTextColorActive && currentTextColor === item.color
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                   : "",
@@ -518,7 +531,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
                 isBgColorActive && currentBgColor === item.color
                   ? "border-primary ring-1 ring-primary/25"
                   : "",
