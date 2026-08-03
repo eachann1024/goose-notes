@@ -588,6 +588,12 @@
    轻微上移后，在 Cmd +/- 的所有字号下都保持一致，且不改变 marker 槽布局。 */
 .workspace-editor-surface {
   --goose-list-marker-optical-offset-y: -0.04em;
+  /* 无序列表各级几何 marker 半径（随字号 em 缩放） */
+  --goose-bullet-marker-radius: 0.2109375em; /* 一级实心圆 */
+  --goose-bullet-marker-radius-nested: 0.196875em; /* 二级空心圆外半径 */
+  --goose-bullet-marker-ring: 0.084375em; /* 二级空心圆环厚 */
+  --goose-bullet-marker-square: 0.3375em; /* 三级方点边长 */
+  --goose-bullet-marker-center-x: 10.3px;
 }
 
 .workspace-editor-surface
@@ -651,16 +657,14 @@
   --goose-list-marker-clearance-y: 0.5em;
 }
 
-/* 仅常规笔记本无序列表：一级实心圆点半径为 0.2109375em，连接线从
-   圆点外缘再退让 0.3125em；两者均随编辑器字号缩放。 */
+/* 仅常规笔记本无序列表：连接线从圆点外缘再退让 0.3125em；随字号缩放。 */
 .workspace-shell
   .workspace-editor-surface
   .bn-block:has(
     > .bn-block-content[data-content-type="bulletListItem"] + .bn-block-group
   ) {
-  --goose-list-marker-axis-x: 10.3px;
+  --goose-list-marker-axis-x: var(--goose-bullet-marker-center-x);
   --goose-list-marker-axis-y: calc(0.75em + 3px);
-  --goose-bullet-marker-radius: 0.2109375em;
   --goose-bullet-line-gap: 0.3125em;
   --goose-list-marker-clearance-y: calc(
     var(--goose-bullet-marker-radius) + var(--goose-bullet-line-gap)
@@ -702,13 +706,11 @@
   );
 }
 
-/* 圆点和数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
-   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移。 */
+/* 有序列表数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
+   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移。
+   无序列表改用几何圆/方点，不走这段内边距（见下方 bullet 规则）。 */
 .workspace-editor-surface
-  .bn-block-content:is(
-    [data-content-type="bulletListItem"],
-    [data-content-type="numberedListItem"]
-  )::before {
+  .bn-block-content[data-content-type="numberedListItem"]::before {
   box-sizing: border-box;
   flex: 0 0 auto;
   min-width: 1.5em;
@@ -716,26 +718,35 @@
   padding-right: 0.1875em;
 }
 
-/* 飞书式列表圆点：不用字体字形，直接在正文首行高 1.5em 的 marker 槽内
-   绘制几何圆。圆心固定在 0.75em，和正文首行的几何中心严格同轴；
-   默认 16px 正文下一级圆点直径为 6.75px，并随编辑器字号同步缩放。 */
+/* 飞书式列表圆点：不用字体字形 / radial-gradient（硬切边在旧 Chromium
+   锯齿明显），改用 border-radius 几何圆。圆心仍固定在 center-x、首行
+   垂直中心 0.75em；默认 16px 正文下一级圆点直径 6.75px，随字号缩放。
+   marker 槽总占位仍为 1.5em（左右 margin 补齐），避免正文起点偏移。 */
 .workspace-shell
   .workspace-editor-surface
   .bn-block-content[data-content-type="bulletListItem"]::before {
   content: "" !important;
-  width: 1.5em;
-  min-width: 1.5em;
-  height: 1.5em;
-  padding: 0;
-  background-image: radial-gradient(
-    circle at 10.3px 50%,
-    currentColor 0,
-    currentColor 0.2109375em,
-    transparent 0.2109375em
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: calc(2 * var(--goose-bullet-marker-radius));
+  min-width: 0;
+  height: calc(2 * var(--goose-bullet-marker-radius));
+  margin-top: calc(0.75em - var(--goose-bullet-marker-radius));
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-radius)
   );
-  background-repeat: no-repeat;
-  line-height: 1.5;
-  transform: none;
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-radius)
+  );
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: currentColor;
+  background-image: none;
+  line-height: 0;
+  transform: translateY(var(--goose-list-marker-optical-offset-y));
 }
 
 /* 光标所在列表行的 marker 使用产品现有强调前景色。强调色令牌为实色，
@@ -855,7 +866,7 @@
 }
 
 /* 一级子无序列表始终使用空心圆，不依赖父项是否也是无序列表。
-   外径略小于父级实心圆，圆环保持足够厚度，尺寸与视觉重量都逐级收敛。 */
+   外径略小于父级实心圆；用 border 画环，避免 radial-gradient 硬切边锯齿。 */
 .workspace-editor-surface
   .bn-editor
   > .bn-block-group
@@ -866,14 +877,20 @@
   > .bn-block
   > .bn-block-content[data-content-type="bulletListItem"]::before {
   content: "" !important;
-  background-image: radial-gradient(
-    circle at 10.3px 50%,
-    transparent 0,
-    transparent 0.1125em,
-    currentColor 0.1125em,
-    currentColor 0.196875em,
-    transparent 0.196875em
+  width: calc(2 * var(--goose-bullet-marker-radius-nested));
+  height: calc(2 * var(--goose-bullet-marker-radius-nested));
+  margin-top: calc(0.75em - var(--goose-bullet-marker-radius-nested));
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-radius-nested)
   );
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-radius-nested)
+  );
+  border: var(--goose-bullet-marker-ring) solid currentColor;
+  border-radius: 50%;
+  background-color: transparent;
+  background-image: none;
 }
 
 /* 第二级子无序列表继续使用方点，保持层级可辨识。 */
@@ -890,10 +907,20 @@
   > .bn-block
   > .bn-block-content[data-content-type="bulletListItem"]::before {
   content: "" !important;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-position: calc(10.3px - 0.16875em) 50%;
-  background-size: 0.3375em 0.3375em;
-  background-repeat: no-repeat;
+  width: var(--goose-bullet-marker-square);
+  height: var(--goose-bullet-marker-square);
+  margin-top: calc(0.75em - var(--goose-bullet-marker-square) / 2);
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-square) / 2
+  );
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-square) / 2
+  );
+  border: none;
+  border-radius: 0;
+  background-color: currentColor;
+  background-image: none;
 }
 
 /*
