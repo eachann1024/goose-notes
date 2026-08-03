@@ -2,6 +2,11 @@ import type { LanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import {
+  getCustomAIApiKey,
+  getCustomAIBaseURL,
+  resolveActiveProtocol,
+} from "@/lib/ai-provider";
 import { useSettings } from "@/stores/useSettings";
 
 export type ModelAvailability =
@@ -10,7 +15,8 @@ export type ModelAvailability =
 
 /**
  * 从 settings 构造 LanguageModel。
- * 支持 OpenAI Responses、OpenAI 兼容和 Anthropic 三种自定义协议。
+ * 支持 OpenAI Responses、OpenAI 兼容和 Anthropic 三种自定义协议；
+ * DeepSeek 等预设按模型分支协议。
  */
 export function buildLanguageModel(): ModelAvailability {
   const ai = useSettings.getState().ai;
@@ -37,23 +43,22 @@ export function buildLanguageModel(): ModelAvailability {
   }
 
   try {
-    if (ai.customProtocol === "openai-responses") {
-      const baseURL = (
-        ai.customOpenAIResponsesBaseURL || "https://api.openai.com/v1"
-      ).replace(/\/+$/, "");
+    const requestOverrides = { selectedModelId: modelId };
+    const protocol = resolveActiveProtocol(ai, requestOverrides);
+    const baseURL = getCustomAIBaseURL(ai, protocol).replace(/\/+$/, "");
+    const apiKey = getCustomAIApiKey(ai, protocol) || "placeholder";
+
+    if (protocol === "openai-responses") {
       const provider = createOpenAI({
-        apiKey: ai.customOpenAIResponsesApiKey || "placeholder",
+        apiKey,
         baseURL,
       });
       return { ok: true, model: provider.responses(modelId) };
     }
 
-    if (ai.customProtocol === "claude") {
-      const baseURL = (
-        ai.customClaudeBaseURL || "https://api.anthropic.com/v1"
-      ).replace(/\/+$/, "");
+    if (protocol === "claude") {
       const provider = createAnthropic({
-        apiKey: ai.customClaudeApiKey || "placeholder",
+        apiKey,
         baseURL,
         headers: {
           "anthropic-dangerous-direct-browser-access": "true",
@@ -62,14 +67,10 @@ export function buildLanguageModel(): ModelAvailability {
       return { ok: true, model: provider(modelId) };
     }
 
-    // 默认 openai-compatible
-    const baseURL = (
-      ai.customOpenAIBaseURL || "https://api.openai.com/v1"
-    ).replace(/\/+$/, "");
     const provider = createOpenAICompatible({
       name: "custom-openai",
       baseURL,
-      apiKey: ai.customOpenAIApiKey || "placeholder",
+      apiKey,
     });
     return { ok: true, model: provider.chatModel(modelId) };
   } catch (err) {

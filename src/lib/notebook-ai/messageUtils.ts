@@ -76,9 +76,11 @@ export function sanitizeNotebookAiMessages(
 }
 
 /**
- * 批量计划由应用本地确定性执行，不需要模型再次消费这类工具调用。
- * 兼容源可能要求供应商私有的 thought_signature；发送下一轮对话时移除
- * 批量工具 part，同时保留本地持久化消息中的审批与撤回记录。
+ * 工具执行痕迹只用于本地 UI，不跨轮回放给模型。
+ * Responses 兼容源会严格校验历史 function_call 的 call_id / item_id；这些 ID
+ * 经过 UIMessage 持久化和重新组装后不再具备供应商侧关联，回放会导致下一轮
+ * 请求直接失败。发送时仅保留用户内容与助手正文；本地持久化消息中的工具卡、
+ * 审批和撤回记录保持不变，需要信息时模型会在新一轮重新加载 Skill/读取页面。
  */
 export function prepareNotebookAiMessagesForModel(
   messages: NotebookAiMessage[],
@@ -88,10 +90,7 @@ export function prepareNotebookAiMessagesForModel(
 
   for (const message of sanitized) {
     const parts = message.parts ?? [];
-    const nextParts = parts.filter(
-      (part) =>
-        !(isNotebookAiToolPart(part) && part.type === "tool-executeBatchPlan"),
-    );
+    const nextParts = parts.filter((part) => !isNotebookAiToolPart(part));
 
     if (message.role === "assistant" && !nextParts.some(hasModelRelevantPart)) {
       continue;

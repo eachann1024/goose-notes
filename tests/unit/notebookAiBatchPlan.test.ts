@@ -347,6 +347,73 @@ test("批量计划保留在本地会话，但不会再次发送给兼容模型",
   ]);
 });
 
+test("后续对话不向模型回放任何历史工具调用，但保留助手正文", () => {
+  const messages = [
+    {
+      id: "user-before-tools",
+      role: "user",
+      parts: [{ type: "text", text: "整理当前笔记" }],
+    },
+    {
+      id: "assistant-with-tools",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-loadSkill",
+          toolCallId: "load-skill-call",
+          state: "output-available",
+          input: { skill: "updateNote" },
+          output: { supported: true },
+        },
+        {
+          type: "tool-readPage",
+          toolCallId: "read-page-call",
+          state: "output-available",
+          input: { pageId: "page-1" },
+          output: { markdown: "正文" },
+        },
+        { type: "text", text: "已经完成第一轮整理。" },
+        {
+          type: "tool-executeBatchPlan",
+          toolCallId: "batch-call",
+          state: "output-available",
+          input: { operations: [] },
+          output: { ok: true, status: "completed" },
+        },
+      ],
+    },
+    {
+      id: "assistant-only-tools",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-loadSkill",
+          toolCallId: "orphan-tool-call",
+          state: "output-available",
+          input: { skill: "chat" },
+          output: { supported: true },
+        },
+      ],
+    },
+    {
+      id: "user-follow-up",
+      role: "user",
+      parts: [{ type: "text", text: "格式更好看！" }],
+    },
+  ] as unknown as NotebookAiMessage[];
+
+  const prepared = prepareNotebookAiMessagesForModel(messages);
+
+  expect(prepared.map((message) => message.id)).toEqual([
+    "user-before-tools",
+    "assistant-with-tools",
+    "user-follow-up",
+  ]);
+  expect(prepared[1].parts).toEqual([
+    { type: "text", text: "已经完成第一轮整理。" },
+  ]);
+});
+
 test.afterEach(() => {
   usePages.setState({
     pages: {},

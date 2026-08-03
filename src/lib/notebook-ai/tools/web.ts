@@ -98,6 +98,10 @@ function extractMcpText(result: unknown) {
   return text;
 }
 
+/** 绑定 fetch，避免 MCP 客户端里 `fetchFn = fetch` 触发 Illegal invocation。 */
+const boundFetch: typeof fetch = (input, init) =>
+  globalThis.fetch(input, init);
+
 async function executeExaTool(
   name: "web_search_exa" | "web_fetch_exa",
   input: Record<string, unknown>,
@@ -105,7 +109,11 @@ async function executeExaTool(
 ) {
   const client = await withTimeout(
     createMCPClient({
-      transport: { type: "http", url: EXA_MCP_URL },
+      transport: {
+        type: "http",
+        url: EXA_MCP_URL,
+        fetch: boundFetch,
+      },
       name: "goose-note",
       version: "1.0.0",
     }),
@@ -303,6 +311,76 @@ async function searchWithPublicFeed(
   return results;
 }
 
+/**
+ * DuckDuckGo Instant Answer API：带 CORS `Access-Control-Allow-Origin: *`，
+ * 适合纯浏览器 / 无 gooseWeb 桥时作为 Exa / Bing RSS 失败后的回退。
+ */
+async function searchWithDuckDuckGo(
+  query: string,
+  maxResults: number,
+  signal?: AbortSignal,
+) {
+  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+  const linkedAbort = createLinkedAbortController(signal, 12_000);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: linkedAbort.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`DuckDuckGo HTTP ${response.status}`);
+    }
+    const data = (await response.json()) as {
+      AbstractText?: string;
+      AbstractURL?: string;
+      AbstractSource?: string;
+      Heading?: string;
+      RelatedTopics?: Array<
+        | { Text?: string; FirstURL?: string }
+        | { Topics?: Array<{ Text?: string; FirstURL?: string }> }
+      >;
+      Results?: Array<{ Text?: string; FirstURL?: string }>;
+    };
+
+    const results: Array<{ title: string; url: string; snippet: string }> = [];
+    if (data.AbstractText && data.AbstractURL) {
+      results.push({
+        title: data.Heading || data.AbstractSource || query,
+        url: data.AbstractURL,
+        snippet: data.AbstractText,
+      });
+    }
+
+    const pushTopic = (topic?: { Text?: string; FirstURL?: string }) => {
+      if (!topic?.Text || !topic.FirstURL) return;
+      if (results.some((item) => item.url === topic.FirstURL)) return;
+      results.push({
+        title: topic.Text.slice(0, 120),
+        url: topic.FirstURL,
+        snippet: topic.Text,
+      });
+    };
+
+    for (const item of data.Results ?? []) pushTopic(item);
+    for (const topic of data.RelatedTopics ?? []) {
+      if ("Topics" in topic && Array.isArray(topic.Topics)) {
+        for (const nested of topic.Topics) pushTopic(nested);
+      } else {
+        pushTopic(topic as { Text?: string; FirstURL?: string });
+      }
+      if (results.length >= maxResults) break;
+    }
+
+    const sliced = results.slice(0, Math.max(1, Math.min(8, maxResults)));
+    if (sliced.length === 0) {
+      throw new Error("DuckDuckGo 没有返回结果");
+    }
+    return sliced;
+  } finally {
+    linkedAbort.cleanup();
+  }
+}
+
 async function readWithJina(url: string, signal?: AbortSignal) {
   const response = await fetchText(`${JINA_READER_BASE_URL}${url}`, signal);
   const content = truncateContent(response.text);
@@ -358,6 +436,21 @@ export const searchWeb = tool({
       };
     } catch (error) {
       failures.push(`公开搜索：${errorMessage(error)}`);
+    }
+
+    try {
+      return {
+        source: "DuckDuckGo",
+        query: input.query,
+        results: await searchWithDuckDuckGo(
+          input.query,
+          input.maxResults,
+          options.abortSignal,
+        ),
+        untrustedExternalContent: true,
+      };
+    } catch (error) {
+      failures.push(`DuckDuckGo：${errorMessage(error)}`);
     }
 
     return {

@@ -6,6 +6,9 @@ import searchNotesSkill from "@/agent/searchNotes/SKILL.md?raw";
 import updateNoteSkill from "@/agent/updateNote/SKILL.md?raw";
 import visualSkill from "@/agent/visual/SKILL.md?raw";
 import webResearchSkill from "@/agent/webResearch/SKILL.md?raw";
+import type { NotebookSkillId } from "./skillIds";
+
+export type { NotebookSkillId } from "./skillIds";
 
 export const NOTEBOOK_AGENT_INSTRUCTIONS = agentInstructions.trim();
 
@@ -51,8 +54,6 @@ export const NOTEBOOK_SKILLS = {
     tools: ["searchWeb", "readWebPage"],
   },
 } as const;
-
-export type NotebookSkillId = keyof typeof NOTEBOOK_SKILLS;
 
 export function getSkillToolNames(skillIds: Iterable<NotebookSkillId>) {
   return [...new Set([...skillIds].flatMap((id) => NOTEBOOK_SKILLS[id].tools))];
