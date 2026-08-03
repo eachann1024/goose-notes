@@ -1,5 +1,6 @@
 export type {
   CustomAIProtocol,
+  AIProviderIdLike,
   AIModelOption,
   AIReasoningLevel,
   AISettingsLike,
@@ -11,6 +12,22 @@ export type {
   RunAITextStreamOptions,
 } from "./types";
 
+export type { AIProviderId, AIProviderPreset } from "./presets";
+
+export {
+  AI_PROVIDER_PRESETS,
+  DEEPSEEK_BASE_URL,
+  GLM_BASE_URL,
+  MINIMAX_BASE_URL,
+  getAIProviderPreset,
+  getProviderCredentialSlots,
+  getProviderFixedBaseURL,
+  inferProviderIdFromSettings,
+  isAIProviderId,
+  isDeepSeekProModel,
+  resolveProtocolForProvider,
+} from "./presets";
+
 export {
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_CLAUDE_BASE_URL,
@@ -19,6 +36,8 @@ export {
   getCustomAIApiKey,
   getStoredAIModelOptions,
   getAIAvailability,
+  getSettingsProviderId,
+  resolveActiveProtocol,
   fetchCustomAIModels,
 } from "./modelCatalog";
 
@@ -31,7 +50,7 @@ import type {
   RunAITextOptions,
   RunAITextStreamOptions,
 } from "./types";
-import { getAIAvailability } from "./modelCatalog";
+import { getAIAvailability, resolveActiveProtocol } from "./modelCatalog";
 import { handleOpenAIStream } from "./providers/openai";
 import { handleOpenAIResponsesStream } from "./providers/openaiResponses";
 import { handleClaudeStream } from "./providers/claude";
@@ -43,7 +62,8 @@ async function handleCustomStream(
   emit: (phase: AIStreamPhase, text: string, isReasoning: boolean) => void,
   requestOverrides?: AIRequestOverrides,
 ) {
-  if (settings.customProtocol === "openai-responses") {
+  const protocol = resolveActiveProtocol(settings, requestOverrides);
+  if (protocol === "openai-responses") {
     return handleOpenAIResponsesStream(
       settings,
       messages,
@@ -52,7 +72,7 @@ async function handleCustomStream(
       requestOverrides,
     );
   }
-  if (settings.customProtocol === "openai") {
+  if (protocol === "openai") {
     return handleOpenAIStream(
       settings,
       messages,

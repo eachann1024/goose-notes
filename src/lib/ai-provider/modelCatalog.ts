@@ -5,6 +5,14 @@ import type {
   AIRequestOverrides,
   CustomAIProtocol,
 } from "./types";
+import {
+  getAIProviderPreset,
+  getProviderFixedBaseURL,
+  inferProviderIdFromSettings,
+  isAIProviderId,
+  resolveProtocolForProvider,
+  type AIProviderId,
+} from "./presets";
 
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
@@ -16,6 +24,42 @@ export const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
   medium: 4096,
   high: 12000,
 };
+
+export function getSettingsProviderId(
+  settings: Pick<
+    AISettingsLike,
+    | "customProviderId"
+    | "customProtocol"
+    | "customOpenAIResponsesBaseURL"
+    | "customOpenAIBaseURL"
+    | "customClaudeBaseURL"
+  >,
+): AIProviderId {
+  if (isAIProviderId(settings.customProviderId)) {
+    return settings.customProviderId;
+  }
+  return inferProviderIdFromSettings(settings);
+}
+
+/**
+ * 按供应商 + 当前模型解析实际协议。
+ * DeepSeek：Flash → Responses；Pro → 兼容 Chat Completions。
+ */
+export function resolveActiveProtocol(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+): CustomAIProtocol {
+  const providerId = getSettingsProviderId(settings);
+  const modelId =
+    requestOverrides?.selectedModelId?.trim() ||
+    settings.selectedModelId?.trim() ||
+    null;
+  return resolveProtocolForProvider(
+    providerId,
+    modelId,
+    settings.customProtocol,
+  );
+}
 
 export function normalizeModelOption(input: unknown): AIModelOption | null {
   if (!input) return null;
@@ -78,8 +122,14 @@ export function getDefaultCustomAIBaseURL(protocol: CustomAIProtocol) {
 
 export function getCustomAIBaseURL(
   settings: AISettingsLike,
-  protocol: CustomAIProtocol = settings.customProtocol,
+  protocol: CustomAIProtocol = resolveActiveProtocol(settings),
 ) {
+  const providerId = getSettingsProviderId(settings);
+  const fixedBaseURL = getProviderFixedBaseURL(providerId);
+  if (fixedBaseURL) {
+    return fixedBaseURL;
+  }
+
   if (protocol === "claude") {
     const baseURL = settings.customClaudeBaseURL?.trim();
     return baseURL || DEFAULT_CLAUDE_BASE_URL;
@@ -94,15 +144,26 @@ export function getCustomAIBaseURL(
 
 export function getCustomAIApiKey(
   settings: AISettingsLike,
-  protocol: CustomAIProtocol = settings.customProtocol,
+  protocol: CustomAIProtocol = resolveActiveProtocol(settings),
 ) {
-  return (
+  const key = (
     protocol === "openai-responses"
       ? settings.customOpenAIResponsesApiKey
       : protocol === "openai"
         ? settings.customOpenAIApiKey
         : settings.customClaudeApiKey
   ).trim();
+
+  // DeepSeek 双协议共用同一 Key：某一槽位为空时回退另一槽位。
+  if (!key && getSettingsProviderId(settings) === "deepseek") {
+    return (
+      settings.customOpenAIResponsesApiKey?.trim() ||
+      settings.customOpenAIApiKey?.trim() ||
+      ""
+    );
+  }
+
+  return key;
 }
 
 export async function readErrorMessage(response: Response) {
@@ -191,7 +252,9 @@ export function getCustomProviderOptions(
     return undefined;
   }
 
-  if (settings.customProtocol === "openai") {
+  const protocol = resolveActiveProtocol(settings, requestOverrides);
+
+  if (protocol === "openai") {
     return {
       openaiCompatible: {
         reasoningEffort: reasoningLevel,
@@ -199,7 +262,7 @@ export function getCustomProviderOptions(
     };
   }
 
-  if (settings.customProtocol === "openai-responses") {
+  if (protocol === "openai-responses") {
     return {
       openai: {
         reasoningEffort: reasoningLevel,
@@ -245,11 +308,23 @@ export async function fetchCustomAIModels(config: {
   protocol: CustomAIProtocol;
   baseURL: string;
   apiKey: string;
+  providerId?: AIProviderId | string | null;
 }) {
   const apiKey = config.apiKey.trim();
   if (!apiKey) {
     throw new Error(getApiKeyMissingMessage());
   }
+
+  const providerId = isAIProviderId(config.providerId)
+    ? config.providerId
+    : null;
+  const preset = providerId ? getAIProviderPreset(providerId) : null;
+  const providerLabel = preset?.label
+    ?? (config.protocol === "claude"
+      ? "自定义 Anthropic 源"
+      : config.protocol === "openai-responses"
+        ? "自定义 OpenAI Responses 源"
+        : "自定义 OpenAI 兼容源");
 
   const modelsUrl =
     config.protocol === "claude"
@@ -268,13 +343,8 @@ export async function fetchCustomAIModels(config: {
   });
 
   if (!response.ok) {
+    // 预设供应商鉴权失败时，若有兜底模型且明确是列表接口问题，仍抛错让用户知悉 Key 问题。
     const errorMsg = await readErrorMessage(response);
-    const providerLabel =
-      config.protocol === "claude"
-        ? "自定义 Anthropic 源"
-        : config.protocol === "openai-responses"
-          ? "自定义 OpenAI Responses 源"
-          : "自定义 OpenAI 兼容源";
     throw new Error(errorMsg || getAuthFailedMessage(providerLabel));
   }
 
@@ -300,6 +370,10 @@ export async function fetchCustomAIModels(config: {
       (item): item is AIModelOption =>
         item !== null && Boolean(item.id && item.label),
     );
+
+  if (parsed.length === 0 && preset?.fallbackModels?.length) {
+    return preset.fallbackModels;
+  }
 
   return parsed;
 }

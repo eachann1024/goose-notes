@@ -1,7 +1,13 @@
 import {
   DEFAULT_CLAUDE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
+  getAIProviderPreset,
+  getProviderCredentialSlots,
+  getProviderFixedBaseURL,
+  isAIProviderId,
+  resolveProtocolForProvider,
   type AIModelOption,
+  type AIProviderId,
   type CustomAIProtocol,
   type AIReasoningLevel,
 } from "@/lib/ai-provider";
@@ -24,7 +30,8 @@ export interface AISliceActions {
   setAIWorkspaceSelectedModelId: (modelId: string | null) => void;
   setAIWorkspaceReasoningLevel: (level: AIReasoningLevel) => void;
   saveAICustomConfig: (config: {
-    protocol: CustomAIProtocol;
+    providerId: AIProviderId;
+    protocol?: CustomAIProtocol;
     baseURL: string;
     apiKey: string;
     modelOptions: AIModelOption[];
@@ -38,9 +45,11 @@ export const AI_INITIAL_STATE: AISliceState = {
     enabled: false,
     readGlobalPrompt: true,
     readLocalSkills: true,
+    runtime: "pi",
     selectedModelId: null,
     workspaceSelectedModelId: null,
     workspaceReasoningLevel: "default",
+    customProviderId: "deepseek",
     customProtocol: "openai-responses",
     customOpenAIResponsesBaseURL: DEFAULT_OPENAI_BASE_URL,
     customOpenAIBaseURL: DEFAULT_OPENAI_BASE_URL,
@@ -81,14 +90,19 @@ export function createAISlice(set: SetFn): AISlice {
       set((state) => ({
         ai: { ...state.ai, workspaceReasoningLevel },
       })),
-    saveAICustomConfig: ({ protocol, baseURL, apiKey, modelOptions }) =>
+    saveAICustomConfig: ({
+      providerId: rawProviderId,
+      protocol: protocolOverride,
+      baseURL,
+      apiKey,
+      modelOptions,
+    }) =>
       set((state) => {
+        const providerId: AIProviderId = isAIProviderId(rawProviderId)
+          ? rawProviderId
+          : "deepseek";
+        const preset = getAIProviderPreset(providerId);
         const normalizedModelOptions = normalizeAIModelOptions(modelOptions);
-        const normalizedBaseURL =
-          protocol === "claude"
-            ? normalizeAIBaseURL(baseURL, DEFAULT_CLAUDE_BASE_URL)
-            : normalizeAIBaseURL(baseURL, DEFAULT_OPENAI_BASE_URL);
-        const normalizedApiKey = normalizeAIApiKey(apiKey);
         // 保留用户当前默认模型（仍在新列表中时）；否则回落到列表首项
         const preservedSelectedModelId =
           state.ai.selectedModelId &&
@@ -104,33 +118,48 @@ export function createAISlice(set: SetFn): AISlice {
           )
             ? state.ai.workspaceSelectedModelId
             : state.ai.workspaceSelectedModelId;
-        const nextAI = {
+
+        const protocol =
+          protocolOverride ??
+          resolveProtocolForProvider(
+            providerId,
+            preservedSelectedModelId,
+            preset.protocol,
+          );
+        const fixedBaseURL = getProviderFixedBaseURL(providerId);
+        const fallbackBaseURL =
+          protocol === "claude"
+            ? DEFAULT_CLAUDE_BASE_URL
+            : DEFAULT_OPENAI_BASE_URL;
+        const normalizedBaseURL = normalizeAIBaseURL(
+          fixedBaseURL ?? baseURL,
+          fallbackBaseURL,
+        );
+        const normalizedApiKey = normalizeAIApiKey(apiKey);
+        const slots = getProviderCredentialSlots(providerId);
+
+        const nextAI: AISettings = {
           ...state.ai,
+          customProviderId: providerId,
           customProtocol: protocol,
-          customOpenAIResponsesBaseURL:
-            protocol === "openai-responses"
-              ? normalizedBaseURL
-              : state.ai.customOpenAIResponsesBaseURL,
-          customOpenAIBaseURL:
-            protocol === "openai"
-              ? normalizedBaseURL
-              : state.ai.customOpenAIBaseURL,
-          customClaudeBaseURL:
-            protocol === "claude"
-              ? normalizedBaseURL
-              : state.ai.customClaudeBaseURL,
-          customOpenAIResponsesApiKey:
-            protocol === "openai-responses"
-              ? normalizedApiKey
-              : state.ai.customOpenAIResponsesApiKey,
-          customOpenAIApiKey:
-            protocol === "openai"
-              ? normalizedApiKey
-              : state.ai.customOpenAIApiKey,
-          customClaudeApiKey:
-            protocol === "claude"
-              ? normalizedApiKey
-              : state.ai.customClaudeApiKey,
+          customOpenAIResponsesBaseURL: slots.includes("openai-responses")
+            ? normalizedBaseURL
+            : state.ai.customOpenAIResponsesBaseURL,
+          customOpenAIBaseURL: slots.includes("openai")
+            ? normalizedBaseURL
+            : state.ai.customOpenAIBaseURL,
+          customClaudeBaseURL: slots.includes("claude")
+            ? normalizedBaseURL
+            : state.ai.customClaudeBaseURL,
+          customOpenAIResponsesApiKey: slots.includes("openai-responses")
+            ? normalizedApiKey
+            : state.ai.customOpenAIResponsesApiKey,
+          customOpenAIApiKey: slots.includes("openai")
+            ? normalizedApiKey
+            : state.ai.customOpenAIApiKey,
+          customClaudeApiKey: slots.includes("claude")
+            ? normalizedApiKey
+            : state.ai.customClaudeApiKey,
           customModelOptions: normalizedModelOptions,
           selectedModelId: preservedSelectedModelId,
           workspaceSelectedModelId: preservedWorkspaceModelId,

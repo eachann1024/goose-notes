@@ -39,7 +39,7 @@ function createNoticeContent(handleClose: () => void) {
     >
       <p>· 输入框内按空格 → 唤起 AI</p>
       <p>· 选中文字 → 一键润色改写</p>
-      <p>支持 OpenAI 官方 Responses API 与 Anthropic 原生接入，前往设置配置。</p>
+      <p>支持 DeepSeek、GLM、MiniMax 等供应商一键接入，前往设置填写 API Key 即可。</p>
     </FeatureToastCard>
   );
 }

@@ -1,7 +1,10 @@
 import {
   DEFAULT_CLAUDE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
+  inferProviderIdFromSettings,
+  isAIProviderId,
   type AIModelOption,
+  type AIProviderId,
   type AIReasoningLevel,
   type CustomAIProtocol,
 } from "@/lib/ai-provider";
@@ -45,13 +48,20 @@ export interface UToolsSettings {
   windowHeight: number;
 }
 
+/** Agent 运行时：pi = Pi harness；legacy = 自研 ToolLoopAgent。 */
+export type AIAgentRuntime = "legacy" | "pi";
+
 export interface AISettings {
   enabled: boolean;
   readGlobalPrompt: boolean;
   readLocalSkills: boolean;
+  /** Agent 运行时；默认 pi。可用 localStorage goose-ai-runtime 覆盖。 */
+  runtime: AIAgentRuntime;
   selectedModelId: string | null;
   workspaceSelectedModelId: string | null;
   workspaceReasoningLevel: AIReasoningLevel;
+  /** 供应商预设（DeepSeek / GLM / MiniMax / 自定义…） */
+  customProviderId: AIProviderId;
   customProtocol: CustomAIProtocol;
   customOpenAIResponsesBaseURL: string;
   customOpenAIBaseURL: string;
@@ -495,36 +505,55 @@ export function normalizeAISettings(
       ? storedSelectedModelId
       : (customModelOptions[0]?.id ?? null);
 
+  const runtime: AIAgentRuntime =
+    ai?.runtime === "legacy" || ai?.runtime === "pi" ? ai.runtime : "pi";
+
+  const customOpenAIResponsesBaseURL = normalizeAIBaseURL(
+    ai?.customOpenAIResponsesBaseURL,
+    customProtocol === "openai-responses" && legacyBaseURL
+      ? legacyBaseURL
+      : DEFAULT_OPENAI_BASE_URL,
+  );
+  const customOpenAIBaseURL = normalizeAIBaseURL(
+    ai?.customOpenAIBaseURL,
+    customProtocol === "openai" && legacyBaseURL
+      ? legacyBaseURL
+      : DEFAULT_OPENAI_BASE_URL,
+  );
+  const customClaudeBaseURL = normalizeAIBaseURL(
+    ai?.customClaudeBaseURL,
+    customProtocol === "claude" && legacyBaseURL
+      ? legacyBaseURL
+      : DEFAULT_CLAUDE_BASE_URL,
+  );
+
+  const customProviderId: AIProviderId = isAIProviderId(ai?.customProviderId)
+    ? ai.customProviderId
+    : inferProviderIdFromSettings({
+        customProviderId: ai?.customProviderId,
+        customProtocol,
+        customOpenAIResponsesBaseURL,
+        customOpenAIBaseURL,
+        customClaudeBaseURL,
+      });
+
   return {
     enabled: Boolean(ai?.enabled),
     readGlobalPrompt:
       typeof ai?.readGlobalPrompt === "boolean" ? ai.readGlobalPrompt : true,
     readLocalSkills:
       typeof ai?.readLocalSkills === "boolean" ? ai.readLocalSkills : true,
+    runtime,
     selectedModelId,
     workspaceSelectedModelId: storedWorkspaceSelectedModelId,
     workspaceReasoningLevel: normalizeAIReasoningLevel(
       ai?.workspaceReasoningLevel,
     ),
+    customProviderId,
     customProtocol,
-    customOpenAIResponsesBaseURL: normalizeAIBaseURL(
-      ai?.customOpenAIResponsesBaseURL,
-      customProtocol === "openai-responses" && legacyBaseURL
-        ? legacyBaseURL
-        : DEFAULT_OPENAI_BASE_URL,
-    ),
-    customOpenAIBaseURL: normalizeAIBaseURL(
-      ai?.customOpenAIBaseURL,
-      customProtocol === "openai" && legacyBaseURL
-        ? legacyBaseURL
-        : DEFAULT_OPENAI_BASE_URL,
-    ),
-    customClaudeBaseURL: normalizeAIBaseURL(
-      ai?.customClaudeBaseURL,
-      customProtocol === "claude" && legacyBaseURL
-        ? legacyBaseURL
-        : DEFAULT_CLAUDE_BASE_URL,
-    ),
+    customOpenAIResponsesBaseURL,
+    customOpenAIBaseURL,
+    customClaudeBaseURL,
     customOpenAIResponsesApiKey: normalizeAIApiKey(
       ai?.customOpenAIResponsesApiKey,
       customProtocol === "openai-responses" ? legacyApiKey : "",

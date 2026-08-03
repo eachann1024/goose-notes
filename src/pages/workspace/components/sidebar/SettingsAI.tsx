@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import * as LucideIcons from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -20,11 +27,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  AI_PROVIDER_PRESETS,
   DEFAULT_CLAUDE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
   fetchCustomAIModels,
+  getAIProviderPreset,
+  getProviderFixedBaseURL,
   getStoredAIModelOptions,
+  isAIProviderId,
+  resolveProtocolForProvider,
   type AIModelOption,
+  type AIProviderId,
   type CustomAIProtocol,
 } from "@/lib/ai-provider";
 import type { AISettings } from "@/stores/useSettings";
@@ -40,7 +53,8 @@ interface SettingsAIProps {
   selectedModelId: string | null;
   setSelectedModelId: (modelId: string | null) => void;
   saveCustomConfig: (config: {
-    protocol: CustomAIProtocol;
+    providerId: AIProviderId;
+    protocol?: CustomAIProtocol;
     baseURL: string;
     apiKey: string;
     modelOptions: AIModelOption[];
@@ -50,40 +64,84 @@ interface SettingsAIProps {
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
-const CUSTOM_PROTOCOL_OPTIONS: Array<{
-  id: CustomAIProtocol;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "openai-responses",
-    label: "OpenAI 官方 Responses API",
-    description: "使用 /v1/responses，适合 OpenAI 及支持 Responses 的服务",
-  },
-  {
-    id: "openai",
-    label: "OpenAI 兼容协议",
-    description: "使用 /v1/chat/completions，兼容多数模型与中转服务",
-  },
-  {
-    id: "claude",
-    label: "Anthropic 原生工具调用",
-    description: "通过 Messages API 使用 Anthropic 原生工具能力",
-  },
-];
-
 const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> AI 服务”补充 API Key";
 
-interface CustomAIConnection {
+/** 供应商菜单图标：与预设文案解耦，避免 presets 依赖 React */
+const PROVIDER_ICONS: Record<
+  AIProviderId,
+  ComponentType<{ className?: string; strokeWidth?: number }>
+> = {
+  deepseek: LucideIcons.Sparkles,
+  glm: LucideIcons.Brain,
+  minimax: LucideIcons.AudioLines,
+  "custom-openai-responses": LucideIcons.Zap,
+  "custom-openai": LucideIcons.Boxes,
+  "custom-claude": LucideIcons.MessageSquare,
+};
+
+function ProviderIconTile({
+  providerId,
+  size = "md",
+}: {
+  providerId: AIProviderId;
+  size?: "sm" | "md";
+}) {
+  const Icon = PROVIDER_ICONS[providerId] ?? LucideIcons.Server;
+  const isSm = size === "sm";
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-[8px] bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
+        isSm ? "h-6 w-6 rounded-[7px]" : "h-8 w-8",
+      )}
+      aria-hidden
+    >
+      <Icon
+        className={isSm ? "h-3.5 w-3.5" : "h-4 w-4"}
+        strokeWidth={1.75}
+      />
+    </span>
+  );
+}
+
+interface ProviderConnection {
+  providerId: AIProviderId;
   protocol: CustomAIProtocol;
   baseURL: string;
   apiKey: string;
 }
 
-function getSupportedProtocol(protocol: CustomAIProtocol): CustomAIProtocol {
-  return CUSTOM_PROTOCOL_OPTIONS.some((option) => option.id === protocol)
-    ? protocol
-    : "openai-responses";
+function readStoredApiKey(
+  ai: AISettings,
+  providerId: AIProviderId,
+  protocol: CustomAIProtocol,
+): string {
+  if (providerId === "deepseek") {
+    return (
+      ai.customOpenAIResponsesApiKey?.trim() ||
+      ai.customOpenAIApiKey?.trim() ||
+      ""
+    );
+  }
+  if (protocol === "openai-responses") return ai.customOpenAIResponsesApiKey || "";
+  if (protocol === "openai") return ai.customOpenAIApiKey || "";
+  return ai.customClaudeApiKey || "";
+}
+
+function readStoredBaseURL(
+  ai: AISettings,
+  providerId: AIProviderId,
+  protocol: CustomAIProtocol,
+): string {
+  const fixed = getProviderFixedBaseURL(providerId);
+  if (fixed) return fixed;
+  if (protocol === "openai-responses") {
+    return ai.customOpenAIResponsesBaseURL || DEFAULT_OPENAI_BASE_URL;
+  }
+  if (protocol === "openai") {
+    return ai.customOpenAIBaseURL || DEFAULT_OPENAI_BASE_URL;
+  }
+  return ai.customClaudeBaseURL || DEFAULT_CLAUDE_BASE_URL;
 }
 
 export function SettingsAI({
@@ -96,24 +154,15 @@ export function SettingsAI({
   setSelectedModelId,
   saveCustomConfig,
 }: SettingsAIProps) {
-  const [customProtocol, setCustomProtocol] = useState<CustomAIProtocol>(
-    getSupportedProtocol(ai.customProtocol),
+  const initialProviderId: AIProviderId = isAIProviderId(ai.customProviderId)
+    ? ai.customProviderId
+    : "deepseek";
+  const [providerId, setProviderId] = useState<AIProviderId>(initialProviderId);
+  const [customBaseURL, setCustomBaseURL] = useState(() =>
+    readStoredBaseURL(ai, initialProviderId, ai.customProtocol),
   );
-  const [customOpenAIResponsesBaseURL, setCustomOpenAIResponsesBaseURL] =
-    useState(ai.customOpenAIResponsesBaseURL || DEFAULT_OPENAI_BASE_URL);
-  const [customOpenAIBaseURL, setCustomOpenAIBaseURL] = useState(
-    ai.customOpenAIBaseURL || DEFAULT_OPENAI_BASE_URL,
-  );
-  const [customClaudeBaseURL, setCustomClaudeBaseURL] = useState(
-    ai.customClaudeBaseURL || DEFAULT_CLAUDE_BASE_URL,
-  );
-  const [customOpenAIResponsesApiKey, setCustomOpenAIResponsesApiKey] =
-    useState(ai.customOpenAIResponsesApiKey);
-  const [customOpenAIApiKey, setCustomOpenAIApiKey] = useState(
-    ai.customOpenAIApiKey,
-  );
-  const [customClaudeApiKey, setCustomClaudeApiKey] = useState(
-    ai.customClaudeApiKey,
+  const [apiKeyDraft, setApiKeyDraft] = useState(() =>
+    readStoredApiKey(ai, initialProviderId, ai.customProtocol),
   );
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
@@ -122,41 +171,37 @@ export function SettingsAI({
   const modelRequestIdRef = useRef(0);
 
   const storedCustomModels = getStoredAIModelOptions(ai);
-  // 切换到尚未保存的新供应商时，不继续展示上一个供应商的旧模型列表。
   const customModels =
-    customProtocol === ai.customProtocol ? storedCustomModels : [];
+    providerId === ai.customProviderId ? storedCustomModels : [];
+
+  const selectedProvider = useMemo(
+    () => getAIProviderPreset(providerId),
+    [providerId],
+  );
+  const allowCustomBaseURL = selectedProvider.allowCustomBaseURL;
+  const activeProtocol = resolveProtocolForProvider(
+    providerId,
+    selectedModelId,
+    selectedProvider.protocol,
+  );
 
   useEffect(() => {
-    setCustomProtocol(getSupportedProtocol(ai.customProtocol));
-  }, [ai.customProtocol]);
-
-  useEffect(() => {
-    setCustomOpenAIResponsesBaseURL(
-      ai.customOpenAIResponsesBaseURL || DEFAULT_OPENAI_BASE_URL,
-    );
-  }, [ai.customOpenAIResponsesBaseURL]);
-
-  useEffect(() => {
-    setCustomOpenAIBaseURL(
-      ai.customOpenAIBaseURL || DEFAULT_OPENAI_BASE_URL,
-    );
-  }, [ai.customOpenAIBaseURL]);
-
-  useEffect(() => {
-    setCustomClaudeBaseURL(ai.customClaudeBaseURL || DEFAULT_CLAUDE_BASE_URL);
-  }, [ai.customClaudeBaseURL]);
-
-  useEffect(() => {
-    setCustomOpenAIResponsesApiKey(ai.customOpenAIResponsesApiKey);
-  }, [ai.customOpenAIResponsesApiKey]);
-
-  useEffect(() => {
-    setCustomOpenAIApiKey(ai.customOpenAIApiKey);
-  }, [ai.customOpenAIApiKey]);
-
-  useEffect(() => {
-    setCustomClaudeApiKey(ai.customClaudeApiKey);
-  }, [ai.customClaudeApiKey]);
+    const nextProvider = isAIProviderId(ai.customProviderId)
+      ? ai.customProviderId
+      : "deepseek";
+    setProviderId(nextProvider);
+    setCustomBaseURL(readStoredBaseURL(ai, nextProvider, ai.customProtocol));
+    setApiKeyDraft(readStoredApiKey(ai, nextProvider, ai.customProtocol));
+  }, [
+    ai.customProviderId,
+    ai.customProtocol,
+    ai.customOpenAIResponsesBaseURL,
+    ai.customOpenAIBaseURL,
+    ai.customClaudeBaseURL,
+    ai.customOpenAIResponsesApiKey,
+    ai.customOpenAIApiKey,
+    ai.customClaudeApiKey,
+  ]);
 
   useEffect(() => {
     if (customModels.length === 0) {
@@ -173,42 +218,30 @@ export function SettingsAI({
 
   const currentModel =
     customModels.find((item) => item.id === selectedModelId) ?? null;
-  const selectedProtocol =
-    CUSTOM_PROTOCOL_OPTIONS.find((item) => item.id === customProtocol) ??
-    CUSTOM_PROTOCOL_OPTIONS[0];
-  const customBaseURL =
-    customProtocol === "openai-responses"
-      ? customOpenAIResponsesBaseURL
-      : customProtocol === "openai"
-        ? customOpenAIBaseURL
-        : customClaudeBaseURL;
-  const customApiKey =
-    customProtocol === "openai-responses"
-      ? customOpenAIResponsesApiKey
-      : customProtocol === "openai"
-        ? customOpenAIApiKey
-        : customClaudeApiKey;
-  const getConnectionForProtocol = (
-    protocol: CustomAIProtocol,
-  ): CustomAIConnection => {
-    if (protocol === "openai-responses") {
-      return {
-        protocol,
-        baseURL: customOpenAIResponsesBaseURL.trim() || DEFAULT_OPENAI_BASE_URL,
-        apiKey: customOpenAIResponsesApiKey,
-      };
-    }
-    if (protocol === "openai") {
-      return {
-        protocol,
-        baseURL: customOpenAIBaseURL.trim() || DEFAULT_OPENAI_BASE_URL,
-        apiKey: customOpenAIApiKey,
-      };
-    }
+
+  const getConnectionForProvider = (
+    nextProviderId: AIProviderId,
+    nextApiKey = apiKeyDraft,
+    nextBaseURL = customBaseURL,
+  ): ProviderConnection => {
+    const preset = getAIProviderPreset(nextProviderId);
+    const protocol = resolveProtocolForProvider(
+      nextProviderId,
+      selectedModelId,
+      preset.protocol,
+    );
+    const fixed = getProviderFixedBaseURL(nextProviderId);
+    const fallback =
+      protocol === "claude" ? DEFAULT_CLAUDE_BASE_URL : DEFAULT_OPENAI_BASE_URL;
+    const baseURL = ((fixed ?? nextBaseURL.trim()) || fallback).replace(
+      /\/+$/,
+      "",
+    );
     return {
+      providerId: nextProviderId,
       protocol,
-      baseURL: customClaudeBaseURL.trim() || DEFAULT_CLAUDE_BASE_URL,
-      apiKey: customClaudeApiKey,
+      baseURL: baseURL || fallback,
+      apiKey: nextApiKey,
     };
   };
 
@@ -229,9 +262,11 @@ export function SettingsAI({
 
   const saveButtonReason = savingCustomConfig
     ? "正在保存并读取模型列表"
-    : !customApiKey.trim()
+    : !apiKeyDraft.trim()
       ? CUSTOM_AI_KEY_HINT
-      : null;
+      : allowCustomBaseURL && !customBaseURL.trim()
+        ? "请填写 Base URL"
+        : null;
 
   const modelButtonDisabled =
     !enabled || savingCustomConfig || customModels.length === 0;
@@ -243,11 +278,11 @@ export function SettingsAI({
       : customSaveError
         ? customSaveError
         : customModels.length === 0
-          ? "请先填写并保存自定义 AI 配置"
+          ? "请先填写 API Key 并保存配置"
           : null;
 
   const refreshCustomModels = async (
-    connection: CustomAIConnection,
+    connection: ProviderConnection,
     action: "save" | "switch" | "refresh",
   ) => {
     const apiKey = connection.apiKey.trim();
@@ -256,20 +291,17 @@ export function SettingsAI({
       return;
     }
 
-    const provider =
-      CUSTOM_PROTOCOL_OPTIONS.find(
-        (option) => option.id === connection.protocol,
-      ) ?? CUSTOM_PROTOCOL_OPTIONS[0];
+    const provider = getAIProviderPreset(connection.providerId);
     const requestId = modelRequestIdRef.current + 1;
     modelRequestIdRef.current = requestId;
     setSavingCustomConfig(true);
     setCustomSaveError(null);
 
-    // 先持久化 Base URL / API Key，避免拉模型失败时配置丢失、下次重填。
-    // 同协议保留已有模型列表；切换协议时先清空，等拉取成功再写入。
+    // 先持久化供应商 / Key / Base URL，避免拉模型失败时配置丢失。
     const previousModelOptions =
-      connection.protocol === ai.customProtocol ? storedCustomModels : [];
+      connection.providerId === ai.customProviderId ? storedCustomModels : [];
     saveCustomConfig({
+      providerId: connection.providerId,
       protocol: connection.protocol,
       baseURL: connection.baseURL,
       apiKey,
@@ -277,24 +309,35 @@ export function SettingsAI({
     });
 
     try {
+      // DeepSeek 模型列表走兼容 /models；协议按模型在请求时分支。
+      const listProtocol: CustomAIProtocol =
+        connection.providerId === "deepseek" ? "openai" : connection.protocol;
       const modelOptions = await fetchCustomAIModels({
-        protocol: connection.protocol,
+        protocol: listProtocol,
         baseURL: connection.baseURL,
         apiKey,
+        providerId: connection.providerId,
       });
       if (requestId !== modelRequestIdRef.current) return;
-
-      saveCustomConfig({
-        protocol: connection.protocol,
-        baseURL: connection.baseURL,
-        apiKey,
-        modelOptions,
-      });
 
       const nextModel =
         modelOptions.find((model) => model.id === selectedModelId) ??
         modelOptions[0] ??
         null;
+      const nextProtocol = resolveProtocolForProvider(
+        connection.providerId,
+        nextModel?.id ?? null,
+        connection.protocol,
+      );
+
+      saveCustomConfig({
+        providerId: connection.providerId,
+        protocol: nextProtocol,
+        baseURL: connection.baseURL,
+        apiKey,
+        modelOptions,
+      });
+
       setSelectedModelId(nextModel?.id ?? null);
       scrollToModelSection();
 
@@ -316,13 +359,13 @@ export function SettingsAI({
     } catch (error) {
       if (requestId !== modelRequestIdRef.current) return;
       const message =
-        error instanceof Error ? error.message : "保存自定义 AI 失败";
+        error instanceof Error ? error.message : "保存 AI 配置失败";
       setCustomSaveError(message);
       toast.error(message, {
         description:
           action === "refresh"
             ? "模型列表未更新，已保留当前配置。"
-            : "Base URL 与 API Key 已保存，模型列表未能更新。",
+            : "API Key 已保存，模型列表未能更新。",
       });
     } finally {
       if (requestId === modelRequestIdRef.current) {
@@ -336,26 +379,59 @@ export function SettingsAI({
       toast.error(saveButtonReason);
       return;
     }
-    await refreshCustomModels(getConnectionForProtocol(customProtocol), "save");
+    await refreshCustomModels(getConnectionForProvider(providerId), "save");
   };
 
-  const handleProtocolChange = (value: string) => {
-    const protocol = value as CustomAIProtocol;
-    if (protocol === customProtocol) return;
+  const handleProviderChange = (value: string) => {
+    if (!isAIProviderId(value) || value === providerId) return;
     setCustomSaveError(null);
-    setCustomProtocol(protocol);
+    setProviderId(value);
 
-    const connection = getConnectionForProtocol(protocol);
-    const provider =
-      CUSTOM_PROTOCOL_OPTIONS.find((option) => option.id === protocol) ??
-      CUSTOM_PROTOCOL_OPTIONS[0];
-    if (!connection.apiKey.trim()) {
-      toast.info(`已切换到 ${provider.label}`, {
+    const nextPreset = getAIProviderPreset(value);
+    const nextBaseURL =
+      getProviderFixedBaseURL(value) ??
+      (nextPreset.protocol === "claude"
+        ? DEFAULT_CLAUDE_BASE_URL
+        : DEFAULT_OPENAI_BASE_URL);
+    setCustomBaseURL(nextBaseURL);
+
+    // 仅当切回当前已保存供应商时复用草稿 Key；否则只读该供应商在 store 中的 Key，避免串用。
+    const finalKey =
+      value === ai.customProviderId
+        ? apiKeyDraft
+        : readStoredApiKey(ai, value, nextPreset.protocol);
+    setApiKeyDraft(finalKey);
+
+    if (!finalKey.trim()) {
+      toast.info(`已切换到 ${nextPreset.label}`, {
         description: "填写 API Key 并保存后，将自动获取模型列表。",
       });
       return;
     }
-    void refreshCustomModels(connection, "switch");
+
+    void refreshCustomModels(
+      getConnectionForProvider(value, finalKey, nextBaseURL),
+      "switch",
+    );
+  };
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId);
+    // DeepSeek 选 Pro/Flash 时协议会变；若已有 Key，同步持久化协议槽位。
+    if (providerId !== "deepseek" || !apiKeyDraft.trim()) return;
+    const connection = getConnectionForProvider(providerId);
+    const protocol = resolveProtocolForProvider(
+      providerId,
+      modelId,
+      connection.protocol,
+    );
+    saveCustomConfig({
+      providerId,
+      protocol,
+      baseURL: connection.baseURL,
+      apiKey: connection.apiKey.trim(),
+      modelOptions: customModels,
+    });
   };
 
   return (
@@ -412,30 +488,61 @@ export function SettingsAI({
       <SettingsSectionCard
         title={
           <span className="flex items-center gap-2">
-            <LucideIcons.FolderCog className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <LucideIcons.FolderCog
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
             本地 AI 上下文
           </span>
         }
-        description="控制是否从用户主目录读取全局提示词与 Skill。/ 调用 Skill，@ 引用笔记或本地文件。"
+        description="开启后，全局提示词与本地 Skill 会参与 AI 对话。"
       >
         <div className="space-y-2">
-          <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 p-4",
+              SETTINGS_OPTION_ROW_CLASS,
+            )}
+          >
             <div className="space-y-1">
-              <Label htmlFor="ai-read-global-prompt" className="cursor-pointer text-sm font-medium text-foreground">
+              <Label
+                htmlFor="ai-read-global-prompt"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
                 读取全局提示词
               </Label>
-              <div className="text-xs leading-5 text-muted-foreground">固定读取 ~/AGENTS.md，并加入 AI 系统提示词。</div>
+              <div className="text-xs leading-5 text-muted-foreground">
+                并入 AI 系统提示词
+              </div>
             </div>
-            <Switch id="ai-read-global-prompt" checked={ai.readGlobalPrompt} onCheckedChange={setReadGlobalPrompt} />
+            <Switch
+              id="ai-read-global-prompt"
+              checked={ai.readGlobalPrompt}
+              onCheckedChange={setReadGlobalPrompt}
+            />
           </div>
-          <div className={cn("flex items-center justify-between gap-4 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 p-4",
+              SETTINGS_OPTION_ROW_CLASS,
+            )}
+          >
             <div className="space-y-1">
-              <Label htmlFor="ai-read-local-skills" className="cursor-pointer text-sm font-medium text-foreground">
+              <Label
+                htmlFor="ai-read-local-skills"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
                 读取本地 Skill
               </Label>
-              <div className="text-xs leading-5 text-muted-foreground">固定读取 ~/.agents/skills/，在输入框用 / 调用。</div>
+              <div className="text-xs leading-5 text-muted-foreground">
+                输入 / 调用
+              </div>
             </div>
-            <Switch id="ai-read-local-skills" checked={ai.readLocalSkills} onCheckedChange={setReadLocalSkills} />
+            <Switch
+              id="ai-read-local-skills"
+              checked={ai.readLocalSkills}
+              onCheckedChange={setReadLocalSkills}
+            />
           </div>
         </div>
       </SettingsSectionCard>
@@ -450,7 +557,7 @@ export function SettingsAI({
             AI 服务
           </span>
         }
-        description="接入 OpenAI Responses、OpenAI 兼容或 Anthropic 服务。"
+        description="选择供应商，只需填写 API Key。"
       >
         <div className="space-y-3">
           <div className="space-y-3">
@@ -461,14 +568,14 @@ export function SettingsAI({
               )}
             >
               <div className="flex items-center gap-3">
-                <LucideIcons.Server
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
+                <ProviderIconTile providerId={providerId} />
                 <div className="space-y-1">
                   <Label className="text-sm font-medium text-foreground">
-                    协议
+                    供应商
                   </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedProvider.description}
+                  </p>
                 </div>
               </div>
               <DropdownMenu>
@@ -477,76 +584,83 @@ export function SettingsAI({
                     variant="outline"
                     size="sm"
                     disabled={savingCustomConfig}
-                    className="min-w-[220px] justify-between rounded-[10px]"
+                    className="min-w-[200px] justify-between rounded-[10px] px-2.5"
                   >
-                    <span className="truncate">{selectedProtocol.label}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <ProviderIconTile providerId={providerId} size="sm" />
+                      <span className="truncate">{selectedProvider.label}</span>
+                    </span>
                     <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[280px]">
-                  <DropdownMenuRadioGroup
-                    value={customProtocol}
-                    onValueChange={handleProtocolChange}
-                  >
-                    {CUSTOM_PROTOCOL_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem
+                <DropdownMenuContent align="end" className="w-[288px] p-1.5">
+                  {AI_PROVIDER_PRESETS.map((option) => {
+                    const selected = option.id === providerId;
+                    return (
+                      <DropdownMenuItem
                         key={option.id}
-                        value={option.id}
-                        className="items-start gap-2"
+                        onSelect={() => handleProviderChange(option.id)}
+                        className={cn(
+                          "cursor-pointer gap-2.5 rounded-[10px] px-2 py-2",
+                          selected &&
+                            "bg-[var(--goose-interactive-selected)] text-foreground",
+                        )}
                       >
+                        <ProviderIconTile providerId={option.id} />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-foreground">
+                          <div className="truncate text-sm font-medium leading-5 text-foreground">
                             {option.label}
                           </div>
-                          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                          <div className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
                             {option.description}
                           </div>
                         </div>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
+                        <LucideIcons.Check
+                          className={cn(
+                            "h-4 w-4 shrink-0 text-foreground",
+                            selected ? "opacity-100" : "opacity-0",
+                          )}
+                          strokeWidth={2}
+                          aria-hidden={!selected}
+                        />
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
-            <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-              <div className="flex items-center gap-3">
-                <LucideIcons.Globe
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
+            {allowCustomBaseURL ? (
+              <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+                <div className="flex items-center gap-3">
+                  <LucideIcons.Globe
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    strokeWidth={1.75}
+                  />
+                  <Label
+                    htmlFor="custom-ai-base-url"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Base URL
+                  </Label>
+                </div>
+                <Input
+                  id="custom-ai-base-url"
+                  value={customBaseURL}
+                  onChange={(event) => {
+                    setCustomSaveError(null);
+                    setCustomBaseURL(event.target.value);
+                  }}
+                  placeholder={
+                    activeProtocol === "claude"
+                      ? DEFAULT_CLAUDE_BASE_URL
+                      : DEFAULT_OPENAI_BASE_URL
+                  }
+                  autoComplete="off"
+                  spellCheck={false}
                 />
-                <Label
-                  htmlFor="custom-ai-base-url"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Base URL
-                </Label>
               </div>
-              <Input
-                id="custom-ai-base-url"
-                value={customBaseURL}
-                onChange={(event) => {
-                  setCustomSaveError(null);
-                  const next = event.target.value;
-                  if (customProtocol === "openai-responses") {
-                    setCustomOpenAIResponsesBaseURL(next);
-                    return;
-                  }
-                  if (customProtocol === "openai") {
-                    setCustomOpenAIBaseURL(next);
-                    return;
-                  }
-                  setCustomClaudeBaseURL(next);
-                }}
-                placeholder={
-                  customProtocol === "claude"
-                    ? DEFAULT_CLAUDE_BASE_URL
-                    : DEFAULT_OPENAI_BASE_URL
-                }
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
+            ) : null}
 
             <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
               <div className="flex items-center gap-3">
@@ -565,18 +679,10 @@ export function SettingsAI({
                 <Input
                   id="custom-ai-api-key"
                   type={apiKeyVisible ? "text" : "password"}
-                  value={customApiKey}
+                  value={apiKeyDraft}
                   onChange={(event) => {
                     setCustomSaveError(null);
-                    if (customProtocol === "openai-responses") {
-                      setCustomOpenAIResponsesApiKey(event.target.value);
-                      return;
-                    }
-                    if (customProtocol === "openai") {
-                      setCustomOpenAIApiKey(event.target.value);
-                      return;
-                    }
-                    setCustomClaudeApiKey(event.target.value);
+                    setApiKeyDraft(event.target.value);
                   }}
                   placeholder="输入后点保存自动拉取模型"
                   autoComplete="off"
@@ -617,7 +723,9 @@ export function SettingsAI({
                     保存配置
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    保存 Base URL 与 API Key，并自动拉取可用模型列表。
+                    {allowCustomBaseURL
+                      ? "保存 Base URL 与 API Key，并自动拉取可用模型列表。"
+                      : "保存 API Key，并自动拉取可用模型列表。"}
                   </p>
                 </div>
               </div>
@@ -672,8 +780,7 @@ export function SettingsAI({
           }
           description={
             <span className="block">
-              选择全局默认模型；笔记本 AI
-              如设置了工作区模型，会优先使用工作区模型。
+              选择全局默认模型
               <span
                 className="mt-1 block font-medium text-foreground/75"
                 role="status"
@@ -684,8 +791,8 @@ export function SettingsAI({
                   : customSaveError
                     ? `获取失败：${customSaveError}`
                     : customModels.length > 0
-                      ? `已获取 ${customModels.length} 个模型${currentModel ? `，当前默认：${currentModel.label}` : ""}`
-                      : "尚未获取到模型。"}
+                      ? `已获取 ${customModels.length} 个${currentModel ? ` · ${currentModel.label}` : ""}`
+                      : "尚未获取到模型"}
               </span>
             </span>
           }
@@ -696,7 +803,7 @@ export function SettingsAI({
               disabled={Boolean(saveButtonReason)}
               onClick={() => {
                 void refreshCustomModels(
-                  getConnectionForProtocol(customProtocol),
+                  getConnectionForProvider(providerId),
                   "refresh",
                 );
               }}
@@ -761,7 +868,7 @@ export function SettingsAI({
                         >
                           <DropdownMenuRadioGroup
                             value={selectedModelId ?? ""}
-                            onValueChange={(value) => setSelectedModelId(value)}
+                            onValueChange={handleModelChange}
                           >
                             {customModels.map((model) => (
                               <DropdownMenuRadioItem
