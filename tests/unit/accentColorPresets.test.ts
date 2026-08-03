@@ -39,7 +39,7 @@ test("八组强调色都提供浅色完整令牌和深色覆盖", () => {
 
   for (const accentColor of ACCENT_COLORS) {
     const lightRule = getRule(`:root[data-goose-accent="${accentColor}"]`);
-    const darkRule = getRule(`.dark[data-goose-accent="${accentColor}"]`);
+    const darkRule = getRule(`:root.dark[data-goose-accent="${accentColor}"]`);
     expect(lightRule, `${accentColor} light preset`).not.toBe("");
     expect(darkRule, `${accentColor} dark preset`).not.toBe("");
     for (const token of REQUIRED_TOKENS) {
@@ -97,15 +97,17 @@ function getToken(rule: string, token: string): string {
 }
 
 test("深色行内代码 token 足够有色相和底色", () => {
-  const monoDark = getRule('.dark[data-goose-accent="mono"]');
-  const irisDark = getRule('.dark[data-goose-accent="iris"]');
-  const oceanDark = getRule('.dark[data-goose-accent="ocean"]');
-  const roseDark = getRule('.dark[data-goose-accent="rose"]');
+  const monoDark = getRule(':root.dark[data-goose-accent="mono"]');
+  const irisDark = getRule(':root.dark[data-goose-accent="iris"]');
+  const oceanDark = getRule(':root.dark[data-goose-accent="ocean"]');
+  const amberDark = getRule(':root.dark[data-goose-accent="amber"]');
+  const roseDark = getRule(':root.dark[data-goose-accent="rose"]');
 
   for (const [name, rule] of [
     ["mono", monoDark],
     ["iris", irisDark],
     ["ocean", oceanDark],
+    ["amber", amberDark],
     ["rose", roseDark],
   ] as const) {
     expect(getToken(rule, "--goose-inline-code-bg"), `${name} bg`).not.toBe("");
@@ -120,6 +122,7 @@ test("深色行内代码 token 足够有色相和底色", () => {
   for (const [name, rule] of [
     ["iris", irisDark],
     ["ocean", oceanDark],
+    ["amber", amberDark],
     ["rose", roseDark],
   ] as const) {
     const bg = getToken(rule, "--goose-inline-code-bg");
@@ -131,7 +134,32 @@ test("深色行内代码 token 足够有色相和底色", () => {
 
   expect(getToken(irisDark, "--goose-inline-code-fg")).toBe("#c7d2fe");
   expect(getToken(oceanDark, "--goose-inline-code-fg")).toBe("#bfdbfe");
+  expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#4a3b24");
+  expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#fde68a");
   expect(getToken(roseDark, "--goose-inline-code-fg")).toBe("#fecdd3");
   expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(/^#f[a-f0-9]{5}$/i);
   expect(getToken(monoDark, "--goose-inline-code-bg")).not.toBe("");
+});
+
+test("深色 fallback 行内代码跟随选中表面，不再硬编码 iris", () => {
+  const indexCss = readFileSync(
+    new URL("../../src/index.css", import.meta.url),
+    "utf8",
+  );
+  const darkSectionMatch = indexCss.match(/\.dark\s*\{([\s\S]*?)\n  \}/);
+  expect(darkSectionMatch).not.toBeNull();
+  const darkSection = darkSectionMatch?.[1] ?? "";
+  expect(darkSection).toContain(
+    "--goose-inline-code-bg: var(--goose-icon-chip-on-selected);",
+  );
+  expect(darkSection).toContain(
+    "--goose-inline-code-fg: var(--goose-interactive-selected-fg);",
+  );
+  expect(darkSection).not.toContain("--goose-inline-code-bg: #3d3e64;");
+  expect(darkSection).not.toContain("--goose-inline-code-fg: #c7d2fe;");
+});
+
+test("深色 accent 选择器绑定在 :root.dark 上提高匹配确定性", () => {
+  expect(css).toContain(':root.dark[data-goose-accent="amber"]');
+  expect(css).not.toMatch(/(?<!:root)\.dark\[data-goose-accent=/);
 });

@@ -7,7 +7,7 @@ import {
 import { APPEARANCE_INITIAL_STATE } from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
-import { applyAccentColor } from "../../src/lib/accentColor";
+import { applyAccentColor, syncAccentColorCssVars } from "../../src/lib/accentColor";
 
 test("强调色默认使用黑白配色，非法持久化值安全回退", () => {
   expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("mono");
@@ -19,23 +19,142 @@ test("强调色默认使用黑白配色，非法持久化值安全回退", () =>
   expect(normalizeAccentColor("grape")).toBe("grape");
 });
 
-test("应用强调色只写入根节点 data-goose-accent 属性", () => {
+test("应用强调色写入 data-goose-accent 与关键 runtime token", () => {
   const attributes = new Map<string, string>();
+  const properties = new Map<string, string>();
+  const classList = new Set<string>(["dark"]);
   const previousDocument = globalThis.document;
   Object.defineProperty(globalThis, "document", {
     configurable: true,
     value: {
+      head: {
+        appendChild: () => undefined,
+      },
+      getElementById: () => null,
+      createElement: () => ({
+        id: "",
+        textContent: "",
+      }),
       documentElement: {
+        classList: {
+          contains: (name: string) => classList.has(name),
+        },
         setAttribute: (name: string, value: string) =>
           attributes.set(name, value),
+        style: {
+          setProperty: (name: string, value: string, _priority?: string) =>
+            properties.set(name, value),
+        },
       },
     },
   });
 
   try {
-    applyAccentColor("rose");
-    expect(attributes.get("data-goose-accent")).toBe("rose");
-    expect(attributes.size).toBe(1);
+    applyAccentColor("amber");
+    expect(attributes.get("data-goose-accent")).toBe("amber");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#4a3b24");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#fde68a");
+    expect(properties.get("--goose-inline-code-border-hover")).toBe("#f59e0b");
+    expect(properties.get("--goose-interactive-selected-fg")).toBe("#fbbf24");
+  } finally {
+    if (previousDocument === undefined) {
+      delete (globalThis as { document?: Document }).document;
+    } else {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: previousDocument,
+      });
+    }
+  }
+});
+
+test("应用强调色在浅色模式写入对应 light runtime token", () => {
+  const properties = new Map<string, string>();
+  const previousDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      head: {
+        appendChild: () => undefined,
+      },
+      getElementById: () => null,
+      createElement: () => ({
+        id: "",
+        textContent: "",
+      }),
+      documentElement: {
+        classList: {
+          contains: () => false,
+        },
+        setAttribute: () => undefined,
+        style: {
+          setProperty: (name: string, value: string, _priority?: string) =>
+            properties.set(name, value),
+        },
+      },
+    },
+  });
+
+  try {
+    applyAccentColor("amber");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#fffbeb");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#b45309");
+  } finally {
+    if (previousDocument === undefined) {
+      delete (globalThis as { document?: Document }).document;
+    } else {
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: previousDocument,
+      });
+    }
+  }
+});
+
+test("主题 class 变化后 re-sync 会按 dark/light 重写 inline-code token", () => {
+  const properties = new Map<string, string>();
+  const classList = new Set<string>();
+  const previousDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      head: {
+        appendChild: () => undefined,
+      },
+      getElementById: () => null,
+      createElement: () => ({
+        id: "",
+        textContent: "",
+      }),
+      documentElement: {
+        classList: {
+          contains: (name: string) => classList.has(name),
+          add: (name: string) => {
+            classList.add(name);
+          },
+          remove: (name: string) => {
+            classList.delete(name);
+          },
+        },
+        getAttribute: () => "amber",
+        setAttribute: () => undefined,
+        style: {
+          setProperty: (name: string, value: string, _priority?: string) =>
+            properties.set(name, value),
+        },
+      },
+    },
+  });
+
+  try {
+    applyAccentColor("amber");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#fffbeb");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#b45309");
+
+    classList.add("dark");
+    syncAccentColorCssVars();
+    expect(properties.get("--goose-inline-code-bg")).toBe("#4a3b24");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#fde68a");
   } finally {
     if (previousDocument === undefined) {
       delete (globalThis as { document?: Document }).document;

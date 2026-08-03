@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uToolsStorage } from "@/lib/storage";
-import { applyAccentColor } from "@/lib/accentColor";
+import { applyAccentColor, syncAccentColorCssVars } from "@/lib/accentColor";
 import { normalizeCardThemeId } from "@/lib/imageExport";
 
 import type {
@@ -84,6 +84,10 @@ function applyTheme(theme: Theme) {
   const state = useSettings.getState();
   if (state) {
     applyCodeStyle(state.codeStyle);
+    // 明暗切换后重刷 accent 运行时 token（含行内代码色）。
+    // apply 可重复调用；sync 则按当前 data-goose-accent 重写，两者等价于兜底。
+    applyAccentColor(state.accentColor);
+    syncAccentColorCssVars();
   }
 }
 
