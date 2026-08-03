@@ -7,6 +7,7 @@
 export {}
 declare global {
   const ACCENT_COLORS: typeof import('./stores/settings/index').ACCENT_COLORS
+  const AI_PROVIDER_PRESETS: typeof import('./lib/ai-provider/index').AI_PROVIDER_PRESETS
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN
@@ -37,6 +38,7 @@ declare global {
   const ContextMenuSubContent: typeof import('./components/ui/context-menu').ContextMenuSubContent
   const ContextMenuSubTrigger: typeof import('./components/ui/context-menu').ContextMenuSubTrigger
   const ContextMenuTrigger: typeof import('./components/ui/context-menu').ContextMenuTrigger
+  const DEEPSEEK_BASE_URL: typeof import('./lib/ai-provider/index').DEEPSEEK_BASE_URL
   const DEFAULT_ACCENT_COLOR: typeof import('./stores/settings/index').DEFAULT_ACCENT_COLOR
   const DEFAULT_APP_SHORTCUTS: typeof import('./stores/settings/index').DEFAULT_APP_SHORTCUTS
   const DEFAULT_CLAUDE_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_CLAUDE_BASE_URL
@@ -84,6 +86,7 @@ declare global {
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
+  const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
   const IconButton: typeof import('./components/ui/icon-button').IconButton
@@ -99,6 +102,7 @@ declare global {
   const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
   const MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').MAX_VIDEO_ATTACHMENT_SIZE
+  const MINIMAX_BASE_URL: typeof import('./lib/ai-provider/index').MINIMAX_BASE_URL
   const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').NON_CUSTOMIZABLE_APP_SHORTCUT_IDS
   const NOTEBOOK_AI_TAB_PAGE_ID_PREFIX: typeof import('./stores/useTabs').NOTEBOOK_AI_TAB_PAGE_ID_PREFIX
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
@@ -268,6 +272,7 @@ declare global {
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
   const generateExportZip: typeof import('./lib/export/index').generateExportZip
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
+  const getAIProviderPreset: typeof import('./lib/ai-provider/index').getAIProviderPreset
   const getActiveDraftContent: typeof import('./stores/useQuickNote').getActiveDraftContent
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getBlockTypeTransformSignature: typeof import('./lib/ai-write/index').getBlockTypeTransformSignature
@@ -294,6 +299,8 @@ declare global {
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
+  const getProviderCredentialSlots: typeof import('./lib/ai-provider/index').getProviderCredentialSlots
+  const getProviderFixedBaseURL: typeof import('./lib/ai-provider/index').getProviderFixedBaseURL
   const getQuickNoteSlotName: typeof import('./stores/useQuickNote').getQuickNoteSlotName
   const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
   const getRandomTip: typeof import('./lib/tips').getRandomTip
@@ -301,6 +308,7 @@ declare global {
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
   const getSelectedImageUrl: typeof import('./components/editor/utils/selection').getSelectedImageUrl
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
+  const getSettingsProviderId: typeof import('./lib/ai-provider/index').getSettingsProviderId
   const getShortcutFromMouseEvent: typeof import('./lib/shortcut-match').getShortcutFromMouseEvent
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const handleFileInsertion: typeof import('./components/editor/utils/handleClipboardFileInsertion').handleFileInsertion
@@ -311,12 +319,15 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
   const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
+  const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
+  const isAIProviderId: typeof import('./lib/ai-provider/index').isAIProviderId
   const isBackupFileName: typeof import('./lib/webdavSync').isBackupFileName
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
   const isBlockTypeTransformSelectionSnapshot: typeof import('./lib/ai-write/index').isBlockTypeTransformSelectionSnapshot
   const isBottomEditorBlankClick: typeof import('./components/editor/utils/selection').isBottomEditorBlankClick
+  const isDeepSeekProModel: typeof import('./lib/ai-provider/index').isDeepSeekProModel
   const isDiskContentMatchingSnapshot: typeof import('./lib/local-md-snapshot').isDiskContentMatchingSnapshot
   const isDuplicateCompositionEndChange: typeof import('./hooks/useImeInput').isDuplicateCompositionEndChange
   const isImageUploadFile: typeof import('./components/editor/utils/pasteClipboardImage').isImageUploadFile
@@ -404,12 +415,15 @@ declare global {
   const readLocalPageIdMap: typeof import('./lib/local-page-idmap').readLocalPageIdMap
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
+  const recoverQuickNoteDrafts: typeof import('./stores/useQuickNote').recoverQuickNoteDrafts
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const removeLocalPageIdMap: typeof import('./lib/local-page-idmap').removeLocalPageIdMap
   const renderExportHtml: typeof import('./lib/export/index').renderExportHtml
   const renderWorkspaceAfterStartup: typeof import('./lib/workspaceStartup').renderWorkspaceAfterStartup
   const requestPageTitleFocus: typeof import('./lib/page-title-focus').requestPageTitleFocus
+  const resolveAccentRuntimeTokens: typeof import('./lib/accentColor').resolveAccentRuntimeTokens
+  const resolveActiveProtocol: typeof import('./lib/ai-provider/index').resolveActiveProtocol
   const resolveAiTargetFromSelection: typeof import('./lib/ai-write/index').resolveAiTargetFromSelection
   const resolveAiTargetIntent: typeof import('./lib/ai-write/index').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write/index').resolveAiTargetReference
@@ -422,6 +436,7 @@ declare global {
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
   const resolvePhysicalResourcePath: typeof import('./components/editor/utils/openResourceExternally').resolvePhysicalResourcePath
+  const resolveProtocolForProvider: typeof import('./lib/ai-provider/index').resolveProtocolForProvider
   const resolveTheme: typeof import('./hooks/useResolvedTheme').resolveTheme
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const restoreLastNoteIfNeeded: typeof import('./lib/workspaceStartup').restoreLastNoteIfNeeded
@@ -458,6 +473,7 @@ declare global {
   const stripMarkdownHardBreaks: typeof import('./components/editor/utils/clipboard').stripMarkdownHardBreaks
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
   const subscribePageTitleFocus: typeof import('./lib/page-title-focus').subscribePageTitleFocus
+  const syncAccentColorCssVars: typeof import('./lib/accentColor').syncAccentColorCssVars
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
@@ -554,7 +570,7 @@ declare global {
   export type { AiBlockScopeKind, AiBlockScopeRange, AiBlockScope } from './lib/ai-block-scope'
   import('./lib/ai-block-scope')
   // @ts-ignore
-  export type { CustomAIProtocol, AIModelOption, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from './lib/ai-provider/index'
+  export type { CustomAIProtocol, AIProviderIdLike, AIModelOption, AIReasoningLevel, AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions, AIProviderId, AIProviderPreset } from './lib/ai-provider/index'
   import('./lib/ai-provider/index')
   // @ts-ignore
   export type { AiWriteAction, AiBlockRange, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle, BlockTypeTransformIntent, BlockTypeTransformBlock, BlockTypeTransformPanelOpenDetail, BlockTypeTransformPlan, BlockTypeTransformResult, BlockTypeTransformSelectionSnapshot, BlockTypeTransformTarget, GeneratedBlockStructureExpectation, GeneratedBlockStructureValidationInput, GeneratedBlockStructureValidationResult, PseudoStructureMarkerIssue } from './lib/ai-write/index'
