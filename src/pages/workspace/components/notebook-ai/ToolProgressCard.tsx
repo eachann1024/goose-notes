@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
@@ -59,6 +58,29 @@ function isInputOnly(part: ToolProgressPart) {
   return INPUT_ONLY_STATES.has(part.state ?? "");
 }
 
+const SKILL_LABELS: Record<string, string> = {
+  createNoote: "新建笔记",
+  updateNote: "修改笔记",
+  deleteNote: "删除笔记",
+  searchNotes: "搜索笔记",
+  chat: "对话",
+  visual: "可视化",
+  webResearch: "网页研究",
+};
+
+function PixelSpinner() {
+  return (
+    <span
+      className="notebook-ai-pixel-spinner shrink-0 text-muted-foreground"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 8 }, (_, index) => (
+        <span key={index} />
+      ))}
+    </span>
+  );
+}
+
 export function getToolProgressStepStatus(
   part: ToolProgressPart,
   isMessageStreaming?: boolean,
@@ -86,12 +108,21 @@ function getStepText(
   const input = readObject(part.input);
   const output = readObject(part.output);
   const outputCount = countOutput(part.output);
-  const outputError = asString(output?.error);
+  const outputError = asString(output?.error) || asString(part.errorText);
   const title =
     asString(input?.title) ||
     asString(output?.title) ||
     asString(input?.pageId) ||
     asString(output?.pageId);
+
+  if (part.type === "tool-loadSkill") {
+    const skill = asString(input?.skill);
+    const skillLabel = SKILL_LABELS[skill] || "所需";
+    return {
+      label: "加载能力",
+      detail: output ? `已加载${skillLabel}能力` : `正在加载${skillLabel}能力`,
+    };
+  }
 
   if (part.type === "tool-listNotebooks") {
     return {
@@ -342,18 +373,21 @@ function buildSteps(
 }
 
 function buildSummary(steps: ProgressStep[]) {
-  const doneSteps = steps.filter((step) => step.status === "done");
-  const runningStep = steps.find((step) => step.status === "running");
   const errorStep = steps.find((step) => step.status === "error");
-  const source = errorStep
-    ? [errorStep]
-    : runningStep
-      ? [runningStep]
-      : doneSteps;
-  return source
-    .slice(0, 3)
+  if (errorStep) return errorStep.detail;
+
+  return steps
+    .filter((step) => step.status === "done" || step.status === "running")
+    .slice(-3)
     .map((step) => step.detail)
     .join("、");
+}
+
+export function getToolProgressSummary(
+  parts: ToolProgressPart[],
+  isMessageStreaming?: boolean,
+) {
+  return buildSummary(buildSteps(parts, isMessageStreaming));
 }
 
 export function ToolProgressCard({
@@ -374,15 +408,10 @@ export function ToolProgressCard({
 
   const hasError = steps.some((step) => step.status === "error");
   const isRunning =
-    Boolean(isMessageStreaming) ||
-    steps.some((step) => step.status === "running");
-  const statusText = isMessageStreaming
-    ? "处理中"
-    : hasError
-      ? "失败"
-      : isRunning
-        ? "处理中"
-        : "已完成";
+    !hasError &&
+    (Boolean(isMessageStreaming) ||
+      steps.some((step) => step.status === "running"));
+  const statusText = hasError ? "失败" : isRunning ? "处理中" : "已完成";
   const summary = buildSummary(steps) || `${steps.length} 个步骤`;
 
   return (
@@ -393,16 +422,13 @@ export function ToolProgressCard({
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
       >
-        {isRunning ? (
-          <Loader2
-            className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
-            strokeWidth={1.75}
-          />
-        ) : hasError ? (
+        {hasError ? (
           <AlertCircle
             className="h-3.5 w-3.5 shrink-0 text-destructive"
             strokeWidth={1.75}
           />
+        ) : isRunning ? (
+          <PixelSpinner />
         ) : (
           <CheckCircle2
             className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -410,8 +436,15 @@ export function ToolProgressCard({
           />
         )}
         <span className="shrink-0 font-medium text-foreground">处理进度</span>
-        <span className="min-w-0 flex-1 truncate text-muted-foreground">
-          {summary}
+        <span
+          className="min-w-0 flex-1 truncate text-muted-foreground"
+          title={summary}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span key={summary} className="notebook-ai-progress-summary">
+            {summary}
+          </span>
         </span>
         <span
           className={cn(

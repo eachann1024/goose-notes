@@ -325,10 +325,10 @@ export function ChatMessages({
   const messageById = new Map(messages.map((message) => [message.id, message]));
 
   const MessageActionBar = () => (
-    <div className="mt-1 flex min-h-6 items-center gap-1">
+    <div className="notebook-ai-message-actions mt-1 flex h-6 min-h-6 items-center gap-1">
       <ActionBarPrimitive.Root
         hideWhenRunning
-        autohide="not-last"
+        autohide="never"
         autohideFloat="never"
         className="flex items-center gap-1"
       >
@@ -372,7 +372,7 @@ export function ChatMessages({
     const textSegments = buildUserMessageSegments(text, references);
 
     return (
-      <MessagePrimitive.Root className="flex flex-col items-end">
+      <MessagePrimitive.Root className="notebook-ai-message flex flex-col items-end">
         <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
           <MessagePrimitive.Attachments>
             {({ attachment }) => {
@@ -496,13 +496,7 @@ export function ChatMessages({
     };
 
     return (
-      <MessagePrimitive.Root className="space-y-2 rounded-[14px] bg-[var(--goose-interactive-hover)]/70 px-3.5 py-3">
-        <div className="flex select-none items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[6px] bg-[#58d7b8]/15 text-[#58d7b8]">
-            <Sparkles className="h-2.5 w-2.5" strokeWidth={2.25} />
-          </span>
-          <span>回答</span>
-        </div>
+      <MessagePrimitive.Root className="notebook-ai-message space-y-2 rounded-[14px] bg-[var(--goose-interactive-hover)]/70 px-3.5 py-2.5">
         {showToolProgress ? (
           <ToolProgressCard
             parts={progressToolParts}
@@ -519,7 +513,8 @@ export function ChatMessages({
         <MessagePrimitive.Error>
           <p className="text-xs text-destructive">这条回复生成失败。</p>
         </MessagePrimitive.Error>
-        <MessageActionBar />
+        {/* 流式中不占位：避免底部空出一截操作栏高度 */}
+        {!isStreaming ? <MessageActionBar /> : null}
       </MessagePrimitive.Root>
     );
   };
