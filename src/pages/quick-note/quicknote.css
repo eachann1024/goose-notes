@@ -31,47 +31,13 @@ body,
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.dark .quicknote-titlebar-handle {
-  background: #e1e1de;
-}
-
-/* 顶栏是固定覆层，不参与正文布局；只有顶部中央 72×8px 浅灰手柄响应悬停。 */
+/* 固定标题栏：占布局高度，常驻可见；空白区拖窗，正文不再被把手/覆层误拖。 */
 .quicknote-titlebar-reveal-zone {
-  position: fixed;
+  position: relative;
   z-index: 20;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 46px;
-  pointer-events: none;
-}
-
-.quicknote-titlebar-trigger {
-  position: absolute;
-  z-index: 2;
-  top: 2px;
-  left: 50%;
-  width: 72px;
-  height: 8px;
-  pointer-events: auto;
-  transform: translateX(-50%);
-}
-
-.quicknote-titlebar-handle {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  left: 50%;
-  width: 72px;
-  height: 8px;
-  border-radius: 999px;
-  background: #e1e1de;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
-  transition:
-    opacity 140ms ease,
-    transform 160ms ease;
+  flex: 0 0 auto;
+  width: 100%;
+  height: 30px;
 }
 
 /* 当前便签名常驻左侧，同时作为改名入口。 */
@@ -79,16 +45,16 @@ body,
   display: flex;
   align-items: center;
   flex: 0 1 auto;
-  max-width: min(96px, calc(50vw - 76px));
-  height: 26px;
+  max-width: min(88px, calc(50vw - 72px));
+  height: 22px;
   margin: 0;
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: hsl(var(--foreground));
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1;
   text-overflow: ellipsis;
@@ -108,80 +74,47 @@ body,
 }
 
 .quicknote-slot-name-input {
-  position: fixed;
+  position: absolute;
   z-index: 22;
   box-sizing: border-box;
-  top: 4px;
-  left: 8px;
-  width: calc(100% - 16px);
-  height: 28px;
+  top: 3px;
+  left: 6px;
+  width: calc(100% - 12px);
+  height: 24px;
   margin: 0;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 5px;
   outline: none;
   background: hsl(var(--goose-selected-bg));
   color: hsl(var(--foreground));
   font-size: 12px;
   font-weight: 500;
-  line-height: 28px;
+  line-height: 24px;
   box-shadow: none;
   pointer-events: auto;
 }
 
-/* 顶栏默认隐藏；hover、键盘焦点、切换反馈和弹层打开时显示。 */
 .quicknote-titlebar {
-  position: fixed;
-  z-index: 1;
-  top: 0;
-  right: 0;
-  left: 0;
+  position: relative;
   display: flex;
   align-items: center;
-  height: 46px;
-  padding: 0 12px 0 16px;
+  height: 100%;
+  padding: 0 8px 0 10px;
   -webkit-user-select: none;
   user-select: none;
-  background: linear-gradient(
-    to bottom,
-    hsl(var(--goose-editor-bg)) 76%,
-    rgba(255, 255, 255, 0)
-  );
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-  transition:
-    opacity 160ms ease,
-    transform 180ms ease;
+  background: hsl(var(--goose-editor-bg));
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.quicknote-titlebar-reveal-zone:hover .quicknote-titlebar,
-.quicknote-titlebar-reveal-zone:focus-within .quicknote-titlebar,
-.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
-  .quicknote-titlebar,
-.quicknote-titlebar-reveal-zone[data-help-open="true"] .quicknote-titlebar {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+.dark .quicknote-titlebar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
-.quicknote-titlebar-reveal-zone:hover .quicknote-titlebar-handle,
-.quicknote-titlebar-reveal-zone:focus-within .quicknote-titlebar-handle,
-.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
-  .quicknote-titlebar-handle,
-.quicknote-titlebar-reveal-zone[data-help-open="true"]
-  .quicknote-titlebar-handle {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-2px);
-}
-
-/* 改名时顶部只保留全宽输入框：隐藏整个标题栏，不让中间数字
-   或两侧按钮在 focus-within 规则下重新出现。 */
+/* 改名时顶部只保留全宽输入框：隐藏标题栏控件。 */
 .quicknote-titlebar-reveal-zone[data-renaming="true"] .quicknote-titlebar {
   visibility: hidden;
-  opacity: 0;
   pointer-events: none;
-  transform: translateY(-4px);
 }
 
 .quicknote-titlebar-btn {
@@ -199,27 +132,17 @@ body,
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  opacity: 0;
   transition:
-    opacity 150ms ease,
     background 150ms ease,
     color 150ms ease;
-}
-
-.quicknote-titlebar-reveal-zone:hover .quicknote-help-trigger,
-.quicknote-titlebar-reveal-zone:focus-within .quicknote-help-trigger,
-.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
-  .quicknote-help-trigger,
-.quicknote-titlebar-reveal-zone[data-help-open="true"] .quicknote-help-trigger {
-  opacity: 1;
 }
 
 .quicknote-help-trigger:hover {
@@ -229,35 +152,25 @@ body,
 
 .quicknote-slot-switcher-positioner {
   position: absolute;
-  top: 10px;
+  top: 50%;
   left: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  height: 26px;
-  transform: translateX(-50%);
+  width: 104px;
+  height: 22px;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 .quicknote-slot-switcher-interactive {
-  pointer-events: none;
-}
-
-.quicknote-titlebar-reveal-zone:hover .quicknote-slot-switcher-interactive,
-.quicknote-titlebar-reveal-zone:focus-within
-  .quicknote-slot-switcher-interactive,
-.quicknote-titlebar-reveal-zone[data-transient-visible="true"]
-  .quicknote-slot-switcher-interactive,
-.quicknote-titlebar-reveal-zone[data-help-open="true"]
-  .quicknote-slot-switcher-interactive {
   pointer-events: auto;
 }
 
 .quicknote-titlebar-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   margin-left: auto;
 }
 
@@ -265,12 +178,12 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: hsl(var(--muted-foreground));
 }
@@ -280,7 +193,7 @@ body,
   color: hsl(var(--foreground));
 }
 
-/* 顶栏不占布局；正文从视口顶部开始，只有中央 72×8px 手柄接收指针。 */
+/* 标题栏已占布局高度；正文从剩余区域顶部开始。 */
 .quicknote-editor-surface {
   box-sizing: border-box;
   height: 100%;
@@ -290,13 +203,11 @@ body,
   padding-bottom: 16px;
 }
 
-/* BlockNote 的 contenteditable 默认只按内容撑高。小窗直接让编辑面填满
-   视口扣除 surface 底部内边距（16px）与 workspace 顶部内边距（8px）后的
-   剩余空间；顶栏是覆层，不计入高度。 */
+/* BlockNote 的 contenteditable 默认只按内容撑高。小窗让编辑面填满
+   滚动容器（标题栏已从视口扣掉）剩余高度。 */
 .quicknote-editor-surface .bn-editor {
   box-sizing: border-box;
-  min-height: calc(100vh - 24px);
-  min-height: calc(100dvh - 24px);
+  min-height: calc(100% - 8px);
 }
 
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
@@ -706,11 +617,11 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  width: 120px;
-  height: 26px;
-  padding: 2px;
+  width: 104px;
+  height: 22px;
+  padding: 1px;
   border: 1px solid #dedede;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #f1f1ef;
   box-shadow: none;
 }
@@ -721,12 +632,12 @@ body,
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 22px;
-  height: 20px;
+  width: 20px;
+  height: 18px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 5px;
   background: transparent;
   color: #85827e;
   font-size: 10px;
@@ -817,7 +728,6 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .quicknote-titlebar,
-  .quicknote-titlebar-handle,
   .quicknote-slot-switcher,
   .quicknote-slot-btn,
   .quicknote-slot-name-text,

@@ -50,7 +50,6 @@ import {
 
 const POSITION_POLL_MS = 120;
 const POSITION_SETTLE_MS = 720;
-const TITLEBAR_SWITCH_REVEAL_MS = 2200;
 
 /**
  * 速记小窗根组件（独立窗口进程）。
@@ -114,9 +113,6 @@ export function QuickNoteApp() {
    */
   const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [titlebarTransientVisible, setTitlebarTransientVisible] =
-    useState(false);
-  const titlebarHideTimerRef = useRef<number | null>(null);
   const [renamingSlot, setRenamingSlot] = useState<QuickNoteSlot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -125,26 +121,6 @@ export function QuickNoteApp() {
     loadQuickNoteSlotNames(useQuickNote.getState().slotNames),
   );
   const slotNamesRef = useRef(slotNames);
-
-  const revealTitlebarTransiently = useCallback(() => {
-    if (titlebarHideTimerRef.current !== null) {
-      window.clearTimeout(titlebarHideTimerRef.current);
-    }
-    setTitlebarTransientVisible(true);
-    titlebarHideTimerRef.current = window.setTimeout(() => {
-      titlebarHideTimerRef.current = null;
-      setTitlebarTransientVisible(false);
-    }, TITLEBAR_SWITCH_REVEAL_MS);
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (titlebarHideTimerRef.current !== null) {
-        window.clearTimeout(titlebarHideTimerRef.current);
-      }
-    },
-    [],
-  );
 
   const helpShortcuts = useMemo(() => {
     const platform = getPlatformKind();
@@ -216,14 +192,13 @@ export function QuickNoteApp() {
 
   const startRename = useCallback(
     (slot: QuickNoteSlot) => {
-      revealTitlebarTransiently();
       flushEditor();
       renameFinishingRef.current = false;
       setHelpOpen(false);
       setRenameValue(getQuickNoteSlotName(slot, slotNames));
       setRenamingSlot(slot);
     },
-    [flushEditor, revealTitlebarTransiently, slotNames],
+    [flushEditor, slotNames],
   );
 
   const finishRename = useCallback(
@@ -243,13 +218,12 @@ export function QuickNoteApp() {
         }
       }
       setRenamingSlot(null);
-      revealTitlebarTransiently();
       requestAnimationFrame(() => {
         renameFinishingRef.current = false;
         editorRef.current?.editor?.focus?.();
       });
     },
-    [renameValue, renamingSlot, revealTitlebarTransiently],
+    [renameValue, renamingSlot],
   );
 
   useEffect(() => {
@@ -298,7 +272,6 @@ export function QuickNoteApp() {
       slot: QuickNoteSlot,
       source: "pointer" | "shortcut" | "switcher-keyboard",
     ) => {
-      revealTitlebarTransiently();
       flushEditor();
       setPreviewSlot(null);
       if (slot === useQuickNote.getState().activeSlot) return;
@@ -309,16 +282,12 @@ export function QuickNoteApp() {
         });
       }
     },
-    [flushEditor, revealTitlebarTransiently, setActiveSlot],
+    [flushEditor, setActiveSlot],
   );
 
-  const handleHelpOpenChange = useCallback(
-    (open: boolean) => {
-      setHelpOpen(open);
-      if (!open) revealTitlebarTransiently();
-    },
-    [revealTitlebarTransiently],
-  );
+  const handleHelpOpenChange = useCallback((open: boolean) => {
+    setHelpOpen(open);
+  }, []);
 
   /** 拖动预览：只改显示槽，不写 activeSlot。 */
   const handlePreviewSlot = useCallback(
@@ -509,12 +478,7 @@ export function QuickNoteApp() {
     <div
       className="quicknote-titlebar-reveal-zone"
       data-renaming={renamingSlot === null ? "false" : "true"}
-      data-transient-visible={titlebarTransientVisible ? "true" : "false"}
-      data-help-open={helpOpen ? "true" : "false"}
     >
-      <div className="quicknote-titlebar-trigger" aria-hidden="true">
-        <span className="quicknote-titlebar-handle" />
-      </div>
       {renamingSlot !== null && (
         <input
           ref={renameInputRef}
@@ -591,7 +555,7 @@ export function QuickNoteApp() {
                 className="quicknote-titlebar-btn quicknote-help-trigger"
                 style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
               >
-                <CircleAlert className="h-3.5 w-3.5" />
+                <CircleAlert className="h-3 w-3" />
               </button>
             </PopoverTrigger>
             <PopoverContent
@@ -652,7 +616,7 @@ export function QuickNoteApp() {
             style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
             onClick={() => persistPlacementThenClose()}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3 w-3" />
           </button>
         </div>
       </div>

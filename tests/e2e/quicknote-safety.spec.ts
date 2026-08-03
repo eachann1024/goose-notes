@@ -8,7 +8,7 @@ async function openCleanQuickNote(page: import("playwright/test").Page) {
 }
 
 test.describe("quick-note draft safety", () => {
-  test("reveals the compact overlay switcher without shifting the editor", async ({
+  test("keeps a fixed titlebar without handle and leaves editor below it", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 408, height: 759 });
@@ -17,95 +17,72 @@ test.describe("quick-note draft safety", () => {
     const layout = await page.evaluate(() => {
       const root = document.querySelector<HTMLElement>(".quicknote-root");
       const topbar = document.querySelector<HTMLElement>(".quicknote-titlebar");
+      const zone = document.querySelector<HTMLElement>(
+        ".quicknote-titlebar-reveal-zone",
+      );
       const switcher = document.querySelector<HTMLElement>(
         ".quicknote-slot-switcher",
       );
       const editor = document.querySelector<HTMLElement>(
         ".page-scroll-container",
       );
-      const trigger = document.querySelector<HTMLElement>(
-        ".quicknote-titlebar-trigger",
-      );
       const handle = document.querySelector<HTMLElement>(
         ".quicknote-titlebar-handle",
       );
-      if (!root || !topbar || !switcher || !editor || !trigger || !handle) {
+      const trigger = document.querySelector<HTMLElement>(
+        ".quicknote-titlebar-trigger",
+      );
+      if (!root || !topbar || !zone || !switcher || !editor) {
         return null;
       }
 
       const rootRect = root.getBoundingClientRect();
       const topbarRect = topbar.getBoundingClientRect();
+      const zoneRect = zone.getBoundingClientRect();
       const switcherRect = switcher.getBoundingClientRect();
       const editorRect = editor.getBoundingClientRect();
-      const triggerRect = trigger.getBoundingClientRect();
-      const handleRect = handle.getBoundingClientRect();
 
       return {
         topbarHeight: topbarRect.height,
+        zoneHeight: zoneRect.height,
         titlebarOpacity: getComputedStyle(topbar).opacity,
-        triggerWidth: triggerRect.width,
-        triggerHeight: triggerRect.height,
-        triggerTop: triggerRect.top - rootRect.top,
-        handleWidth: handleRect.width,
-        handleHeight: handleRect.height,
-        handleOpacity: getComputedStyle(handle).opacity,
-        handleBackground: getComputedStyle(handle).backgroundColor,
-        handleZIndex: getComputedStyle(handle).zIndex,
-        handleCenterDelta:
-          handleRect.left +
-          handleRect.width / 2 -
-          (rootRect.left + rootRect.width / 2),
+        titlebarPointerEvents: getComputedStyle(topbar).pointerEvents,
+        hasHandle: !!handle,
+        hasTrigger: !!trigger,
         switcherWidth: switcherRect.width,
         switcherHeight: switcherRect.height,
         switcherCenterDelta:
           switcherRect.left +
           switcherRect.width / 2 -
           (rootRect.left + rootRect.width / 2),
-        editorStartsAtViewportTop: editorRect.top === rootRect.top,
+        editorTop: editorRect.top,
+        zoneBottom: zoneRect.bottom,
+        editorStartsBelowTitlebar: Math.abs(editorRect.top - zoneRect.bottom) < 1,
       };
     });
 
     expect(layout).not.toBeNull();
-    expect(layout!.topbarHeight).toBe(46);
-    expect(layout!.titlebarOpacity).toBe("0");
-    expect(layout!.triggerWidth).toBe(72);
-    expect(layout!.triggerHeight).toBe(8);
-    expect(layout!.triggerTop).toBe(2);
-    expect(layout!.handleWidth).toBe(72);
-    expect(layout!.handleHeight).toBe(8);
-    expect(layout!.handleOpacity).toBe("1");
-    expect(layout!.handleBackground).toBe("rgb(225, 225, 222)");
-    expect(layout!.handleZIndex).toBe("3");
-    expect(Math.abs(layout!.handleCenterDelta)).toBeLessThan(1);
-    expect(layout!.switcherWidth).toBe(120);
-    expect(layout!.switcherHeight).toBe(26);
+    expect(layout!.topbarHeight).toBe(30);
+    expect(layout!.zoneHeight).toBe(30);
+    expect(layout!.titlebarOpacity).toBe("1");
+    expect(layout!.titlebarPointerEvents).toBe("auto");
+    expect(layout!.hasHandle).toBe(false);
+    expect(layout!.hasTrigger).toBe(false);
+    expect(layout!.switcherWidth).toBe(104);
+    expect(layout!.switcherHeight).toBe(22);
     expect(Math.abs(layout!.switcherCenterDelta)).toBeLessThan(1);
-    expect(layout!.editorStartsAtViewportTop).toBe(true);
+    expect(layout!.editorStartsBelowTitlebar).toBe(true);
 
     const titlebar = page.locator(".quicknote-titlebar");
-    const handle = page.locator(".quicknote-titlebar-handle");
     const switcherInteractive = page.locator(
       ".quicknote-slot-switcher-interactive",
     );
     const helpTrigger = page.getByRole("button", { name: "使用说明" });
-    await page.mouse.move(204, 0);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
-    await page.mouse.move(204, 12);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
-    await page.mouse.move(20, 6);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
-    await page.mouse.move(100, 6);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
-    await expect(switcherInteractive).toHaveCSS("pointer-events", "none");
-    await page.mouse.move(204, 6);
-    await expect(titlebar).toHaveCSS("opacity", "1");
-    await expect(handle).toHaveCSS("opacity", "0");
-    await expect(helpTrigger).toHaveCSS("opacity", "1");
+
+    await expect(titlebar).toBeVisible();
+    await expect(helpTrigger).toBeVisible();
     await expect(switcherInteractive).toHaveCSS("pointer-events", "auto");
+
     const actionLayout = await page
       .locator(".quicknote-titlebar-actions")
       .evaluate((actions) => {
@@ -135,15 +112,12 @@ test.describe("quick-note draft safety", () => {
     expect(actionLayout!.gap).toBeGreaterThanOrEqual(0);
     expect(actionLayout!.gap).toBeLessThanOrEqual(4);
     expect(Math.abs(actionLayout!.centerDelta)).toBeLessThan(1);
-    await titlebar.hover({ position: { x: 200, y: 20 } });
-    await page.waitForTimeout(2300);
-    await expect(titlebar).toHaveCSS("opacity", "1");
-    await expect(helpTrigger).toHaveCSS("opacity", "1");
-    await page.mouse.move(200, 120);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
 
-    await page.mouse.move(204, 6);
+    // 离开标题栏后仍常驻可见
+    await page.mouse.move(200, 120);
+    await expect(titlebar).toHaveCSS("opacity", "1");
+    await expect(helpTrigger).toBeVisible();
+
     await helpTrigger.click();
     const helpIntro = page.getByText(
       "内容只保留在当前便签，不会自动进入笔记本。",
@@ -160,9 +134,7 @@ test.describe("quick-note draft safety", () => {
     await page.keyboard.press("Escape");
     await expect(helpIntro).toBeHidden();
     await page.getByRole("textbox").first().focus();
-    await page.waitForTimeout(2400);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
+    await expect(titlebar).toHaveCSS("opacity", "1");
 
     await page.keyboard.press("Control+2");
     await expect(
@@ -172,16 +144,12 @@ test.describe("quick-note draft safety", () => {
       page.locator("[data-sonner-toast].quicknote-slot-switch-toast"),
     ).toHaveCount(0);
     await expect(titlebar).toHaveCSS("opacity", "1");
-    await expect(handle).toHaveCSS("opacity", "0");
-    await expect(helpTrigger).toHaveCSS("opacity", "1");
+    await expect(helpTrigger).toBeVisible();
 
     const activeBackground = await page
       .getByRole("radio", { name: "便签 2，空白" })
       .evaluate((element) => getComputedStyle(element).backgroundColor);
     expect(activeBackground).toBe("rgb(255, 255, 255)");
-    await page.waitForTimeout(2400);
-    await expect(titlebar).toHaveCSS("opacity", "0");
-    await expect(handle).toHaveCSS("opacity", "1");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     const reducedMotion = await page
@@ -189,7 +157,7 @@ test.describe("quick-note draft safety", () => {
       .evaluate((element) => ({
         animationName: getComputedStyle(element).animationName,
         transitionDuration: getComputedStyle(
-          document.querySelector(".quicknote-titlebar")!,
+          document.querySelector(".quicknote-slot-switcher")!,
         ).transitionDuration,
       }));
     expect(reducedMotion.animationName).toBe("none");
@@ -239,6 +207,7 @@ test.describe("quick-note draft safety", () => {
     expect(layout!.outlineStyle).toBe("none");
   });
 
+
   test("scrolls only after the content exceeds the viewport", async ({
     page,
   }) => {
@@ -260,7 +229,7 @@ test.describe("quick-note draft safety", () => {
     expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
   });
 
-  test("keeps the title overlay out of editor layout at minimum zoom", async ({
+  test("keeps the fixed titlebar above editor content at minimum zoom", async ({
     page,
   }) => {
     await openCleanQuickNote(page);
@@ -292,8 +261,9 @@ test.describe("quick-note draft safety", () => {
 
     expect(layout).not.toBeNull();
     expect(layout!.zoom).toBe("0.7");
-    expect(layout!.surfaceTop).toBe(0);
-    expect(layout!.firstBlockTop).toBeLessThan(layout!.titleBottom);
+    // 标题栏占布局，正文 surface 紧贴标题栏下方
+    expect(layout!.surfaceTop).toBe(layout!.titleBottom);
+    expect(layout!.firstBlockTop).toBeGreaterThanOrEqual(layout!.titleBottom);
   });
 
   test("scrolls the help content when the window is too short", async ({
@@ -302,7 +272,6 @@ test.describe("quick-note draft safety", () => {
     await page.setViewportSize({ width: 320, height: 160 });
     await openCleanQuickNote(page);
 
-    await page.locator(".quicknote-titlebar-reveal-zone").hover();
     await page.getByRole("button", { name: "使用说明" }).click();
 
     const overflow = await page
@@ -321,7 +290,6 @@ test.describe("quick-note draft safety", () => {
   }) => {
     await openCleanQuickNote(page);
 
-    await page.locator(".quicknote-titlebar-trigger").hover();
     await page.getByRole("button", { name: "修改标签名称" }).click();
     const renameInput = page.getByRole("textbox", { name: "重命名便签 1" });
     await expect(renameInput).toBeVisible();
@@ -336,9 +304,9 @@ test.describe("quick-note draft safety", () => {
         availableWidth: zoneRect.width,
       };
     });
-    expect(renameLayout.leftGap).toBeCloseTo(8, 0);
-    expect(renameLayout.rightGap).toBeCloseTo(8, 0);
-    expect(renameLayout.width).toBeCloseTo(renameLayout.availableWidth - 16, 0);
+    expect(renameLayout.leftGap).toBeCloseTo(6, 0);
+    expect(renameLayout.rightGap).toBeCloseTo(6, 0);
+    expect(renameLayout.width).toBeCloseTo(renameLayout.availableWidth - 12, 0);
     await renameInput.fill("工作");
     await renameInput.press("Enter");
 
@@ -361,16 +329,13 @@ test.describe("quick-note draft safety", () => {
     expect(nameStyle.animationName).toBe("quicknote-slot-content-in");
 
     await page.reload();
-    await page.locator(".quicknote-titlebar-trigger").hover();
     await expect(slotName).toHaveText("工作");
 
-    await page.locator(".quicknote-titlebar-reveal-zone").hover();
     await page.getByRole("button", { name: "使用说明" }).click();
     await page.getByRole("button", { name: "重命名当前便签" }).click();
     await expect(renameInput).toBeVisible();
     await renameInput.fill("灵感");
     await renameInput.press("Enter");
-    await page.locator(".quicknote-titlebar-trigger").hover();
     await expect(slotName).toHaveText("灵感");
   });
 
@@ -396,10 +361,9 @@ test.describe("quick-note draft safety", () => {
     await page.keyboard.press("Control+z");
     await expect(editor).toHaveText("速记切换不会丢失");
 
-    const titlebar = page.locator(".quicknote-titlebar-reveal-zone");
-    await titlebar.hover();
+    await expect(page.locator(".quicknote-titlebar")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "保存到笔记本" }),
+      page.getByRole("button", { name: "使用说明" }),
     ).toBeVisible();
 
     // Escape 应先关闭帮助弹层，不能同时收起整个速记窗口。
