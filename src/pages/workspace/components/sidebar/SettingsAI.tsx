@@ -693,7 +693,7 @@ export function SettingsAI({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                   onClick={() => setApiKeyVisible((visible) => !visible)}
                   aria-label={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
                   aria-pressed={apiKeyVisible}

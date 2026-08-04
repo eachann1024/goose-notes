@@ -355,7 +355,7 @@ export function PageHeader({
 
   /** 顶栏通用图标按钮：透明底，hover 才起底，与 PageIconButton 一致 */
   const actionButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground";
+    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground";
 
   return (
     <div
@@ -375,7 +375,7 @@ export function PageHeader({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                     sidebarExpandAttention && "sidebar-expand-attention",
                   )}
                   onClick={toggleSidebarCollapsed}
@@ -540,7 +540,7 @@ export function PageHeader({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                       onClick={onOpenSearch}
                     >
                       <LucideIcons.Plus className="h-4 w-4" />
@@ -556,7 +556,7 @@ export function PageHeader({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
                       aria-label="全部标签页"
                     >
                       <LucideIcons.ChevronDown

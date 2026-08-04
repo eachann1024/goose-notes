@@ -77,7 +77,7 @@ function createImageChipElement(
   removeBtn.title = `移除 ${attrs.fileName}`;
   removeBtn.className =
     "ai-composer-chip-remove ml-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px]" +
-    " text-muted-foreground hover:bg-background/60 hover:text-foreground";
+    " text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground";
   removeBtn.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
   span.appendChild(removeBtn);

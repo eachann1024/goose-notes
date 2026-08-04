@@ -406,7 +406,7 @@ export function ApprovalPlanCard({
                       </div>
                       <button
                         type="button"
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         onClick={() =>
                           setExpandedIds((current) => {
                             const next = new Set(current);

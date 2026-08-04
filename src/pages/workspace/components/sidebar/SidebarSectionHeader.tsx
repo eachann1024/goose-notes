@@ -84,7 +84,7 @@ export function SidebarSectionHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-7 w-7 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                 aria-label="搜索"
                 onClick={onSearch}
               >
@@ -107,7 +107,7 @@ export function SidebarSectionHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-7 w-7 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                 aria-label={createTitle}
                 onClick={onCreate}
               >

@@ -244,7 +244,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled || isStreaming}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="上传图片"
                 title="上传图片"
               >

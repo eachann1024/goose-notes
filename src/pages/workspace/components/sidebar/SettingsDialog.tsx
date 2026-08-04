@@ -710,7 +710,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <button
                   type="button"
                   onClick={handleCloseAppsBanner}
-                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/70 hover:text-foreground"
+                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                   aria-label="关闭推荐应用"
                 >
                   <LucideIcons.X className="h-3 w-3" />

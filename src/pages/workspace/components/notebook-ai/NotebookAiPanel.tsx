@@ -204,7 +204,7 @@ export function NotebookAiPanel({
   // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
     const iconBtn =
-      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
+      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50";
     return (
       <div
         className="flex items-center gap-0.5"
@@ -382,7 +382,7 @@ export function NotebookAiPanel({
             <button
               type="button"
               onClick={() => clearError()}
-              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] text-[var(--goose-color-danger-focus)] outline-none transition-colors hover:bg-[var(--goose-interactive-hover)]"
+              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] text-[var(--goose-color-danger-focus)] outline-none transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)]"
               aria-label="关闭错误提示"
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.75} />

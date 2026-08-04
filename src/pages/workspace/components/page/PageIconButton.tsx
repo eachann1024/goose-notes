@@ -33,7 +33,7 @@ export function PageIconButton({ page, className }: PageIconButtonProps) {
         "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] transition-colors",
         disabled
           ? "cursor-not-allowed opacity-40"
-          : "text-muted-foreground/75 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+          : "text-muted-foreground/75 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
         iconName && "text-foreground/85",
         className,
       )}

@@ -62,7 +62,7 @@ export function DialogShell({
             <button
               type="button"
               className={cn(
-                "absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted/65 hover:text-foreground",
+                "absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
                 isFullscreen ? "top-4 right-4" : "top-4 right-4"
               )}
               aria-label="关闭"

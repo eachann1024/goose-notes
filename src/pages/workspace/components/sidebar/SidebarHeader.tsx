@@ -357,7 +357,7 @@ export function SidebarHeader({
                               // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
                               isActive
                                 ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm"
-                                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                                : "text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
@@ -404,7 +404,7 @@ export function SidebarHeader({
                     canScrollLeft
                       ? "opacity-0 -translate-x-1"
                       : "opacity-0 -translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
                   )}
                 >
                   <LucideIcons.ChevronLeft className="h-3.5 w-3.5" />
@@ -427,7 +427,7 @@ export function SidebarHeader({
                     canScrollRight
                       ? "opacity-0 translate-x-1"
                       : "opacity-0 translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
                   )}
                 >
                   <LucideIcons.ChevronRight className="h-3.5 w-3.5" />

@@ -167,7 +167,7 @@ export function PaletteResultGroup({
                     e.stopPropagation();
                     onHideRecent();
                   }}
-                  className="p-0.5 rounded hover:bg-foreground/10 cursor-pointer transition-colors"
+                  className="p-0.5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer transition-colors"
                 >
                   <LucideIcons.X
                     aria-hidden="true"
@@ -204,7 +204,7 @@ export function PaletteResultGroup({
                         e.stopPropagation();
                         onRemoveRecent(page.id);
                       }}
-                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-interactive-selected)]"
+                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)]"
                     >
                       <LucideIcons.X
                         aria-hidden="true"

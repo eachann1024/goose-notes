@@ -7,9 +7,9 @@ const iconButtonVariants = cva(
   {
     variants: {
       tone: {
-        default: "text-foreground/90 hover:bg-muted",
+        default: "text-foreground/90 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)]",
         muted:
-          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-muted-foreground/15 dark:hover:bg-[var(--goose-interactive-hover)]",
+          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)]",
         danger:
           "text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)]",
         handle:
@@ -21,7 +21,7 @@ const iconButtonVariants = cva(
         icon: "h-8 w-8",
       },
       active: {
-        true: "bg-accent text-foreground",
+        true: "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
         false: "",
       },
     },

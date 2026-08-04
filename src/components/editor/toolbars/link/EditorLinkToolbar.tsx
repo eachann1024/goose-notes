@@ -168,7 +168,7 @@ export function EditorLinkToolbar({
       <button
         type="button"
         onClick={startEditing}
-        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-accent hover:text-foreground transition-colors"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground transition-colors"
       >
         <LucideIcons.Pencil className="h-3 w-3" />
         编辑
@@ -187,7 +187,7 @@ export function EditorLinkToolbar({
           event.stopPropagation();
           handleOpen();
         }}
-        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-accent hover:text-foreground transition-colors"
+        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground transition-colors"
       >
         <LucideIcons.ExternalLink className="h-3 w-3" />
         打开

@@ -331,7 +331,7 @@ export function ConversationHistoryPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50"
           aria-label="历史会话"
           title="历史会话"
           disabled={disabled}

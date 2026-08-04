@@ -130,7 +130,7 @@ export function CodeBlockToolbar({
   const chipClass = cn(
     "transition-colors duration-150",
     "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
-    "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground",
     "focus-visible:ring-0 focus-visible:ring-offset-0",
     "cursor-pointer rounded-md",
   );
@@ -193,7 +193,7 @@ export function CodeBlockToolbar({
                     className={cn(
                       "text-xs",
                       lang.toLowerCase() === language.toLowerCase() &&
-                        "bg-accent",
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
                     )}
                   >
                     {LANGUAGE_DISPLAY_NAMES[lang] || lang}

@@ -584,7 +584,7 @@ export function ChatMessages({
           </ThreadPrimitive.Messages>
           <ThreadPrimitive.ViewportFooter className="sticky bottom-2 flex justify-center">
             <ThreadPrimitive.ScrollToBottom
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground disabled:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
               aria-label="滚动到底部"
               title="滚动到底部"
             >

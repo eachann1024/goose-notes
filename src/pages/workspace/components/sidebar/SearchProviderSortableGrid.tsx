@@ -96,7 +96,7 @@ function ProviderCard({
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
-          className="h-7 w-7 shrink-0 cursor-grab rounded-md bg-[hsl(var(--goose-selected-bg)/0.78)] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] active:cursor-grabbing dark:bg-[hsl(var(--foreground)/0.1)]"
+          className="h-7 w-7 shrink-0 cursor-grab rounded-md bg-[hsl(var(--goose-selected-bg)/0.78)] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] active:cursor-grabbing dark:bg-[hsl(var(--foreground)/0.1)] dark:hover:bg-[var(--goose-interactive-hover)]"
           {...attributes}
           {...listeners}
           aria-label={`拖拽调整 ${provider.name} 排序`}
@@ -123,7 +123,7 @@ function ProviderCard({
             <button
               type="button"
               onClick={() => onEdit(provider)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`编辑 ${provider.name}`}
             >
               <Pencil className="h-3.5 w-3.5" />

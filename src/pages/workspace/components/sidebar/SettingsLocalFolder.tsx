@@ -570,7 +570,7 @@ function LocalAssetMaintenanceDialog({
                   >
                     <button
                       type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                      className="flex h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                       aria-pressed={selected}
                       aria-label={
                         selected
@@ -628,7 +628,7 @@ function LocalAssetMaintenanceDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 rounded-[10px] text-muted-foreground"
+                      className="h-8 w-8 shrink-0 rounded-[10px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                       aria-label={`在文件管理器显示 ${asset.name}`}
                       onClick={() => revealAsset(asset)}
                     >

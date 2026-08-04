@@ -190,7 +190,7 @@ export function EditorSideMenu() {
                 onClick={handleAdd}
                 className={cn(
                   "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
-                  "transition-colors hover:bg-muted/80 hover:text-foreground",
+                  "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground",
                 )}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -220,7 +220,7 @@ export function EditorSideMenu() {
           className={cn(
             "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
             "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
-            "transition-colors hover:bg-muted/80 hover:text-foreground active:cursor-grabbing",
+            "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground active:cursor-grabbing",
           )}
         >
           <GripVertical className="h-3.5 w-3.5" />

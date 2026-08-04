@@ -14,6 +14,8 @@ const buttonVariants = cva(
           "border border-transparent bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
           "bg-secondary text-secondary-foreground shadow-[inset_0_0_0_1px_hsl(var(--input)/0.55)] hover:bg-secondary/85",
+        // ghost/outline 仍用中性 accent：会用于菜单项、文本按钮等，不适合全局改成强调色图标底。
+        // 纯图标控件请用 IconButton，或在调用点覆盖 hover:bg-[var(--goose-icon-chip-on-selected)]。
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

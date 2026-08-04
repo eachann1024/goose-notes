@@ -507,7 +507,7 @@ export function HistoryVersionList() {
                             handleToggleMilestone(v.versionId, !v.isMilestone);
                           }}
                           className={cn(
-                            "history-star-control group/star absolute right-1 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color,opacity,transform] duration-150 hover:bg-[var(--goose-control-hover-bg)] active:scale-95 active:bg-[var(--goose-interactive-selected)] disabled:cursor-wait disabled:opacity-70",
+                            "history-star-control group/star absolute right-1 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color,opacity,transform] duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] active:scale-95 active:bg-[var(--goose-interactive-selected)] disabled:cursor-wait disabled:opacity-70",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                             v.isMilestone || isMilestonePending
                               ? "opacity-100"

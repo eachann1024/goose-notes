@@ -128,11 +128,29 @@
 
 /* 历史页交互状态使用扁平选择器：uTools 旧内核不执行 Tailwind v4 的嵌套 hover CSS。 */
 .workspace-shell .history-secondary-control:hover,
-.workspace-shell .sidebar-footer-control:hover,
-.workspace-shell .history-star-control:hover,
 .workspace-shell .history-version-row[data-selected="false"]:hover {
   color: hsl(var(--foreground)) !important;
   background-color: var(--goose-control-hover-bg) !important;
+}
+
+/* 历史页星标独立图标按钮：强调色图标底，暗色回退 interactive-hover。 */
+.workspace-shell .history-star-control:hover {
+  color: hsl(var(--foreground)) !important;
+  background-color: var(--goose-icon-chip-on-selected) !important;
+}
+
+.dark .workspace-shell .history-star-control:hover {
+  background-color: var(--goose-interactive-hover) !important;
+}
+
+/* 侧栏底部独立图标按钮：强调色图标底，暗色回退 interactive-hover。 */
+.workspace-shell .sidebar-footer-control:hover {
+  color: hsl(var(--foreground)) !important;
+  background-color: var(--goose-icon-chip-on-selected) !important;
+}
+
+.dark .workspace-shell .sidebar-footer-control:hover {
+  background-color: var(--goose-interactive-hover) !important;
 }
 
 .workspace-shell .history-secondary-control:active,

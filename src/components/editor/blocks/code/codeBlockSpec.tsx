@@ -1023,7 +1023,7 @@ function CodeBlockComponent({
                 <button
                   type="button"
                   onClick={() => setShowLatexHint(false)}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)]"
                 >
                   <LucideIcons.X className="h-3.5 w-3.5" />
                 </button>

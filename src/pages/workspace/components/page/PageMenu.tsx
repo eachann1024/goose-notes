@@ -130,7 +130,7 @@ export function PageMenu() {
             variant="ghost"
             size="icon"
             aria-label="更多操作"
-            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-muted/65 hover:text-foreground"
+            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
           >
             <LucideIcons.MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">更多操作</span>

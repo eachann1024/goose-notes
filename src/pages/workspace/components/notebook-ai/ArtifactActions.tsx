@@ -56,7 +56,7 @@ export function ArtifactActions({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-[7px] text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
               aria-label="复制源码"
               onClick={() => void copyText(copySource)}
             >
@@ -71,7 +71,7 @@ export function ArtifactActions({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-[7px] text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
               aria-label="下载 SVG"
               disabled={!downloadSource}
               onClick={() =>
@@ -90,7 +90,7 @@ export function ArtifactActions({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-[7px] text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
                 aria-label="插入当前笔记"
                 onClick={async () => {
                   const result = await onInsert();
