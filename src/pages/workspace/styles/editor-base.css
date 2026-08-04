@@ -165,7 +165,7 @@
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
-  background: var(--goose-interactive-hover);
+  background: var(--goose-icon-chip-on-selected);
   color: hsl(var(--foreground));
 }
 
@@ -300,7 +300,7 @@
 
 .goose-block-toolbar-control:hover,
 .goose-block-toolbar-control:focus-visible {
-  background: var(--goose-interactive-hover);
+  background: var(--goose-icon-chip-on-selected);
 }
 
 .goose-block-toolbar-control:focus-visible {
@@ -371,20 +371,41 @@
   display: none;
 }
 .bn-editor .bn-toggle-button {
-  transition: transform 0.2s ease-out;
+  /* 固定正方形芯片：展开态 rotate(90deg) 后形状不变，避免不对称 padding 拧歪 hover 底 */
+  box-sizing: border-box;
+  width: 1.25em;
+  height: 1.25em;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: hsl(var(--muted-foreground));
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.15s ease-out,
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
 }
 .bn-editor .bn-toggle-button::before {
   content: "";
   /* 随块字号缩放：折叠标题(H1~H3)箭头跟着标题变大，普通折叠列表(16px)约等于原 16px */
-  width: 1em;
-  height: 1em;
-  min-width: 16px;
-  min-height: 16px;
+  width: 0.85em;
+  height: 0.85em;
+  min-width: 14px;
+  min-height: 14px;
   background-color: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
     center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
     center / contain no-repeat;
+}
+/* 覆盖 BlockNote 默认 --bn-colors-hovered-background，跟 side menu / 图标 chip 统一 */
+.bn-editor .bn-toggle-button:hover,
+.bn-editor .bn-toggle-add-block-button:hover {
+  background: var(--goose-icon-chip-on-selected);
+  color: hsl(var(--foreground));
 }
 
 /* 折叠标题的箭头悬挂到左侧 gutter（Notion 手感）：
@@ -397,20 +418,34 @@
   > .bn-toggle-wrapper {
   position: relative;
 }
+/* 不旋转的热区桥：补上按钮与标题文字之间的 4px 缝。
+   热区挂在 wrapper 上，不跟着按钮 rotate，展开/收起形状一致。 */
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper::before {
+  content: "";
+  position: absolute;
+  left: calc(-1.25em - 4px);
+  top: 50%;
+  width: calc(1.25em + 8px);
+  height: 1.25em;
+  min-width: 28px;
+  min-height: 20px;
+  transform: translateY(-50%);
+}
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   > div
   > .bn-toggle-wrapper
   > .bn-toggle-button {
   position: absolute;
-  left: calc(-1em - 4px);
+  left: calc(-1.25em - 4px);
   top: 0;
   bottom: 0;
-  height: 1em;
   margin: auto 0;
-  padding: 0;
-  transition: opacity 0.15s ease-out;
+  /* 展开态只做视觉隐藏，保留 pointer-events：
+     1) 鼠标移向左侧 gutter 时仍算 .bn-block-content:hover，箭头不会中途消失；
+     2) 不可见时也能直接点到箭头收起。 */
 }
-
 /* 折叠标题展开态（Notion）：gutter 箭头默认隐藏，hover / focus-within 再显示；
    收起态始终可见。直接命中 .bn-toggle-wrapper[data-show-children]，
    避免 .bn-block-outer:has() 在 uTools 旧 Chromium 上不生效导致展开时箭头常显。 */
@@ -419,7 +454,6 @@
   > .bn-toggle-wrapper[data-show-children="true"]
   > .bn-toggle-button {
   opacity: 0;
-  pointer-events: none;
 }
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover
   > div
@@ -428,9 +462,12 @@
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within
   > div
   > .bn-toggle-wrapper[data-show-children="true"]
+  > .bn-toggle-button,
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper[data-show-children="true"]:hover
   > .bn-toggle-button {
   opacity: 1;
-  pointer-events: auto;
 }
 
 /* 折叠标题模块（把手 + children）与上下正文拉开间距，避免误触、强化视觉分隔：
