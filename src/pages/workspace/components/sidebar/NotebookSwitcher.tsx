@@ -42,6 +42,7 @@ export function NotebookSwitcher() {
     name: "",
     confirmName: "",
     icon: "",
+    excludeFromGlobalSearch: false,
     openDeleteConfirm: false,
     isLocalFolder: false,
   });
@@ -142,6 +143,7 @@ export function NotebookSwitcher() {
       icon:
         notebook.icon ||
         (notebook.source === "local-folder" ? "FolderOpen" : "BookOpen"),
+      excludeFromGlobalSearch: Boolean(notebook.excludeFromGlobalSearch),
       openDeleteConfirm: false,
       isLocalFolder: notebook.source === "local-folder",
     });
@@ -153,6 +155,7 @@ export function NotebookSwitcher() {
     updateNotebook(editDialog.id, {
       name: editDialog.name,
       icon: editDialog.icon,
+      excludeFromGlobalSearch: editDialog.excludeFromGlobalSearch,
     });
     setEditDialog({ ...editDialog, open: false });
   };
@@ -238,8 +241,8 @@ export function NotebookSwitcher() {
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-interactive-hover)] transition-colors",
-                    "group-hover:bg-[var(--goose-icon-chip-on-selected)] group-data-[highlighted]:bg-[var(--goose-icon-chip-on-selected)]",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-icon-chip-on-selected)] transition-colors",
+                    "group-hover:bg-[var(--goose-icon-chip-on-selected)] group-data-[highlighted]:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-[var(--goose-interactive-hover)] dark:group-data-[highlighted]:bg-[var(--goose-interactive-hover)]",
                     activeNotebookId === notebook.id &&
                       "bg-[var(--goose-icon-chip-on-selected)]",
                   )}
@@ -258,10 +261,9 @@ export function NotebookSwitcher() {
                   <TooltipProvider delayDuration={600}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                        <button
+                          type="button"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)] group-hover:opacity-100 group-hover:pointer-events-auto"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteNotebook(notebook.id);
@@ -269,7 +271,7 @@ export function NotebookSwitcher() {
                           aria-label="移除本地文件夹"
                         >
                           <LucideIcons.FolderX className="h-3.5 w-3.5" />
-                        </Button>
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
                         移除本地文件夹
@@ -280,10 +282,9 @@ export function NotebookSwitcher() {
                 <TooltipProvider delayDuration={600}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 overflow-hidden px-0 transition-opacity duration-120 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                      <button
+                        type="button"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
                         aria-label="编辑记事本"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -291,7 +292,7 @@ export function NotebookSwitcher() {
                         }}
                       >
                         <LucideIcons.Settings className="h-3.5 w-3.5" />
-                      </Button>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">编辑记事本</TooltipContent>
                   </Tooltip>
@@ -328,11 +329,15 @@ export function NotebookSwitcher() {
           name={editDialog.name}
           confirmName={editDialog.confirmName}
           icon={editDialog.icon}
+          excludeFromGlobalSearch={editDialog.excludeFromGlobalSearch}
           openDeleteConfirm={editDialog.openDeleteConfirm}
           isLocalFolder={editDialog.isLocalFolder}
           onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
           onNameChange={(name) => setEditDialog({ ...editDialog, name })}
           onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}
+          onExcludeFromGlobalSearchChange={(excludeFromGlobalSearch) =>
+            setEditDialog({ ...editDialog, excludeFromGlobalSearch })
+          }
           onSave={handleSaveEdit}
           onDelete={handleDelete}
         />

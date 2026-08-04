@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 import type { Page } from "../../src/types";
-import { isCommandSearchablePage } from "../../src/pages/workspace/components/command/searchPageFilter";
+import { isCommandSearchablePage, shouldIncludePageInCommandScope } from "../../src/pages/workspace/components/command/searchPageFilter";
 
 const pageBase: Page = {
   id: "page-1",
@@ -37,5 +37,35 @@ test("内置记事本的父页面仍属于可搜索页面", () => {
       { ...pageBase, isFolder: true },
       { "notebook-1": { source: "default" } },
     ),
+  ).toBe(true);
+});
+
+test("开启 excludeFromGlobalSearch 后仅在所有记事本搜索中隐藏", () => {
+  const notebooks = {
+    "notebook-1": {
+      source: "default" as const,
+      excludeFromGlobalSearch: true,
+    },
+  };
+
+  expect(isCommandSearchablePage(pageBase, notebooks)).toBe(true);
+  expect(
+    shouldIncludePageInCommandScope(pageBase, notebooks, true),
+  ).toBe(false);
+  expect(
+    shouldIncludePageInCommandScope(pageBase, notebooks, false),
+  ).toBe(true);
+});
+
+test("未开启 excludeFromGlobalSearch 时全局搜索仍可见", () => {
+  const notebooks = {
+    "notebook-1": {
+      source: "local-folder" as const,
+      excludeFromGlobalSearch: false,
+    },
+  };
+
+  expect(
+    shouldIncludePageInCommandScope(pageBase, notebooks, true),
   ).toBe(true);
 });

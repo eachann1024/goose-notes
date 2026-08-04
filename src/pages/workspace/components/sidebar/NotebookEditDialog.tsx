@@ -1,6 +1,7 @@
 import { renderNotebookIcon } from "./notebookUtils";
 import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 import { AlertTriangle, Save } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface NotebookEditDialogProps {
   open: boolean;
@@ -8,11 +9,13 @@ interface NotebookEditDialogProps {
   name: string;
   confirmName: string;
   icon: string;
+  excludeFromGlobalSearch?: boolean;
   openDeleteConfirm?: boolean;
   isLocalFolder?: boolean;
   onOpenChange: (open: boolean) => void;
   onNameChange: (name: string) => void;
   onIconChange: (icon: string) => void;
+  onExcludeFromGlobalSearchChange: (value: boolean) => void;
   onSave: () => void;
   onDelete: () => void;
 }
@@ -23,11 +26,13 @@ export function NotebookEditDialog({
   name,
   confirmName,
   icon,
+  excludeFromGlobalSearch = false,
   openDeleteConfirm = false,
   isLocalFolder = false,
   onOpenChange,
   onNameChange,
   onIconChange,
+  onExcludeFromGlobalSearchChange,
   onSave,
   onDelete,
 }: NotebookEditDialogProps) {
@@ -180,6 +185,26 @@ export function NotebookEditDialog({
                     onSave();
                   }
                 }}
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-[12px] border border-border/60 bg-muted/20 px-4 py-3">
+              <div className="min-w-0 space-y-1">
+                <Label
+                  htmlFor="exclude-from-global-search"
+                  className="text-sm font-medium text-foreground cursor-pointer"
+                >
+                  不在全局搜索中展示
+                </Label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  开启后，该记事本页面不会出现在「所有记事本」搜索；切换到该记事本后仍可搜索。
+                </p>
+              </div>
+              <Switch
+                id="exclude-from-global-search"
+                checked={excludeFromGlobalSearch}
+                onCheckedChange={onExcludeFromGlobalSearchChange}
+                className="mt-0.5 shrink-0"
               />
             </div>
           </div>

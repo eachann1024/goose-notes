@@ -15,6 +15,8 @@ export interface Notebook {
   source?: "default" | "local-folder";
   localPath?: string; // 本地文件夹路径
   localPathMissing?: boolean;
+  /** 开启后不出现在「所有记事本」全局搜索；当前本搜索仍可见 */
+  excludeFromGlobalSearch?: boolean;
 }
 
 export type LocalFolderLoadStatus = "idle" | "loading" | "ready" | "error";

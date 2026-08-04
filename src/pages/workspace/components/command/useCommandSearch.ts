@@ -5,7 +5,10 @@ import { extractTextFromContent } from "@/components/editor/utils/content-text-e
 import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
 import { pinyinMatchIndices } from "@/lib/pinyin-search";
 import { syncIndex, searchIndex } from "./pageSearchIndex";
-import { isCommandSearchablePage } from "./searchPageFilter";
+import {
+  isCommandSearchablePage,
+  shouldIncludePageInCommandScope,
+} from "./searchPageFilter";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
@@ -120,7 +123,8 @@ export function useCommandSearch({
 
   const filteredPages = useMemo(() => {
     const allPagesArray = Object.values(pages).filter((page) =>
-      isCommandSearchablePage(page, notebooks),
+      isCommandSearchablePage(page, notebooks) &&
+      shouldIncludePageInCommandScope(page, notebooks, searchAllNotebooks),
     );
     if (searchAllNotebooks) {
       return allPagesArray;
