@@ -12,6 +12,7 @@ import { shell } from "@/lib/utools/shell";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 
 const _platform = navigator.platform || navigator.userAgent;
 const _isMac = /Mac/i.test(_platform);
@@ -53,7 +54,12 @@ export function SidebarContextMenu({
   children,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
-  const { updatePage, movePageTreeToNotebook, undoMovePageTree } = usePages();
+  const {
+    updatePage,
+    duplicatePage,
+    movePageTreeToNotebook,
+    undoMovePageTree,
+  } = usePages();
   const notebooks = useNotebooks((state) => state.notebooks);
   const notebook = notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";
@@ -72,6 +78,12 @@ export function SidebarContextMenu({
 
   const handleMoveToTopLevel = () => {
     updatePage(page.id, { parentId: undefined });
+  };
+
+  const handleDuplicatePage = () => {
+    const newId = duplicatePage(page.id);
+    if (!newId || newId === page.id) return;
+    openPageFromSidebar(newId, "permanent");
   };
 
   const handleRestore = () => restorePageWithToast(page.id);
@@ -226,6 +238,12 @@ export function SidebarContextMenu({
                 )}
               />
               <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
+            </ContextMenuItem>
+          )}
+          {!isTrashed && !isLocalFolder && (
+            <ContextMenuItem onSelect={handleDuplicatePage}>
+              <LucideIcons.Copy className="h-4 w-4" />
+              <span>创建副本</span>
             </ContextMenuItem>
           )}
 

@@ -475,7 +475,7 @@ export const duplicatePageAction = (
     ) {
       const titleNode = clonedContent.content[0];
       const titleText = extractTitleFromContent(page.content);
-      titleNode.content = [{ type: "text", text: `${titleText} 副本` }];
+      titleNode.content = [{ type: "text", text: `${titleText}_副本` }];
     }
 
     const newPage: Page = {
