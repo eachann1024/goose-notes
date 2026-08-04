@@ -6,7 +6,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useSettings } from "@/stores/settings";
 import { useSidebarView } from "@/stores/useSidebarView";
-import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 
 interface SidebarFooterProps {
   currentView: "pages" | "trash" | "outline";
@@ -35,10 +34,17 @@ export function SidebarFooter({
   const toggleSidebarShortcutLabel = toggleSidebarShortcut
     ? formatShortcut(toggleSidebarShortcut)
     : "";
-  const isDark = useResolvedTheme(theme) === "dark";
+  const themeLabel =
+    theme === "system" ? "跟随系统" : theme === "dark" ? "深色模式" : "浅色模式";
+  const ThemeIcon =
+    theme === "system"
+      ? LucideIcons.Laptop
+      : theme === "dark"
+        ? LucideIcons.Moon
+        : LucideIcons.Sun;
 
   const btnClass =
-    "sidebar-footer-control inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-[background-color,color,box-shadow,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)] [&_svg]:block";
+    "sidebar-footer-control inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground transition-[background-color,color,box-shadow,transform] hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)] [&_svg]:block";
   const activeClass =
     "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]";
 
@@ -99,19 +105,24 @@ export function SidebarFooter({
           <LucideIcons.Settings className="h-4 w-4" />
         </button>
       </div>
-      <button
-        type="button"
-        className={cn(btnClass)}
-        aria-label={isDark ? "切换到亮色模式" : "切换到暗色模式"}
-        data-active="false"
-        onClick={toggleDarkMode}
-      >
-        {isDark ? (
-          <LucideIcons.Sun className="h-4 w-4" />
-        ) : (
-          <LucideIcons.Moon className="h-4 w-4" />
-        )}
-      </button>
+      <TooltipProvider delayDuration={600}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn(btnClass)}
+              aria-label={`主题：${themeLabel}，点击切换`}
+              data-active="false"
+              onClick={toggleDarkMode}
+            >
+              <ThemeIcon className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <span>{themeLabel}（点击切换）</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }

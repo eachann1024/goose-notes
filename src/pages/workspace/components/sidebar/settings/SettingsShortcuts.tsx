@@ -279,7 +279,7 @@ export function SettingsShortcuts({
           <ShortcutField
             id="shortcut-toggle-theme"
             title="切换深色模式"
-            description="在浅色与深色之间切换，系统跟随时按当前实际外观取反。"
+            description="按 跟随系统 → 浅色 → 深色 循环切换主题。"
             value={appShortcuts.toggleTheme ?? DEFAULT_APP_SHORTCUTS.toggleTheme}
             onChange={safeSetAppShortcut("toggleTheme")}
             resetValue={DEFAULT_APP_SHORTCUTS.toggleTheme}

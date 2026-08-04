@@ -118,12 +118,13 @@ export function createAppearanceSlice(
     },
     toggleDarkMode: () => {
       set((state) => {
-        const isDark =
-          state.theme === "dark" ||
-          (state.theme === "system" &&
-            typeof window !== "undefined" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
-        const nextTheme: Theme = isDark ? "light" : "dark";
+        // 侧栏/快捷键按固定顺序轮转：系统 → 浅色 → 深色 → 系统
+        const nextTheme: Theme =
+          state.theme === "system"
+            ? "light"
+            : state.theme === "light"
+              ? "dark"
+              : "system";
         getApply().applyTheme(nextTheme);
         return { theme: nextTheme };
       });

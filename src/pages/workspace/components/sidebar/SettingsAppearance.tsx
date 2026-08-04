@@ -282,6 +282,24 @@ export function SettingsAppearance({
                   <Button
                     size="icon"
                     variant="ghost"
+                    aria-label="跟随系统"
+                    className={cn(
+                      "h-7 w-7 rounded-full transition-all duration-200",
+                      theme === "system" &&
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                    )}
+                    onClick={() => setTheme("system")}
+                  >
+                    <LucideIcons.Laptop className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">跟随系统</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     aria-label="浅色模式"
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
@@ -312,24 +330,6 @@ export function SettingsAppearance({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">深色模式</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="跟随系统"
-                    className={cn(
-                      "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "system" &&
-                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
-                    )}
-                    onClick={() => setTheme("system")}
-                  >
-                    <LucideIcons.Laptop className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">跟随系统</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>

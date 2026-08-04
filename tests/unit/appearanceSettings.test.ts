@@ -4,7 +4,10 @@ import {
   normalizeCodeStyle,
   resolveCodeTheme,
 } from "../../src/stores/settings/types";
-import { APPEARANCE_INITIAL_STATE } from "../../src/stores/settings/slices/appearanceSlice";
+import {
+  APPEARANCE_INITIAL_STATE,
+  createAppearanceSlice,
+} from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
 import { applyAccentColor, syncAccentColorCssVars } from "../../src/lib/accentColor";
@@ -204,3 +207,35 @@ test("跟随系统主题能解析系统明暗状态", () => {
   expect(resolveTheme("light", true)).toBe("light");
   expect(resolveTheme("dark", false)).toBe("dark");
 });
+
+test("主题轮转顺序为 system → light → dark → system", () => {
+  expect(APPEARANCE_INITIAL_STATE.theme).toBe("system");
+
+  let theme: "system" | "light" | "dark" = "system";
+  const applied: Array<"system" | "light" | "dark"> = [];
+  const slice = createAppearanceSlice(
+    (updater) => {
+      const next =
+        typeof updater === "function"
+          ? updater({ theme } as never)
+          : updater;
+      if (next.theme) theme = next.theme;
+    },
+    () => ({
+      applyTheme: (nextTheme) => {
+        applied.push(nextTheme);
+      },
+      applyAccentColor: () => undefined,
+      applyCodeStyle: () => undefined,
+    }),
+  );
+
+  slice.toggleDarkMode();
+  expect(theme).toBe("light");
+  slice.toggleDarkMode();
+  expect(theme).toBe("dark");
+  slice.toggleDarkMode();
+  expect(theme).toBe("system");
+  expect(applied).toEqual(["light", "dark", "system"]);
+});
+
