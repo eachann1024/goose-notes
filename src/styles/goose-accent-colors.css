@@ -326,6 +326,262 @@
   --goose-accent-drag-glow: 0 0 8px rgba(168, 85, 247, 0.42);
 }
 
+/*
+ * 编辑器文字选区（::selection / ShowSelection / fake-selection）。
+ * 旧 Chromium 上 ::selection 对继承来的 CSS 变量不稳定，会掉回 .dark 的 iris 默认紫，
+ * 与侧栏强调色（如琥珀）不一致。这里按 data-goose-accent 写死实色，确保跟强调色。
+ * 深色用 0.35 透明度（比侧栏选中 0.2 略实），浅字可读。
+ */
+:root[data-goose-accent="iris"] {
+  --goose-editor-selection-bg: #e0e7ff;
+}
+:root.dark[data-goose-accent="iris"] {
+  --goose-editor-selection-bg: rgba(99, 102, 241, 0.35);
+}
+:root[data-goose-accent="ocean"] {
+  --goose-editor-selection-bg: #dbeafe;
+}
+:root.dark[data-goose-accent="ocean"] {
+  --goose-editor-selection-bg: rgba(59, 130, 246, 0.35);
+}
+:root[data-goose-accent="mono"] {
+  --goose-editor-selection-bg: #e5e5e5;
+}
+:root.dark[data-goose-accent="mono"] {
+  --goose-editor-selection-bg: rgba(255, 255, 255, 0.22);
+}
+:root[data-goose-accent="pine"] {
+  --goose-editor-selection-bg: #dcfce7;
+}
+:root.dark[data-goose-accent="pine"] {
+  --goose-editor-selection-bg: rgba(34, 197, 94, 0.35);
+}
+:root[data-goose-accent="amber"] {
+  --goose-editor-selection-bg: #fef3c7;
+}
+:root.dark[data-goose-accent="amber"] {
+  --goose-editor-selection-bg: rgba(245, 158, 11, 0.35);
+}
+:root[data-goose-accent="coral"] {
+  --goose-editor-selection-bg: #ffedd5;
+}
+:root.dark[data-goose-accent="coral"] {
+  --goose-editor-selection-bg: rgba(249, 115, 22, 0.35);
+}
+:root[data-goose-accent="rose"] {
+  --goose-editor-selection-bg: #ffe4e6;
+}
+:root.dark[data-goose-accent="rose"] {
+  --goose-editor-selection-bg: rgba(244, 63, 94, 0.35);
+}
+:root[data-goose-accent="grape"] {
+  --goose-editor-selection-bg: #f3e8ff;
+}
+:root.dark[data-goose-accent="grape"] {
+  --goose-editor-selection-bg: rgba(168, 85, 247, 0.35);
+}
+
+/* 属性选择器实色兜底：即使 ::selection 解析 var 失败，仍跟强调色 */
+:root[data-goose-accent="iris"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="iris"] .bn-editor ::selection,
+:root[data-goose-accent="iris"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="iris"] .bn-editor .goose-fake-selection {
+  background-color: #e0e7ff;
+  color: inherit;
+}
+:root[data-goose-accent="iris"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="iris"] .bn-editor [data-show-selection] {
+  background-color: #e0e7ff !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="iris"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="iris"] .bn-editor ::selection,
+:root.dark[data-goose-accent="iris"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="iris"] .bn-editor .goose-fake-selection {
+  background-color: rgba(99, 102, 241, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="iris"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="iris"] .bn-editor [data-show-selection] {
+  background-color: rgba(99, 102, 241, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="ocean"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="ocean"] .bn-editor ::selection,
+:root[data-goose-accent="ocean"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="ocean"] .bn-editor .goose-fake-selection {
+  background-color: #dbeafe;
+  color: inherit;
+}
+:root[data-goose-accent="ocean"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="ocean"] .bn-editor [data-show-selection] {
+  background-color: #dbeafe !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="ocean"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="ocean"] .bn-editor ::selection,
+:root.dark[data-goose-accent="ocean"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="ocean"] .bn-editor .goose-fake-selection {
+  background-color: rgba(59, 130, 246, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="ocean"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="ocean"] .bn-editor [data-show-selection] {
+  background-color: rgba(59, 130, 246, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="mono"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="mono"] .bn-editor ::selection,
+:root[data-goose-accent="mono"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="mono"] .bn-editor .goose-fake-selection {
+  background-color: #e5e5e5;
+  color: inherit;
+}
+:root[data-goose-accent="mono"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="mono"] .bn-editor [data-show-selection] {
+  background-color: #e5e5e5 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="mono"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="mono"] .bn-editor ::selection,
+:root.dark[data-goose-accent="mono"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="mono"] .bn-editor .goose-fake-selection {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}
+:root.dark[data-goose-accent="mono"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="mono"] .bn-editor [data-show-selection] {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="pine"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="pine"] .bn-editor ::selection,
+:root[data-goose-accent="pine"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="pine"] .bn-editor .goose-fake-selection {
+  background-color: #dcfce7;
+  color: inherit;
+}
+:root[data-goose-accent="pine"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="pine"] .bn-editor [data-show-selection] {
+  background-color: #dcfce7 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="pine"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="pine"] .bn-editor ::selection,
+:root.dark[data-goose-accent="pine"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="pine"] .bn-editor .goose-fake-selection {
+  background-color: rgba(34, 197, 94, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="pine"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="pine"] .bn-editor [data-show-selection] {
+  background-color: rgba(34, 197, 94, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="amber"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="amber"] .bn-editor ::selection,
+:root[data-goose-accent="amber"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="amber"] .bn-editor .goose-fake-selection {
+  background-color: #fef3c7;
+  color: inherit;
+}
+:root[data-goose-accent="amber"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="amber"] .bn-editor [data-show-selection] {
+  background-color: #fef3c7 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="amber"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="amber"] .bn-editor ::selection,
+:root.dark[data-goose-accent="amber"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="amber"] .bn-editor .goose-fake-selection {
+  background-color: rgba(245, 158, 11, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="amber"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="amber"] .bn-editor [data-show-selection] {
+  background-color: rgba(245, 158, 11, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="coral"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="coral"] .bn-editor ::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="coral"] .bn-editor .goose-fake-selection {
+  background-color: #ffedd5;
+  color: inherit;
+}
+:root[data-goose-accent="coral"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="coral"] .bn-editor [data-show-selection] {
+  background-color: #ffedd5 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor ::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .goose-fake-selection {
+  background-color: rgba(249, 115, 22, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="coral"] .bn-editor [data-show-selection] {
+  background-color: rgba(249, 115, 22, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="rose"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="rose"] .bn-editor ::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="rose"] .bn-editor .goose-fake-selection {
+  background-color: #ffe4e6;
+  color: inherit;
+}
+:root[data-goose-accent="rose"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="rose"] .bn-editor [data-show-selection] {
+  background-color: #ffe4e6 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor ::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .goose-fake-selection {
+  background-color: rgba(244, 63, 94, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="rose"] .bn-editor [data-show-selection] {
+  background-color: rgba(244, 63, 94, 0.35) !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="grape"] .goose-blocknote-editor ::selection,
+:root[data-goose-accent="grape"] .bn-editor ::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="grape"] .bn-editor .goose-fake-selection {
+  background-color: #f3e8ff;
+  color: inherit;
+}
+:root[data-goose-accent="grape"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="grape"] .bn-editor [data-show-selection] {
+  background-color: #f3e8ff !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor ::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor ::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .goose-fake-selection {
+  background-color: rgba(168, 85, 247, 0.35);
+  color: inherit;
+}
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="grape"] .bn-editor [data-show-selection] {
+  background-color: rgba(168, 85, 247, 0.35) !important;
+  color: inherit;
+}
+
 /* 强调色 radio 的状态使用扁平选择器，避免旧 uTools 内核忽略嵌套 hover。 */
 .goose-accent-option:hover {
   background: var(--goose-accent-option-light-surface) !important;

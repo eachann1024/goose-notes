@@ -20,6 +20,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#eef2ff",
       "--goose-inline-code-fg": "#4f46e5",
       "--goose-inline-code-border-hover": "#c7d2fe",
+      "--goose-editor-selection-bg": "#e0e7ff",
     },
     dark: {
       "--goose-interactive-selected": "rgba(99, 102, 241, 0.2)",
@@ -28,6 +29,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#3d3e64",
       "--goose-inline-code-fg": "#c7d2fe",
       "--goose-inline-code-border-hover": "#6366f1",
+      "--goose-editor-selection-bg": "rgba(99, 102, 241, 0.35)",
     },
   },
   ocean: {
@@ -38,6 +40,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#eff6ff",
       "--goose-inline-code-fg": "#2563eb",
       "--goose-inline-code-border-hover": "#bfdbfe",
+      "--goose-editor-selection-bg": "#dbeafe",
     },
     dark: {
       "--goose-interactive-selected": "rgba(59, 130, 246, 0.2)",
@@ -46,6 +49,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#324665",
       "--goose-inline-code-fg": "#bfdbfe",
       "--goose-inline-code-border-hover": "#3b82f6",
+      "--goose-editor-selection-bg": "rgba(59, 130, 246, 0.35)",
     },
   },
   mono: {
@@ -56,6 +60,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#f5f5f5",
       "--goose-inline-code-fg": "#171717",
       "--goose-inline-code-border-hover": "#d4d4d4",
+      "--goose-editor-selection-bg": "#e5e5e5",
     },
     dark: {
       "--goose-interactive-selected": "rgba(255, 255, 255, 0.16)",
@@ -64,6 +69,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#3a3a3a",
       "--goose-inline-code-fg": "#f5f5f5",
       "--goose-inline-code-border-hover": "#737373",
+      "--goose-editor-selection-bg": "rgba(255, 255, 255, 0.22)",
     },
   },
   pine: {
@@ -74,6 +80,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#f0fdf4",
       "--goose-inline-code-fg": "#15803d",
       "--goose-inline-code-border-hover": "#bbf7d0",
+      "--goose-editor-selection-bg": "#dcfce7",
     },
     dark: {
       "--goose-interactive-selected": "rgba(34, 197, 94, 0.2)",
@@ -82,6 +89,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#2b4a37",
       "--goose-inline-code-fg": "#bbf7d0",
       "--goose-inline-code-border-hover": "#22c55e",
+      "--goose-editor-selection-bg": "rgba(34, 197, 94, 0.35)",
     },
   },
   amber: {
@@ -92,6 +100,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#fffbeb",
       "--goose-inline-code-fg": "#b45309",
       "--goose-inline-code-border-hover": "#fde68a",
+      "--goose-editor-selection-bg": "#fef3c7",
     },
     dark: {
       "--goose-interactive-selected": "rgba(245, 158, 11, 0.2)",
@@ -100,6 +109,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#4a3b24",
       "--goose-inline-code-fg": "#fde68a",
       "--goose-inline-code-border-hover": "#f59e0b",
+      "--goose-editor-selection-bg": "rgba(245, 158, 11, 0.35)",
     },
   },
   coral: {
@@ -110,6 +120,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#fff7ed",
       "--goose-inline-code-fg": "#c2410c",
       "--goose-inline-code-border-hover": "#fed7aa",
+      "--goose-editor-selection-bg": "#ffedd5",
     },
     dark: {
       "--goose-interactive-selected": "rgba(249, 115, 22, 0.2)",
@@ -118,6 +129,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#4f3425",
       "--goose-inline-code-fg": "#fed7aa",
       "--goose-inline-code-border-hover": "#f97316",
+      "--goose-editor-selection-bg": "rgba(249, 115, 22, 0.35)",
     },
   },
   rose: {
@@ -128,6 +140,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#fff1f2",
       "--goose-inline-code-fg": "#be123c",
       "--goose-inline-code-border-hover": "#fecdd3",
+      "--goose-editor-selection-bg": "#ffe4e6",
     },
     dark: {
       "--goose-interactive-selected": "rgba(244, 63, 94, 0.2)",
@@ -136,6 +149,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#66333b",
       "--goose-inline-code-fg": "#fecdd3",
       "--goose-inline-code-border-hover": "#f43f5e",
+      "--goose-editor-selection-bg": "rgba(244, 63, 94, 0.35)",
     },
   },
   grape: {
@@ -146,6 +160,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#faf5ff",
       "--goose-inline-code-fg": "#7e22ce",
       "--goose-inline-code-border-hover": "#e9d5ff",
+      "--goose-editor-selection-bg": "#f3e8ff",
     },
     dark: {
       "--goose-interactive-selected": "rgba(168, 85, 247, 0.2)",
@@ -154,6 +169,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-bg": "#46305d",
       "--goose-inline-code-fg": "#e9d5ff",
       "--goose-inline-code-border-hover": "#a855f7",
+      "--goose-editor-selection-bg": "rgba(168, 85, 247, 0.35)",
     },
   },
 };
@@ -211,6 +227,7 @@ function writeAccentRuntimeTokens(
   --goose-interactive-selected: ${tokens["--goose-interactive-selected"]} !important;
   --goose-interactive-selected-fg: ${tokens["--goose-interactive-selected-fg"]} !important;
   --goose-icon-chip-on-selected: ${tokens["--goose-icon-chip-on-selected"]} !important;
+  --goose-editor-selection-bg: ${tokens["--goose-editor-selection-bg"]} !important;
 }
 .workspace-editor-surface .bn-inline-content code,
 .quicknote-editor-surface .bn-inline-content code,

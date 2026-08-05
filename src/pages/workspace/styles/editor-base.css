@@ -95,15 +95,24 @@
   zoom: var(--editor-scale, 1);
 }
 
+/* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
+   颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
+   这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
+   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。 */
 .goose-blocknote-editor ::selection,
-.bn-editor ::selection {
-  background-color: var(--goose-interactive-selected);
+.bn-editor ::selection,
+.goose-blocknote-editor .goose-fake-selection,
+.bn-editor .goose-fake-selection {
+  background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
   color: inherit;
 }
 
-.dark .goose-blocknote-editor ::selection,
-.dark .bn-editor ::selection {
-  background-color: var(--goose-interactive-selected);
+.goose-blocknote-editor [data-show-selection],
+.bn-editor [data-show-selection] {
+  background-color: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  ) !important;
   color: inherit;
 }
 

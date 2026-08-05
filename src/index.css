@@ -250,6 +250,7 @@
     --goose-interactive-selected: #e0e7ff;
     --goose-interactive-selected-fg: #4f46e5;
     --goose-interactive-selected-border: transparent;
+    --goose-editor-selection-bg: #e0e7ff;
     /* 紧凑按钮状态：实色，避免 uTools 旧内核解析 hsl(var(...)/alpha) 失败 */
     --goose-control-hover-bg: #ebeae8;
     --goose-primary-hover-bg: #4f46e5;
@@ -339,6 +340,8 @@
     --goose-interactive-selected: rgba(99, 102, 241, 0.2);
     --goose-interactive-selected-fg: #a5b4fc;
     --goose-interactive-selected-border: transparent;
+    /* 编辑器文字选区：略实于侧栏选中，无 accent 时与 iris fallback 一致 */
+    --goose-editor-selection-bg: rgba(99, 102, 241, 0.35);
     --goose-control-hover-bg: #2e2e2e;
     --goose-primary-hover-bg: #4f46e5;
     --goose-primary-active-bg: #4338ca;
