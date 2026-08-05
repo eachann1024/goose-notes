@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type FC } from "react";
+import { useEffect, useMemo, useRef, useState, type FC } from "react";
 import {
   BlockPopover,
   PositionPopover,
@@ -18,6 +18,24 @@ type GooseAIMenuControllerProps = {
   aiMenu?: FC<AIMenuProps>;
 };
 
+type BnColorScheme = "light" | "dark";
+
+/** 浮层 bn-root 需带 data-color-scheme，BlockNote 才会切到深色菜单变量。 */
+function resolveBnColorScheme(
+  editorDom: HTMLElement | null | undefined,
+): BnColorScheme {
+  const fromEditor = editorDom
+    ?.closest(".bn-root")
+    ?.getAttribute("data-color-scheme");
+  if (fromEditor === "dark" || fromEditor === "light") return fromEditor;
+  if (typeof document !== "undefined") {
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+  }
+  return "light";
+}
+
 /**
  * xl-ai 默认把菜单锚到整块并把浮层撑成块宽。格式栏入口需要锚到原文字选区，
  * 其它入口（空段落、斜杠菜单）则继续沿用块锚点。
@@ -36,9 +54,35 @@ export function GooseAIMenuController({
     (state) => state.reset,
   );
   const openedFromSelectionRef = useRef(false);
+  const [colorScheme, setColorScheme] = useState<BnColorScheme>(() =>
+    resolveBnColorScheme(editor.domElement),
+  );
 
   const blockId = aiMenuState === "closed" ? undefined : aiMenuState.blockId;
   const open = aiMenuState !== "closed";
+
+  // 打开时读取 + 监听 html class / 编辑器 bn-root 的 color-scheme，主题切换能跟上
+  useEffect(() => {
+    const read = () => {
+      setColorScheme(resolveBnColorScheme(editor.domElement));
+    };
+    read();
+    if (typeof document === "undefined") return;
+
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    const bnRoot = editor.domElement?.closest(".bn-root");
+    if (bnRoot) {
+      observer.observe(bnRoot, {
+        attributes: true,
+        attributeFilter: ["data-color-scheme"],
+      });
+    }
+    return () => observer.disconnect();
+  }, [editor.domElement, open]);
 
   useEffect(() => {
     if (open && selection) {
@@ -151,6 +195,7 @@ export function GooseAIMenuController({
       },
       elementProps: {
         className: "bn-root bn-mantine",
+        "data-color-scheme": colorScheme,
         style: { zIndex: 20010 },
       },
       focusManagerProps: {
@@ -158,12 +203,23 @@ export function GooseAIMenuController({
         getInsideElements: () => (editor.domElement ? [editor.domElement] : []),
       },
     };
-  }, [ai, aiMenuState, blockId, editor.domElement, open, selection]);
+  }, [
+    ai,
+    aiMenuState,
+    blockId,
+    colorScheme,
+    editor.domElement,
+    open,
+    selection,
+  ]);
 
   // GenericPopover 的外层负责 viewport 定位；缩放只放在内层 surface，
   // 避免 CSS zoom 同时放大 Floating UI 计算出的 fixed 坐标。
   const content = open ? (
-    <div className="goose-editor-context-ui bn-root bn-mantine">
+    <div
+      className="goose-editor-context-ui bn-root bn-mantine"
+      data-color-scheme={colorScheme}
+    >
       <Component />
     </div>
   ) : null;
