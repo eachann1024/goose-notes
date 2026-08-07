@@ -1,4 +1,11 @@
-import { useId, useRef, useEffect, useState, useCallback } from "react";
+import {
+  useId,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+} from "react";
 import { Command } from "cmdk";
 import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
@@ -28,6 +35,7 @@ const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
 export function CommandPalette() {
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const openInNewTabRef = useRef(false);
   const [open, setOpen] = useState(false);
   // cmdk 根的「当前选中项」受控值。cmdk 不会在结果列表变化时自动重选第一项，
@@ -57,6 +65,7 @@ export function CommandPalette() {
     searchQuery,
     setSearchQuery,
     removeRecent,
+    loadMoreResults,
   } = useCommandSearch({
     pages,
     activeNotebookId,
@@ -66,6 +75,66 @@ export function CommandPalette() {
     (_openSource: "utools_input" | "shortcut" | "programmatic") => {},
     [],
   );
+
+  /**
+   * 滚到当前内容约一半就加载更多（不必贴底）。
+   * scrollHeight 很短时（结果未撑满列表）也在 layout 后补载，避免永远触发不了。
+   */
+  const tryLoadMoreFromScroll = useCallback(
+    (el: HTMLElement) => {
+      if (!searchResults.hasMore) return;
+      const midLine = el.scrollHeight * 0.5;
+      if (el.scrollTop + el.clientHeight >= midLine) {
+        loadMoreResults();
+      }
+    },
+    [loadMoreResults, searchResults.hasMore],
+  );
+
+  const handleListScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      tryLoadMoreFromScroll(event.currentTarget);
+    },
+    [tryLoadMoreFromScroll],
+  );
+
+  useLayoutEffect(() => {
+    if (!open || !searchResults.hasMore) return;
+    const el = listRef.current;
+    if (!el) return;
+    // 内容不足以滚动时，scroll 事件不会来，主动补到能滚或耗尽
+    if (el.scrollHeight <= el.clientHeight + 4) {
+      loadMoreResults();
+      return;
+    }
+    tryLoadMoreFromScroll(el);
+  }, [
+    open,
+    loadMoreResults,
+    searchResults.hasMore,
+    searchResults.allDisplay.length,
+    tryLoadMoreFromScroll,
+  ]);
+
+  // 键盘下移选中到「当前已渲染列表」中后半段时也加载，避免只能靠鼠标滚到中间
+  useEffect(() => {
+    if (!open || !searchResults.hasMore || !commandValue) return;
+    const items = searchResults.allDisplay;
+    if (items.length < 2) return;
+    const midIndex = Math.floor(items.length * 0.5);
+    const selectedIndex = items.findIndex(
+      (page) => `all-${page.id}-${getPageTitle(page)}` === commandValue,
+    );
+    if (selectedIndex >= midIndex) {
+      loadMoreResults();
+    }
+  }, [
+    open,
+    commandValue,
+    loadMoreResults,
+    searchResults.hasMore,
+    searchResults.allDisplay,
+  ]);
 
   // 计算「渲染顺序里第一个可见结果项」的 value，必须与 PaletteResultGroup 的 value 完全一致：
   //   无 query 且显示最近访问 → recent[0] 用 `recent-...`，否则 all[0] 用 `all-...`
@@ -342,7 +411,11 @@ export function CommandPalette() {
         <Kbd shortcut="Tab" className="ml-1 rounded-[8px] border-transparent shadow-[inset_0_0_0_1px_hsl(var(--input)/0.6)] text-muted-foreground/50" />
       </div>
 
-      <Command.List className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50">
+      <Command.List
+        ref={listRef}
+        onScroll={handleListScroll}
+        className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50"
+      >
         <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
         </Command.Empty>

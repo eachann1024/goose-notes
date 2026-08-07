@@ -187,12 +187,24 @@
   margin: 0;
 }
 
+/* 与主窗搜索遮罩一致：中等 blur + 独立合成层，不动画 filter */
 [cmdk-overlay] {
   position: fixed;
   inset: 0;
   z-index: var(--layer-modal);
-  background: color-mix(in srgb, var(--color-scrim) 30%, transparent);
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.34);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+@supports not (
+  (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
+) {
+  [cmdk-overlay] {
+    background-color: rgba(0, 0, 0, 0.55);
+  }
 }
 
 .lucide {

@@ -650,9 +650,51 @@
   @apply m-0;
 }
 
-/* --- CMDK Overlay Style --- */
+/* --- CMDK Overlay：搜索框外全屏磨砂 ---
+ * 中等 blur + 半透明底，独立合成层；只淡入淡出 opacity，不动画 filter（uTools 旧内核更稳、更省） */
 [cmdk-overlay] {
-  @apply fixed inset-0 z-[100] bg-black/30 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.34);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+@supports not (
+  (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
+) {
+  [cmdk-overlay] {
+    background-color: rgba(0, 0, 0, 0.55);
+  }
+}
+
+[cmdk-overlay][data-state="open"] {
+  animation: cmdk-overlay-in 200ms ease-out both;
+}
+
+[cmdk-overlay][data-state="closed"] {
+  animation: cmdk-overlay-out 150ms ease-in both;
+}
+
+@keyframes cmdk-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cmdk-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 /* 径向渐变工具类 */

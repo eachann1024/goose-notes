@@ -29,9 +29,14 @@ export interface SearchResultPage extends Page {
 export interface SearchResults {
   recent: SearchResultPage[];
   all: SearchResultPage[];
+  /** 当前应渲染的结果切片，由 useCommandSearch 的 displayLimit 控制 */
   allDisplay: SearchResultPage[];
   hasQuery: boolean;
+  hasMore: boolean;
 }
+
+/** 首屏与每次追加加载条数 */
+export const SEARCH_RESULT_PAGE_SIZE = 30;
 
 /**
  * 从内容中提取包含搜索关键词的上下文片段
@@ -106,6 +111,7 @@ export function useCommandSearch({
   const [searchQuery, setSearchQuery] = useState("");
   const deferredQuery = useDeferredValue(searchQuery);
   const notebooks = useNotebooks((state) => state.notebooks);
+  const [displayLimit, setDisplayLimit] = useState(SEARCH_RESULT_PAGE_SIZE);
   const [removedRecentIds, setRemovedRecentIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("goose-recent-excludes");
@@ -114,6 +120,15 @@ export function useCommandSearch({
       return [];
     }
   });
+
+  // 查询 / 范围变化时重置分页，避免旧 limit 挂在新结果上
+  useEffect(() => {
+    setDisplayLimit(SEARCH_RESULT_PAGE_SIZE);
+  }, [deferredQuery, searchAllNotebooks, activeNotebookId]);
+
+  const loadMoreResults = useCallback(() => {
+    setDisplayLimit((prev) => prev + SEARCH_RESULT_PAGE_SIZE);
+  }, []);
 
   const removeRecent = useCallback((id: string) => {
     const newIds = [...removedRecentIds, id];
@@ -181,7 +196,14 @@ export function useCommandSearch({
         return titleA.localeCompare(titleB, "zh-CN");
       }) as SearchResultPage[];
 
-      return { recent, all, allDisplay: all.slice(0, 30), hasQuery: false };
+      const allDisplay = all.slice(0, displayLimit);
+      return {
+        recent,
+        all,
+        allDisplay,
+        hasQuery: false,
+        hasMore: allDisplay.length < all.length,
+      };
     }
 
     // 构建 filteredPages 的 id 集合（已按 notebook/trash 过滤）
@@ -239,8 +261,15 @@ export function useCommandSearch({
       return titleA.localeCompare(titleB, "zh-CN");
     });
 
-    return { recent, all, allDisplay: all.slice(0, 30), hasQuery: true };
-  }, [filteredPages, deferredQuery, removedRecentIds]);
+    const allDisplay = all.slice(0, displayLimit);
+    return {
+      recent,
+      all,
+      allDisplay,
+      hasQuery: true,
+      hasMore: allDisplay.length < all.length,
+    };
+  }, [filteredPages, deferredQuery, removedRecentIds, displayLimit]);
 
   return {
     filteredPages,
@@ -249,5 +278,6 @@ export function useCommandSearch({
     searchQuery,
     setSearchQuery,
     removeRecent,
+    loadMoreResults,
   };
 }
