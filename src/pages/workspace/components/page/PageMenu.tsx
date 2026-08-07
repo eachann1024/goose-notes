@@ -10,8 +10,6 @@ import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
-import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
-import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 
 function getEditorSelectedBlocks(): BlockNoteContent {
   try {
@@ -33,7 +31,6 @@ function getEditorSelectedBlocks(): BlockNoteContent {
 }
 
 export function PageMenu() {
-  const editorUiScale = useEditorUiScale();
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 0 : window.innerWidth,
     height: typeof window === "undefined" ? 0 : window.innerHeight,
@@ -136,19 +133,25 @@ export function PageMenu() {
             <span className="sr-only">更多操作</span>
           </Button>
         </DropdownMenuTrigger>
+        {/*
+          不要在定位外壳上挂 goose-editor-context-ui（CSS zoom）。
+          uTools 旧内核会把 zoom 祖先的 getBoundingClientRect 再次放大，
+          导致导出子菜单相对「导出」触发项下漂，中间出现无法穿越的空隙。
+          页面更多菜单走 viewport 坐标系，尺寸用真实 px。
+        */}
         <DropdownMenuContent
-          className="goose-editor-context-ui max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-[12px] p-1.5"
+          className="max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-[12px] p-1.5"
           align="end"
-          sideOffset={getScaledEditorUiPx(6, editorUiScale)}
+          sideOffset={6}
           style={{
             maxHeight:
               viewport.height <= 0
                 ? undefined
-                : `${Math.max(160, (viewport.height - 24) / editorUiScale)}px`,
+                : `${Math.max(160, viewport.height - 24)}px`,
             maxWidth:
               viewport.width <= 0
                 ? undefined
-                : `${Math.max(160, (viewport.width - 16) / editorUiScale)}px`,
+                : `${Math.max(160, viewport.width - 16)}px`,
           }}
           forceMount
         >
@@ -306,13 +309,15 @@ export function PageMenu() {
                 <span className="min-w-0 truncate">导出</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
-                className="goose-editor-context-ui min-w-[144px] rounded-[12px] p-1"
-                sideOffset={getScaledEditorUiPx(4, editorUiScale)}
+                className="min-w-[144px] rounded-[12px] p-1"
+                sideOffset={2}
+                alignOffset={-4}
+                collisionPadding={8}
                 style={{
                   maxHeight:
                     viewport.height <= 0
                       ? undefined
-                      : `${Math.max(120, (viewport.height - 16) / editorUiScale)}px`,
+                      : `${Math.max(120, viewport.height - 16)}px`,
                 }}
               >
                 <DropdownMenuItem
