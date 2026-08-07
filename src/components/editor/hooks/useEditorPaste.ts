@@ -10,6 +10,7 @@ import {
   parseMarkdownLink,
 } from "../utils/clipboard";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
+import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
 
 type Editor = ReturnType<typeof useCreateBlockNote>;
 
@@ -18,6 +19,19 @@ type UseEditorPasteOptions = {
   editable: boolean;
   shiftPressedRef: MutableRefObject<boolean>;
 };
+
+/**
+ * 是否走「标题一隔离粘贴」：仅当选区完全落在物理首块 H1 内时。
+ *
+ * 旧逻辑用 `cursorBlock.id === document[0].id`，会把小窗 raw 首段、多 block 选区
+ * （选区锚点落在首块）都误判成标题，于是 insertBlocks 在下方追加而不替换选区。
+ * 跨块选区 / 非 H1 首块必须返回 false，让默认粘贴替换当前选区。
+ */
+export function shouldIsolateTitleStructurePaste(editor: {
+  prosemirrorState: Editor["prosemirrorState"];
+}): boolean {
+  return selectionIsInsideFirstTitleBlock(editor as Editor);
+}
 
 export function useEditorPaste({
   editor,
@@ -36,6 +50,7 @@ export function useEditorPaste({
       const plainText = normalizeMarkdownPasteText(
         clipboard.getData("text/plain"),
       );
+      const htmlText = clipboard.getData("text/html");
 
       if (looksLikeMermaidDiagram(plainText)) {
         event.preventDefault();
@@ -44,18 +59,20 @@ export function useEditorPaste({
         return;
       }
 
-      // ===== 标题一隔离：光标在「文档标题(物理首块 H1)」时粘贴「块结构」=====
-      // 标题一是特殊存在，必须保持独立(恒为物理首块 H1、不被注入图片/列表/代码等结构)。
+      // ===== 标题一隔离：仅当选区完全落在「物理首块 H1」内时 =====
+      // 标题一必须保持独立(恒为物理首块 H1、不被注入图片/列表/代码等结构)。
       // 默认粘贴会把图片等结构块塞成标题一的 children(实测 depth=1)，破坏其独立性。
-      // 处理：光标在标题一且剪贴板是「非纯文本的块结构」时，拦截默认，把内容解析成块
-      // 插到标题一【下方同级】(用户要求：插入前先加空行再放，绝不覆盖标题或已有正文)。
+      // 处理：标题内粘贴「非纯文本的块结构」时，拦截默认，把内容解析成块插到标题下方。
+      // 注意：小窗 raw 首块不是 H1；跨块选区也不走此路径（见 shouldIsolateTitleStructurePaste）。
       // 纯文本(单行)不拦截 → 照常注入标题文字。
+      //
+      // 多 block 选区（含小窗全选后粘贴）必须交给默认粘贴，用剪贴板内容替换选区，
+      // 绝不能 insertBlocks 追加，否则会出现「选中内容还在、下面又贴了一份」。
       {
-        const cursorBlock = editor.getTextCursorPosition().block;
-        const isInTitle =
-          editor.document[0] && cursorBlock.id === editor.document[0].id;
-        const htmlText = clipboard.getData("text/html");
-        if (isInTitle && looksLikeBlockStructure(plainText, htmlText)) {
+        if (
+          shouldIsolateTitleStructurePaste(editor) &&
+          looksLikeBlockStructure(plainText, htmlText)
+        ) {
           event.preventDefault();
           event.stopPropagation();
           void (async () => {
@@ -71,9 +88,8 @@ export function useEditorPaste({
             }
             if (!blocks || blocks.length === 0) return;
             const titleBlock = editor.document[0];
-            // 先加空行再放：在标题与原有正文之间垫一个空段落，再把解析出的块放进去。
-            // 通过「先插块、再确保块前有空行」实现——直接插到标题之后即为「标题下一行」，
-            // 原有正文被这些新块顺移到后面，不被覆盖。
+            if (!titleBlock) return;
+            // 直接插到标题之后；原有正文顺移，不覆盖标题。
             const inserted = editor.insertBlocks(blocks, titleBlock, "after");
             const last = inserted[inserted.length - 1];
             if (last) editor.setTextCursorPosition(last, "end");
@@ -194,7 +210,6 @@ export function useEditorPaste({
       // 3. 其他 Markdown 内容
       if (!looksLikeMarkdownFragment(plainText)) return;
 
-      const htmlText = clipboard.getData("text/html");
       if (htmlText && htmlText.trim()) return;
 
       event.preventDefault();
