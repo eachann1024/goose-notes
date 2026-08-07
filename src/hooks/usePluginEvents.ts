@@ -2,7 +2,11 @@ import { useEffect } from "react";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { UToolsAdapter } from "@/lib/utools";
 import { useSettings } from "@/stores/useSettings";
-import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
+import {
+  DEFAULT_NOTEBOOK,
+  sortNotebooksByOrder,
+  useNotebooks,
+} from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { fs } from "@/lib/utools/fs";
@@ -207,9 +211,7 @@ export function usePluginEvents() {
     if (!fs.isAvailable()) return;
     const notebooksStore = useNotebooks.getState();
     const pagesStore = usePages.getState();
-    const notebooks = Object.values(notebooksStore.notebooks).sort(
-      (a, b) => a.createdAt - b.createdAt,
-    );
+    const notebooks = sortNotebooksByOrder(notebooksStore.notebooks);
 
     const localNotebooks = notebooks.filter(
       (notebook) => notebook.source === "local-folder",

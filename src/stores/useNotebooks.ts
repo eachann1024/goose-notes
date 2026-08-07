@@ -12,11 +12,31 @@ export interface Notebook {
   icon?: string; // emoji 或 Lucide 图标名
   createdAt: number;
   updatedAt: number;
+  /** 用户自定义排序；缺省时回退 createdAt */
+  order?: number;
   source?: "default" | "local-folder";
   localPath?: string; // 本地文件夹路径
   localPathMissing?: boolean;
   /** 开启后不出现在「所有记事本」全局搜索；当前本搜索仍可见 */
   excludeFromGlobalSearch?: boolean;
+}
+
+/** 按 order（缺省 createdAt）升序；同值再用 createdAt 稳定排序 */
+export function sortNotebooksByOrder(
+  notebooks: Record<string, Notebook>,
+): Notebook[] {
+  return Object.values(notebooks).sort((a, b) => {
+    const orderA = a.order ?? a.createdAt;
+    const orderB = b.order ?? b.createdAt;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.createdAt - b.createdAt;
+  });
+}
+
+function nextNotebookOrder(notebooks: Record<string, Notebook>): number {
+  const list = Object.values(notebooks);
+  if (list.length === 0) return 0;
+  return Math.max(...list.map((n) => n.order ?? n.createdAt)) + 1;
 }
 
 export type LocalFolderLoadStatus = "idle" | "loading" | "ready" | "error";
@@ -50,6 +70,7 @@ interface NotebooksState {
     updates: Partial<Omit<Notebook, "id" | "createdAt">>,
   ) => void;
   deleteNotebook: (id: string) => void;
+  reorderNotebooks: (orderedIds: string[]) => void;
   setActiveNotebook: (id: string) => void;
   getNotebook: (id: string) => Notebook | undefined;
   setLastActivePage: (notebookId: string, pageId: string | null) => void;
@@ -77,6 +98,7 @@ export const useNotebooks = create<NotebooksState>()(
           id: DEFAULT_NOTEBOOK_ID,
           name: "Note",
           icon: "BookOpen",
+          order: 0,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },
@@ -146,6 +168,7 @@ export const useNotebooks = create<NotebooksState>()(
             id: finalId,
             name,
             icon,
+            order: dupNotebook.order ?? nextNotebookOrder(remainingNotebooks),
             createdAt: dupNotebook.createdAt,
             updatedAt: now,
           };
@@ -173,14 +196,16 @@ export const useNotebooks = create<NotebooksState>()(
           suffix++;
         }
 
+        const currentNotebooks = get().notebooks;
         const notebook: Notebook = {
           id: finalId,
           name: finalName,
           icon,
+          order: nextNotebookOrder(currentNotebooks),
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        const nextNotebooks = { ...get().notebooks, [finalId]: notebook };
+        const nextNotebooks = { ...currentNotebooks, [finalId]: notebook };
         set({
           notebooks: nextNotebooks,
           activeNotebookId: finalId,
@@ -211,6 +236,7 @@ export const useNotebooks = create<NotebooksState>()(
         }
 
         const id = generateId();
+        const currentNotebooks = get().notebooks;
         const notebook: Notebook = {
           id,
           name,
@@ -218,10 +244,11 @@ export const useNotebooks = create<NotebooksState>()(
           source: "local-folder",
           localPath,
           localPathMissing: false,
+          order: nextNotebookOrder(currentNotebooks),
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        const nextNotebooks = { ...get().notebooks, [id]: notebook };
+        const nextNotebooks = { ...currentNotebooks, [id]: notebook };
         set({
           notebooks: nextNotebooks,
           activeNotebookId: id,
@@ -239,6 +266,20 @@ export const useNotebooks = create<NotebooksState>()(
               [id]: { ...notebook, ...updates, updatedAt: Date.now() },
             },
           };
+        });
+      },
+
+      reorderNotebooks: (orderedIds) => {
+        set((state) => {
+          const nextNotebooks = { ...state.notebooks };
+          let changed = false;
+          orderedIds.forEach((id, index) => {
+            const notebook = nextNotebooks[id];
+            if (!notebook || notebook.order === index) return;
+            nextNotebooks[id] = { ...notebook, order: index };
+            changed = true;
+          });
+          return changed ? { notebooks: nextNotebooks } : state;
         });
       },
 
@@ -435,7 +476,7 @@ export const useNotebooks = create<NotebooksState>()(
     }),
     {
       name: "goose-note-notebooks",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => uToolsStorage),
       partialize: (state) => ({
         notebooks: state.notebooks,
@@ -473,6 +514,16 @@ export const useNotebooks = create<NotebooksState>()(
             })(),
           ]),
         );
+
+        // v4：缺 order 的本按 createdAt 升序补 0..n-1
+        const sortedForOrder = Object.values(migratedNotebooks).sort(
+          (a, b) => a.createdAt - b.createdAt,
+        );
+        sortedForOrder.forEach((notebook, index) => {
+          if (notebook.order === undefined) {
+            migratedNotebooks[notebook.id] = { ...notebook, order: index };
+          }
+        });
 
         return {
           ...safeState,

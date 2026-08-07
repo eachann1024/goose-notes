@@ -1,8 +1,159 @@
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { renderNotebookIcon } from "./notebookUtils";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { dialogs } from "@/lib/utools/dialogs";
+import {
+  sortNotebooksByOrder,
+  type Notebook,
+  useNotebooks,
+} from "@/stores/useNotebooks";
+
+interface SortableNotebookItemProps {
+  notebook: Notebook;
+  isActive: boolean;
+  canDeleteNotebook: boolean;
+  onActivate: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDeleteLocal: (id: string) => void;
+}
+
+function SortableNotebookItem({
+  notebook,
+  isActive,
+  canDeleteNotebook,
+  onActivate,
+  onEdit,
+  onDeleteLocal,
+}: SortableNotebookItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: notebook.id });
+  const dragMoved = useRef(false);
+
+  if (isDragging) dragMoved.current = true;
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative flex select-none items-center rounded-sm outline-none",
+        "justify-between gap-2 group",
+        "min-h-11 py-2 mb-1 last:mb-0 px-2",
+        "hover:bg-[var(--goose-interactive-hover)]",
+        notebook.localPathMissing && "opacity-50",
+        isActive &&
+          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
+        isDragging && "opacity-60 cursor-grabbing z-10",
+        !isDragging && "cursor-grab",
+      )}
+      {...attributes}
+      {...listeners}
+      role="menuitem"
+      tabIndex={-1}
+      onPointerDown={(e) => {
+        dragMoved.current = false;
+        listeners?.onPointerDown?.(e as React.PointerEvent<HTMLElement>);
+      }}
+      onClick={() => {
+        if (dragMoved.current) {
+          dragMoved.current = false;
+          return;
+        }
+        if (notebook.localPathMissing) return;
+        onActivate(notebook.id);
+      }}
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-icon-chip-on-selected)] transition-colors",
+            "group-hover:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-[var(--goose-interactive-hover)]",
+            isActive && "bg-[var(--goose-icon-chip-on-selected)]",
+          )}
+        >
+          {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
+        </span>
+        <span className="truncate text-sm font-medium leading-snug">
+          {notebook.name}
+        </span>
+        {notebook.localPathMissing && (
+          <span className="text-xs text-destructive">路径失效</span>
+        )}
+      </div>
+      <div
+        className="flex items-center gap-1 shrink-0 justify-end"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {notebook.source === "local-folder" && canDeleteNotebook && (
+          <TooltipProvider delayDuration={600}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)] group-hover:opacity-100 group-hover:pointer-events-auto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteLocal(notebook.id);
+                  }}
+                  aria-label="移除本地文件夹"
+                >
+                  <LucideIcons.FolderX className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">移除本地文件夹</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        <TooltipProvider delayDuration={600}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
+                aria-label="编辑记事本"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(notebook.id);
+                }}
+              >
+                <LucideIcons.Settings className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">编辑记事本</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {isActive && <LucideIcons.Check className="h-4 w-4" />}
+      </div>
+    </div>
+  );
+}
 
 export function NotebookSwitcher() {
   const {
@@ -12,6 +163,7 @@ export function NotebookSwitcher() {
     createLocalFolderNotebook,
     updateNotebook,
     deleteNotebook,
+    reorderNotebooks,
   } = useNotebooks();
   const notebookDropdownHoverExpand = useSettings(
     (state) => state.notebookDropdownHoverExpand,
@@ -19,6 +171,13 @@ export function NotebookSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const hovering = useRef({ trigger: false, content: false });
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDraggingRef = useRef(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+  );
 
   useEffect(
     () => () => {
@@ -28,9 +187,14 @@ export function NotebookSwitcher() {
   );
 
   const scheduleClose = () => {
+    if (isDraggingRef.current) return;
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => {
-      if (!hovering.current.trigger && !hovering.current.content) {
+      if (
+        !isDraggingRef.current &&
+        !hovering.current.trigger &&
+        !hovering.current.content
+      ) {
         setIsOpen(false);
       }
     }, 80);
@@ -54,9 +218,7 @@ export function NotebookSwitcher() {
   });
 
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
-  const notebookList = Object.values(notebooks).sort(
-    (a, b) => a.createdAt - b.createdAt,
-  );
+  const notebookList = sortNotebooksByOrder(notebooks);
   const canDeleteNotebook = Object.keys(notebooks).length > 1;
 
   const handleCreate = () => {
@@ -166,6 +328,28 @@ export function NotebookSwitcher() {
     setEditDialog({ ...editDialog, open: false });
   };
 
+  const handleDragStart = () => {
+    isDraggingRef.current = true;
+    setIsOpen(true);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    isDraggingRef.current = false;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = notebookList.findIndex((nb) => nb.id === active.id);
+    const newIndex = notebookList.findIndex((nb) => nb.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const next = arrayMove(notebookList, oldIndex, newIndex);
+    reorderNotebooks(next.map((nb) => nb.id));
+  };
+
+  const handleDragCancel = () => {
+    isDraggingRef.current = false;
+  };
+
   return (
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
@@ -221,88 +405,43 @@ export function NotebookSwitcher() {
             hovering.current.content = false;
             scheduleClose();
           }}
+          onCloseAutoFocus={(e) => {
+            if (isDraggingRef.current) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (isDraggingRef.current) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (isDraggingRef.current) e.preventDefault();
+          }}
         >
-          {notebookList.map((notebook) => (
-            <DropdownMenuItem
-              key={notebook.id}
-              className={cn(
-                "flex items-center justify-between gap-2 group",
-                "min-h-11 py-2 mb-1 last:mb-0",
-                notebook.localPathMissing && "opacity-50",
-                activeNotebookId === notebook.id &&
-                  "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
-              )}
-              onClick={() => {
-                if (notebook.localPathMissing) return;
-                void activateNotebook(notebook.id);
-                setIsOpen(false);
-              }}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <SortableContext
+              items={notebookList.map((nb) => nb.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-icon-chip-on-selected)] transition-colors",
-                    "group-hover:bg-[var(--goose-icon-chip-on-selected)] group-data-[highlighted]:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-[var(--goose-interactive-hover)] dark:group-data-[highlighted]:bg-[var(--goose-interactive-hover)]",
-                    activeNotebookId === notebook.id &&
-                      "bg-[var(--goose-icon-chip-on-selected)]",
-                  )}
-                >
-                  {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
-                </span>
-                <span className="truncate text-sm font-medium leading-snug">
-                  {notebook.name}
-                </span>
-                {notebook.localPathMissing && (
-                  <span className="text-xs text-destructive">路径失效</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1 shrink-0 justify-end">
-                {notebook.source === "local-folder" && canDeleteNotebook && (
-                  <TooltipProvider delayDuration={600}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)] group-hover:opacity-100 group-hover:pointer-events-auto"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotebook(notebook.id);
-                          }}
-                          aria-label="移除本地文件夹"
-                        >
-                          <LucideIcons.FolderX className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        移除本地文件夹
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                <TooltipProvider delayDuration={600}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
-                        aria-label="编辑记事本"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(notebook.id);
-                        }}
-                      >
-                        <LucideIcons.Settings className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">编辑记事本</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {activeNotebookId === notebook.id && (
-                  <LucideIcons.Check className="h-4 w-4" />
-                )}
-              </div>
-            </DropdownMenuItem>
-          ))}
+              {notebookList.map((notebook) => (
+                <SortableNotebookItem
+                  key={notebook.id}
+                  notebook={notebook}
+                  isActive={activeNotebookId === notebook.id}
+                  canDeleteNotebook={canDeleteNotebook}
+                  onActivate={(id) => {
+                    void activateNotebook(id);
+                    setIsOpen(false);
+                  }}
+                  onEdit={handleEdit}
+                  onDeleteLocal={deleteNotebook}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
           <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-0 pt-1.5 pb-1.5">
             <DropdownMenuItem
               className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"

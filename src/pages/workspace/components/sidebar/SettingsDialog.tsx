@@ -13,7 +13,11 @@ import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
 import type { SettingsTab, SettingsTabConfig } from "./settings/types";
 import { useShallow } from "zustand/react/shallow";
-import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
+import {
+  useNotebooks,
+  DEFAULT_NOTEBOOK,
+  sortNotebooksByOrder,
+} from "@/stores/useNotebooks";
 import { clearLocalPageMetadataCache, usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
@@ -315,7 +319,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     reset: resetAppsBanner,
   } = usePersistentDismissState(SETTINGS_APPS_BANNER_ID);
 
-  const notebookList = Object.values(notebooks).filter(
+  const notebookList = sortNotebooksByOrder(notebooks).filter(
     (n) => n.source !== "local-folder",
   );
   const { createNotebook } = useNotebooks(
