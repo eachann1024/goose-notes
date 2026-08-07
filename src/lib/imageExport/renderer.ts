@@ -39,6 +39,26 @@ function withTimeout<T>(
   });
 }
 
+function isCaptureRatioWithinLimits(
+  width: number,
+  height: number,
+  ratio: number,
+): boolean {
+  if (ratio < MIN_CAPTURE_PIXEL_RATIO) return false;
+  const outputWidth = Math.ceil(width * ratio);
+  const outputHeight = Math.ceil(height * ratio);
+  return (
+    outputWidth <= MAX_CAPTURE_EDGE &&
+    outputHeight <= MAX_CAPTURE_EDGE &&
+    outputWidth * outputHeight <= MAX_CAPTURE_PIXELS
+  );
+}
+
+/**
+ * 按画布边长 / 总像素上限计算可用的 pixelRatio。
+ * 理论比值经 floor 到 4 位后，两端 Math.ceil 仍可能略超上限，
+ * 因此会继续下调直到落在安全范围内，而不是直接抛「尺寸超出」。
+ */
 export function calculateSafePixelRatio(width: number, height: number): number {
   const safeWidth = Math.max(1, Math.ceil(width));
   const safeHeight = Math.max(1, Math.ceil(height));
@@ -47,24 +67,23 @@ export function calculateSafePixelRatio(width: number, height: number): number {
     MAX_CAPTURE_EDGE / safeHeight,
   );
   const areaRatio = Math.sqrt(MAX_CAPTURE_PIXELS / (safeWidth * safeHeight));
-  const ratio = Math.min(MAX_CAPTURE_PIXEL_RATIO, edgeRatio, areaRatio);
-
-  if (ratio < MIN_CAPTURE_PIXEL_RATIO) {
-    throw new Error("内容过长，无法导出为单张图片，请缩小内容范围后重试");
-  }
+  let ratio = Math.min(MAX_CAPTURE_PIXEL_RATIO, edgeRatio, areaRatio);
 
   // 向下保留四位，避免浮点取整后重新越过安全像素上限。
-  const safeRatio = Math.floor(ratio * 10_000) / 10_000;
-  const outputWidth = Math.ceil(safeWidth * safeRatio);
-  const outputHeight = Math.ceil(safeHeight * safeRatio);
-  if (
-    outputWidth > MAX_CAPTURE_EDGE ||
-    outputHeight > MAX_CAPTURE_EDGE ||
-    outputWidth * outputHeight > MAX_CAPTURE_PIXELS
+  ratio = Math.floor(ratio * 10_000) / 10_000;
+
+  // floor 后两端 ceil 仍可能把总像素顶破上限，逐级下调 0.0001。
+  while (
+    ratio >= MIN_CAPTURE_PIXEL_RATIO &&
+    !isCaptureRatioWithinLimits(safeWidth, safeHeight, ratio)
   ) {
-    throw new Error("图片尺寸超出安全限制，请缩小内容范围后重试");
+    ratio = Math.floor((ratio - 0.0001) * 10_000) / 10_000;
   }
-  return safeRatio;
+
+  if (!isCaptureRatioWithinLimits(safeWidth, safeHeight, ratio)) {
+    throw new Error("内容过长，无法导出为单张图片，请缩小内容范围后重试");
+  }
+  return ratio;
 }
 
 /**
