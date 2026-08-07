@@ -38,6 +38,8 @@ export interface EditorAISettings {
   selectedModelId: string | null;
   workspaceSelectedModelId: string | null;
   workspaceReasoningLevel: "default" | "low" | "medium" | "high";
+  /** 供应商预设；缺省时由 base URL / 协议推断 */
+  customProviderId?: string | null;
   customProtocol: "openai-responses" | "openai" | "claude";
   customOpenAIResponsesBaseURL: string;
   customOpenAIBaseURL: string;

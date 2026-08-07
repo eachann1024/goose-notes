@@ -39,6 +39,7 @@ import {
   prepareNotebookAiMessagesForModel,
   sanitizeNotebookAiMessages,
 } from "@/lib/notebook-ai/messageUtils";
+import { ensureNotebookAiMessageCreatedAt } from "@/lib/notebook-ai/messageTime";
 import type {
   BatchApprovalResponse,
   BatchUndoResult,
@@ -204,12 +205,34 @@ export function NotebookAiSessionProvider({
     transport,
     id: `notebook-ai-${notebookId}-${conversationId}`,
     messages: persistedMessages,
+    // 流式 token 不节流会每字触发 messages → 全树 commit + Streamdown 重解析，整面板卡顿。
+    // ~50ms ≈ 20fps UI 更新，观感仍流畅，React commit 次数大幅下降。
+    experimental_throttle: 50,
     onFinish: ({ messages: finishedMessages }) => {
-      const cleanedMessages = sanitizeNotebookAiMessages(finishedMessages);
-      useNotebookAiChats
-        .getState()
-        .setMessages(notebookId, conversationId, cleanedMessages);
+      const cleanedMessages = ensureNotebookAiMessageCreatedAt(
+        sanitizeNotebookAiMessages(finishedMessages),
+      );
+      // 先把 UI 状态对齐；uTools 同步落盘挪到空闲时段，避免和输入框 BorderBeam
+      // 抢主线程（长会话序列化 + 写盘时常见约 1s 掉帧）。
       queueMicrotask(() => setMessages(cleanedMessages));
+      const persist = () => {
+        useNotebookAiChats
+          .getState()
+          .setMessages(notebookId, conversationId, cleanedMessages);
+      };
+      const ric = (
+        globalThis as typeof globalThis & {
+          requestIdleCallback?: (
+            cb: () => void,
+            opts?: { timeout: number },
+          ) => number;
+        }
+      ).requestIdleCallback;
+      if (typeof ric === "function") {
+        ric(() => persist(), { timeout: 700 });
+      } else {
+        setTimeout(persist, 48);
+      }
     },
   });
 
@@ -324,6 +347,7 @@ export function NotebookAiSessionProvider({
         useImplicitPage: false,
       });
       metadata.displayText = displayText || "已上传图片";
+      metadata.createdAt = Date.now();
       metadata.imageAttachments = imageAttachments.map(({ file }) => ({
         filename: file.name,
         mediaType: file.type || "image/*",

@@ -45,7 +45,7 @@ export function SkillSuggestionsList(props: {
       >
         {props.items.length === 0 ? (
           <div className="px-3 py-2.5 text-[13px] text-muted-foreground">
-            未找到匹配 Skill
+            未找到本地 Skill（~/.agents/skills）
           </div>
         ) : (
           props.items.map((skill, index) => (

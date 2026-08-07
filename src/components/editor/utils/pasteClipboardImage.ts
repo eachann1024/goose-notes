@@ -26,6 +26,65 @@ export function clipboardHasPasteableImage(
   return false;
 }
 
+/**
+ * 可测的剪贴板/拖放数据形状（避免单测 mock 完整 DataTransfer）。
+ * 与 DataTransfer 兼容：优先 items（Mac 截图常 files 为空），再扫 files。
+ */
+export type ClipboardImageSource = {
+  items?: ArrayLike<{
+    kind: string;
+    type: string;
+    getAsFile: () => File | null;
+  }> | null;
+  files?: ArrayLike<File> | null;
+};
+
+/**
+ * 从剪贴板/拖放数据提取图片 File。
+ * Mac 截图/复制图常只有 items（files 为空）；item.type 有 image/* 而 file.type 可能为空。
+ * 空 type 会按 item.type / 扩展名归一，便于下游 isImageUploadFile 通过。
+ */
+export function extractClipboardImageFiles(
+  data: ClipboardImageSource | null | undefined,
+): File[] {
+  if (!data) return [];
+
+  const fromItems: File[] = [];
+  const items = data.items;
+  if (items && items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind !== "file") continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      if (!isPasteableClipboardImageFile(file, item.type)) continue;
+      const mime =
+        (file.type.startsWith("image/") && file.type) ||
+        (item.type.startsWith("image/") && item.type) ||
+        resolveImageMimeForUpload(file);
+      fromItems.push(
+        file.type === mime
+          ? file
+          : new File([file], file.name || `paste-${Date.now()}.png`, {
+              type: mime,
+              lastModified: file.lastModified,
+            }),
+      );
+    }
+  }
+  if (fromItems.length > 0) return fromItems;
+
+  const fromFiles: File[] = [];
+  const files = data.files;
+  if (files && files.length > 0) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (isImageUploadFile(file)) fromFiles.push(file);
+    }
+  }
+  return fromFiles;
+}
+
 export function isPasteableClipboardVideoFile(
   file: File,
   itemType: string,

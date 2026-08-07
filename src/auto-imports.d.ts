@@ -13,6 +13,7 @@ declare global {
   const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN: typeof import('./stores/settings/index').AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN
   const Activity: typeof import('react').Activity
   const AiGradientIcon: typeof import('./components/ui/ai-gradient-icon').AiGradientIcon
+  const BEAM_MIN_ACTIVE_MS: typeof import('./components/ui/ai-motion').BEAM_MIN_ACTIVE_MS
   const Badge: typeof import('./components/ui/badge').Badge
   const Button: typeof import('./components/ui/button').Button
   const CARD_THEMES: typeof import('./lib/imageExport/index').CARD_THEMES
@@ -87,8 +88,11 @@ declare global {
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
+  const GOOSE_BEAM_PRESETS: typeof import('./components/ui/ai-motion').GOOSE_BEAM_PRESETS
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
+  const GooseAiBorderBeam: typeof import('./components/ui/ai-motion').GooseAiBorderBeam
+  const GooseThinkingOrb: typeof import('./components/ui/ai-motion').GooseThinkingOrb
   const IconButton: typeof import('./components/ui/icon-button').IconButton
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
   const Input: typeof import('./components/ui/input').Input
@@ -108,6 +112,8 @@ declare global {
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
+  const ORB_PHASE_HOLD_MS: typeof import('./components/ui/ai-motion').ORB_PHASE_HOLD_MS
+  const ORB_VISIBLE_MIN_MS: typeof import('./components/ui/ai-motion').ORB_VISIBLE_MIN_MS
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
@@ -142,6 +148,7 @@ declare global {
   const Slider: typeof import('./components/ui/slider').Slider
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
+  const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
   const TIPS: typeof import('./lib/tips').TIPS
   const TITLE_HEADING_LEVEL: typeof import('./components/editor/utils/blocknote-content/index').TITLE_HEADING_LEVEL
   const Table: typeof import('./components/ui/table').Table
@@ -252,6 +259,7 @@ declare global {
   const extractBlockNoteTitle: typeof import('./components/editor/utils/blocknote-content/index').extractBlockNoteTitle
   const extractBlocksInRange: typeof import('./lib/ai-block-scope').extractBlocksInRange
   const extractCellText: typeof import('./lib/docxExport/docxBlocks').extractCellText
+  const extractClipboardImageFiles: typeof import('./components/editor/utils/pasteClipboardImage').extractClipboardImageFiles
   const extractFirstHeadingText: typeof import('./lib/local-title-binding').extractFirstHeadingText
   const extractFrontmatter: typeof import('./lib/markdown-raw-guard').extractFrontmatter
   const extractInlineItems: typeof import('./lib/docxExport/docxStyles').extractInlineItems
@@ -274,6 +282,7 @@ declare global {
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
   const getAIProviderPreset: typeof import('./lib/ai-provider/index').getAIProviderPreset
   const getActiveDraftContent: typeof import('./stores/useQuickNote').getActiveDraftContent
+  const getApiKeyMissingMessage: typeof import('./lib/ai-provider/index').getApiKeyMissingMessage
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getBlockTypeTransformSignature: typeof import('./lib/ai-write/index').getBlockTypeTransformSignature
   const getBlockTypeTransformTargetLabel: typeof import('./lib/ai-write/index').getBlockTypeTransformTargetLabel
@@ -319,6 +328,7 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
   const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
+  const inferOrbPhaseFromLabel: typeof import('./components/ui/ai-motion').inferOrbPhaseFromLabel
   const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
@@ -431,6 +441,7 @@ declare global {
   const resolveBlockTypeTransformIntent: typeof import('./lib/ai-write/index').resolveBlockTypeTransformIntent
   const resolveExplicitBlockTypeTarget: typeof import('./lib/ai-write/index').resolveExplicitBlockTypeTarget
   const resolveGeneratedBlockStructureExpectation: typeof import('./lib/ai-write/index').resolveGeneratedBlockStructureExpectation
+  const resolveGooseOrbState: typeof import('./components/ui/ai-motion').resolveGooseOrbState
   const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
@@ -460,12 +471,14 @@ declare global {
   const shortcutHasModifier: typeof import('./lib/shortcut-match').shortcutHasModifier
   const shouldIgnoreEntry: typeof import('./lib/local-folder-scanner').shouldIgnoreEntry
   const shouldIgnoreLocalRelativePath: typeof import('./lib/local-folder-scanner').shouldIgnoreLocalRelativePath
+  const shouldIsolateTitleStructurePaste: typeof import('./components/editor/hooks/useEditorPaste').shouldIsolateTitleStructurePaste
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
   const shouldSkipAppHotkeyEvent: typeof import('./hooks/useImeInput').shouldSkipAppHotkeyEvent
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
   const shouldUploadViaImageStorage: typeof import('./components/editor/utils/pasteClipboardImage').shouldUploadViaImageStorage
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
+  const sortNotebooksByOrder: typeof import('./stores/useNotebooks').sortNotebooksByOrder
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
@@ -516,6 +529,7 @@ declare global {
   const useInsertionEffect: typeof import('react').useInsertionEffect
   const useLayoutEffect: typeof import('react').useLayoutEffect
   const useMemo: typeof import('react').useMemo
+  const useMinHoldActive: typeof import('./components/ui/ai-motion').useMinHoldActive
   const useNativeContextMenuGuard: typeof import('./hooks/useNativeContextMenuGuard').useNativeContextMenuGuard
   const useNotebookAiChats: typeof import('./stores/useNotebookAiChats').useNotebookAiChats
   const useNotebooks: typeof import('./stores/useNotebooks').useNotebooks
@@ -621,6 +635,9 @@ declare global {
   export type { LastNoteRestoreResult } from './lib/workspaceStartup'
   import('./lib/workspaceStartup')
   // @ts-ignore
+  export type { GooseAiOrbPhase, GooseThinkingOrbProps, GooseBeamPreset, GooseAiBorderBeamProps } from './components/ui/ai-motion'
+  import('./components/ui/ai-motion')
+  // @ts-ignore
   export type { BadgeProps } from './components/ui/badge'
   import('./components/ui/badge')
   // @ts-ignore
@@ -644,6 +661,9 @@ declare global {
   // @ts-ignore
   export type { OpenExternalResourceResult } from './components/editor/utils/openResourceExternally'
   import('./components/editor/utils/openResourceExternally')
+  // @ts-ignore
+  export type { ClipboardImageSource } from './components/editor/utils/pasteClipboardImage'
+  import('./components/editor/utils/pasteClipboardImage')
   // @ts-ignore
   export type { SlashMenuPagePolicy } from './components/editor/utils/slashMenuPolicy'
   import('./components/editor/utils/slashMenuPolicy')

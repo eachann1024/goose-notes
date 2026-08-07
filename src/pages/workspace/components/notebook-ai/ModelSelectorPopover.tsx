@@ -56,7 +56,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         <button
           type="button"
           disabled={disabled}
-          className="flex h-7 max-w-[120px] shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 max-w-[200px] shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="切换模型"
           title={`当前模型：${effectiveModel?.id ?? effectiveModelId}`}
         >

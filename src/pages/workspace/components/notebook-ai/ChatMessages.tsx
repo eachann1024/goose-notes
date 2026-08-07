@@ -1,7 +1,14 @@
 /**
  * 消息列表组件 — Streamdown 渲染 text part，自动吸底，用户上滚暂停
  */
-import type { ComponentProps, RefObject } from "react";
+import {
+  createContext,
+  memo,
+  useContext,
+  useMemo,
+  type ComponentProps,
+  type RefObject,
+} from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import {
@@ -38,18 +45,31 @@ import {
   type ToolDisplayPart,
 } from "./toolProgressVisibility";
 import type { EditorRef } from "@/components/editor/core/Editor";
-import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
+import {
+  formatChatMessageTime,
+  shouldShowChatTimeDivider,
+} from "@/lib/notebook-ai/messageTime";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
+import { buildUserMessageSegments } from "@/lib/notebook-ai/userMessageSegments";
 import { cn } from "@/lib/utils";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import { AssistantUiThreadViewport } from "./AssistantUiThreadViewport";
+import {
+  GooseAiBorderBeam,
+  GooseThinkingOrb,
+  THINKING_PLACEHOLDER_MIN_MS,
+  useMinHoldActive,
+} from "@/components/ui/ai-motion";
 
-const ANIMATE_OPTIONS = {
-  animation: "blurIn" as const,
-  duration: 250,
-  sep: "word" as const,
-};
+/** 供测试/外部复用；实现见 userMessageSegments */
+export { buildUserMessageSegments } from "@/lib/notebook-ai/userMessageSegments";
+
+/**
+ * 不用 Streamdown 的 word blurIn：流结束时 isAnimating 翻转会拆掉 animate rehype 插件，
+ * 整段 Markdown 重解析，长中文消息可卡主线程约 1s，连带输入框 BorderBeam 掉帧。
+ * 流式增量本身已有「正在写出」感，足够。
+ */
 
 /** 任务列表的原生 checkbox 替换为自绘勾选框（样式见 notebook-ai.css） */
 function MdInput({
@@ -71,6 +91,121 @@ function MdInput({
 }
 
 const MD_COMPONENTS = { input: MdInput };
+
+/** 模块级稳定引用：禁止 plugins={{ cjk }} 内联，避免 Streamdown 每帧当新插件树 */
+const STREAMDOWN_PLUGINS = { cjk };
+
+/**
+ * 助手正文：模块级 memo，禁止在 renderAssistantMessage 内定义 TextPart，
+ * 否则每次父渲染新组件 identity → 卸载/重挂 Streamdown → 流式极卡。
+ */
+const AssistantStreamdownText = memo(function AssistantStreamdownText({
+  text,
+  isStreaming,
+}: {
+  text: string;
+  isStreaming: boolean;
+}) {
+  if (!text?.trim()) return null;
+  return (
+    <div className="ai-md notebook-ai-message-text select-text text-sm text-foreground">
+      <Streamdown
+        className="space-y-2"
+        mode={isStreaming ? "streaming" : "static"}
+        components={MD_COMPONENTS}
+        plugins={STREAMDOWN_PLUGINS}
+        parseIncompleteMarkdown={isStreaming}
+      >
+        {text}
+      </Streamdown>
+    </div>
+  );
+});
+
+function EmptyReasoningPart() {
+  return null;
+}
+
+/** 工具 / 正文 part 共享的每消息上下文（组件函数本身保持模块级稳定） */
+interface AssistantToolRenderContextValue {
+  isStreaming: boolean;
+  editorRef?: RefObject<EditorRef | null>;
+  onBatchApproval: (response: BatchApprovalResponse) => Promise<void> | void;
+  onBatchUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
+}
+
+const AssistantToolRenderContext =
+  createContext<AssistantToolRenderContextValue | null>(null);
+
+/** 从 context 读 isStreaming，避免 stream 结束时换 Text 组件类型导致整段 remount */
+function AssistantTextPart({ text }: TextMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  return (
+    <AssistantStreamdownText text={text} isStreaming={ctx?.isStreaming ?? false} />
+  );
+}
+
+function AssistantToolPart({ artifact }: ToolCallMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  if (!ctx) return null;
+  const { isStreaming, editorRef, onBatchApproval, onBatchUndo } = ctx;
+  const part = artifact as ToolDisplayPart | undefined;
+  if (!part || !shouldShowToolPart(part, isStreaming)) return null;
+  if (part.type === "tool-executeBatchPlan") {
+    if (
+      part.state === "input-streaming" ||
+      part.state === "input-available" ||
+      part.state === "call" ||
+      part.state === "partial-call"
+    ) {
+      return null;
+    }
+    return (
+      <ApprovalPlanCard
+        part={part}
+        onApprovalResponse={onBatchApproval}
+        onUndo={onBatchUndo}
+      />
+    );
+  }
+  return renderToolVisual(part, part.toolCallId ?? part.type, editorRef);
+}
+
+/** MessagePrimitive.Parts 的 components 必须模块级常量，避免 identity 抖动 */
+const ASSISTANT_MESSAGE_PARTS = {
+  Text: AssistantTextPart,
+  Reasoning: EmptyReasoningPart,
+  tools: { Override: AssistantToolPart },
+};
+
+/**
+ * 首 token / 工具进度出现前的预热占位：thinking-orbs + border-beam。
+ * 有正文立刻让位（不叠在气泡里）；输入 dock 的 beam 另有 BEAM_MIN_ACTIVE_MS 保底。
+ */
+function AssistantThinkingPlaceholder({ active }: { active: boolean }) {
+  // 极短「还没首包」闪烁时，仍至少露一会思考态
+  const show = useMinHoldActive(active, THINKING_PLACEHOLDER_MIN_MS);
+  // 已有正文/进度时 active=false：若仍在 min-hold，继续显示会和正文叠层，故仅 active 时渲染
+  if (!active || !show) return null;
+
+  return (
+    <GooseAiBorderBeam
+      preset="streaming"
+      active
+      borderRadius={14}
+      className="w-fit max-w-full"
+    >
+      <div
+        className="flex items-center gap-2.5 rounded-[14px] bg-[var(--goose-interactive-hover)] px-3.5 py-2.5"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <GooseThinkingOrb phase="thinking" scale="inline" tempo="calm" />
+        <span className="text-sm text-muted-foreground">思考中…</span>
+      </div>
+    </GooseAiBorderBeam>
+  );
+}
 
 interface ChatMessagesProps {
   messages: NotebookAiMessage[];
@@ -112,73 +247,6 @@ function getUserDisplayText(message: NotebookAiMessage) {
     return rawText.slice("用户输入：".length).trim();
   }
   return rawText;
-}
-
-type UserMessageSegment =
-  | { type: "text"; text: string }
-  | { type: "reference"; reference: AiFileReferenceAttrs; key: string };
-
-/**
- * 把 displayText 里的 `@标题` 拆成与输入框一致的内联 chip 片段。
- * 同位置优先匹配更长标题，避免短标题抢匹配。
- */
-function buildUserMessageSegments(
-  text: string,
-  references: AiFileReferenceAttrs[],
-): UserMessageSegment[] {
-  if (!text) return [];
-  if (references.length === 0) return [{ type: "text", text }];
-
-  const needles = references
-    .map((reference) => ({
-      reference,
-      needle: `@${reference.titleSnapshot}`,
-    }))
-    .filter((item) => item.needle.length > 1);
-
-  if (needles.length === 0) return [{ type: "text", text }];
-
-  const segments: UserMessageSegment[] = [];
-  let cursor = 0;
-  let refOccurrence = 0;
-
-  while (cursor < text.length) {
-    let match: {
-      index: number;
-      length: number;
-      reference: AiFileReferenceAttrs;
-    } | null = null;
-
-    for (const { reference, needle } of needles) {
-      const index = text.indexOf(needle, cursor);
-      if (index === -1) continue;
-      if (
-        !match ||
-        index < match.index ||
-        (index === match.index && needle.length > match.length)
-      ) {
-        match = { index, length: needle.length, reference };
-      }
-    }
-
-    if (!match) {
-      segments.push({ type: "text", text: text.slice(cursor) });
-      break;
-    }
-
-    if (match.index > cursor) {
-      segments.push({ type: "text", text: text.slice(cursor, match.index) });
-    }
-
-    segments.push({
-      type: "reference",
-      reference: match.reference,
-      key: `${match.reference.pageId}-${refOccurrence++}`,
-    });
-    cursor = match.index + match.length;
-  }
-
-  return segments;
 }
 
 function getUserImageParts(message: NotebookAiMessage) {
@@ -322,7 +390,34 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const { onOpenPage } = useEditorPageContext();
   const isFullscreen = layout === "fullscreen";
-  const messageById = new Map(messages.map((message) => [message.id, message]));
+  const messageById = useMemo(
+    () => new Map(messages.map((message) => [message.id, message])),
+    [messages],
+  );
+
+  /** messageId → 格式化时间文案；无则不展示分隔条 */
+  const showTimeById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (let i = 0; i < messages.length; i++) {
+      const current = messages[i];
+      const previous = i > 0 ? messages[i - 1] : null;
+      if (!shouldShowChatTimeDivider(current, previous)) continue;
+      const at = current.metadata?.createdAt;
+      if (typeof at !== "number") continue;
+      const label = formatChatMessageTime(at);
+      if (label) map.set(current.id, label);
+    }
+    return map;
+  }, [messages]);
+
+  const toolRenderBase = useMemo(
+    () => ({
+      editorRef,
+      onBatchApproval,
+      onBatchUndo,
+    }),
+    [editorRef, onBatchApproval, onBatchUndo],
+  );
 
   const MessageActionBar = () => (
     <div className="notebook-ai-message-actions mt-1 flex h-6 min-h-6 items-center gap-1">
@@ -369,78 +464,98 @@ export function ChatMessages({
     const hasLiveImages = getUserImageParts(msg).length > 0;
     const persistedImages = msg.metadata?.imageAttachments ?? [];
     const references = msg.metadata?.references ?? [];
-    const textSegments = buildUserMessageSegments(text, references);
+    const skills = msg.metadata?.skills ?? [];
+    const textSegments = buildUserMessageSegments(text, references, skills);
 
     return (
       <MessagePrimitive.Root className="notebook-ai-message flex flex-col items-end">
-        <div className="notebook-ai-message-text max-w-[85%] space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
-          <MessagePrimitive.Attachments>
-            {({ attachment }) => {
-              const imagePart = attachment.content.find(
-                (part) => part.type === "image",
-              );
-              return (
-                <AttachmentPrimitive.Root className="inline-flex max-w-full flex-col gap-1">
-                  {imagePart?.type === "image" ? (
-                    <img
-                      src={imagePart.image}
-                      alt={attachment.name}
-                      className="h-20 w-20 rounded-[8px] object-cover"
-                    />
-                  ) : null}
-                  <span className="sr-only">
-                    <AttachmentPrimitive.Name />
-                  </span>
-                </AttachmentPrimitive.Root>
-              );
-            }}
-          </MessagePrimitive.Attachments>
-          {!hasLiveImages && persistedImages.length > 0 ? (
-            <div className="flex flex-wrap justify-end gap-1.5">
-              {persistedImages.map((image) => (
-                <span
-                  key={`${image.filename}-${image.mediaType}`}
-                  className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-background/45 px-1.5 py-1 text-[11px] text-muted-foreground"
-                >
-                  <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-                  <span className="max-w-[170px] truncate">
-                    {image.filename}
-                  </span>
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {textSegments.length > 0 ? (
-            <div className="notebook-ai-message-inline select-text">
-              {textSegments.map((segment, index) =>
-                segment.type === "text" ? (
+        {/* 不设 w-full：气泡随内容收缩并靠右；max-w 限制最长宽度，复制按钮与气泡右缘对齐 */}
+        <div className="flex max-w-[85%] flex-col items-end gap-1">
+          <div className="notebook-ai-message-text space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
+            <MessagePrimitive.Attachments>
+              {({ attachment }) => {
+                const imagePart = attachment.content.find(
+                  (part) => part.type === "image",
+                );
+                return (
+                  <AttachmentPrimitive.Root className="inline-flex max-w-full flex-col gap-1">
+                    {imagePart?.type === "image" ? (
+                      <img
+                        src={imagePart.image}
+                        alt={attachment.name}
+                        className="h-20 w-20 rounded-[8px] object-cover"
+                      />
+                    ) : null}
+                    <span className="sr-only">
+                      <AttachmentPrimitive.Name />
+                    </span>
+                  </AttachmentPrimitive.Root>
+                );
+              }}
+            </MessagePrimitive.Attachments>
+            {!hasLiveImages && persistedImages.length > 0 ? (
+              <div className="flex flex-wrap justify-end gap-1.5">
+                {persistedImages.map((image) => (
                   <span
-                    key={`text-${index}`}
-                    className="notebook-ai-message-inline-text"
+                    key={`${image.filename}-${image.mediaType}`}
+                    className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-background/45 px-1.5 py-1 text-[11px] text-muted-foreground"
                   >
-                    {segment.text}
+                    <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+                    <span className="max-w-[170px] truncate">
+                      {image.filename}
+                    </span>
                   </span>
-                ) : (
-                  <button
-                    key={segment.key}
-                    type="button"
-                    onClick={() => onOpenPage(segment.reference.pageId)}
-                    className={cn(
-                      "ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded px-1.5 text-[11px] font-medium leading-none outline-none",
-                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
-                      "hover:bg-[var(--goose-interactive-hover)] focus-visible:ring-2 focus-visible:ring-ring",
-                    )}
-                    title={`打开“${segment.reference.titleSnapshot}”`}
-                    aria-label={`打开引用文件：${segment.reference.titleSnapshot}`}
-                  >
-                    @{segment.reference.titleSnapshot}
-                  </button>
-                ),
-              )}
-            </div>
-          ) : null}
+                ))}
+              </div>
+            ) : null}
+            {textSegments.length > 0 ? (
+              <div className="notebook-ai-message-inline select-text">
+                {textSegments.map((segment, index) => {
+                  if (segment.type === "text") {
+                    return (
+                      <span
+                        key={`text-${index}`}
+                        className="notebook-ai-message-inline-text"
+                      >
+                        {segment.text}
+                      </span>
+                    );
+                  }
+                  if (segment.type === "skill") {
+                    return (
+                      <span
+                        key={segment.key}
+                        data-ai-skill-chip=""
+                        className="ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
+                        title={`本地 Skill：/${segment.skill.name}`}
+                        aria-label={`本地 Skill：/${segment.skill.name}`}
+                      >
+                        /{segment.skill.name}
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={segment.key}
+                      type="button"
+                      data-ai-mention-chip=""
+                      onClick={() => onOpenPage(segment.reference.pageId)}
+                      className={cn(
+                        "ai-composer-chip inline-flex max-w-full min-w-0 items-center truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none outline-none",
+                        "hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring",
+                      )}
+                      title={`打开“${segment.reference.titleSnapshot}”`}
+                      aria-label={`打开引用文件：${segment.reference.titleSnapshot}`}
+                    >
+                      @{segment.reference.titleSnapshot}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+          <MessageActionBar />
         </div>
-        <MessageActionBar />
       </MessagePrimitive.Root>
     );
   };
@@ -452,70 +567,45 @@ export function ChatMessages({
     const progressToolParts = (msg.parts ?? [])
       .filter(isNotebookAiToolPart)
       .filter((part) => shouldShowToolPart(part, isStreaming));
-    const showToolProgress = shouldShowToolProgress(
-      progressToolParts,
+    const showToolProgress =
+      progressToolParts.length > 0 &&
+      shouldShowToolProgress(progressToolParts, isStreaming);
+    const hasText = getTextPartText(msg).trim().length > 0;
+    // 发送后、正文/工具进度都还没出来：用思考球 + 光束预热，避免空长条
+    const needsThinkingPlaceholder =
+      isStreaming && !hasText && !showToolProgress;
+
+    const toolRenderValue: AssistantToolRenderContextValue = {
+      ...toolRenderBase,
       isStreaming,
-    );
-
-    const TextPart = ({ text }: TextMessagePartProps) => (
-      <div className="ai-md notebook-ai-message-text select-text text-sm text-foreground">
-        <Streamdown
-          className="space-y-2"
-          components={MD_COMPONENTS}
-          isAnimating={isStreaming}
-          animated={ANIMATE_OPTIONS}
-          plugins={{ cjk }}
-          parseIncompleteMarkdown={isStreaming}
-        >
-          {text}
-        </Streamdown>
-      </div>
-    );
-
-    const ToolPart = ({ artifact }: ToolCallMessagePartProps) => {
-      const part = artifact as ToolDisplayPart | undefined;
-      if (!part || !shouldShowToolPart(part, isStreaming)) return null;
-      if (part.type === "tool-executeBatchPlan") {
-        if (
-          part.state === "input-streaming" ||
-          part.state === "input-available" ||
-          part.state === "call" ||
-          part.state === "partial-call"
-        ) {
-          return null;
-        }
-        return (
-          <ApprovalPlanCard
-            part={part}
-            onApprovalResponse={onBatchApproval}
-            onUndo={onBatchUndo}
-          />
-        );
-      }
-      return renderToolVisual(part, part.toolCallId ?? part.type, editorRef);
     };
 
     return (
-      <MessagePrimitive.Root className="notebook-ai-message space-y-2 rounded-[14px] bg-[var(--goose-interactive-hover)]/70 px-3.5 py-2.5">
-        {showToolProgress ? (
-          <ToolProgressCard
-            parts={progressToolParts}
-            isMessageStreaming={isStreaming}
-          />
-        ) : null}
-        <MessagePrimitive.Parts
-          components={{
-            Text: TextPart,
-            Reasoning: () => null,
-            tools: { Override: ToolPart },
-          }}
-        />
-        <MessagePrimitive.Error>
-          <p className="text-xs text-destructive">这条回复生成失败。</p>
-        </MessagePrimitive.Error>
-        {/* 流式中不占位：避免底部空出一截操作栏高度 */}
-        {!isStreaming ? <MessageActionBar /> : null}
-      </MessagePrimitive.Root>
+      <AssistantToolRenderContext.Provider value={toolRenderValue}>
+        <MessagePrimitive.Root
+          className={cn(
+            "notebook-ai-message space-y-2",
+            // 仅预热占位时不铺整宽空壳；有正文后再用气泡底
+            needsThinkingPlaceholder
+              ? "w-fit max-w-full"
+              : "rounded-[14px] bg-[var(--goose-interactive-hover)]/70 px-3.5 py-2.5",
+          )}
+        >
+          <AssistantThinkingPlaceholder active={needsThinkingPlaceholder} />
+          {showToolProgress ? (
+            <ToolProgressCard
+              parts={progressToolParts}
+              isMessageStreaming={isStreaming}
+            />
+          ) : null}
+          <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
+          <MessagePrimitive.Error>
+            <p className="text-xs text-destructive">这条回复生成失败。</p>
+          </MessagePrimitive.Error>
+          {/* 流式中不占位：避免底部空出一截操作栏高度 */}
+          {!isStreaming ? <MessageActionBar /> : null}
+        </MessagePrimitive.Root>
+      </AssistantToolRenderContext.Provider>
     );
   };
 
@@ -574,12 +664,28 @@ export function ChatMessages({
             {({ message }) => {
               const sourceMessage = messageById.get(message.id);
               if (!sourceMessage) return null;
-              return sourceMessage.role === "user"
-                ? renderUserMessage(sourceMessage)
-                : renderAssistantMessage(
-                    sourceMessage,
-                    streamingMessageId === sourceMessage.id,
-                  );
+              const timeLabel = showTimeById.get(sourceMessage.id);
+              const body =
+                sourceMessage.role === "user"
+                  ? renderUserMessage(sourceMessage)
+                  : renderAssistantMessage(
+                      sourceMessage,
+                      streamingMessageId === sourceMessage.id,
+                    );
+              return (
+                <>
+                  {timeLabel ? (
+                    <div
+                      className="notebook-ai-message-time"
+                      role="separator"
+                      aria-label={timeLabel}
+                    >
+                      {timeLabel}
+                    </div>
+                  ) : null}
+                  {body}
+                </>
+              );
             }}
           </ThreadPrimitive.Messages>
           <ThreadPrimitive.ViewportFooter className="sticky bottom-2 flex justify-center">

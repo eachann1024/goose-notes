@@ -9,9 +9,13 @@ import {
   type AiComposerPayload,
   type AiFileReferenceAttrs,
   type AiReferenceSuggestionItem,
+  type AiSkillCommandAttrs,
   type ResolvedAiReferenceContext,
 } from "@/components/editor/ai/composer/referenceLookup";
-import { resolveInvokedLocalSkill } from "./localContext";
+import {
+  resolveInvokedLocalSkill,
+  resolveInvokedLocalSkillFromTokens,
+} from "./localContext";
 import { useSettings } from "@/stores/useSettings";
 import type {
   NotebookAiContextBudgetTier,
@@ -237,7 +241,8 @@ export function buildNotebookAiUserMessage(params: {
         : [];
   const displayText = params.payload.promptText.trim();
   const invokedSkill = useSettings.getState().ai.readLocalSkills
-    ? resolveInvokedLocalSkill(displayText)
+    ? (resolveInvokedLocalSkillFromTokens(params.payload.tokens) ??
+      resolveInvokedLocalSkill(displayText))
     : null;
   const contextSelection = resolveContextSelection({
     promptText: displayText,
@@ -275,14 +280,65 @@ export function buildNotebookAiUserMessage(params: {
     .filter(Boolean)
     .join("\n\n");
 
+  // skills 合并去重：payload.skills → tokens 中 skill → 仍空则用 invokedSkill
+  const skills = collectNotebookAiMessageSkills(params.payload, invokedSkill);
+
   return {
     modelText,
     currentPageId,
     metadata: {
       displayText,
       references: references.length > 0 ? references : undefined,
+      skills,
       implicitPage,
       diagnostics: contextSelection.diagnostics,
     },
   };
+}
+
+/**
+ * 组装消息 metadata.skills：按 name 去重（首次优先）。
+ * 1. payload.skills
+ * 2. payload.tokens 中 type==="skill"
+ * 3. 仍空且 invokedSkill 非空 → 补一条
+ */
+export function collectNotebookAiMessageSkills(
+  payload: {
+    skills?: AiSkillCommandAttrs[];
+    tokens?: Array<{ type: string; skill?: AiSkillCommandAttrs }>;
+  },
+  invokedSkill?: {
+    name: string;
+    path?: string;
+    description?: string;
+  } | null,
+): AiSkillCommandAttrs[] | undefined {
+  const byName = new Map<string, AiSkillCommandAttrs>();
+  const add = (skill: AiSkillCommandAttrs) => {
+    const key = skill.name?.trim().toLowerCase();
+    if (!key || byName.has(key)) return;
+    byName.set(key, {
+      name: skill.name.trim(),
+      ...(skill.path ? { path: skill.path } : {}),
+      ...(skill.description ? { description: skill.description } : {}),
+    });
+  };
+
+  for (const skill of payload.skills ?? []) {
+    if (skill?.name) add(skill);
+  }
+  for (const token of payload.tokens ?? []) {
+    if (token.type === "skill" && token.skill?.name) {
+      add(token.skill);
+    }
+  }
+  if (byName.size === 0 && invokedSkill?.name) {
+    add({
+      name: invokedSkill.name,
+      path: invokedSkill.path,
+      description: invokedSkill.description,
+    });
+  }
+
+  return byName.size > 0 ? Array.from(byName.values()) : undefined;
 }

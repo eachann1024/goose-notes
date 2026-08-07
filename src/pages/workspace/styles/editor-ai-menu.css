@@ -94,6 +94,14 @@
   pointer-events: none;
 }
 
+/* 右侧：思考/写入中的 orb + 停止按钮需要可点 */
+.bn-combobox .mantine-Input-section[data-position="right"] {
+  width: auto;
+  min-width: 36px;
+  padding-inline-end: 6px;
+  pointer-events: auto;
+}
+
 .bn-combobox .bn-combobox-icon {
   display: inline-flex;
   align-items: center;
@@ -107,6 +115,35 @@
 .bn-combobox .bn-combobox-icon svg {
   width: 14px;
   height: 14px;
+}
+
+.goose-ai-menu-busy-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goose-ai-menu-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+  cursor: pointer;
+  transition: filter 120ms ease-out;
+}
+
+.goose-ai-menu-stop:hover {
+  filter: brightness(1.05);
+}
+
+.goose-ai-menu-stop:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
 }
 
 /* ---------- Items 列表 ---------- */

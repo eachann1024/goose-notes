@@ -1,5 +1,8 @@
 import type { UIMessage, InferUITools } from "ai";
-import type { AiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
+import type {
+  AiFileReferenceAttrs,
+  AiSkillCommandAttrs,
+} from "@/components/editor/ai/composer/referenceLookup";
 import type { NotebookAiTools } from "./tools";
 import type { NotebookSkillId } from "./skills";
 
@@ -26,12 +29,16 @@ export interface NotebookAiContextDiagnostics {
 export interface NotebookAiMessageMetadata {
   displayText?: string;
   references?: AiFileReferenceAttrs[];
+  /** 本轮用户消息中显式调用的本地 Skill（chip 顺序）。 */
+  skills?: AiSkillCommandAttrs[];
   implicitPage?: AiFileReferenceAttrs;
   diagnostics?: NotebookAiContextDiagnostics;
   imageAttachments?: Array<{
     filename: string;
     mediaType: string;
   }>;
+  /** 消息创建时间（毫秒时间戳），用于聊天时间分隔条 */
+  createdAt?: number;
 }
 
 /** 序列化进持久化存储的单条消息格式 */

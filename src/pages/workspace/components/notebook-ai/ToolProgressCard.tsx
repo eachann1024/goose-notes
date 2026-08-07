@@ -8,6 +8,12 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import {
+  GooseThinkingOrb,
+  ORB_VISIBLE_MIN_MS,
+  inferOrbPhaseFromLabel,
+  useMinHoldActive,
+} from "@/components/ui/ai-motion";
 import { cn } from "@/lib/utils";
 import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
 
@@ -68,16 +74,14 @@ const SKILL_LABELS: Record<string, string> = {
   webResearch: "网页研究",
 };
 
-function PixelSpinner() {
+function RunningOrb({ label }: { label: string }) {
   return (
-    <span
-      className="notebook-ai-pixel-spinner shrink-0 text-muted-foreground"
-      aria-hidden="true"
-    >
-      {Array.from({ length: 8 }, (_, index) => (
-        <span key={index} />
-      ))}
-    </span>
+    <GooseThinkingOrb
+      phase={inferOrbPhaseFromLabel(label)}
+      scale="inline"
+      theme="auto"
+      aria-hidden
+    />
   );
 }
 
@@ -404,21 +408,30 @@ export function ToolProgressCard({
     setExpanded(Boolean(isMessageStreaming));
   }, [isMessageStreaming]);
 
-  if (steps.length === 0) return null;
-
   const hasError = steps.some((step) => step.status === "error");
   const isRunning =
+    steps.length > 0 &&
     !hasError &&
     (Boolean(isMessageStreaming) ||
       steps.some((step) => step.status === "running"));
-  const statusText = hasError ? "失败" : isRunning ? "处理中" : "已完成";
+  // 短工具链时 orb 至少露一会儿，避免刚挂载就被勾选图标顶掉
+  const showRunningOrb = useMinHoldActive(isRunning, ORB_VISIBLE_MIN_MS);
+
+  if (steps.length === 0) return null;
+
+  const statusText = hasError
+    ? "失败"
+    : isRunning || showRunningOrb
+      ? "处理中"
+      : "已完成";
   const summary = buildSummary(steps) || `${steps.length} 个步骤`;
 
   return (
-    <div className="my-1 rounded-[8px] bg-[var(--goose-interactive-hover)] text-xs">
+    // 无额外左右 padding / 内嵌底：与气泡正文同一文本列左右对齐
+    <div className="text-xs">
       <button
         type="button"
-        className="notebook-ai-progress-toggle flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
+        className="notebook-ai-progress-toggle flex w-full cursor-pointer items-center gap-2 px-0 py-1 text-left"
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
       >
@@ -427,8 +440,8 @@ export function ToolProgressCard({
             className="h-3.5 w-3.5 shrink-0 text-destructive"
             strokeWidth={1.75}
           />
-        ) : isRunning ? (
-          <PixelSpinner />
+        ) : showRunningOrb ? (
+          <RunningOrb label={summary} />
         ) : (
           <CheckCircle2
             className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -468,10 +481,10 @@ export function ToolProgressCard({
       </button>
 
       {expanded ? (
-        <div className="space-y-1 px-3 pb-2 pt-0">
+        <div className="space-y-1 px-0 pb-1 pt-0.5">
           {steps.map((step, index) => (
             <div key={`${step.label}-${index}`} className="flex gap-2">
-              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--muted-foreground))]" />
+              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--muted-foreground))] opacity-60" />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-foreground">{step.label}</div>
                 <div

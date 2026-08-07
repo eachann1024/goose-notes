@@ -6,33 +6,71 @@
  * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
  */
 
-/* ── AI 行内 chip：统一 flex 垂直居中 ──────────────────────
- * 规则：父级 flex + items-center，子级 inline-flex + items-center。
- * 禁止 top/translate 像素偏移，禁止只靠 vertical-align 硬调。
- * contenteditable 无法整行 flex（会破坏 caret/换行），故 chip 高度
- * 与行高一致，自身用 flex 居中内容，与相邻文字天然对齐。
+/* ── AI 行内 chip：与 caret 同一行盒 ──────────────────────
+ * contenteditable 光标高度 ≈ 行高，不是 chip 内容高。
+ * 先前 chip 比行高矮 → 光标比 tag 高一截、看起来没垂直对齐。
+ * 规则：
+ * - chip 外框高度 = 编辑器行高（含 border，box-sizing:border-box）
+ * - vertical-align:bottom 与文本行盒底边对齐（等高则顶边也齐）
+ * - 文字在 chip 内 flex 居中
+ * - 左右 margin 给 caret 留缝；ZWSP 仅零宽锚点
  */
+[data-ai-composer-editor="true"] {
+  /* 与 AiComposerInput default：text-[12px] leading-[20px] 锁死 */
+  font-size: 12px;
+  line-height: 20px;
+}
+
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+  /* 与 panel：text-[13px] leading-6 */
+  font-size: 13px;
+  line-height: 24px;
+}
+
 [data-ai-composer-editor="true"] .ai-composer-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  /* 与 default variant leading-[20px] 同高 */
+  /* = 编辑器行高，与 caret 同高 */
   height: 20px;
-  line-height: 1;
+  min-height: 20px;
+  max-height: 20px;
+  line-height: 20px;
+  font-size: 11px;
   max-width: 100%;
+  margin-left: 4px;
+  margin-right: 4px;
   margin-top: 0;
   margin-bottom: 0;
   padding-top: 0;
   padding-bottom: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 6px;
   position: static;
   top: auto;
-  vertical-align: middle;
+  /* 与 ZWSP 文本行盒底对齐；高度一致时顶/底/中线都齐 */
+  vertical-align: bottom;
 }
 
 [data-ai-composer-editor="true"][data-ai-composer-variant="panel"] .ai-composer-chip {
-  /* 与 panel leading-6 (24px) 同高 */
   height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+  line-height: 24px;
+}
+
+/* ── 聊天时间分隔条（微信风格，居中） ── */
+.notebook-ai-message-time {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted-foreground, #8b8b8b);
+  user-select: none;
 }
 
 /* ── 用户气泡：chip 与正文父级 flex 垂直居中 ── */
@@ -55,16 +93,21 @@
   line-height: 20px;
 }
 
+/* 气泡内 chip：保留可见边框/背景，禁止 border:0 抹成纯文字 */
 .notebook-ai-message-inline .ai-composer-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   height: 20px;
-  border: 0;
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 6px;
+  border-style: solid;
+  border-width: 1px;
   line-height: 20px;
   max-width: 100%;
   position: static;
@@ -72,6 +115,21 @@
   vertical-align: unset;
   appearance: none;
   -webkit-appearance: none;
+  /* 字面量 rgba/hex：uTools 旧内核对 hsl(var(--x)/a) 支持差 */
+}
+
+/* skill：青绿，叠在 bg-[#58d7b8]/12 气泡上仍有边框与底色差 */
+.notebook-ai-message-inline .ai-composer-chip[data-ai-skill-chip] {
+  background: rgba(88, 215, 184, 0.22);
+  color: #58d7b8;
+  border-color: rgba(88, 215, 184, 0.5);
+}
+
+/* @ 引用：indigo，与 skill 区分 */
+.notebook-ai-message-inline .ai-composer-chip[data-ai-mention-chip] {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.45);
 }
 
 [data-ai-composer-editor="true"] .ai-composer-chip-thumb {
@@ -95,6 +153,40 @@
 
 [data-ai-composer-editor="true"] .ai-composer-chip-remove svg {
   display: block;
+}
+
+/* ── Composer 图片 chip hover 预览浮层（body portal） ──
+ * 不用 hsl(var(--x)/alpha)；阴影用 rgba，兼容 uTools 旧内核。
+ */
+.ai-composer-image-preview {
+  position: fixed;
+  z-index: 21000;
+  box-sizing: border-box;
+  max-width: 340px;
+  max-height: 300px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.dark .ai-composer-image-preview {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 32px rgba(2, 6, 23, 0.45);
+}
+
+.ai-composer-image-preview img {
+  display: block;
+  max-width: 328px;
+  max-height: 288px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 .ai-md {

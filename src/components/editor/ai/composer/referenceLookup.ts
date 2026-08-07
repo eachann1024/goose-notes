@@ -36,6 +36,13 @@ export interface AiImageAttachmentAttrs {
   size: number;
 }
 
+/** Skill 命令 chip 的可序列化属性（JSON node type: aiSkillCommand） */
+export interface AiSkillCommandAttrs {
+  name: string;
+  path?: string;
+  description?: string;
+}
+
 export type AiComposerToken =
   | {
       type: "text";
@@ -49,6 +56,10 @@ export type AiComposerToken =
   | {
       type: "image";
       image: AiImageAttachmentAttrs;
+    }
+  | {
+      type: "skill";
+      skill: AiSkillCommandAttrs;
     };
 
 export interface AiComposerPayload {
@@ -58,6 +69,8 @@ export interface AiComposerPayload {
   references: AiFileReferenceAttrs[];
   /** 内联图片 token，按在输入框中出现的顺序排列 */
   images: AiImageAttachmentAttrs[];
+  /** 本地 Skill 调用，按 name 第一次出现顺序去重 */
+  skills: AiSkillCommandAttrs[];
   /** 完整有序 token；同一资源可出现多次并保留每处角色。 */
   tokens: AiComposerToken[];
 }
@@ -385,10 +398,25 @@ function normalizeImageAttachmentAttrs(attrs: unknown): AiImageAttachmentAttrs |
   };
 }
 
+function normalizeSkillCommandAttrs(attrs: unknown): AiSkillCommandAttrs | null {
+  if (!attrs || typeof attrs !== "object") return null;
+  const source = attrs as Record<string, unknown>;
+  const name = typeof source.name === "string" ? source.name.trim() : "";
+  if (!name) return null;
+  return {
+    name,
+    path: typeof source.path === "string" ? source.path : undefined,
+    description:
+      typeof source.description === "string" ? source.description : undefined,
+  };
+}
+
 function collectInlineContent(
   content: JSONContent[] | undefined,
   references: AiFileReferenceAttrs[],
   images: AiImageAttachmentAttrs[],
+  skills: AiSkillCommandAttrs[],
+  skillNames: Set<string>,
   tokens: AiComposerToken[],
 ) {
   let promptText = "";
@@ -459,6 +487,23 @@ function collectInlineContent(
         type: "image",
         image: attrs,
       });
+      return;
+    }
+
+    if (node.type === "aiSkillCommand") {
+      const attrs = normalizeSkillCommandAttrs(node.attrs);
+      if (!attrs) return;
+      // payload.skills：按 name 第一次出现顺序去重；tokens 仍保留每次出现。
+      if (!skillNames.has(attrs.name)) {
+        skillNames.add(attrs.name);
+        skills.push(attrs);
+      }
+      // 与 @ 引用对称：chip 文本进 promptText，不进 freeformText
+      promptText += `/${attrs.name}`;
+      tokens.push({
+        type: "skill",
+        skill: attrs,
+      });
     }
   });
 
@@ -472,12 +517,15 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
       freeformText: "",
       references: [],
       images: [],
+      skills: [],
       tokens: [],
     };
   }
 
   const references: AiFileReferenceAttrs[] = [];
   const images: AiImageAttachmentAttrs[] = [];
+  const skills: AiSkillCommandAttrs[] = [];
+  const skillNames = new Set<string>();
   const promptBlocks: string[] = [];
   const freeformBlocks: string[] = [];
   const tokens: AiComposerToken[] = [];
@@ -487,7 +535,14 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
       return;
     }
 
-    const inline = collectInlineContent(block.content, references, images, tokens);
+    const inline = collectInlineContent(
+      block.content,
+      references,
+      images,
+      skills,
+      skillNames,
+      tokens,
+    );
     promptBlocks.push(inline.promptText);
     freeformBlocks.push(inline.freeformText);
     tokens.push({
@@ -501,6 +556,7 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
     freeformText: freeformBlocks.join("\n").trim(),
     references,
     images,
+    skills,
     tokens,
   };
 }

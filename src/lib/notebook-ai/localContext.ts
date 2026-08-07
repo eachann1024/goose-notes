@@ -29,11 +29,23 @@ function normalizeSkillName(name: string) {
 
 let cachedSkillFiles: ReturnType<NonNullable<Window["gooseAiContext"]>["listLocalSkills"]> | null = null;
 let cachedAt = 0;
-const LOCAL_SKILL_CACHE_MS = 3_000;
+/** 本地 Skill 列表缓存；避免每次 `/` 同步读 ~/.agents/skills 卡主线程 */
+const LOCAL_SKILL_CACHE_MS = 60_000;
 
 export function clearLocalSkillsCache() {
   cachedSkillFiles = null;
   cachedAt = 0;
+}
+
+/**
+ * 空闲预热：无有效缓存时强制读一次磁盘。
+ * composer mount 后可用 requestIdleCallback / setTimeout 调用。
+ */
+export function warmLocalSkillsCache() {
+  const cacheFresh =
+    cachedSkillFiles != null && Date.now() - cachedAt < LOCAL_SKILL_CACHE_MS;
+  if (cacheFresh) return;
+  getLocalSkills(true);
 }
 
 export function getLocalSkills(forceRefresh = false): LocalSkill[] {
@@ -74,10 +86,47 @@ export function searchLocalSkills(query: string) {
     .slice(0, 30);
 }
 
-export function resolveInvokedLocalSkill(promptText: string) {
-  const match = promptText.trimStart().match(/^\/([a-z0-9][a-z0-9-]*)\b/i);
-  if (!match) return null;
-  return getLocalSkills().find((skill) => skill.name === match[1]) ?? null;
+/**
+ * 扫描 prompt 任意位置的 `/name`，返回第一个在 getLocalSkills() 中存在的 skill。
+ * 不再限定行首，便于「请用 /grill-me 帮我…」这类写法。
+ */
+export function resolveInvokedLocalSkill(promptText: string): LocalSkill | null {
+  if (!promptText) return null;
+  const skills = getLocalSkills();
+  if (!skills.length) return null;
+  const byName = new Map(skills.map((skill) => [skill.name, skill]));
+  const re = /\/([a-z0-9][a-z0-9-]*)\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(promptText)) !== null) {
+    const skill = byName.get(match[1].toLowerCase());
+    if (skill) return skill;
+  }
+  return null;
+}
+
+/**
+ * 优先取 tokens 中第一个 skill chip；若无 chip 则拼文本再走 resolveInvokedLocalSkill。
+ */
+export function resolveInvokedLocalSkillFromTokens(
+  tokens: Array<{ type: string; skill?: { name: string }; text?: string }>,
+): LocalSkill | null {
+  for (const token of tokens) {
+    if (token.type !== "skill" || !token.skill?.name) continue;
+    const name =
+      normalizeSkillName(token.skill.name) || token.skill.name.toLowerCase();
+    return getLocalSkills().find((skill) => skill.name === name) ?? null;
+  }
+
+  const text = tokens
+    .map((token) => {
+      if (token.type === "text") return token.text ?? "";
+      if (token.type === "skill" && token.skill?.name) {
+        return `/${token.skill.name}`;
+      }
+      return "";
+    })
+    .join("");
+  return resolveInvokedLocalSkill(text);
 }
 
 export function readGlobalAgentsPrompt() {

@@ -34,6 +34,7 @@ export {
   getDefaultCustomAIBaseURL,
   getCustomAIBaseURL,
   getCustomAIApiKey,
+  getApiKeyMissingMessage,
   getStoredAIModelOptions,
   getAIAvailability,
   getSettingsProviderId,

@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { NotebookAiAgentContext } from "../types";
-import { prepareBatchPlan } from "./executor";
+import { executePreparedBatchPlan, prepareBatchPlan } from "./executor";
 import { normalizeBatchPlanInput } from "./input";
 
 const optionalOperationId = z
@@ -159,11 +159,12 @@ export function repairExecuteBatchPlanInput(input: string): string | null {
 
 /**
  * 所有笔记写操作都必须通过此入口。输入是模型已经完整生成的冻结结果。
- * 工具 execute 只冻结并持久化零写入计划；真正执行由审批卡在用户批准后触发。
+ * 工具 execute 先冻结计划：全部为 create 时 prepare 成功后立即执行；
+ * 含 edit/delete 时只返回 prepared 审批卡，真正写入由用户批准后触发。
  *
  * 不使用 AI SDK 的 needsApproval：旧 uTools Chromium 在大工具参数结束后偶发无法
  * 收到 approval-request，导致模型已完成但 UI 永久停在 streaming。应用本来就有
- * 独立的本地审批执行器，因此直接返回 prepared 状态更简单也更可靠。
+ * 独立的本地审批执行器，因此直接返回 prepared / completed 状态更简单也更可靠。
  */
 export async function prepareBatchPlanForApproval(
   input: unknown,
@@ -208,6 +209,43 @@ export async function prepareBatchPlanForApproval(
         operationCount: normalized.operations.length,
       };
     }
+
+    const isCreateOnly = normalized.operations.every(
+      (operation) => operation.type === "create",
+    );
+    if (isCreateOnly) {
+      try {
+        const result = await executePreparedBatchPlan(
+          options.toolCallId,
+          runId,
+        );
+        const appliedCount = result.results.filter((item) => item.ok).length;
+        return {
+          ok: result.ok,
+          needsApproval: false as const,
+          toolCallId: options.toolCallId,
+          runId,
+          status: result.journal.status,
+          appliedCount,
+          selectedCount: result.journal.selectedOperationIds.length,
+          canUndo: result.ok && result.journal.status === "completed",
+          ...(result.ok ? {} : { error: result.error }),
+          results: result.results,
+          operationCount: normalized.operations.length,
+        };
+      } catch (error) {
+        return {
+          ok: false as const,
+          needsApproval: false as const,
+          toolCallId: options.toolCallId,
+          runId,
+          status: "invalid" as const,
+          error: error instanceof Error ? error.message : "批量计划执行失败",
+          operationCount: normalized.operations.length,
+        };
+      }
+    }
+
     return {
       ok: true as const,
       needsApproval: true,
@@ -231,7 +269,7 @@ export async function prepareBatchPlanForApproval(
 
 export const executeBatchPlan = tool({
   description:
-    '准备笔记变更审批计划；只生成审批卡，不立即写入。参数格式：{title:"整理笔记",summary:"更新账号页",operations:[{type:"edit",pageId:"page-1",markdown:"新正文"}]}。返回后停止，等待用户审批。',
+    '准备并处理笔记变更计划。全部为 create 时 prepare 成功后自动写入；含 edit/delete 时只生成审批卡，不立即写入。参数格式：{title:"整理笔记",summary:"更新账号页",operations:[{type:"edit",pageId:"page-1",markdown:"新正文"}]}。返回后停止；仅 create 时无需等待审批。',
   inputSchema: executeBatchPlanInputSchema,
   execute: async (input, { experimental_context, toolCallId }) => {
     const context = experimental_context as NotebookAiAgentContext;

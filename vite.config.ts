@@ -22,6 +22,9 @@ const isQuicknoteBuild = process.env.GOOSE_BUILD_TARGET === "quicknote";
 // 否则会误伤 index.css 里的 `@import "katex/dist/katex.min.css"`（被改写成空壳目录下的
 // 不存在路径而构建失败）。katex CSS（~23KB）保留无妨，这里只剥离 katex 的 JS（~256KB）。
 const liteEmptyModule = path.resolve(__dirname, "./src/lib/build/lite-empty.ts");
+// pi-ai provider-env 静态 require("node:fs")（仅 Bun sandbox 回退，浏览器不可达）；
+// alias 掉以免 Vite 外部化并打警告。
+const nodeFsStubModule = path.resolve(__dirname, "./src/lib/build/node-fs-stub.ts");
 const liteStubAliases: { find: RegExp; replacement: string }[] = isQuicknoteBuild
   ? [
       { find: /^katex$/, replacement: liteEmptyModule },
@@ -294,6 +297,8 @@ export default defineConfig({
     // 非小窗构建 liteStubAliases 为空数组，主应用解析与改动前完全一致。
     alias: [
       ...liteStubAliases,
+      // 浏览器打包：吞掉 pi-ai 对 node:fs 的静态 require（见 node-fs-stub.ts）。
+      { find: /^node:fs$/, replacement: nodeFsStubModule },
       { find: "@host-runtime", replacement: path.resolve(__dirname, "./src/lib/host/runtime.utools.ts") },
 
       { find: "@", replacement: path.resolve(__dirname, "./src") },

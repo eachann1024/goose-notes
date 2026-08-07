@@ -11,6 +11,11 @@ import {
   type AiReferenceSuggestionItem,
 } from "./referenceLookup";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import {
+  ensureComposerCaretAnchors,
+  placeCaretAfterNode,
+  pruneEmptyComposerTextNodes,
+} from "./useSkillCommands";
 
 interface DetectedMention {
   query: string;
@@ -104,8 +109,9 @@ export function createChipElement(
   span.dataset.aiMentionId = attrs.pageId;
   span.dataset.aiMentionAttrs = JSON.stringify(attrs);
   // 垂直对齐：chip 用 inline-flex + items-center；高度与行高由 notebook-ai.css 统一。
+  // 高度/行高/垂直对齐由 notebook-ai.css 与编辑器行高对齐；勿加 leading-none/h-*
   span.className =
-    "ai-composer-chip inline-flex items-center justify-center mx-1 rounded px-1 text-[11px] font-medium leading-none" +
+    "ai-composer-chip inline-flex items-center justify-center rounded text-[11px] font-medium" +
     " bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border" +
     " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none";
   span.textContent = `@${attrs.titleSnapshot}`;
@@ -182,38 +188,36 @@ export function useReferenceMentions({
       lastDetectedRef.current = null;
       if (!detected) return;
 
-      const caretRange = document.createRange();
       try {
         detected.range.deleteContents();
         if (referencePlacement === "inline") {
-          // Insert chip + spacer as one fragment so range state after insertNode
-          // doesn't affect spacer placement.
-          const spacer = document.createTextNode(" ");
-          const frag = document.createDocumentFragment();
-          frag.appendChild(createChipElement(item));
-          frag.appendChild(spacer);
-          detected.range.insertNode(frag);
-          caretRange.setStart(spacer, spacer.length);
+          // 间距靠 CSS；ZWSP 锚点保证旧 Chromium 光标可见。
+          const chip = createChipElement(item);
+          detected.range.insertNode(chip);
+          pruneEmptyComposerTextNodes(el);
+          ensureComposerCaretAnchors(el);
+          // Focus BEFORE placing the cursor — calling focus() after addRange()
+          // resets the selection in some browsers.
+          el.focus();
+          placeCaretAfterNode(chip);
         } else {
           // Notebook AI keeps page context outside the editable prompt, so the
           // typed @query is removed and the caret stays at that position.
+          const caretRange = document.createRange();
           caretRange.setStart(
             detected.range.startContainer,
             detected.range.startOffset,
           );
+          caretRange.collapse(true);
+          el.focus();
+          const sel = window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(caretRange);
+          }
         }
-        caretRange.collapse(true);
       } catch {
         return;
-      }
-
-      // Focus BEFORE placing the cursor — calling focus() after addRange()
-      // resets the selection in some browsers.
-      el.focus();
-      const sel = window.getSelection();
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(caretRange);
       }
 
       onContentMutation();

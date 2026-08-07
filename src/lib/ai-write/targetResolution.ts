@@ -127,7 +127,9 @@ function collectNeighborText(
         ? token.text
         : token.type === "reference"
           ? `@${token.reference.titleSnapshot}`
-          : `[图片 ${token.image.fileName}]`;
+          : token.type === "skill"
+            ? `/${token.skill.name}`
+            : `[图片 ${token.image.fileName}]`;
     if (text) {
       const slice =
         direction === "before"
@@ -479,6 +481,7 @@ export function resolveAiTargetFromSelection(params: {
       freeformText: "",
       references: [],
       images: [],
+      skills: [],
       tokens: [],
     },
     selection: params.selection,

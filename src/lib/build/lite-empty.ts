@@ -36,6 +36,16 @@ export const Font = {
 export const AIExtension = stub;
 export const AIMenu = stub;
 export const AIMenuController = stub;
+export const PromptSuggestionMenu = stub;
+export const getDefaultAIMenuItems = stub;
+export const useAIDictionary = () => ({
+  ai_menu: {
+    status: { thinking: "", editing: "", error: "" },
+    input_placeholder: "",
+    actions: {},
+  },
+  ai_default_commands: {},
+});
 export const ClientSideTransport = stub;
 export const aiDocumentFormats = stub;
 export const zh = stub; // @blocknote/xl-ai/locales 的 zh

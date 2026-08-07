@@ -316,8 +316,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
               AIExtension({
                 transport: createGooseAITransport({
                   getSettings: () => aiSettingsRef.current,
-                  getModelId: () =>
-                    aiSettingsRef.current.selectedModelId || "gpt-4o-mini",
+                  getModelId: () => {
+                    const ai = aiSettingsRef.current;
+                    const ws = ai.workspaceSelectedModelId?.trim();
+                    const wsOk =
+                      !!ws && ai.customModelOptions.some((o) => o.id === ws);
+                    return (
+                      (wsOk ? ws : null) ||
+                      ai.selectedModelId?.trim() ||
+                      ai.customModelOptions[0]?.id ||
+                      ""
+                    );
+                  },
                   getCustomFetch: () => platformRef.current.ai.customFetch,
                 }),
                 documentStateBuilder:
