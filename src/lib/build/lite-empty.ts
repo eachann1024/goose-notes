@@ -48,6 +48,10 @@ export const useAIDictionary = () => ({
 });
 export const ClientSideTransport = stub;
 export const aiDocumentFormats = stub;
+// 行内 AI 自定义 transport 从 xl-ai 解构的辅助（小窗死代码，仅满足链接）
+export const getProviderOverrides = stub;
+export const injectDocumentStateMessages = stub;
+export const toolDefinitionsToToolSet = stub;
 export const zh = stub; // @blocknote/xl-ai/locales 的 zh
 export const createOpenAI = stub;
 export const createOpenAICompatible = stub;

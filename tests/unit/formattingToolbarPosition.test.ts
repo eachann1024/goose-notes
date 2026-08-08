@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 import { findNonOverlappingToolbarPosition } from "../../src/components/editor/utils/formattingToolbarPosition";
+import { getMultiBlockToolbarEdgeRect } from "../../src/components/editor/utils/formattingToolbarReference";
 import { getColorPanelPosition } from "../../src/components/editor/toolbars/formatting/ColorPicker";
 
 const boundary = {
@@ -11,7 +12,29 @@ const boundary = {
   height: 584,
 };
 
-test("formatting toolbar stays below the complete selection when space allows", () => {
+/** Tall multi-block selection with room below/above for a 300×40 toolbar. */
+const multiBlockBoundary = {
+  top: 0,
+  right: 1000,
+  bottom: 1000,
+  left: 0,
+  width: 1000,
+  height: 1000,
+};
+
+const tallMultiBlockReference = {
+  top: 100,
+  left: 50,
+  bottom: 500,
+  right: 350,
+  width: 300,
+  height: 400,
+};
+
+const multiBlockFloating = { width: 300, height: 40 };
+const multiBlockGap = 16;
+
+test("formatting toolbar prefers above the selection when space allows", () => {
   expect(
     findNonOverlappingToolbarPosition({
       reference: {
@@ -24,29 +47,29 @@ test("formatting toolbar stays below the complete selection when space allows", 
       },
       floating: { width: 320, height: 40 },
       boundary,
-      preferredSide: "bottom",
+      preferredSide: "top",
       gap: 16,
     }),
-  ).toEqual({ x: 190, y: 196 });
+  ).toEqual({ x: 190, y: 44 });
 });
 
-test("formatting toolbar flips above instead of overlapping a bottom selection", () => {
+test("formatting toolbar flips below when above the selection has no room", () => {
   expect(
     findNonOverlappingToolbarPosition({
       reference: {
-        top: 520,
+        top: 20,
         right: 500,
-        bottom: 580,
+        bottom: 80,
         left: 200,
         width: 300,
         height: 60,
       },
       floating: { width: 320, height: 40 },
       boundary,
-      preferredSide: "bottom",
+      preferredSide: "top",
       gap: 16,
     }),
-  ).toEqual({ x: 190, y: 464 });
+  ).toEqual({ x: 190, y: 96 });
 });
 
 test("formatting toolbar uses a side fallback for a tall Windows selection", () => {
@@ -85,6 +108,66 @@ test("formatting toolbar hides when no non-overlapping position is reachable", (
       gap: 16,
     }),
   ).toBeNull();
+});
+
+test("multi-block preferredSide bottom places toolbar under reference, x centered", () => {
+  const gap = multiBlockGap;
+  const result = findNonOverlappingToolbarPosition({
+    reference: tallMultiBlockReference,
+    floating: multiBlockFloating,
+    boundary: multiBlockBoundary,
+    preferredSide: "bottom",
+    gap,
+  });
+
+  expect(result).toEqual({
+    x: tallMultiBlockReference.left +
+      (tallMultiBlockReference.width - multiBlockFloating.width) / 2,
+    y: tallMultiBlockReference.bottom + gap,
+  });
+});
+
+test("multi-block preferredSide top places toolbar above reference, x centered", () => {
+  const gap = multiBlockGap;
+  const result = findNonOverlappingToolbarPosition({
+    reference: tallMultiBlockReference,
+    floating: multiBlockFloating,
+    boundary: multiBlockBoundary,
+    preferredSide: "top",
+    gap,
+  });
+
+  expect(result).toEqual({
+    x: tallMultiBlockReference.left +
+      (tallMultiBlockReference.width - multiBlockFloating.width) / 2,
+    y:
+      tallMultiBlockReference.top - gap - multiBlockFloating.height,
+  });
+});
+
+test("thin top-edge reference still centers x on full multi-block width", () => {
+  const gap = multiBlockGap;
+  const edge = getMultiBlockToolbarEdgeRect(tallMultiBlockReference, "top");
+  expect(edge.height).toBe(1);
+  expect(edge.width).toBe(tallMultiBlockReference.width);
+  expect(edge.left).toBe(tallMultiBlockReference.left);
+
+  // Prefer top against the thin edge at the top of a tall multi-block selection;
+  // x must still center on the full selection width (300), not a caret width.
+  const result = findNonOverlappingToolbarPosition({
+    reference: edge,
+    floating: multiBlockFloating,
+    boundary: multiBlockBoundary,
+    preferredSide: "top",
+    gap,
+  });
+
+  expect(result).toEqual({
+    x:
+      tallMultiBlockReference.left +
+      (tallMultiBlockReference.width - multiBlockFloating.width) / 2,
+    y: edge.top - gap - multiBlockFloating.height,
+  });
 });
 
 test("color panel stays centered on its trigger in viewport coordinates", () => {

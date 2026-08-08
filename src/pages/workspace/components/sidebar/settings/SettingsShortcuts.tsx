@@ -26,11 +26,17 @@ const SETTINGS_OPTION_ROW_CLASS =
 
 const FIXED_APP_SHORTCUTS = getFixedAppShortcuts()
 
-const FIXED_SHORTCUT_VALUES = [
-  ...Object.values(FIXED_APP_SHORTCUTS),
-  ...Array.from({ length: 9 }, (_, index) => `Mod+${index + 1}`),
-  "Ctrl+Tab",
-  "Ctrl+Shift+Tab",
+/** 单标签模式下 UI 与热键均禁用的自定义动作，不参与冲突占用。 */
+const TAB_ONLY_APP_SHORTCUT_IDS = new Set([
+  "navBack",
+  "navForward",
+  "newTab",
+])
+
+const ALWAYS_FIXED_SHORTCUT_VALUES = [
+  FIXED_APP_SHORTCUTS.openSettings,
+  FIXED_APP_SHORTCUTS.editorFindOpen,
+  FIXED_APP_SHORTCUTS.newNote,
   "Mod+G",
   "Mod+Shift+G",
   "Mod+=",
@@ -50,6 +56,19 @@ const FIXED_SHORTCUT_VALUES = [
   "Mod+Z",
   "Mod+Shift+Z",
   "Mod+Y",
+]
+
+/** 仅多标签模式生效的固定快捷键。 */
+const TAB_ONLY_FIXED_SHORTCUT_VALUES = [
+  FIXED_APP_SHORTCUTS.reopenTab,
+  ...Array.from({ length: 9 }, (_, index) => `Mod+${index + 1}`),
+  "Ctrl+Tab",
+  "Ctrl+Shift+Tab",
+]
+
+const FIXED_SHORTCUT_VALUES = [
+  ...ALWAYS_FIXED_SHORTCUT_VALUES,
+  ...TAB_ONLY_FIXED_SHORTCUT_VALUES,
 ]
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -88,14 +107,22 @@ export function getAllConfiguredShortcuts(
   searchPanelCloseShortcut: string,
   excludeId: string,
   isMac = isMacPlatform(),
+  singleTabMode = false,
 ): string[] {
-  const shortcuts = FIXED_SHORTCUT_VALUES.map((shortcut) =>
+  const fixedValues = singleTabMode
+    ? ALWAYS_FIXED_SHORTCUT_VALUES
+    : FIXED_SHORTCUT_VALUES
+  const shortcuts = fixedValues.map((shortcut) =>
     normalizeShortcutForConflict(shortcut, isMac),
   )
   for (const [id, s] of Object.entries(appShortcuts)) {
-    if (id !== excludeId && s) shortcuts.push(normalizeShortcutForConflict(s, isMac))
+    if (id === excludeId || !s) continue
+    // 单标签模式下这些动作不注册热键，也不应占用可配置位。
+    if (singleTabMode && TAB_ONLY_APP_SHORTCUT_IDS.has(id)) continue
+    shortcuts.push(normalizeShortcutForConflict(s, isMac))
   }
-  if (excludeId !== "close-tab" && closeTabShortcut) {
+  // 单标签模式隐藏「关闭标签」配置，其值不参与冲突。
+  if (!singleTabMode && excludeId !== "close-tab" && closeTabShortcut) {
     shortcuts.push(normalizeShortcutForConflict(closeTabShortcut, isMac))
   }
   if (excludeId !== "search-panel-close" && searchPanelCloseShortcut) {
@@ -110,10 +137,18 @@ function makeAppShortcutSetter(
   appShortcuts: Record<string, string>,
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
+  singleTabMode: boolean,
 ) {
   return (shortcut: string) => {
     if (shortcut) {
-      const existing = getAllConfiguredShortcuts(appShortcuts, closeTabShortcut, searchPanelCloseShortcut, id)
+      const existing = getAllConfiguredShortcuts(
+        appShortcuts,
+        closeTabShortcut,
+        searchPanelCloseShortcut,
+        id,
+        isMacPlatform(),
+        singleTabMode,
+      )
       if (existing.includes(normalizeShortcutForConflict(shortcut))) {
         toast.warning("快捷键冲突", {
           description: `${formatShortcut(shortcut)} 已被其他操作占用，请选择其他快捷键。`,
@@ -131,10 +166,18 @@ function makeCloseSetter(
   appShortcuts: Record<string, string>,
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
+  singleTabMode: boolean,
 ) {
   return (shortcut: string) => {
     if (shortcut) {
-      const existing = getAllConfiguredShortcuts(appShortcuts, closeTabShortcut, searchPanelCloseShortcut, excludeId)
+      const existing = getAllConfiguredShortcuts(
+        appShortcuts,
+        closeTabShortcut,
+        searchPanelCloseShortcut,
+        excludeId,
+        isMacPlatform(),
+        singleTabMode,
+      )
       if (existing.includes(normalizeShortcutForConflict(shortcut))) {
         toast.warning("快捷键冲突", {
           description: `${formatShortcut(shortcut)} 已被其他操作占用，请选择其他快捷键。`,
@@ -223,10 +266,31 @@ export function SettingsShortcuts({
   }
 
   const safeSetAppShortcut = (id: string) =>
-    makeAppShortcutSetter(id, setAppShortcut, appShortcuts, closeTabShortcut, searchPanelCloseShortcut)
+    makeAppShortcutSetter(
+      id,
+      setAppShortcut,
+      appShortcuts,
+      closeTabShortcut,
+      searchPanelCloseShortcut,
+      singleTabMode,
+    )
 
-  const safeSetCloseTab = makeCloseSetter("close-tab", setCloseTabShortcut, appShortcuts, closeTabShortcut, searchPanelCloseShortcut)
-  const safeSetSearchPanelClose = makeCloseSetter("search-panel-close", setSearchPanelCloseShortcut, appShortcuts, closeTabShortcut, searchPanelCloseShortcut)
+  const safeSetCloseTab = makeCloseSetter(
+    "close-tab",
+    setCloseTabShortcut,
+    appShortcuts,
+    closeTabShortcut,
+    searchPanelCloseShortcut,
+    singleTabMode,
+  )
+  const safeSetSearchPanelClose = makeCloseSetter(
+    "search-panel-close",
+    setSearchPanelCloseShortcut,
+    appShortcuts,
+    closeTabShortcut,
+    searchPanelCloseShortcut,
+    singleTabMode,
+  )
 
   return (
     <div className="space-y-6">

@@ -224,6 +224,8 @@
   opacity: 0.8;
 }
 
+/* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
+
 /* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。
    速记小窗使用底部停靠栏，命中区保持原尺寸。 */
 [data-formatting-toolbar][data-goose-floating-toolbar="true"]

@@ -95,6 +95,58 @@ test("Windows reserves editor and save shortcuts without blocking unrelated shor
   );
 });
 
+test("single-tab mode ignores inactive tab-only shortcuts for conflict detection", () => {
+  const appShortcuts = {
+    ...DEFAULT_APP_SHORTCUTS,
+  };
+  const isMac = true;
+  const multiTab = getAllConfiguredShortcuts(
+    appShortcuts,
+    "Mod+W",
+    "Esc",
+    "openSearch",
+    isMac,
+    false,
+  );
+  expect(multiTab).toContain(normalizeShortcutForConflict("Mod+[", isMac));
+  expect(multiTab).toContain(normalizeShortcutForConflict("Mod+]", isMac));
+  expect(multiTab).toContain(normalizeShortcutForConflict("Mod+T", isMac));
+  expect(multiTab).toContain(normalizeShortcutForConflict("Mod+W", isMac));
+  expect(multiTab).toContain(normalizeShortcutForConflict("Mod+1", isMac));
+  expect(multiTab).toContain(
+    normalizeShortcutForConflict("Mod+Shift+T", isMac),
+  );
+  expect(multiTab).toContain(normalizeShortcutForConflict("Ctrl+Tab", isMac));
+
+  const singleTab = getAllConfiguredShortcuts(
+    appShortcuts,
+    "Mod+W",
+    "Esc",
+    "openSearch",
+    isMac,
+    true,
+  );
+  // 单标签下后退/前进/新建标签/关标签与标签切换热键均不生效，不应占用。
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+[", isMac));
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+]", isMac));
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+T", isMac));
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+W", isMac));
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+1", isMac));
+  expect(singleTab).not.toContain(
+    normalizeShortcutForConflict("Mod+Shift+T", isMac),
+  );
+  expect(singleTab).not.toContain(
+    normalizeShortcutForConflict("Ctrl+Tab", isMac),
+  );
+  // 仍生效的固定与可配置项继续占用。
+  expect(singleTab).toContain(normalizeShortcutForConflict("Mod+N", isMac));
+  expect(singleTab).toContain(normalizeShortcutForConflict("Mod+F", isMac));
+  expect(singleTab).toContain(normalizeShortcutForConflict("Esc", isMac));
+  expect(singleTab).toContain(
+    normalizeShortcutForConflict(DEFAULT_APP_SHORTCUTS.toggleTheme, isMac),
+  );
+});
+
 test("fixed shortcuts adapt to the current operating system", () => {
   expect(getFixedAppShortcuts("mac").openSettings).toBe("Ctrl+,");
   expect(getFixedAppShortcuts("windows").openSettings).toBe("Alt+,");

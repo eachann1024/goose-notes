@@ -137,29 +137,48 @@ export function GooseAIMenuController({
   );
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
-    const selectionMiddleware = [
+    // 菜单固定视觉宽度（与 editor-ai-menu.css 中 .bn-combobox 一致），
+    // 不再把浮层撑成「整块宽度」：块锚点时宽度=块宽会把输入框拉成满行，
+    // 多行时图标与首行错位，且 placement:bottom 会让窄内容视觉上偏离选区。
+    const MENU_WIDTH_PX = 320;
+    const pad = 8;
+
+    const sharedMiddleware = [
       offset(() => getScaledEditorUiPx(10)),
-      flip({ fallbackPlacements: ["top-start"], padding: 8 }),
-      shift({ padding: 8 }),
-    ];
-    const blockMiddleware = [
-      offset(() => getScaledEditorUiPx(10)),
-      flip({ padding: 8 }),
-      shift({ padding: 8 }),
+      flip({
+        fallbackPlacements: ["top-start", "bottom-end", "top-end"],
+        padding: pad,
+      }),
+      shift({ padding: pad, crossAxis: true }),
       size({
-        apply({ rects, elements }) {
+        apply({ availableWidth, elements }) {
+          const scale =
+            typeof document !== "undefined"
+              ? Number.parseFloat(
+                  getComputedStyle(document.documentElement).getPropertyValue(
+                    "--editor-ui-scale",
+                  ) || "1",
+                ) || 1
+              : 1;
+          const maxW = Math.max(
+            240,
+            Math.min(MENU_WIDTH_PX, availableWidth / Math.max(scale, 0.5) - pad),
+          );
           Object.assign(elements.floating.style, {
-            width: `${rects.reference.width}px`,
+            width: `${maxW}px`,
+            maxWidth: `${maxW}px`,
           });
         },
+        padding: pad,
       }),
     ];
 
     return {
       useFloatingOptions: {
         open,
-        placement: selection ? "bottom-start" : "bottom",
-        middleware: selection ? selectionMiddleware : blockMiddleware,
+        // 选区与块锚点都用 start 对齐，避免 bottom 居中导致菜单跑到标题下方中间
+        placement: "bottom-start",
+        middleware: sharedMiddleware,
         onOpenChange: (nextOpen) => {
           if (nextOpen || aiMenuState === "closed") return;
           if (aiMenuState.status === "user-input") {
@@ -194,7 +213,7 @@ export function GooseAIMenuController({
         },
       },
       elementProps: {
-        className: "bn-root bn-mantine",
+        className: "bn-root bn-mantine goose-ai-menu-floating",
         "data-color-scheme": colorScheme,
         style: { zIndex: 20010 },
       },
@@ -203,15 +222,7 @@ export function GooseAIMenuController({
         getInsideElements: () => (editor.domElement ? [editor.domElement] : []),
       },
     };
-  }, [
-    ai,
-    aiMenuState,
-    blockId,
-    colorScheme,
-    editor.domElement,
-    open,
-    selection,
-  ]);
+  }, [ai, aiMenuState, blockId, colorScheme, editor.domElement, open]);
 
   // GenericPopover 的外层负责 viewport 定位；缩放只放在内层 surface，
   // 避免 CSS zoom 同时放大 Floating UI 计算出的 fixed 坐标。

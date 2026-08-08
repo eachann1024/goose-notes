@@ -1,11 +1,17 @@
 import {
   useBlockNoteEditor,
-  useSelectedBlocks,
   useEditorState,
   useExtension,
 } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
@@ -19,6 +25,10 @@ import { useFormattingToolbarAi } from "@/components/editor/state/formattingTool
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
+  applySelectionTextAlignment,
+  clearSelectionFormatting,
+  getFormattingToolbarCapabilities,
+  resolveFormattingToolbarAiBlockId,
   selectionDisallowsFormattingToolbar,
   selectionIsInsideFirstTitleBlock,
   selectionIsInsideHeadingBlock,
@@ -37,6 +47,15 @@ import { ClearFormatButton } from "@/components/editor/toolbars/formatting/group
 
 export { shouldRenderFormattingToolbar };
 
+function ToolbarSectionSeparator() {
+  return (
+    <Separator
+      orientation="vertical"
+      className="goose-formatting-toolbar-separator"
+    />
+  );
+}
+
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   // 未启用 AI 的构建跳过 useExtension；编译期分支在同一构建内保持稳定。
@@ -48,7 +67,6 @@ export function EditorFormattingToolbar() {
   const { contentMode } = useEditorPageContext();
   const protectsFirstTitle = contentMode === "normalized";
   const markStates = useSelectionMarkStates(editor);
-  const selectedBlocks = useSelectedBlocks();
 
   const selectionState = useEditorState({
     editor,
@@ -73,9 +91,12 @@ export function EditorFormattingToolbar() {
       protectsFirstTitle && selectionIsInsideFirstTitleBlock(editor),
   });
 
-  const isInHeading = useEditorState({
+  const caps = useEditorState({
     editor,
-    selector: ({ editor }) => selectionIsInsideHeadingBlock(editor),
+    selector: ({ editor }) =>
+      getFormattingToolbarCapabilities(editor, {
+        isInHeading: selectionIsInsideHeadingBlock(editor),
+      }),
   });
 
   const aiActive = useFormattingToolbarAi((s) => s.active);
@@ -144,7 +165,13 @@ export function EditorFormattingToolbar() {
       setFakeSelection(editor, saved);
       activateFormattingToolbarAi(saved);
 
-      const blockId = editor.getTextCursorPosition().block.id;
+      const blockId = resolveFormattingToolbarAiBlockId(editor);
+      if (!blockId) {
+        setFakeSelection(editor, null);
+        resetFormattingToolbarAi();
+        toast.error("无法定位当前选区，请重新选中表格或文字后再试");
+        return;
+      }
       setActiveTooltip(null);
       aiExtension?.openAIMenuAtBlock(blockId);
     } catch {
@@ -169,46 +196,21 @@ export function EditorFormattingToolbar() {
   const isUnderline = markStates.underline;
   const isCode = markStates.code;
 
-  const firstBlock = selectedBlocks[0];
-  const textAlignment =
-    (firstBlock?.props as { textAlignment?: string } | undefined)
-      ?.textAlignment ?? "left";
+  const textAlignment = caps.textAlignment;
 
-  const linkUrl = editor.getSelectedLinkUrl();
+  const linkUrl = caps.showLink ? editor.getSelectedLinkUrl() : undefined;
   const isLinkActive = !!linkUrl;
 
   const setTextAlignment = useCallback(
     (alignment: "left" | "center" | "right") => {
-      // 多块逐个 updateBlock 会产生 N 个 undo 步骤，transact 合并成一步整体撤销
-      editor.transact(() => {
-        for (const block of selectedBlocks) {
-          editor.updateBlock(block, {
-            props: { textAlignment: alignment },
-          });
-        }
-      });
+      applySelectionTextAlignment(editor, alignment);
     },
-    [editor, selectedBlocks],
+    [editor],
   );
 
   const clearFormatting = useCallback(() => {
-    editor.transact(() => {
-      editor.removeStyles({
-        bold: true,
-        italic: true,
-        underline: true,
-        strike: true,
-        code: true,
-        textColor: true,
-        backgroundColor: true,
-      } as any);
-      for (const block of selectedBlocks) {
-        editor.updateBlock(block, {
-          props: { textAlignment: "left" },
-        });
-      }
-    });
-  }, [editor, selectedBlocks]);
+    clearSelectionFormatting(editor);
+  }, [editor]);
 
   // 小窗的格式栏是固定底栏，滚动不会遮挡选区，也不应闪烁隐藏；
   // 常规笔记本的浮动栏仍在滚动时收起，避免与正文一起漂移。
@@ -227,6 +229,84 @@ export function EditorFormattingToolbar() {
     return null;
   }
 
+  const showAiButton =
+    __GOOSE_EDITOR_AI__ && aiSettings.enabled && caps.showAi;
+
+  // 分节渲染：仅在「相邻两节都可见」时插入 Separator，避免双分隔线 / 尾随分隔线。
+  const sections: ReactNode[] = [];
+
+  if (showAiButton) {
+    sections.push(
+      <AiButton
+        key="ai"
+        onActivate={handleAiActivate}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  if (caps.showMarks || caps.showColors) {
+    sections.push(
+      <Fragment key="styles">
+        {caps.showMarks && (
+          <MarkGroup
+            isBold={isBold}
+            isItalic={isItalic}
+            isStrike={isStrike}
+            bindTooltip={bindTooltip}
+          />
+        )}
+        {caps.showMarks && (
+          <InlineGroup
+            isUnderline={isUnderline}
+            isCode={isCode}
+            bindTooltip={bindTooltip}
+          />
+        )}
+        {caps.showColors && <FormattingToolbarColorPicker />}
+      </Fragment>,
+    );
+  }
+
+  if (caps.showLink) {
+    sections.push(
+      <LinkButton
+        key="link"
+        isLinkActive={isLinkActive}
+        linkUrl={linkUrl}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  if (caps.showAlign) {
+    sections.push(
+      <AlignGroup
+        key="align"
+        textAlignment={textAlignment}
+        setTextAlignment={setTextAlignment}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  if (caps.showClear) {
+    sections.push(
+      <ClearFormatButton
+        key="clear"
+        onClear={clearFormatting}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  const selectionModeClass =
+    caps.mode === "cellText" || caps.mode === "cellGrid"
+      ? "goose-formatting-toolbar--cell"
+      : caps.mode === "multiBlock"
+        ? "goose-formatting-toolbar--multi"
+        : undefined;
+
   return (
     <TooltipProvider
       delayDuration={400}
@@ -236,6 +316,7 @@ export function EditorFormattingToolbar() {
       <div
         ref={menuRef}
         data-formatting-toolbar
+        data-selection-mode={caps.mode}
         data-goose-floating-toolbar={
           !__GOOSE_EDITOR_COMPACT__ ? "true" : undefined
         }
@@ -259,6 +340,7 @@ export function EditorFormattingToolbar() {
           // uTools 旧内核会放大 zoom 祖先的 getBoundingClientRect，
           // 导致 Portal 色板 / tooltip 错位（只露出「文本颜色」标题）。
           !__GOOSE_EDITOR_COMPACT__ && "goose-formatting-toolbar-scaled",
+          selectionModeClass,
           "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",
         )}
@@ -269,69 +351,12 @@ export function EditorFormattingToolbar() {
         }}
       >
         <div className="goose-formatting-toolbar-row">
-          {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
-            <>
-              <AiButton
-                onActivate={handleAiActivate}
-                bindTooltip={bindTooltip}
-              />
-              <Separator
-                orientation="vertical"
-                className="goose-formatting-toolbar-separator"
-              />
-            </>
-          )}
-
-          <MarkGroup
-            isBold={isBold}
-            isItalic={isItalic}
-            isStrike={isStrike}
-            bindTooltip={bindTooltip}
-            hideMarks={isInHeading}
-          />
-
-          <InlineGroup
-            isUnderline={isUnderline}
-            isCode={isCode}
-            bindTooltip={bindTooltip}
-            hideMarks={isInHeading}
-          />
-
-          <FormattingToolbarColorPicker />
-
-          {!isInHeading && (
-            <Separator
-              orientation="vertical"
-              className="goose-formatting-toolbar-separator"
-            />
-          )}
-
-          <LinkButton
-            isLinkActive={isLinkActive}
-            linkUrl={linkUrl}
-            bindTooltip={bindTooltip}
-          />
-
-          <Separator
-            orientation="vertical"
-            className="goose-formatting-toolbar-separator"
-          />
-
-          <AlignGroup
-            textAlignment={textAlignment}
-            setTextAlignment={setTextAlignment}
-            bindTooltip={bindTooltip}
-          />
-
-          <Separator
-            orientation="vertical"
-            className="goose-formatting-toolbar-separator"
-          />
-
-          <ClearFormatButton
-            onClear={clearFormatting}
-            bindTooltip={bindTooltip}
-          />
+          {sections.map((section, index) => (
+            <Fragment key={index}>
+              {index > 0 && <ToolbarSectionSeparator />}
+              {section}
+            </Fragment>
+          ))}
         </div>
       </div>
     </TooltipProvider>

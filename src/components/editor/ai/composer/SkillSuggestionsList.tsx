@@ -54,7 +54,8 @@ export function SkillSuggestionsList(props: {
               type="button"
               data-skill-index={index}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left",
+                // items-start：多行描述时图标与标题首行并排，不垂直居中整块
+                "flex w-full flex-nowrap items-start gap-2.5 rounded-md px-2.5 py-2 text-left",
                 index === props.activeIndex
                   ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] [&_svg]:text-[var(--goose-interactive-selected-fg)]"
                   : "hover:bg-[var(--goose-interactive-hover)]",
@@ -64,12 +65,12 @@ export function SkillSuggestionsList(props: {
                 props.onSelect(skill);
               }}
             >
-              <WandSparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="flex min-w-0 flex-col justify-center gap-1">
-                <span className="block truncate text-[13px] font-medium leading-snug text-foreground">
+              <WandSparkles className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex min-w-0 flex-1 flex-col justify-start gap-0.5">
+                <span className="block truncate text-[13px] font-medium leading-5 text-foreground">
                   /{skill.name}
                 </span>
-                <span className="block truncate text-[11px] leading-snug text-muted-foreground">
+                <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
                   {skill.description}
                 </span>
               </span>

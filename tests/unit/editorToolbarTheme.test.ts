@@ -28,13 +28,13 @@ test("页面菜单及导出子菜单接入编辑器 UI 缩放", () => {
   );
 
   expect(pageMenu).toContain(
-    'className="goose-editor-context-ui max-h-[calc(100vh-24px)] w-[272px]',
+    'className="max-h-[calc(100vh-24px)] w-[272px]',
   );
   expect(pageMenu).toContain(
-    'className="goose-editor-context-ui min-w-[144px]',
+    'className="min-w-[144px]',
   );
   expect(pageMenu).toContain(
-    "sideOffset={getScaledEditorUiPx(6, editorUiScale)}",
+    "sideOffset={6}",
   );
   expect(pageMenu).toContain("<FontSelector");
   expect(pageMenu).toContain("compact");

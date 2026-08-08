@@ -119,15 +119,16 @@ test("无选区 documentState 保持完整文档上下文", async () => {
   ).resolves.toEqual(fullDocumentState);
 });
 
-test("选区工具只允许更新选中块，无选区时保持完整工具集", () => {
+test("选区工具允许 update+add 选中块，拒绝区外 id；无选区保持完整工具集", () => {
   const { editor, from, to } = createSelectionEditor();
   const selectionTools = gooseSelectionScopedStreamToolsProvider.getStreamTools(
     editor,
     { from, to },
   );
 
-  expect(selectionTools.map((tool) => tool.name)).toEqual(["update"]);
-  const update = selectionTools[0];
+  expect(selectionTools.map((tool) => tool.name)).toEqual(["update", "add"]);
+
+  const update = selectionTools.find((tool) => tool.name === "update")!;
   expect(
     update.validate({
       type: "update",
@@ -140,6 +141,24 @@ test("选区工具只允许更新选中块，无选区时保持完整工具集",
       type: "update",
       id: "before$",
       block: "<p>leak</p>",
+    }).ok,
+  ).toBe(false);
+
+  const add = selectionTools.find((tool) => tool.name === "add")!;
+  expect(
+    add.validate({
+      type: "add",
+      referenceId: "second$",
+      position: "after",
+      blocks: ["<p>extra item</p>"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    add.validate({
+      type: "add",
+      referenceId: "before$",
+      position: "after",
+      blocks: ["<p>leak</p>"],
     }).ok,
   ).toBe(false);
 

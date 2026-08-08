@@ -298,11 +298,13 @@ declare global {
   const getElementFromNode: typeof import('./components/editor/utils/selection').getElementFromNode
   const getFileUploadAvailability: typeof import('./lib/fileStorage').getFileUploadAvailability
   const getFixedAppShortcuts: typeof import('./lib/fixed-app-shortcuts').getFixedAppShortcuts
+  const getFormattingToolbarReferenceRect: typeof import('./components/editor/utils/formattingToolbarReference').getFormattingToolbarReferenceRect
   const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
   const getLocalMdSnapshot: typeof import('./lib/local-md-snapshot').getLocalMdSnapshot
   const getModifierOnlyShortcut: typeof import('./lib/shortcut-match').getModifierOnlyShortcut
+  const getMultiBlockToolbarEdgeRect: typeof import('./components/editor/utils/formattingToolbarReference').getMultiBlockToolbarEdgeRect
   const getNotebookAiTabPageId: typeof import('./stores/useTabs').getNotebookAiTabPageId
   const getPageTitle: typeof import('./components/editor/utils/page-title').getPageTitle
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
@@ -658,6 +660,9 @@ declare global {
   // @ts-ignore
   export type { ToolbarRect, ToolbarPoint } from './components/editor/utils/formattingToolbarPosition'
   import('./components/editor/utils/formattingToolbarPosition')
+  // @ts-ignore
+  export type { ToolbarEdgeSide, ToolbarReferenceRect } from './components/editor/utils/formattingToolbarReference'
+  import('./components/editor/utils/formattingToolbarReference')
   // @ts-ignore
   export type { OpenExternalResourceResult } from './components/editor/utils/openResourceExternally'
   import('./components/editor/utils/openResourceExternally')

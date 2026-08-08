@@ -9,7 +9,6 @@ import {
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   FilePanelController,
-  FormattingToolbarController,
   LinkToolbarController,
   SuggestionMenuController,
   TableHandlesController,
@@ -38,6 +37,8 @@ import {
   shouldRenderFormattingToolbar,
 } from "@/components/editor/toolbars/formatting";
 import { FixedFormattingToolbarController } from "@/components/editor/toolbars/formatting/FixedFormattingToolbarController";
+import { GooseFormattingToolbarController } from "@/components/editor/toolbars/formatting/GooseFormattingToolbarController";
+import { getFormattingSelectionMode } from "@/components/editor/toolbars/formatting/helpers";
 import { AIExtension } from "@blocknote/xl-ai";
 import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
 import { GooseAIMenuController } from "@/components/editor/ai/GooseAIMenuController";
@@ -62,6 +63,7 @@ import { editorSchema } from "@/components/editor/core/schema";
 import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
 import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
 import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
+import { getMultiBlockToolbarEdgeRect } from "@/components/editor/utils/formattingToolbarReference";
 import {
   EDITOR_CONTEXT_UI_GAP,
   getScaledEditorUiPx,
@@ -359,7 +361,12 @@ export function EditorComposer({
           viewportHeight - padding,
           editorRect?.bottom ?? viewportHeight - padding,
         );
-        const reference = {
+        const preferredSide = placement.split("-")[0] as
+          | "top"
+          | "bottom"
+          | "left"
+          | "right";
+        let reference = {
           top: rects.reference.y,
           right: rects.reference.x + rects.reference.width,
           bottom: rects.reference.y + rects.reference.height,
@@ -367,6 +374,12 @@ export function EditorComposer({
           width: rects.reference.width,
           height: rects.reference.height,
         };
+        // Multi-block spans are tall: collapse to a thin top/bottom edge so the
+        // toolbar can sit above/below the full selection instead of being forced
+        // sideways or hidden by avoid-overlap treating the whole bbox as forbidden.
+        if (getFormattingSelectionMode(editor) === "multiBlock") {
+          reference = getMultiBlockToolbarEdgeRect(reference, preferredSide);
+        }
         const next = findNonOverlappingToolbarPosition({
           reference,
           floating: rects.floating,
@@ -378,11 +391,7 @@ export function EditorComposer({
             width: Math.max(0, right - left),
             height: Math.max(0, bottom - top),
           },
-          preferredSide: placement.split("-")[0] as
-            | "top"
-            | "bottom"
-            | "left"
-            | "right",
+          preferredSide,
           // 工具栏没有外投影，只保留紧凑的视觉分隔；偏移随编辑器 UI 等比缩放。
           gap: getFormattingToolbarGap(),
         });
@@ -402,14 +411,14 @@ export function EditorComposer({
       useFloatingOptions: {
         open: formattingToolbarOpen,
         strategy: "fixed" as const,
-        // 默认落在完整选区下方并以选区中点为锚，避免左右对齐操作让工具栏贴边。
-        // 底部空间不足时再翻到上方；边界取编辑器与视口的交集，避免靠边选区溢出。
-        placement: "bottom" as const,
+        // 优先完整选区上方、水平居中；上方空间不足再翻到下方。
+        // 边界取编辑器与视口的交集，避免靠边选区溢出。
+        placement: "top" as const,
         middleware: [
           floatingOffset(() => getFormattingToolbarGap()),
           floatingFlip({
             ...overflowOptions,
-            fallbackPlacements: ["top"],
+            fallbackPlacements: ["bottom"],
           }),
           floatingShift(overflowOptions),
           floatingSize({
@@ -449,7 +458,7 @@ export function EditorComposer({
         },
       },
     };
-  }, [editorContainerRef, formattingToolbarOpen]);
+  }, [editor, editorContainerRef, formattingToolbarOpen]);
 
   const slashMenuFloatingOptions = useMemo(
     () =>
@@ -544,7 +553,7 @@ export function EditorComposer({
             open={formattingToolbarOpen}
           />
         ) : (
-          <FormattingToolbarController
+          <GooseFormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
             floatingUIOptions={formattingToolbarFloatingOptions}
             portalElement={null}

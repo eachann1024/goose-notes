@@ -66,10 +66,11 @@ function SortableNotebookItem({
         "relative flex select-none items-center rounded-sm outline-none",
         "justify-between gap-2 group",
         "min-h-11 py-2 mb-1 last:mb-0 px-2",
-        "hover:bg-[var(--goose-interactive-hover)]",
         notebook.localPathMissing && "opacity-50",
-        isActive &&
-          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
+        // 选中行 hover 不要被 interactive-hover 盖掉，否则图标底又会糊进行底
+        isActive
+          ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]"
+          : "hover:bg-[var(--goose-interactive-hover)]",
         isDragging && "opacity-60 cursor-grabbing z-10",
         !isDragging && "cursor-grab",
       )}
@@ -93,9 +94,13 @@ function SortableNotebookItem({
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <span
           className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-icon-chip-on-selected)] transition-colors",
-            "group-hover:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-[var(--goose-interactive-hover)]",
-            isActive && "bg-[var(--goose-icon-chip-on-selected)]",
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+            // 图标底始终要比当前行底更抬一点：
+            // - 未选中 hover：亮色用 chip token；暗色勿用 interactive-hover（与行 hover 同色会“消失”）
+            // - 选中：亮色 chip token；暗色 white/20，hover 再抬一点
+            isActive
+              ? "bg-[var(--goose-icon-chip-on-selected)] dark:bg-white/20 dark:group-hover:bg-white/28"
+              : "group-hover:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-white/14",
           )}
         >
           {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
@@ -136,7 +141,7 @@ function SortableNotebookItem({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-white/14 group-hover:opacity-100 group-hover:pointer-events-auto"
                 aria-label="编辑记事本"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -386,14 +391,19 @@ export function NotebookSwitcher() {
                   {activeNotebook?.name || "选择记事本"}
                 </span>
               </div>
-              <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-foreground/40" />
+              {isOpen ? (
+                <LucideIcons.ChevronUp className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
+              ) : (
+                <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
+              )}
             </Button>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[248px] w-[calc(var(--radix-dropdown-menu-trigger-width)+0.75rem)] px-1 pb-1 pt-2 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-3 before:h-3 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="min-w-0 max-w-[var(--radix-dropdown-menu-trigger-width)] w-[var(--radix-dropdown-menu-trigger-width)] px-1 pb-1 pt-1.5 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           align="start"
-          sideOffset={-4}
+          alignOffset={0}
+          sideOffset={4}
           forceMount
           onMouseEnter={() => {
             if (!notebookDropdownHoverExpand) return;

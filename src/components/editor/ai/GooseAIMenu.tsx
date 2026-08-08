@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useBlockNoteEditor,
   useExtension,
@@ -7,7 +7,6 @@ import {
 import {
   AIExtension,
   getDefaultAIMenuItems,
-  PromptSuggestionMenu,
   type AIMenuProps,
   type AIMenuSuggestionItem,
   useAIDictionary,
@@ -25,7 +24,20 @@ import {
   validateGeneratedBlockStructure,
   type BlockTypeTransformBlock,
 } from "@/lib/ai-write";
-import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import {
+  applyMarkdownToInlineTarget,
+  restoreBlocks,
+  serializeInlineEditTarget,
+  snapshotBlocks,
+} from "@/lib/notebook-ai/inlineMarkdownApply";
+import { runInlineMarkdownRewrite } from "@/components/editor/ai/transport/runInlineMarkdownRewrite";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
+import { useEditorPlatform } from "@/components/editor/platform/context";
+import type { AISettingsLike } from "@/lib/ai-provider/types";
+import { GoosePromptSuggestionMenu } from "./GoosePromptSuggestionMenu";
 
 type AiMenuStatus =
   | "user-input"
@@ -37,6 +49,14 @@ type AiMenuStatus =
 
 function isBusyStatus(status: AiMenuStatus) {
   return status === "thinking" || status === "ai-writing";
+}
+
+function documentSignature(document: unknown): string {
+  try {
+    return JSON.stringify(document);
+  } catch {
+    return "";
+  }
 }
 
 function formatAiErrorMessage(error: unknown): string {
@@ -56,6 +76,26 @@ function formatAiErrorMessage(error: unknown): string {
   if (/tool_choice|Thinking mode/i.test(message)) {
     return "当前模型的思考模式不支持强制工具调用，请换非思考模型或关闭思考后再试";
   }
+  // 密钥 / 鉴权失败
+  if (
+    /\b401\b|\b403\b|unauthorized|forbidden|invalid.?api.?key|api.?key.*(invalid|missing|required)|incorrect.?api.?key|authentication/i.test(
+      message,
+    )
+  ) {
+    return "密钥无效或未配置";
+  }
+  // 网络 / Base URL 不可达
+  if (
+    /network|fetch failed|failed to fetch|load failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|timeout|网路|网络/i.test(
+      message,
+    )
+  ) {
+    return "网络请求失败，请检查网络或 Base URL";
+  }
+  // 用户主动停止
+  if (/abort|cancel|停止/i.test(message)) {
+    return "已停止";
+  }
   return message;
 }
 
@@ -65,15 +105,41 @@ function truncateErrorMessage(message: string, maxLen = 40): string {
   return `${trimmed.slice(0, maxLen - 1)}…`;
 }
 
+function resolveInlineModelId(ai: {
+  workspaceSelectedModelId?: string | null;
+  selectedModelId?: string | null;
+  customModelOptions?: Array<{ id: string }>;
+}): string {
+  const options = ai.customModelOptions ?? [];
+  const ws = ai.workspaceSelectedModelId?.trim();
+  const wsOk = !!ws && options.some((o) => o.id === ws);
+  return (
+    (wsOk ? ws : null) ||
+    ai.selectedModelId?.trim() ||
+    options[0]?.id ||
+    ""
+  );
+}
+
 /**
- * 行内 AI 菜单：在 xl-ai 默认能力上拦截确定性块转换，并在思考/写入时提供可点停止。
+ * 行内 AI 菜单：确定性块转换离线执行；其余自由提示走 agent 对齐的 markdown 改写。
+ * 拒绝草稿仍走 xl-ai reject-and-continue，保留提示词。
  */
 export function GooseAIMenu(props: AIMenuProps) {
   const editor = useBlockNoteEditor();
   const ai = useExtension(AIExtension);
   const { page } = useEditorPageContext();
+  const { ai: aiSettings } = useEditorSettings();
+  const platform = useEditorPlatform();
   const dict = useAIDictionary();
   const [prompt, setPrompt] = useState("");
+  /** 本地 markdown 改写忙态（不依赖 xl-ai status）。 */
+  const [isLocalRewriting, setIsLocalRewriting] = useState(false);
+  /** 最近一次用户提交 / 动作的提示词，拒绝后写回输入框，不被忙态清空。 */
+  const lastPromptRef = useRef("");
+  /** 拒绝后重开菜单时跳过一次「进入 user-input 的清空逻辑」。 */
+  const restorePromptAfterRejectRef = useRef(false);
+  const localAbortRef = useRef<AbortController | null>(null);
 
   const aiResponseStatus = useExtensionState(AIExtension, {
     selector: (state) =>
@@ -92,6 +158,8 @@ export function GooseAIMenu(props: AIMenuProps) {
     },
   });
 
+  const isBusy = isBusyStatus(aiResponseStatus) || isLocalRewriting;
+
   // 进入 error 时 toast 一次，避免状态抖动重复弹
   useEffect(() => {
     if (aiResponseStatus !== "error") return;
@@ -99,83 +167,282 @@ export function GooseAIMenu(props: AIMenuProps) {
     toast.error(message);
   }, [aiResponseStatus, aiErrorMessage, dict.ai_menu.status.error]);
 
+  // busy → user-reviewing：提示用户必须接受才会写入；若文档签名未变则提示无改动
+  const prevAiStatusRef = useRef<AiMenuStatus>("closed");
+  const busyDocSignatureRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevAiStatusRef.current;
+    const next = aiResponseStatus;
+
+    if (isBusyStatus(next) && !isBusyStatus(prev)) {
+      busyDocSignatureRef.current = documentSignature(editor.document);
+    }
+
+    if (next === "user-reviewing" && isBusyStatus(prev)) {
+      const before = busyDocSignatureRef.current;
+      const after = documentSignature(editor.document);
+      const noPendingChanges =
+        before != null && before !== "" && before === after;
+
+      if (noPendingChanges) {
+        toast.info(
+          "AI 未产生可应用的修改（可能因选区限制或模型未调用编辑工具）",
+        );
+      } else {
+        const acceptLabel = dict.ai_menu.actions.accept.title || "接受";
+        const rejectLabel = dict.ai_menu.actions.revert.title || "拒绝";
+        toast.success(
+          `已生成修改草稿，请点${acceptLabel}以写入，或点${rejectLabel}丢弃`,
+        );
+      }
+      busyDocSignatureRef.current = null;
+    }
+
+    if (next === "closed" || next === "user-input" || next === "error") {
+      busyDocSignatureRef.current = null;
+    }
+
+    prevAiStatusRef.current = next;
+  }, [aiResponseStatus, dict.ai_menu.actions.accept.title, dict.ai_menu.actions.revert.title, editor]);
+
+  const rememberPrompt = useCallback((text: string) => {
+    lastPromptRef.current = text;
+  }, []);
+
+  const setPromptRemembering = useCallback((text: string) => {
+    if (text.trim()) {
+      lastPromptRef.current = text;
+    }
+    setPrompt(text);
+  }, []);
+
+  /**
+   * 拒绝 AI 草稿：还原文档，菜单回到输入态，并保留用户原先输入的提示词。
+   * xl-ai 的 rejectChanges 会 close 菜单，因此需要立刻在同 block 重开。
+   */
+  const handleRejectAndContinue = useCallback(() => {
+    const menuState = ai.store.state.aiMenuState;
+    if (menuState === "closed") return;
+    const blockId = menuState.blockId;
+    const keep = lastPromptRef.current;
+
+    restorePromptAfterRejectRef.current = true;
+    ai.rejectChanges();
+
+    // reject 会 close；下一帧（或微任务）再 open，恢复输入与焦点
+    requestAnimationFrame(() => {
+      try {
+        ai.openAIMenuAtBlock(blockId);
+        setPrompt(keep);
+      } catch {
+        restorePromptAfterRejectRef.current = false;
+      }
+    });
+  }, [ai]);
+
+  const reopenMenuWithPrompt = useCallback(
+    (keep: string) => {
+      restorePromptAfterRejectRef.current = true;
+      const menuState = ai.store.state.aiMenuState;
+      const blockId =
+        menuState !== "closed"
+          ? menuState.blockId
+          : (() => {
+              try {
+                return editor.getTextCursorPosition().block.id;
+              } catch {
+                return undefined;
+              }
+            })();
+      if (!blockId) {
+        setPrompt(keep);
+        return;
+      }
+      requestAnimationFrame(() => {
+        try {
+          ai.openAIMenuAtBlock(blockId);
+          setPrompt(keep);
+        } catch {
+          restorePromptAfterRejectRef.current = false;
+          setPrompt(keep);
+        }
+      });
+    },
+    [ai, editor],
+  );
+
   const handleManualPromptSubmit = useCallback(
     async (userPrompt: string) => {
-      const transformIntent = resolveBlockTypeTransformIntent(userPrompt);
-      if (!transformIntent) {
-        const structureExpectation =
-          resolveGeneratedBlockStructureExpectation(userPrompt);
-        if (structureExpectation) {
-          const beforeBlocks = structuredClone(
-            editor.document,
-          ) as BlockTypeTransformBlock[];
-          await ai.invokeAI({
-            userPrompt,
-            useSelection: editor.getSelection() !== undefined,
-          });
-
-          const menuState = ai.store.state.aiMenuState;
-          if (menuState !== "closed" && menuState.status === "user-reviewing") {
-            const validation = validateGeneratedBlockStructure({
-              beforeBlocks,
-              afterBlocks: editor.document as BlockTypeTransformBlock[],
-              expectation: structureExpectation,
-            });
-            if (!validation.ok) {
-              ai.rejectChanges();
-              toast.error(validation.reason);
-            }
-          }
-          return;
-        }
-
-        if (props.onManualPromptSubmit) {
-          props.onManualPromptSubmit(userPrompt);
-          return;
-        }
-        void ai.invokeAI({
+      rememberPrompt(userPrompt);
+      // 纯「改为无序列表」可离线转换；含「多行/生成/列出」等需要扩成多项时走 markdown 内核
+      const wantsMultiItemStructure =
+        /多行|多条|多项|生成|列出|展开|拆成|拆分|写成列表|改写成列表/i.test(
           userPrompt,
-          useSelection: editor.getSelection() !== undefined,
-        });
+        );
+      const transformIntent = wantsMultiItemStructure
+        ? null
+        : resolveBlockTypeTransformIntent(userPrompt);
+      if (transformIntent) {
+        let menuClosed = false;
+        try {
+          if (page.isLocked || page.trashedAt) {
+            throw new Error("当前页面不可编辑，未转换待办事项。");
+          }
+          if (page.localFilePath && page.localReadState === "error") {
+            throw new Error("本地页面读取失败，未转换待办事项。");
+          }
+          const snapshot = createBlockTypeTransformSelectionSnapshot(editor, {
+            pageId: page.id,
+            protectFirstTitle: !page.localFilePath,
+          });
+          ai.closeAIMenu();
+          menuClosed = true;
+          const result = applyBlockTypeTransformToEditor(
+            editor,
+            snapshot,
+            transformIntent,
+          );
+          const targetLabel = getBlockTypeTransformTargetLabel(result.target);
+          toast.success(`已转换为 ${result.convertedCount} 个${targetLabel}块`);
+        } catch (error) {
+          const targetLabel = getBlockTypeTransformTargetLabel(transformIntent);
+          toast.error(
+            error instanceof Error && error.message
+              ? error.message
+              : `转换为${targetLabel}失败，内容未修改。`,
+          );
+        } finally {
+          if (!menuClosed) ai.closeAIMenu();
+        }
         return;
       }
 
-      let menuClosed = false;
+      // —— agent 对齐的 markdown 改写（含结构生成 / 多行列表扩写）——
+      const structureExpectation =
+        resolveGeneratedBlockStructureExpectation(userPrompt);
+      const keepPrompt = userPrompt;
+
+      if (page.isLocked || page.trashedAt) {
+        toast.error("当前页面不可编辑。");
+        return;
+      }
+      if (page.localFilePath && page.localReadState === "error") {
+        toast.error("本地页面读取失败，无法改写。");
+        return;
+      }
+
+      let target;
       try {
-        if (page.isLocked || page.trashedAt) {
-          throw new Error("当前页面不可编辑，未转换待办事项。");
-        }
-        if (page.localFilePath && page.localReadState === "error") {
-          throw new Error("本地页面读取失败，未转换待办事项。");
-        }
-        const snapshot = createBlockTypeTransformSelectionSnapshot(editor, {
-          pageId: page.id,
-          protectFirstTitle: !page.localFilePath,
-        });
-        ai.closeAIMenu();
-        menuClosed = true;
-        const result = applyBlockTypeTransformToEditor(
-          editor,
-          snapshot,
-          transformIntent,
-        );
-        const targetLabel = getBlockTypeTransformTargetLabel(result.target);
-        toast.success(`已转换为 ${result.convertedCount} 个${targetLabel}块`);
+        target = serializeInlineEditTarget(editor as never);
       } catch (error) {
-        const targetLabel = getBlockTypeTransformTargetLabel(transformIntent);
         toast.error(
           error instanceof Error && error.message
             ? error.message
-            : `转换为${targetLabel}失败，内容未修改。`,
+            : "无法定位要改写的内容。",
         );
+        return;
+      }
+
+      const modelId = resolveInlineModelId(aiSettings);
+      if (!modelId) {
+        toast.error("请先选择模型后再使用行内 AI");
+        return;
+      }
+
+      localAbortRef.current?.abort();
+      const abortController = new AbortController();
+      localAbortRef.current = abortController;
+      setIsLocalRewriting(true);
+
+      try {
+        const newMarkdown = await runInlineMarkdownRewrite({
+          settings: aiSettings as AISettingsLike,
+          modelId,
+          getCustomFetch: () => platform.ai.customFetch,
+          userPrompt,
+          oldMarkdown: target.oldMarkdown,
+          abortSignal: abortController.signal,
+        });
+
+        const beforeBlocks = structuredClone(
+          editor.document,
+        ) as BlockTypeTransformBlock[];
+        const blockSnapshot = snapshotBlocks(
+          editor as never,
+          target.sourceBlockIds,
+        );
+
+        const applyResult = applyMarkdownToInlineTarget(
+          editor as never,
+          newMarkdown,
+          {
+            sourceBlockIds: target.sourceBlockIds,
+          },
+        );
+
+        if (structureExpectation) {
+          const validation = validateGeneratedBlockStructure({
+            beforeBlocks,
+            afterBlocks: editor.document as BlockTypeTransformBlock[],
+            expectation: structureExpectation,
+          });
+          if (!validation.ok) {
+            // 结构校验失败：快照还原，保留 prompt 继续改
+            try {
+              restoreBlocks(
+                editor as never,
+                blockSnapshot,
+                applyResult.newBlockIds,
+              );
+            } catch {
+              try {
+                editor.undo?.();
+              } catch {
+                /* ignore */
+              }
+            }
+            toast.error(validation.reason);
+            reopenMenuWithPrompt(keepPrompt);
+            return;
+          }
+        }
+
+        toast.success(
+          `已改写 ${applyResult.blockCount} 个块（替换 ${applyResult.replacedCount} 个源块）`,
+        );
+        ai.closeAIMenu();
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          toast.info("已停止");
+          reopenMenuWithPrompt(keepPrompt);
+          return;
+        }
+        const message = formatAiErrorMessage(error);
+        toast.error(message || "改写失败，内容未修改。");
+        reopenMenuWithPrompt(keepPrompt);
       } finally {
-        if (!menuClosed) ai.closeAIMenu();
+        if (localAbortRef.current === abortController) {
+          localAbortRef.current = null;
+        }
+        setIsLocalRewriting(false);
       }
     },
-    [ai, editor, page, props],
+    [
+      ai,
+      aiSettings,
+      editor,
+      page,
+      platform,
+      rememberPrompt,
+      reopenMenuWithPrompt,
+    ],
   );
 
   const handleStop = useCallback(() => {
+    if (localAbortRef.current) {
+      localAbortRef.current.abort();
+      return;
+    }
     void ai.abort();
   }, [ai]);
 
@@ -183,7 +450,7 @@ export function GooseAIMenu(props: AIMenuProps) {
   const items = useMemo(() => {
     let next: AIMenuSuggestionItem[] = [];
     // 忙时只保留输入框右侧停止按钮，不在列表再放一项「停止」
-    if (isBusyStatus(aiResponseStatus)) {
+    if (isBusy) {
       next = [];
     } else if (externalItems) {
       next = externalItems(editor, aiResponseStatus);
@@ -194,23 +461,56 @@ export function GooseAIMenu(props: AIMenuProps) {
     return next.map((item) => ({
       ...item,
       onItemClick: () => {
-        item.onItemClick(setPrompt);
+        // 拒绝 / 取消：还原文档并回到可继续输入的菜单，不丢 prompt
+        if (item.key === "revert" || item.key === "cancel") {
+          handleRejectAndContinue();
+          return;
+        }
+        item.onItemClick(setPromptRemembering);
       },
     }));
-  }, [aiResponseStatus, editor, externalItems]);
+  }, [
+    aiResponseStatus,
+    editor,
+    externalItems,
+    handleRejectAndContinue,
+    isBusy,
+    setPromptRemembering,
+  ]);
 
   useEffect(() => {
+    // 忙态清空输入区，给 placeholder + 停止按钮让位；原文保留在 lastPromptRef
+    if (isBusy) {
+      setPrompt((current) => {
+        if (current.trim()) {
+          lastPromptRef.current = current;
+        }
+        return "";
+      });
+      return;
+    }
+
+    // 拒绝后重开：写回 lastPrompt，不再清空
     if (
-      aiResponseStatus === "ai-writing" ||
+      aiResponseStatus === "user-input" &&
+      restorePromptAfterRejectRef.current
+    ) {
+      restorePromptAfterRejectRef.current = false;
+      setPrompt(lastPromptRef.current);
+      return;
+    }
+
+    // 审阅 / 错误态：输入框保持空（列表是接受/恢复），但绝不擦 lastPromptRef
+    if (
       aiResponseStatus === "user-reviewing" ||
       aiResponseStatus === "error"
     ) {
       setPrompt("");
     }
-  }, [aiResponseStatus]);
+  }, [aiResponseStatus, isBusy]);
 
   const placeholder = useMemo(() => {
-    if (aiResponseStatus === "thinking") {
+    if (isLocalRewriting || aiResponseStatus === "thinking") {
       return dict.ai_menu.status.thinking;
     }
     if (aiResponseStatus === "ai-writing") {
@@ -223,15 +523,17 @@ export function GooseAIMenu(props: AIMenuProps) {
       return dict.ai_menu.status.error;
     }
     return dict.ai_menu.input_placeholder;
-  }, [aiResponseStatus, aiErrorMessage, dict]);
+  }, [aiResponseStatus, aiErrorMessage, dict, isLocalRewriting]);
 
   const rightSection = useMemo(() => {
-    if (isBusyStatus(aiResponseStatus)) {
+    if (isBusy) {
       return (
         <div className="goose-ai-menu-busy-actions bn-combobox-right-section">
           <GooseThinkingOrb
             phase={
-              aiResponseStatus === "thinking" ? "thinking" : "writing"
+              isLocalRewriting || aiResponseStatus === "thinking"
+                ? "thinking"
+                : "writing"
             }
             scale="inline"
             theme="auto"
@@ -276,16 +578,16 @@ export function GooseAIMenu(props: AIMenuProps) {
     }
 
     return undefined;
-  }, [aiResponseStatus, handleStop]);
+  }, [aiResponseStatus, handleStop, isBusy, isLocalRewriting]);
 
   return (
-    <PromptSuggestionMenu
+    <GoosePromptSuggestionMenu
       onManualPromptSubmit={handleManualPromptSubmit}
       items={items}
       promptText={prompt}
-      onPromptTextChange={setPrompt}
+      onPromptTextChange={setPromptRemembering}
       placeholder={placeholder}
-      disabled={isBusyStatus(aiResponseStatus)}
+      disabled={isBusy}
       icon={
         <div className="bn-combobox-icon">
           <RiSparkling2Fill />
