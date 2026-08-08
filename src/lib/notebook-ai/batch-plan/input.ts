@@ -35,8 +35,21 @@ export function normalizeBatchPlanOperations(
           ? "edit"
           : rawType === "delete_page" || rawType === "deletePage"
             ? "delete"
-            : rawType;
-    if (type !== "create" && type !== "edit" && type !== "delete") return [];
+            : rawType === "searchReplace" ||
+                rawType === "str_replace" ||
+                rawType === "strReplace" ||
+                rawType === "replace_in_page" ||
+                rawType === "replaceInPage"
+              ? "search_replace"
+              : rawType;
+    if (
+      type !== "create" &&
+      type !== "edit" &&
+      type !== "delete" &&
+      type !== "search_replace"
+    ) {
+      return [];
+    }
 
     const requestedOperationId = optionalText(operation.operationId);
     let operationId = requestedOperationId ?? `${type}-${index + 1}`;
@@ -77,6 +90,50 @@ export function normalizeBatchPlanOperations(
           pageId,
           markdown,
           ...(title ? { title } : {}),
+        },
+      ];
+    }
+
+    if (type === "search_replace") {
+      const pageId = requiredText(operation.pageId);
+      const oldString =
+        typeof operation.oldString === "string"
+          ? operation.oldString
+          : typeof operation.old_string === "string"
+            ? operation.old_string
+            : typeof operation.find === "string"
+              ? operation.find
+              : typeof operation.search === "string"
+                ? operation.search
+                : null;
+      const newString =
+        typeof operation.newString === "string"
+          ? operation.newString
+          : typeof operation.new_string === "string"
+            ? operation.new_string
+            : typeof operation.replace === "string"
+              ? operation.replace
+              : typeof operation.replacement === "string"
+                ? operation.replacement
+                : null;
+      const replaceAllRaw = operation.replaceAll ?? operation.replace_all;
+      const replaceAll =
+        replaceAllRaw === true || replaceAllRaw === "true"
+          ? true
+          : replaceAllRaw === false || replaceAllRaw === "false"
+            ? false
+            : undefined;
+      if (!pageId || oldString === null || oldString === "" || newString === null) {
+        return [];
+      }
+      return [
+        {
+          type,
+          operationId,
+          pageId,
+          oldString,
+          newString,
+          ...(replaceAll !== undefined ? { replaceAll } : {}),
         },
       ];
     }

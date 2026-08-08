@@ -75,6 +75,7 @@ const TOOL_PARAMETERS: Record<keyof typeof notebookAiTools, TSchema> = {
           type: Type.Union([
             Type.Literal("create"),
             Type.Literal("edit"),
+            Type.Literal("search_replace"),
             Type.Literal("delete"),
           ]),
           operationId: Type.Optional(Type.String()),
@@ -83,6 +84,9 @@ const TOOL_PARAMETERS: Record<keyof typeof notebookAiTools, TSchema> = {
           parentId: Type.Optional(Type.String()),
           pageId: Type.Optional(Type.String()),
           pageIds: Type.Optional(Type.Array(Type.String())),
+          oldString: Type.Optional(Type.String()),
+          newString: Type.Optional(Type.String()),
+          replaceAll: Type.Optional(Type.Boolean()),
         },
         { additionalProperties: true },
       ),

@@ -8,7 +8,10 @@ import {
 } from "@/lib/notebook-ai/markdown";
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
-import { getPageTitle } from "@/components/editor/utils/page-title";
+import {
+  getPageTitle,
+  withInternalPageTitle,
+} from "@/components/editor/utils/page-title";
 import {
   getPageContentSignature,
   guardNotebookForAiWrite,
@@ -19,11 +22,18 @@ import { recordHistorySnapshot } from "@/lib/history/snapshot";
 import { reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
 import type { JSONContent } from "@/types";
 import { readBatchPlanJournal, writeBatchPlanJournal } from "./journal";
+import {
+  applySearchReplacePreservingBlocks,
+  mergeFullEditPreservingUnchangedBlocks,
+} from "./surgicalApply";
+import { tryConvertEditToSearchReplace } from "./editToSearchReplace";
+import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
 import type {
   BatchOperationResult,
   BatchPlanExecuteResult,
   BatchPlanInput,
   BatchPlanJournal,
+  BatchPlanOperationInput,
   BatchPlanPrepareResult,
   FrozenPageSnapshot,
   PageRevision,
@@ -247,6 +257,16 @@ async function makeLocalPlanPaths(
       continue;
     }
 
+    if (operation.type === "search_replace") {
+      const page = usePages.getState().pages[operation.pageId];
+      if (page?.localFilePath) {
+        await assertLocalPathInsideRoot(page.localFilePath, root);
+      }
+      continue;
+    }
+
+    if (operation.type !== "delete") continue;
+
     const deleteBatchId = `ai-batch-${operation.operationId}-${uuidv4()}`;
     deleteBatchIdsByOperationId[operation.operationId] = deleteBatchId;
     for (const pageId of expandDeletePageIds(notebookId, operation.pageIds)) {
@@ -297,7 +317,8 @@ function validateInput(input: BatchPlanInput): string | null {
   if (input.operations.length < 1 || input.operations.length > 50)
     return "计划操作数必须在 1 到 50 之间";
   const ids = new Set<string>();
-  const touched = new Set<string>();
+  /** pageId → 首次占用该页的操作类型；允许多个 search_replace 串联同一页。 */
+  const pageMode = new Map<string, "edit" | "search_replace" | "delete">();
   for (const operation of input.operations) {
     if (!operation.operationId.trim() || ids.has(operation.operationId))
       return "operationId 必须唯一且不能为空";
@@ -310,16 +331,27 @@ function validateInput(input: BatchPlanInput): string | null {
     if (operation.type === "edit") {
       if (!operation.pageId || !operation.markdown.trim())
         return "编辑操作缺少页面或完整正文";
-      if (touched.has(operation.pageId))
-        return "同一页面不能在一个计划中重复编辑或删除";
-      touched.add(operation.pageId);
+      const existing = pageMode.get(operation.pageId);
+      if (existing)
+        return "同一页面不能在一个计划中同时使用 edit 与其他写入/删除";
+      pageMode.set(operation.pageId, "edit");
+    }
+    if (operation.type === "search_replace") {
+      if (!operation.pageId || !operation.oldString)
+        return "局部替换操作缺少页面或 oldString";
+      const existing = pageMode.get(operation.pageId);
+      if (existing && existing !== "search_replace")
+        return "同一页面不能在一个计划中混合 search_replace 与 edit/delete";
+      pageMode.set(operation.pageId, "search_replace");
     }
     if (operation.type === "delete") {
       if (!operation.pageIds.length) return "删除操作至少需要一个页面";
       for (const pageId of operation.pageIds) {
-        if (!pageId || touched.has(pageId))
+        if (!pageId) return "删除操作至少需要一个页面";
+        const existing = pageMode.get(pageId);
+        if (existing)
           return "同一页面不能在一个计划中重复编辑或删除";
-        touched.add(pageId);
+        pageMode.set(pageId, "delete");
       }
     }
   }
@@ -380,6 +412,77 @@ function expandDeletePageIds(notebookId: string, rootIds: string[]): string[] {
   return [...expanded];
 }
 
+/**
+ * 误用整页 edit 做局部修改时，在 prepare 阶段拆成 search_replace，
+ * 以保留未改动块的 id/props。带 title 的 edit 不转换（标题+正文保持原子）。
+ */
+function convertPartialEditsInPlan(
+  input: BatchPlanInput,
+  notebookId: string,
+): BatchPlanInput {
+  const pages = usePages.getState().pages;
+  const nextOps: BatchPlanOperationInput[] = [];
+  let changed = false;
+
+  for (let index = 0; index < input.operations.length; index += 1) {
+    const operation = input.operations[index]!;
+    if (operation.type !== "edit") {
+      nextOps.push(operation);
+      continue;
+    }
+    // 改标题时保持 edit，避免 title 与 body 拆开
+    if (operation.title?.trim()) {
+      nextOps.push(operation);
+      continue;
+    }
+
+    const page = pages[operation.pageId];
+    if (
+      !page ||
+      page.workspaceId !== notebookId ||
+      Boolean(page.trashedAt)
+    ) {
+      nextOps.push(operation);
+      continue;
+    }
+
+    const oldMarkdown = jsonContentToMarkdown(page.content as any);
+    const converted = tryConvertEditToSearchReplace({
+      pageId: operation.pageId,
+      oldMarkdown,
+      newMarkdown: operation.markdown,
+      baseOperationId: operation.operationId,
+    });
+
+    if (!converted || converted.length === 0) {
+      nextOps.push(operation);
+      continue;
+    }
+
+    // 保守上限：后续原操作按 1:1 计；任一步超 50 则保留该条 edit
+    const remainingAfter = input.operations.length - index - 1;
+    const totalIfConvert = nextOps.length + converted.length + remainingAfter;
+    if (totalIfConvert > 50) {
+      nextOps.push(operation);
+      continue;
+    }
+
+    nextOps.push(...converted);
+    changed = true;
+  }
+
+  if (!changed) return input;
+  // 若多次扩展后仍超上限，整体回退
+  if (nextOps.length > 50) return input;
+  const candidate: BatchPlanInput = {
+    ...input,
+    operations: nextOps,
+  };
+  // 转换后必须仍能通过 pageMode / 唯一 id 校验，否则回退原计划
+  if (validateInput(candidate)) return input;
+  return candidate;
+}
+
 export async function prepareBatchPlan(params: {
   toolCallId: string;
   runId: string;
@@ -408,11 +511,18 @@ export async function prepareBatchPlan(params: {
     );
     return { ok: false, error: journal.error!, journal };
   }
+
+  // 局部 edit → search_replace；后续冻结/路径规划均使用转换后的计划
+  const planInput = convertPartialEditsInPlan(
+    params.input,
+    params.notebookId,
+  );
+
   const before: Record<string, FrozenPageSnapshot> = {};
   const affectedPageIdsByOperationId: Record<string, string[]> = {};
   let localPlanPaths: Awaited<ReturnType<typeof makeLocalPlanPaths>>;
   try {
-    localPlanPaths = await makeLocalPlanPaths(params.notebookId, params.input);
+    localPlanPaths = await makeLocalPlanPaths(params.notebookId, planInput);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "本地文件计划准备失败";
@@ -421,7 +531,7 @@ export async function prepareBatchPlan(params: {
         params.toolCallId,
         params.runId,
         params.notebookId,
-        params.input,
+        planInput,
         message,
       ),
     );
@@ -432,7 +542,7 @@ export async function prepareBatchPlan(params: {
   };
   const plannedPageIds: Record<string, string> = {};
   const operationOwnerByPageId = new Map<string, string>();
-  for (const operation of params.input.operations) {
+  for (const operation of planInput.operations) {
     if (
       operation.type === "create" &&
       useNotebooks.getState().notebooks[params.notebookId]?.source !==
@@ -452,7 +562,7 @@ export async function prepareBatchPlan(params: {
             params.toolCallId,
             params.runId,
             params.notebookId,
-            params.input,
+            planInput,
             message,
           ),
         );
@@ -474,7 +584,7 @@ export async function prepareBatchPlan(params: {
               params.toolCallId,
               params.runId,
               params.notebookId,
-              params.input,
+              planInput,
               message,
             ),
           );
@@ -489,7 +599,7 @@ export async function prepareBatchPlan(params: {
                 params.toolCallId,
                 params.runId,
                 params.notebookId,
-                params.input,
+                planInput,
                 message,
               ),
             );
@@ -500,7 +610,7 @@ export async function prepareBatchPlan(params: {
       }
     }
     const pageIds =
-      operation.type === "edit"
+      operation.type === "edit" || operation.type === "search_replace"
         ? [operation.pageId]
         : operation.type === "delete"
           ? expandDeletePageIds(params.notebookId, operation.pageIds)
@@ -515,20 +625,29 @@ export async function prepareBatchPlan(params: {
         `ai-batch-${params.runId}-${uuidv4()}`;
     for (const pageId of pageIds) {
       const owner = operationOwnerByPageId.get(pageId);
-      if (owner && owner !== operation.operationId) {
+      // 允许多个 search_replace 串联同一页；edit/delete 仍互斥。
+      const allowSharedSearchReplace =
+        operation.type === "search_replace" &&
+        owner?.startsWith("search_replace:");
+      if (owner && owner !== operation.operationId && !allowSharedSearchReplace) {
         const message = "编辑或删除操作的目标页面树发生重叠";
         const journal = writeBatchPlanJournal(
           invalidJournal(
             params.toolCallId,
             params.runId,
             params.notebookId,
-            params.input,
+            planInput,
             message,
           ),
         );
         return { ok: false, error: message, journal };
       }
-      operationOwnerByPageId.set(pageId, operation.operationId);
+      operationOwnerByPageId.set(
+        pageId,
+        operation.type === "search_replace"
+          ? `search_replace:${operation.operationId}`
+          : operation.operationId,
+      );
       const guard = guardPageForAiWrite(pageId, {
         expectedNotebookId: params.notebookId,
       });
@@ -538,7 +657,7 @@ export async function prepareBatchPlan(params: {
             params.toolCallId,
             params.runId,
             params.notebookId,
-            params.input,
+            planInput,
             guard.error,
           ),
         );
@@ -560,8 +679,8 @@ export async function prepareBatchPlan(params: {
     toolCallId: params.toolCallId,
     runId: params.runId,
     notebookId: params.notebookId,
-    input: clone(params.input),
-    selectedOperationIds: params.input.operations.map(
+    input: clone(planInput),
+    selectedOperationIds: planInput.operations.map(
       (operation) => operation.operationId,
     ),
     status: "prepared",
@@ -627,7 +746,9 @@ async function preflight(journal: BatchPlanJournal): Promise<string | null> {
         return "新页面的父级在审批后发生变化";
       }
     }
-    if (operation.type === "edit") pageIds.add(operation.pageId);
+    if (operation.type === "edit" || operation.type === "search_replace") {
+      pageIds.add(operation.pageId);
+    }
     if (operation.type === "delete") {
       const frozenPageIds =
         journal.affectedPageIdsByOperationId[operation.operationId] ??
@@ -698,26 +819,67 @@ function plannedContent(
   >,
   journal: BatchPlanJournal,
 ) {
-  const isLocal =
-    operation.type === "edit"
-      ? Boolean(journal.before[operation.pageId].page.localFilePath)
-      : useNotebooks.getState().notebooks[journal.notebookId]?.source ===
-        "local-folder";
+  if (operation.type === "create") {
+    const isLocal =
+      useNotebooks.getState().notebooks[journal.notebookId]?.source ===
+      "local-folder";
+    if (isLocal) {
+      const markdown = normalizeAiMarkdown(operation.markdown).trim();
+      const content = markdown ? importMarkdownFragment(markdown) : [];
+      return normalizePageContent(content, {
+        ensureFirstTitle: false,
+      }) as JSONContent;
+    }
+    return buildAiPageContent(operation.title, operation.markdown);
+  }
+
+  // full edit：用块级 merge 保留未改动块的 id / props
+  const beforePage = journal.before[operation.pageId].page;
+  const beforeContent = beforePage.content;
+  const isLocal = Boolean(beforePage.localFilePath);
   if (isLocal) {
-    const markdown = normalizeAiMarkdown(operation.markdown).trim();
-    const content = markdown ? importMarkdownFragment(markdown) : [];
-    return normalizePageContent(content, {
-      ensureFirstTitle: false,
-    }) as JSONContent;
+    return mergeFullEditPreservingUnchangedBlocks(
+      beforeContent,
+      normalizeAiMarkdown(operation.markdown),
+      { ensureFirstTitle: false },
+    ).content;
   }
 
   const title =
-    operation.type === "create"
-      ? operation.title
-      : operation.title?.trim() ||
-        getPageTitle(journal.before[operation.pageId].page) ||
-        "无标题";
-  return buildAiPageContent(title, operation.markdown);
+    operation.title?.trim() || getPageTitle(beforePage) || "无标题";
+  const merged = mergeFullEditPreservingUnchangedBlocks(
+    beforeContent,
+    normalizeAiMarkdown(operation.markdown),
+    { ensureFirstTitle: true },
+  );
+  const blocks = Array.isArray(merged.content)
+    ? merged.content
+    : (merged.content as { content?: unknown } | null)?.content;
+  if (!Array.isArray(blocks) || blocks.length === 0) {
+    return buildAiPageContent(title, operation.markdown);
+  }
+  if (operation.title?.trim()) {
+    return withInternalPageTitle(merged.content, title);
+  }
+  return merged.content;
+}
+
+function plannedSearchReplaceContent(
+  operation: Extract<
+    BatchPlanInput["operations"][number],
+    { type: "search_replace" }
+  >,
+  journal: BatchPlanJournal,
+): JSONContent {
+  const before = journal.before[operation.pageId];
+  const applied = applySearchReplacePreservingBlocks(
+    before.page.content,
+    operation.oldString,
+    operation.newString,
+    { replaceAll: operation.replaceAll === true },
+  );
+  if (!applied.ok) throw new Error(applied.error);
+  return applied.content;
 }
 
 function appendRecoveredSuccess(
@@ -883,6 +1045,68 @@ async function recoverInterruptedOperation(
       ...journal,
       status: "failed",
       error: "中断编辑后的内容与冻结计划不一致，已停止恢复",
+      executingOperationId: undefined,
+      executingStartedAt: undefined,
+    });
+  }
+  if (operation.type === "search_replace") {
+    const page = usePages.getState().pages[operation.pageId];
+    const before = journal.before[operation.pageId];
+    if (!page || !before)
+      return writeBatchPlanJournal({
+        ...journal,
+        status: "failed",
+        error: "中断局部替换的目标页不存在",
+        executingOperationId: undefined,
+        executingStartedAt: undefined,
+      });
+    if (sameRevision(revisionOf(page), before.revision)) {
+      return writeBatchPlanJournal({
+        ...journal,
+        executingOperationId: undefined,
+        executingStartedAt: undefined,
+      });
+    }
+    try {
+      const expected = getPageContentSignature(
+        plannedSearchReplaceContent(operation, journal),
+      );
+      if (getPageContentSignature(page.content) === expected) {
+        return appendRecoveredSuccess(
+          page.localFilePath
+            ? {
+                ...journal,
+                localPathAfterByPageId: {
+                  ...journal.localPathAfterByPageId,
+                  [operation.pageId]: page.localFilePath,
+                },
+              }
+            : journal,
+          {
+            operationId,
+            type: "search_replace",
+            ok: true,
+            pageIds: [operation.pageId],
+          },
+          { [operation.pageId]: revisionOf(page) },
+        );
+      }
+    } catch {
+      // fall through to failed
+    }
+    return writeBatchPlanJournal({
+      ...journal,
+      status: "failed",
+      error: "中断局部替换后的内容与冻结计划不一致，已停止恢复",
+      executingOperationId: undefined,
+      executingStartedAt: undefined,
+    });
+  }
+  if (operation.type !== "delete") {
+    return writeBatchPlanJournal({
+      ...journal,
+      status: "failed",
+      error: "中断操作类型暂不支持恢复",
       executingOperationId: undefined,
       executingStartedAt: undefined,
     });
@@ -1403,7 +1627,54 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
           ok: true,
           pageIds: [operation.pageId],
         };
-      } else {
+      } else if (operation.type === "search_replace") {
+        await rememberBefore(operation.pageId, working);
+        const before = working.before[operation.pageId];
+        if (!before) throw new Error("冻结计划缺少目标页面快照");
+        // 同页多个 search_replace 按顺序作用在当前内容上；首条仍用冻结 revision 校验。
+        const livePage = usePages.getState().pages[operation.pageId];
+        if (!livePage) throw new Error("目标页不存在");
+        const baseContent = working.after[operation.pageId]
+          ? livePage.content
+          : before.page.content;
+        const expectedRevision = working.after[operation.pageId]
+          ? revisionOf(livePage)
+          : before.revision;
+        const applied = applySearchReplacePreservingBlocks(
+          baseContent,
+          operation.oldString,
+          operation.newString,
+          { replaceAll: operation.replaceAll === true },
+        );
+        if (!applied.ok) throw new Error(applied.error);
+        const saved = await writePageContentSafely(
+          operation.pageId,
+          applied.content,
+          {
+            expectedNotebookId: working.notebookId,
+            expectedRevision,
+          },
+        );
+        if (!saved.ok) throw new Error(saved.error);
+        const page = usePages.getState().pages[operation.pageId]!;
+        working = {
+          ...working,
+          after: { ...working.after, [operation.pageId]: revisionOf(page) },
+          localPathAfterByPageId: page.localFilePath
+            ? {
+                ...working.localPathAfterByPageId,
+                [operation.pageId]: page.localFilePath,
+              }
+            : working.localPathAfterByPageId,
+        };
+        reloadEditorIfActive(operation.pageId);
+        result = {
+          operationId: operation.operationId,
+          type: operation.type,
+          ok: true,
+          pageIds: [operation.pageId],
+        };
+      } else if (operation.type === "delete") {
         const affectedPageIds =
           working.affectedPageIdsByOperationId[operation.operationId] ??
           operation.pageIds;
@@ -1471,6 +1742,11 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
           ok: true,
           pageIds: [...affectedPageIds],
         };
+      } else {
+        const unsupported: never = operation;
+        throw new Error(
+          `暂不支持的操作类型: ${(unsupported as { type?: string }).type ?? "unknown"}`,
+        );
       }
     } catch (error) {
       result = {
@@ -1480,7 +1756,8 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
         pageIds:
           operation.type === "delete"
             ? operation.pageIds
-            : operation.type === "edit"
+            : operation.type === "edit" ||
+                operation.type === "search_replace"
               ? [operation.pageId]
               : [],
         error: error instanceof Error ? error.message : "执行失败",

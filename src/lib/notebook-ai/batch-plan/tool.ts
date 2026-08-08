@@ -30,6 +30,15 @@ const canonicalOperationSchema = z.discriminatedUnion("type", [
     operationId: optionalOperationId,
     pageIds: z.array(z.string().min(1)).min(1),
   }).strict(),
+  z.object({
+    type: z.literal("search_replace"),
+    operationId: optionalOperationId,
+    pageId: z.string().min(1),
+    oldString: z.string().min(1),
+    /** 可为空字符串，表示删除匹配片段。 */
+    newString: z.string(),
+    replaceAll: z.boolean().optional(),
+  }).strict(),
 ]);
 
 /** 模型可见的唯一工具契约；旧格式只在 repair hook 内部兼容。 */
@@ -62,6 +71,13 @@ function canonicalType(value: unknown) {
     case "delete_page":
     case "deletePage":
       return "delete" as const;
+    case "search_replace":
+    case "searchReplace":
+    case "str_replace":
+    case "strReplace":
+    case "replace_in_page":
+    case "replaceInPage":
+      return "search_replace" as const;
     default:
       return null;
   }
@@ -112,6 +128,40 @@ function repairOperation(value: unknown): CanonicalOperation | null {
       ...(typeof value.title === "string" ? { title: value.title } : {}),
     };
   }
+  if (type === "search_replace") {
+    const oldString =
+      typeof value.oldString === "string"
+        ? value.oldString
+        : typeof value.old_string === "string"
+          ? value.old_string
+          : typeof value.find === "string"
+            ? value.find
+            : typeof value.search === "string"
+              ? value.search
+              : undefined;
+    const newString =
+      typeof value.newString === "string"
+        ? value.newString
+        : typeof value.new_string === "string"
+          ? value.new_string
+          : typeof value.replace === "string"
+            ? value.replace
+            : typeof value.replacement === "string"
+              ? value.replacement
+              : undefined;
+    const replaceAllRaw = value.replaceAll ?? value.replace_all;
+    const replaceAll =
+      typeof replaceAllRaw === "boolean" ? replaceAllRaw : undefined;
+    if (oldString === undefined || newString === undefined) return null;
+    return {
+      type,
+      ...(operationId ? { operationId } : {}),
+      pageId: value.pageId as string,
+      oldString,
+      newString,
+      ...(replaceAll !== undefined ? { replaceAll } : {}),
+    };
+  }
 
   const pageIds = Array.isArray(value.pageIds)
     ? value.pageIds
@@ -160,7 +210,7 @@ export function repairExecuteBatchPlanInput(input: string): string | null {
 /**
  * 所有笔记写操作都必须通过此入口。输入是模型已经完整生成的冻结结果。
  * 工具 execute 先冻结计划：全部为 create 时 prepare 成功后立即执行；
- * 含 edit/delete 时只返回 prepared 审批卡，真正写入由用户批准后触发。
+ * 含 edit/search_replace/delete 时只返回 prepared 审批卡，真正写入由用户批准后触发。
  *
  * 不使用 AI SDK 的 needsApproval：旧 uTools Chromium 在大工具参数结束后偶发无法
  * 收到 approval-request，导致模型已完成但 UI 永久停在 streaming。应用本来就有
@@ -269,7 +319,7 @@ export async function prepareBatchPlanForApproval(
 
 export const executeBatchPlan = tool({
   description:
-    '准备并处理笔记变更计划。全部为 create 时 prepare 成功后自动写入；含 edit/delete 时只生成审批卡，不立即写入。参数格式：{title:"整理笔记",summary:"更新账号页",operations:[{type:"edit",pageId:"page-1",markdown:"新正文"}]}。返回后停止；仅 create 时无需等待审批。',
+    '准备并处理笔记变更计划。全部为 create 时 prepare 成功后自动写入；含 edit/search_replace/delete 时只生成审批卡，不立即写入。局部修改必须用 search_replace（oldString 须为 readPage 返回的精确片段，newString 可为空表示删除该片段，replaceAll 可选）；若误用 edit 且仅为局部差异，服务端会自动拆成 search_replace。整页重写才用 edit。参数格式：{title:"整理笔记",summary:"更新账号页",operations:[{type:"search_replace",pageId:"page-1",oldString:"旧片段",newString:"新片段"}]}。返回后停止；仅 create 时无需等待审批。',
   inputSchema: executeBatchPlanInputSchema,
   execute: async (input, { experimental_context, toolCallId }) => {
     const context = experimental_context as NotebookAiAgentContext;

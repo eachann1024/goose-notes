@@ -17,7 +17,7 @@
 
 # 验证
 
-- 修改代码后以 `bun run build` 通过为验收标准之一。
+- 每次修改完了之后都要执行 `bun run build` 。
 - 样式、交互验证可以使用浏览器，基于全局 `browser-use` skill。
 
 # utools 描述

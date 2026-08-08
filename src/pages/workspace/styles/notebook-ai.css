@@ -194,6 +194,16 @@
   word-break: break-word;
 }
 
+.notebook-ai-message-actions {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.notebook-ai-message:hover > .notebook-ai-message-actions,
+.notebook-ai-message:focus-within > .notebook-ai-message-actions {
+  opacity: 1;
+}
+
 .notebook-ai-messages,
 .notebook-ai-message-text,
 .notebook-ai-message-text * {

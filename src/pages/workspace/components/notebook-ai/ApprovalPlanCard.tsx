@@ -40,6 +40,14 @@ type BatchOperation =
       operationId: string;
       type: "delete";
       pageIds: string[];
+    }
+  | {
+      operationId: string;
+      type: "search_replace";
+      pageId: string;
+      oldString: string;
+      newString: string;
+      replaceAll?: boolean;
     };
 
 type BatchPlanInput = {
@@ -146,12 +154,32 @@ function operationMeta(operation: BatchOperation) {
       : "页面当前不可用；执行前会重新校验。";
     return {
       icon: FileText,
-      label: operation.title ? "修改页面与标题" : "修改页面",
+      label: operation.title
+        ? "修改页面与标题（整页重写）"
+        : "修改页面（整页重写）",
       title:
         operation.title && operation.title !== oldTitle
           ? `${oldTitle} → ${operation.title}`
           : oldTitle,
-      detail: `变更前\n${beforeText}\n\n变更后\n${compactMarkdown(operation.markdown, 160)}`,
+      detail: `变更前\n${beforeText}\n\n变更后\n${compactMarkdown(operation.markdown, 160)}\n\n⚠️ 整页 markdown 重写：未改动段落的格式/颜色可能丢失；局部修改应使用「局部替换」。`,
+      danger: false,
+    };
+  }
+  if (operation.type === "search_replace") {
+    const page = pages[operation.pageId];
+    const pageTitle = page ? getPageTitle(page) : operation.pageId;
+    const oldPreview = compactMarkdown(operation.oldString, 80);
+    const newPreview =
+      operation.newString === ""
+        ? "（删除）"
+        : compactMarkdown(operation.newString, 80);
+    return {
+      icon: FileText,
+      label: "局部替换",
+      title: pageTitle,
+      detail: operation.replaceAll
+        ? `${oldPreview} → ${newPreview}\n（全部匹配）`
+        : `${oldPreview} → ${newPreview}`,
       danger: false,
     };
   }

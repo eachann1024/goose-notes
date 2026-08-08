@@ -15,8 +15,8 @@ import {
   repairExecuteBatchPlanInput,
 } from "../../src/lib/notebook-ai/batch-plan/tool";
 import type { BatchPlanInput } from "../../src/lib/notebook-ai/batch-plan/types";
+import { mergeFullEditPreservingUnchangedBlocks } from "../../src/lib/notebook-ai/batch-plan/surgicalApply";
 import { buildAiPageContent } from "../../src/lib/notebook-ai/markdown";
-import { getPageTitle } from "../../src/components/editor/utils/page-title";
 import {
   prepareNotebookAiMessagesForModel,
   sanitizeNotebookAiMessages,
@@ -625,6 +625,118 @@ test("可在审批前选择子集，未选择操作不执行", async () => {
   expect(writeCalls).toBe(1);
 });
 
+test("search_replace 审批后局部替换，保留未改动块 id", async () => {
+  const pageContent = [
+    { id: "keep-a", type: "paragraph", content: "alpha" },
+    { id: "change-me", type: "paragraph", content: "beta" },
+    { id: "keep-c", type: "paragraph", content: "gamma" },
+  ];
+  const page = makePage("batch-sr-page", "unused", {
+    content: pageContent as JSONContent,
+    updatedAt: 5,
+  });
+  installState({ [page.id]: page });
+  const { toolCallId, runId } = ids("search-replace");
+
+  const prepared = await prepareBatchPlan({
+    toolCallId,
+    runId,
+    notebookId: "batch-notebook",
+    input: plan([
+      {
+        type: "search_replace",
+        operationId: "sr-1",
+        pageId: page.id,
+        oldString: "beta",
+        newString: "BETA",
+      },
+    ]),
+  });
+
+  expect(prepared.ok).toBe(true);
+  if (!prepared.ok) return;
+  expect(writeCalls).toBe(0);
+  expect(prepared.journal.status).toBe("prepared");
+  expect(textOf(page.id)).toContain("beta");
+
+  const result = await executePreparedBatchPlan(toolCallId, runId);
+  expect(result.ok, result.ok ? undefined : result.error).toBe(true);
+  expect(result.results).toEqual([
+    {
+      operationId: "sr-1",
+      type: "search_replace",
+      ok: true,
+      pageIds: [page.id],
+    },
+  ]);
+  expect(writeCalls).toBe(1);
+
+  const blocks = usePages.getState().pages[page.id].content as Array<{
+    id?: string;
+    content?: unknown;
+  }>;
+  expect(blocks[0]?.id).toBe("keep-a");
+  expect(blocks[2]?.id).toBe("keep-c");
+  expect(JSON.stringify(blocks)).toContain("BETA");
+  expect(JSON.stringify(blocks)).not.toMatch(/"beta"/);
+});
+
+test("同页多条 search_replace 按顺序应用并保留未改块 id", async () => {
+  const pageContent = [
+    { id: "p1", type: "paragraph", content: "alpha" },
+    { id: "p2", type: "paragraph", content: "beta" },
+    { id: "p3", type: "paragraph", content: "gamma" },
+  ];
+  const page = makePage("batch-sr-multi", "unused", {
+    content: pageContent as JSONContent,
+    updatedAt: 8,
+  });
+  installState({ [page.id]: page });
+  const { toolCallId, runId } = ids("search-replace-multi");
+
+  const prepared = await prepareBatchPlan({
+    toolCallId,
+    runId,
+    notebookId: "batch-notebook",
+    input: plan([
+      {
+        type: "search_replace",
+        operationId: "sr-a",
+        pageId: page.id,
+        oldString: "alpha",
+        newString: "ALPHA",
+      },
+      {
+        type: "search_replace",
+        operationId: "sr-b",
+        pageId: page.id,
+        oldString: "gamma",
+        newString: "GAMMA",
+      },
+    ]),
+  });
+
+  expect(prepared.ok, prepared.ok ? undefined : prepared.error).toBe(true);
+  if (!prepared.ok) return;
+
+  const result = await executePreparedBatchPlan(toolCallId, runId);
+  expect(result.ok, result.ok ? undefined : result.error).toBe(true);
+  expect(writeCalls).toBe(2);
+  expect(result.results.map((item) => item.operationId)).toEqual([
+    "sr-a",
+    "sr-b",
+  ]);
+
+  const blocks = usePages.getState().pages[page.id].content as Array<{
+    id?: string;
+  }>;
+  expect(blocks[1]?.id).toBe("p2");
+  const serialized = JSON.stringify(blocks);
+  expect(serialized).toContain("ALPHA");
+  expect(serialized).toContain("GAMMA");
+  expect(serialized).toContain("beta");
+});
+
 test("成功执行后可整批撤回，重复执行保持幂等", async () => {
   const pageA = makePage("batch-undo-a", "撤回前 A");
   const pageB = makePage("batch-undo-b", "撤回前 B");
@@ -891,15 +1003,18 @@ test("编辑已落地但结果日志中断时按计划后签名补记，不重�
   expect(prepared.ok).toBe(true);
   if (!prepared.ok) return;
 
+  // 与 executor.plannedContent（mergeFullEdit）对齐：中断恢复按内容签名认领。
+  const landedContent = mergeFullEditPreservingUnchangedBlocks(
+    prepared.journal.before[page.id].page.content,
+    "已经落地的计划正文",
+    { ensureFirstTitle: true },
+  ).content;
   usePages.setState((state) => ({
     pages: {
       ...state.pages,
       [page.id]: {
         ...state.pages[page.id],
-        content: buildAiPageContent(
-          getPageTitle(prepared.journal.before[page.id].page),
-          "已经落地的计划正文",
-        ),
+        content: landedContent,
         updatedAt: state.pages[page.id].updatedAt + 1,
       },
     },

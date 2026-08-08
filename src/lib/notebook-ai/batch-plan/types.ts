@@ -20,6 +20,17 @@ export type BatchPlanOperationInput =
       type: "delete";
       operationId: string;
       pageIds: string[];
+    }
+  | {
+      type: "search_replace";
+      operationId: string;
+      pageId: string;
+      /** 来自 readPage 的精确片段。 */
+      oldString: string;
+      /** 替换内容；空字符串表示删除该片段。 */
+      newString: string;
+      /** 是否替换全部匹配；默认 false。 */
+      replaceAll?: boolean;
     };
 
 export interface BatchPlanInput {

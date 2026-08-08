@@ -206,7 +206,7 @@ async function ensurePageCreated(
   sessions.set(toolCallId, session);
 
   // 绑定滚轮监听：向上滚→停止跟随，滚回底部→恢复跟随
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
     const container = document.querySelector(".page-scroll-container");
     if (container) {
       const onWheel = (e: Event) => {
