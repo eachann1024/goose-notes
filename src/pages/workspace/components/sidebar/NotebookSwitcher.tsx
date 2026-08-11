@@ -400,7 +400,8 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-0 max-w-[var(--radix-dropdown-menu-trigger-width)] w-[var(--radix-dropdown-menu-trigger-width)] px-1 pb-1 pt-1.5 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="w-[13.75rem] min-w-[13.75rem] max-w-[calc(100vw-1rem)] px-1 pb-1 pt-1.5 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          style={{ width: 220, minWidth: 220 }}
           align="start"
           alignOffset={0}
           sideOffset={4}
