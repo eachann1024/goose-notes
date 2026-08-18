@@ -143,7 +143,7 @@ export function CodeBlockToolbar({
       <div
         contentEditable={false}
         className={cn(
-          "goose-code-toolbar-actions inline-flex items-center",
+          "goose-editor-position-safe-trigger goose-code-toolbar-actions inline-flex items-center",
           hasVisualPreview && "goose-code-toolbar-actions-visual",
         )}
       >

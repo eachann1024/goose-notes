@@ -850,10 +850,11 @@ function CodeBlockComponent({
       onKeyDownCapture={handleCodeKeyDownCapture}
     >
       {/* Toolbar row */}
-      <div
-        className="goose-editor-inline-context-ui goose-code-toolbar-row"
-        contentEditable={false}
-      >
+      {/* 不要在定位行上挂 goose-editor-inline-context-ui（CSS zoom）。
+          uTools 旧内核会把 zoom 祖先的 getBoundingClientRect 再次放大，
+          语言菜单 Portal 会脱离触发器，右上角芯片也会随 absolute + zoom 偏移。
+          视觉缩放改由子级 goose-editor-position-safe-trigger（transform）承担。 */}
+      <div className="goose-code-toolbar-row" contentEditable={false}>
         <div className="goose-code-toolbar-left flex items-center gap-0.5 min-w-0 flex-1">
           {isMathOrMermaid ? (
             <div className="goose-code-visual-title">{visualTitle}</div>

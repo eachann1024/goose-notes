@@ -2087,6 +2087,7 @@
 }
 
 .goose-code-toolbar-actions {
+  --goose-popup-trigger-origin: top right;
   border: 0;
   border-radius: 8px;
   background: transparent;
