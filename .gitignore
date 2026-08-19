@@ -53,3 +53,6 @@ tasks/
 scripts/*
 # stray verification screenshots in repo root
 /*.png
+
+app/
+未命名/

@@ -3,7 +3,7 @@
   "description": "本地化的Notion风格笔记",
   "author": "Antigravity",
   "version": "0.0.1",
-  "logo": "logo.png",
+  "logo": "public/logo.png",
   "pluginSetting": {
     "single": true,
     "height": 600
@@ -654,6 +654,8 @@
       }
     }
   },
-  "main": "dist/index.html",
-  "preload": "preload/preload.cjs"
+  "main": "app/index.html",
+  "preload": "preload/preload.cjs",
+  "name": "goose-note",
+  "title": "鹅的笔记"
 }

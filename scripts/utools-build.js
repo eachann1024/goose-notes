@@ -49,6 +49,7 @@ try {
     const pluginConfig = JSON.parse(fs.readFileSync(pluginConfigPath, 'utf-8'));
     pluginConfig.main = 'index.html';
     pluginConfig.preload = 'preload.js';
+    pluginConfig.logo = 'logo.png';
     fs.writeFileSync(path.join(distDir, 'plugin.json'), JSON.stringify(pluginConfig, null, 2));
   } else {
     console.error('未找到 plugin.json');
@@ -125,3 +126,9 @@ try {
   console.error(e);
   process.exit(1);
 }
+
+// ZTools CLI ignores dist/; keep a copy in app/.
+const appDir = path.resolve('app');
+fs.rmSync(appDir, { recursive: true, force: true });
+fs.cpSync(distDir, appDir, { recursive: true });
+console.log('[utools-build] app/ synced for ZTools');
