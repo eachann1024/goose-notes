@@ -1426,7 +1426,160 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     fetchText: (url) => fetchPublicText(url),
   };
 
+
+  const MCP_TOOL_REQUEST_EVENT = "goose-note:mcp-tool-request";
+  const MCP_TOOL_RESPONSE_EVENT = "goose-note:mcp-tool-response";
+  const MCP_TOOL_READY_EVENT = "goose-note:mcp-tool-ready";
+  const MCP_TOOL_READY_TIMEOUT_MS = 15000;
+  const MCP_TOOL_EXEC_TIMEOUT_MS = 30000;
+  const MCP_WRITE_TOOL_NAMES = [
+    "create_note",
+    "append_note",
+    "update_note",
+    "rename_note",
+    "delete_note",
+    "restore_note",
+    "create_notebook",
+    "update_notebook",
+    "delete_notebook",
+  ];
+  const MCP_TOOL_CAPABILITIES = {
+    protocol: "utools-mcp-tools",
+    version: "1.0",
+    transport: "uTools plugin.json.tools + utools.registerTool",
+    tools: [
+      "list_notebooks",
+      "list_notes",
+      "search_notes",
+      "get_note",
+      "get_mcp_capabilities",
+      ...MCP_WRITE_TOOL_NAMES,
+    ],
+    writeSafety:
+      "写入工具直接修改本地笔记库；调用方应在执行前取得用户确认。删除进入回收站，不是永久删除。",
+  };
+
+  window.__gooseNoteMcpReady = false;
+  const pendingMcpRequests = new Map();
+  const buildMcpRequestId = () =>
+    `mcp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const normalizeToolParams = (params) => {
+    const sanitize = (value, depth = 0) => {
+      if (depth > 6 || value == null) return null;
+      if (typeof value === "string") return value.slice(0, 10000);
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return Number.isFinite(value) ? value : null;
+      if (Array.isArray(value)) return value.slice(0, 100).map((item) => sanitize(item, depth + 1));
+      if (typeof value !== "object") return null;
+
+      const safe = {};
+      for (const [key, item] of Object.entries(value).slice(0, 100)) {
+        if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+        safe[key] = sanitize(item, depth + 1);
+      }
+      return safe;
+    };
+
+    if (!params || typeof params !== "object" || Array.isArray(params)) return {};
+    return sanitize(params);
+  };
+
+  const waitForMcpBridgeReady = (timeoutMs = MCP_TOOL_READY_TIMEOUT_MS) =>
+    new Promise((resolve, reject) => {
+      if (window.__gooseNoteMcpReady) {
+        resolve();
+        return;
+      }
+
+      let settled = false;
+      const cleanup = () => {
+        window.removeEventListener(MCP_TOOL_READY_EVENT, handleReady);
+        clearTimeout(timer);
+      };
+      const handleReady = () => {
+        if (settled) return;
+        settled = true;
+        window.__gooseNoteMcpReady = true;
+        cleanup();
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error("笔记 MCP 桥接尚未就绪，请先打开插件页面完成初始化"));
+      }, timeoutMs);
+      window.addEventListener(MCP_TOOL_READY_EVENT, handleReady, { once: true });
+    });
+
+  const invokeRendererMcpTool = async (
+    toolName,
+    params,
+    timeoutMs = MCP_TOOL_EXEC_TIMEOUT_MS,
+  ) => {
+    await waitForMcpBridgeReady();
+    return new Promise((resolve, reject) => {
+      const requestId = buildMcpRequestId();
+      const timer = setTimeout(() => {
+        pendingMcpRequests.delete(requestId);
+        reject(new Error(`工具 ${toolName} 执行超时`));
+      }, timeoutMs);
+      pendingMcpRequests.set(requestId, { resolve, reject, timer });
+      window.dispatchEvent(
+        new CustomEvent(MCP_TOOL_REQUEST_EVENT, {
+          detail: {
+            requestId,
+            tool: toolName,
+            params: normalizeToolParams(params),
+          },
+        }),
+      );
+    });
+  };
+
+  window.addEventListener(MCP_TOOL_READY_EVENT, () => {
+    window.__gooseNoteMcpReady = true;
+  });
+
+  window.addEventListener(MCP_TOOL_RESPONSE_EVENT, (event) => {
+    const detail = event.detail || {};
+    const requestId = detail.requestId;
+    if (!requestId || !pendingMcpRequests.has(requestId)) return;
+    const pending = pendingMcpRequests.get(requestId);
+    pendingMcpRequests.delete(requestId);
+    clearTimeout(pending.timer);
+    if (detail.ok) {
+      pending.resolve(detail.result);
+      return;
+    }
+    pending.reject(new Error(detail.error || "工具执行失败"));
+  });
+
+  const registerMcpWriteTools = () => {
+    if (typeof utools?.registerTool !== "function") return;
+
+    utools.registerTool("get_mcp_capabilities", async () => MCP_TOOL_CAPABILITIES);
+
+    MCP_WRITE_TOOL_NAMES.forEach((toolName) => {
+      utools.registerTool(toolName, async (params, context) => {
+        const reportProgress = (progress, message) => {
+          try {
+            const reported = context?.sendProgress?.({ progress, total: 1, message });
+            if (reported && typeof reported.catch === "function") reported.catch(() => {});
+          } catch {}
+        };
+        reportProgress(0, `正在执行 ${toolName}`);
+        const result = await invokeRendererMcpTool(toolName, params);
+        reportProgress(1, `${toolName} 执行完成`);
+        return result;
+      });
+    });
+  };
+
   registerMcpTools();
+  registerMcpWriteTools();
+
 
   // 处理 uTools 全局搜索（sublist）点击
   // 注意：sublist API 可能不是所有 uTools 版本都支持

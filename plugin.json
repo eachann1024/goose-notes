@@ -45,7 +45,9 @@
       "code": "quicknote_save",
       "explain": "接收速记入库",
       "mainHide": true,
-      "cmds": ["速记入库"]
+      "cmds": [
+        "速记入库"
+      ]
     }
   ],
   "tools": {
@@ -461,6 +463,193 @@
           "contentText",
           "rawContentFormat",
           "rawContent"
+        ]
+      }
+    },
+    "get_mcp_capabilities": {
+      "description": "获取鹅的笔记 MCP 能力、版本与写入约束，用于客户端发现可用工具。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "create_note": {
+      "description": "在指定记事本新建一篇笔记。notebook_id 必填；title 与 markdown 至少提供一个。可选 parent_id 指定父笔记。免确认。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "notebook_id": {
+            "type": "string",
+            "description": "目标记事本 ID。"
+          },
+          "title": {
+            "type": "string",
+            "description": "笔记标题。与 markdown 至少提供一个。"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "笔记正文，标准 Markdown。与 title 至少提供一个。"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "可选，父笔记或文件夹 ID。"
+          }
+        },
+        "required": [
+          "notebook_id"
+        ]
+      }
+    },
+    "append_note": {
+      "description": "在指定笔记末尾追加 Markdown 正文，不改动已有内容和标题。免确认。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "description": "笔记 ID。"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "要追加的 Markdown 正文。"
+          }
+        },
+        "required": [
+          "note_id",
+          "markdown"
+        ]
+      }
+    },
+    "update_note": {
+      "description": "用 Markdown 改正文。不传 heading 时整篇替换正文并尽量保留标题/H1；传入 heading 时只改该标题下一段。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "description": "笔记 ID。"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "新的 Markdown 正文。"
+          },
+          "heading": {
+            "type": "string",
+            "description": "可选。只替换该标题下一段；省略则整篇替换正文。"
+          }
+        },
+        "required": [
+          "note_id",
+          "markdown"
+        ]
+      }
+    },
+    "rename_note": {
+      "description": "重命名笔记。内部笔记改 H1 标题；本地 Markdown 文件改文件名。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "description": "笔记 ID。"
+          },
+          "title": {
+            "type": "string",
+            "description": "新标题，不含 # 前缀。"
+          }
+        },
+        "required": [
+          "note_id",
+          "title"
+        ]
+      }
+    },
+    "delete_note": {
+      "description": "删除笔记：应用内笔记进入垃圾箱，本地文件进入系统回收站。不是永久删除。锁定页、回收站页、文件夹节点不可删。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "description": "要删除的笔记 ID。"
+          }
+        },
+        "required": [
+          "note_id"
+        ]
+      }
+    },
+    "restore_note": {
+      "description": "从应用内回收站恢复笔记。本地文件若已进系统回收站，需在系统回收站中还原。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "description": "要恢复的笔记 ID。"
+          }
+        },
+        "required": [
+          "note_id"
+        ]
+      }
+    },
+    "create_notebook": {
+      "description": "新建一本应用内记事本。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "记事本名称。"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "update_notebook": {
+      "description": "重命名记事本。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "notebook_id": {
+            "type": "string",
+            "description": "记事本 ID。"
+          },
+          "name": {
+            "type": "string",
+            "description": "新名称。"
+          }
+        },
+        "required": [
+          "notebook_id",
+          "name"
+        ]
+      }
+    },
+    "delete_notebook": {
+      "description": "删除记事本。至少保留 1 本。本地文件夹记事本只卸挂载，不删除磁盘上的文件。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "notebook_id": {
+            "type": "string",
+            "description": "要删除的记事本 ID。"
+          }
+        },
+        "required": [
+          "notebook_id"
         ]
       }
     }

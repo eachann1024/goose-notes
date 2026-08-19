@@ -1,5 +1,14 @@
 // B 插件（鹅的速记）preload：纯速记小窗 toggle 逻辑，无主窗联动。
 // CJS 运行在 uTools preload 上下文（Electron renderer），避免与 ESM 主项目冲突。
+//
+// 小窗双击图片需要走 openResourceExternally：把内存/库内图片落到临时文件后
+// utools.shellOpenPath 交给系统查看器。主插件 preload 有完整 gooseFs；B 插件
+// 子窗原先没有，会落到「当前环境不支持调用系统应用 → 内置预览 + toast」。
+// 这里只补齐打开资源所需的最小 gooseFs 面，不搬主插件本地文件夹全套能力。
+
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 const QUICKNOTE_WIDTH = 480;
 const QUICKNOTE_MIN_WIDTH = 320;
@@ -143,8 +152,148 @@ const resolveQuickNoteBounds = (prefs, screenApi) => {
   };
 };
 
+/**
+ * 把相对路径限制在 os.tmpdir() 下，防止 `../` 逃逸。
+ * 与主插件 preload 的 resolveTempTargetPath 行为一致。
+ */
+const resolveTempTargetPath = (relativePath) => {
+  if (typeof relativePath !== "string" || !relativePath.trim()) {
+    throw new Error("relativePath is required");
+  }
+
+  const tmpRoot = os.tmpdir();
+  const normalized = path
+    .normalize(relativePath)
+    .replace(/^(\.\.(\/|\\|$))+/, "")
+    .replace(/^[/\\]+/, "");
+  const targetPath = path.join(tmpRoot, normalized);
+
+  if (!targetPath.startsWith(tmpRoot)) {
+    throw new Error("invalid temp path");
+  }
+
+  return targetPath;
+};
+
+const getBase64ByteLength = (contentBase64) => {
+  const sanitized = String(contentBase64 || "").replace(/\s+/g, "");
+  if (!sanitized) return 0;
+  const padding = sanitized.endsWith("==")
+    ? 2
+    : sanitized.endsWith("=")
+      ? 1
+      : 0;
+  return Math.floor((sanitized.length * 3) / 4) - padding;
+};
+
+const removeExpiredEntries = async (targetPath, cutoff) => {
+  let stat;
+  try {
+    stat = await fs.promises.stat(targetPath);
+  } catch {
+    return;
+  }
+
+  if (stat.isDirectory()) {
+    let children = [];
+    try {
+      children = await fs.promises.readdir(targetPath);
+    } catch {
+      return;
+    }
+
+    await Promise.all(
+      children.map((child) =>
+        removeExpiredEntries(path.join(targetPath, child), cutoff),
+      ),
+    );
+
+    try {
+      const remaining = await fs.promises.readdir(targetPath);
+      if (remaining.length === 0) {
+        await fs.promises.rmdir(targetPath);
+      }
+    } catch {
+      /* noop */
+    }
+    return;
+  }
+
+  if (stat.mtimeMs >= cutoff) return;
+
+  try {
+    await fs.promises.unlink(targetPath);
+  } catch (err) {
+    console.error("[gooseFs/quicknote] cleanup temp file failed:", err);
+  }
+};
+
+const writeTempFile = async (relativePath, contentBase64) => {
+  try {
+    const targetPath = resolveTempTargetPath(relativePath);
+    const targetDir = path.dirname(targetPath);
+    await fs.promises.mkdir(targetDir, { recursive: true });
+
+    const expectedSize = getBase64ByteLength(contentBase64);
+    try {
+      const existingStat = await fs.promises.stat(targetPath);
+      if (existingStat.isFile() && existingStat.size === expectedSize) {
+        const now = new Date();
+        await fs.promises.utimes(targetPath, now, now);
+        return targetPath;
+      }
+    } catch {
+      /* 不存在或不可 stat：继续写入 */
+    }
+
+    await fs.promises.writeFile(targetPath, contentBase64, "base64");
+    return targetPath;
+  } catch (err) {
+    console.error("[gooseFs/quicknote] writeTempFile failed:", err);
+    return null;
+  }
+};
+
+const cleanupTempFiles = async (prefix, maxAgeMs) => {
+  try {
+    const basePath = resolveTempTargetPath(prefix);
+    const cutoff = Date.now() - Number(maxAgeMs || 0);
+    if (!Number.isFinite(cutoff)) return;
+    await removeExpiredEntries(basePath, cutoff);
+  } catch (err) {
+    console.error("[gooseFs/quicknote] cleanupTempFiles failed:", err);
+  }
+};
+
+/**
+ * 小窗打开图片 / 附件所需的最小 gooseFs。
+ * isAvailable 仅需对象存在；openResourceExternally 还会调用 writeTempFile /
+ * cleanupTempFiles / existsAsync。
+ */
+const createQuicknoteGooseFs = () => ({
+  exists: (targetPath) => {
+    try {
+      return fs.existsSync(targetPath);
+    } catch {
+      return false;
+    }
+  },
+  existsAsync: async (targetPath) => {
+    try {
+      await fs.promises.access(targetPath);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  writeTempFile,
+  cleanupTempFiles,
+});
+
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
+  // 子窗与宿主都注入：子窗双击图片依赖；宿主注入无害且便于单测/调试。
+  window.gooseFs = createQuicknoteGooseFs();
 
   // ── 速记小窗（独立 browser 窗口）──────────────────────────────
   let quickNoteWin = null;
@@ -641,5 +790,10 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     fitQuickNoteBoundsToWorkArea,
     resolveQuickNoteBounds,
+    resolveTempTargetPath,
+    getBase64ByteLength,
+    writeTempFile,
+    cleanupTempFiles,
+    createQuicknoteGooseFs,
   };
 }

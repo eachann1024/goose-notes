@@ -2,9 +2,16 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const {
   fitQuickNoteBoundsToWorkArea,
   resolveQuickNoteBounds,
+  resolveTempTargetPath,
+  getBase64ByteLength,
+  writeTempFile,
+  createQuicknoteGooseFs,
 } = require("./preload-quicknote.cjs");
 
 const primaryWorkArea = { x: 0, y: 24, width: 1440, height: 876 };
@@ -173,6 +180,10 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
 
     delete require.cache[modulePath];
     require(modulePath);
+    // 小窗双击图片依赖 gooseFs.writeTempFile；preload 必须注入最小面。
+    assert.equal(typeof global.window.gooseFs?.writeTempFile, "function");
+    assert.equal(typeof global.window.gooseFs?.cleanupTempFiles, "function");
+    assert.equal(typeof global.window.gooseFs?.existsAsync, "function");
     global.window.exports.quicknote_new.args.enter();
 
     assert.equal(createOptions.x, 960);
@@ -222,5 +233,42 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
     if (originalUTools === undefined) delete global.utools;
     else global.utools = originalUTools;
     global.setTimeout = originalSetTimeout;
+  }
+});
+
+test("临时路径限制在 os.tmpdir 下，拒绝目录逃逸", () => {
+  const tmpRoot = os.tmpdir();
+  const resolved = resolveTempTargetPath("goose-note/opened-resources/a.png");
+  assert.equal(resolved, path.join(tmpRoot, "goose-note/opened-resources/a.png"));
+  assert.ok(resolved.startsWith(tmpRoot));
+
+  const escaped = resolveTempTargetPath("../outside/a.png");
+  assert.equal(escaped, path.join(tmpRoot, "outside/a.png"));
+  assert.ok(escaped.startsWith(tmpRoot));
+});
+
+test("getBase64ByteLength 计算正确", () => {
+  // "hi" base64 = aGk=
+  assert.equal(getBase64ByteLength("aGk="), 2);
+  assert.equal(getBase64ByteLength(""), 0);
+});
+
+test("writeTempFile 写入后可被 existsAsync 识别", async () => {
+  const gooseFs = createQuicknoteGooseFs();
+  const relativePath = `goose-note/opened-resources/test-${Date.now()}/image.png`;
+  // 1x1 PNG
+  const pngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  const targetPath = await writeTempFile(relativePath, pngBase64);
+  assert.ok(targetPath);
+  assert.equal(await gooseFs.existsAsync(targetPath), true);
+  assert.equal(gooseFs.exists(targetPath), true);
+
+  try {
+    fs.unlinkSync(targetPath);
+    fs.rmdirSync(path.dirname(targetPath));
+  } catch {
+    /* noop */
   }
 });

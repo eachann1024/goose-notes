@@ -7,6 +7,7 @@ import { useSettings } from "@/stores/useSettings";
 import { useAppHotkeys } from "./hooks/useAppHotkeys";
 import { usePluginEvents } from "./hooks/usePluginEvents";
 import { useNativeContextMenuGuard } from "./hooks/useNativeContextMenuGuard";
+import { useUToolsMcpBridge } from "./hooks/useUToolsMcpBridge";
 import {
   applyAppearanceScaleVariables,
   releaseStartupSettlingAfterPaint,
@@ -30,6 +31,9 @@ function App() {
 
   // 订阅插件/本地关联事件
   const { restoreLastNoteIfNeeded, clearActivePageForBlankEntry } = usePluginEvents();
+
+  // uTools 原生 MCP 写入桥：preload registerTool -> 渲染层 live store
+  useUToolsMcpBridge();
 
   // 首帧稳定后解除启动过渡禁用（bootstrap 在渲染前已打上标记；
   // 若未标记则该调用是无副作用的清理）。
