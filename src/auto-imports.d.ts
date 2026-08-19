@@ -88,11 +88,8 @@ declare global {
   const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
   const Fragment: typeof import('react').Fragment
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
-  const GOOSE_BEAM_PRESETS: typeof import('./components/ui/ai-motion').GOOSE_BEAM_PRESETS
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
-  const GooseAiBorderBeam: typeof import('./components/ui/ai-motion').GooseAiBorderBeam
-  const GooseThinkingOrb: typeof import('./components/ui/ai-motion').GooseThinkingOrb
   const IconButton: typeof import('./components/ui/icon-button').IconButton
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
   const Input: typeof import('./components/ui/input').Input
@@ -151,6 +148,7 @@ declare global {
   const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
   const TIPS: typeof import('./lib/tips').TIPS
   const TITLE_HEADING_LEVEL: typeof import('./components/editor/utils/blocknote-content/index').TITLE_HEADING_LEVEL
+  const TOOLTIP_DELAY_MS: typeof import('./components/ui/tooltip-delay').TOOLTIP_DELAY_MS
   const Table: typeof import('./components/ui/table').Table
   const TableBody: typeof import('./components/ui/table').TableBody
   const TableCaption: typeof import('./components/ui/table').TableCaption
@@ -330,7 +328,6 @@ declare global {
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
   const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
-  const inferOrbPhaseFromLabel: typeof import('./components/ui/ai-motion').inferOrbPhaseFromLabel
   const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
@@ -443,7 +440,6 @@ declare global {
   const resolveBlockTypeTransformIntent: typeof import('./lib/ai-write/index').resolveBlockTypeTransformIntent
   const resolveExplicitBlockTypeTarget: typeof import('./lib/ai-write/index').resolveExplicitBlockTypeTarget
   const resolveGeneratedBlockStructureExpectation: typeof import('./lib/ai-write/index').resolveGeneratedBlockStructureExpectation
-  const resolveGooseOrbState: typeof import('./components/ui/ai-motion').resolveGooseOrbState
   const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
@@ -451,6 +447,7 @@ declare global {
   const resolvePhysicalResourcePath: typeof import('./components/editor/utils/openResourceExternally').resolvePhysicalResourcePath
   const resolveProtocolForProvider: typeof import('./lib/ai-provider/index').resolveProtocolForProvider
   const resolveTheme: typeof import('./hooks/useResolvedTheme').resolveTheme
+  const resolveTooltipDelayDuration: typeof import('./components/ui/tooltip-delay').resolveTooltipDelayDuration
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const restoreLastNoteIfNeeded: typeof import('./lib/workspaceStartup').restoreLastNoteIfNeeded
   const restorePageWithToast: typeof import('./lib/page-delete-actions').restorePageWithToast
@@ -549,6 +546,7 @@ declare global {
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
+  const useUToolsMcpBridge: typeof import('./hooks/useUToolsMcpBridge').useUToolsMcpBridge
   const validateGeneratedBlockStructure: typeof import('./lib/ai-write/index').validateGeneratedBlockStructure
   const videoStorage: typeof import('./lib/videoStorage').videoStorage
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
@@ -636,9 +634,6 @@ declare global {
   // @ts-ignore
   export type { LastNoteRestoreResult } from './lib/workspaceStartup'
   import('./lib/workspaceStartup')
-  // @ts-ignore
-  export type { GooseAiOrbPhase, GooseThinkingOrbProps, GooseBeamPreset, GooseAiBorderBeamProps } from './components/ui/ai-motion'
-  import('./components/ui/ai-motion')
   // @ts-ignore
   export type { BadgeProps } from './components/ui/badge'
   import('./components/ui/badge')

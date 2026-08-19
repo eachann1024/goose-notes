@@ -17,6 +17,34 @@ function toText(error: unknown): string {
   return "";
 }
 
+/** 同一原因被分号叠多遍时只保留一条；多种原因按条列出。 */
+export function collapseRepeatedErrorSegments(message: string): string {
+  const text = message.trim();
+  if (!text) return "";
+  const parts = text
+    .split("；")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return text;
+  const unique: string[] = [];
+  for (const part of parts) {
+    if (!unique.includes(part)) unique.push(part);
+  }
+  if (unique.length === parts.length) return text;
+  if (unique.length === 1) return unique[0];
+  return unique.map((part, index) => `${index + 1}. ${part}`).join("\n");
+}
+
+export function formatBatchPlanErrors(errors: string[]): string {
+  const unique: string[] = [];
+  for (const error of errors) {
+    const text = collapseRepeatedErrorSegments(error);
+    if (text && !unique.includes(text)) unique.push(text);
+  }
+  if (unique.length <= 1) return unique[0] ?? "";
+  return unique.map((text, index) => `${index + 1}. ${text}`).join("\n");
+}
+
 export function isNotebookAiBatchPlanSchemaError(error: unknown): boolean {
   const message = toText(error).toLowerCase();
   if (!message) return false;
@@ -69,9 +97,14 @@ export function formatNotebookAiError(
     phase?: "prepare" | "execute" | "undo" | "chat";
   } = {},
 ): string {
-  const message = toText(error);
+  const message = collapseRepeatedErrorSegments(toText(error));
   const phase = options.phase ?? "chat";
-  if (phase === "execute") return BATCH_PLAN_EXECUTION_ERROR;
+  if (phase === "execute") {
+    if (message.includes("页面内容已发生变化")) {
+      return "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消";
+    }
+    return BATCH_PLAN_EXECUTION_ERROR;
+  }
   if (phase === "undo") return UNDO_ERROR;
   if (phase === "prepare") {
     if (isNotebookAiBatchPlanSchemaError(message))

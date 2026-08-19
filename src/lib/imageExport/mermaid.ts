@@ -56,12 +56,15 @@ svg { overflow: visible; }
 foreignObject { overflow: visible; }
 .label, .nodeLabel, .edgeLabel, .edgeLabel p, .label p {
   font-family: ${MERMAID_EXPORT_FONT};
-  line-height: 1.28;
+  line-height: 1.35;
 }
 .label p, .nodeLabel p, .edgeLabel p {
   margin: 0;
-  white-space: nowrap;
-  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: center;
+  max-width: 280px;
 }
 </style>`;
 
@@ -86,8 +89,10 @@ export async function renderMermaidSvgForExport(
       fontFamily: MERMAID_EXPORT_FONT,
     },
     flowchart: {
+      // 导出/预览都按内容固有尺寸，避免 useMaxWidth 把大图压扁后栅格发糊
       useMaxWidth: false,
-      padding: 24,
+      htmlLabels: true,
+      padding: 16,
     },
     suppressErrorRendering: true,
   });

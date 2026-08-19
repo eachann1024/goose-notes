@@ -13,8 +13,9 @@ import {
 import { ImagePlus, Send, Square } from "lucide-react";
 import { ComposerPrimitive } from "@assistant-ui/react";
 import { toast } from "@/components/ui/sonner";
-import { GooseAiBorderBeam } from "@/components/ui/ai-motion";
 import { cn } from "@/lib/utils";
+import { LoadingState } from "./beautiful-ui/LoadingState";
+import { PromptBar } from "./beautiful-ui/PromptBar";
 import {
   AiComposerInput,
   type AiComposerInputHandle,
@@ -272,15 +273,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             isFullscreen ? "max-w-[720px]" : "max-w-none",
           )}
         >
-          {/* dock：输入 + 工具行 一体；流式时包一层克制 ocean 边界光束 */}
-          <GooseAiBorderBeam
-            preset="streaming"
-            active={isStreaming}
-            borderRadius={16}
-          >
+          <PromptBar streaming={isStreaming}>
             <div
               className={cn(
-                "flex flex-col rounded-[16px] bg-[var(--goose-interactive-hover)] px-3 py-2.5",
+                "bui-root flex flex-col rounded-[16px] bg-[var(--goose-interactive-hover)] px-3 py-2.5",
                 "shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)]",
                 "transition-colors duration-150",
                 dropActive &&
@@ -336,17 +332,25 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 </button>
 
                 {isStreaming ? (
-                  <ComposerPrimitive.Cancel
-                    className={cn(
-                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
-                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
-                      "transition-colors duration-150",
-                    )}
-                    aria-label="停止生成"
-                    title="停止生成"
-                  >
-                    <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  </ComposerPrimitive.Cancel>
+                  <>
+                    <LoadingState
+                      variant="Dots"
+                      compact
+                      label=""
+                      showElapsed={false}
+                    />
+                    <ComposerPrimitive.Cancel
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
+                        "transition-colors duration-150",
+                      )}
+                      aria-label="停止生成"
+                      title="停止生成"
+                    >
+                      <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    </ComposerPrimitive.Cancel>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -367,7 +371,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 )}
               </div>
             </div>
-          </GooseAiBorderBeam>
+          </PromptBar>
         </div>
       </ComposerPrimitive.Root>
     );

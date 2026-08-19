@@ -7,6 +7,7 @@
 import {
   useEffect,
   useRef,
+  useState,
   useCallback,
   useMemo,
   type KeyboardEvent,
@@ -28,9 +29,14 @@ import { usePages } from "@/stores/usePages";
 import {
   useNotebookAiChats,
 } from "@/stores/useNotebookAiChats";
+import { ChatChrome } from "./beautiful-ui/ChatChrome";
 import { ChatMessages } from "./ChatMessages";
 import { Composer, type ComposerHandle } from "./Composer";
-import { usePanelWidth } from "./usePanelWidth";
+import {
+  usePanelWidth,
+  PANEL_WIDTH_MIN,
+  PANEL_WIDTH_MAX,
+} from "./usePanelWidth";
 import { ConversationHistoryList } from "./ConversationHistoryPopover";
 import type {
   NotebookAiLayoutMode,
@@ -49,6 +55,11 @@ import type { NotebookAiImageAttachment } from "./Composer";
 import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { cn } from "@/lib/utils";
 import { shouldSeedCurrentPageReference } from "./defaultComposerReference";
+import {
+  clearAiPanelSurface,
+  dismissAiFloatingLayers,
+  setAiPanelSurface,
+} from "./aiPanelSurface";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,7 +101,46 @@ export function NotebookAiPanel({
   const layoutIsFullscreen = isFullscreenAiLayout(layoutMode);
 
   const { width, onDragHandleMouseDown } = usePanelWidth();
+  const panelRootRef = useRef<HTMLDivElement | null>(null);
+  // 展示宽度：随父级 flex 行可用空间收缩，避免 minWidth=stored 把面板裁出视口
+  const [effectiveWidth, setEffectiveWidth] = useState(width);
   const composerRef = useRef<ComposerHandle | null>(null);
+
+  // 面板挂载=AI 任务面；卸载/切走时清 body 标记并收起残留浮层
+  useEffect(() => {
+    setAiPanelSurface({ active: true, fullscreen: isFullscreen });
+    return () => {
+      const root = panelRootRef.current;
+      clearAiPanelSurface();
+      dismissAiFloatingLayers(root);
+    };
+  }, [isFullscreen]);
+
+  // 侧栏：观察父级（.workspace-editor-surface）宽度，计算不挤爆编辑区的 effectiveWidth
+  useEffect(() => {
+    if (isFullscreen) return;
+    const root = panelRootRef.current;
+    const parent = root?.parentElement;
+    if (!parent) return;
+
+    const EDITOR_MIN = 200;
+    const GAP = 8;
+
+    const recompute = () => {
+      const parentW = parent.clientWidth;
+      const room = parentW - EDITOR_MIN - GAP;
+      // room 足够时：不超过 stored / MAX，且留给编辑区至少 EDITOR_MIN
+      // 极窄时（如 uTools 窄窗口）：适应可用 room 宽度（至少 200px），避免挤爆或超出父级视口
+      const availableRoom = Math.max(200, room > 0 ? room : parentW);
+      const next = Math.min(width, Math.min(PANEL_WIDTH_MAX, availableRoom));
+      setEffectiveWidth(next);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, [isFullscreen, width]);
   // 页面数据可能晚于面板挂载完成；订阅活动页和页面表，确保空会话仍能补上当前笔记。
   const activePageId = usePages((state) => state.activePageId);
   const pages = usePages((state) => state.pages);
@@ -312,14 +362,21 @@ export function NotebookAiPanel({
   }, [isFullscreen, headerToolbar]);
 
   return (
-    <div
+    <ChatChrome
+      ref={panelRootRef}
       onKeyDown={handlePanelKeyDown}
       className={cn(
-        "relative flex h-full min-w-0 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]",
-        // 侧栏：独立卡片；全屏：铺满主区域，与编辑器表面一体
-        isFullscreen ? "w-full flex-1 rounded-none" : "rounded-[12px]",
+        "relative flex h-full flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]",
+        // 侧栏：shrink-0 保持并排卡片；宽度用 effectiveWidth（可随父级变窄），勿写死 minWidth:stored
+        isFullscreen
+          ? "min-w-0 w-full flex-1 rounded-none"
+          : "z-[50] shrink-0 rounded-[12px]",
       )}
-      style={isFullscreen ? undefined : { width }}
+      style={
+        isFullscreen
+          ? undefined
+          : { width: effectiveWidth, maxWidth: "100%" }
+      }
     >
       {!isFullscreen ? (
         <div
@@ -403,6 +460,6 @@ export function NotebookAiPanel({
         onEscape={onClose}
         layout={isFullscreen ? "fullscreen" : "side-panel"}
       />
-    </div>
+    </ChatChrome>
   );
 }

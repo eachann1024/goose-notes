@@ -10,7 +10,8 @@ export function AssistantUiThreadViewport({
   children,
 }: AssistantUiThreadViewportProps) {
   return (
-    <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
+    // min-h-0/min-w-0：flex 子项可在交叉轴收缩，宽表格在消息内滚而不是撑破整列
+    <ThreadPrimitive.Root className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
       <ThreadPrimitive.Viewport
         autoScroll
         turnAnchor="bottom"

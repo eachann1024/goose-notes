@@ -91,6 +91,7 @@ import { gooseDividerInputRuleExtension } from "@/components/editor/inputrules/d
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseInlineCodeBoundaryNavigationExtension } from "@/components/editor/extensions/inlineCodeBoundaryNavigationExtension";
+import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
@@ -280,6 +281,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
         gooseInlineCodeBoundaryNavigationExtension,
+        gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),

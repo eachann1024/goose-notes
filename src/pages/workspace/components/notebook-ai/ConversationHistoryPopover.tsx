@@ -1,5 +1,7 @@
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent,
   type ReactNode,
@@ -13,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { TOOLTIP_DELAY_MS } from "@/components/ui/tooltip-delay";
 import {
   Popover,
   PopoverContent,
@@ -98,7 +101,7 @@ function formatConversationTime(timestamp: number) {
 
 /**
  * Dropdown / 溢出容器内 Radix Tooltip 常被 pointer 捕获拦掉。
- * 用 body portal + 固定定位，0 延迟悬停展示。
+ * 用 body portal + 固定定位，延迟与全局 Tooltip 一致。
  */
 function PortalHoverTip({
   content,
@@ -111,6 +114,16 @@ function PortalHoverTip({
   }) => ReactNode;
 }) {
   const [tip, setTip] = useState<{ top: number; left: number } | null>(null);
+  const showTimerRef = useRef<number>(0);
+
+  const clearShowTimer = () => {
+    if (showTimerRef.current) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = 0;
+    }
+  };
+
+  useEffect(() => () => clearShowTimer(), []);
 
   return (
     <>
@@ -122,9 +135,16 @@ function PortalHoverTip({
             Math.max(8, rect.left),
             window.innerWidth - maxWidth - 8,
           );
-          setTip({ top: rect.bottom + 6, left });
+          const nextTip = { top: rect.bottom + 6, left };
+          clearShowTimer();
+          showTimerRef.current = window.setTimeout(() => {
+            setTip(nextTip);
+          }, TOOLTIP_DELAY_MS);
         },
-        onMouseLeave: () => setTip(null),
+        onMouseLeave: () => {
+          clearShowTimer();
+          setTip(null);
+        },
       })}
       {tip && typeof document !== "undefined"
         ? createPortal(

@@ -110,15 +110,18 @@ export function snapshotBlocks(
   sourceBlockIds: string[],
 ): InlineBlockSnapshot {
   const blocks: unknown[] = [];
+  const foundIds: string[] = [];
   for (const id of sourceBlockIds) {
     const live =
       typeof editor.getBlock === "function" ? editor.getBlock(id) : null;
-    if (!live) {
-      throw new Error(`快照失败：找不到块 ${id}`);
-    }
+    if (!live) continue;
     blocks.push(cloneValue(live));
+    foundIds.push(id);
   }
-  return { blocks, sourceBlockIds: [...sourceBlockIds] };
+  if (blocks.length === 0) {
+    throw new Error("目标块已不在文档中，无法替换。请重新选中后再试。");
+  }
+  return { blocks, sourceBlockIds: foundIds };
 }
 
 /**
@@ -196,11 +199,19 @@ export function applyMarkdownToInlineTarget(
   newMarkdown: string,
   options: ApplyMarkdownToInlineTargetOptions,
 ): ApplyMarkdownToInlineTargetResult {
-  const sourceBlockIds = (options.sourceBlockIds ?? []).filter(
+  const requestedIds = (options.sourceBlockIds ?? []).filter(
     (id): id is string => typeof id === "string" && id.length > 0,
   );
+  const sourceBlockIds =
+    typeof editor.getBlock === "function"
+      ? requestedIds.filter((id) => Boolean(editor.getBlock?.(id)))
+      : requestedIds;
   if (sourceBlockIds.length === 0) {
-    throw new Error("缺少要替换的目标块。");
+    throw new Error(
+      requestedIds.length === 0
+        ? "缺少要替换的目标块。"
+        : "目标块已不在文档中，无法替换。请重新选中后再试。",
+    );
   }
 
   const normalized = normalizeAiMarkdown(

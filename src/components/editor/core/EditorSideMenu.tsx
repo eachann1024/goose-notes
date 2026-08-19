@@ -158,8 +158,7 @@ export function EditorSideMenu() {
         top,
         left: anchorLeft,
         opacity: 1,
-        // 缩放由 goose-editor-context-ui 统一处理；此处只保留定位平移，
-        // 避免与缩放契约叠加 transform。
+        // 缩放在内层用 --editor-scale 写真实尺寸，外壳只做定位平移。
         transform: "translate(-100%, -50%)",
         transformOrigin: "right center",
         pointerEvents: "auto",

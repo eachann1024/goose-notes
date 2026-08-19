@@ -87,7 +87,7 @@ test("代码块与普通正文混合选中时仍允许格式工具栏", () => {
   expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });
 
-test("选中行内代码时不触发格式工具栏", () => {
+test("选中行内代码时仍触发格式工具栏（可取消 code）", () => {
   const editor = createEditor([
     {
       id: "body",
@@ -109,10 +109,10 @@ test("选中行内代码时不触发格式工具栏", () => {
     tr.setSelection(TextSelection.create(tr.doc, codeRange.from, codeRange.to));
   });
 
-  expect(shouldRenderFormattingToolbar(editor)).toBe(false);
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });
 
-test("部分选中行内代码时不触发格式工具栏", () => {
+test("部分选中行内代码时仍触发格式工具栏（可取消 code）", () => {
   const editor = createEditor([
     {
       id: "body",
@@ -132,7 +132,7 @@ test("部分选中行内代码时不触发格式工具栏", () => {
     );
   });
 
-  expect(shouldRenderFormattingToolbar(editor)).toBe(false);
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });
 
 test("行内代码与普通文字混合选中时仍允许格式工具栏", () => {

@@ -66,6 +66,40 @@ test("apply multi-line bullet markdown 将单段替换为 3 个 bulletListItem",
   expect(editor.getBlock("para")).toBeUndefined();
 });
 
+test("apply 跳过已消失的源块，只替换仍在文档中的块", () => {
+  const editor = createEditor([
+    { id: "keep", type: "paragraph", content: "还在" },
+    { id: "alive", type: "paragraph", content: "待改" },
+  ]);
+
+  const result = applyMarkdownToInlineTarget(
+    editor as unknown as InlineMarkdownEditor,
+    "已改写",
+    { sourceBlockIds: ["missing-block", "alive"] },
+  );
+
+  expect(result.replacedCount).toBe(1);
+  expect(plainText(editor.getBlock("keep") as any)).toBe("还在");
+  expect(editor.getBlock("alive")).toBeUndefined();
+  expect(
+    editor.document.some((b) => plainText(b as any) === "已改写"),
+  ).toBe(true);
+});
+
+test("apply 源块全部消失时抛中文错误", () => {
+  const editor = createEditor([
+    { id: "keep", type: "paragraph", content: "还在" },
+  ]);
+
+  expect(() =>
+    applyMarkdownToInlineTarget(
+      editor as unknown as InlineMarkdownEditor,
+      "新内容",
+      { sourceBlockIds: ["gone"] },
+    ),
+  ).toThrow(/目标块已不在文档中/);
+});
+
 test("apply 空 markdown / 无法解析时抛错", () => {
   const editor = createEditor([
     { id: "p1", type: "paragraph", content: "x" },

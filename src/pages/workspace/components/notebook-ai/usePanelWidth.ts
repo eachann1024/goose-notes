@@ -4,8 +4,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const STORAGE_KEY = "goose-note-ai-panel-width";
-const MIN_WIDTH = 320;
-const MAX_WIDTH = 560;
+/** 用户拖拽与持久化的合法区间（展示宽度可能因父级极窄而低于 MIN） */
+export const PANEL_WIDTH_MIN = 320;
+export const PANEL_WIDTH_MAX = 560;
+const MIN_WIDTH = PANEL_WIDTH_MIN;
+const MAX_WIDTH = PANEL_WIDTH_MAX;
 const DEFAULT_WIDTH = 360;
 
 function clamp(v: number) {

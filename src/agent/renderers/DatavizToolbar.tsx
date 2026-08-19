@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Copy, Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "@/components/ui/sonner";
+import { calculateContentAwarePixelRatio } from "@/lib/imageExport/svgToPng";
 import { shell } from "@/lib/utools/shell";
 import { dialogs } from "@/lib/utools/dialogs";
 import { fs } from "@/lib/utools/fs";
@@ -18,18 +19,22 @@ async function captureImage(
   el: HTMLDivElement,
   blockType: "echarts" | "html",
 ): Promise<string> {
+  const width = Math.max(1, el.clientWidth || el.offsetWidth || 1);
+  const height = Math.max(1, el.clientHeight || el.offsetHeight || 1);
+  const pixelRatio = calculateContentAwarePixelRatio(width, height);
+
   if (blockType === "echarts") {
     const echarts = await import("echarts");
     const instance = echarts.getInstanceByDom(el);
     if (instance) {
       return instance.getDataURL({
         type: "png",
-        pixelRatio: 2,
+        pixelRatio,
         backgroundColor: "transparent",
       });
     }
   }
-  return toPng(el, { pixelRatio: 2 });
+  return toPng(el, { pixelRatio, width, height });
 }
 
 export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(

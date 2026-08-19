@@ -1,9 +1,18 @@
 /**
- * showChart 工具的输出渲染卡片（echarts，懒初始化，跟随明暗主题）
+ * showChart 工具的输出渲染卡片
+ * 与编辑器 EChartsBlock 共用 chartTheme / chartPalette，保证视觉一致
  */
-import { useEffect, useRef, useId } from "react";
+import { useCallback, useEffect, useMemo, useRef, useId } from "react";
 import { useSettings } from "@/stores/useSettings";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import {
+  buildOption,
+  type SimplifiedConfig,
+  type ChartType,
+} from "@/agent/renderers/echarts/chartTheme";
+import { getPalette } from "@/agent/renderers/echarts/chartPalette";
+import { calculateContentAwarePixelRatio } from "@/lib/imageExport/svgToPng";
+import { ArtifactActions } from "./ArtifactActions";
 
 interface ChartSeries {
   name: string;
@@ -17,127 +26,128 @@ interface ChartCardProps {
   series: ChartSeries[];
 }
 
-function buildOption(
-  props: ChartCardProps,
-  dark: boolean,
-): Record<string, unknown> {
-  const textColor = dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)";
-  const axisLineColor = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const tooltipBg = dark ? "hsl(0 0% 22%)" : "hsl(0 0% 98%)";
-  const tooltipBorder = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const tooltipText = dark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)";
-
-  const base = {
-    backgroundColor: "transparent",
-    textStyle: { color: textColor, fontFamily: "inherit" },
-    tooltip: {
-      trigger: props.type === "pie" ? "item" : "axis",
-      backgroundColor: tooltipBg,
-      borderColor: tooltipBorder,
-      textStyle: { color: tooltipText, fontSize: 12 },
-    },
-    legend: {
-      show: props.series.length > 1 || props.type === "pie",
-      textStyle: { color: textColor, fontSize: 11 },
-      bottom: 0,
-    },
-  };
-
-  if (props.type === "pie") {
-    return {
-      ...base,
-      title: props.title
-        ? { text: props.title, textStyle: { color: textColor, fontSize: 13, fontWeight: 500 }, left: "center" }
-        : undefined,
-      series: [
-        {
-          type: "pie",
-          radius: ["35%", "65%"],
-          center: ["50%", "48%"],
-          data: props.series[0]?.data.map((v, i) => ({
-            value: v,
-            name: props.categories?.[i] ?? String(i),
-          })) ?? [],
-          label: { color: textColor, fontSize: 11 },
-          emphasis: { itemStyle: { shadowBlur: 8 } },
-        },
-      ],
-    };
-  }
-
-  return {
-    ...base,
-    title: props.title
-      ? { text: props.title, textStyle: { color: textColor, fontSize: 13, fontWeight: 500 } }
-      : undefined,
-    grid: { left: 40, right: 16, top: props.title ? 36 : 16, bottom: props.series.length > 1 ? 36 : 24 },
-    xAxis: {
-      type: "category",
-      data: props.categories ?? [],
-      axisLine: { lineStyle: { color: axisLineColor } },
-      axisTick: { show: false },
-      axisLabel: { color: textColor, fontSize: 11 },
-    },
-    yAxis: {
-      type: "value",
-      splitLine: { lineStyle: { color: axisLineColor } },
-      axisLabel: { color: textColor, fontSize: 11 },
-    },
-    series: props.series.map((s) => ({
-      name: s.name,
-      type: props.type,
-      data: s.data,
-      smooth: props.type === "line",
-      barMaxWidth: 32,
-    })),
-  };
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error("图表导出失败");
+  const blob = await response.blob();
+  if (!blob.size) throw new Error("图表导出为空");
+  return blob;
 }
 
 export function ChartCard(props: ChartCardProps) {
   const theme = useSettings((state) => state.theme);
   const resolvedTheme = useResolvedTheme(theme);
+  const isDark = resolvedTheme === "dark";
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<unknown>(null);
+  const chartRef = useRef<{
+    setOption: (o: unknown, opts?: { notMerge?: boolean }) => void;
+    resize: () => void;
+    dispose: () => void;
+    getWidth: () => number;
+    getHeight: () => number;
+    getDataURL: (opts?: {
+      type?: string;
+      pixelRatio?: number;
+      backgroundColor?: string;
+    }) => string;
+  } | null>(null);
   const uid = useId();
 
+  const option = useMemo(() => {
+    // 标题由卡片外层 DOM 展示，option 内不再重复画 title
+    const cfg: SimplifiedConfig = {
+      type: props.type as ChartType,
+      categories: props.categories,
+      series: props.series,
+    };
+    // AI 面板内固定 scale=1，避免跟编辑器字号耦合
+    return {
+      color: getPalette(isDark),
+      ...buildOption(cfg, isDark, 1),
+    };
+  }, [props.type, props.categories, props.series, isDark]);
+
+  // 初始化实例
   useEffect(() => {
-    let chart: { setOption: (o: unknown) => void; resize: () => void; dispose: () => void } | null = null;
+    let disposed = false;
+    let chart: typeof chartRef.current = null;
 
     const init = async () => {
       if (!containerRef.current) return;
       const echarts = await import("echarts");
-      chart = echarts.init(containerRef.current, undefined, { renderer: "svg" });
+      if (disposed || !containerRef.current) return;
+      chart = echarts.init(containerRef.current, undefined, {
+        renderer: "svg",
+      }) as typeof chartRef.current;
       chartRef.current = chart;
-      chart.setOption(buildOption(props, resolvedTheme === "dark"));
+      chart?.setOption(option, { notMerge: true });
     };
 
     void init();
 
     const handleResize = () => {
-      (chartRef.current as { resize?: () => void } | null)?.resize?.();
+      chartRef.current?.resize();
     };
-
     window.addEventListener("resize", handleResize);
+
+    // 容器尺寸变化（侧栏拖拽）也要 resize
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      ro = new ResizeObserver(handleResize);
+      ro.observe(containerRef.current);
+    }
+
     return () => {
+      disposed = true;
       window.removeEventListener("resize", handleResize);
+      ro?.disconnect();
       chart?.dispose();
       chartRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 主题变化时重绘
+  // 配置 / 主题变化时重绘
   useEffect(() => {
-    if (!chartRef.current) return;
-    const c = chartRef.current as { setOption: (o: unknown) => void };
-    c.setOption(buildOption(props, resolvedTheme === "dark"));
-  }, [props, resolvedTheme]);
+    chartRef.current?.setOption(option, { notMerge: true });
+  }, [option]);
+
+  const capturePngDataUrl = useCallback(async () => {
+    const chart = chartRef.current;
+    if (!chart) throw new Error("图表尚未就绪");
+    const width = Math.max(1, chart.getWidth?.() || containerRef.current?.clientWidth || 1);
+    const height = Math.max(
+      1,
+      chart.getHeight?.() || containerRef.current?.clientHeight || 1,
+    );
+    // 面板里图表显示宽度往往只有几百 px，固定 2× 会糊；按内容抬到 4K 冗余
+    const pixelRatio = calculateContentAwarePixelRatio(width, height);
+    return chart.getDataURL({
+      type: "png",
+      pixelRatio,
+      backgroundColor: "transparent",
+    });
+  }, []);
+
+  const capturePngBlob = useCallback(async () => {
+    return dataUrlToBlob(await capturePngDataUrl());
+  }, [capturePngDataUrl]);
 
   return (
-    <div className="my-2 overflow-hidden rounded-[8px] bg-[var(--goose-interactive-hover)]">
+    <div className="notebook-ai-chart-card group relative my-2 overflow-hidden">
+      <ArtifactActions
+        onCopyImage={capturePngDataUrl}
+        onDownloadImage={capturePngBlob}
+        downloadImageFilename="chart.png"
+      />
+      {props.title ? (
+        <div className="notebook-ai-chart-card-title">{props.title}</div>
+      ) : null}
       <div
         ref={containerRef}
-        style={{ width: "100%", height: 220 }}
+        className="notebook-ai-chart-card-canvas"
+        style={{ width: "100%", height: props.type === "pie" ? 260 : 240 }}
+        role="img"
         aria-label={props.title ?? "图表"}
       />
     </div>

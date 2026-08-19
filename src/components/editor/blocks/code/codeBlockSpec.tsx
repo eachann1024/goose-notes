@@ -19,7 +19,17 @@ import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import { useEditorPlatform } from "@/components/editor/platform/context";
 import { renderMermaidSvgForExport } from "@/lib/imageExport/mermaid";
+import {
+  captureElementAsPngBlob,
+  svgMarkupToPngBlob,
+} from "@/lib/imageExport/svgToPng";
+import {
+  blobToBase64,
+  convertImageBlobToPng,
+} from "@/lib/imageProcessor";
+import { toast } from "@/components/ui/sonner";
 import { indentCodeSelection } from "./codeBlockIndent";
 
 // 所有宿主均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
@@ -337,6 +347,26 @@ function downloadTextFile(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function isDarkTheme(theme: string | undefined): boolean {
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
 function codeTextToInlineFragment(schema: any, text: string) {
   if (!text) return Fragment.empty;
   const hardBreakType = schema.nodes.hardBreak;
@@ -595,6 +625,7 @@ function CodeBlockComponent({
   editor: any;
 }) {
   const { onDefaultCodeBlockWrapChange, theme } = useEditorSettings();
+  const platform = useEditorPlatform();
   const language = (block.props.language as string) || "text";
   const wrap = block.props.wrap === true;
   const collapsed = block.props.collapsed === true;
@@ -779,31 +810,128 @@ function CodeBlockComponent({
     [block.id, editor, isEditable],
   );
 
+  const resolvePreviewPngBlob = useCallback(async (): Promise<Blob> => {
+    const text = getCodeContent().trim();
+    if (!text || typeof document === "undefined") {
+      throw new Error("无可导出内容");
+    }
+
+    if (language === "mermaid") {
+      const svg = await renderMermaidSvgForExport(
+        text,
+        isDarkTheme(theme) ? "dark" : "light",
+      );
+      return svgMarkupToPngBlob(svg);
+    }
+
+    if (language === "math") {
+      if (previewRef.current) {
+        try {
+          const captured = await captureElementAsPngBlob(previewRef.current);
+          return convertImageBlobToPng(captured);
+        } catch {
+          // 预览节点截图失败时走离屏渲染
+        }
+      }
+
+      // 预览 DOM 未就绪时离屏渲染 KaTeX 再截图
+      const { default: katex } = await import("katex");
+      const html = katex.renderToString(text, {
+        displayMode: true,
+        throwOnError: false,
+        output: "html",
+      });
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = [
+        "position:fixed",
+        "left:-99999px",
+        "top:0",
+        "z-index:-1",
+        "padding:16px 24px",
+        `color:${isDarkTheme(theme) ? "#e5e7eb" : "#111827"}`,
+        "background:transparent",
+        "font-size:18px",
+        "line-height:1.4",
+        "display:inline-block",
+      ].join(";");
+      wrapper.innerHTML = html;
+      document.body.appendChild(wrapper);
+      try {
+        const blob = await captureElementAsPngBlob(wrapper);
+        return convertImageBlobToPng(blob);
+      } finally {
+        document.body.removeChild(wrapper);
+      }
+    }
+
+    throw new Error("当前类型不支持导出图片");
+  }, [getCodeContent, language, theme]);
+
   const handleDownloadPreview = useCallback(async () => {
     const text = getCodeContent().trim();
     if (!text || typeof document === "undefined") return;
 
-    if (language === "mermaid") {
-      try {
-        const isDark =
-          theme === "dark" ||
-          (theme === "system" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
-        const svg = await renderMermaidSvgForExport(
-          text,
-          isDark ? "dark" : "light",
-        );
-        downloadTextFile(svg, "mermaid.svg", "image/svg+xml;charset=utf-8");
-        return;
-      } catch {}
-    }
+    try {
+      if (language === "mermaid" || language === "math") {
+        const pngBlob = await resolvePreviewPngBlob();
+        const filename =
+          language === "math"
+            ? `formula-${Date.now()}.png`
+            : `mermaid-${Date.now()}.png`;
 
-    downloadTextFile(
-      text,
-      language === "math" ? "formula.tex" : "code.txt",
-      "text/plain;charset=utf-8",
-    );
-  }, [getCodeContent, language, theme]);
+        const targetPath = await platform.dialog.showSaveDialog({
+          title: "保存图片",
+          defaultPath: filename,
+          buttonLabel: "保存",
+          filters: [{ name: "PNG 图片", extensions: ["png"] }],
+        });
+
+        if (targetPath) {
+          const base64 = await blobToBase64(pngBlob);
+          const payload = base64.replace(/^data:.*;base64,/, "");
+          const saved = await platform.fs.writeFileAsync(
+            targetPath,
+            payload,
+            "base64",
+          );
+          if (saved) {
+            await platform.shell.showItemInFolder(targetPath);
+            toast.success("图片已保存");
+            return;
+          }
+          toast.error("保存失败");
+          return;
+        }
+
+        // 用户取消对话框时不提示；非 uTools 环境回退浏览器下载
+        if (targetPath === null) {
+          downloadBlob(pngBlob, filename);
+          toast.success("已开始下载");
+        }
+        return;
+      }
+
+      downloadTextFile(text, "code.txt", "text/plain;charset=utf-8");
+    } catch (err) {
+      toast.error(
+        `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+    }
+  }, [getCodeContent, language, platform, resolvePreviewPngBlob]);
+
+  const handleCopyPreview = useCallback(async () => {
+    try {
+      const pngBlob = await resolvePreviewPngBlob();
+      const dataUrl = await blobToBase64(pngBlob);
+      await platform.clipboard.copyImage(dataUrl);
+      toast.success("已复制到剪贴板");
+    } catch (err) {
+      toast.error(
+        `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+      throw err;
+    }
+  }, [platform, resolvePreviewPngBlob]);
 
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
@@ -851,7 +979,7 @@ function CodeBlockComponent({
     >
       {/* Toolbar row */}
       <div
-        className="goose-editor-inline-context-ui goose-code-toolbar-row"
+        className="goose-code-toolbar-row"
         contentEditable={false}
       >
         <div className="goose-code-toolbar-left flex items-center gap-0.5 min-w-0 flex-1">
@@ -939,6 +1067,7 @@ function CodeBlockComponent({
             if (canPreview) setIsPreviewLightboxOpen(true);
           }}
           onDownloadPreview={handleDownloadPreview}
+          onCopyPreview={handleCopyPreview}
           canPreview={canPreview}
         />
       </div>

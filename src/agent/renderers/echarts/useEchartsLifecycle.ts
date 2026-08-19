@@ -65,7 +65,8 @@ export function useEchartsLifecycle({
     if (!el) return;
 
     try {
-      chartRef.current = echarts.init(el, isDark ? "dark" : undefined, {
+      // 不使用 ECharts 内置 dark 主题，避免覆盖自定义色板/tooltip/轴线
+      chartRef.current = echarts.init(el, undefined, {
         renderer: "canvas",
       });
     } catch (e) {
@@ -93,7 +94,7 @@ export function useEchartsLifecycle({
     try {
       const instance =
         chartRef.current ??
-        echarts.init(el, isDark ? "dark" : undefined, {
+        echarts.init(el, undefined, {
           renderer: "canvas",
         });
       chartRef.current = instance;

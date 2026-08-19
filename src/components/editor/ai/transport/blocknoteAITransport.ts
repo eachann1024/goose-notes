@@ -107,10 +107,15 @@ export function buildGooseAIModel(
 const buildModel = buildGooseAIModel;
 
 /** html 格式系统提示：补充多列表项必须拆成多次操作，避免单 update 塞多个 li。 */
-const GOOSE_HTML_SYSTEM_PROMPT = [
-  aiDocumentFormats.html.systemPrompt,
-  "When creating N list items, emit N separate operations (update first item, then add remaining items). Never put multiple <li> in one update block.",
-].join("\n");
+const GOOSE_HTML_SYSTEM_PROMPT = (() => {
+  // 小窗构建把 xl-ai alias 成 stub；systemPrompt 可能是 Proxy 而非 string。
+  // 只在拿到真字符串时拼入，避免 Array.join 触发 primitive 转换崩溃。
+  const base = aiDocumentFormats?.html?.systemPrompt;
+  const baseText = typeof base === "string" ? base : "";
+  const extra =
+    "When creating N list items, emit N separate operations (update first item, then add remaining items). Never put multiple <li> in one update block.";
+  return baseText ? `${baseText}\n${extra}` : extra;
+})();
 
 export interface CreateGooseAITransportOptions {
   getSettings: () => AISettingsLike;

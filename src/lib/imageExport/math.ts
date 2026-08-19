@@ -23,7 +23,7 @@ function getCodeBlockText(block: any): string {
  * 离屏 DOM + html-to-image 截图更稳。
  */
 async function mathHtmlToPngDataUrl(html: string, theme: CardTheme): Promise<string> {
-  const { toPng } = await import("html-to-image");
+  const { captureElementAsPngBlob } = await import("./svgToPng");
 
   const wrapper = document.createElement("div");
   wrapper.style.cssText = [
@@ -44,10 +44,12 @@ async function mathHtmlToPngDataUrl(html: string, theme: CardTheme): Promise<str
   try {
     await document.fonts.ready;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    return await toPng(wrapper, {
-      pixelRatio: 2,
-      cacheBust: false,
-      skipFonts: true,
+    const blob = await captureElementAsPngBlob(wrapper);
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("公式图片编码失败"));
+      reader.readAsDataURL(blob);
     });
   } finally {
     document.body.removeChild(wrapper);

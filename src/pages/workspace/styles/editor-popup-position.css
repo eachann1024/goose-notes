@@ -5,5 +5,5 @@
   zoom: 1;
   transform: scale(var(--editor-scale, 1))
     rotate(var(--goose-popup-trigger-rotate, 0turn));
-  transform-origin: center;
+  transform-origin: var(--goose-popup-trigger-origin, center);
 }

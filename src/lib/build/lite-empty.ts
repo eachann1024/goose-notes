@@ -15,9 +15,19 @@ const noop = (): void => {};
 const passthroughAsync = async (input?: unknown): Promise<unknown> => input ?? "";
 
 // 默认导出：Proxy 兜底任意属性访问 / 调用，避免 undefined 触发硬崩溃。
+// 必须实现 toString / valueOf / @@toPrimitive：否则顶层
+// `[aiDocumentFormats.html.systemPrompt, "..."].join("\n")` 一类代码
+// 会在小窗启动时抛 "Cannot convert object to primitive value"。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const stub: any = new Proxy(noop, {
-  get: () => stub,
+  get: (_target, prop) => {
+    if (prop === Symbol.toPrimitive) return () => "";
+    if (prop === "toString" || prop === "valueOf") return () => "";
+    if (prop === Symbol.toStringTag) return "LiteStub";
+    // Promise 解包探测：避免被 await 时当 thenable 递归挂起。
+    if (prop === "then") return undefined;
+    return stub;
+  },
   apply: () => stub,
 });
 

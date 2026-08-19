@@ -36,6 +36,8 @@ interface CodeBlockToolbarProps {
   onPreviewModeChange?: (mode: "code" | "preview") => void;
   onOpenPreview?: () => void;
   onDownloadPreview?: () => void;
+  /** 复制渲染后的预览图（Mermaid / Math），未提供时退回复制源码 */
+  onCopyPreview?: () => void | Promise<void>;
   canPreview?: boolean;
 }
 
@@ -51,9 +53,11 @@ export function CodeBlockToolbar({
   onPreviewModeChange,
   onOpenPreview,
   onDownloadPreview,
+  onCopyPreview,
   canPreview = false,
 }: CodeBlockToolbarProps) {
   const [copied, setCopied] = useState(false);
+  const [copyingImage, setCopyingImage] = useState(false);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +68,7 @@ export function CodeBlockToolbar({
     ? LANGUAGE_DISPLAY_NAMES[language.toLowerCase()] || language
     : "Plain Text";
 
-  const handleCopy = async () => {
+  const handleCopyCode = async () => {
     const content = getCodeContent();
     await platform.clipboard.copyText(content);
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -72,6 +76,24 @@ export function CodeBlockToolbar({
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopy = async () => {
+    if (onCopyPreview) {
+      if (copyingImage) return;
+      setCopyingImage(true);
+      try {
+        await onCopyPreview();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // 失败 toast 由 onCopyPreview 负责
+      } finally {
+        setCopyingImage(false);
+      }
+      return;
+    }
+    await handleCopyCode();
   };
 
   const handleFormatClick = async () => {
@@ -143,7 +165,7 @@ export function CodeBlockToolbar({
       <div
         contentEditable={false}
         className={cn(
-          "goose-code-toolbar-actions inline-flex items-center",
+          "goose-editor-position-safe-trigger goose-code-toolbar-actions inline-flex items-center",
           hasVisualPreview && "goose-code-toolbar-actions-visual",
         )}
       >
@@ -237,7 +259,7 @@ export function CodeBlockToolbar({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    aria-label="下载预览"
+                    aria-label="下载图片"
                     onClick={onDownloadPreview}
                     disabled={!canPreview}
                     className={cn("h-7 w-7 p-0", chipClass)}
@@ -245,7 +267,7 @@ export function CodeBlockToolbar({
                     <LucideIcons.Download className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>下载预览</TooltipContent>
+                <TooltipContent>下载图片</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -254,11 +276,22 @@ export function CodeBlockToolbar({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={handleCopy}
+                    onClick={() => void handleCopy()}
+                    disabled={copyingImage || (Boolean(onCopyPreview) && !canPreview)}
                     className={cn("h-7 w-7 p-0", chipClass)}
-                    aria-label={copied ? "已复制" : "复制代码"}
+                    aria-label={
+                      copied
+                        ? "已复制"
+                        : onCopyPreview
+                          ? "复制图片"
+                          : "复制代码"
+                    }
                   >
-                    {copied ? (
+                    {copyingImage ? (
+                      <LucideIcons.Loader2
+                        className="h-3.5 w-3.5 animate-spin"
+                      />
+                    ) : copied ? (
                       <LucideIcons.Check
                         className={cn(
                           "h-3.5 w-3.5",
@@ -271,7 +304,11 @@ export function CodeBlockToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {copied ? "已复制" : "复制代码"}
+                  {copied
+                    ? "已复制"
+                    : onCopyPreview
+                      ? "复制图片"
+                      : "复制代码"}
                 </TooltipContent>
               </Tooltip>
 
@@ -371,7 +408,7 @@ export function CodeBlockToolbar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleCopy}
+                  onClick={() => void handleCopyCode()}
                   className={cn("h-6 w-6 p-0", chipClass)}
                 >
                   {copied ? (

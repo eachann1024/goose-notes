@@ -3,6 +3,7 @@
 @import "./sidebar-dnd.css";
 @import "./code-themes.css";
 @import "./notebook-ai.css";
+@import "./beautiful-ui.css";
 @import "./empty-state-ai.css";
 
 @keyframes slow-pulse {

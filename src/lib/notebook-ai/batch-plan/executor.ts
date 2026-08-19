@@ -18,6 +18,7 @@ import {
   guardPageForAiWrite,
   writePageContentSafely,
 } from "@/lib/notebook-ai/pageWriteGuard";
+import { formatBatchPlanErrors } from "@/lib/notebook-ai/errors";
 import { recordHistorySnapshot } from "@/lib/history/snapshot";
 import { reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
 import type { JSONContent } from "@/types";
@@ -1351,6 +1352,7 @@ async function restoreLocalDelete(
 
 async function compensate(journal: BatchPlanJournal): Promise<string[]> {
   const errors: string[] = [];
+  const restoredContentPages = new Set<string>();
   for (const result of [...journal.results].reverse()) {
     if (!result.ok) continue;
     if (result.type === "create") {
@@ -1388,9 +1390,11 @@ async function compensate(journal: BatchPlanJournal): Promise<string[]> {
       continue;
     }
     for (const pageId of result.pageIds) {
+      if (restoredContentPages.has(pageId)) continue;
       const snapshot = journal.before[pageId];
       const after = journal.after[pageId];
       if (snapshot && after) {
+        restoredContentPages.add(pageId);
         const restored = await writePageContentSafely(
           pageId,
           clone(snapshot.page.content),
@@ -1436,6 +1440,50 @@ async function compensate(journal: BatchPlanJournal): Promise<string[]> {
     }
   }
   return errors;
+}
+
+async function writeSearchReplaceFromLatest(
+  operation: Extract<
+    BatchPlanInput["operations"][number],
+    { type: "search_replace" }
+  >,
+  working: BatchPlanJournal,
+) {
+  const before = working.before[operation.pageId];
+  if (!before) throw new Error("冻结计划缺少目标页面快照");
+
+  const attempt = async () => {
+    const livePage = usePages.getState().pages[operation.pageId];
+    if (!livePage) throw new Error("目标页不存在");
+    const alreadyWrote = Boolean(working.after[operation.pageId]);
+    // 同页后续项必须基于当前正文和当前修订，不能再用批准瞬间的旧快照。
+    const baseContent = alreadyWrote ? livePage.content : before.page.content;
+    const expectedRevision = alreadyWrote
+      ? revisionOf(livePage)
+      : before.revision;
+    const applied = applySearchReplacePreservingBlocks(
+      baseContent,
+      operation.oldString,
+      operation.newString,
+      { replaceAll: operation.replaceAll === true },
+    );
+    if (!applied.ok) throw new Error(applied.error);
+    const saved = await writePageContentSafely(operation.pageId, applied.content, {
+      expectedNotebookId: working.notebookId,
+      expectedRevision,
+    });
+    return saved;
+  };
+
+  let saved = await attempt();
+  if (
+    !saved.ok &&
+    saved.code === "page-changed" &&
+    working.after[operation.pageId]
+  ) {
+    saved = await attempt();
+  }
+  if (!saved.ok) throw new Error(saved.error);
 }
 
 async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
@@ -1629,33 +1677,7 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
         };
       } else if (operation.type === "search_replace") {
         await rememberBefore(operation.pageId, working);
-        const before = working.before[operation.pageId];
-        if (!before) throw new Error("冻结计划缺少目标页面快照");
-        // 同页多个 search_replace 按顺序作用在当前内容上；首条仍用冻结 revision 校验。
-        const livePage = usePages.getState().pages[operation.pageId];
-        if (!livePage) throw new Error("目标页不存在");
-        const baseContent = working.after[operation.pageId]
-          ? livePage.content
-          : before.page.content;
-        const expectedRevision = working.after[operation.pageId]
-          ? revisionOf(livePage)
-          : before.revision;
-        const applied = applySearchReplacePreservingBlocks(
-          baseContent,
-          operation.oldString,
-          operation.newString,
-          { replaceAll: operation.replaceAll === true },
-        );
-        if (!applied.ok) throw new Error(applied.error);
-        const saved = await writePageContentSafely(
-          operation.pageId,
-          applied.content,
-          {
-            expectedNotebookId: working.notebookId,
-            expectedRevision,
-          },
-        );
-        if (!saved.ok) throw new Error(saved.error);
+        await writeSearchReplaceFromLatest(operation, working);
         const page = usePages.getState().pages[operation.pageId]!;
         working = {
           ...working,
@@ -1667,7 +1689,17 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
               }
             : working.localPathAfterByPageId,
         };
-        reloadEditorIfActive(operation.pageId);
+        const nextSamePage = pendingOperations(working).some(
+          (candidate) =>
+            candidate.operationId !== operation.operationId &&
+            candidate.type === "search_replace" &&
+            candidate.pageId === operation.pageId &&
+            !working.results.some(
+              (item) => item.operationId === candidate.operationId && item.ok,
+            ),
+        );
+        // 同页后续项还要写：先不刷新编辑器，避免中间修订把后面的项卡死。
+        if (!nextSamePage) reloadEditorIfActive(operation.pageId);
         result = {
           operationId: operation.operationId,
           type: operation.type,
@@ -1774,7 +1806,10 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
       if (compensationErrors.length > 0) {
         working = writeBatchPlanJournal({
           ...working,
-          error: `${result.error}；另有 ${compensationErrors.length} 项未能自动恢复`,
+          error: formatBatchPlanErrors([
+            result.error ?? "",
+            ...compensationErrors,
+          ]),
         });
       }
       return {
@@ -1893,7 +1928,7 @@ export async function undoBatchPlan(
     const conflicted = writeBatchPlanJournal({
       ...journal,
       status: "undo-conflicted",
-      error: compensationErrors.join("；"),
+      error: formatBatchPlanErrors(compensationErrors),
     });
     return {
       ok: false,

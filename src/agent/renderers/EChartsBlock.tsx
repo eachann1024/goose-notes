@@ -2,13 +2,14 @@ import React, { useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
 import { DatavizToolbar } from "./DatavizToolbar";
-import { PALETTE } from "./echarts/chartPalette";
+import { getPalette } from "./echarts/chartPalette";
 import {
   TM,
   clamp,
   parseConfig,
   isRawEChartsOption,
   buildOption,
+  polishRawOption,
   getPreferredChartHeight,
 } from "./echarts/chartTheme";
 import { useEchartsLifecycle } from "./echarts/useEchartsLifecycle";
@@ -45,16 +46,12 @@ export const EChartsBlock = React.memo(
       if (parsedConfig) {
         return {
           backgroundColor: "transparent",
-          color: PALETTE,
+          color: getPalette(isDark),
           ...buildOption(parsedConfig, isDark, editorScale),
         } satisfies echarts.EChartsOption;
       }
       if (useRaw) {
-        return {
-          backgroundColor: "transparent",
-          color: PALETTE,
-          ...(config as echarts.EChartsOption),
-        } satisfies echarts.EChartsOption;
+        return polishRawOption(config as echarts.EChartsOption, isDark);
       }
       return null;
     }, [config, editorScale, isDark, parsedConfig, useRaw]);

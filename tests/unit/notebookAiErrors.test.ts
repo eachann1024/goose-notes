@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
+  collapseRepeatedErrorSegments,
+  formatBatchPlanErrors,
   formatNotebookAiError,
   isNotebookAiBatchPlanSchemaError,
   NOTEBOOK_AI_BATCH_PLAN_BUSINESS_ERROR,
@@ -99,5 +101,38 @@ test.describe("notebook AI error mapping", () => {
 
   test("空错误使用可恢复文案", () => {
     expect(formatNotebookAiError(null)).toBe("本轮请求失败，请稍后重试。");
+  });
+
+  test("同一原因分号叠多遍只保留一条", () => {
+    const repeated =
+      "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消；".repeat(5);
+    expect(collapseRepeatedErrorSegments(repeated)).toBe(
+      "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+    );
+    expect(
+      formatBatchPlanErrors([
+        "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+        "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+        "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+      ]),
+    ).toBe("页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消");
+    expect(
+      formatNotebookAiError(repeated, { phase: "execute" }),
+    ).toBe("页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消");
+    expect(formatNotebookAiError(repeated, { phase: "execute" })).not.toContain(
+      "；",
+    );
+  });
+
+  test("多种失败原因去重后按条列出", () => {
+    expect(
+      formatBatchPlanErrors([
+        "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+        "页面写入失败，未保存本次修改",
+        "页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消",
+      ]),
+    ).toBe(
+      "1. 页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消\n2. 页面写入失败，未保存本次修改",
+    );
   });
 });

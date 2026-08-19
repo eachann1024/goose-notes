@@ -13,7 +13,8 @@ import {
 } from "@blocknote/xl-ai";
 import { Square } from "lucide-react";
 import { RiSparkling2Fill } from "react-icons/ri";
-import { GooseThinkingOrb } from "@/components/ui/ai-motion";
+import { LoadingState } from "@/pages/workspace/components/notebook-ai/beautiful-ui/LoadingState";
+import { SelectionActions } from "@/pages/workspace/components/notebook-ai/beautiful-ui/SelectionActions";
 import { toast } from "@/components/ui/sonner";
 import {
   applyBlockTypeTransformToEditor,
@@ -37,7 +38,18 @@ import {
 } from "@/components/editor/platform/hostContext";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import type { AISettingsLike } from "@/lib/ai-provider/types";
+import {
+  formatAiMenuError,
+  isMissingTargetBlockError,
+} from "./formatAiMenuError";
 import { GoosePromptSuggestionMenu } from "./GoosePromptSuggestionMenu";
+
+/** 这些默认项会走 xl-ai HTML update，块 id 一变就半替换失败。改走 markdown 整段替换。 */
+const MARKDOWN_REWRITE_ITEM_KEYS = new Set([
+  "improve_writing",
+  "fix_spelling",
+  "simplify",
+]);
 
 type AiMenuStatus =
   | "user-input"
@@ -60,43 +72,7 @@ function documentSignature(document: unknown): string {
 }
 
 function formatAiErrorMessage(error: unknown): string {
-  let message = "";
-  if (error instanceof Error && error.message) {
-    message = error.message;
-  } else if (typeof error === "string" && error.trim()) {
-    message = error;
-  } else if (error != null) {
-    const text = String(error);
-    if (text && text !== "[object Object]") {
-      message = text;
-    }
-  }
-  if (!message) return "";
-  // thinking 模型拒绝 tool_choice=required 时，给出可操作的中文提示
-  if (/tool_choice|Thinking mode/i.test(message)) {
-    return "当前模型的思考模式不支持强制工具调用，请换非思考模型或关闭思考后再试";
-  }
-  // 密钥 / 鉴权失败
-  if (
-    /\b401\b|\b403\b|unauthorized|forbidden|invalid.?api.?key|api.?key.*(invalid|missing|required)|incorrect.?api.?key|authentication/i.test(
-      message,
-    )
-  ) {
-    return "密钥无效或未配置";
-  }
-  // 网络 / Base URL 不可达
-  if (
-    /network|fetch failed|failed to fetch|load failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|timeout|网路|网络/i.test(
-      message,
-    )
-  ) {
-    return "网络请求失败，请检查网络或 Base URL";
-  }
-  // 用户主动停止
-  if (/abort|cancel|停止/i.test(message)) {
-    return "已停止";
-  }
-  return message;
+  return formatAiMenuError(error);
 }
 
 function truncateErrorMessage(message: string, maxLen = 40): string {
@@ -148,24 +124,19 @@ export function GooseAIMenu(props: AIMenuProps) {
         : "closed") as AiMenuStatus,
   });
 
-  const aiErrorMessage = useExtensionState(AIExtension, {
+  const aiErrorRaw = useExtensionState(AIExtension, {
     selector: (state) => {
       const menuState = state.aiMenuState;
       if (menuState === "closed" || menuState.status !== "error") {
-        return "";
+        return null;
       }
-      return formatAiErrorMessage(menuState.error);
+      return menuState.error ?? null;
     },
   });
 
-  const isBusy = isBusyStatus(aiResponseStatus) || isLocalRewriting;
+  const aiErrorMessage = formatAiErrorMessage(aiErrorRaw);
 
-  // 进入 error 时 toast 一次，避免状态抖动重复弹
-  useEffect(() => {
-    if (aiResponseStatus !== "error") return;
-    const message = aiErrorMessage || dict.ai_menu.status.error;
-    toast.error(message);
-  }, [aiResponseStatus, aiErrorMessage, dict.ai_menu.status.error]);
+  const isBusy = isBusyStatus(aiResponseStatus) || isLocalRewriting;
 
   // busy → user-reviewing：提示用户必须接受才会写入；若文档签名未变则提示无改动
   const prevAiStatusRef = useRef<AiMenuStatus>("closed");
@@ -239,6 +210,22 @@ export function GooseAIMenu(props: AIMenuProps) {
       }
     });
   }, [ai]);
+
+  // 进入 error 时 toast 一次；块丢失则立刻丢掉半成品建议标记
+  useEffect(() => {
+    if (aiResponseStatus !== "error") return;
+    const message = aiErrorMessage || dict.ai_menu.status.error;
+    toast.error(message);
+    if (isMissingTargetBlockError(aiErrorRaw)) {
+      handleRejectAndContinue();
+    }
+  }, [
+    aiResponseStatus,
+    aiErrorMessage,
+    aiErrorRaw,
+    dict.ai_menu.status.error,
+    handleRejectAndContinue,
+  ]);
 
   const reopenMenuWithPrompt = useCallback(
     (keep: string) => {
@@ -438,6 +425,20 @@ export function GooseAIMenu(props: AIMenuProps) {
     ],
   );
 
+  const handleRetryViaMarkdown = useCallback(() => {
+    const keep = lastPromptRef.current;
+    try {
+      ai.rejectChanges();
+    } catch {
+      /* reject 在无草稿时也可能抛 */
+    }
+    if (keep.trim()) {
+      void handleManualPromptSubmit(keep);
+      return;
+    }
+    reopenMenuWithPrompt(keep);
+  }, [ai, handleManualPromptSubmit, reopenMenuWithPrompt]);
+
   const handleStop = useCallback(() => {
     if (localAbortRef.current) {
       localAbortRef.current.abort();
@@ -461,9 +462,16 @@ export function GooseAIMenu(props: AIMenuProps) {
     return next.map((item) => ({
       ...item,
       onItemClick: () => {
-        // 拒绝 / 取消：还原文档并回到可继续输入的菜单，不丢 prompt
         if (item.key === "revert" || item.key === "cancel") {
           handleRejectAndContinue();
+          return;
+        }
+        if (item.key === "retry") {
+          handleRetryViaMarkdown();
+          return;
+        }
+        if (MARKDOWN_REWRITE_ITEM_KEYS.has(item.key)) {
+          void handleManualPromptSubmit(item.title || item.key);
           return;
         }
         item.onItemClick(setPromptRemembering);
@@ -473,7 +481,9 @@ export function GooseAIMenu(props: AIMenuProps) {
     aiResponseStatus,
     editor,
     externalItems,
+    handleManualPromptSubmit,
     handleRejectAndContinue,
+    handleRetryViaMarkdown,
     isBusy,
     setPromptRemembering,
   ]);
@@ -529,15 +539,15 @@ export function GooseAIMenu(props: AIMenuProps) {
     if (isBusy) {
       return (
         <div className="goose-ai-menu-busy-actions bn-combobox-right-section">
-          <GooseThinkingOrb
-            phase={
+          <LoadingState
+            variant={
               isLocalRewriting || aiResponseStatus === "thinking"
-                ? "thinking"
-                : "writing"
+                ? "Drive"
+                : "Dots"
             }
-            scale="inline"
-            theme="auto"
-            aria-hidden
+            compact
+            label=""
+            showElapsed={false}
           />
           <button
             type="button"
@@ -581,19 +591,21 @@ export function GooseAIMenu(props: AIMenuProps) {
   }, [aiResponseStatus, handleStop, isBusy, isLocalRewriting]);
 
   return (
-    <GoosePromptSuggestionMenu
-      onManualPromptSubmit={handleManualPromptSubmit}
-      items={items}
-      promptText={prompt}
-      onPromptTextChange={setPromptRemembering}
-      placeholder={placeholder}
-      disabled={isBusy}
-      icon={
-        <div className="bn-combobox-icon">
-          <RiSparkling2Fill />
-        </div>
-      }
-      rightSection={rightSection}
-    />
+    <SelectionActions busy={isBusy} className="goose-ai-menu-selection">
+      <GoosePromptSuggestionMenu
+        onManualPromptSubmit={handleManualPromptSubmit}
+        items={items}
+        promptText={prompt}
+        onPromptTextChange={setPromptRemembering}
+        placeholder={placeholder}
+        disabled={isBusy}
+        icon={
+          <div className="bn-combobox-icon">
+            <RiSparkling2Fill />
+          </div>
+        }
+        rightSection={rightSection}
+      />
+    </SelectionActions>
   );
 }

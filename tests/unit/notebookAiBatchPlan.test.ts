@@ -737,6 +737,74 @@ test("同页多条 search_replace 按顺序应用并保留未改块 id", async (
   expect(serialized).toContain("beta");
 });
 
+test("同页多条 search_replace 批准后不因写入抬升修订而全军覆没", async () => {
+  const pageContent = [
+    { id: "p1", type: "paragraph", content: "alpha" },
+    { id: "p2", type: "paragraph", content: "beta" },
+    { id: "p3", type: "paragraph", content: "gamma" },
+  ];
+  const page = makePage("batch-sr-revision", "unused", {
+    content: pageContent as JSONContent,
+    updatedAt: 20,
+  });
+  installState({ [page.id]: page });
+  const innerWrite = usePages.getState().writePageContent;
+  usePages.setState({
+    writePageContent: async (pageId, nextContent, mode) => {
+      const ok = await innerWrite(pageId, nextContent, mode);
+      // 模拟编辑器重载再次抬升 updatedAt，复现「下一项仍卡在旧快照」
+      usePages.setState((state) => {
+        const current = state.pages[pageId];
+        if (!current) return state;
+        return {
+          pages: {
+            ...state.pages,
+            [pageId]: { ...current, updatedAt: current.updatedAt + 1 },
+          },
+        };
+      });
+      return ok;
+    },
+  });
+  const { toolCallId, runId } = ids("search-replace-revision");
+
+  const prepared = await prepareBatchPlan({
+    toolCallId,
+    runId,
+    notebookId: "batch-notebook",
+    input: plan([
+      {
+        type: "search_replace",
+        operationId: "sr-a",
+        pageId: page.id,
+        oldString: "alpha",
+        newString: "ALPHA",
+      },
+      {
+        type: "search_replace",
+        operationId: "sr-b",
+        pageId: page.id,
+        oldString: "gamma",
+        newString: "GAMMA",
+      },
+    ]),
+  });
+  expect(prepared.ok, prepared.ok ? undefined : prepared.error).toBe(true);
+  if (!prepared.ok) return;
+
+  const result = await executePreparedBatchPlan(toolCallId, runId);
+  expect(result.ok, result.ok ? undefined : result.error).toBe(true);
+  expect(result.error ?? "").not.toContain("页面内容已发生变化");
+  expect(writeCalls).toBe(2);
+  const serialized = JSON.stringify(usePages.getState().pages[page.id].content);
+  expect(serialized).toContain("ALPHA");
+  expect(serialized).toContain("GAMMA");
+
+  const undone = await undoBatchPlan(toolCallId, runId);
+  expect(undone.ok, undone.ok ? undefined : undone.error).toBe(true);
+  expect((undone.error ?? "").split("页面内容已发生变化").length - 1).toBe(0);
+});
+
 test("成功执行后可整批撤回，重复执行保持幂等", async () => {
   const pageA = makePage("batch-undo-a", "撤回前 A");
   const pageB = makePage("batch-undo-b", "撤回前 B");

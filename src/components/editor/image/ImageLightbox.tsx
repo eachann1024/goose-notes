@@ -130,7 +130,13 @@ export function ImageLightbox({
 
   const openImageAtElement = useCallback(
     async (img: HTMLImageElement) => {
-      if (useInternalImageViewer) {
+      // 速记小窗：双击始终交给系统查看器，不走内置灯箱回退（小窗无完整 gooseFs
+      // 时会误弹「已改用内置预览」；preload 已补最小 writeTempFile）。
+      const preferSystemViewer =
+        (typeof __GOOSE_LITE__ !== "undefined" && __GOOSE_LITE__) ||
+        !useInternalImageViewer;
+
+      if (!preferSystemViewer) {
         await openLightboxAtImage(img);
         return;
       }
@@ -157,6 +163,14 @@ export function ImageLightbox({
         loadInternalResource: (source) => platform.imageStorage.load(source),
       });
       if (result.ok) return;
+
+      // 小窗：只报失败，不改用内置预览，避免「明明想系统打开却弹出灯箱」。
+      if (typeof __GOOSE_LITE__ !== "undefined" && __GOOSE_LITE__) {
+        toast.error("系统图片查看器打开失败", {
+          description: result.error || "未知错误",
+        });
+        return;
+      }
 
       toast.error("系统图片查看器打开失败", {
         description: `${result.error || "未知错误"}，已改用内置预览`,
@@ -436,7 +450,10 @@ export function ImageLightbox({
           handleSelectedImageCopy={handleSelectedImageCopy}
           handleSelectedImageDownload={handleSelectedImageDownload}
           openImageLabel={
-            useInternalImageViewer ? "放大图片" : "使用系统打开图片"
+            (typeof __GOOSE_LITE__ !== "undefined" && __GOOSE_LITE__) ||
+            !useInternalImageViewer
+              ? "使用系统打开图片"
+              : "放大图片"
           }
           floatingBoundary={
             !__GOOSE_EDITOR_COMPACT__ ? editorContainerRef.current : undefined

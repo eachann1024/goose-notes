@@ -19,7 +19,12 @@ import {
   readBatchPlanJournal,
 } from "@/lib/notebook-ai/batch-plan";
 import { cn } from "@/lib/utils";
-import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
+import {
+  collapseRepeatedErrorSegments,
+  formatNotebookAiError,
+} from "@/lib/notebook-ai/errors";
+import { ApprovalCard } from "./beautiful-ui/ApprovalCard";
+import { DiffTable } from "./beautiful-ui/DiffTable";
 
 type BatchOperation =
   | {
@@ -309,10 +314,131 @@ export function ApprovalPlanCard({
     }
   };
 
+  const statusLabel = invalidPlanError
+    ? "计划无效"
+    : isApprovalRequested
+      ? "等待审批"
+      : isDenied
+        ? "已取消"
+        : isApprovalResponded
+          ? "准备执行"
+          : isPersistedUndone || undoResult?.status === "reverted"
+            ? "已撤回"
+            : isComplete
+              ? "执行完成"
+              : hasError
+                ? "执行失败"
+                : "生成计划";
+  const statusTone =
+    hasError || isDenied ? "danger" : isComplete ? "success" : "neutral";
+
+  const footer = isApprovalRequested ? (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p
+        className={cn(
+          "text-[10px] leading-relaxed text-muted-foreground",
+          invalidPlanError && "text-[var(--goose-color-danger-focus)]",
+        )}
+        role={invalidPlanError ? "alert" : undefined}
+      >
+        {invalidPlanError ||
+          "批准后会先校验所有页面版本；任一页面有变化都不会开始执行。"}
+      </p>
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 rounded-[8px] border-border px-3 text-xs text-foreground"
+          disabled={submitting}
+          onClick={() => void respond(false)}
+        >
+          取消整批
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 rounded-[8px] px-3 text-xs"
+          disabled={!canApprove}
+          onClick={() => void respond(true)}
+        >
+          {submitting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          {invalidPlanError
+            ? "计划不可执行"
+            : `批准执行 ${selectedIds.size} 项`}
+        </Button>
+      </div>
+    </div>
+  ) : isDenied ? (
+    <p className="text-[11px] text-muted-foreground">
+      计划已取消，页面没有变化。
+    </p>
+  ) : hasError ? (
+    <p
+      className="text-[11px] text-[var(--goose-color-danger-focus)]"
+      role="alert"
+    >
+      {formatNotebookAiError(
+        collapseRepeatedErrorSegments(
+          String(part.errorText || output.error || ""),
+        ) ||
+          part.errorText ||
+          output.error,
+        {
+          phase:
+            isApprovalResponded || part.approval?.approved === true
+              ? "execute"
+              : "prepare",
+        },
+      )}
+    </p>
+  ) : isComplete ? (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-[11px] text-muted-foreground" aria-live="polite">
+        {undoResult
+          ? undoResult.ok
+            ? `已撤回 ${undoResult.revertedCount ?? 0} 项变更。`
+            : collapseRepeatedErrorSegments(undoResult.error ?? "") ||
+              undoResult.error ||
+              `有 ${undoResult.conflictCount ?? 0} 项因页面后来被修改而未撤回。`
+          : isPersistedUndone
+            ? `已撤回 ${output.appliedCount ?? selectedIds.size} 项变更。`
+            : `已执行 ${output.appliedCount ?? output.selectedCount ?? selectedIds.size} 项，撤回前会再次检查页面版本。`}
+      </p>
+      {output.canUndo !== false &&
+      !isPersistedUndone &&
+      undoResult?.ok !== true ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto h-8 rounded-[8px] border-border px-3 text-xs text-foreground"
+          disabled={!output.runId || undoing}
+          onClick={() => void handleUndo()}
+        >
+          {undoing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RotateCcw className="h-3.5 w-3.5" />
+          )}
+          撤回本批
+        </Button>
+      ) : null}
+    </div>
+  ) : (
+    <p className="text-[11px] text-muted-foreground" aria-live="polite">
+      已批准，正在执行冻结后的计划…
+    </p>
+  );
+
   return (
-    <section
-      className="notebook-ai-approval-plan overflow-hidden rounded-[10px] border border-border bg-background"
-      aria-label="AI 笔记变更计划"
+    <ApprovalCard
+      title={input.title?.trim() || "笔记变更计划"}
+      statusLabel={statusLabel}
+      statusTone={statusTone}
+      footer={footer}
     >
       <div className="border-b border-border px-3 py-2.5">
         <div className="flex items-start gap-2.5">
@@ -335,38 +461,8 @@ export function ApprovalPlanCard({
             )}
           </span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-[13px] font-semibold text-foreground">
-                {input.title?.trim() || "笔记变更计划"}
-              </h3>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                  hasError
-                    ? "bg-[var(--goose-color-danger-subtle-bg)] text-[var(--goose-color-danger-focus)]"
-                    : "bg-[var(--goose-interactive-hover)] text-muted-foreground",
-                )}
-                aria-live="polite"
-              >
-                {invalidPlanError
-                  ? "计划无效"
-                  : isApprovalRequested
-                    ? "等待审批"
-                    : isDenied
-                      ? "已取消"
-                      : isApprovalResponded
-                        ? "准备执行"
-                        : isPersistedUndone || undoResult?.status === "reverted"
-                          ? "已撤回"
-                          : isComplete
-                            ? "执行完成"
-                            : hasError
-                              ? "执行失败"
-                              : "生成计划"}
-              </span>
-            </div>
             {input.summary ? (
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {input.summary}
               </p>
             ) : null}
@@ -457,9 +553,17 @@ export function ApprovalPlanCard({
                     {expanded ? (
                       <div
                         id={detailId}
-                        className="mt-2 whitespace-pre-wrap break-words rounded-[7px] bg-[var(--goose-interactive-hover)] px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground"
+                        className="mt-2 space-y-2 break-words rounded-[7px] bg-[var(--goose-interactive-hover)] px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground"
                       >
-                        {meta.detail}
+                        {operation.type === "search_replace" ? (
+                          <DiffTable
+                            title={meta.title}
+                            before={operation.oldString}
+                            after={operation.newString}
+                          />
+                        ) : (
+                          <div className="whitespace-pre-wrap">{meta.detail}</div>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -470,100 +574,6 @@ export function ApprovalPlanCard({
         </fieldset>
       ) : null}
 
-      <div className="border-t border-border px-3 py-2.5">
-        {isApprovalRequested ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p
-              className={cn(
-                "text-[10px] leading-relaxed text-muted-foreground",
-                invalidPlanError && "text-[var(--goose-color-danger-focus)]",
-              )}
-              role={invalidPlanError ? "alert" : undefined}
-            >
-              {invalidPlanError ||
-                "批准后会先校验所有页面版本；任一页面有变化都不会开始执行。"}
-            </p>
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-[8px] px-3 text-xs"
-                disabled={submitting}
-                onClick={() => void respond(false)}
-              >
-                取消整批
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 rounded-[8px] px-3 text-xs"
-                disabled={!canApprove}
-                onClick={() => void respond(true)}
-              >
-                {submitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                {invalidPlanError
-                  ? "计划不可执行"
-                  : `批准执行 ${selectedIds.size} 项`}
-              </Button>
-            </div>
-          </div>
-        ) : isDenied ? (
-          <p className="text-[11px] text-muted-foreground">
-            计划已取消，页面没有变化。
-          </p>
-        ) : hasError ? (
-          <p
-            className="text-[11px] text-[var(--goose-color-danger-focus)]"
-            role="alert"
-          >
-            {formatNotebookAiError(part.errorText || output.error, {
-              phase:
-                isApprovalResponded || part.approval?.approved === true
-                  ? "execute"
-                  : "prepare",
-            })}
-          </p>
-        ) : isComplete ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] text-muted-foreground" aria-live="polite">
-              {undoResult
-                ? undoResult.ok
-                  ? `已撤回 ${undoResult.revertedCount ?? 0} 项变更。`
-                  : undoResult.error ||
-                    `有 ${undoResult.conflictCount ?? 0} 项因页面后来被修改而未撤回。`
-                : isPersistedUndone
-                  ? `已撤回 ${output.appliedCount ?? selectedIds.size} 项变更。`
-                  : `已执行 ${output.appliedCount ?? output.selectedCount ?? selectedIds.size} 项，撤回前会再次检查页面版本。`}
-            </p>
-            {output.canUndo !== false &&
-            !isPersistedUndone &&
-            undoResult?.ok !== true ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto h-8 rounded-[8px] px-3 text-xs"
-                disabled={!output.runId || undoing}
-                onClick={() => void handleUndo()}
-              >
-                {undoing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-3.5 w-3.5" />
-                )}
-                撤回本批
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-[11px] text-muted-foreground" aria-live="polite">
-            已批准，正在执行冻结后的计划…
-          </p>
-        )}
-      </div>
-    </section>
+    </ApprovalCard>
   );
 }

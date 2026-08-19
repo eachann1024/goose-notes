@@ -178,10 +178,9 @@ export function selectionIsEntirelyInlineCode(
 export function selectionDisallowsFormattingToolbar(
   editor: BlockNoteEditor<any, any, any>,
 ): boolean {
-  return (
-    selectionHasNonFormattableBlock(editor) ||
-    selectionIsEntirelyInlineCode(editor)
-  );
+  // 纯行内 code 选区仍应显示工具栏，方便一键取消 code（Mod+E / 工具栏切换）。
+  // 代码块、媒体等非格式化块才真正禁用。
+  return selectionHasNonFormattableBlock(editor);
 }
 
 /**
@@ -249,7 +248,8 @@ export function shouldRenderFormattingToolbar(
   if (selection.empty) return false;
   // 单元格 / 多 cell 选区：只要覆盖到实际文字就允许工具栏（含 AI）。
   if (doc.textBetween(selection.from, selection.to).length === 0) return false;
-  // 代码块、媒体块或纯行内代码选区不触发格式工具栏。
+  // 代码块、媒体块等非格式化块不触发格式工具栏。
+  // 纯行内 code 选区仍允许（便于取消 code / 改其它样式 / AI）。
   // 表格已从 NON_FORMATTABLE 移除，单元格文字可选中后加粗/着色/调 AI。
   if (selectionDisallowsFormattingToolbar(editor)) return false;
 
