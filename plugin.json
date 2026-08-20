@@ -656,6 +656,6 @@
   },
   "main": "app/index.html",
   "preload": "preload/preload.cjs",
-  "name": "goose-note",
+  "name": "goose-notes",
   "title": "鹅的笔记"
 }

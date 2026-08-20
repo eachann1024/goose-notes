@@ -1,4 +1,4 @@
-# 鹅的笔记 · goose-note
+# 鹅的笔记 · goose-notes
 
 A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
 
