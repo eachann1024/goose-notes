@@ -1,8 +1,9 @@
 import { expect, test } from "playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = path.resolve(__dirname, "../..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("商店 CI 必需的 Vite stub 在 vite-stubs，不在名为 build 的目录", () => {
   expect(existsSync(path.join(root, "src/lib/vite-stubs/node-fs-stub.ts"))).toBeTruthy();
