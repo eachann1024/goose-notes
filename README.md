@@ -16,6 +16,14 @@
 
 ![鹅系列 · 大功能](series-features.png)
 
+## 同系列
+
+- [鹅的笔记](https://github.com/eachann1024/goose-notes)
+- [鹅的书签](https://github.com/eachann1024/goose-mark)
+- [鹅的监控](https://github.com/eachann1024/goose-monitor)
+- [鹅的验证](https://github.com/eachann1024/goose-2fa)
+- [鹅的 Agent](https://github.com/eachann1024/eachann1024)
+
 ## 不做什么
 
 不把笔记默认送到别人的云。不把「搜索 / 暗色 / 多平台」当卖点。
