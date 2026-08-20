@@ -63,13 +63,35 @@ export async function inlineExportMediaAsBase64(
         } catch (e) {
           console.warn("[export] 内联图片失败 (uuid/att):", src, e);
         }
+      } else if (src.startsWith("file:")) {
+        try {
+          const { fileUrlToLocalPath } = await import("@/lib/pdfExport/fontConfig");
+          const { readLocalFileAsBlobAsync } = await import(
+            "@/lib/imageStorage/strategies/file-system"
+          );
+          const abs = fileUrlToLocalPath(src);
+          if (abs) {
+            const blob = await readLocalFileAsBlobAsync(abs);
+            if (blob) mutableProps.url = await blobToBase64(blob);
+          }
+        } catch (e) {
+          console.warn("[export] 内联图片失败 (file://):", src, e);
+        }
       } else if (isLocalFilePath(src)) {
         const abs = resolveLocalMediaPath(src, pageLocalFilePath);
         if (abs) {
           try {
-            const base64 = readLocalFileAsBase64(abs);
-            if (base64) {
-              mutableProps.url = `data:${guessMimeFromPath(abs)};base64,${base64}`;
+            const { readLocalFileAsBlobAsync } = await import(
+              "@/lib/imageStorage/strategies/file-system"
+            );
+            const blob = await readLocalFileAsBlobAsync(abs);
+            if (blob) {
+              mutableProps.url = await blobToBase64(blob);
+            } else {
+              const base64 = readLocalFileAsBase64(abs);
+              if (base64) {
+                mutableProps.url = `data:${guessMimeFromPath(abs)};base64,${base64}`;
+              }
             }
           } catch (e) {
             console.warn("[export] 内联图片失败 (local file):", abs, e);

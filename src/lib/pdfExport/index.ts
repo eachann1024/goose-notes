@@ -2,7 +2,7 @@
  * PDF 导出入口。
  *
  * - dynamic import @blocknote/xl-pdf-exporter + @react-pdf/renderer，避免拖慢首屏
- * - 默认 A4 + 中文 NotoSansSC（缺失时回退 Helvetica + warn）
+ * - 默认 A4 + 中文 NotoSansSC（先读成 data URL 再注册；缺失时保留 Inter，不注册 404 路径）
  * - 通过 saveBlobAndReveal 走 uTools 保存通道，浏览器端回退到 a[download]
  * - 导出前统一整理 content（含本地文件夹 doc 对象 / 空 inline）
  */
@@ -47,7 +47,7 @@ export async function exportToPDF(page: Page): Promise<void> {
   const title = getPageTitle(page) || "untitled";
   const filename = `${sanitizeFileName(title)}.pdf`;
 
-  await registerPdfFonts();
+  const cjkReady = await registerPdfFonts();
 
   const [{ PDFExporter }, ReactPDF, { editorSchema }, { pdfDefaultSchemaMappings }] =
     await Promise.all([
@@ -57,18 +57,27 @@ export async function exportToPDF(page: Page): Promise<void> {
       import("@blocknote/xl-pdf-exporter"),
     ]);
 
-  const blockMapping = await createPdfBlockMappings();
+  const blockMapping = await createPdfBlockMappings({
+    pageLocalFilePath: page.localFilePath ?? null,
+  });
   const mergedMappings = {
     blockMapping: blockMapping as unknown as typeof pdfDefaultSchemaMappings.blockMapping,
     inlineContentMapping: pdfDefaultSchemaMappings.inlineContentMapping,
     styleMapping: pdfDefaultSchemaMappings.styleMapping,
   };
 
-  const exporter = new PDFExporter(editorSchema as any, mergedMappings as any, {});
-  (exporter.styles as any).page = {
-    ...(exporter.styles as any).page,
-    fontFamily: PDF_FONT_FAMILY,
-  };
+  // emojiSource:false —— 不要去拉 twemoji CDN（插件离线 / file:// 会 Failed to fetch）
+  // resolveFileUrl: 已是 data:/http(s) 的资源原样返回，禁止走 BlockNote CORS 代理
+  const exporter = new PDFExporter(editorSchema as any, mergedMappings as any, {
+    emojiSource: false,
+    resolveFileUrl: async (url: string) => url,
+  });
+  if (cjkReady) {
+    (exporter.styles as any).page = {
+      ...(exporter.styles as any).page,
+      fontFamily: PDF_FONT_FAMILY,
+    };
+  }
 
   const blocks = await prepareExportBlocks(page);
   const document = await exporter.toReactPDFDocument(blocks as any);
