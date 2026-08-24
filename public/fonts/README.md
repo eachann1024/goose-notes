@@ -1,24 +1,12 @@
 # PDF 中文字体
 
-PDF 导出使用 `NotoSansSC-Regular.ttf` 或 `NotoSansSC-Regular.otf` 渲染中文。该字体数 MB，未随源码提交。
+不再内置 Noto Sans SC。构建不会下载或拷贝 `public/fonts` 里的 otf/ttf，避免 8MB 打进 dist。
 
-主应用构建（`vite build`）若发现本目录缺少字体，会自动下载 Noto Sans SC SubsetOTF Regular。
+首次导出 PDF 时从钉版本 CDN 远程加载 SubsetOTF Regular（otf，不用 woff2），同会话内存缓存。失败则走系统 / 已有降级，中文可能变成方框。
 
-也可手动放置：
+- 主源：`https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`
+- 备用：`https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`
 
-1. 访问 [Google Fonts — Noto Sans SC](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
-2. 点击右上角 "Get font" → "Download all"
-3. 解压后取 Regular 的 `.ttf` / `.otf`，放到本目录：
+拉到后转成 data URL 再 `Font.register`。uTools 以 file:// 打开页面时，不能把字体 src 设成站点根 `/fonts/...`（会变成 `file:///fonts/...`）。
 
-```
-public/fonts/NotoSansSC-Regular.ttf
-# 或
-public/fonts/NotoSansSC-Regular.otf
-```
-
-## 行为
-
-- 字体存在：导出前读成 data URL 再交给 @react-pdf（避免 uTools/ZTools 的 file:// 去 fetch `/fonts/...` 根路径 404）
-- 字体缺失：控制台 warn，保留 BlockNote 默认 Inter，**不注册 404 URL**，导出不会因此 Failed to fetch；中文可能变成方框
-
-> 仅 PDF 导出依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。小窗构建会删掉拷进 dist-quicknote 的 fonts。
+> 仅 PDF 导出依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。
