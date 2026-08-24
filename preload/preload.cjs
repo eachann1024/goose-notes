@@ -1430,6 +1430,92 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     fetchText: (url) => fetchPublicText(url),
   };
 
+  const ERROR_REPORTING_PATH = path.join(
+    os.homedir(),
+    ".config",
+    "goose",
+    "error-reporting.json",
+  );
+
+  const ensureErrorReportingTemplate = () => {
+    try {
+      const dir = path.dirname(ERROR_REPORTING_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      if (!fs.existsSync(ERROR_REPORTING_PATH)) {
+        fs.writeFileSync(
+          ERROR_REPORTING_PATH,
+          `${JSON.stringify(
+            {
+              enabled: false,
+              environment: "dev",
+              projects: {
+                "goose-note": "",
+                "goose-marks": "",
+              },
+            },
+            null,
+            2,
+          )}\n`,
+          "utf-8",
+        );
+      }
+    } catch (error) {
+      console.warn("[goose-note] error-reporting template failed:", error);
+    }
+  };
+
+  const readErrorReportingFile = () => {
+    try {
+      ensureErrorReportingTemplate();
+      if (!fs.existsSync(ERROR_REPORTING_PATH)) return null;
+      return JSON.parse(fs.readFileSync(ERROR_REPORTING_PATH, "utf-8"));
+    } catch (error) {
+      console.warn("[goose-note] read error-reporting.json failed:", error);
+      return null;
+    }
+  };
+
+  const sendSentryEnvelope = (url, body, headers) =>
+    new Promise((resolve) => {
+      try {
+        const parsed = new NodeURL(String(url));
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+          resolve({ statusCode: 0 });
+          return;
+        }
+        const lib = parsed.protocol === "https:" ? https : http;
+        const payload =
+          typeof body === "string" ? Buffer.from(body) : Buffer.from(body || []);
+        const req = lib.request(
+          {
+            method: "POST",
+            hostname: parsed.hostname,
+            port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+            path: parsed.pathname + parsed.search,
+            headers: {
+              "Content-Type": "application/x-sentry-envelope",
+              "Content-Length": String(payload.length),
+              ...(headers && typeof headers === "object" ? headers : {}),
+            },
+          },
+          (res) => {
+            res.resume();
+            resolve({ statusCode: res.statusCode || 0 });
+          },
+        );
+        req.on("error", () => resolve({ statusCode: 0 }));
+        req.end(payload);
+      } catch {
+        resolve({ statusCode: 0 });
+      }
+    });
+
+  ensureErrorReportingTemplate();
+  window.gooseErrorReporting = {
+    readConfig: () => readErrorReportingFile(),
+    sendEnvelope: (url, body, headers) => sendSentryEnvelope(url, body, headers),
+  };
+
 
   const MCP_TOOL_REQUEST_EVENT = "goose-note:mcp-tool-request";
   const MCP_TOOL_RESPONSE_EVENT = "goose-note:mcp-tool-response";
