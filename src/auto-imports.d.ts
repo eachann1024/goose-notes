@@ -92,6 +92,7 @@ declare global {
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
+  const INTERNAL_ASSET_REF_PREFIXES: typeof import('./lib/internalAssetRef').INTERNAL_ASSET_REF_PREFIXES
   const IconButton: typeof import('./components/ui/icon-button').IconButton
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
   const Input: typeof import('./components/ui/input').Input
@@ -113,6 +114,7 @@ declare global {
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
   const ORB_PHASE_HOLD_MS: typeof import('./components/ui/ai-motion').ORB_PHASE_HOLD_MS
   const ORB_VISIBLE_MIN_MS: typeof import('./components/ui/ai-motion').ORB_VISIBLE_MIN_MS
+  const PINNED_TITLE_MAX_CHARS: typeof import('./components/editor/utils/page-title').PINNED_TITLE_MAX_CHARS
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
@@ -198,6 +200,7 @@ declare global {
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buildQuickNoteDraftPage: typeof import('./stores/useQuickNote').buildQuickNoteDraftPage
+  const buildSinglePageExport: typeof import('./lib/export/index').buildSinglePageExport
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
@@ -206,6 +209,7 @@ declare global {
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clearStartupSettling: typeof import('./lib/appearance').clearStartupSettling
   const clearWorkspaceStartupSelection: typeof import('./lib/workspaceStartup').clearWorkspaceStartupSelection
+  const clipPinnedTitle: typeof import('./components/editor/utils/page-title').clipPinnedTitle
   const clipboardHasPasteableImage: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableImage
   const clipboardHasPasteableMedia: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableMedia
   const clonePageContent: typeof import('./components/editor/utils/blocknote-content/index').clonePageContent
@@ -347,6 +351,7 @@ declare global {
   const isImeKeyboardEvent: typeof import('./hooks/useImeInput').isImeKeyboardEvent
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
+  const isInternalAssetRef: typeof import('./lib/internalAssetRef').isInternalAssetRef
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
   const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
@@ -359,6 +364,7 @@ declare global {
   const isPasteableClipboardVideoFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardVideoFile
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
+  const isRandomPageIcon: typeof import('./lib/randomPageIcon').isRandomPageIcon
   const isSpecialTab: typeof import('./stores/useTabs').isSpecialTab
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -408,6 +414,7 @@ declare global {
   const openPageFromSidebar: typeof import('./lib/sidebarPageNavigation').openPageFromSidebar
   const openResourceExternally: typeof import('./components/editor/utils/openResourceExternally').openResourceExternally
   const pageFileNavKey: typeof import('./stores/useFileNavHistory').pageFileNavKey
+  const pageHasLocalSidecarAttachments: typeof import('./lib/export/index').pageHasLocalSidecarAttachments
   const pageSettingsFromMarkdown: typeof import('./lib/local-frontmatter').pageSettingsFromMarkdown
   const parseBase64Image: typeof import('./lib/docxExport/docxImages').parseBase64Image
   const parseFileNavKey: typeof import('./stores/useFileNavHistory').parseFileNavKey
@@ -420,6 +427,7 @@ declare global {
   const pasteClipboardFilesFromClipboard: typeof import('./components/editor/utils/pasteClipboardFilesFromClipboard').pasteClipboardFilesFromClipboard
   const permanentlyDeletePageWithCleanup: typeof import('./lib/page-delete-actions').permanentlyDeletePageWithCleanup
   const persistQuickNoteSlotNames: typeof import('./stores/useQuickNote').persistQuickNoteSlotNames
+  const pickRandomPageIcon: typeof import('./lib/randomPageIcon').pickRandomPageIcon
   const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const planBlockTypeTransform: typeof import('./lib/ai-write/index').planBlockTypeTransform
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts

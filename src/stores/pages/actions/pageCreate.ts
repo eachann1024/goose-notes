@@ -29,6 +29,7 @@ import { flushEditorContent } from "./flushEditor";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useSettings } from "@/stores/useSettings";
 import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
+import { pickRandomPageIcon } from "@/lib/randomPageIcon";
 
 const initialContent: JSONContent = createEmptyBlockNoteContent(
   UNTITLED_PAGE_TITLE,
@@ -190,10 +191,18 @@ export const createPageAction = (
 ): string => {
   flushEditorContent();
 
+  const notebook = useNotebooks.getState().notebooks[workspaceId];
+  const icon =
+    useSettings.getState().randomIconOnCreate &&
+    notebook?.source !== "local-folder"
+      ? pickRandomPageIcon()
+      : undefined;
+
   const finalId = get().createPageRecord({
     workspaceId,
     parentId,
     id,
+    ...(icon ? { icon } : {}),
   });
   set({ activePageId: finalId });
   useNotebooks.getState().setLastActivePage(workspaceId, finalId);

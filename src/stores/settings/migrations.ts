@@ -11,6 +11,12 @@ export function migrateSettingsPersistedState(
   if (typeof state.singleTabMode !== "boolean") {
     state.singleTabMode = false;
   }
+  if (typeof state.randomIconOnCreate !== "boolean") {
+    state.randomIconOnCreate = true;
+  }
+  if (typeof state.showPinnedTitles !== "boolean") {
+    state.showPinnedTitles = false;
+  }
 
   // 全宽已成为常规笔记的固定布局，不再保留可切换的持久化设置。
   delete state.globalEditorFullWidth;

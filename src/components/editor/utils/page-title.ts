@@ -2,6 +2,14 @@ import type { JSONContent, Page } from "@/types";
 import { extractTitleFromContent } from "./content-text-extractor";
 
 export const UNTITLED_PAGE_TITLE = "未命名";
+export const PINNED_TITLE_MAX_CHARS = 4;
+
+export function clipPinnedTitle(
+  title: string,
+  maxChars = PINNED_TITLE_MAX_CHARS,
+): string {
+  return Array.from(title).slice(0, maxChars).join("");
+}
 
 export function normalizePageTitle(title: string | null | undefined): string {
   const trimmed = title?.trim() ?? "";

@@ -30,6 +30,10 @@ interface SettingsAppearanceProps {
   setUIFontSize: (size: "small" | "normal") => void;
   hideExpandArrows: boolean;
   setHideExpandArrows: (hidden: boolean) => void;
+  randomIconOnCreate: boolean;
+  setRandomIconOnCreate: (enabled: boolean) => void;
+  showPinnedTitles: boolean;
+  setShowPinnedTitles: (enabled: boolean) => void;
 }
 
 type AccentOption = {
@@ -203,6 +207,10 @@ export function SettingsAppearance({
   setUIFontSize,
   hideExpandArrows,
   setHideExpandArrows,
+  randomIconOnCreate,
+  setRandomIconOnCreate,
+  showPinnedTitles,
+  setShowPinnedTitles,
 }: SettingsAppearanceProps) {
   const getFontPreview = (type: "default" | "serif" | "mono") =>
     customFonts[type].font || DEFAULT_FONT_NAMES[type];
@@ -515,6 +523,54 @@ export function SettingsAppearance({
             id="hide-expand-arrows"
             checked={hideExpandArrows}
             onCheckedChange={setHideExpandArrows}
+            className={APPEARANCE_SWITCH_CLASS}
+          />
+        </div>
+        <div
+          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
+          <div>
+            <div className="flex items-center gap-3">
+              <LucideIcons.Sparkles
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label htmlFor="random-icon-on-create" className="cursor-pointer">
+                新建笔记随机图标
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              新建内部笔记时自动选一个图标。本地文件夹里的文件不受影响。
+            </p>
+          </div>
+          <Switch
+            id="random-icon-on-create"
+            checked={randomIconOnCreate}
+            onCheckedChange={setRandomIconOnCreate}
+            className={APPEARANCE_SWITCH_CLASS}
+          />
+        </div>
+        <div
+          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+        >
+          <div>
+            <div className="flex items-center gap-3">
+              <LucideIcons.Pin
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label htmlFor="show-pinned-titles" className="cursor-pointer">
+                置顶显示名称
+              </Label>
+            </div>
+            <p className="mt-1 pl-7 text-xs text-muted-foreground">
+              在置顶栏显示笔记名前 4 个字。关闭后只显示图标。
+            </p>
+          </div>
+          <Switch
+            id="show-pinned-titles"
+            checked={showPinnedTitles}
+            onCheckedChange={setShowPinnedTitles}
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>

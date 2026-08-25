@@ -10,6 +10,8 @@ test("老用户没有模式字段时继续保留多标签", () => {
   expect(migrateSettingsPersistedState({ theme: "dark" })).toMatchObject({
     theme: "dark",
     singleTabMode: false,
+    randomIconOnCreate: true,
+    showPinnedTitles: false,
   });
 });
 

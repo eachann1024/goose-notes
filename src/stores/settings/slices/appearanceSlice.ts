@@ -36,6 +36,10 @@ export interface AppearanceSliceState {
   imageExportThemeId: CardThemeId;
   /** 隐藏侧栏常驻展开箭头，hover 行时用图标位临时展开/收起 */
   hideExpandArrows: boolean;
+  /** 新建内部笔记时自动分配一个随机图标；本地文件夹忽略。 */
+  randomIconOnCreate: boolean;
+  /** 置顶栏显示笔记名称（前 4 个字）。默认关闭，只显示图标。 */
+  showPinnedTitles: boolean;
   /** 单标签模式：所有页面在当前标签中切换，不保留多标签交互。 */
   singleTabMode: boolean;
 }
@@ -67,6 +71,8 @@ export interface AppearanceSliceActions {
   setImageExportWatermark: (config: Partial<WatermarkConfig>) => void;
   setImageExportThemeId: (id: CardThemeId) => void;
   setHideExpandArrows: (hidden: boolean) => void;
+  setRandomIconOnCreate: (enabled: boolean) => void;
+  setShowPinnedTitles: (enabled: boolean) => void;
   setSingleTabMode: (enabled: boolean) => void;
 }
 
@@ -89,6 +95,8 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
   imageExportThemeId: "github-light",
   hideExpandArrows: false,
+  randomIconOnCreate: true,
+  showPinnedTitles: false,
   singleTabMode: true,
 };
 
@@ -203,6 +211,8 @@ export function createAppearanceSlice(
       set({ imageExportWatermark: normalizeWatermarkConfig(config) }),
     setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
     setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
+    setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
+    setShowPinnedTitles: (showPinnedTitles) => set({ showPinnedTitles }),
     setSingleTabMode: (singleTabMode) => set({ singleTabMode }),
   };
 }

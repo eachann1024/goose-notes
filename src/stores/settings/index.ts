@@ -167,6 +167,12 @@ export const useSettings = create<SettingsState>()(
         if (state && typeof state.hideExpandArrows !== "boolean") {
           useSettings.setState({ hideExpandArrows: false });
         }
+        if (state && typeof state.randomIconOnCreate !== "boolean") {
+          useSettings.setState({ randomIconOnCreate: true });
+        }
+        if (state && typeof state.showPinnedTitles !== "boolean") {
+          useSettings.setState({ showPinnedTitles: false });
+        }
         if (state && typeof state.tableEvenColumnWidth !== "boolean") {
           useSettings.setState({ tableEvenColumnWidth: true });
         }

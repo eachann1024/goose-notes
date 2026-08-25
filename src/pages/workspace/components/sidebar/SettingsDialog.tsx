@@ -222,6 +222,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setUIFontSize,
     hideExpandArrows,
     setHideExpandArrows,
+    randomIconOnCreate,
+    setRandomIconOnCreate,
+    showPinnedTitles,
+    setShowPinnedTitles,
     customActions,
     addCustomAction,
     updateCustomAction,
@@ -283,6 +287,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setUIFontSize: s.setUIFontSize,
       hideExpandArrows: s.hideExpandArrows,
       setHideExpandArrows: s.setHideExpandArrows,
+      randomIconOnCreate: s.randomIconOnCreate,
+      setRandomIconOnCreate: s.setRandomIconOnCreate,
+      showPinnedTitles: s.showPinnedTitles,
+      setShowPinnedTitles: s.setShowPinnedTitles,
       customActions: s.customActions,
       addCustomAction: s.addCustomAction,
       updateCustomAction: s.updateCustomAction,
@@ -855,6 +863,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setUIFontSize={setUIFontSize}
                 hideExpandArrows={hideExpandArrows}
                 setHideExpandArrows={setHideExpandArrows}
+                randomIconOnCreate={randomIconOnCreate}
+                setRandomIconOnCreate={setRandomIconOnCreate}
+                showPinnedTitles={showPinnedTitles}
+                setShowPinnedTitles={setShowPinnedTitles}
               />
             </div>
           )}

@@ -14,6 +14,8 @@ import { applyAccentColor, syncAccentColorCssVars } from "../../src/lib/accentCo
 
 test("强调色默认使用黑白配色，非法持久化值安全回退", () => {
   expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("mono");
+  expect(APPEARANCE_INITIAL_STATE.randomIconOnCreate).toBe(true);
+  expect(APPEARANCE_INITIAL_STATE.showPinnedTitles).toBe(false);
   expect(normalizeAccentColor(undefined)).toBe("mono");
   expect(normalizeAccentColor("unknown")).toBe("mono");
   expect(normalizeAccentColor("ocean")).toBe("ocean");
@@ -102,6 +104,12 @@ test("应用强调色在浅色模式写入对应 light runtime token", () => {
     applyAccentColor("amber");
     expect(properties.get("--goose-inline-code-bg")).toBe("#fffbeb");
     expect(properties.get("--goose-inline-code-fg")).toBe("#b45309");
+    expect(properties.get("--goose-interactive-hover")).toBe(
+      properties.get("--goose-interactive-selected"),
+    );
+    expect(properties.get("--goose-icon-chip-on-selected")).toBe(
+      properties.get("--goose-interactive-selected"),
+    );
   } finally {
     if (previousDocument === undefined) {
       delete (globalThis as { document?: Document }).document;

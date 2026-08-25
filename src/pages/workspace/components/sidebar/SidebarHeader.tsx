@@ -1,7 +1,9 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
-import { getPageTitle } from "@/components/editor/utils/page-title";
+import { getPageTitle, clipPinnedTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 
 interface SidebarHeaderProps {
   dragGuide: {
@@ -17,7 +19,11 @@ export function SidebarHeader({
   onOpenPinnedPage,
   selectedPageId,
 }: SidebarHeaderProps) {
-  const pages = usePages((state) => state.pages);
+  const pages = useStoreWithEqualityFn(
+    usePages,
+    (state) => state.pages,
+    areSidebarPagesEqual,
+  );
   const activePageId = usePages((state) => state.activePageId);
   const highlightedPageId = selectedPageId ?? activePageId;
   const setExpandPageId = usePages((state) => state.setExpandPageId);
@@ -33,13 +39,21 @@ export function SidebarHeader({
       ? state.notebooks[activeNotebookId]?.source === "local-folder"
       : false,
   );
+  const showPinnedTitles = useSettings((state) => state.showPinnedTitles);
   const pinnedScrollerRef = useRef<HTMLDivElement>(null);
   const activePinnedRef = useRef<HTMLButtonElement | null>(null);
   const autoScrollFrameRef = useRef<number | null>(null);
   const autoScrollDirectionRef = useRef<"left" | "right" | null>(null);
+  const [pillReady, setPillReady] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [pillBox, setPillBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const pinnedPages = useMemo(() => {
     if (isLocalFolder) return [];
     return Object.values(pages)
@@ -51,6 +65,35 @@ export function SidebarHeader({
         return b.updatedAt - a.updatedAt;
       });
   }, [isLocalFolder, pages]);
+
+  // 胶囊位置实测选中按钮的 offset*，nav 即 offsetParent，坐标不受 scrollLeft 影响
+  const measurePinnedPill = useCallback(() => {
+    const activeButton = activePinnedRef.current;
+    if (!activeButton) {
+      setPillBox(null);
+      return;
+    }
+    setPillBox({
+      left: activeButton.offsetLeft,
+      top: activeButton.offsetTop,
+      width: activeButton.offsetWidth,
+      height: activeButton.offsetHeight,
+    });
+  }, []);
+
+  const pinnedMeasureKey = `${showPinnedTitles}|${pinnedPages
+    .map((page) => `${page.id}:${page.icon ?? ""}:${getPageTitle(page)}`)
+    .join("|")}`;
+
+  useLayoutEffect(() => {
+    measurePinnedPill();
+  }, [measurePinnedPill, highlightedPageId, pinnedMeasureKey]);
+
+  // 首帧不过渡，避免胶囊从容器左端飞入
+  useEffect(() => {
+    const rafId = requestAnimationFrame(() => setPillReady(true));
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const handlePinnedWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
@@ -167,6 +210,7 @@ export function SidebarHeader({
 
     const observer = new ResizeObserver(() => {
       syncPinnedScrollState();
+      measurePinnedPill();
     });
     observer.observe(scroller);
     if (scroller.parentElement) {
@@ -180,7 +224,7 @@ export function SidebarHeader({
       scroller.removeEventListener("scroll", handleScroll);
       observer.disconnect();
     };
-  }, [syncPinnedScrollState, pinnedPages.length]);
+  }, [syncPinnedScrollState, measurePinnedPill, pinnedMeasureKey]);
 
   useEffect(() => {
     return () => {
@@ -193,7 +237,7 @@ export function SidebarHeader({
       activePinnedRef.current.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
-        inline: "center",
+        inline: "nearest",
       });
     }
     const rafId = requestAnimationFrame(syncPinnedScrollState);
@@ -202,7 +246,7 @@ export function SidebarHeader({
       cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
     };
-  }, [activePageId, pinnedPages.length, syncPinnedScrollState]);
+  }, [activePageId, pinnedMeasureKey, syncPinnedScrollState]);
 
   const pageHasVisibleContent = useCallback((page: Page): boolean => {
     const visit = (node: unknown): boolean => {
@@ -236,33 +280,26 @@ export function SidebarHeader({
       const iconName = page.icon;
       const iconMap = LucideIcons as unknown as Record<
         string,
-        React.ComponentType<{ className?: string }>
+        React.ComponentType<{ className?: string; strokeWidth?: number }>
       >;
       const SelectedIcon = iconName ? iconMap[iconName] : null;
       const DefaultIcon = pageHasVisibleContent(page)
         ? LucideIcons.FileText
         : LucideIcons.File;
+      // 选中态第二信号：只靠颜色不满足 WCAG 1.4.1，浅底对药丸轨道对比不足 3:1
+      const strokeWidth = isActive ? 2.5 : 2;
 
       if (iconName) {
         if (SelectedIcon) {
           return (
             <SelectedIcon
-              className={cn(
-                "h-4 w-4 transition-all duration-200",
-                isActive
-                  ? "text-[var(--goose-pin-accent)] scale-[1.15]"
-                  : "text-muted-foreground/85",
-              )}
+              className="h-4 w-4 transition-transform duration-100"
+              strokeWidth={strokeWidth}
             />
           );
         }
         return (
-          <span
-            className={cn(
-              "text-sm leading-none transition-transform duration-200",
-              isActive && "scale-[1.15]",
-            )}
-          >
+          <span className="text-sm leading-none transition-transform duration-100">
             {iconName}
           </span>
         );
@@ -271,24 +308,16 @@ export function SidebarHeader({
       if (page.isFolder) {
         return (
           <LucideIcons.Folder
-            className={cn(
-              "h-4 w-4 transition-all duration-200",
-              isActive
-                ? "text-[var(--goose-pin-accent)] scale-[1.15]"
-                : "text-muted-foreground/80",
-            )}
+            className="h-4 w-4 transition-transform duration-100"
+            strokeWidth={strokeWidth}
           />
         );
       }
 
       return (
         <DefaultIcon
-          className={cn(
-            "h-4 w-4 transition-all duration-200",
-            isActive
-              ? "text-[var(--goose-pin-accent)] scale-[1.15]"
-              : "text-muted-foreground/80",
-          )}
+          className="h-4 w-4 transition-transform duration-100"
+          strokeWidth={strokeWidth}
         />
       );
     },
@@ -328,7 +357,12 @@ export function SidebarHeader({
 
       <div className="pl-0 pr-[9px] pb-2 pt-0">
         {(pinnedPages.length > 0 || dragGuide) && (
-          <div className="group/pinned relative min-h-10 overflow-hidden rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)] px-1 py-1">
+          <div className="group/pinned relative min-h-10">
+            {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)]"
+            />
             {dragGuide && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
                 {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
@@ -336,14 +370,33 @@ export function SidebarHeader({
               </div>
             )}
             {pinnedPages.length > 0 && (
-              <div
+              <nav
+                aria-label="置顶页面"
                 ref={pinnedScrollerRef}
-                className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="relative flex items-center gap-1 overflow-x-auto px-1 py-1 scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onWheel={handlePinnedWheel}
               >
+                {pillBox && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute left-0 top-0 rounded-full",
+                      "bg-[var(--goose-interactive-selected)] shadow-sm",
+                      pillReady
+                        ? "transition-transform duration-[180ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+                        : "transition-none",
+                    )}
+                    style={{
+                      transform: `translate3d(${pillBox.left}px, ${pillBox.top}px, 0)`,
+                      width: pillBox.width,
+                      height: pillBox.height,
+                    }}
+                  />
+                )}
                 {pinnedPages.map((page) => {
                   const isActive = highlightedPageId === page.id;
                   const title = getPageTitle(page);
+                  const pinnedLabel = clipPinnedTitle(title);
                   return (
                     <TooltipProvider key={page.id} delayDuration={600}>
                       <Tooltip>
@@ -351,17 +404,27 @@ export function SidebarHeader({
                           <button
                             ref={isActive ? activePinnedRef : null}
                             type="button"
+                            aria-label={title}
+                            aria-current={isActive ? "page" : undefined}
                             className={cn(
-                              "h-8 w-8 shrink-0 rounded-full inline-flex items-center justify-center transition-all duration-200",
-                              "animate-in fade-in-0 zoom-in-95",
-                              // 不在按钮级用 scale：放大会超出 overflow 滚动容器被裁掉一角
+                              "relative z-[1] h-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center",
+                              "transition-colors duration-150 active:[&_svg]:scale-[0.97]",
+                              "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
+                              showPinnedTitles
+                                ? "gap-1 pl-1.5 pr-2"
+                                : "w-8 justify-center",
                               isActive
-                                ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm"
+                                ? "text-[var(--goose-interactive-selected-fg)]"
                                 : "text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
                             {renderPinnedIcon(page, isActive)}
+                            {showPinnedTitles ? (
+                              <span className="whitespace-nowrap text-xs font-medium leading-none">
+                                {pinnedLabel}
+                              </span>
+                            ) : null}
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">{title}</TooltipContent>
@@ -369,7 +432,7 @@ export function SidebarHeader({
                     </TooltipProvider>
                   );
                 })}
-              </div>
+              </nav>
             )}
 
             {pinnedPages.length > 0 && (
@@ -389,7 +452,7 @@ export function SidebarHeader({
 
                 <button
                   type="button"
-                  aria-label="向左查看置顶图标"
+                  aria-label="向左查看置顶页面"
                   onClick={() => scrollPinnedBy("left")}
                   onMouseEnter={() => startAutoScroll("left")}
                   onMouseLeave={stopAutoScroll}
@@ -412,7 +475,7 @@ export function SidebarHeader({
 
                 <button
                   type="button"
-                  aria-label="向右查看置顶图标"
+                  aria-label="向右查看置顶页面"
                   onClick={() => scrollPinnedBy("right")}
                   onMouseEnter={() => startAutoScroll("right")}
                   onMouseLeave={stopAutoScroll}
