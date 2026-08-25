@@ -1,0 +1,163 @@
+/* 编辑器容器、上下文 UI 缩放、侧栏块把手、文字选区。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --editor-font-size / --editor-ui-scale / --editor-scale / --goose-editor-selection-bg / --goose-interactive-selected。
+ */
+/* 两套全屏预览（代码/图形预览、图片 lightbox）共用同一条顶部工具条高度，
+   内容区靠它预留 padding，改一处两边同步 */
+:root {
+  --goose-preview-toolbar-height: 48px;
+}
+
+.goose-blocknote-editor,
+.bn-editor {
+  min-height: 320px;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  overflow-anchor: none;
+  font-size: var(--editor-font-size);
+  line-height: 1.7;
+}
+
+/*
+ * 编辑器上下文 UI 的统一 opt-in。
+ *
+ * 该类只放在定位外壳的内层 surface 上：CSS zoom 会同时缩放排版盒、
+ * 绘制和命中区，外层 fixed/absolute 坐标仍保持在 viewport 坐标系中。
+ * 这比 transform: scale 更适合 Floating UI，也避免覆盖 translate/rotate。
+ */
+.goose-editor-context-ui {
+  zoom: var(--editor-ui-scale, 1);
+}
+
+/* 防御性约束：独立浮层误嵌套时只允许最外层应用一次缩放。 */
+.goose-editor-context-ui .goose-editor-context-ui {
+  zoom: 1;
+}
+
+/* 可交互触发器不使用 CSS zoom。uTools 旧内核会把 zoom 祖先的
+   getBoundingClientRect 再次放大，导致 Portal 面板与 tooltip 飘到右下方。
+   改用真实布局尺寸，使定位与绘制共用 viewport 坐标系。 */
+.goose-editor-tooltip-surface {
+  border-radius: calc(14px * var(--editor-ui-scale, 1));
+  padding: calc(6px * var(--editor-ui-scale, 1))
+    calc(10px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+.goose-toolbar-tooltip-content {
+  gap: calc(8px * var(--editor-ui-scale, 1));
+}
+
+.goose-editor-tooltip-surface kbd {
+  height: calc(20px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  padding-inline: calc(6px * var(--editor-ui-scale, 1));
+  font-size: calc(10px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-panel {
+  gap: calc(4px * var(--editor-ui-scale, 1));
+  border-radius: calc(10px * var(--editor-ui-scale, 1));
+  padding: calc(4px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-title {
+  padding-inline: calc(4px * var(--editor-ui-scale, 1));
+  padding-top: calc(2px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-grid {
+  grid-template-columns: repeat(5, calc(28px * var(--editor-ui-scale, 1)));
+  gap: calc(4px * var(--editor-ui-scale, 1));
+  padding-inline: calc(4px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-grid-last {
+  padding-bottom: calc(2px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-swatch {
+  width: calc(28px * var(--editor-ui-scale, 1));
+  height: calc(28px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-letter {
+  font-size: calc(34px * var(--editor-ui-scale, 1));
+  transform: scale(0.56);
+}
+
+.goose-color-picker-divider {
+  margin-block: calc(4px * var(--editor-ui-scale, 1));
+}
+
+.goose-color-picker-background-swatch {
+  width: calc(20px * var(--editor-ui-scale, 1));
+  height: calc(20px * var(--editor-ui-scale, 1));
+  border-radius: calc(4px * var(--editor-ui-scale, 1));
+}
+
+/* 位于编辑器 DOM/portalElement 内的控件已经继承速记小窗的局部 zoom，
+   因此这里只补常规编辑字号带来的基准比例，避免 quicknote 双重缩放。 */
+.goose-editor-inline-context-ui {
+  zoom: var(--editor-scale, 1);
+}
+
+/* 块把手挂在 fixed 外壳上，用 translate(-50%) 对齐行中线。
+   CSS zoom 在 uTools 旧内核里往往只缩小绘制、不缩小定位盒，
+   缩小后视觉中心会偏上。这里关掉 zoom，改用真实布局尺寸。 */
+.bn-side-menu > .goose-editor-inline-context-ui {
+  zoom: 1;
+  align-items: center;
+  gap: calc(2px * var(--editor-scale, 1));
+  padding-block: calc(3px * var(--editor-scale, 1));
+  padding-inline: calc(4px * var(--editor-scale, 1));
+  border-radius: calc(10px * var(--editor-scale, 1));
+}
+
+.bn-side-menu button {
+  display: inline-flex;
+  width: calc(22px * var(--editor-scale, 1));
+  height: calc(24px * var(--editor-scale, 1));
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: calc(7px * var(--editor-scale, 1));
+  line-height: 0;
+}
+
+.bn-side-menu button svg {
+  display: block;
+  width: calc(14px * var(--editor-scale, 1));
+  height: calc(14px * var(--editor-scale, 1));
+  flex-shrink: 0;
+}
+
+.bn-side-menu button[draggable]::before {
+  top: calc(4px * var(--editor-scale, 1));
+  bottom: calc(4px * var(--editor-scale, 1));
+  left: calc(-2px * var(--editor-scale, 1));
+}
+
+/* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
+   颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
+   这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
+   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。 */
+.goose-blocknote-editor ::selection,
+.bn-editor ::selection,
+.goose-blocknote-editor .goose-fake-selection,
+.bn-editor .goose-fake-selection {
+  background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
+  color: inherit;
+}
+
+.goose-blocknote-editor [data-show-selection],
+.bn-editor [data-show-selection] {
+  background-color: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  ) !important;
+  color: inherit;
+}

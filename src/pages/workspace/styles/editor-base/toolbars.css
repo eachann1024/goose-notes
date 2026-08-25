@@ -1,0 +1,250 @@
+/* 格式工具栏、块工具栏、选中节点去描边、极简工作区隐藏首个 H1。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --editor-ui-scale / --goose-interactive-selected / --goose-icon-chip-on-selected / --popover / --border / --ring。
+ */
+
+/* 共享格式工具栏
+   浮动外壳、固定底栏和按钮状态各自只在这里定义一次。浮动外壳不使用外投影：
+   uTools 旧内核会把「圆角元素 + 外投影 + 浮动层裁切」栅格化成直角灰块。
+   以清晰边框建立层级，避免用遮片修补渲染伪影。 */
+[data-formatting-toolbar] {
+  min-width: 0;
+  max-width: 100%;
+  color: hsl(var(--popover-foreground));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"] {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(10px * var(--editor-ui-scale, 1));
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+}
+
+.goose-formatting-toolbar-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.goose-formatting-toolbar-row::-webkit-scrollbar {
+  display: none;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
+  background: var(--goose-icon-chip-on-selected);
+  color: hsl(var(--foreground));
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control[data-state="on"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-state="on"]:hover,
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"]:hover {
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  box-shadow: none !important;
+}
+
+/* 块工具栏统一用语义化 pressed 状态接入产品强调色。
+   图片、视频以及后续新增块控件无需再各自维护激活色。 */
+.goose-block-toolbar-control[aria-pressed="true"],
+.goose-block-toolbar-control[aria-pressed="true"]:hover,
+.goose-block-toolbar-control[aria-pressed="true"]:focus-visible {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+/* 颜色按钮内部自行呈现文本色，激活时只改变按钮底色。 */
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-goose-preserve-icon-color="true"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control-ai,
+[data-formatting-toolbar] .goose-formatting-toolbar-control-ai:hover {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-formatting-toolbar-separator {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 1px;
+  margin: 0 2px;
+  background: hsl(var(--border));
+  opacity: 0.8;
+}
+
+/* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
+
+/* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。
+   速记小窗使用底部停靠栏，命中区保持原尺寸。 */
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-row {
+  gap: calc(1px * var(--editor-ui-scale, 1));
+  padding: calc(3px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control {
+  width: calc(26px * var(--editor-ui-scale, 1));
+  min-width: calc(26px * var(--editor-ui-scale, 1));
+  height: calc(26px * var(--editor-ui-scale, 1));
+  flex-basis: calc(26px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control
+  svg {
+  width: calc(14px * var(--editor-ui-scale, 1));
+  height: calc(14px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-separator {
+  height: calc(16px * var(--editor-ui-scale, 1));
+  margin: 0 calc(1px * var(--editor-ui-scale, 1));
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-row {
+  gap: 2px;
+  padding: 4px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  border-radius: 7px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control svg {
+  width: 15px;
+  height: 15px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-separator {
+  height: 18px;
+  margin: 0 2px;
+}
+
+/* 图片、视频等块级浮层共用同一密度；外层 goose-editor-context-ui 负责等比缩放。 */
+.goose-block-toolbar-surface {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-block-toolbar-control {
+  display: inline-flex;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.goose-block-toolbar-control:hover,
+.goose-block-toolbar-control:focus-visible {
+  background: var(--goose-icon-chip-on-selected);
+}
+
+.goose-block-toolbar-control:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+.goose-block-toolbar-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+.goose-block-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  margin: 0 1px;
+  background: hsl(var(--border));
+  opacity: 0.8;
+}
+
+/* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
+[data-goose-image-toolbar]
+  button:not(:disabled):not([aria-disabled="true"]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+/* 节点选中仍保留编辑器行为与工具栏，但不绘制 BlockNote / ProseMirror
+   默认的蓝色外框。该共享样式同时覆盖主窗与速记小窗。 */
+.bn-editor .ProseMirror-selectednode,
+.bn-editor .bn-block-content.ProseMirror-selectednode > *,
+.bn-editor .ProseMirror-selectednode > .bn-block-content > * {
+  outline: none !important;
+}
+
+/* 极简工作区把内部笔记的首个 H1 提到顶栏编辑，正文从标题下方直接开始。
+   本地文件正文没有标题块，不能隐藏它的首段。
+   注意：EditorContextMenu 内还有一层 workspace-editor-surface，没有 data-local-file-page；
+   若按内层 surface 判断，会把本地空页唯一段落也 display:none，主区看起来全黑。
+   因此以 main 上的 data-local-file-page 为准。 */
+.workspace-main-sheet[data-single-tab-mode="true"]:not(
+    [data-local-file-page="true"]
+  )
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer:first-child {
+  display: none;
+}

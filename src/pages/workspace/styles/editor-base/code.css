@@ -1,0 +1,483 @@
+/* 代码块 chrome、工具栏、行号与代码预览 lightbox。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --editor-code-* / --goose-block-subtle-* / --goose-preview-toolbar-height / --goose-popup-trigger-origin。
+ */
+
+/* ===== 自定义代码块增强（DOM 注入方案） ===== */
+
+/* 内置 codeBlock 容器：中性化 BlockNote 默认 chrome（#161616 黑底/白字/圆角），
+   视觉统一交给内层 .goose-code-block-node */
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  background-color: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 隐藏内置 language select（工具栏替代） */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > div
+  > select {
+  display: none !important;
+}
+
+/* 内置 pre 样式覆盖 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: 0.85em;
+  line-height: 1.7;
+  position: relative;
+}
+
+/* 注入的工具栏宿主 */
+.goose-code-toolbar-host {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--code-border, hsl(var(--border) / 0.3));
+  background: var(--code-bg, hsl(var(--muted) / 0.3));
+  color: var(--code-fg, hsl(var(--foreground)));
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:hover
+  .goose-code-toolbar-host,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:focus-within
+  .goose-code-toolbar-host {
+  opacity: 1;
+}
+
+.goose-code-floating-toolbar {
+  display: flex;
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--background) / 0.92);
+  padding: 2px;
+  box-shadow: 0 6px 18px hsl(var(--foreground) / 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* 自定义 codeBlockSpec 容器 */
+.goose-code-block-node {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  background-color: var(--code-bg, hsl(var(--muted) / 0.55));
+  color: var(--code-fg, hsl(var(--foreground)));
+  /* 外壳边框与文件块统一，不随代码主题走（--code-border 仅供内部分隔线使用） */
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: var(--editor-code-block-radius, 8px);
+  overflow: hidden;
+}
+
+.goose-code-block-node[data-collapsed="true"] {
+  min-height: 42px;
+}
+
+.goose-code-block-node[data-visual-preview="true"] {
+  min-height: 178px;
+  background-color: hsl(var(--background));
+}
+
+.goose-code-toolbar-row {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+  color: var(--code-fg, hsl(var(--foreground)));
+}
+
+.goose-code-block-node[data-visual-preview="true"] .goose-code-toolbar-row {
+  position: relative;
+  inset: auto;
+  min-height: 46px;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--code-border, var(--goose-block-subtle-border));
+  background: var(--goose-block-subtle-bg);
+  pointer-events: auto;
+}
+
+.goose-code-toolbar-left,
+.goose-code-toolbar-actions {
+  pointer-events: auto;
+}
+
+.goose-code-toolbar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.goose-code-visual-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(var(--foreground));
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.goose-code-toolbar-actions {
+  --goose-popup-trigger-origin: top right;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  flex-shrink: 0;
+}
+
+.goose-code-toolbar-actions button,
+.goose-code-toolbar-actions .goose-code-lang-trigger {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground) / 0.7) !important;
+  box-shadow: none !important;
+}
+
+.goose-code-toolbar-actions button:hover,
+.goose-code-toolbar-actions .goose-code-lang-trigger:hover {
+  background: hsl(var(--muted) / 0.5) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.goose-code-toolbar-actions-visual {
+  gap: 6px;
+}
+
+.goose-code-toolbar-actions-visual button {
+  min-width: 28px;
+  border-radius: 8px !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.goose-code-toolbar-actions-visual button:hover {
+  background: var(--goose-interactive-hover) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.goose-code-toolbar-actions-visual .goose-code-display-toggle {
+  margin-left: 6px;
+  border: 1px solid var(--goose-block-subtle-border);
+  background: var(--goose-block-subtle-hover);
+}
+
+.goose-code-toolbar-actions-visual .goose-code-display-toggle-button {
+  min-width: 42px;
+  border-radius: 10px !important;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.goose-code-toolbar-actions-visual button.goose-code-action-active {
+  background: var(--goose-interactive-selected) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.goose-code-toolbar-actions button:disabled {
+  opacity: 0.4;
+}
+
+.goose-code-toolbar-left input {
+  background: transparent !important;
+  color: var(--code-fg, hsl(var(--foreground))) !important;
+  width: 100%;
+}
+
+.goose-code-toolbar-left input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.45) !important;
+}
+
+.goose-code-toolbar-left input:focus {
+  background: hsl(var(--muted) / 0.28) !important;
+}
+
+.goose-code-content-wrapper {
+  position: relative;
+  padding-top: 36px;
+}
+
+.goose-code-block-node[data-visual-preview="true"] .goose-code-content-wrapper {
+  padding-top: 0;
+}
+
+.goose-code-pre {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: 0.85em;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.goose-code-pre-hidden {
+  display: none;
+}
+
+.goose-code-content-wrapper:has(.goose-code-line-numbers) .goose-code-pre {
+  padding-left: 16px;
+}
+
+.goose-code-content {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* 行号 */
+.goose-code-line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  padding: 12px 8px 12px 0;
+  text-align: right;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: 11px;
+  line-height: 1.7;
+  display: none;
+  color: var(--code-line-number, hsl(var(--muted-foreground) / 0.4));
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.goose-code-line-numbers > div {
+  height: calc(1em * 1.7);
+}
+
+/* math/mermaid 预览 */
+.goose-code-block-node .goose-code-preview {
+  padding: 8px 16px;
+  background: transparent;
+  min-height: 132px;
+  overflow: auto;
+}
+
+.goose-code-block-node .goose-code-preview .mermaid-preview {
+  min-width: max-content;
+}
+
+.goose-code-preview-lightbox {
+  --goose-preview-toolbar-height: 48px;
+  position: fixed;
+  inset: 0;
+  z-index: 22000;
+  background: hsl(var(--background));
+}
+
+.goose-code-preview-lightbox-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.goose-code-preview-lightbox-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--goose-preview-toolbar-height);
+  padding: 10px 12px 10px 18px;
+  border-bottom: 1px solid var(--goose-block-subtle-border);
+  /* 悬浮在内容之上，必须不透明才不会透出下方图形 */
+  background: hsl(var(--background));
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.goose-code-preview-lightbox-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goose-code-preview-lightbox-zoom {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.goose-code-preview-lightbox-zoom-label {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-code-preview-lightbox-close {
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-code-preview-lightbox-close:hover,
+.goose-code-preview-lightbox-zoom button:hover:not(:disabled) {
+  background: var(--goose-control-hover-bg);
+  color: hsl(var(--foreground));
+}
+
+.goose-code-preview-lightbox-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: calc(var(--goose-preview-toolbar-height) + 24px) 24px 24px;
+  cursor: text;
+}
+
+/* 覆盖全局 body/img 的 user-select: none，让预览内容可选中复制 */
+.goose-code-preview-lightbox-body,
+.goose-code-preview-lightbox-body * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.goose-code-preview-lightbox-body .mermaid-preview {
+  min-width: max-content;
+  padding: 0;
+}
+
+.goose-code-preview-lightbox-body .katex-display {
+  margin: 0;
+}
+
+.goose-code-preview-lightbox-body.is-media,
+.goose-code-preview-lightbox-body.is-vector {
+  overflow: auto;
+  padding: calc(var(--goose-preview-toolbar-height) + 12px) 16px 12px;
+}
+
+.goose-code-preview-lightbox-body.is-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.goose-preview-zoom-surface {
+  width: 100%;
+}
+
+.goose-code-preview-lightbox-body.is-html .goose-preview-zoom-surface {
+  width: 100%;
+  height: 100%;
+}
+
+.goose-code-preview-lightbox-body.is-vector {
+  display: flex;
+}
+
+/* margin auto 而不是 justify-content，内容超出时才不会裁掉左上角 */
+.goose-preview-vector-sizer {
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+.goose-preview-vector {
+  width: max-content;
+  transform-origin: top left;
+}
+
+.goose-code-preview-lightbox-body.is-vector .goose-preview-svg {
+  line-height: 0;
+}
+
+.goose-code-preview-lightbox-body.is-vector .goose-preview-svg > svg {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.goose-code-preview-lightbox-body.is-html {
+  padding: var(--goose-preview-toolbar-height) 0 0;
+  overflow: hidden;
+}
+
+.goose-code-preview-lightbox-body.is-html iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}

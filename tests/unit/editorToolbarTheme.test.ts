@@ -4,7 +4,7 @@ import { expect, test } from "playwright/test";
 const readSource = (path: string) => readFileSync(path, "utf8");
 
 test("块工具栏通过 pressed 状态统一使用强调色令牌", () => {
-  const css = readSource("src/pages/workspace/styles/editor-base.css");
+  const css = readSource("src/pages/workspace/styles/editor-base/toolbars.css");
   const imageToolbar = readSource(
     "src/components/editor/image/ImageToolbar.tsx",
   );

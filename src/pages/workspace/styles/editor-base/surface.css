@@ -1,0 +1,85 @@
+/* 页内搜索高亮、工作区编辑器表面与块间距基线。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-find-match 字面色；表面背景走透明以继承工作区 token。
+ */
+
+.goose-find-match {
+  background-color: rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
+  transition:
+    background-color 0.6s ease,
+    box-shadow 0.6s ease;
+}
+
+/* 搜索定位高亮淡出：到点后加此 class，背景与描边过渡到透明 */
+.goose-find-match--fading,
+.goose-find-match--fading.goose-find-match--current {
+  background-color: transparent;
+  box-shadow: 0 0 0 1px transparent;
+}
+
+.goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
+  color: inherit;
+  transition:
+    background-color 0.6s ease,
+    box-shadow 0.6s ease;
+}
+
+.dark .goose-find-match {
+  background-color: rgba(250, 204, 21, 0.32);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45);
+}
+
+.dark .goose-find-match--current {
+  background-color: rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.85);
+}
+
+.workspace-editor-surface .bn-container,
+.workspace-editor-surface .bn-root {
+  flex: 1 1 100% !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  background: transparent;
+}
+
+.workspace-editor-surface .tiptap {
+  width: 100% !important;
+}
+
+.workspace-editor-surface .bn-editor {
+  min-height: 100%;
+  background: transparent;
+  padding-inline: 0;
+  width: 100%;
+}
+
+/* uTools 主窗固定全宽布局的左右留白：
+   全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
+   需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
+   注：折叠标题箭头与 side menu 同锚内容左缘、向同侧展开，留白只整体右移、消不掉两者
+   重叠——那由折叠标题专门处理（见下方 toggle 列覆盖规则）。 */
+/* 全宽 gutter 由 page-scroll-container 的 px-14 统一承担，避免与页面图标列双重缩进 */
+.workspace-editor-surface.max-w-none .bn-editor {
+  padding-inline: 0;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"]
+  h1:first-child {
+  margin-top: 0;
+}
+
+/* BlockNote 块间距全局优化 */
+.workspace-editor-surface .bn-block-outer {
+  margin-bottom: 0.5em;
+}
+
+.workspace-editor-surface .bn-block-outer:last-child {
+  margin-bottom: 0;
+}

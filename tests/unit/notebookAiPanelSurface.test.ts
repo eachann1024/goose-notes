@@ -23,7 +23,7 @@ test("AI 面板挂载时标记任务面，卸载时清标记并收起浮层", ()
 });
 
 test("切走 AI / 开设置时隐藏文字工具栏及同类浮动层", () => {
-  const css = readSource("src/pages/workspace/styles/editor-base.css");
+  const css = readSource("src/pages/workspace/styles/editor-base/overlays.css");
 
   expect(css).toContain(
     "body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-formatting-toolbar]",

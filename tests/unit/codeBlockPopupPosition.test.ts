@@ -14,7 +14,7 @@ const popupCss = readFileSync(
   "utf8",
 );
 const editorCss = readFileSync(
-  "src/pages/workspace/styles/editor-base.css",
+  "src/pages/workspace/styles/editor-base/code.css",
   "utf8",
 );
 

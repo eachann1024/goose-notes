@@ -104,10 +104,15 @@
 }
 
 /* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
-   导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。 */
-.workspace-shell
-  .workspace-stage:has(.workspace-sidebar-pane[aria-hidden="true"]) {
+   导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。
+   用 data 属性而不是 :has()，避免侧栏开关时整页重算 :has()。 */
+.workspace-shell .workspace-stage[data-sidebar-collapsed] {
   gap: 0;
+}
+
+/* 侧栏收起时把手仍可能由 BlockNote 挂到 portal；用根属性藏掉，不让编辑器订侧栏 store。 */
+html[data-sidebar-collapsed] .bn-side-menu {
+  display: none;
 }
 
 .workspace-shell .workspace-sidebar-pane {

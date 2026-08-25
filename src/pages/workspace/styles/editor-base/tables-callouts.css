@@ -1,0 +1,290 @@
+/* 表格与分割线、链接、标注、表格扩展/拖拽手柄、图视频块间距。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-accent-link / --border / --primary / --muted-foreground。
+ */
+
+/* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
+   避免 tableEvenColumnWidth 的核心行为依赖旧 Chromium 不支持的 :has()。 */
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  th,
+.workspace-editor-surface.goose-table-even-column-width
+  .bn-editor
+  [data-content-type="table"]
+  td {
+  width: auto;
+  overflow-wrap: anywhere;
+}
+
+/* 注意：BlockNote 在编辑器内部把 --foreground/--muted 覆盖成 oklch(...) 整色值，
+   不再是 HSL 三元组，所以这里不能用 hsl(var(--foreground) / a)，会解析失败导致透明。
+   标题行底色改用字面 rgba。 */
+.workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  background-color: rgba(0, 0, 0, 0.045);
+  font-weight: 600;
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,
+.dark .workspace-editor-surface .bn-editor [data-content-type="table"] td {
+  border-color: hsl(var(--border) / 0.55);
+}
+
+.workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.55);
+}
+
+.dark .workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.4);
+}
+
+/* ===== 链接样式：跟随产品强调色（含表格单元格内） ===== */
+.workspace-editor-surface a[data-inline-content-type="link"] {
+  color: var(--goose-accent-link);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: text;
+  transition: color 0.15s ease;
+}
+
+.workspace-editor-surface a[data-inline-content-type="link"]:hover {
+  color: var(--goose-accent-link-hover);
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: visible;
+}
+
+.workspace-editor-surface .bn-block-outer:has([data-callout="true"]),
+.workspace-editor-surface .bn-block:has([data-callout="true"]),
+.workspace-editor-surface .bn-block-content[data-content-type="callout"],
+.workspace-editor-surface .bn-block-content:has([data-callout="true"]),
+.workspace-editor-surface .react-renderer.node-callout {
+  width: 100%;
+}
+
+/* ===== 标注（callout）图标与首行文字垂直居中 =====
+   与 checklist 同原理：图标槽高度 = 1.5em（一行行高），槽内 flex 居中；
+   多行时槽仍只占首行高度，图标对齐第一行。 */
+.workspace-editor-surface [data-callout="true"],
+.quicknote-editor-surface [data-callout="true"] {
+  align-items: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot,
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger],
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot,
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  padding: 0;
+  line-height: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot > *,
+.quicknote-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content {
+  line-height: 1.5;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg {
+  display: block;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child {
+  margin-top: 0 !important;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"],
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"] {
+  line-height: 1.5;
+}
+
+/* ===== 表格扩展按钮（+） ===== */
+.goose-table-extend-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.72);
+  box-shadow: none;
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.goose-table-extend-button > svg {
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 2px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow:
+    0 0 0 1px hsl(var(--border) / 0.76),
+    0 2px 6px hsl(var(--foreground) / 0.06);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.goose-table-extend-button:hover,
+.goose-table-extend-button.is-editing {
+  color: hsl(var(--foreground));
+}
+
+.goose-table-extend-button:hover > svg,
+.goose-table-extend-button.is-editing > svg {
+  background: transparent;
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.34),
+    0 3px 8px hsl(var(--foreground) / 0.08);
+}
+
+.goose-table-extend-button:active {
+  transform: scale(0.96);
+}
+
+.goose-table-extend-button-columns {
+  inline-size: 18px;
+  block-size: 100%;
+  min-block-size: 100%;
+  cursor: col-resize;
+}
+
+/* 行扩展按钮：占满 popover 宽度，+ 居中 */
+.goose-table-extend-button-rows {
+  inline-size: 100%;
+  block-size: 18px;
+  cursor: row-resize;
+}
+
+.workspace-editor-surface .bn-table-drop-cursor {
+  background-color: hsl(var(--primary) / 0.72);
+  border-radius: 999px;
+}
+
+/* ===== 表格拖拽手柄按钮 ===== */
+.goose-table-handle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.6);
+  cursor: grab;
+  padding: 2px;
+  opacity: 0.72;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.goose-table-handle-btn:hover {
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--foreground));
+  opacity: 1;
+}
+
+/* ===== 表格拖拽手柄美化 ===== */
+.workspace-editor-surface .bn-table-handle {
+  border-radius: 4px;
+  opacity: 0.5;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+.workspace-editor-surface .bn-table-handle:hover {
+  opacity: 1;
+  background: hsl(var(--accent) / 0.5);
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="image"]),
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
+  margin-bottom: 0.5em;
+}
+

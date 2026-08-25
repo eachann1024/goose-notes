@@ -229,6 +229,20 @@ test("表格块无文字选区时不触发格式工具栏", () => {
   expect(shouldRenderFormattingToolbar(editor)).toBe(false);
 });
 
+test("锁定/只读时不触发格式工具栏", () => {
+  const editor = createEditor([
+    { id: "body", type: "paragraph", content: "普通正文" },
+  ]);
+
+  editor.transact((tr) => {
+    tr.setSelection(new AllSelection(tr.doc));
+  });
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
+
+  editor.isEditable = false;
+  expect(shouldRenderFormattingToolbar(editor)).toBe(false);
+});
+
 test("表格内选中文字时能解析 AI 锚点 block id", () => {
   const editor = createEditor([
     {

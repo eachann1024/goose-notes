@@ -1,0 +1,230 @@
+/* 行内代码、待办清单、标题子级缩进、页面字体切换。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-inline-code-* / --editor-inline-code-* / --font-mono / --font-default / --font-serif / --goose-interactive-selected-fg。
+ */
+
+/* ===== 行内代码（跟随当前强调色；变量见 index.css / goose-accent-colors.css） ===== */
+.workspace-editor-surface .bn-inline-content code,
+.quicknote-editor-surface .bn-inline-content code {
+  background-color: var(--goose-inline-code-bg);
+  color: var(--goose-inline-code-fg);
+  padding: var(--editor-inline-code-padding-y, 1px)
+    var(--editor-inline-code-padding-x, 4px);
+  border-radius: var(--editor-inline-code-radius, 4px);
+  border: 1px solid transparent;
+  /* 与两侧正文的固定留白，用户不必自己在反引号外敲空格；em 单位随字号缩放，
+     且不会被 box-decoration-break: clone 在换行处重复出来 */
+  margin-left: 0.2em;
+  margin-right: 0.2em;
+  /* 下划线只留给链接；行内代码自身及继承自 <u> 等的装饰一律去掉 */
+  text-decoration: none;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  ) !important;
+  font-size: 0.85em;
+  line-height: 1;
+  /* 按正文基线对齐后轻微上移：列表 marker / checkbox 锚在首行，
+     `middle` 会把高对比背景盒的视觉中心压低。em 偏移可随编辑器缩放。 */
+  vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
+  background-color: transparent;
+  color: var(--goose-inline-code-fg);
+}
+
+/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置，
+   inlineCodeCaretExtension 靠它把光标钉进或钉出圆角盒 */
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary] {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 链接内的行内代码：去掉文字下划线，并保持强调色（不继承链接色） */
+.workspace-editor-surface a[data-inline-content-type="link"] code,
+.quicknote-editor-surface a[data-inline-content-type="link"] code,
+.workspace-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content] {
+  color: var(--goose-inline-code-fg);
+  text-decoration: none;
+}
+
+.workspace-editor-surface .bn-inline-content code:hover,
+.quicknote-editor-surface .bn-inline-content code:hover {
+  border-color: var(--goose-inline-code-border-hover);
+}
+
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
+  color: var(--goose-inline-code-fg);
+}
+
+/* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
+  .bn-inline-content {
+  text-decoration: none;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ===== CheckListItem 对齐：单行时复选框与文字垂直居中，多行时对齐第一行 =====
+   原理：复选框包裹盒高度 = 一行行高（line-height 1.5em），盒内 input 垂直居中。
+   单行 → 盒高等于唯一一行 → 视觉居中；
+   多行 → 盒高仍只占第一行高度 → 复选框对齐第一行（顶部对齐效果）。
+   覆盖 BlockNote 内置的固定 height:24px，避免换字体后行高变化导致错位。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div:has(> input) {
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+
+/* 方框随字号同步缩放：1em ≈ 一个汉字高（与文字一样大），cmd+= 放大字体时同步放大。
+   左右 margin 也用 em，使「间距+框+间距」总槽宽恒为 1.5em（默认 16px 字号时 24px，
+   与无序/有序列表 marker 槽一致），框中心落在 0.65em ≈ 10.4px，贴近连接线轴 10.5px。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input {
+  width: 1em;
+  height: 1em;
+  margin-left: 0.15em;
+  margin-right: 0.35em;
+  margin-block: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-self: center;
+  font-size: inherit;
+  line-height: 1;
+  vertical-align: middle;
+  border: 0.09em solid hsl(var(--muted-foreground));
+  border-radius: 0.2em;
+  background: transparent;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input:checked {
+  /* 对勾画在 background-image 上：uTools 旧内核的 <input> 不生成 ::after。
+     size 用 100% 铺满 padding-box，避免旧内核忽略 background-position
+     时对勾贴在左上角。 */
+  background-color: var(--goose-interactive-selected-fg);
+  border-color: var(--goose-interactive-selected-fg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3.8 8L6.7 10.9 12.1 5.1'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-origin: padding-box;
+  background-position: center;
+  background-size: 100% 100%;
+}
+
+/* ===== BlockNote children 缩进优化 ===== */
+/* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
+.workspace-editor-surface
+  .bn-block:has(> .bn-block-content[data-content-type="heading"])
+  > .bn-block-children {
+  padding-left: 0.5em;
+}
+
+/* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
+.workspace-editor-surface[data-font-family="default"] .bn-default-styles {
+  font-family: var(--font-default);
+}
+
+.workspace-editor-surface[data-font-family="serif"] .bn-default-styles {
+  font-family: var(--font-serif);
+}
+
+.workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
+  font-family: var(--font-mono);
+}

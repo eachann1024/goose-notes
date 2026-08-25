@@ -335,7 +335,16 @@ export function EditorComposer({
     selector: ({ editor }) => shouldRenderFormattingToolbar(editor),
   });
   const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
+  const resetFormattingToolbarAi = useFormattingToolbarAi((s) => s.reset);
+  useEffect(() => {
+    if (!editable) {
+      setLinkPopoverOpen(false);
+      resetFormattingToolbarAi();
+    }
+  }, [editable, resetFormattingToolbarAi]);
+
   const formattingToolbarOpen =
+    editable &&
     !suppressFormattingToolbar &&
     !formattingToolbarAiActive &&
     formattingToolbarStoreOpen &&
@@ -501,6 +510,7 @@ export function EditorComposer({
         <LocalFileTitle
           pageId={page.id}
           localFilePath={page.localFilePath}
+          editable={editable}
           onEnterBelow={handleLocalFileTitleEnter}
         />
       )}
@@ -542,11 +552,13 @@ export function EditorComposer({
           }
         }}
       >
-        {showSideMenu ? <EditorSideMenu /> : null}
-        <TableHandlesController
-          tableHandle={GooseTableHandle}
-          extendButton={GooseTableExtendButton}
-        />
+        {showSideMenu && editable ? <EditorSideMenu /> : null}
+        {editable ? (
+          <TableHandlesController
+            tableHandle={GooseTableHandle}
+            extendButton={GooseTableExtendButton}
+          />
+        ) : null}
         {__GOOSE_EDITOR_COMPACT__ ? (
           <FixedFormattingToolbarController
             formattingToolbar={EditorFormattingToolbar}
@@ -560,41 +572,45 @@ export function EditorComposer({
           />
         )}
         <LinkToolbarController linkToolbar={EditorLinkToolbar} />
-        <FilePanelController filePanel={EditorFilePanel} />
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={getSlashItems}
-          floatingUIOptions={slashMenuFloatingOptions}
-          shouldOpen={(event) =>
-            shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock: usesRawEditorContent,
-            })
-          }
-          suggestionMenuComponent={CustomSlashMenu as any}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
-        <SuggestionMenuController
-          triggerCharacter="、"
-          getItems={getSlashItems}
-          floatingUIOptions={slashMenuFloatingOptions}
-          shouldOpen={(event) =>
-            shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock: usesRawEditorContent,
-            })
-          }
-          suggestionMenuComponent={CustomSlashMenu as any}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
+        {editable ? <FilePanelController filePanel={EditorFilePanel} /> : null}
+        {editable ? (
+          <>
+            <SuggestionMenuController
+              triggerCharacter="/"
+              getItems={getSlashItems}
+              floatingUIOptions={slashMenuFloatingOptions}
+              shouldOpen={(event) =>
+                shouldOpenSlashSuggestionMenu(event, editor, {
+                  allowSlashMenuOnFirstBlock: usesRawEditorContent,
+                })
+              }
+              suggestionMenuComponent={CustomSlashMenu as any}
+              onItemClick={(item) => {
+                if (item && "onItemClick" in item) {
+                  (item as any).onItemClick();
+                }
+              }}
+            />
+            <SuggestionMenuController
+              triggerCharacter="、"
+              getItems={getSlashItems}
+              floatingUIOptions={slashMenuFloatingOptions}
+              shouldOpen={(event) =>
+                shouldOpenSlashSuggestionMenu(event, editor, {
+                  allowSlashMenuOnFirstBlock: usesRawEditorContent,
+                })
+              }
+              suggestionMenuComponent={CustomSlashMenu as any}
+              onItemClick={(item) => {
+                if (item && "onItemClick" in item) {
+                  (item as any).onItemClick();
+                }
+              }}
+            />
+          </>
+        ) : null}
         {/* 紧凑编辑器构建不挂 AI 菜单。 */}
-        {__GOOSE_EDITOR_AI__ && aiSettings.enabled && (
+        {__GOOSE_EDITOR_AI__ && aiSettings.enabled && editable && (
           <GooseAIMenuController aiMenu={GooseAIMenu} />
         )}
       </BlockNoteView>
@@ -631,7 +647,11 @@ export function EditorComposer({
           </div>
         </div>
       )}
-      <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
+      <ImageLightbox
+        editor={editor}
+        editorContainerRef={editorContainerRef}
+        editable={editable}
+      />
       <FindInPageBar
         editor={editor}
         open={findBarOpen}

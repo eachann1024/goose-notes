@@ -46,17 +46,6 @@
   pointer-events: none;
 }
 
-.notebook-ai-composer-dock::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 36px;
-  pointer-events: none;
-  background: linear-gradient(to top, hsl(var(--goose-editor-bg)), transparent);
-}
-
 /* ── AI 行内 chip：与 caret 同一行盒 ──────────────────────
  * contenteditable 光标高度 ≈ 行高，不是 chip 内容高。
  * 先前 chip 比行高矮 → 光标比 tag 高一截、看起来没垂直对齐。
