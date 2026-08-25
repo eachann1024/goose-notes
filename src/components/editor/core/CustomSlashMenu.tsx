@@ -16,7 +16,6 @@ import {
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
 import { Kbd } from "@/components/editor/ui/kbd";
-import { Button } from "@/components/editor/ui/button";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
 import { isSlashMenuDivider } from "./blocknoteSlashItems";
 
@@ -273,34 +272,12 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     }
 
     const lite = __GOOSE_EDITOR_COMPACT__;
+    const needsTooltip = items.some(
+      (item) =>
+        !isSlashMenuDivider(item) && item.disabled && item.disabledReason,
+    );
 
-    return (
-      <div
-        className="inline-flex max-h-[inherit] min-h-0 flex-col overflow-visible bg-transparent"
-        data-notion-slash-root="true"
-        {...(lite ? { "data-goose-slash-lite": "true" } : {})}
-      >
-        <div
-          data-notion-slash-surface="true"
-          className={cn(
-            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
-            !lite &&
-              "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
-            lite
-              ? "max-h-[inherit] w-[248px] rounded-xl p-1"
-              : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
-          )}
-        >
-          <div
-            ref={containerRef}
-            data-notion-slash-scroll={lite ? "" : undefined}
-            className={cn(
-              "min-h-0 overflow-y-auto overscroll-contain",
-              lite ? "max-h-[inherit] pb-2" : "max-h-[20rem] pb-1",
-              suppressItemHover && "pointer-events-none",
-            )}
-          >
-            <TooltipProvider delayDuration={600}>
+    const list = (
               <div className={cn("flex flex-col", lite ? "gap-0" : "gap-0.5")}>
                 {items.map((item, index) => {
                   if (isSlashMenuDivider(item)) {
@@ -316,9 +293,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                   }
 
                   const button = (
-                    <Button
+                    <button
+                      type="button"
                       key={item.title ?? index}
-                      variant="ghost"
                       data-index={index}
                       data-goose-slash-item={lite ? "" : undefined}
                       data-goose-slash-selected={
@@ -328,7 +305,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                         "relative flex h-auto w-full items-center justify-start text-left outline-none transition-colors whitespace-normal",
                         lite
                           ? "min-h-[34px] rounded-lg px-2 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]"
-                          : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2",
+                          : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2 hover:bg-[var(--goose-icon-chip-on-selected)]",
                         index === selectedIndex
                           ? lite
                             ? "bg-transparent text-[hsl(var(--foreground))]"
@@ -359,7 +336,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                                   : "text-[var(--goose-interactive-selected-fg)]"
                                 : "text-muted-foreground",
                             )}
-                          >
+                      >
                             {item.icon}
                           </span>
                         ) : (
@@ -403,7 +380,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                           className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none"
                         />
                       )}
-                    </Button>
+                    </button>
                   );
 
                   if (!item.disabled || !item.disabledReason) return button;
@@ -421,7 +398,39 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                   );
                 })}
               </div>
-            </TooltipProvider>
+    );
+
+    return (
+      <div
+        className="inline-flex max-h-[inherit] min-h-0 flex-col overflow-visible bg-transparent"
+        data-notion-slash-root="true"
+        {...(lite ? { "data-goose-slash-lite": "true" } : {})}
+      >
+        <div
+          data-notion-slash-surface="true"
+          className={cn(
+            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
+            !lite &&
+              "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
+            lite
+              ? "max-h-[inherit] w-[248px] rounded-xl p-1"
+              : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
+          )}
+        >
+          <div
+            ref={containerRef}
+            data-notion-slash-scroll={lite ? "" : undefined}
+            className={cn(
+              "min-h-0 overflow-y-auto overscroll-contain",
+              lite ? "max-h-[inherit] pb-2" : "max-h-[20rem] pb-1",
+              suppressItemHover && "pointer-events-none",
+            )}
+          >
+            {needsTooltip ? (
+              <TooltipProvider delayDuration={600}>{list}</TooltipProvider>
+            ) : (
+              list
+            )}
           </div>
         </div>
       </div>

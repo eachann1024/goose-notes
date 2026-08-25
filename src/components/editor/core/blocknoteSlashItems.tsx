@@ -1,8 +1,66 @@
 import type { BlockNoteEditor } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { AIExtension } from "@blocknote/xl-ai";
-import * as LucideIcons from "lucide-react";
+import { createRoot, type Root } from "react-dom/client";
+import {
+  CheckSquare,
+  ChevronRight,
+  ChevronRightSquare,
+  Code,
+  FileUp,
+  GitGraph,
+  Heading1,
+  Heading2,
+  Heading3,
+  Image,
+  Info,
+  List,
+  ListOrdered,
+  Minus,
+  Quote,
+  Sigma,
+  Sparkles,
+  Table,
+  Video,
+} from "lucide-react";
 import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
+
+const SLASH_ICONS = {
+  sparkles: <Sparkles size={18} />,
+  heading1: <Heading1 size={18} />,
+  heading2: <Heading2 size={18} />,
+  heading3: <Heading3 size={18} />,
+  toggleHeading: <ChevronRightSquare size={18} />,
+  check: <CheckSquare size={18} />,
+  list: <List size={18} />,
+  listOrdered: <ListOrdered size={18} />,
+  toggle: <ChevronRight size={18} />,
+  quote: <Quote size={18} />,
+  info: <Info size={18} />,
+  minus: <Minus size={18} />,
+  table: <Table size={18} />,
+  code: <Code size={18} />,
+  sigma: <Sigma size={18} />,
+  mermaid: <GitGraph size={18} />,
+  image: <Image size={18} />,
+  video: <Video size={18} />,
+  file: <FileUp size={18} />,
+};
+
+let slashIconWarmRoot: Root | null = null;
+
+export function warmupSlashMenuIcons() {
+  if (slashIconWarmRoot || typeof document === "undefined") return;
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText =
+    "position:fixed;left:0;top:0;width:40px;height:40px;opacity:0;pointer-events:none;overflow:hidden";
+  document.body.appendChild(host);
+  slashIconWarmRoot = createRoot(host);
+  slashIconWarmRoot.render(
+    <div>{Object.values(SLASH_ICONS)}</div>,
+  );
+}
 
 export interface SlashMenuItem {
   title: string;
@@ -141,7 +199,7 @@ export function getBlockNoteSlashMenuItems(
     items.push({
       title: "生成",
       description: "接着写点什么...",
-      icon: <LucideIcons.Sparkles size={18} />,
+      icon: SLASH_ICONS.sparkles,
       aliases: ["ai", "generate", "shengcheng", "xiezuo", "sparkle"],
       onItemClick: () => {
         // 删除触发字符 / 或 、
@@ -186,7 +244,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "一级标题",
       description: "大标题",
-      icon: <LucideIcons.Heading1 size={18} />,
+      icon: SLASH_ICONS.heading1,
       aliases: ["h1", "heading1", "title", "biaoti"],
       badge: "#",
       onItemClick: () =>
@@ -198,7 +256,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "二级标题",
       description: "中标题",
-      icon: <LucideIcons.Heading2 size={18} />,
+      icon: SLASH_ICONS.heading2,
       aliases: ["h2", "heading2", "subtitle", "biaoti"],
       badge: "##",
       onItemClick: () =>
@@ -210,7 +268,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "三级标题",
       description: "小标题",
-      icon: <LucideIcons.Heading3 size={18} />,
+      icon: SLASH_ICONS.heading3,
       aliases: ["h3", "heading3", "biaoti"],
       badge: "###",
       onItemClick: () =>
@@ -222,7 +280,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "折叠一级标题",
       description: "可展开/收起下方内容的一级标题",
-      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      icon: SLASH_ICONS.toggleHeading,
       aliases: [
         "toggleheading",
         "toggleh1",
@@ -242,7 +300,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "折叠二级标题",
       description: "可展开/收起下方内容的二级标题",
-      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      icon: SLASH_ICONS.toggleHeading,
       aliases: [
         "toggleheading2",
         "toggleh2",
@@ -260,7 +318,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "折叠三级标题",
       description: "可展开/收起下方内容的三级标题",
-      icon: <LucideIcons.ChevronRightSquare size={18} />,
+      icon: SLASH_ICONS.toggleHeading,
       aliases: [
         "toggleheading3",
         "toggleh3",
@@ -279,7 +337,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "待办事项",
       description: "带有复选框的任务列表",
-      icon: <LucideIcons.CheckSquare size={18} />,
+      icon: SLASH_ICONS.check,
       aliases: [
         "todo",
         "task",
@@ -295,7 +353,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "无序列表",
       description: "创建普通的项目符号列表",
-      icon: <LucideIcons.List size={18} />,
+      icon: SLASH_ICONS.list,
       aliases: ["list", "bullet", "liebiao"],
       badge: "-",
       onItemClick: () => insertOrUpdate({ type: "bulletListItem" }),
@@ -303,7 +361,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "有序列表",
       description: "创建带有数字的列表",
-      icon: <LucideIcons.ListOrdered size={18} />,
+      icon: SLASH_ICONS.listOrdered,
       aliases: ["ordered", "list", "liebiao"],
       badge: "1.",
       onItemClick: () => insertOrUpdate({ type: "numberedListItem" }),
@@ -311,7 +369,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "折叠列表",
       description: "可展开/收起内容的折叠列表",
-      icon: <LucideIcons.ChevronRight size={18} />,
+      icon: SLASH_ICONS.toggle,
       aliases: ["toggle", "collapse", "fold", "zhedie", "shouqi"],
       badge: "> ",
       onItemClick: () => insertOrUpdate({ type: "toggleListItem" }),
@@ -319,7 +377,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "引用",
       description: "插入一段引用文字",
-      icon: <LucideIcons.Quote size={18} />,
+      icon: SLASH_ICONS.quote,
       aliases: ["quote", "blockquote", "yinyong"],
       badge: "| ",
       onItemClick: () => insertOrUpdate({ type: "quote" }),
@@ -327,14 +385,14 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "标注",
       description: "插入带图标的重点标注块",
-      icon: <LucideIcons.Info size={18} />,
+      icon: SLASH_ICONS.info,
       aliases: ["callout", "annotation", "info", "biaozhu", "tishi"],
       onItemClick: () => insertOrUpdate({ type: "callout" }),
     },
     {
       title: "分隔线",
       description: "插入一条水平分割线",
-      icon: <LucideIcons.Minus size={18} />,
+      icon: SLASH_ICONS.minus,
       aliases: ["divider", "separator", "hr", "fengexian"],
       badge: "---",
       onItemClick: () => insertOrUpdate({ type: "divider" }),
@@ -343,7 +401,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "表格",
       description: "插入一个简单的表格",
-      icon: <LucideIcons.Table size={18} />,
+      icon: SLASH_ICONS.table,
       aliases: ["table", "biaoge"],
       onItemClick: () => {
         insertOrUpdate({
@@ -358,7 +416,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "代码块",
       description: "插入带语法高亮的代码块",
-      icon: <LucideIcons.Code size={18} />,
+      icon: SLASH_ICONS.code,
       aliases: ["code", "block", "daima"],
       badge: "```",
       onItemClick: () =>
@@ -367,7 +425,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "数学公式",
       description: "插入数学公式块 (KaTeX)",
-      icon: <LucideIcons.Sigma size={18} />,
+      icon: SLASH_ICONS.sigma,
       aliases: ["math", "formula", "gongshi", "katex"],
       onItemClick: () =>
         insertOrUpdate({ type: "codeBlock", props: { language: "math" } }),
@@ -375,7 +433,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "Mermaid 图表",
       description: "插入流程图、时序图等 (Mermaid)",
-      icon: <LucideIcons.GitGraph size={18} />,
+      icon: SLASH_ICONS.mermaid,
       aliases: ["mermaid", "chart", "diagram", "tubiao"],
       onItemClick: () =>
         insertOrUpdate({ type: "codeBlock", props: { language: "mermaid" } }),
@@ -383,7 +441,7 @@ export function getBlockNoteSlashMenuItems(
     {
       title: "图片",
       description: "插入图片选择器模块",
-      icon: <LucideIcons.Image size={18} />,
+      icon: SLASH_ICONS.image,
       aliases: ["image", "photo", "tupian", "img"],
       onItemClick: () => {
         const inserted = insertOrUpdate({ type: "image" });
@@ -395,7 +453,7 @@ export function getBlockNoteSlashMenuItems(
       description: features.transcodeVideoUploads
         ? "上传视频并自动压缩为可播放的 MP4"
         : "上传视频并保存为 Markdown 相对资源",
-      icon: <LucideIcons.Video size={18} />,
+      icon: SLASH_ICONS.video,
       aliases: ["video", "movie", "shipin", "luping"],
       onItemClick: () => {
         const inserted = insertOrUpdate({ type: "video" });
@@ -420,7 +478,7 @@ export function getBlockNoteSlashMenuItems(
       description: features.openAttachmentsExternally
         ? "上传附件并直接调用系统默认应用打开"
         : "上传附件并保存为 Markdown 相对资源",
-      icon: <LucideIcons.FileUp size={18} />,
+      icon: SLASH_ICONS.file,
       aliases: ["file", "attachment", "pdf", "wenjian", "fujian"],
       onItemClick: () => {
         const inserted = insertOrUpdate({ type: "file" });

@@ -16,6 +16,7 @@ export function shouldOpenSlashSuggestionMenu(
   editor: BlockNoteEditor<any, any, any>,
   policy: SlashMenuPagePolicy,
 ): boolean {
+  if (!editor.isEditable) return false;
   const $from = tr.selection.$from;
   if (!policy.allowSlashMenuOnFirstBlock) {
     const cursorBlock = editor.getTextCursorPosition().block;
