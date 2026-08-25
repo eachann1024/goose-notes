@@ -243,6 +243,8 @@ export function selectionIsInsideHeadingBlock(
 export function shouldRenderFormattingToolbar(
   editor: BlockNoteEditor<any, any, any>,
 ) {
+  if (!editor.isEditable) return false;
+
   const { selection, doc } = editor.prosemirrorState;
 
   if (selection.empty) return false;

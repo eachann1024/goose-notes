@@ -30,16 +30,18 @@ export function NotebookAiHostScope({
   notebookId,
   children,
 }: NotebookAiHostScopeProps) {
-  const activePageId = usePages((s) => s.activePageId);
-  const pages = usePages((s) => s.pages);
+  const activePage = usePages((s) => {
+    const id = s.activePageId;
+    const page = id ? s.pages[id] : undefined;
+    if (page && page.workspaceId === notebookId && !page.trashedAt) return page;
+    return undefined;
+  });
 
-  const hostPage = useMemo(() => {
-    const active = activePageId ? pages[activePageId] : undefined;
-    if (active && active.workspaceId === notebookId && !active.trashedAt) {
-      return active;
-    }
-    return createSyntheticAiHostPage(notebookId);
-  }, [activePageId, pages, notebookId]);
+  const fallbackPage = useMemo(
+    () => createSyntheticAiHostPage(notebookId),
+    [notebookId],
+  );
+  const hostPage = activePage ?? fallbackPage;
 
   return (
     <EditorHostBridge

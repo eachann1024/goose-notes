@@ -77,11 +77,16 @@ export function WorkspaceLayout({
   editorRef,
   scrollContainerRef,
 }: WorkspaceLayoutProps) {
-  const { activePageId, getPage } = usePages(
-    useShallow((s) => ({
-      activePageId: s.activePageId,
-      getPage: s.getPage,
-    })),
+  const { activePageId, getPage, isLocked, isTrashed } = usePages(
+    useShallow((s) => {
+      const p = s.activePageId ? s.pages[s.activePageId] : undefined;
+      return {
+        activePageId: s.activePageId,
+        getPage: s.getPage,
+        isLocked: Boolean(p?.isLocked),
+        isTrashed: Boolean(p?.trashedAt),
+      };
+    }),
   );
   const { openTabs, activeTabId, openWelcomeTab } = useTabs(
     useShallow((s) => ({
@@ -204,6 +209,26 @@ export function WorkspaceLayout({
   useEffect(() => {
     if (!aiAvailableForNotebook) closeAiPanel();
   }, [aiAvailableForNotebook, closeAiPanel]);
+
+  // 全屏打开后再给编辑区打 inert，避开点击帧对 BlockNote 大树做无障碍更新
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (!showFullscreenAi) {
+      el.inert = false;
+      el.classList.remove("invisible");
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      el.inert = true;
+      el.classList.add("invisible");
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      el.inert = false;
+      el.classList.remove("invisible");
+    };
+  }, [showFullscreenAi, scrollContainerRef]);
 
   useEffect(() => {
     if (locateRetryRef.current) {
@@ -330,6 +355,8 @@ export function WorkspaceLayout({
                   page={page}
                   inHistoryMode={inHistoryMode}
                   isLocalFolderPage={isLocalFolderPage}
+                  isLocked={isLocked}
+                  isTrashed={isTrashed}
                   scrollContainerRef={scrollContainerRef}
                 />
               </NotebookAiSessionProvider>
@@ -355,6 +382,8 @@ export function WorkspaceLayout({
                 page={page}
                 inHistoryMode={inHistoryMode}
                 isLocalFolderPage={isLocalFolderPage}
+                isLocked={isLocked}
+                isTrashed={isTrashed}
                 scrollContainerRef={scrollContainerRef}
               />
             )}
@@ -385,6 +414,8 @@ function NotebookAiWorkspaceBody({
   page,
   inHistoryMode,
   isLocalFolderPage,
+  isLocked,
+  isTrashed,
   scrollContainerRef,
 }: {
   showFullscreenAi: boolean;
@@ -407,38 +438,30 @@ function NotebookAiWorkspaceBody({
   page: ReturnType<typeof usePages.getState>["pages"][string] | undefined;
   inHistoryMode: boolean;
   isLocalFolderPage: boolean;
+  isLocked: boolean;
+  isTrashed: boolean;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
+  const handleOpenSearch = showFullscreenAi
+    ? () => {
+        closeAiPanel();
+        openWelcomeTabHandler();
+      }
+    : openWelcomeTabHandler;
+  const handleBeforeActivateTab = showFullscreenAi ? closeAiPanel : undefined;
+
   return (
     <>
             {/*
-              全屏 AI 叠在底层内容之上，不再卸载编辑器/欢迎页。
-              否则再次开关 AI 时本地文件夹页会短暂落到「有页头标题、正文既非 AI 也非编辑器」的空白态。
+              全屏 AI 叠在页头下方，不重挂页头。正文 invisible/inert 推迟到下一帧，
+              避免点击帧对 BlockNote 大树做 visibility 强制布局。
             */}
-            <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col overflow-hidden",
-                showFullscreenAi &&
-                  aiNotebookId &&
-                  aiAvailableForNotebook &&
-                  "invisible pointer-events-none",
-              )}
-              aria-hidden={
-                showFullscreenAi && aiNotebookId && aiAvailableForNotebook
-                  ? true
-                  : undefined
-              }
-              // React 19 支持 inert，屏蔽底层编辑器抢焦点
-              inert={
-                showFullscreenAi && aiNotebookId && aiAvailableForNotebook
-                  ? true
-                  : undefined
-              }
-            >
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {isWelcomeTab ? (
                 <>
                   <PageHeader
-                    onOpenSearch={openWelcomeTabHandler}
+                    onOpenSearch={handleOpenSearch}
+                    onBeforeActivateTab={handleBeforeActivateTab}
                     aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
                     aiLayoutMode={aiLayoutMode}
                     onToggleAiPanel={
@@ -446,7 +469,11 @@ function NotebookAiWorkspaceBody({
                     }
                   />
                   <div className="relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
-                    <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
+                    <div
+                      className={cn(
+                        "flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
+                      )}
+                    >
                       <PageEmptyState />
                     </div>
                     {showSideAiPanel && aiNotebookId ? (
@@ -491,7 +518,8 @@ function NotebookAiWorkspaceBody({
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
                         <PageHeader
                           page={page}
-                          onOpenSearch={openWelcomeTabHandler}
+                          onOpenSearch={handleOpenSearch}
+                          onBeforeActivateTab={handleBeforeActivateTab}
                           onRestore={() => restorePageWithToast(activePageId)}
                           onDelete={() =>
                             void permanentlyDeletePageWithCleanup(activePageId)
@@ -533,7 +561,8 @@ function NotebookAiWorkspaceBody({
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
                         <PageHeader
                           page={page}
-                          onOpenSearch={openWelcomeTabHandler}
+                          onOpenSearch={handleOpenSearch}
+                          onBeforeActivateTab={handleBeforeActivateTab}
                           onRestore={() => restorePageWithToast(activePageId)}
                           onDelete={() =>
                             void permanentlyDeletePageWithCleanup(activePageId)
@@ -571,7 +600,7 @@ function NotebookAiWorkspaceBody({
                             >
                               <Editor
                                 ref={editorRef}
-                                editable={!page.isLocked && !page.trashedAt}
+                                editable={!isLocked && !isTrashed}
                               />
                             </ErrorBoundary>
                           </div>
@@ -603,47 +632,22 @@ function NotebookAiWorkspaceBody({
             </div>
 
             {showFullscreenAi && aiNotebookId && aiAvailableForNotebook ? (
-              <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
-                <PageHeader
-                  page={page}
-                  onOpenSearch={() => {
-                    // 全屏会话中新建/搜索标签，先退出 AI 全屏，避免状态叠层
-                    closeAiPanel();
-                    openWelcomeTabHandler();
-                  }}
-                  onRestore={
-                    activePageId
-                      ? () => restorePageWithToast(activePageId)
-                      : undefined
-                  }
-                  onDelete={
-                    activePageId
-                      ? () =>
-                          void permanentlyDeletePageWithCleanup(activePageId)
-                      : undefined
-                  }
-                  aiPanelOpen
-                  aiLayoutMode={aiLayoutMode}
-                  onToggleAiPanel={toggleAiPanel}
-                  onBeforeActivateTab={closeAiPanel}
-                />
-                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
-                  <NotebookAiHostScope notebookId={aiNotebookId}>
-                    <GuardedNotebookAiPanel
-                      key={`fullscreen-${aiNotebookId}`}
-                      notebookId={aiNotebookId}
-                      onClose={closeAiPanel}
-                      editorRef={editorRef}
-                      capturedSelection={aiPanelCapturedSelection}
-                      onConsumeCapturedSelection={
-                        consumeAiPanelCapturedSelection
-                      }
-                      layoutMode={aiLayoutMode}
-                      onLayoutModeChange={setAiLayoutMode}
-                      variant="fullscreen"
-                    />
-                  </NotebookAiHostScope>
-                </div>
+              <div className="absolute inset-x-0 bottom-0 top-12 z-20 flex flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+                <NotebookAiHostScope notebookId={aiNotebookId}>
+                  <GuardedNotebookAiPanel
+                    key={`fullscreen-${aiNotebookId}`}
+                    notebookId={aiNotebookId}
+                    onClose={closeAiPanel}
+                    editorRef={editorRef}
+                    capturedSelection={aiPanelCapturedSelection}
+                    onConsumeCapturedSelection={
+                      consumeAiPanelCapturedSelection
+                    }
+                    layoutMode={aiLayoutMode}
+                    onLayoutModeChange={setAiLayoutMode}
+                    variant="fullscreen"
+                  />
+                </NotebookAiHostScope>
               </div>
             ) : null}
     </>

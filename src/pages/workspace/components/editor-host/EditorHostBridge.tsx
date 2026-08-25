@@ -21,7 +21,6 @@ import {
   getPageTitle,
   withInternalPageTitle,
 } from "@/components/editor/utils/page-title";
-import { useSidebarView } from "@/stores/useSidebarView";
 import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
 import {
@@ -74,7 +73,6 @@ export function EditorHostBridge({
   const searchProviders = useSettings((s) => s.searchProviders);
   const utools = useSettings((s) => s.utools);
   const customActions = useSettings((s) => s.customActions);
-  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
 
   const settings = useMemo<EditorSettings>(
     () => ({
@@ -95,7 +93,6 @@ export function EditorHostBridge({
         transcodeVideoUploads: true,
         openAttachmentsExternally: true,
       },
-      sidebarCollapsed,
       redirectAction: (label, payload) => {
         UToolsAdapter.redirect(label as string | [string, string], payload);
       },
@@ -111,7 +108,6 @@ export function EditorHostBridge({
       searchProviders,
       utools,
       customActions,
-      sidebarCollapsed,
     ],
   );
 
@@ -152,9 +148,6 @@ export function EditorHostBridge({
         return activePage?.localFilePath ?? null;
       },
       onOpenAttachment: async (source, fileName) => {
-        if (source.startsWith("att-file:")) {
-          return fileStorage.open(source, { fileName, size: 0 });
-        }
         const activeId = usePages.getState().activePageId;
         const activePage = activeId
           ? usePages.getState().pages[activeId]
@@ -162,10 +155,13 @@ export function EditorHostBridge({
         return openResourceExternally({
           source,
           fileName,
+          mimeType: /\.html?$/i.test(fileName) ? "text/html" : undefined,
           pageLocalFilePath: activePage?.localFilePath ?? null,
           platform: utoolsEditorPlatform,
-          loadInternalResource: (ref) =>
-            utoolsEditorPlatform.imageStorage.load(ref),
+          loadInternalResource: async (ref) => {
+            if (ref.startsWith("att-file:")) return fileStorage.load(ref);
+            return utoolsEditorPlatform.imageStorage.load(ref);
+          },
         });
       },
       searchPages: (query: string) => {

@@ -219,6 +219,8 @@ export function EditorFormattingToolbar() {
   // While AI is active we keep the toolbar visible regardless of scroll/menu.
   const shouldHide = !aiActive && shouldHideForScroll;
 
+  if (!editor.isEditable) return null;
+
   // Selection-based gating only matters when AI mode isn't already active.
   if (
     !aiActive &&

@@ -54,12 +54,10 @@ export function SidebarContextMenu({
   children,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
-  const {
-    updatePage,
-    duplicatePage,
-    movePageTreeToNotebook,
-    undoMovePageTree,
-  } = usePages();
+  const updatePage = usePages((s) => s.updatePage);
+  const duplicatePage = usePages((s) => s.duplicatePage);
+  const movePageTreeToNotebook = usePages((s) => s.movePageTreeToNotebook);
+  const undoMovePageTree = usePages((s) => s.undoMovePageTree);
   const notebooks = useNotebooks((state) => state.notebooks);
   const notebook = notebooks[page.workspaceId];
   const isLocalFolder = notebook?.source === "local-folder";

@@ -34,6 +34,8 @@ import {
   shouldSuppressSidebarSelect,
 } from "@/lib/sidebarPageNavigation";
 import { isPageTitleAutoFocusProtected } from "@/lib/page-title-focus";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 import "./main-tree.css";
 
 interface SidebarMainTreeProps {
@@ -55,7 +57,11 @@ export function SidebarMainTree({
   viewportHeight,
   onCreatePage,
 }: SidebarMainTreeProps) {
-  const pages = usePages((s) => s.pages);
+  const pages = useStoreWithEqualityFn(
+    usePages,
+    (s) => s.pages,
+    areSidebarPagesEqual,
+  );
   const activePageId = usePages((s) => s.activePageId);
   const reorderPages = usePages((s) => s.reorderPages);
   const moveLocalPage = usePages((s) => s.moveLocalPage);
@@ -412,9 +418,7 @@ export function SidebarMainTree({
     const emptyState = (
       <TreeEmptyState
         isLocalNotebook={isLocalFolder}
-        width={width}
         height={viewportHeight}
-        onCreatePage={onCreatePage}
       />
     );
     if (!isLocalFolder || !activeNotebookId) {

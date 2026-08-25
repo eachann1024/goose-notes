@@ -276,11 +276,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             isFullscreen ? "max-w-[720px]" : "max-w-none",
           )}
         >
-          <PromptBar streaming={isStreaming}>
+          <PromptBar
+            streaming={isStreaming}
+            className="overflow-hidden rounded-[12px]"
+          >
             <div
               className={cn(
-                "bui-root flex flex-col rounded-[16px] bg-[var(--goose-interactive-hover)] px-3 py-2.5",
-                "shadow-[0_10px_28px_rgba(15,23,42,0.12),0_0_0_1px_rgba(15,23,42,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.38),0_0_0_1px_rgba(255,255,255,0.06)]",
+                "bui-root flex flex-col overflow-hidden rounded-[12px] border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-3 py-2.5",
+                "shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]",
                 "transition-colors duration-150",
                 dropActive &&
                   "ring-2 ring-[var(--goose-interactive-selected)] ring-offset-1 ring-offset-background",
@@ -325,7 +328,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled || isStreaming}
                   className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
                     "text-[#3f3f46] transition-colors duration-150",
                     "bg-[#e8e8ec] hover:bg-[#dcdce2] hover:text-[#18181b]",
                     "dark:bg-[#3f3f46] dark:text-[#e4e4e7] dark:hover:bg-[#52525b] dark:hover:text-[#fafafa]",
@@ -338,7 +341,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   aria-label="上传图片"
                   title="上传图片"
                 >
-                  <Plus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+                  <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </button>
 
                 <ModelSelectorPopover disabled={disabled} />

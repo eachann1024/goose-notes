@@ -41,14 +41,12 @@ export function Sidebar({
   editorRef,
   scrollContainerRef,
 }: SidebarProps) {
-  const {
-    activePageId,
-    setActivePage,
-    createPage,
-    createLocalPage,
-    getPage,
-    setExpandPageId,
-  } = usePages();
+  const activePageId = usePages((s) => s.activePageId);
+  const setActivePage = usePages((s) => s.setActivePage);
+  const createPage = usePages((s) => s.createPage);
+  const createLocalPage = usePages((s) => s.createLocalPage);
+  const getPage = usePages((s) => s.getPage);
+  const setExpandPageId = usePages((s) => s.setExpandPageId);
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openInCurrentTab } = useTabs();
   const setExpanded = useSidebarView((s) => s.setExpanded);
@@ -160,6 +158,21 @@ export function Sidebar({
     };
   }, [exitTrashView]);
 
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const stage = sidebarRef.current?.closest(".workspace-stage");
+    root.toggleAttribute("data-sidebar-collapsed", sidebarCollapsed);
+    if (stage instanceof HTMLElement) {
+      stage.toggleAttribute("data-sidebar-collapsed", sidebarCollapsed);
+    }
+    return () => {
+      root.removeAttribute("data-sidebar-collapsed");
+      if (stage instanceof HTMLElement) {
+        stage.removeAttribute("data-sidebar-collapsed");
+      }
+    };
+  }, [sidebarCollapsed]);
+
   useEffect(() => {
     if (!scrollAreaRef.current) return;
     const updateHeight = () => {
@@ -201,9 +214,7 @@ export function Sidebar({
       ref={sidebarRef}
       className={cn(
         "pb-0 bg-[hsl(var(--goose-shell-bg))] h-full flex flex-col relative group/sidebar",
-        isResizing
-          ? "transition-[opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
-          : "transition-[width,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+        "transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
         sidebarCollapsed && "pointer-events-none",
         className,
       )}
@@ -211,6 +222,7 @@ export function Sidebar({
         width: sidebarCollapsed ? 0 : width,
         minWidth: sidebarCollapsed ? 0 : undefined,
         opacity: sidebarCollapsed ? 0 : 1,
+        transform: sidebarCollapsed ? "translateX(-8px)" : "translateX(0)",
         overflow: sidebarCollapsed ? "hidden" : "visible",
       }}
       aria-hidden={sidebarCollapsed}

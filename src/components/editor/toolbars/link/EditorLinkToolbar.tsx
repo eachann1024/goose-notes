@@ -74,9 +74,10 @@ export function EditorLinkToolbar({
   }, [url, platform, openLinksInHost]);
 
   const startEditing = useCallback(() => {
+    if (!editor.isEditable) return;
     setEditing(true);
     setToolbarPositionFrozen?.(true);
-  }, [setToolbarPositionFrozen]);
+  }, [editor.isEditable, setToolbarPositionFrozen]);
 
   const cancelEditing = useCallback(() => {
     setEditing(false);
@@ -165,14 +166,16 @@ export function EditorLinkToolbar({
         e.stopPropagation();
       }}
     >
-      <button
-        type="button"
-        onClick={startEditing}
-        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground transition-colors"
-      >
-        <LucideIcons.Pencil className="h-3 w-3" />
-        编辑
-      </button>
+      {editor.isEditable ? (
+        <button
+          type="button"
+          onClick={startEditing}
+          className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground transition-colors"
+        >
+          <LucideIcons.Pencil className="h-3 w-3" />
+          编辑
+        </button>
+      ) : null}
       <button
         type="button"
         onMouseDown={(event) => {
@@ -192,14 +195,16 @@ export function EditorLinkToolbar({
         <LucideIcons.ExternalLink className="h-3 w-3" />
         打开
       </button>
-      <button
-        type="button"
-        onClick={handleDelete}
-        className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)] transition-colors"
-      >
-        <LucideIcons.Unlink className="h-3 w-3" />
-        移除
-      </button>
+      {editor.isEditable ? (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)] transition-colors"
+        >
+          <LucideIcons.Unlink className="h-3 w-3" />
+          移除
+        </button>
+      ) : null}
     </div>
   );
 }

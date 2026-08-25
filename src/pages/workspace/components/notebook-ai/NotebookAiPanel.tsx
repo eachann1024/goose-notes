@@ -109,6 +109,7 @@ export function NotebookAiPanel({
   // 展示宽度：随父级 flex 行可用空间收缩，避免 minWidth=stored 把面板裁出视口
   const [effectiveWidth, setEffectiveWidth] = useState(width);
   const composerRef = useRef<ComposerHandle | null>(null);
+  const [bodyReady, setBodyReady] = useState(false);
 
   // 面板挂载=AI 任务面；卸载/切走时清 body 标记并收起残留浮层
   useEffect(() => {
@@ -119,6 +120,19 @@ export function NotebookAiPanel({
       dismissAiFloatingLayers(root);
     };
   }, [isFullscreen]);
+
+  useEffect(() => {
+    let inner = 0;
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        setBodyReady(true);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(outer);
+      window.cancelAnimationFrame(inner);
+    };
+  }, []);
 
   // 侧栏：观察父级（.workspace-editor-surface）宽度，计算不挤爆编辑区的 effectiveWidth
   useEffect(() => {
@@ -212,18 +226,18 @@ export function NotebookAiPanel({
   // Composer 挂载（或 key 重挂载）后：仅空会话且无草稿时植入当前页引用 chip。
   // 已有消息的会话即使输入框为空，也不能被自动修改。
   useEffect(() => {
-    if (!initialReference) return;
+    if (!bodyReady || !initialReference) return;
     const draft = useNotebookAiChats.getState().getComposerDraft(notebookId);
     if (!shouldSeedCurrentPageReference(messages.length, draft)) return;
     const timer = setTimeout(() => {
       composerRef.current?.insertReference(initialReference);
     }, 0);
     return () => clearTimeout(timer);
-  }, [initialReference, messages.length, composerRevision, notebookId]);
+  }, [bodyReady, initialReference, messages.length, composerRevision, notebookId]);
 
   // 面板打开即聚焦输入框；已打开时重复触发「打开」走 goose-note:focus-ai-composer
   useEffect(() => {
-    if (unavailableReason) return;
+    if (unavailableReason || !bodyReady) return;
     const focusComposer = () => composerRef.current?.focus();
     const timer = window.setTimeout(focusComposer, 50);
     window.addEventListener("goose-note:focus-ai-composer", focusComposer);
@@ -231,7 +245,7 @@ export function NotebookAiPanel({
       window.clearTimeout(timer);
       window.removeEventListener("goose-note:focus-ai-composer", focusComposer);
     };
-  }, [unavailableReason]);
+  }, [unavailableReason, bodyReady]);
 
   const handlePanelKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
@@ -427,7 +441,7 @@ export function NotebookAiPanel({
 
       <div className="notebook-ai-zoom-slot">
         <div className="notebook-ai-zoom-surface">
-          {unavailableReason ? (
+          {!bodyReady ? null : unavailableReason ? (
             <div className="flex flex-1 items-center justify-center px-6 pb-[var(--ai-composer-float-pad,7.5rem)]">
               <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
@@ -453,7 +467,7 @@ export function NotebookAiPanel({
       </div>
 
       <div ref={composerDockRef} className="notebook-ai-composer-dock">
-        {error ? (
+        {bodyReady && error ? (
           <div
             className={cn(
               "pointer-events-auto mb-2 w-full",
@@ -491,18 +505,22 @@ export function NotebookAiPanel({
           </div>
         ) : null}
 
-        <Composer
-          ref={composerRef}
-          key={`${notebookId}-${composerRevision}`}
-          notebookId={notebookId}
-          onSend={handleSend}
-          isStreaming={isBusy}
-          disabled={!!unavailableReason}
-          placeholder={composerPlaceholder}
-          searchPages={searchPages}
-          onEscape={onClose}
-          layout={isFullscreen ? "fullscreen" : "side-panel"}
-        />
+        {bodyReady ? (
+          <Composer
+            ref={composerRef}
+            key={`${notebookId}-${composerRevision}`}
+            notebookId={notebookId}
+            onSend={handleSend}
+            isStreaming={isBusy}
+            disabled={!!unavailableReason}
+            placeholder={composerPlaceholder}
+            searchPages={searchPages}
+            onEscape={onClose}
+            layout={isFullscreen ? "fullscreen" : "side-panel"}
+          />
+        ) : (
+          <div className="h-[4.75rem]" aria-hidden />
+        )}
       </div>
     </ChatChrome>
   );

@@ -66,6 +66,7 @@ function getCachedContentSignature(content: unknown): string {
 import {
   getBlockNoteSlashMenuItems,
   filterSlashMenuItems,
+  warmupSlashMenuIcons,
 } from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
@@ -419,6 +420,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   );
   editorInstanceRef.current = editor;
 
+  // BlockNoteView 的 editable 会在 prop 变化时重挂 ProseMirror。
+  // 实例上的 isEditable 也要立刻同步，锁定当帧就不能输入。
+  useEffect(() => {
+    if (editor.isEditable === editable) return;
+    editor.isEditable = editable;
+  }, [editor, editable]);
+
   const readCurrentEditorContent = useCallback(() => {
     const rawContent = clonePageContent(editor.document as BlockNoteContent);
     const isLocalPage = contentModeRef.current === "raw";
@@ -705,6 +713,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   }, []);
 
   useEditorShortcuts({ shiftPressedRef });
+
+  useEffect(() => {
+    const warm = () => {
+      warmupSlashMenuIcons();
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(warm, { timeout: 4000 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(warm, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const container = editorContainerRef.current;

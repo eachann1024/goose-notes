@@ -48,6 +48,7 @@ CHANGELOG.md
 skills-lock.json
 !src/agent/AGENTS.md
 !src/agent/**/SKILL.md
+!src/components/editor/AGENTS.md
 
 # ---- Local-only scratch ----
 tasks/

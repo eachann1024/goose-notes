@@ -1,5 +1,7 @@
 import type { Page } from "@/types";
 import * as LucideIcons from "lucide-react";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 import { SidebarTree } from "./SidebarTree";
 
 interface FavoritesSectionProps {
@@ -15,7 +17,11 @@ export function FavoritesSection({
   itemHeight,
   onCreatePage,
 }: FavoritesSectionProps) {
-  const pages = usePages((state) => state.pages);
+  const pages = useStoreWithEqualityFn(
+    usePages,
+    (state) => state.pages,
+    areSidebarPagesEqual,
+  );
   const reorderFavorites = usePages((state) => state.reorderFavorites);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const isLocalFolder = useNotebooks((state) =>

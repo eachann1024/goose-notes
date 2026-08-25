@@ -12,6 +12,24 @@ import { useHistoryRecorder } from "@/hooks/useHistoryRecorder";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { WorkspaceLayout } from "./WorkspaceLayout";
 
+function PageHistoryBinder() {
+  const activePageId = usePages((s) => s.activePageId);
+  const page = usePages((s) =>
+    activePageId ? s.pages[activePageId] : undefined,
+  );
+  const historyContentSig = useMemo(
+    () => (page ? getContentSignature(page.content) : ""),
+    [page],
+  );
+  useHistoryRecorder({
+    pageId: activePageId ?? null,
+    workspaceId: page?.workspaceId ?? null,
+    content: page?.content,
+    signature: historyContentSig,
+  });
+  return null;
+}
+
 export function WorkspacePage() {
   const { activePageId, getPage } = usePages(useShallow((s) => ({ activePageId: s.activePageId, getPage: s.getPage })));
   const { activeNotebookId, notebooks } = useNotebooks(useShallow((s) => ({ activeNotebookId: s.activeNotebookId, notebooks: s.notebooks })));
@@ -29,17 +47,6 @@ export function WorkspacePage() {
   useLocalFolderWatch({ notebook, activePageId, page });
   const scrollContainerRef = useScrollRestoration(activePageId);
 
-  const historyContentSig = useMemo(
-    () => (page ? getContentSignature(page.content) : ""),
-    [page],
-  );
-  useHistoryRecorder({
-    pageId: activePageId ?? null,
-    workspaceId: page?.workspaceId ?? null,
-    content: page?.content,
-    signature: historyContentSig,
-  });
-
   const {
     isDragging,
     dragIntent,
@@ -50,15 +57,18 @@ export function WorkspacePage() {
   } = useFileDrop();
 
   return (
-    <WorkspaceLayout
-      isDragging={isDragging}
-      dragIntent={dragIntent}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      editorRef={editorRef}
-      scrollContainerRef={scrollContainerRef}
-    />
+    <>
+      <PageHistoryBinder />
+      <WorkspaceLayout
+        isDragging={isDragging}
+        dragIntent={dragIntent}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        editorRef={editorRef}
+        scrollContainerRef={scrollContainerRef}
+      />
+    </>
   );
 }

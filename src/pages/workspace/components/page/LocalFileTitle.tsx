@@ -28,12 +28,14 @@ import { useImeInput } from "@/hooks/useImeInput";
 interface LocalFileTitleProps {
   pageId: string;
   localFilePath: string;
+  editable?: boolean;
   onEnterBelow?: () => void;
 }
 
 export function LocalFileTitle({
   pageId,
   localFilePath,
+  editable = true,
   onEnterBelow,
 }: LocalFileTitleProps) {
   // Derive display name from the current file path (re-derives on pageId change / rename).
@@ -63,10 +65,18 @@ export function LocalFileTitle({
     }
   }, [displayName, editing]);
 
+  useEffect(() => {
+    if (!editable && editing) {
+      setEditing(false);
+      setEditValue(displayName);
+    }
+  }, [displayName, editable, editing]);
+
   const startEditing = useCallback(() => {
+    if (!editable) return;
     setEditValue(displayName);
     setEditing(true);
-  }, [displayName]);
+  }, [displayName, editable]);
 
   const cancelEditing = useCallback(() => {
     setEditing(false);
@@ -106,6 +116,7 @@ export function LocalFileTitle({
       [0, 50, 150, 300, 600].forEach((delay, index, delays) => {
         timers.push(
           window.setTimeout(() => {
+            if (!editable) return;
             if (!isPageTitleFocusRequested(pageId)) return;
             setEditing(true);
             setEditValue(displayName);
@@ -140,7 +151,7 @@ export function LocalFileTitle({
       unsubscribe();
       timers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [displayName, initiallyFocused, pageId]);
+  }, [displayName, editable, initiallyFocused, pageId]);
 
   // Auto-focus input on enter editing mode (manual click path).
   useEffect(() => {
@@ -231,21 +242,25 @@ export function LocalFileTitle({
       }}
     >
       <div
-        role="button"
-        tabIndex={0}
-        onClick={startEditing}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            startEditing();
-          }
-        }}
-        title="点击重命名文件"
+        role={editable ? "button" : undefined}
+        tabIndex={editable ? 0 : undefined}
+        onClick={editable ? startEditing : undefined}
+        onKeyDown={
+          editable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  startEditing();
+                }
+              }
+            : undefined
+        }
+        title={editable ? "点击重命名文件" : undefined}
         style={{
           fontSize: "calc(var(--editor-font-size, 16px) * 3)",
           fontWeight: 700,
           lineHeight: 1.5,
-          cursor: "text",
+          cursor: editable ? "text" : "default",
           wordBreak: "break-word",
           outline: "none",
           // No background/border — purely text, like BlockNote H1

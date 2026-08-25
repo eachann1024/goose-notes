@@ -31,6 +31,7 @@ import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebo
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
+const IDLE_PAGES: Record<string, Page> = {};
 
 export function CommandPalette() {
   const descriptionId = useId();
@@ -42,14 +43,12 @@ export function CommandPalette() {
   // 不受控就会出现「输完词没有任何项高亮、方向键/回车第一下没反应」。见下方 effect。
   const [commandValue, setCommandValue] = useState("");
   const { openPreviewTab, openPermanentTab } = useTabs();
-  const {
-    pages,
-    setExpandPageId,
-    setSearchHighlightQuery,
-    setSearchHighlightPageId,
-    setSearchHighlightNonce,
-    loadAllLocalFolderPages,
-  } = usePages();
+  const pages = usePages((s) => (open ? s.pages : IDLE_PAGES));
+  const setExpandPageId = usePages((s) => s.setExpandPageId);
+  const setSearchHighlightQuery = usePages((s) => s.setSearchHighlightQuery);
+  const setSearchHighlightPageId = usePages((s) => s.setSearchHighlightPageId);
+  const setSearchHighlightNonce = usePages((s) => s.setSearchHighlightNonce);
+  const loadAllLocalFolderPages = usePages((s) => s.loadAllLocalFolderPages);
   const { activeNotebookId, setActiveNotebook } = useNotebooks();
   const {
     searchAllNotebooks,

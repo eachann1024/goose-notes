@@ -239,7 +239,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
   const aiDoneToken = useAiStatus((state) => state.doneToken);
-  const { getPage } = usePages();
+  const getPage = usePages((s) => s.getPage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const notebooks = useNotebooks((state) => state.notebooks);
   // 本地文件夹页没有 page.icon 元数据；仅 uTools 内置库页在顶栏放紧凑图标入口

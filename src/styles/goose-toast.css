@@ -11,6 +11,20 @@
 .goose-toaster[data-sonner-toaster],
 [data-sonner-toaster].goose-toaster {
   --width: 356px;
+  /* sonner 在 max-width:600px 会改成 left+right 通栏；uTools 窗口经常踩中，
+     toast 会落在内容区中间。主窗始终钉在右下。 */
+  left: auto !important;
+  right: var(--offset-right, 14px) !important;
+  width: var(--width) !important;
+  transform: none !important;
+}
+
+.goose-toaster[data-sonner-toaster] [data-sonner-toast],
+[data-sonner-toaster].goose-toaster [data-sonner-toast] {
+  /* 错误态曾写 position:relative，会盖掉 sonner 的 absolute + right:0 */
+  left: auto !important;
+  right: 0 !important;
+  position: absolute !important;
 }
 
 .goose-toaster [data-sonner-toast][data-styled="true"],
@@ -53,7 +67,6 @@
 .goose-toaster [data-sonner-toast][data-type="error"],
 [data-sonner-toaster] [data-sonner-toast].goose-toast-error,
 [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
-  position: relative;
   overflow: hidden !important;
   color: #c2414b !important;
   border-color: rgba(194, 65, 75, 0.2) !important;

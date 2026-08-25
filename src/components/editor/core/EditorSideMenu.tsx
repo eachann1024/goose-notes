@@ -8,7 +8,6 @@ import {
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
-import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import {
   Tooltip,
   TooltipContent,
@@ -31,8 +30,6 @@ export function EditorSideMenu() {
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
-  const { sidebarCollapsed = false } = useEditorSettings();
-
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>
       s !== undefined
@@ -86,8 +83,8 @@ export function EditorSideMenu() {
   // 先判定是否应显示，再更新位置/挂载 DOM，避免折叠标题上把手闪一下
   const shouldShow =
     Boolean(state?.show && state.referencePos && block) &&
+    editor.isEditable &&
     !isToggleableHeading &&
-    !sidebarCollapsed &&
     !sidebarInteracting;
 
   const handleAdd = useCallback(

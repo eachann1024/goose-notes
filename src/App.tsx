@@ -21,7 +21,9 @@ function App() {
     privacy,
     singleTabMode,
   } = useSettings();
-  const { hydrated, onboardingCompleted, activePageId } = usePages();
+  const hydrated = usePages((s) => s.hydrated);
+  const onboardingCompleted = usePages((s) => s.onboardingCompleted);
+  const activePageId = usePages((s) => s.activePageId);
 
   // 绑定全局快捷键
   useAppHotkeys();

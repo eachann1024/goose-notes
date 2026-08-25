@@ -24,6 +24,7 @@ const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 
 export function SingleTabTitle({ page }: SingleTabTitleProps) {
   const currentTitle = getPageTitle(page);
+  const locked = Boolean(page.isLocked || page.trashedAt);
   const [initiallyFocused] = useState(() =>
     isPageTitleFocusRequested(page.id),
   );
@@ -61,6 +62,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       completePageTitleFocus(page.id);
     };
     const focusOnce = () => {
+      if (locked) return true;
       if (!isPageTitleFocusRequested(page.id)) return true;
       const input = inputRef.current;
       if (!input?.isConnected) return false;
@@ -92,6 +94,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       true,
     );
     const unsubscribe = subscribePageTitleFocus((pageId) => {
+      if (locked) return;
       if (pageId === page.id && isPageTitleFocusRequested(page.id)) {
         scheduleFocus();
       }
@@ -99,7 +102,9 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
     // pendingPageId 是 React 外部状态：请求可能发生在 render 与本 layout effect
     // 订阅建立之间。订阅后立即补读一次，避免错过已经派发的事件；StrictMode
     // 重挂载时也会从当前 pending 恢复，但成功聚焦后请求已完成，不会重复 focus。
-    if (isPageTitleFocusRequested(page.id)) {
+    if (locked) {
+      completePageTitleFocus(page.id);
+    } else if (isPageTitleFocusRequested(page.id)) {
       scheduleFocus();
     }
     return () => {
@@ -112,10 +117,10 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       if (focusFrame !== null) window.cancelAnimationFrame(focusFrame);
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
-  }, [focusAsNewPage, page.id]);
+  }, [focusAsNewPage, locked, page.id]);
 
   const commit = useCallback(async (moveToBody = false) => {
-    if (committingRef.current) return;
+    if (locked || committingRef.current) return;
     const nextTitle = valueRef.current.trim() || UNTITLED_PAGE_TITLE;
     if (INVALID_FILENAME_CHARS.test(nextTitle)) {
       toast.error('标题不能包含 \\ / : * ? " < > |');
@@ -160,7 +165,18 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
     } finally {
       committingRef.current = false;
     }
-  }, [currentTitle, page, setValue, valueRef]);
+  }, [currentTitle, locked, page, setValue, valueRef]);
+
+  if (locked) {
+    return (
+      <span
+        className="h-8 min-w-0 flex-1 truncate px-2 text-sm font-semibold leading-8 text-foreground"
+        title={currentTitle}
+      >
+        {currentTitle}
+      </span>
+    );
+  }
 
   return (
     <input

@@ -461,6 +461,7 @@ export function GooseTableHandle({
     [closeMenu],
   );
 
+  if (!editor.isEditable) return null;
   if (!state || index === undefined) return null;
 
   return (

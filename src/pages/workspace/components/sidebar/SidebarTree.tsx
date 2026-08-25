@@ -11,6 +11,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 import type { Page } from "@/types";
 import { LocalFolderLoadingSkeleton } from "./LocalFolderLoadingSkeleton";
 import { buildSidebarTitleDisambiguationMap } from "./sidebar-title-disambiguation";
@@ -74,14 +76,16 @@ export function SidebarTree({
   draggablePageIds,
   flatRoots = false,
 }: SidebarTreeProps) {
-  const {
-    pages,
-    activePageId,
-    reorderPages,
-    getChildren,
-    expandPageId,
-    setExpandPageId,
-  } = usePages();
+  const pages = useStoreWithEqualityFn(
+    usePages,
+    (s) => s.pages,
+    areSidebarPagesEqual,
+  );
+  const activePageId = usePages((s) => s.activePageId);
+  const reorderPages = usePages((s) => s.reorderPages);
+  const getChildren = usePages((s) => s.getChildren);
+  const expandPageId = usePages((s) => s.expandPageId);
+  const setExpandPageId = usePages((s) => s.setExpandPageId);
   // selectedPageId 传 null 表示"不高亮任何项"（如 AI 界面打开时），undefined 才 fallback 到 activePageId
   const highlightedPageId =
     selectedPageId !== undefined ? selectedPageId : activePageId;
@@ -350,9 +354,7 @@ export function SidebarTree({
       <div className="flex min-h-0 w-full flex-1 flex-col">
         <TreeEmptyState
           isLocalNotebook={isLocalNotebook}
-          width={width}
           height={viewportHeight}
-          onCreatePage={onCreatePage}
         />
       </div>
     );

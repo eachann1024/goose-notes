@@ -25,6 +25,8 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 import { cn } from "@/lib/utils";
 
 interface FolderHomePageProps {
@@ -46,7 +48,11 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export function FolderHomePage({ page }: FolderHomePageProps) {
-  const pages = usePages((s) => s.pages);
+  const pages = useStoreWithEqualityFn(
+    usePages,
+    (s) => s.pages,
+    areSidebarPagesEqual,
+  );
   const createLocalPage = usePages((s) => s.createLocalPage);
   const createLocalFolderRecord = usePages((s) => s.createLocalFolderRecord);
   const setExpandPageId = usePages((s) => s.setExpandPageId);

@@ -98,8 +98,6 @@ export interface EditorSettings {
   /** true 使用应用内灯箱；false 优先调用系统默认图片查看器。 */
   useInternalImageViewer: boolean;
   features: EditorFeaturePolicy;
-  /** 原生编辑器没有 Web 侧栏；默认 false，主工作区按自身状态注入。 */
-  sidebarCollapsed?: boolean;
   /** 宿主提供的自定义动作跳转能力；不支持的宿主可不传。 */
   redirectAction?: (
     label: string | [string, string],
