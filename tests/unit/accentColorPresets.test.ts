@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
+import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
 import { ACCENT_COLORS } from "../../src/stores/settings/types";
 
 const css = readFileSync(
@@ -14,6 +15,7 @@ const REQUIRED_TOKENS = [
   "--goose-primary-active-bg",
   "--goose-interactive-selected",
   "--goose-interactive-selected-fg",
+  "--goose-interactive-hover",
   "--goose-icon-chip-on-selected",
   "--goose-inline-code-bg",
   "--goose-inline-code-fg",
@@ -62,7 +64,7 @@ test("强调色 preset 不使用旧 uTools 内核不可靠的颜色语法", () =
 
 test("编辑器与 AI 行内代码都消费强调色 token", () => {
   const editorCss = readFileSync(
-    new URL("../../src/pages/workspace/styles/editor-base.css", import.meta.url),
+    new URL("../../src/pages/workspace/styles/editor-base/inline.css", import.meta.url),
     "utf8",
   );
   const indexCss = readFileSync(
@@ -157,9 +159,46 @@ test("深色 fallback 行内代码跟随选中表面，不再硬编码 iris", ()
   );
   expect(darkSection).not.toContain("--goose-inline-code-bg: #3d3e64;");
   expect(darkSection).not.toContain("--goose-inline-code-fg: #c7d2fe;");
+  expect(darkSection).toContain(
+    "--goose-interactive-hover: var(--goose-interactive-selected);",
+  );
+  expect(darkSection).toContain(
+    "--goose-icon-chip-on-selected: var(--goose-interactive-selected);",
+  );
 });
 
 test("深色 accent 选择器绑定在 :root.dark 上提高匹配确定性", () => {
   expect(css).toContain(':root.dark[data-goose-accent="amber"]');
   expect(css).not.toMatch(/(?<!:root)\.dark\[data-goose-accent=/);
+});
+
+test("hover 与图标底都跟选中表面同步", () => {
+  for (const accentColor of ACCENT_COLORS) {
+    for (const selector of [
+      `:root[data-goose-accent="${accentColor}"]`,
+      `:root.dark[data-goose-accent="${accentColor}"]`,
+    ]) {
+      const rule = getRule(selector);
+      expect(
+        getToken(rule, "--goose-interactive-hover"),
+        `${selector} hover`,
+      ).toBe("var(--goose-interactive-selected)");
+      expect(
+        getToken(rule, "--goose-icon-chip-on-selected"),
+        `${selector} chip`,
+      ).toBe("var(--goose-interactive-selected)");
+    }
+  }
+
+  for (const accentColor of ACCENT_COLORS) {
+    for (const isDark of [false, true]) {
+      const tokens = resolveAccentRuntimeTokens(accentColor, isDark);
+      expect(tokens["--goose-interactive-hover"]).toBe(
+        tokens["--goose-interactive-selected"],
+      );
+      expect(tokens["--goose-icon-chip-on-selected"]).toBe(
+        tokens["--goose-interactive-selected"],
+      );
+    }
+  }
 });

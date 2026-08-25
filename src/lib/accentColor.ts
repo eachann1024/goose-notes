@@ -10,13 +10,13 @@ type AccentRuntimeTokens = {
  * 侧栏选中与行内代码等关键表面依赖这些变量；仅靠 CSS 选择器时，
  * 旧内核 / 缓存 CSS 可能只命中部分 token，导致侧栏已跟随 accent、
  * 行内代码仍停在 .dark 的 iris fallback。
+ * hover / 图标底由 resolveAccentRuntimeTokens 跟选中表面写成同一色。
  */
 const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   iris: {
     light: {
       "--goose-interactive-selected": "#e0e7ff",
       "--goose-interactive-selected-fg": "#4f46e5",
-      "--goose-icon-chip-on-selected": "#eef2ff",
       "--goose-inline-code-bg": "#eef2ff",
       "--goose-inline-code-fg": "#4f46e5",
       "--goose-inline-code-border-hover": "#c7d2fe",
@@ -25,7 +25,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(99, 102, 241, 0.2)",
       "--goose-interactive-selected-fg": "#a5b4fc",
-      "--goose-icon-chip-on-selected": "rgba(99, 102, 241, 0.14)",
       "--goose-inline-code-bg": "#3d3e64",
       "--goose-inline-code-fg": "#c7d2fe",
       "--goose-inline-code-border-hover": "#6366f1",
@@ -36,7 +35,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#dbeafe",
       "--goose-interactive-selected-fg": "#2563eb",
-      "--goose-icon-chip-on-selected": "#eff6ff",
       "--goose-inline-code-bg": "#eff6ff",
       "--goose-inline-code-fg": "#2563eb",
       "--goose-inline-code-border-hover": "#bfdbfe",
@@ -45,7 +43,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(59, 130, 246, 0.2)",
       "--goose-interactive-selected-fg": "#93c5fd",
-      "--goose-icon-chip-on-selected": "rgba(59, 130, 246, 0.14)",
       "--goose-inline-code-bg": "#324665",
       "--goose-inline-code-fg": "#bfdbfe",
       "--goose-inline-code-border-hover": "#3b82f6",
@@ -56,7 +53,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#e5e5e5",
       "--goose-interactive-selected-fg": "#171717",
-      "--goose-icon-chip-on-selected": "#f5f5f5",
       "--goose-inline-code-bg": "#f5f5f5",
       "--goose-inline-code-fg": "#171717",
       "--goose-inline-code-border-hover": "#d4d4d4",
@@ -65,7 +61,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(255, 255, 255, 0.16)",
       "--goose-interactive-selected-fg": "#f5f5f5",
-      "--goose-icon-chip-on-selected": "rgba(255, 255, 255, 0.1)",
       "--goose-inline-code-bg": "#3a3a3a",
       "--goose-inline-code-fg": "#f5f5f5",
       "--goose-inline-code-border-hover": "#737373",
@@ -76,7 +71,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#dcfce7",
       "--goose-interactive-selected-fg": "#15803d",
-      "--goose-icon-chip-on-selected": "#f0fdf4",
       "--goose-inline-code-bg": "#f0fdf4",
       "--goose-inline-code-fg": "#15803d",
       "--goose-inline-code-border-hover": "#bbf7d0",
@@ -85,7 +79,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(34, 197, 94, 0.2)",
       "--goose-interactive-selected-fg": "#86efac",
-      "--goose-icon-chip-on-selected": "rgba(34, 197, 94, 0.14)",
       "--goose-inline-code-bg": "#2b4a37",
       "--goose-inline-code-fg": "#bbf7d0",
       "--goose-inline-code-border-hover": "#22c55e",
@@ -96,7 +89,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#fef3c7",
       "--goose-interactive-selected-fg": "#b45309",
-      "--goose-icon-chip-on-selected": "#fffbeb",
       "--goose-inline-code-bg": "#fffbeb",
       "--goose-inline-code-fg": "#b45309",
       "--goose-inline-code-border-hover": "#fde68a",
@@ -105,7 +97,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(245, 158, 11, 0.2)",
       "--goose-interactive-selected-fg": "#fbbf24",
-      "--goose-icon-chip-on-selected": "rgba(245, 158, 11, 0.14)",
       "--goose-inline-code-bg": "#4a3b24",
       "--goose-inline-code-fg": "#fde68a",
       "--goose-inline-code-border-hover": "#f59e0b",
@@ -116,7 +107,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#ffedd5",
       "--goose-interactive-selected-fg": "#c2410c",
-      "--goose-icon-chip-on-selected": "#fff7ed",
       "--goose-inline-code-bg": "#fff7ed",
       "--goose-inline-code-fg": "#c2410c",
       "--goose-inline-code-border-hover": "#fed7aa",
@@ -125,7 +115,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(249, 115, 22, 0.2)",
       "--goose-interactive-selected-fg": "#fdba74",
-      "--goose-icon-chip-on-selected": "rgba(249, 115, 22, 0.14)",
       "--goose-inline-code-bg": "#4f3425",
       "--goose-inline-code-fg": "#fed7aa",
       "--goose-inline-code-border-hover": "#f97316",
@@ -136,7 +125,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#ffe4e6",
       "--goose-interactive-selected-fg": "#be123c",
-      "--goose-icon-chip-on-selected": "#fff1f2",
       "--goose-inline-code-bg": "#fff1f2",
       "--goose-inline-code-fg": "#be123c",
       "--goose-inline-code-border-hover": "#fecdd3",
@@ -145,7 +133,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(244, 63, 94, 0.2)",
       "--goose-interactive-selected-fg": "#fda4af",
-      "--goose-icon-chip-on-selected": "rgba(244, 63, 94, 0.14)",
       "--goose-inline-code-bg": "#66333b",
       "--goose-inline-code-fg": "#fecdd3",
       "--goose-inline-code-border-hover": "#f43f5e",
@@ -156,7 +143,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     light: {
       "--goose-interactive-selected": "#f3e8ff",
       "--goose-interactive-selected-fg": "#7e22ce",
-      "--goose-icon-chip-on-selected": "#faf5ff",
       "--goose-inline-code-bg": "#faf5ff",
       "--goose-inline-code-fg": "#7e22ce",
       "--goose-inline-code-border-hover": "#e9d5ff",
@@ -165,7 +151,6 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
     dark: {
       "--goose-interactive-selected": "rgba(168, 85, 247, 0.2)",
       "--goose-interactive-selected-fg": "#d8b4fe",
-      "--goose-icon-chip-on-selected": "rgba(168, 85, 247, 0.14)",
       "--goose-inline-code-bg": "#46305d",
       "--goose-inline-code-fg": "#e9d5ff",
       "--goose-inline-code-border-hover": "#a855f7",
@@ -183,7 +168,13 @@ export function resolveAccentRuntimeTokens(
   isDark: boolean,
 ): Record<string, string> {
   const tokens = ACCENT_RUNTIME_TOKENS[accentColor] ?? ACCENT_RUNTIME_TOKENS.mono;
-  return isDark ? tokens.dark : tokens.light;
+  const theme = isDark ? tokens.dark : tokens.light;
+  const selected = theme["--goose-interactive-selected"];
+  return {
+    ...theme,
+    "--goose-interactive-hover": selected,
+    "--goose-icon-chip-on-selected": selected,
+  };
 }
 
 const RUNTIME_STYLE_ID = "goose-accent-runtime-vars";
@@ -229,6 +220,7 @@ function writeAccentRuntimeTokens(
   --goose-inline-code-border-hover: ${border} !important;
   --goose-interactive-selected: ${tokens["--goose-interactive-selected"]} !important;
   --goose-interactive-selected-fg: ${tokens["--goose-interactive-selected-fg"]} !important;
+  --goose-interactive-hover: ${tokens["--goose-interactive-hover"]} !important;
   --goose-icon-chip-on-selected: ${tokens["--goose-icon-chip-on-selected"]} !important;
   --goose-editor-selection-bg: ${tokens["--goose-editor-selection-bg"]} !important;
 }
