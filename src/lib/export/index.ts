@@ -1,17 +1,17 @@
 import type { Page } from "@/types";
+import type { CustomFonts } from "@/stores/useSettings";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
-import { getPageTitle } from "@/components/editor/utils/page-title";
 import {
   normalizePageContent,
   createEmptyBlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
-import { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
-import { buildExportMarkdown, buildExportHtmlBody } from "./pageMarkdown";
-import { prepareExportBlocks } from "./prepareExportBlocks";
-import { renderExportHtml } from "./exportHtmlDocument";
 import { importFromMarkdown, type ImportResult } from "./markdown/parse";
 import { saveBlobAndReveal, triggerBrowserDownload } from "./fileSave";
+import {
+  buildSinglePageExport,
+  type SinglePageExportFormat,
+} from "./pageWithAttachments";
 
 export { jsonContentToMarkdown } from "./markdown/serialize";
 export { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
@@ -28,7 +28,10 @@ export {
   type ExportOptions,
 } from "./zipBundle";
 export { saveBlobAndReveal, saveBlobWithPrompt } from "./fileSave";
-export { exportToPDF } from "@/lib/pdfExport";
+export {
+  buildSinglePageExport,
+  pageHasLocalSidecarAttachments,
+} from "./pageWithAttachments";
 
 
 async function downloadBlob(blob: Blob, filename: string) {
@@ -44,43 +47,31 @@ async function downloadBlob(blob: Blob, filename: string) {
   throw new Error("导出失败：无法保存文件");
 }
 
-async function downloadFile(
-  content: string,
-  filename: string,
-  contentType: string,
+async function exportPage(
+  page: Page,
+  format: SinglePageExportFormat,
+  pdfBlob?: Blob,
 ) {
-  try {
-    const blob = new Blob([content], { type: contentType });
-    await downloadBlob(blob, filename);
-  } catch (error) {
-    console.error("下载失败:", error);
-    throw error;
-  }
+  const { blob, filename } = await buildSinglePageExport(page, format, pdfBlob);
+  await downloadBlob(blob, filename);
 }
 
 export async function exportToJSON(page: Page) {
-  const data = JSON.stringify(page, null, 2);
-  const title = getPageTitle(page);
-  await downloadFile(data, `${title || "untitled"}.json`, "application/json");
+  await exportPage(page, "json");
 }
 
 export async function exportToMarkdown(page: Page) {
-  const blocks = await prepareExportBlocks(page);
-  const fullMarkdown = await buildExportMarkdown(page, blocks);
-  const title = getPageTitle(page);
-  await downloadFile(
-    fullMarkdown,
-    `${title || "untitled"}.md`,
-    "text/markdown",
-  );
+  await exportPage(page, "md");
 }
 
 export async function exportToHTML(page: Page) {
-  const blocks = await prepareExportBlocks(page);
-  const bodyHtml = await buildExportHtmlBody(page, blocks);
-  const title = getPageTitle(page);
-  const fullHtml = renderExportHtml(title, bodyHtml, !page.localFilePath);
-  await downloadFile(fullHtml, `${title || "untitled"}.html`, "text/html");
+  await exportPage(page, "html");
+}
+
+export async function exportToPDF(page: Page, customFonts?: CustomFonts) {
+  const { renderPageToPdfBlob } = await import("@/lib/pdfExport");
+  const pdfBlob = await renderPageToPdfBlob(page, customFonts);
+  await exportPage(page, "pdf", pdfBlob);
 }
 
 export { renderExportHtml } from "./exportHtmlDocument";

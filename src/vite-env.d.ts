@@ -50,6 +50,8 @@ declare global {
     rename: (oldPath: string, newPath: string) => boolean | Promise<boolean>;
     writeTempFile?: (relativePath: string, contentBase64: string) => Promise<string | null>;
     cleanupTempFiles?: (prefix: string, maxAgeMs: number) => Promise<void>;
+    /** 隐藏窗 printToPDF，返回 PDF base64；不可用或失败时为 null。 */
+    printHtmlToPdf?: (html: string) => Promise<string | null>;
     selectDirectory?: () => Promise<string | null>;
     restoreLastDirectory?: () => Promise<string | null>;
     revealItemInFolder?: (path: string) => boolean | Promise<boolean>;

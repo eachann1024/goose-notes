@@ -53,6 +53,24 @@ function getDownloadsPath(): string | null {
   return null;
 }
 
+/** 下载目录已有同名文件时，按系统习惯加 ` (1)`、` (2)`，避免覆盖失败看起来像没导出。 */
+export function nextAvailableFilename(
+  filename: string,
+  exists: (candidate: string) => boolean,
+): string {
+  if (!exists(filename)) return filename;
+  const extMatch = filename.match(/(\.[^.]+)$/);
+  const ext = extMatch?.[1] ?? "";
+  const stem = ext ? filename.slice(0, -ext.length) : filename;
+  let index = 1;
+  let candidate = `${stem} (${index})${ext}`;
+  while (exists(candidate)) {
+    index += 1;
+    candidate = `${stem} (${index})${ext}`;
+  }
+  return candidate;
+}
+
 function getSuggestedSavePath(filename: string): string {
   const downloadsDir = getDownloadsPath();
   if (!downloadsDir) return filename;
@@ -87,9 +105,18 @@ async function trySaveToDownloads(
 
   const w = window as any;
   const path = w.require && w.require("path");
-  const targetPath = path && typeof path.join === "function"
-    ? path.join(downloadsDir, filename)
-    : `${downloadsDir.replace(/[/\\]+$/, "")}/${filename}`;
+  const joinDownload = (name: string) =>
+    path && typeof path.join === "function"
+      ? path.join(downloadsDir, name)
+      : `${downloadsDir.replace(/[/\\]+$/, "")}/${name}`;
+  const uniqueName = nextAvailableFilename(filename, (name) => {
+    try {
+      return Boolean(gooseFs.exists(joinDownload(name)));
+    } catch {
+      return false;
+    }
+  });
+  const targetPath = joinDownload(uniqueName);
 
   const base64 = await blobToBase64(blob);
   const payload = base64.replace(/^data:.*;base64,/, "");

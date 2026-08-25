@@ -152,7 +152,8 @@ function resolveAndReadBase64(
   return null;
 }
 
-async function extractImagesFromContent(
+/** 把页面块里的本地图/文件/音视频抽进 ZIP assets/，并把 url 改成相对路径。单页 ZIP 复用。 */
+export async function extractImagesFromContent(
   content: any[],
   assetsFolder: JSZipNs,
   imageMap: Map<string, string>,
@@ -496,7 +497,7 @@ export async function generateExportZip(
             pageClone,
             pageClone.content,
           );
-          content = renderExportHtml(getPageTitle(pageClone), bodyHtml, false);
+          content = await renderExportHtml(getPageTitle(pageClone), bodyHtml, false);
           extension = ".html";
           break;
         }

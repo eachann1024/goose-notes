@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import {
   blocksToHTML,
   blocksToMarkdown,
+  buildSinglePageExport,
   generateExportZip,
   importFromMarkdown,
   importNotebooksFromZip,
@@ -719,4 +720,116 @@ test("inspectNotebookImportZip rejects an empty zip before destructive restore",
   await expect(
     inspectNotebookImportZip(await zip.generateAsync({ type: "blob" })),
   ).rejects.toThrow("没有可恢复的鹅的笔记数据");
+});
+
+function buildPlainPage(): Page {
+  return {
+    id: "page-plain-export",
+    workspaceId: notebookId,
+    isFolder: false,
+    isLocked: false,
+    fontSize: "default",
+    fontFamily: "default",
+    createdAt: 1,
+    updatedAt: 1,
+    content: [
+      {
+        type: "heading",
+        props: { level: 1 },
+        content: "Plain",
+      },
+      {
+        type: "paragraph",
+        content: "没有附件",
+      },
+    ],
+  };
+}
+
+function buildImageOnlyPage(): Page {
+  return {
+    id: "page-image-only-export",
+    workspaceId: notebookId,
+    isFolder: false,
+    isLocked: false,
+    fontSize: "default",
+    fontFamily: "default",
+    createdAt: 1,
+    updatedAt: 1,
+    content: [
+      {
+        type: "heading",
+        props: { level: 1 },
+        content: "Photo",
+      },
+      {
+        type: "image",
+        props: {
+          url: imageRef,
+          caption: "Pixel",
+        },
+      },
+    ],
+  };
+}
+
+test("single-page Markdown export with file attachment packs bytes into a zip", async () => {
+  installAttachmentRuntime();
+  const { blob, filename } = await buildSinglePageExport(buildPage(), "md");
+
+  expect(filename).toBe("Exported.zip");
+  const zip = await JSZip.loadAsync(blob);
+  const markdownPath = Object.keys(zip.files).find((path) =>
+    path.endsWith(".md"),
+  );
+  expect(markdownPath).toBeTruthy();
+
+  const markdown = await zip.file(markdownPath!)!.async("text");
+  expect(markdown).not.toContain("att-file:");
+  expect(markdown).toMatch(/\[📎 report\.pdf\]\(\.\/assets\/[^)]+\.pdf\)/);
+
+  const assetPaths = Object.keys(zip.files).filter(
+    (path) => path.startsWith("assets/") && !zip.files[path].dir,
+  );
+  const pdfPath = assetPaths.find((path) => path.endsWith(".pdf"));
+  expect(pdfPath).toBeTruthy();
+  const pdfBytes = await zip.file(pdfPath!)!.async("uint8array");
+  expect(pdfBytes.byteLength).toBeGreaterThan(0);
+});
+
+test("single-page PDF export wrapper zips the pdf with video attachment bytes", async () => {
+  installAttachmentRuntime();
+  const fakePdf = new Blob(["%PDF-1.4 fake"], { type: "application/pdf" });
+  const { blob, filename } = await buildSinglePageExport(
+    buildMediaPage(),
+    "pdf",
+    fakePdf,
+  );
+
+  expect(filename).toBe("Media.zip");
+  const zip = await JSZip.loadAsync(blob);
+  const pdfFile = zip.file("Media.pdf");
+  expect(pdfFile).not.toBeNull();
+  expect(await pdfFile!.async("string")).toBe("%PDF-1.4 fake");
+
+  const assetPaths = Object.keys(zip.files).filter(
+    (path) => path.startsWith("assets/") && !zip.files[path].dir,
+  );
+  expect(assetPaths.some((path) => path.endsWith(".mp4"))).toBe(true);
+  const videoPath = assetPaths.find((path) => path.endsWith(".mp4"));
+  const videoBytes = await zip.file(videoPath!)!.async("uint8array");
+  expect(videoBytes.byteLength).toBeGreaterThan(0);
+});
+
+test("single-page export without sidecar attachments stays a single file", async () => {
+  installAttachmentRuntime();
+
+  const plain = await buildSinglePageExport(buildPlainPage(), "md");
+  expect(plain.filename).toBe("Plain.md");
+  expect(plain.filename.endsWith(".zip")).toBe(false);
+  expect(await plain.blob.text()).toContain("没有附件");
+
+  const imageOnly = await buildSinglePageExport(buildImageOnlyPage(), "md");
+  expect(imageOnly.filename).toBe("Photo.md");
+  expect(await imageOnly.blob.text()).toContain("![Pixel](data:image/png;base64,");
 });

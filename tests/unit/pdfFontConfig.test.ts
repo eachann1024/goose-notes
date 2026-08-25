@@ -1,19 +1,19 @@
 import { expect, test } from "playwright/test";
 import {
   fileUrlToLocalPath,
+  isEmbeddablePdfFontUrl,
+  loadFirstPdfFontDataUrl,
   loadPdfFontDataUrl,
+  registerPdfFonts,
   resolvePdfFontPlan,
   resolvePdfFontUrl,
   resetPdfFontLoadCache,
   toPdfFontDataUrl,
-  PDF_CANGER_WOFF2_URLS,
   PDF_CJK_FONT_URLS,
-  PDF_DM_MONO_WOFF2_URLS,
+  PDF_DM_MONO_TTF_URLS,
   PDF_FONT_FAMILY,
   PDF_FONT_RELATIVE_PATHS,
-  PDF_HARMONYOS_WOFF2_URLS,
 } from "../../src/lib/pdfExport/fontConfig";
-import { REMOTE_FONT_SOURCES } from "../../src/lib/fontLoader";
 
 test("file:// 插件页把相对 fonts/ 解析到同目录，而不是磁盘根 /fonts/", () => {
   const href = "file:///Users/eachann/Library/Application%20Support/uTools/plugins/goose-note/index.html";
@@ -52,19 +52,22 @@ test("fileUrlToLocalPath 处理 Unix 与 Windows 盘符", () => {
 
 test("注册给 react-pdf 的必须是 base64 data URL", () => {
   const src = toPdfFontDataUrl("AAEC");
-  expect(src.startsWith("data:")).toBeTruthy();
+  expect(src.startsWith("data:font/ttf;base64,")).toBeTruthy();
   expect(src.includes(";base64,")).toBeTruthy();
 });
 
-test("CJK 字体钉 jsdelivr 版本，备用 gh raw，不用 woff2", () => {
+test("CJK 字体钉 fontsource static TTF，不用 woff2/otf", () => {
   expect(PDF_CJK_FONT_URLS[0]).toBe(
-    "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+    "https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.2.8/chinese-simplified-400-normal.ttf",
   );
   expect(PDF_CJK_FONT_URLS[1]).toBe(
-    "https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+    "https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.1.0/chinese-simplified-400-normal.ttf",
   );
   for (const url of PDF_CJK_FONT_URLS) {
-    expect(url.includes(".woff2")).toBeFalsy();
+    expect(url.toLowerCase().endsWith(".ttf")).toBeTruthy();
+    expect(url.toLowerCase().includes(".woff2")).toBeFalsy();
+    expect(url.toLowerCase().includes(".otf")).toBeFalsy();
+    expect(isEmbeddablePdfFontUrl(url)).toBeTruthy();
   }
 });
 
@@ -74,61 +77,61 @@ const emptyCustomFonts = {
   mono: { font: null },
 };
 
-test("default / 空 / HarmonyOS / ui-sans-serif 选鸿蒙单文件 woff2", () => {
-  const harmonyUrl = PDF_HARMONYOS_WOFF2_URLS[0];
-  expect(harmonyUrl.includes("d6dc229cd882dc0983dc5ce7cf28fb85047a4a76")).toBeTruthy();
-  expect(harmonyUrl.endsWith(".woff2")).toBeTruthy();
-  expect(harmonyUrl.includes("HarmonyOS")).toBeTruthy();
-  expect(harmonyUrl.includes("Regular.css")).toBeFalsy();
-
+test("default / 空 / HarmonyOS / ui-sans-serif 走 Noto TTF，不用鸿蒙 WOFF2", () => {
   const fromEmpty = resolvePdfFontPlan("default", emptyCustomFonts);
-  expect(fromEmpty.embed).toBe("harmony");
-  expect(fromEmpty.bodyUrls).toEqual([...PDF_HARMONYOS_WOFF2_URLS]);
-  expect(fromEmpty.bodyFallbackUrls).toEqual([...PDF_CJK_FONT_URLS]);
+  expect(fromEmpty.embed).toBe("noto");
+  expect(fromEmpty.bodyFamily).toBe(PDF_FONT_FAMILY);
+  expect(fromEmpty.pageFontFamily).toBe(PDF_FONT_FAMILY);
+  expect(fromEmpty.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
+  for (const url of fromEmpty.bodyUrls) {
+    expect(url.toLowerCase().includes(".woff2")).toBeFalsy();
+    expect(url.toLowerCase().endsWith(".ttf")).toBeTruthy();
+  }
 
   const fromHarmony = resolvePdfFontPlan("default", {
     ...emptyCustomFonts,
     default: { font: "HarmonyOS Sans SC" },
   });
-  expect(fromHarmony.embed).toBe("harmony");
+  expect(fromHarmony.embed).toBe("noto");
+  expect(fromHarmony.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
 
   const fromUiSans = resolvePdfFontPlan("default", {
     ...emptyCustomFonts,
     default: { font: "ui-sans-serif, HarmonyOS Sans SC" },
   });
-  expect(fromUiSans.embed).toBe("harmony");
-  expect(fromUiSans.bodyUrls[0]).toBe(harmonyUrl);
+  expect(fromUiSans.embed).toBe("noto");
+  expect(fromUiSans.bodyUrls[0]).toBe(PDF_CJK_FONT_URLS[0]);
 });
 
-test("serif / 仓耳 选仓耳今楷单文件 woff2", () => {
-  expect(PDF_CANGER_WOFF2_URLS[0]).toBe(REMOTE_FONT_SOURCES["仓耳今楷"]);
-  expect(PDF_CANGER_WOFF2_URLS[0].endsWith(".woff2")).toBeTruthy();
-
+test("serif / 仓耳也走 Noto TTF，不嵌入 WOFF2", () => {
   const fromEmpty = resolvePdfFontPlan("serif", emptyCustomFonts);
-  expect(fromEmpty.embed).toBe("canger");
-  expect(fromEmpty.bodyUrls).toEqual([...PDF_CANGER_WOFF2_URLS]);
-  expect(fromEmpty.bodyFallbackUrls).toEqual([...PDF_CJK_FONT_URLS]);
-  expect(fromEmpty.pageFontFamily).toBe("仓耳今楷");
+  expect(fromEmpty.embed).toBe("noto");
+  expect(fromEmpty.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
+  expect(fromEmpty.pageFontFamily).toBe(PDF_FONT_FAMILY);
 
   const fromName = resolvePdfFontPlan("default", {
     ...emptyCustomFonts,
     default: { font: '"仓耳今楷", serif' },
   });
-  expect(fromName.embed).toBe("canger");
-  expect(fromName.bodyUrls[0]).toBe(PDF_CANGER_WOFF2_URLS[0]);
+  expect(fromName.embed).toBe("noto");
+  expect(fromName.bodyUrls[0]).toBe(PDF_CJK_FONT_URLS[0]);
+  expect(fromName.bodyUrls[0].toLowerCase().includes(".woff2")).toBeFalsy();
 });
 
-test("mono / DM Mono 选 DM Mono + CJK（鸿蒙，失败走 Noto）", () => {
-  expect(PDF_DM_MONO_WOFF2_URLS[0]).toBe(
-    "https://cdn.jsdelivr.net/npm/@fontsource/dm-mono@5.1.0/files/dm-mono-latin-400-normal.woff2",
+test("mono / DM Mono 选 DM Mono TTF + Noto TTF", () => {
+  expect(PDF_DM_MONO_TTF_URLS[0]).toBe(
+    "https://cdn.jsdelivr.net/fontsource/fonts/dm-mono@5.2.6/latin-400-normal.ttf",
   );
+  for (const url of PDF_DM_MONO_TTF_URLS) {
+    expect(url.toLowerCase().endsWith(".ttf")).toBeTruthy();
+    expect(url.toLowerCase().includes(".woff2")).toBeFalsy();
+  }
 
   const fromEmpty = resolvePdfFontPlan("mono", emptyCustomFonts);
   expect(fromEmpty.embed).toBe("dm-mono");
-  expect(fromEmpty.monoUrls).toEqual([...PDF_DM_MONO_WOFF2_URLS]);
-  expect(fromEmpty.bodyUrls).toEqual([...PDF_HARMONYOS_WOFF2_URLS]);
-  expect(fromEmpty.bodyFallbackUrls).toEqual([...PDF_CJK_FONT_URLS]);
-  expect(fromEmpty.pageFontFamily).toEqual(["DM Mono", "HarmonyOS Sans SC"]);
+  expect(fromEmpty.monoUrls).toEqual([...PDF_DM_MONO_TTF_URLS]);
+  expect(fromEmpty.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
+  expect(fromEmpty.pageFontFamily).toEqual(["DM Mono", PDF_FONT_FAMILY]);
 
   const fromName = resolvePdfFontPlan("mono", {
     ...emptyCustomFonts,
@@ -174,7 +177,7 @@ test("远程字体同会话只拉一次并转成 data URL", async () => {
     const first = await loadPdfFontDataUrl();
     const second = await loadPdfFontDataUrl();
     expect(first).toBeTruthy();
-    expect(first?.startsWith("data:font/otf;base64,")).toBeTruthy();
+    expect(first?.startsWith("data:font/ttf;base64,")).toBeTruthy();
     expect(second).toBe(first);
     expect(calls).toBe(1);
   } finally {
@@ -213,7 +216,75 @@ test("主源失败则走备用 URL", async () => {
   try {
     const src = await loadPdfFontDataUrl();
     expect(seen).toEqual([...PDF_CJK_FONT_URLS]);
-    expect(src?.startsWith("data:")).toBeTruthy();
+    expect(src?.startsWith("data:font/ttf;base64,")).toBeTruthy();
+  } finally {
+    globalThis.fetch = originalFetch;
+    resetPdfFontLoadCache();
+  }
+});
+
+test("WOFF2 不当作成功，也不去 fetch", async () => {
+  resetPdfFontLoadCache();
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(new Uint8Array(120_000), { status: 200 });
+  }) as typeof fetch;
+  try {
+    expect(isEmbeddablePdfFontUrl("https://cdn.example/HarmonyOS.woff2")).toBeFalsy();
+    const src = await loadFirstPdfFontDataUrl([
+      "https://cdn.example/HarmonyOS.woff2",
+    ]);
+    expect(src).toBeNull();
+    expect(calls).toBe(0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    resetPdfFontLoadCache();
+  }
+});
+
+test("ready 时 pageFontFamily 不是 Inter/Helvetica", async () => {
+  resetPdfFontLoadCache();
+  const originalFetch = globalThis.fetch;
+  const payload = new Uint8Array(120_000);
+  payload.fill(3);
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const href = String(input);
+    expect(href.toLowerCase().includes(".woff2")).toBeFalsy();
+    expect(href.toLowerCase().endsWith(".ttf")).toBeTruthy();
+    return new Response(payload, { status: 200 });
+  }) as typeof fetch;
+  try {
+    const result = await registerPdfFonts({
+      fontFamily: "default",
+      customFonts: emptyCustomFonts,
+    });
+    expect(result.ready).toBeTruthy();
+    const family = Array.isArray(result.pageFontFamily)
+      ? result.pageFontFamily.join(",")
+      : result.pageFontFamily;
+    expect(family).toBe(PDF_FONT_FAMILY);
+    expect(family).not.toBe("Inter");
+    expect(family).not.toBe("Helvetica");
+  } finally {
+    globalThis.fetch = originalFetch;
+    resetPdfFontLoadCache();
+  }
+});
+
+test("CJK TTF 失败时 ready=false，不是 Helvetica/Inter", async () => {
+  resetPdfFontLoadCache();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response("nope", { status: 404 })) as typeof fetch;
+  try {
+    const result = await registerPdfFonts({ fontFamily: "default" });
+    expect(result.ready).toBeFalsy();
+    const family = Array.isArray(result.pageFontFamily)
+      ? result.pageFontFamily.join(",")
+      : result.pageFontFamily;
+    expect(family).not.toBe("Helvetica");
+    expect(family).not.toBe("Inter");
   } finally {
     globalThis.fetch = originalFetch;
     resetPdfFontLoadCache();

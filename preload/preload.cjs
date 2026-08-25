@@ -11,7 +11,7 @@ const path = require("path");
 const http = require("http");
 const https = require("https");
 const { spawn, spawnSync } = require("child_process");
-const { URL: NodeURL } = require("url");
+const { URL: NodeURL, pathToFileURL } = require("url");
 const {
   buildLocalPageId,
   createSnippet,
@@ -1136,6 +1136,123 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     listLocalSkills: readLocalSkillFiles,
   };
 
+  const waitPrintDocumentReady = async (webContents, timeoutMs = 8000) => {
+    if (!webContents || typeof webContents.executeJavaScript !== "function") {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return;
+    }
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const ready = await webContents.executeJavaScript(
+          "Boolean(window.__GOOSE_PRINT_READY__ === true)",
+        );
+        if (ready) return;
+      } catch {
+        /* 导航中 */
+      }
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+  };
+
+  const printHtmlToPdf = async (html) => {
+    if (typeof html !== "string" || !html.trim()) return null;
+    if (typeof utools?.createBrowserWindow !== "function") return null;
+
+    const htmlPath = path.join(os.tmpdir(), "goose-note-print", `print-${Date.now()}.html`);
+    await fs.promises.mkdir(path.dirname(htmlPath), { recursive: true });
+    await fs.promises.writeFile(htmlPath, html, "utf8");
+    const fileUrl = pathToFileURL(htmlPath).href;
+
+    try {
+      return await new Promise((resolve, reject) => {
+        let settled = false;
+        let win = null;
+        let openedWithFileUrl = false;
+        const finish = (error, value) => {
+          if (settled) return;
+          settled = true;
+          try {
+            win?.close?.();
+          } catch {}
+          if (error) reject(error);
+          else resolve(value);
+        };
+
+        const injectHtml = async (webContents) => {
+          if (typeof webContents?.executeJavaScript !== "function") return;
+          await webContents.executeJavaScript(
+            `document.open();document.write(${JSON.stringify(html)});document.close();true;`,
+          );
+        };
+
+        const runPrint = async () => {
+          try {
+            const webContents = win?.webContents;
+            if (typeof webContents?.printToPDF !== "function") {
+              finish(null, null);
+              return;
+            }
+            if (!openedWithFileUrl) {
+              try {
+                if (typeof webContents.loadURL === "function") {
+                  await webContents.loadURL(fileUrl);
+                } else if (typeof win?.loadURL === "function") {
+                  await win.loadURL(fileUrl);
+                } else {
+                  await injectHtml(webContents);
+                }
+              } catch {
+                await injectHtml(webContents);
+              }
+            }
+            await waitPrintDocumentReady(webContents);
+            const data = await webContents.printToPDF({
+              printBackground: true,
+              preferCSSPageSize: true,
+            });
+            const buf = Buffer.isBuffer(data) ? data : Buffer.from(data || []);
+            if (!buf.length) {
+              finish(new Error("printToPDF 返回空内容"));
+              return;
+            }
+            finish(null, buf.toString("base64"));
+          } catch (error) {
+            finish(error);
+          }
+        };
+
+        const openWindow = (url) =>
+          utools.createBrowserWindow(
+            url,
+            { show: false, width: 820, height: 1169, hasShadow: false },
+            () => {
+              void runPrint();
+            },
+          );
+
+        try {
+          openedWithFileUrl = false;
+          win = openWindow("print-pdf.html");
+        } catch {
+          try {
+            openedWithFileUrl = true;
+            win = openWindow(fileUrl);
+          } catch (fallbackError) {
+            finish(fallbackError);
+            return;
+          }
+        }
+
+        setTimeout(() => finish(new Error("printToPDF 超时")), 20000);
+      });
+    } finally {
+      try {
+        await fs.promises.unlink(htmlPath);
+      } catch {}
+    }
+  };
+
   // 本地文件系统 API 桥接（仅用于本地文件夹模式）
   window.gooseFs = {
     fetchRemoteImage,
@@ -1406,6 +1523,15 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         return targetPath;
       } catch (err) {
         console.error("[gooseFs] writeTempFile failed:", err);
+        return null;
+      }
+    },
+
+    printHtmlToPdf: async (html) => {
+      try {
+        return await printHtmlToPdf(html);
+      } catch (err) {
+        console.error("[gooseFs] printHtmlToPdf failed:", err);
         return null;
       }
     },

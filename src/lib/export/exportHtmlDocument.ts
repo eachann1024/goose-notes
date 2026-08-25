@@ -2,6 +2,7 @@ import {
   EXPORT_HTML_HEAD_ASSETS,
   EXPORT_HTML_BODY_SCRIPTS,
 } from "./blocknoteSerializer";
+import { getExportHtmlCss } from "./exportHtmlCss";
 
 function escapeHtmlText(value: string): string {
   return value
@@ -11,40 +12,37 @@ function escapeHtmlText(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function renderExportHtml(
-  title: string,
-  bodyHtml: string,
-  includeBodyH1 = true,
-): string {
-  const bodyHeading = includeBodyH1
-    ? `<h1>${escapeHtmlText(title)}</h1>\n`
-    : "";
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtmlText(title)}</title>
-${EXPORT_HTML_HEAD_ASSETS}
-<style>
-:root { color-scheme: light; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.65; color: #1f2329; }
-img { max-width: 100%; height: auto; }
-video { display: block; max-width: 100%; height: auto; margin: 1rem 0; border-radius: 6px; background: #1f2329; }
-blockquote { border-left: 3px solid #d0d7de; padding: 0 1rem; color: #57606a; margin: 1rem 0; }
-code { background: #f2f3f5; color: #1f2329; padding: 1px 4px; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; }
-pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; }
-pre code { background: transparent; padding: 0; }
-pre.mermaid { background: transparent; padding: 0; text-align: center; }
-table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-table th, table td { border: 1px solid #d0d7de; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
-table th { background: #f6f8fa; font-weight: 600; }
-hr { border: 0; border-top: 1px solid #d0d7de; margin: 1.5rem 0; }
-ul, ol { padding-left: 1.5rem; }
-a { color: #0969da; }
-h1, h2, h3, h4 { line-height: 1.3; margin-top: 1.5em; scroll-margin-top: 1.5rem; }
+export function wrapExportEditorHtml(bodyHtml: string): string {
+  return `<div class="workspace-editor-surface">
+<div class="bn-container bn-mantine">
+<div class="bn-root" data-color-scheme="light">
+<div class="ProseMirror bn-editor bn-default-styles">
+${bodyHtml}
+</div>
+</div>
+</div>
+</div>`;
+}
+
+const PAGE_CHROME_CSS = `
+html { color-scheme: light; }
+body {
+  font-family: var(--font-default);
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 2rem;
+  line-height: 1.65;
+  color: #1f2329;
+  background: #ffffff;
+}
+#export-content > h1 {
+  font-size: 2em;
+  line-height: 1.3;
+  margin: 0 0 0.8em;
+  scroll-margin-top: 1.5rem;
+}
+img, video { max-width: 100%; height: auto; }
 .katex-display { overflow-x: auto; overflow-y: hidden; }
-input[type="checkbox"] { margin-right: 0.4em; }
 .export-toc { position: fixed; z-index: 1; top: 1rem; left: 1rem; width: min(17rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; box-sizing: border-box; padding: 0.45rem; border: 1px solid #d8dee4; border-radius: 8px; background: #ffffff; box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12); font-size: 0.875rem; }
 .export-toc__header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .export-toc__title { margin: 0; color: #1f2329; font-size: 0.875rem; font-weight: 600; }
@@ -61,6 +59,27 @@ input[type="checkbox"] { margin-right: 0.4em; }
 .export-toc.is-collapsed .export-toc__title, .export-toc.is-collapsed .export-toc__list { display: none; }
 @media (max-width: 1100px) { .export-toc { position: static; width: 100%; max-height: none; margin: 0 0 1.5rem; } .export-toc.is-collapsed { width: fit-content; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+`;
+
+export async function renderExportHtml(
+  title: string,
+  bodyHtml: string,
+  includeBodyH1 = true,
+): Promise<string> {
+  const bodyHeading = includeBodyH1
+    ? `<h1>${escapeHtmlText(title)}</h1>\n`
+    : "";
+  const editorCss = await getExportHtmlCss();
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtmlText(title)}</title>
+${EXPORT_HTML_HEAD_ASSETS}
+<style>
+${editorCss}
+${PAGE_CHROME_CSS}
 </style>
 </head>
 <body>
@@ -72,7 +91,7 @@ input[type="checkbox"] { margin-right: 0.4em; }
   <ol class="export-toc__list"></ol>
 </nav>
 <main id="export-content">
-${bodyHeading}${bodyHtml}
+${bodyHeading}${wrapExportEditorHtml(bodyHtml)}
 </main>
 <script>
 (() => {
