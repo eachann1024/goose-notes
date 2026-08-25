@@ -2,11 +2,13 @@
 
 不再内置 Noto Sans SC。构建不会下载或拷贝 `public/fonts` 里的 otf/ttf，避免 8MB 打进 dist。
 
-首次导出 PDF 时从钉版本 CDN 远程加载 SubsetOTF Regular（otf，不用 woff2），同会话内存缓存。失败则走系统 / 已有降级，中文可能变成方框。
+uTools 主路径走隐藏窗 `printToPDF`，用系统中文字体栈，不嵌入此文件。
 
-- 主源：`https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`
-- 备用：`https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`
+浏览器 / printToPDF 失败时的 react-pdf 降级：首次导出从钉版本 CDN 拉 **Noto Sans SC static TTF**（不要 WOFF2 / OTF），同会话内存缓存后转 data URL 再 `Font.register`。失败则明确报错，不假装 Helvetica/Inter 成功。
 
-拉到后转成 data URL 再 `Font.register`。uTools 以 file:// 打开页面时，不能把字体 src 设成站点根 `/fonts/...`（会变成 `file:///fonts/...`）。
+- 主源：`https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.2.8/chinese-simplified-400-normal.ttf`
+- 备用：`https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.1.0/chinese-simplified-400-normal.ttf`
 
-> 仅 PDF 导出依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。
+uTools 以 file:// 打开页面时，不能把字体 src 设成站点根 `/fonts/...`（会变成 `file:///fonts/...`）。
+
+> 仅 PDF 导出的 react-pdf 降级依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。
