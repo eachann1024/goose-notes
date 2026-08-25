@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import { loadMermaid } from "@/lib/imageExport/loadMermaid";
 import {
   getMermaidInitConfig,
   stripMermaidInitDirectives,
@@ -15,6 +16,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
   const [svg, setSvg] = useState<string>("");
   const { theme, features } = useEditorSettings();
   const resolvedTheme = useResolvedTheme(theme);
+  const skipDebounceRef = useRef(true);
 
   useEffect(() => {
     let active = true;
@@ -34,7 +36,7 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
           if (active) setSvg(timeline);
           return;
         }
-        const { default: mermaid } = await import("mermaid");
+        const mermaid = await loadMermaid();
         if (!active) return;
         mermaid.initialize(
           getMermaidInitConfig({
@@ -53,7 +55,11 @@ export const MermaidView: React.FC<MermaidViewProps> = ({ value }) => {
       }
     };
 
-    const debounceTimer = window.setTimeout(() => { void renderMermaid(); }, 500);
+    const delay = skipDebounceRef.current ? 0 : 500;
+    skipDebounceRef.current = false;
+    const debounceTimer = window.setTimeout(() => {
+      void renderMermaid();
+    }, delay);
     return () => {
       active = false;
       if (debounceTimer) clearTimeout(debounceTimer);

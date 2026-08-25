@@ -41,6 +41,10 @@ function extensionForMime(mimeType: string): string {
     "image/avif": "avif",
     "application/pdf": "pdf",
     "text/plain": "txt",
+    "text/html": "html",
+    "text/csv": "csv",
+    "application/json": "json",
+    "application/zip": "zip",
   };
   return known[normalized] ?? normalized.split("/")[1]?.split("+")[0] ?? "bin";
 }
@@ -98,6 +102,74 @@ export function resolvePhysicalResourcePath(
   return null;
 }
 
+function formatResourceReadError(error: unknown): string {
+  const message = error instanceof Error ? error.message.trim() : "";
+  if (!message || /failed to fetch/i.test(message)) {
+    return "文件无法读取，请重新添加附件";
+  }
+  return message;
+}
+
+function readBlobViaXhr(source: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    if (typeof XMLHttpRequest !== "function") {
+      reject(new Error("资源读取失败"));
+      return;
+    }
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", source);
+    xhr.responseType = "blob";
+    xhr.onload = () => {
+      if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+        resolve(xhr.response);
+        return;
+      }
+      reject(new Error(`资源读取失败（${xhr.status}）`));
+    };
+    xhr.onerror = () => reject(new Error("资源读取失败"));
+    xhr.send();
+  });
+}
+
+async function readUrlAsBlob(source: string): Promise<Blob> {
+  // uTools 以 file:// 加载插件时，fetch(blob:) / fetch(data:) 常变成 Failed to fetch。
+  if (/^(?:blob|data):/i.test(source)) {
+    try {
+      return await readBlobViaXhr(source);
+    } catch {
+      // 再试 fetch；都失败则抛给上层。
+    }
+  }
+  const response = await fetch(source);
+  if (!response.ok && response.status !== 0) {
+    throw new Error(`资源读取失败（${response.status}）`);
+  }
+  return response.blob();
+}
+
+async function tryOpenNamedLocalFile(
+  fileName: string | undefined,
+  pageLocalFilePath: string | null | undefined,
+  platform: EditorPlatform,
+): Promise<OpenExternalResourceResult | null> {
+  const trimmedName = fileName?.trim();
+  if (!trimmedName || !pageLocalFilePath || !platform.fs.isAvailable()) {
+    return null;
+  }
+  const candidates = [
+    resolveRelativePath(pageLocalFilePath, trimmedName),
+    resolveRelativePath(pageLocalFilePath, `./assets/${trimmedName}`),
+  ];
+  for (const candidate of candidates) {
+    if (!(await platform.fs.existsAsync(candidate))) continue;
+    const opened = await platform.shell.openPath(candidate);
+    return opened
+      ? { ok: true, path: candidate }
+      : { ok: false, error: "系统默认应用打开失败" };
+  }
+  return null;
+}
+
 async function blobToBase64Payload(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   let binary = "";
@@ -112,26 +184,42 @@ async function readResourceBlob(
   options: OpenExternalResourceOptions,
 ): Promise<Blob> {
   const { source, loadInternalResource } = options;
-  if (/^(?:https?|data|blob):/i.test(source)) {
-    const response = await fetch(source);
-    if (!response.ok) throw new Error(`资源读取失败（${response.status}）`);
-    const declaredSize = Number(response.headers.get("content-length") ?? 0);
-    if (declaredSize > MAX_MATERIALIZED_RESOURCE_SIZE) {
-      throw new Error("文件超过 100MB，未交给系统打开");
-    }
-    const blob = await response.blob();
-    if (blob.size > MAX_MATERIALIZED_RESOURCE_SIZE) {
-      throw new Error("文件超过 100MB，未交给系统打开");
-    }
-    return blob;
-  }
-
-  const blob = await loadInternalResource?.(source);
+  const blob = /^(?:https?|data|blob):/i.test(source)
+    ? await readUrlAsBlob(source)
+    : await loadInternalResource?.(source);
   if (!blob) throw new Error("资源不存在或尚未同步完成");
   if (blob.size > MAX_MATERIALIZED_RESOURCE_SIZE) {
     throw new Error("文件超过 100MB，未交给系统打开");
   }
   return blob;
+}
+
+async function openMaterializedBlob(
+  options: OpenExternalResourceOptions,
+  blob: Blob,
+): Promise<OpenExternalResourceResult> {
+  const mimeType = blob.type || options.mimeType || "application/octet-stream";
+  const defaultName = mimeType.startsWith("image/")
+    ? "image"
+    : mimeType === "text/html"
+      ? "page.html"
+      : "resource";
+  const fileName = ensureExtension(options.fileName || defaultName, mimeType);
+  const token =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const relativePath = `${TEMP_RESOURCE_PREFIX}/${token}/${fileName}`;
+  const targetPath = await options.platform.fs.writeTempFile(
+    relativePath,
+    await blobToBase64Payload(blob),
+  );
+  if (!targetPath) return { ok: false, error: "临时文件写入失败" };
+
+  const opened = await options.platform.shell.openPath(targetPath);
+  return opened
+    ? { ok: true, path: targetPath }
+    : { ok: false, error: "系统默认应用打开失败" };
 }
 
 async function openResourceOnce(
@@ -148,7 +236,15 @@ async function openResourceOnce(
   if (physicalPath) {
     if (platform.fs.isAvailable()) {
       const exists = await platform.fs.existsAsync(physicalPath);
-      if (!exists) return { ok: false, error: "本地文件不存在" };
+      if (!exists) {
+        const named = await tryOpenNamedLocalFile(
+          options.fileName,
+          pageLocalFilePath,
+          platform,
+        );
+        if (named) return named;
+        return { ok: false, error: "本地文件不存在" };
+      }
     }
     const opened = await platform.shell.openPath(physicalPath);
     return opened
@@ -172,34 +268,21 @@ async function openResourceOnce(
     }
   }
 
-  let blob: Blob;
   try {
-    blob = await readResourceBlob({ ...options, source: trimmedSource });
+    const blob = await readResourceBlob({ ...options, source: trimmedSource });
+    return openMaterializedBlob(options, blob);
   } catch (error) {
+    const named = await tryOpenNamedLocalFile(
+      options.fileName,
+      pageLocalFilePath,
+      platform,
+    );
+    if (named) return named;
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "资源读取失败",
+      error: formatResourceReadError(error),
     };
   }
-
-  const mimeType = blob.type || options.mimeType || "application/octet-stream";
-  const defaultName = mimeType.startsWith("image/") ? "image" : "resource";
-  const fileName = ensureExtension(options.fileName || defaultName, mimeType);
-  const token =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const relativePath = `${TEMP_RESOURCE_PREFIX}/${token}/${fileName}`;
-  const targetPath = await platform.fs.writeTempFile(
-    relativePath,
-    await blobToBase64Payload(blob),
-  );
-  if (!targetPath) return { ok: false, error: "临时文件写入失败" };
-
-  const opened = await platform.shell.openPath(targetPath);
-  return opened
-    ? { ok: true, path: targetPath }
-    : { ok: false, error: "系统默认应用打开失败" };
 }
 
 export function openResourceExternally(

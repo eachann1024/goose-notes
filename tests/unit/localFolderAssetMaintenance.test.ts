@@ -1,5 +1,8 @@
 import { expect, test } from "playwright/test";
-import { scanUnreferencedLocalAssets } from "../../src/lib/local-folder-asset-maintenance";
+import {
+  localAssetPaths,
+  scanUnreferencedLocalAssets,
+} from "../../src/lib/local-folder-asset-maintenance";
 
 interface Entry {
   name: string;
@@ -93,4 +96,25 @@ test("扫描深层内容中的本地资源引用，并保留根 assets 兼容目
       size: 8,
     },
   ]);
+});
+
+test("笔记在 assets 目录下时，内部附件引用也不会被当成本地资源路径", () => {
+  expect(
+    localAssetPaths.resolveLocalAssetPath(
+      "att-file:goose-file/report.pdf",
+      "/notes/assets/note.md",
+    ),
+  ).toBeNull();
+  expect(
+    localAssetPaths.resolveLocalAssetPath(
+      "att-video:goose-video/clip.mp4",
+      "/notes/assets/note.md",
+    ),
+  ).toBeNull();
+  expect(
+    localAssetPaths.resolveLocalAssetPath(
+      "./assets/used.mp4",
+      "/notes/project/note.md",
+    ),
+  ).toBe("/notes/project/assets/used.mp4");
 });

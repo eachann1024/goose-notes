@@ -1,27 +1,10 @@
 import { UToolsAdapter } from "@/lib/utools";
-import { fs } from "@/lib/utools/fs";
 import type { FileAttachmentAttrs } from "@/types";
 
 export const MAX_FILE_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 const FILE_ATTACHMENT_PREFIX = "att-file:";
 const FILE_ID_PREFIX = "goose-file/";
-const TEMP_ATTACHMENT_PREFIX = "goose-note/attachments";
 const DEFAULT_MIME_TYPE = "application/octet-stream";
-
-let tempCleanupPromise: Promise<void> | null = null;
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
-}
 
 export function sanitizeFileName(fileName: string): string {
   const trimmed = fileName.trim();
@@ -52,24 +35,6 @@ export function getAttachmentBadgeLabel(fileName: string, mimeType: string): str
   }
 
   return "FILE";
-}
-
-async function ensureTempCleanup(): Promise<void> {
-  if (tempCleanupPromise) {
-    return tempCleanupPromise;
-  }
-
-  tempCleanupPromise = (async () => {
-    try {
-      await fs.cleanupTempFiles(TEMP_ATTACHMENT_PREFIX, 24 * 60 * 60 * 1000);
-    } catch (error) {
-      console.error("[fileStorage] cleanup temp files failed", error);
-    }
-  })().finally(() => {
-    tempCleanupPromise = null;
-  });
-
-  return tempCleanupPromise;
 }
 
 export const fileStorage = {
@@ -113,37 +78,18 @@ export const fileStorage = {
 
   async open(
     storageRef: string,
-    meta: { fileName: string; size: number },
+    meta: { fileName: string; size?: number },
   ): Promise<{ ok: boolean; error?: string }> {
-    if (!fs.isAvailable()) {
-      return { ok: false, error: "uTools 文件桥接未就绪，无法打开附件" };
-    }
-
-    await ensureTempCleanup();
-
-    const blob = await this.load(storageRef);
-    if (!blob) {
-      return { ok: false, error: "附件不存在或尚未同步完成" };
-    }
-
-    const attachmentId = getAttachmentId(storageRef).replace(/[\\/]/g, "_");
-    const safeFileName = sanitizeFileName(meta.fileName);
-    const base64 = arrayBufferToBase64(await blob.arrayBuffer());
-    const tempFilePath = await fs.writeTempFile(
-      `${TEMP_ATTACHMENT_PREFIX}/${attachmentId}/${safeFileName}`,
-      base64,
+    const { openResourceExternally } = await import(
+      "@/components/editor/utils/openResourceExternally"
     );
-
-    if (!tempFilePath) {
-      return { ok: false, error: "临时文件写入失败" };
-    }
-
-    const opened = await UToolsAdapter.openPath(tempFilePath);
-    if (!opened) {
-      return { ok: false, error: "系统默认应用打开失败" };
-    }
-
-    return { ok: true };
+    const { utoolsEditorPlatform } = await import("@/lib/editor-platform/utools");
+    return openResourceExternally({
+      source: storageRef,
+      fileName: meta.fileName,
+      platform: utoolsEditorPlatform,
+      loadInternalResource: (ref) => fileStorage.load(ref),
+    });
   },
 
   async delete(storageRef: string): Promise<void> {

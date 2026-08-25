@@ -13,6 +13,17 @@ import {
   MediaPlaceholder,
 } from "@/components/editor/blocks/shared/MediaPlaceholder";
 
+function describeOpenFailure(error: unknown): string {
+  const message =
+    typeof error === "string"
+      ? error.trim()
+      : error instanceof Error
+        ? error.message.trim()
+        : "";
+  if (!message || /failed to fetch/i.test(message)) return "请下载后再打开";
+  return message;
+}
+
 function triggerDownload(url: string, name: string): void {
   const link = document.createElement("a");
   link.href = url;
@@ -75,10 +86,16 @@ function CustomFileBlockContent({
       return;
     }
 
-    const result = await onOpenAttachment(url, name);
-    if (!result.ok) {
+    try {
+      const result = await onOpenAttachment(url, name);
+      if (!result.ok) {
+        toast.error("系统默认应用打开失败", {
+          description: describeOpenFailure(result.error),
+        });
+      }
+    } catch (error) {
       toast.error("系统默认应用打开失败", {
-        description: result.error || "请下载后再打开",
+        description: describeOpenFailure(error),
       });
     }
   }, [
@@ -90,13 +107,15 @@ function CustomFileBlockContent({
   ]);
 
   const handleDelete = useCallback(() => {
+    if (!editor.isEditable) return;
     editor.removeBlocks([block]);
   }, [editor, block]);
 
   const handleRenameStart = useCallback(() => {
+    if (!editor.isEditable) return;
     setDraftName(block.props.name || "");
     setRenaming(true);
-  }, [block.props.name]);
+  }, [block.props.name, editor]);
 
   const handleRenameCommit = useCallback(() => {
     const trimmed = draftName.trim();
@@ -144,15 +163,21 @@ function CustomFileBlockContent({
   return (
     <div className="goose-file-block-content">
       <div className="goose-file-block-info">
-        <button
-          type="button"
-          className="goose-file-block-icon-btn"
-          onClick={handleAddFile}
-          title="更换文件"
-        >
-          <LucideIcons.FileText size={20} strokeWidth={1.75} />
-        </button>
-        {renaming ? (
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-icon-btn"
+            onClick={handleAddFile}
+            title="更换文件"
+          >
+            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+          </button>
+        ) : (
+          <span className="goose-file-block-icon-btn">
+            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+          </span>
+        )}
+        {renaming && editor.isEditable ? (
           <input
             className="goose-file-block-name-input"
             value={draftName}
@@ -185,14 +210,16 @@ function CustomFileBlockContent({
             <LucideIcons.ExternalLink size={16} strokeWidth={1.75} />
           </button>
         )}
-        <button
-          type="button"
-          className="goose-file-block-action-btn"
-          onClick={handleRenameStart}
-          title="重命名"
-        >
-          <LucideIcons.Pencil size={16} strokeWidth={1.75} />
-        </button>
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleRenameStart}
+            title="重命名"
+          >
+            <LucideIcons.Pencil size={16} strokeWidth={1.75} />
+          </button>
+        ) : null}
         <button
           type="button"
           className="goose-file-block-action-btn"
@@ -201,14 +228,16 @@ function CustomFileBlockContent({
         >
           <LucideIcons.Download size={16} strokeWidth={1.75} />
         </button>
-        <button
-          type="button"
-          className="goose-file-block-action-btn"
-          onClick={handleDelete}
-          title="删除"
-        >
-          <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
-        </button>
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleDelete}
+            title="删除"
+          >
+            <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
+          </button>
+        ) : null}
       </div>
     </div>
   );

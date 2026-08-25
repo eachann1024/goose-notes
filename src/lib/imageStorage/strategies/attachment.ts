@@ -99,6 +99,11 @@ export class AttachmentStrategy implements IImageStorageStrategy {
    * 检查是否处理该引用
    */
   canHandle(ref: string): boolean {
-    return ref.startsWith(ATT_PREFIX)
+    // att-file: / att-video: 也以 att: 开头，不能当图片附件读。
+    return (
+      ref.startsWith(ATT_PREFIX) &&
+      !ref.startsWith("att-file:") &&
+      !ref.startsWith("att-video:")
+    );
   }
 }

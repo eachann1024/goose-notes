@@ -33,6 +33,7 @@ import {
 interface ImageLightboxProps {
   editor: BlockNoteEditor<any, any, any>;
   editorContainerRef: React.RefObject<HTMLDivElement | null>;
+  editable?: boolean;
 }
 
 interface SlideInfo {
@@ -43,6 +44,7 @@ interface SlideInfo {
 export function ImageLightbox({
   editor,
   editorContainerRef,
+  editable = true,
 }: ImageLightboxProps) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -428,7 +430,7 @@ export function ImageLightbox({
 
   return (
     <>
-      {selectedImage && !open && (
+      {selectedImage && !open && editable && (
         <ImageToolbar
           selectedImage={selectedImage}
           applyImageAlignment={applyImageAlignment}

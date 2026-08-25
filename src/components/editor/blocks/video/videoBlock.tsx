@@ -228,6 +228,7 @@ function VideoBlockContent({
       <GooseVideoPlayer src={resolvedSrc} onEnterBelow={handleEnterBelow} />
       {selected &&
         toolbarRect &&
+        editor.isEditable &&
         createPortal(
           <VideoToolbar
             rect={toolbarRect}

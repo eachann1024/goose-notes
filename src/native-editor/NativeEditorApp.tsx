@@ -970,7 +970,6 @@ export function NativeEditorApp() {
         transcodeVideoUploads: false,
         openAttachmentsExternally: false,
       },
-      sidebarCollapsed: false,
     }),
     [appearance, fontSize, fullWidth],
   );

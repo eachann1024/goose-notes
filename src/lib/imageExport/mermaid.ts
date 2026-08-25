@@ -1,5 +1,6 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { CardTheme } from "./themes";
+import { loadMermaid } from "./loadMermaid";
 import {
   MERMAID_FONT,
   getMermaidInitConfig,
@@ -87,7 +88,7 @@ export async function renderMermaidSvgForExport(
   const timeline = tryRenderMermaidTimeline(source, mode);
   if (timeline) return timeline;
 
-  const { default: mermaid } = await import("mermaid");
+  const mermaid = await loadMermaid();
   mermaid.initialize(
     getMermaidInitConfig({
       mode,

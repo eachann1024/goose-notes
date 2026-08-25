@@ -1,3 +1,4 @@
+import { loadMermaid } from "@/lib/imageExport/loadMermaid";
 import {
   getMermaidInitConfig,
   stripMermaidInitDirectives,
@@ -11,7 +12,7 @@ export async function renderMermaidSvgForExport(
   const timeline = tryRenderMermaidTimeline(source, mode);
   if (timeline) return timeline;
 
-  const { default: mermaid } = await import("mermaid");
+  const mermaid = await loadMermaid();
   mermaid.initialize(
     getMermaidInitConfig({
       mode,

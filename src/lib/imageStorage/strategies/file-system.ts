@@ -12,8 +12,10 @@
 import type { IImageStorageStrategy } from "../types";
 import { blobToBase64 } from "../utils";
 import { fs } from "@/lib/utools/fs";
+import { isInternalAssetRef } from "@/lib/internalAssetRef";
 
-const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|svg|bmp|ico|tiff?)$/i;
+const LOCAL_FILE_EXTENSIONS =
+  /\.(png|jpe?g|gif|webp|svg|bmp|ico|tiff?|html?|pdf|txt|md|markdown|json|csv|zip)$/i;
 
 const MIME_MAP: Record<string, string> = {
   jpg: "image/jpeg",
@@ -26,6 +28,13 @@ const MIME_MAP: Record<string, string> = {
   ico: "image/x-icon",
   tif: "image/tiff",
   tiff: "image/tiff",
+  html: "text/html",
+  htm: "text/html",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  json: "application/json",
+  csv: "text/csv",
+  zip: "application/zip",
   mp4: "video/mp4",
   m4v: "video/x-m4v",
   mov: "video/quicktime",
@@ -143,8 +152,7 @@ export function isLocalFilePath(ref: string): boolean {
     ref.startsWith("https://") ||
     ref.startsWith("data:") ||
     ref.startsWith("blob:") ||
-    ref.startsWith("uuid:") ||
-    ref.startsWith("att:")
+    isInternalAssetRef(ref)
   ) {
     return false;
   }
@@ -152,8 +160,8 @@ export function isLocalFilePath(ref: string): boolean {
   if (ref.startsWith("/") || /^[A-Za-z]:[\\/]/.test(ref)) return true;
   // 相对路径：./ ../ .\ ..\
   if (/^\.{1,2}[\\/]/.test(ref)) return true;
-  // 无前缀但含图片扩展名的纯路径（如 assets/x.png）
-  if (!ref.includes("://") && IMAGE_EXTENSIONS.test(ref)) return true;
+  // 无前缀但含已知扩展名的纯路径（如 assets/x.png、intro.html）
+  if (!ref.includes("://") && LOCAL_FILE_EXTENSIONS.test(ref)) return true;
   return false;
 }
 

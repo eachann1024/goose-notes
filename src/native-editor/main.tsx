@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "@/components/ui/sonner";
 import { applyRolldownPolyfills } from "@/lib/rolldown-polyfill";
+import "../styles/focus-reset.css";
 import "../pages/workspace/styles/editor-base.css";
 import "../pages/workspace/styles/block-background.css";
 import "../pages/workspace/styles/editor-popup-position.css";

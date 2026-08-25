@@ -5,14 +5,20 @@ import {
   resolvePhysicalResourcePath,
 } from "../../src/components/editor/utils/openResourceExternally";
 
-function createPlatform(overrides?: { exists?: boolean; open?: boolean }) {
+function createPlatform(overrides?: {
+  exists?: boolean | ((path: string) => boolean);
+  open?: boolean;
+}) {
   const written: Array<{ path: string; content: string }> = [];
   const opened: string[] = [];
   const cleaned: string[] = [];
   const platform = {
     fs: {
       isAvailable: () => true,
-      existsAsync: async () => overrides?.exists ?? true,
+      existsAsync: async (path: string) =>
+        typeof overrides?.exists === "function"
+          ? overrides.exists(path)
+          : (overrides?.exists ?? true),
       cleanupTempFiles: async (prefix: string) => void cleaned.push(prefix),
       writeTempFile: async (path: string, content: string) => {
         written.push({ path, content });
@@ -79,4 +85,56 @@ test("物理路径解析覆盖 file URL、绝对路径和相对资源", () => {
   expect(
     resolvePhysicalResourcePath("att:image-1", "/notes/page.md"),
   ).toBeNull();
+});
+
+test("失效 blob 按文件名回落到笔记旁的本地 html", async () => {
+  const { platform, written, opened } = createPlatform({
+    exists: (path) => path === "/notes/frontend-spec-intro.html",
+  });
+  const result = await openResourceExternally({
+    source: "blob:http://localhost/revoked",
+    fileName: "frontend-spec-intro.html",
+    pageLocalFilePath: "/notes/page.md",
+    platform,
+  });
+
+  expect(result.ok).toBe(true);
+  expect(opened).toEqual(["/notes/frontend-spec-intro.html"]);
+  expect(written).toHaveLength(0);
+});
+
+test("html 附件写成带扩展名的临时文件再打开", async () => {
+  const { platform, written, opened } = createPlatform();
+  const result = await openResourceExternally({
+    source: "att-file:goose-file/intro",
+    fileName: "frontend-spec-intro.html",
+    mimeType: "text/html",
+    platform,
+    loadInternalResource: async () =>
+      new Blob(["<html></html>"], { type: "text/html" }),
+  });
+
+  expect(result.ok).toBe(true);
+  expect(written).toHaveLength(1);
+  expect(written[0].path).toMatch(/frontend-spec-intro\.html$/);
+  expect(opened).toEqual([`/tmp/${written[0].path}`]);
+});
+
+test("Failed to fetch 转成可理解的中文错误", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("Failed to fetch ()");
+  }) as typeof fetch;
+  try {
+    const { platform } = createPlatform();
+    const result = await openResourceExternally({
+      source: "blob:http://localhost/dead",
+      fileName: "gone.html",
+      platform,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("文件无法读取，请重新添加附件");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

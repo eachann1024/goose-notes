@@ -129,6 +129,11 @@ export class ImageStorage {
       return attStrategy.load(ref)
     }
 
+    if (ref.startsWith("att-file:")) {
+      const { fileStorage } = await import("@/lib/fileStorage")
+      return fileStorage.load(ref)
+    }
+
     return null
   }
 

@@ -1,4 +1,5 @@
 import type { JSONContent, Page } from "@/types";
+import { isInternalAssetRef } from "@/lib/internalAssetRef";
 
 interface LocalFolderEntry {
   name: string;
@@ -50,7 +51,11 @@ function isAbsolutePath(value: string): boolean {
 
 function resolveLocalAssetPath(value: string, pagePath: string): string | null {
   const trimmed = value.trim();
-  if (!trimmed || /^(?:https?:|data:|blob:|att:|uuid:|#)/i.test(trimmed))
+  if (
+    !trimmed ||
+    /^(?:https?:|data:|blob:|#)/i.test(trimmed) ||
+    isInternalAssetRef(trimmed)
+  )
     return null;
   const path = normalizePath(
     isAbsolutePath(trimmed) ? trimmed : `${dirname(pagePath)}/${trimmed}`,
