@@ -2041,6 +2041,16 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   left: calc(-2px * var(--editor-scale, 1));
 }
 
+/* 内容列与把手之间有 6px 空隙；补一条透明桥，避免移过去时把手先消失 */
+.bn-side-menu::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 8px;
+}
+
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
    颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
    这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
@@ -2470,18 +2480,19 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
   margin-bottom: 0.5em;
 }
-`,u=`/* 折叠标题与折叠列表：heading 视觉同普通标题；children 顶格 / 无引用线。
- * 被 editor-base.css 按序 @import。
- * 依赖 --goose-icon-chip-on-selected / --muted-foreground / --foreground。
- */
-
-/* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈），
-   文案在 Editor.tsx dictionary 覆盖。标题 children 顶格，不再跟 22px 缩进。 */
-.bn-editor .bn-toggle-add-block-button {
-  opacity: 0.45;
-  font-size: 14px;
-  margin-left: 0;
+`,u=`/* 标题区块折叠：隐藏 collapsed heading 后续兄弟块（不用 BlockNote toggle children）。 */
+.bn-editor .bn-block-outer[data-goose-section-hidden="true"],
+.bn-editor .bn-block-outer.goose-section-hidden,
+.bn-editor .goose-section-hidden {
+  display: none !important;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-editor .bn-block-outer[data-goose-section-hidden="true"] {
+    transition: none;
+  }
+}
+
 
 /* 折叠箭头换成与侧栏一致的 Lucide ChevronRight（描边 1.75）：
    BlockNote 内置的是 Material 实心箭头，与整体图标风格不符。
@@ -2559,51 +2570,6 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:acti
 html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] svg,
 html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span {
   color: var(--goose-interactive-selected-fg) !important;
-}
-
-/* 折叠标题：行内箭头永远隐藏，折叠只走侧栏按钮；视觉同普通标题。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  min-width: 0;
-  width: 100%;
-}
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper
-  > :not(.bn-toggle-button) {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper
-  > .bn-toggle-button {
-  visibility: hidden;
-  width: 0;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bn-editor .bn-toggle-button {
-    transition: none;
-  }
-}
-
-.workspace-editor-surface
-  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  ~ .bn-block-group {
-  margin-left: 0;
-  padding-left: 0;
-  margin-bottom: 0.4em;
 }
 
 /* 普通折叠列表：箭头钉在首行 marker 位；子块跟标题文字对齐，不画竖线。 */
