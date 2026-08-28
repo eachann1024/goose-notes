@@ -20,6 +20,12 @@ import {
   AiComposerInput,
   type AiComposerInputHandle,
 } from "@/components/editor/ai/composer/AiComposerInput";
+import { isEditorDomEmpty } from "@/components/editor/ai/composer/composerChipDom";
+import {
+  measureNowrapContentWidth,
+  measureSingleLineSlot,
+  shouldExpandComposer,
+} from "@/components/editor/ai/composer/composerExpandLayout";
 import {
   normalizeAiComposerPayload,
   type AiComposerPayload,
@@ -116,6 +122,65 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const [isEmpty, setIsEmpty] = useState(
       () => !composerDraftHasContent(seedContent),
     );
+    // 输入区超一行 → data-multiline 标记（高度由 --ai-composer-h 管）
+    const [multiline, setMultiline] = useState(false);
+    // chrome 两行展开：内容到模型选择器位置或有硬换行时，输入独占上行
+    const [expanded, setExpanded] = useState(false);
+    const shellRef = useRef<HTMLDivElement | null>(null);
+    const plusWrapRef = useRef<HTMLSpanElement | null>(null);
+    const modelWrapRef = useRef<HTMLSpanElement | null>(null);
+    const sendWrapRef = useRef<HTMLSpanElement | null>(null);
+    const expandedRef = useRef(false);
+
+    const collapseChrome = useCallback(() => {
+      if (!expandedRef.current) {
+        setMultiline(false);
+        return;
+      }
+      expandedRef.current = false;
+      setExpanded(false);
+      setMultiline(false);
+    }, []);
+
+    /**
+     * 展开判断永远用「单行槽宽度」，不用展开后的全宽，避免
+     * 「展开变宽 → 文字缩回一行 → 收起」来回振荡。
+     * 空内容（含占位 <br>）一律收回；宽度能放下时只认硬换行撑高。
+     */
+    const recomputeExpanded = useCallback(() => {
+      const shell = shellRef.current;
+      const el = inputRef.current?.getEditorEl();
+      if (!shell || !el) return;
+      const next = shouldExpandComposer({
+        isEmpty: isEditorDomEmpty(el),
+        contentWidth: measureNowrapContentWidth(el, shell),
+        slotWidth: measureSingleLineSlot({
+          shell,
+          plusWidth: plusWrapRef.current?.offsetWidth ?? 0,
+          modelWidth: modelWrapRef.current?.offsetWidth ?? 0,
+          sendWidth: sendWrapRef.current?.offsetWidth ?? 0,
+        }),
+        scrollHeight: el.scrollHeight,
+      });
+      if (expandedRef.current !== next) {
+        expandedRef.current = next;
+        setExpanded(next);
+      }
+    }, []);
+
+    // 侧栏拖宽、换模型名导致 chrome 变宽 → 重算
+    useEffect(() => {
+      const nodes = [
+        shellRef.current,
+        plusWrapRef.current,
+        modelWrapRef.current,
+        sendWrapRef.current,
+      ].filter((node): node is HTMLElement => node != null);
+      if (nodes.length === 0) return;
+      const observer = new ResizeObserver(() => recomputeExpanded());
+      for (const node of nodes) observer.observe(node);
+      return () => observer.disconnect();
+    }, [recomputeExpanded]);
 
     const cancelPendingDraftPersist = useCallback(() => {
       draftSeqRef.current += 1;
@@ -168,8 +233,16 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       cancelPendingDraftPersist();
       useNotebookAiChats.getState().clearComposerDraft(notebookId);
       setIsEmpty(true);
+      collapseChrome();
       setAutoFocusToken((token) => token + 1);
-    }, [disabled, isStreaming, onSend, notebookId, cancelPendingDraftPersist]);
+    }, [
+      disabled,
+      isStreaming,
+      onSend,
+      notebookId,
+      cancelPendingDraftPersist,
+      collapseChrome,
+    ]);
 
     const addImageFiles = useCallback((selectedFiles: File[]) => {
       if (selectedFiles.length === 0) return;
@@ -295,16 +368,25 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         >
           <PromptBar
             streaming={isStreaming}
-            className="rounded-full shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]"
+            expanded={expanded}
+            className={cn(
+              expanded ? "rounded-[20px]" : "rounded-full",
+              "shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]",
+            )}
           >
             <div
+              ref={shellRef}
               className={cn(
-                "bui-root flex min-h-[44px] items-center gap-2 overflow-hidden rounded-full",
+                "notebook-ai-composer-shell bui-root flex min-h-[44px] gap-2 overflow-hidden",
+                expanded
+                  ? "flex-wrap items-end rounded-[20px]"
+                  : "flex-nowrap items-center rounded-full",
                 "bg-[hsl(var(--goose-editor-bg))] py-1.5 pl-2.5 pr-2",
-                "transition-colors duration-150",
                 dropActive &&
                   "ring-2 ring-[var(--goose-interactive-selected)] ring-offset-1 ring-offset-background",
               )}
+              data-expanded={expanded ? "true" : undefined}
+              data-multiline={multiline ? "true" : "false"}
               data-drop-active={dropActive ? "true" : undefined}
               onPaste={handleDockPaste}
               onDragEnter={handleDockDragOver}
@@ -321,26 +403,29 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 onChange={handleImageInput}
                 disabled={disabled || isStreaming}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || isStreaming}
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                  "text-muted-foreground transition-colors duration-150",
-                  "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-                  "disabled:cursor-not-allowed disabled:opacity-40",
-                  isStreaming && "invisible pointer-events-none",
-                )}
-                aria-hidden={isStreaming}
-                tabIndex={isStreaming ? -1 : undefined}
-                aria-label="上传图片"
-                title="上传图片"
-              >
-                <Plus className="h-4 w-4" strokeWidth={1.75} />
-              </button>
+              <span ref={plusWrapRef} className="flex shrink-0 items-center">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={disabled || isStreaming}
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    "text-muted-foreground transition-colors duration-150",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                    "disabled:cursor-not-allowed disabled:opacity-40",
+                    isStreaming && "invisible pointer-events-none",
+                  )}
+                  aria-hidden={isStreaming}
+                  tabIndex={isStreaming ? -1 : undefined}
+                  aria-label="上传图片"
+                  title="上传图片"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </span>
 
+              {/* 始终挂在同一父级，只切 order/basis，不条件换位置（会丢 contenteditable 节点） */}
               <AiComposerInput
                 ref={inputRef}
                 placeholder={placeholder}
@@ -349,7 +434,15 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 onContentChange={handleContentChange}
                 onSubmit={handleSubmit}
                 onEscape={handleEscape}
-                onIsEmptyChange={setIsEmpty}
+                onIsEmptyChange={(empty) => {
+                  setIsEmpty(empty);
+                  if (empty) collapseChrome();
+                }}
+                onMultilineChange={setMultiline}
+                onLayoutMeasure={recomputeExpanded}
+                className={
+                  expanded ? "order-first w-full basis-full" : "flex-1"
+                }
                 searchPages={searchPages}
                 referencePlacement="inline"
                 variant="panel"
@@ -360,36 +453,45 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 onImageRejected={(message) => toast.error(message)}
               />
 
-              <ModelSelectorPopover disabled={disabled} />
+              <span ref={modelWrapRef} className="flex shrink-0 items-center">
+                <ModelSelectorPopover disabled={disabled} />
+              </span>
 
-              {isStreaming ? (
-                <ComposerPrimitive.Cancel
-                  className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#f4f4f5] dark:text-[#171717]"
-                  aria-label="停止生成"
-                  title="停止生成"
-                >
-                  <LoadingState
-                    variant="Dots"
-                    compact
-                    label=""
-                    showElapsed={false}
-                  />
-                </ComposerPrimitive.Cancel>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={!canClickSend}
-                  className={cn(
-                    "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white dark:bg-[#f4f4f5] dark:text-[#171717]",
-                    !sendLooksReady && "cursor-not-allowed opacity-35",
-                  )}
-                  aria-label="发送消息"
-                  title="发送消息"
-                >
-                  <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.2} />
-                </button>
-              )}
+              {/* 仅 spacer：两行时把发送按钮顶到最右，不是输入 */}
+              {expanded ? (
+                <div className="min-w-0 flex-1" aria-hidden />
+              ) : null}
+
+              <span ref={sendWrapRef} className="flex shrink-0 items-center">
+                {isStreaming ? (
+                  <ComposerPrimitive.Cancel
+                    className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#f4f4f5] dark:text-[#171717]"
+                    aria-label="停止生成"
+                    title="停止生成"
+                  >
+                    <LoadingState
+                      variant="Dots"
+                      compact
+                      label=""
+                      showElapsed={false}
+                    />
+                  </ComposerPrimitive.Cancel>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!canClickSend}
+                    className={cn(
+                      "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white dark:bg-[#f4f4f5] dark:text-[#171717]",
+                      !sendLooksReady && "cursor-not-allowed opacity-35",
+                    )}
+                    aria-label="发送消息"
+                    title="发送消息"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  </button>
+                )}
+              </span>
             </div>
           </PromptBar>
         </div>

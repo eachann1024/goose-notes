@@ -12,6 +12,8 @@ import type {
 
 export interface AiComposerInputHandle {
  focus: () => void;
+ /** 暴露命令式 contenteditable 节点，供外层量内容宽度（只读，勿改样式） */
+ getEditorEl: () => HTMLDivElement | null;
  clear: () => void;
  getPayload: () => AiComposerPayload;
  /** 解析 payload 中的内联图片 token → 真实 File 附件，按出现顺序 */
@@ -40,6 +42,12 @@ export interface AiComposerInputProps {
  initialContent?: JSONContent | null;
  onContentChange?: (content: JSONContent | null) => void;
  onIsEmptyChange?: (isEmpty: boolean) => void;
+ /** panel 变体输入区超过一行时回调，用于外壳圆角切换 */
+ onMultilineChange?: (multiline: boolean) => void;
+ /** 每次量高后回调（含未跨行），供外层重算单行/两行 chrome 布局 */
+ onLayoutMeasure?: () => void;
+ /** 外层布局类：默认 flex-1；两行展开时传 order-first w-full basis-full */
+ className?: string;
  onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
  searchPages?: (query: string) => AiReferenceSuggestionItem[];
  referencePlacement?: "inline" | "external";

@@ -38,6 +38,8 @@ import {
 import { ToolProgressCard } from "./ToolProgressCard";
 import {
   ApprovalPlanCard,
+  BatchPlanProposal,
+  type ApprovalPlanPart,
   type BatchApprovalResponse,
   type BatchUndoResult,
 } from "./ApprovalPlanCard";
@@ -349,7 +351,7 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
     <StreamingText streaming={isStreaming}>
       <div className="ai-md notebook-ai-message-text min-w-0 max-w-full select-text text-sm text-foreground">
         {hasCanvas ? (
-          <div className="min-w-0 max-w-full space-y-2">
+          <div className="min-w-0 max-w-full space-y-[12px]">
             {segments.map((segment, index) => {
               if (segment.type === "pending") {
                 return <CanvasLoadingCard key={`canvas-pending-${index}`} />;
@@ -366,7 +368,7 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
               return (
                 <Streamdown
                   key={`canvas-md-${index}`}
-                  className="min-w-0 max-w-full space-y-2"
+                  className="min-w-0 max-w-full space-y-[12px]"
                   mode={isStreaming ? "streaming" : "static"}
                   components={MD_COMPONENTS}
                   plugins={STREAMDOWN_PLUGINS}
@@ -383,7 +385,7 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
           </div>
         ) : (
           <Streamdown
-            className="min-w-0 max-w-full space-y-2"
+            className="min-w-0 max-w-full space-y-[12px]"
             mode={isStreaming ? "streaming" : "static"}
             components={MD_COMPONENTS}
             plugins={STREAMDOWN_PLUGINS}
@@ -418,29 +420,40 @@ function AssistantTextPart({ text, status }: TextMessagePartProps) {
   );
 }
 
-function AssistantToolPart({ artifact }: ToolCallMessagePartProps) {
+/** 工作卡 footer：只渲染 executeBatchPlan 的 embedded 审批，其余 part 一律 null */
+function AssistantApprovalPart({ artifact }: ToolCallMessagePartProps) {
   const ctx = useContext(AssistantToolRenderContext);
   if (!ctx) return null;
-  const { isStreaming, editorRef, onBatchApproval, onBatchUndo } = ctx;
+  const { isStreaming, onBatchApproval, onBatchUndo } = ctx;
   const part = artifact as ToolDisplayPart | undefined;
-  if (!part || !shouldShowToolPart(part, isStreaming)) return null;
-  if (part.type === "tool-executeBatchPlan") {
-    if (
-      part.state === "input-streaming" ||
-      part.state === "input-available" ||
-      part.state === "call" ||
-      part.state === "partial-call"
-    ) {
-      return null;
-    }
-    return (
-      <ApprovalPlanCard
-        part={part}
-        onApprovalResponse={onBatchApproval}
-        onUndo={onBatchUndo}
-      />
-    );
+  if (!part || part.type !== "tool-executeBatchPlan") return null;
+  if (!shouldShowToolPart(part, isStreaming)) return null;
+  if (
+    part.state === "input-streaming" ||
+    part.state === "input-available" ||
+    part.state === "call" ||
+    part.state === "partial-call"
+  ) {
+    return null;
   }
+  return (
+    <ApprovalPlanCard
+      part={part}
+      onApprovalResponse={onBatchApproval}
+      onUndo={onBatchUndo}
+      embedded
+    />
+  );
+}
+
+/** 纸外 artifact：只渲染 Table/Chart/Diagram/Svg，text 与审批一律 null */
+function AssistantArtifactPart({ artifact }: ToolCallMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  if (!ctx) return null;
+  const { isStreaming, editorRef } = ctx;
+  const part = artifact as ToolDisplayPart | undefined;
+  if (!part || part.type === "tool-executeBatchPlan") return null;
+  if (!shouldShowToolPart(part, isStreaming)) return null;
   return renderToolVisual(
     part,
     part.toolCallId ?? part.type,
@@ -449,11 +462,30 @@ function AssistantToolPart({ artifact }: ToolCallMessagePartProps) {
   );
 }
 
-/** MessagePrimitive.Parts 的 components 必须模块级常量，避免 identity 抖动 */
-const ASSISTANT_MESSAGE_PARTS = {
+function NullMessagePart() {
+  return null;
+}
+
+/**
+ * MessagePrimitive.Parts 的 components 必须模块级常量，避免 identity 抖动。
+ * 同一条消息拆三份 map 各渲一类 part、其余 null，防止正文/审批/artifact 双渲染。
+ */
+export const ASSISTANT_TEXT_PARTS = {
   Text: AssistantTextPart,
   Reasoning: EmptyReasoningPart,
-  tools: { Override: AssistantToolPart },
+  tools: { Override: NullMessagePart },
+};
+
+export const ASSISTANT_APPROVAL_PARTS = {
+  Text: NullMessagePart,
+  Reasoning: EmptyReasoningPart,
+  tools: { Override: AssistantApprovalPart },
+};
+
+export const ASSISTANT_ARTIFACT_PARTS = {
+  Text: NullMessagePart,
+  Reasoning: EmptyReasoningPart,
+  tools: { Override: AssistantArtifactPart },
 };
 
 interface ChatMessagesProps {
@@ -548,6 +580,38 @@ function shouldShowToolPart(
 
   return (
     isMessageStreaming || !INPUT_ONLY_STATES.has(state) || hasTerminalPayload
+  );
+}
+
+/** 与 AssistantApprovalPart 的 input 态 guard 保持一致：只有真正会渲染的审批 part 才需要 footer */
+function hasVisibleApprovalPart(
+  parts: ToolDisplayPart[],
+  isMessageStreaming: boolean,
+) {
+  return parts.some(
+    (part) =>
+      part.type === "tool-executeBatchPlan" &&
+      shouldShowToolPart(part, isMessageStreaming) &&
+      part.state !== "input-streaming" &&
+      part.state !== "input-available" &&
+      part.state !== "call" &&
+      part.state !== "partial-call",
+  );
+}
+
+/** 与 hasVisibleApprovalPart 同一套 guard，取出第一条可见的审批 part 给提案预览用 */
+function findVisibleApprovalPart(
+  parts: ToolDisplayPart[],
+  isMessageStreaming: boolean,
+): ApprovalPlanPart | undefined {
+  return parts.find(
+    (part) =>
+      part.type === "tool-executeBatchPlan" &&
+      shouldShowToolPart(part, isMessageStreaming) &&
+      part.state !== "input-streaming" &&
+      part.state !== "input-available" &&
+      part.state !== "call" &&
+      part.state !== "partial-call",
   );
 }
 
@@ -700,7 +764,7 @@ export function ChatMessages({
       >
         <ActionBarPrimitive.Copy
           copiedDuration={1600}
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:hidden"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:hidden"
           aria-label="复制消息"
           title="复制"
         >
@@ -712,7 +776,7 @@ export function ChatMessages({
         className="flex items-center gap-0.5 text-[11px] text-muted-foreground"
       >
         <BranchPickerPrimitive.Previous
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-40"
           aria-label="上一个回答分支"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -721,7 +785,7 @@ export function ChatMessages({
           <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
         </span>
         <BranchPickerPrimitive.Next
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-40"
           aria-label="下一个回答分支"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -856,15 +920,20 @@ export function ChatMessages({
       shouldShowToolProgress(progressToolParts, isStreaming);
     const hasText = getTextPartText(msg).trim().length > 0;
     const reasoningText = collectReasoningText(msg);
-    // 发送后立刻走处理进度，不再单独出一张「思考中」卡片
+    // 发送后立刻走处理进度，不再单独出一张「思考中」卡片；有正文也出纸，纯问答完成后纸保留
     const showWorkCard =
       showToolProgress ||
+      hasText ||
       (isStreaming && (!hasText || reasoningText.length > 0));
 
     const toolRenderValue: AssistantToolRenderContextValue = {
       ...toolRenderBase,
       isStreaming,
     };
+    const visibleApprovalPart = findVisibleApprovalPart(
+      progressToolParts,
+      isStreaming,
+    );
 
     return (
       <AssistantToolRenderContext.Provider value={toolRenderValue}>
@@ -875,9 +944,21 @@ export function ChatMessages({
             <ToolProgressCard
               parts={progressToolParts}
               isMessageStreaming={isStreaming}
-            />
+              footer={
+                hasVisibleApprovalPart(progressToolParts, isStreaming) ? (
+                  <MessagePrimitive.Parts
+                    components={ASSISTANT_APPROVAL_PARTS}
+                  />
+                ) : undefined
+              }
+            >
+              <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+              {visibleApprovalPart ? (
+                <BatchPlanProposal part={visibleApprovalPart} />
+              ) : null}
+            </ToolProgressCard>
           ) : null}
-          <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
+          <MessagePrimitive.Parts components={ASSISTANT_ARTIFACT_PARTS} />
           <MessagePrimitive.Error>
             <p className="text-xs text-destructive">这条回复生成失败。</p>
           </MessagePrimitive.Error>
@@ -973,7 +1054,7 @@ export function ChatMessages({
             </ThreadPrimitive.Messages>
             <ThreadPrimitive.ViewportFooter className="pointer-events-none sticky bottom-[calc(var(--ai-composer-float-pad,7.5rem)+12px)] z-10 flex h-0 justify-center overflow-visible">
               <ThreadPrimitive.ScrollToBottom
-                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
+                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
                 aria-label="滚动到底部"
                 title="滚动到底部"
               >

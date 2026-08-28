@@ -46,6 +46,35 @@
  pointer-events: none;
 }
 
+/*
+ * 输入条外壳：单行胶囊 → 多行 20px 圆角（与 .bui-approval 同圆角）。
+ * 圆角/高度过渡统一 220ms 回弹曲线；颜色过渡沿用原 150ms。
+ * 圆角值本身由 Composer 按 data-multiline 切 Tailwind 类，这里只管过渡。
+ */
+.notebook-ai-composer-shell {
+ transition:
+  color 150ms ease,
+  background-color 150ms ease,
+  border-color 150ms ease,
+  border-radius 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.bui-prompt-bar {
+ transition: border-radius 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* panel 输入区：高度由 JS 写入 --ai-composer-h（24–96，4 行封顶），超出内部滚动 */
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+ height: var(--ai-composer-h, 24px);
+ max-height: 96px;
+ transition: height 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+ .notebook-ai-composer-shell,
+ .bui-prompt-bar,
+ [data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+  transition: none;
+ }
+}
+
 /* ── AI 行内 chip：与 caret 同一行盒 ──────────────────────
  * contenteditable 光标高度 ≈ 行高，不是 chip 内容高。
  * 先前 chip 比行高矮 → 光标比 tag 高一截、看起来没垂直对齐。
@@ -263,7 +292,7 @@
 }
 
 .ai-md {
- line-height: 1.65;
+ line-height: 1.7;
  word-break: break-word;
  /* 限制宽度并把溢出收进表内滚动层 */
  overflow-x: hidden;
@@ -426,6 +455,7 @@
 .notebook-ai-message-actions button:hover,
 .notebook-ai-message-actions button:focus-visible {
  background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-selected-fg);
 }
 
 .notebook-ai-message:hover > .notebook-ai-message-actions,
@@ -522,6 +552,7 @@
 /* 左侧 22px 给箭头/步骤标记，标题和折叠文案齐平 */
 .notebook-ai-work-card.bui-approval {
  padding-left: 42px;
+ padding-bottom: 16px;
 }
 
 .dark .notebook-ai-work-card {
@@ -553,28 +584,15 @@
  height: 14px;
 }
 
-.notebook-ai-work-mark--danger {
- color: var(--goose-color-danger-focus);
-}
-
-.notebook-ai-work-dot {
- width: 6px;
- height: 6px;
- flex: 0 0 auto;
- margin: 4px;
- border-radius: 999px;
- background: var(--muted-foreground, #8b8b96);
-}
-
 .notebook-ai-work-toggle {
  display: flex;
  width: calc(100% + 22px);
  max-width: none;
- min-height: 22px;
+ min-height: 32px;
  align-items: center;
  gap: 8px;
- margin: 12px 0 0 -22px;
- padding: 0;
+ margin: 10px 0 2px -22px;
+ padding: 8px 10px 8px 0;
  border: 0;
  border-radius: 8px;
  background: transparent;
@@ -587,7 +605,8 @@
 
 .notebook-ai-work-toggle:hover,
 .notebook-ai-work-toggle:focus-visible {
- color: hsl(var(--foreground));
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
 }
 
 .notebook-ai-work-toggle:focus-visible {
@@ -621,22 +640,22 @@
 }
 
 .notebook-ai-work-toggle[aria-expanded="true"] .notebook-ai-work-chev {
- transform: rotate(180deg);
+ transform: rotate(90deg);
 }
 
 .notebook-ai-work-steps {
- margin: 10px 0 0 -22px;
+ margin: 4px 0 0;
  padding: 0;
- width: calc(100% + 22px);
+ width: 100%;
  list-style: none;
 }
 
 .notebook-ai-work-step {
  display: flex;
  min-width: 0;
- align-items: flex-start;
- gap: 8px;
- padding: 5px 0;
+ align-items: center;
+ min-height: 28px;
+ padding: 0;
 }
 
 .notebook-ai-work-step-body {
@@ -684,6 +703,77 @@
  line-height: 1.7;
  color: var(--muted-foreground, #5c5c66);
  overflow-anchor: none;
+}
+
+/* 信封正文：一轮回复的 letter，用正文字号而非 aside 的弱提示样式 */
+.notebook-ai-work-letter {
+ margin-top: 16px;
+ min-width: 0;
+ font-size: 14px;
+ line-height: 1.7;
+ color: hsl(var(--foreground));
+ overflow-anchor: none;
+ display: flex;
+ flex-direction: column;
+ gap: 12px;
+}
+
+.notebook-ai-work-letter--flush {
+ margin-top: 0;
+}
+
+.notebook-ai-work-letter .ai-md > :first-child {
+ margin-top: 0;
+}
+
+.notebook-ai-work-letter .notebook-ai-message-text {
+ color: inherit;
+ font-size: inherit;
+ line-height: inherit;
+}
+
+.notebook-ai-work-footer {
+ margin-top: 8px;
+ min-width: 0;
+}
+
+.notebook-ai-work-proposal {
+ margin: 0;
+ padding: 12px 14px;
+ border-radius: 12px;
+ background: var(--goose-block-subtle-bg);
+ color: hsl(var(--foreground));
+}
+.notebook-ai-work-proposal h4 {
+ margin: 0 0 8px;
+ font-size: 13.5px;
+ font-weight: 650;
+ line-height: 1.35;
+ color: hsl(var(--foreground));
+}
+.notebook-ai-work-proposal-row {
+ display: flex;
+ align-items: flex-start;
+ gap: 8px;
+ font-size: 14px;
+ font-weight: 600;
+ line-height: 1.45;
+}
+.notebook-ai-work-proposal-mark {
+ width: 16px;
+ height: 16px;
+ flex: 0 0 16px;
+ margin-top: 2px;
+ border-radius: 4px;
+ border: 1.5px solid var(--muted-foreground, #8b8b96);
+ color: hsl(var(--foreground));
+}
+.notebook-ai-work-proposal-sub {
+ margin: 6px 0 0 24px;
+ font-size: 13px;
+ font-weight: 400;
+ line-height: 1.55;
+ color: var(--muted-foreground, #5c5c66);
 }
 
 .notebook-ai-work-aside .ai-md > :first-child {
@@ -777,6 +867,24 @@
  color: hsl(var(--muted-foreground));
 }
 
+/* 工作卡 letter 内对齐原型 .box：16×16 空心描边，勾用 currentColor，选中不置灰 */
+.notebook-ai-work-letter .ai-md-checkbox {
+ width: 16px;
+ height: 16px;
+ border-radius: 4px;
+ border: 1.5px solid var(--muted-foreground, #8b8b96);
+}
+
+.notebook-ai-work-letter .ai-md-checkbox[data-checked="true"] {
+ background: transparent;
+ border-color: var(--muted-foreground, #8b8b96);
+ color: currentColor;
+}
+
+.notebook-ai-work-letter .ai-md [data-streamdown="list-item"]:has(.ai-md-checkbox[data-checked="true"]) {
+ color: inherit;
+}
+
 /* ── 代码 / mermaid：单层壳 ─────────────────────────────
  * Streamdown 默认是「外框 p-2 + 内层再 border/圆角/底色」，再叠助手气泡
  * 和自定义 CodeBlock 就会变成 4 层框。这里压成：一条边框、一种底、顶栏贴齐。
@@ -788,7 +896,7 @@
  gap: 0;
  border: 1px solid var(--goose-block-subtle-border, #e4e4e8);
  border-radius: 8px;
- background: var(--goose-interactive-hover);
+ background: var(--goose-block-subtle-bg);
  overflow: hidden;
 }
 

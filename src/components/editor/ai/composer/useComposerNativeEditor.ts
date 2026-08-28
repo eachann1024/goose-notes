@@ -6,6 +6,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useRef,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -23,6 +24,7 @@ import {
   setDomFromJsonContent,
 } from "./composerTokens";
 import type { ComposerNativeHandlers } from "./composerInputTypes";
+import { isEditorDomEmpty } from "./composerChipDom";
 
 export function useComposerNativeEditor(options: {
   editorHostRef: RefObject<HTMLDivElement | null>;
@@ -40,6 +42,10 @@ export function useComposerNativeEditor(options: {
   isEmptyRef: RefObject<boolean>;
   setIsEmpty: Dispatch<SetStateAction<boolean>>;
   onIsEmptyChange?: (isEmpty: boolean) => void;
+  /** 输入区超过一行时通知外层切圆角；仅值变化时触发 */
+  onMultilineChange?: (multiline: boolean) => void;
+  /** 每次量高后都触发，供外层按单行槽宽重算展开态 */
+  onLayoutMeasure?: () => void;
 }) {
   const {
     editorHostRef,
@@ -57,7 +63,17 @@ export function useComposerNativeEditor(options: {
     isEmptyRef,
     setIsEmpty,
     onIsEmptyChange,
+    onMultilineChange,
+    onLayoutMeasure,
   } = options;
+
+  // 挂载 effect 依赖为空，回调经 ref 取最新，避免重建编辑器节点
+  const onMultilineChangeRef = useRef(onMultilineChange);
+  const onLayoutMeasureRef = useRef(onLayoutMeasure);
+  useEffect(() => {
+    onMultilineChangeRef.current = onMultilineChange;
+    onLayoutMeasureRef.current = onLayoutMeasure;
+  }, [onMultilineChange, onLayoutMeasure]);
 
   useLayoutEffect(() => {
     const host = editorHostRef.current;
@@ -75,7 +91,7 @@ export function useComposerNativeEditor(options: {
       "block w-full bg-transparent p-0 text-foreground outline-none",
       "overflow-y-auto break-words whitespace-pre-wrap",
       variant === "panel"
-        ? "min-h-[24px] max-h-[144px] text-[13px] leading-6"
+        ? "min-h-[24px] max-h-[96px] text-[13px] leading-6"
         : "min-h-[20px] max-h-[88px] text-[12px] leading-[20px]",
     ].join(" ");
     el.contentEditable = "true";
@@ -141,6 +157,38 @@ export function useComposerNativeEditor(options: {
     host.appendChild(el);
     editorRef.current = el;
 
+    // panel 变体：量内容高度写 --ai-composer-h（24–96，4 行封顶），
+    // 超一行打 data-multiline 标记并通知外层切圆角。
+    // 先还原高度再读 scrollHeight，避免上次的高度值喂回测量。
+    const measureHeight =
+      variant === "panel"
+        ? () => {
+            el.style.height = "auto";
+            const next = isEditorDomEmpty(el)
+              ? 24
+              : Math.min(Math.max(el.scrollHeight, 24), 96);
+            el.style.height = "";
+            el.style.setProperty("--ai-composer-h", `${next}px`);
+            const multiline = next > 25;
+            const changed = el.dataset.multiline !== String(multiline);
+            el.dataset.multiline = String(multiline);
+            if (changed) onMultilineChangeRef.current?.(multiline);
+            onLayoutMeasureRef.current?.();
+          }
+        : null;
+    // chip 增删、换行、粘贴都走 DOM 变化；MutationObserver 一并覆盖，
+    // IME composing 期间照测，不打断输入。
+    const observer = measureHeight
+      ? new MutationObserver(measureHeight)
+      : null;
+    if (observer) {
+      observer.observe(el, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }
+
     // 首次种子（若有）：同步空态给发送按钮，避免切回面板时草稿已在但按钮仍灰
     const seed = lastEmittedContentRef.current;
     if (seed) {
@@ -153,8 +201,10 @@ export function useComposerNativeEditor(options: {
     isEmptyRef.current = empty;
     setIsEmpty(empty);
     onIsEmptyChange?.(empty);
+    measureHeight?.();
 
     return () => {
+      observer?.disconnect();
       el.removeEventListener("beforeinput", onBeforeInput);
       el.removeEventListener("input", onInput);
       el.removeEventListener("keydown", onKeyDown);

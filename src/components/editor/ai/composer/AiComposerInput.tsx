@@ -121,6 +121,9 @@ export const AiComposerInput = forwardRef<
       initialContent,
       onContentChange,
       onIsEmptyChange,
+      onMultilineChange,
+      onLayoutMeasure,
+      className,
       onReferenceAdded,
       searchPages,
       referencePlacement = "inline",
@@ -406,6 +409,7 @@ export const AiComposerInput = forwardRef<
     useImperativeHandle(
       ref,
       () => ({
+        getEditorEl: () => editorRef.current,
         focus: () => {
           const el = editorRef.current;
           if (!el) return;
@@ -420,6 +424,8 @@ export const AiComposerInput = forwardRef<
           const el = editorRef.current;
           if (!el) return;
           el.innerHTML = "";
+          el.style.setProperty("--ai-composer-h", "24px");
+          el.dataset.multiline = "false";
           lastEmittedContentRef.current = null;
           releaseAllImages();
           setPlaceholderVisible(true);
@@ -428,6 +434,8 @@ export const AiComposerInput = forwardRef<
           clearMentionState();
           clearCommandState();
           onIsEmptyChange?.(true);
+          onMultilineChange?.(false);
+          onLayoutMeasure?.();
           onContentChange?.(null);
         },
         getPayload: (): AiComposerPayload => {
@@ -463,6 +471,8 @@ export const AiComposerInput = forwardRef<
         clearMentionState,
         clearCommandState,
         onIsEmptyChange,
+        onMultilineChange,
+        onLayoutMeasure,
         onContentChange,
         releaseAllImages,
         insertImages,
@@ -843,12 +853,15 @@ export const AiComposerInput = forwardRef<
       isEmptyRef,
       setIsEmpty,
       onIsEmptyChange,
+      onMultilineChange,
+      onLayoutMeasure,
     });
 
     return (
       <div
         className={cn(
-          "relative min-w-0 flex-1",
+          "relative min-w-0",
+          className ?? "flex-1",
           variant === "panel" ? "w-full px-0" : compactWidthClass,
         )}
       >

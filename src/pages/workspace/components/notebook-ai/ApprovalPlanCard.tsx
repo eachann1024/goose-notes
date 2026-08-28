@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +75,7 @@ export type BatchUndoResult = {
   error?: string;
 };
 
-interface ApprovalPlanPart {
+export interface ApprovalPlanPart {
   state?: string;
   input?: unknown;
   output?: unknown;
@@ -92,6 +92,7 @@ interface ApprovalPlanCardProps {
   part: ApprovalPlanPart;
   onApprovalResponse: (response: BatchApprovalResponse) => Promise<void> | void;
   onUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
+  embedded?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -120,6 +121,7 @@ export function ApprovalPlanCard({
   part,
   onApprovalResponse,
   onUndo,
+  embedded = false,
 }: ApprovalPlanCardProps) {
   const input = parseInput(part.input, part.toolCallId);
   const output = parseOutput(part.output);
@@ -229,7 +231,7 @@ export function ApprovalPlanCard({
       <Button
         type="button"
         variant="secondary"
-        className="h-11 rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[15px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
+        className="h-[40px] rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[14px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
         disabled={submitting}
         onClick={() => void respond(false)}
       >
@@ -237,7 +239,7 @@ export function ApprovalPlanCard({
       </Button>
       <Button
         type="button"
-        className="h-11 rounded-[14px] bg-[#171717] text-[15px] font-semibold text-white shadow-none hover:bg-[#2a2a2a] dark:bg-[#f4f4f5] dark:text-[#171717] dark:hover:bg-[#e4e4e7]"
+        className="h-[40px] rounded-[14px] bg-[#1c1c1c] text-[14px] font-semibold text-white shadow-none hover:bg-[#2a2a2a] dark:bg-[#f4f4f5] dark:text-[#171717] dark:hover:bg-[#e4e4e7]"
         disabled={!canApprove}
         onClick={() => void respond(true)}
       >
@@ -273,7 +275,7 @@ export function ApprovalPlanCard({
       <Button
         type="button"
         variant="secondary"
-        className="h-11 w-full rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[15px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
+        className="h-[40px] w-full rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[14px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
         disabled={!output.runId || undoing}
         onClick={() => void handleUndo()}
       >
@@ -303,6 +305,11 @@ export function ApprovalPlanCard({
     </p>
   );
 
+  // embedded 时外层 ToolProgressCard 已包 .notebook-ai-work-footer，这里只出内容，避免双层叠加 margin
+  if (embedded) {
+    return <>{footer}</>;
+  }
+
   return (
     <ApprovalCard
       title={input.title?.trim() || "笔记变更计划"}
@@ -310,5 +317,105 @@ export function ApprovalPlanCard({
       statusTone={statusTone}
       footer={footer}
     />
+  );
+}
+
+function truncateText(value: string, max: number): string {
+  const trimmed = value.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+}
+
+function firstLine(value: string): string {
+  return value.split("\n", 1)[0] ?? "";
+}
+
+type ProposalItem = { key: string; title: string; sub?: string };
+
+function toProposalItem(operation: BatchOperation): ProposalItem {
+  switch (operation.type) {
+    case "search_replace": {
+      const title = truncateText(firstLine(operation.newString), 40);
+      const rest = operation.newString.slice(firstLine(operation.newString).length).trim();
+      const subSource = rest || operation.newString;
+      const sub = truncateText(subSource, 80);
+      return {
+        key: operation.operationId,
+        title,
+        sub: sub && sub !== title ? sub : undefined,
+      };
+    }
+    case "edit":
+      return {
+        key: operation.operationId,
+        title: operation.title?.trim() || "编辑笔记",
+        sub: truncateText(firstLine(operation.markdown), 80) || undefined,
+      };
+    case "create":
+      return {
+        key: operation.operationId,
+        title: operation.title?.trim() || "新建笔记",
+        sub: truncateText(firstLine(operation.markdown), 80) || undefined,
+      };
+    case "delete":
+      return {
+        key: operation.operationId,
+        title: "删除笔记",
+        sub: `${operation.pageIds.length} 页`,
+      };
+  }
+}
+
+/** 轻量提案预览：把批量计划的 summary + operations 收成灰盒内容，无交互 */
+export function BatchPlanProposal({ part }: { part: ApprovalPlanPart }) {
+  const input = parseInput(part.input, part.toolCallId);
+  const operations = input.operations ?? [];
+  const heading =
+    input.summary?.trim() || input.title?.trim() || "将写入以下变更：";
+  if (
+    !input.summary?.trim() &&
+    !input.title?.trim() &&
+    operations.length === 0
+  ) {
+    return null;
+  }
+
+  const items = operations.slice(0, 3).map(toProposalItem);
+
+  return (
+    <div className="notebook-ai-work-proposal">
+      <h4>{heading}</h4>
+      {items.map((item) => (
+        <Fragment key={item.key}>
+          <div className="notebook-ai-work-proposal-row">
+            <svg
+              className="notebook-ai-work-proposal-mark"
+              viewBox="0 0 16 16"
+              aria-hidden
+            >
+              <rect
+                x="1"
+                y="1"
+                width="14"
+                height="14"
+                rx="3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M4 8.2 L6.6 10.6 L12 5.4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            </svg>
+            <span>{item.title}</span>
+          </div>
+          {item.sub ? (
+            <p className="notebook-ai-work-proposal-sub">{item.sub}</p>
+          ) : null}
+        </Fragment>
+      ))}
+    </div>
   );
 }

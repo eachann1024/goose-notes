@@ -221,7 +221,8 @@
 }
 
 .bui-think-toggle:hover {
-  background: var(--bui-hover-2, var(--goose-interactive-hover));
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .bui-think-chevron {
@@ -349,10 +350,10 @@
   color: var(--bui-ink, hsl(var(--foreground)));
 }
 
-/* 对话列跟审批卡同一张纸，不要透出外壳灰底 */
+/* 对话列用灰纸，白卡浮起 */
 .bui-chat,
 .notebook-ai-messages {
-  background: hsl(var(--goose-editor-bg));
+  background: var(--goose-block-subtle-inset);
 }
 
 .bui-chip-row {
