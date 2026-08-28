@@ -30,6 +30,52 @@ function resolveImageBlockType(editor: BlockNoteEditor<any, any, any>): string {
 }
 
 /**
+ * 插入空媒体块（及末尾补段）合成一次 undo。
+ * 上传完成后的 url 必须走 {@link commitPastedMediaWithoutHistory}，
+ * 否则撤回只会撤掉 url，留下「添加图片」空块。
+ */
+function insertPastedMediaPlaceholder(
+  editor: BlockNoteEditor<any, any, any>,
+  referenceBlock: { id: string; content?: unknown },
+  fileBlock: PartialBlock<any, any, any>,
+): string {
+  return editor.transact(() => {
+    const insertedBlockId = insertOrUpdateBlock(
+      editor,
+      referenceBlock,
+      fileBlock,
+    );
+
+    // 视频/图片 void 块若落在文档末尾，补一行空段落，避免无法在下方继续输入
+    try {
+      const last = editor.document.at(-1);
+      if (last?.id === insertedBlockId) {
+        editor.insertBlocks(
+          [{ type: "paragraph", content: "" }],
+          insertedBlockId,
+          "after",
+        );
+      }
+    } catch {
+      // ignore
+    }
+
+    return insertedBlockId;
+  });
+}
+
+function commitPastedMediaWithoutHistory(
+  editor: BlockNoteEditor<any, any, any>,
+  blockId: string,
+  update: PartialBlock<any, any, any>,
+): void {
+  editor.transact((tr) => {
+    tr.setMeta("addToHistory", false);
+    editor.updateBlock(blockId, update);
+  });
+}
+
+/**
  * Mac 剪贴板常无 dataTransfer.types 中的 "Files"（仅有 image/png 等），
  * BlockNote handleFileInsertion 会直接 return；此处遍历 items 插入并 uploadFile。
  */
@@ -51,8 +97,11 @@ export async function pasteClipboardFilesFromClipboard(
     if (!file) continue;
 
     const isImage = isPasteableClipboardImageFile(file, item.type);
+    const editorCompact =
+      typeof __GOOSE_EDITOR_COMPACT__ !== "undefined" &&
+      __GOOSE_EDITOR_COMPACT__;
     const isVideo =
-      !__GOOSE_EDITOR_COMPACT__ && isPasteableClipboardVideoFile(file, item.type);
+      !editorCompact && isPasteableClipboardVideoFile(file, item.type);
     if (!isImage && !isVideo) continue;
 
     const type = isVideo ? "video" : resolveImageBlockType(editor);
@@ -62,25 +111,11 @@ export async function pasteClipboardFilesFromClipboard(
       props: { name: file.name || (isVideo ? "video.mp4" : "image.webp") },
     } as PartialBlock<any, any, any>;
 
-    const insertedBlockId = insertOrUpdateBlock(
+    const insertedBlockId = insertPastedMediaPlaceholder(
       editor,
       currentBlock,
       fileBlock,
     );
-
-    // 视频/图片 void 块若落在文档末尾，补一行空段落，避免无法在下方继续输入
-    try {
-      const last = editor.document.at(-1);
-      if (last?.id === insertedBlockId) {
-        editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          insertedBlockId,
-          "after",
-        );
-      }
-    } catch {
-      // ignore
-    }
 
     try {
       // 图片需先固化字节并修正 MIME；视频直接交给 FFmpeg 转码。
@@ -99,12 +134,14 @@ export async function pasteClipboardFilesFromClipboard(
             },
           );
       const updateData = await editor.uploadFile(uploadFile, insertedBlockId);
+      if (!editor.getBlock(insertedBlockId)) return;
       const updatedFileBlock =
         typeof updateData === "string"
           ? ({ props: { url: updateData } } as PartialBlock<any, any, any>)
           : { ...updateData };
-      editor.updateBlock(insertedBlockId, updatedFileBlock);
+      commitPastedMediaWithoutHistory(editor, insertedBlockId, updatedFileBlock);
     } catch (err) {
+      if (!editor.getBlock(insertedBlockId)) return;
       console.error("[pasteClipboardFiles] upload failed", err);
       editor.removeBlocks([insertedBlockId]);
       const message =

@@ -1,5 +1,6 @@
 import { useCallback, type MutableRefObject } from "react";
 import { Fragment, Slice } from "@tiptap/pm/model";
+import { CellSelection } from "prosemirror-tables";
 import { useCreateBlockNote } from "@blocknote/react";
 import {
   isValidUrl,
@@ -9,6 +10,12 @@ import {
   normalizeMarkdownPasteText,
   parseMarkdownLink,
 } from "../utils/clipboard";
+import {
+  inspectPasteContainer,
+  planMultilinePaste,
+  shouldSplitMultilinePaste,
+  splitPlainTextPasteLines,
+} from "../utils/multilinePaste";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
 import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
 
@@ -31,6 +38,70 @@ export function shouldIsolateTitleStructurePaste(editor: {
   prosemirrorState: Editor["prosemirrorState"];
 }): boolean {
   return selectionIsInsideFirstTitleBlock(editor as Editor);
+}
+
+function isMultiBlockTextSelection(editor: Editor): boolean {
+  try {
+    return (editor.getSelection()?.blocks?.length ?? 0) > 1;
+  } catch {
+    return false;
+  }
+}
+
+function getCursorBlockType(editor: Editor): string | null {
+  try {
+    return editor.getTextCursorPosition().block.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function insertPlainInline(editor: Editor, text: string) {
+  const pmState = editor.prosemirrorState;
+  const schema = pmState.schema;
+  const nodes = text.length > 0 ? [schema.text(text)] : [];
+  const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
+  editor.prosemirrorView.dispatch(
+    pmState.tr.replaceSelection(slice).scrollIntoView(),
+  );
+}
+
+function insertSoftWrappedLines(editor: Editor, text: string) {
+  const pmState = editor.prosemirrorState;
+  const schema = pmState.schema;
+  const hardBreakType = schema.nodes.hardBreak;
+  const nodes: Array<ReturnType<typeof schema.text> | ReturnType<NonNullable<typeof hardBreakType>["create"]>> = [];
+  text.split("\n").forEach((line, idx) => {
+    if (idx > 0 && hardBreakType) nodes.push(hardBreakType.create());
+    if (line.length > 0) nodes.push(schema.text(line));
+  });
+  const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
+  editor.prosemirrorView.dispatch(
+    pmState.tr.replaceSelection(slice).scrollIntoView(),
+  );
+}
+
+function pasteLinesAsBlocks(
+  editor: Editor,
+  lines: string[],
+  currentBlockType: string | null,
+) {
+  const { firstLine, restBlocks } = planMultilinePaste(lines, currentBlockType);
+  const pmState = editor.prosemirrorState;
+  if (firstLine) {
+    editor.prosemirrorView.dispatch(
+      pmState.tr.insertText(firstLine).scrollIntoView(),
+    );
+  } else if (pmState.selection.from !== pmState.selection.to) {
+    editor.prosemirrorView.dispatch(
+      pmState.tr.deleteSelection().scrollIntoView(),
+    );
+  }
+  if (restBlocks.length === 0) return;
+  const current = editor.getTextCursorPosition().block;
+  const inserted = editor.insertBlocks(restBlocks, current, "after");
+  const last = inserted[inserted.length - 1];
+  if (last) editor.setTextCursorPosition(last, "end");
 }
 
 export function useEditorPaste({
@@ -102,53 +173,18 @@ export function useEditorPaste({
 
       const trimmedText = plainText.trim();
 
-      // 0. 选区在 callout / quote 内，且粘贴含多行 → 以 hardBreak 软换行注入，
-      //    避免默认 Markdown 解析把多行拆成多个独立 paragraph 块溢出容器
-      // 同样地：在「空列表项」中粘贴时，默认 paste 会把外部 <p> 当成新段落块
-      // 替换掉空的列表块，导致刚打出的 `- ` bullet 被挤掉。这里走同一条软换行路径，
-      // 把粘贴内容作为内联文本注入，保留列表块本身。
+      // 0. callout / quote 内多行仍走 hardBreak，避免拆出容器。
+      //    列表项不再堆成软换行：有换行就拆成同类型的新块；空列表单项仍就地注入，
+      //    防止默认 paste 把空 bullet/待办替换成段落。
       const pmState = editor.prosemirrorState;
-      const $from = pmState.selection.$from;
-      let inSoftWrapContainer = false;
-      let inEmptyListItem = false;
-      for (let d = $from.depth; d >= 1; d--) {
-        const node = $from.node(d);
-        if (node.type.name === "blockContainer") {
-          const contentNode = d + 1 <= $from.depth ? $from.node(d + 1) : null;
-          const name = contentNode?.type.name;
-          if (name === "callout" || name === "quote") {
-            inSoftWrapContainer = true;
-          } else if (
-            contentNode &&
-            (name === "bulletListItem" ||
-              name === "numberedListItem" ||
-              name === "checkListItem" ||
-              name === "toggleListItem") &&
-            contentNode.content.size === 0
-          ) {
-            inEmptyListItem = true;
-          }
-          break;
-        }
+      const container = inspectPasteContainer(pmState.selection.$from);
+      if (pmState.selection instanceof CellSelection) {
+        container.inTable = true;
       }
-      if (
-        (inSoftWrapContainer && plainText.includes("\n")) ||
-        inEmptyListItem
-      ) {
+      if (container.inSoftWrap && plainText.includes("\n")) {
         event.preventDefault();
         event.stopPropagation();
-        const schema = pmState.schema;
-        const hardBreakType = schema.nodes.hardBreak;
-        const lines = plainText.split("\n");
-        const nodes: any[] = [];
-        lines.forEach((line, idx) => {
-          if (idx > 0 && hardBreakType) nodes.push(hardBreakType.create());
-          if (line.length > 0) nodes.push(schema.text(line));
-        });
-        const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
-        editor.prosemirrorView.dispatch(
-          pmState.tr.replaceSelection(slice).scrollIntoView(),
-        );
+        insertSoftWrappedLines(editor, plainText);
         return;
       }
 
@@ -204,6 +240,38 @@ export function useEditorPaste({
         event.preventDefault();
         event.stopPropagation();
         editor.pasteMarkdown(plainText);
+        return;
+      }
+
+      // 2.6 多行纯文本：每行一个块。列表 / 待办 / 有序继承当前块类型。
+      const pasteLines = splitPlainTextPasteLines(plainText);
+      const inList = Boolean(container.listType);
+      const isMarkdown = looksLikeMarkdownFragment(plainText);
+      if (
+        shouldSplitMultilinePaste({
+          lines: pasteLines,
+          htmlText,
+          inSoftWrap: container.inSoftWrap,
+          inTable: container.inTable,
+          multiBlockSelection: isMultiBlockTextSelection(editor),
+        }) &&
+        (!isMarkdown || inList)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        pasteLinesAsBlocks(
+          editor,
+          pasteLines!,
+          container.listType ?? getCursorBlockType(editor),
+        );
+        return;
+      }
+
+      // 空列表项单行：就地注入，避免默认 HTML 粘贴把空列表换成段落。
+      if (container.listEmpty && !plainText.includes("\n")) {
+        event.preventDefault();
+        event.stopPropagation();
+        insertPlainInline(editor, plainText);
         return;
       }
 

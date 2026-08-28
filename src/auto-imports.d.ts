@@ -100,6 +100,7 @@ declare global {
   const Input: typeof import('./components/ui/input').Input
   const Kbd: typeof import('./components/ui/kbd').Kbd
   const LEGACY_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').LEGACY_BLOCK_TYPES
+  const LIST_PASTE_BLOCK_TYPES: typeof import('./components/editor/utils/multilinePaste').LIST_PASTE_BLOCK_TYPES
   const LOCAL_FOLDER_EDITOR_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_EDITOR_CANDIDATES
   const LOCAL_FOLDER_FILE_MANAGER_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_FILE_MANAGER_CANDIDATES
   const LOCAL_FOLDER_TERMINAL_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_TERMINAL_CANDIDATES
@@ -202,6 +203,7 @@ declare global {
   const buildAiContextBundle: typeof import('./lib/ai-write/index').buildAiContextBundle
   const buildAiWorkspaceUserPrompt: typeof import('./lib/ai-write/index').buildAiWorkspaceUserPrompt
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
+  const buildInheritedPasteBlocks: typeof import('./components/editor/utils/multilinePaste').buildInheritedPasteBlocks
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
   const buildQuickNoteDraftPage: typeof import('./stores/useQuickNote').buildQuickNoteDraftPage
   const buildSinglePageExport: typeof import('./lib/export/index').buildSinglePageExport
@@ -340,6 +342,7 @@ declare global {
   const handleFileInsertion: typeof import("./components/editor/utils/handleClipboardFileInsertion").handleFileInsertion
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
   const hasWholePageBlockTypeTransformScope: typeof import('./lib/ai-write/index').hasWholePageBlockTypeTransformScope
+  const htmlHasNonTextPasteBlocks: typeof import('./components/editor/utils/multilinePaste').htmlHasNonTextPasteBlocks
   const importFile: typeof import('./lib/export/index').importFile
   const importFromJSON: typeof import('./lib/export/index').importFromJSON
   const importFromMarkdown: typeof import('./lib/export/index').importFromMarkdown
@@ -348,6 +351,7 @@ declare global {
   const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
+  const inspectPasteContainer: typeof import('./components/editor/utils/multilinePaste').inspectPasteContainer
   const isAIProviderId: typeof import('./lib/ai-provider/index').isAIProviderId
   const isBackupFileName: typeof import('./lib/webdavSync').isBackupFileName
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
@@ -362,6 +366,7 @@ declare global {
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
   const isInternalAssetRef: typeof import('./lib/internalAssetRef').isInternalAssetRef
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
+  const isListPasteBlockType: typeof import('./components/editor/utils/multilinePaste').isListPasteBlockType
   const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isLocalPageFrontmatterSettingsUpdate: typeof import('./lib/local-frontmatter').isLocalPageFrontmatterSettingsUpdate
@@ -411,6 +416,7 @@ declare global {
   const normalizeEditorUiScale: typeof import('./components/editor/utils/editorContextUi').normalizeEditorUiScale
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
+  const normalizeHeadingSectionFold: typeof import('./components/editor/utils/blocknote-content/index').normalizeHeadingSectionFold
   const normalizeHeadingToggleableFlags: typeof import('./components/editor/utils/blocknote-content/index').normalizeHeadingToggleableFlags
   const normalizeMarkdownPasteText: typeof import('./components/editor/utils/clipboard').normalizeMarkdownPasteText
   const normalizePageContent: typeof import('./components/editor/utils/blocknote-content/index').normalizePageContent
@@ -441,6 +447,7 @@ declare global {
   const pickRandomPageIcon: typeof import('./lib/randomPageIcon').pickRandomPageIcon
   const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const planBlockTypeTransform: typeof import('./lib/ai-write/index').planBlockTypeTransform
+  const planMultilinePaste: typeof import('./components/editor/utils/multilinePaste').planMultilinePaste
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const prepareWorkspaceStartup: typeof import('./lib/workspaceStartup').prepareWorkspaceStartup
   const processBlockChildren: typeof import('./lib/docxExport/docxBlocks').processBlockChildren
@@ -467,6 +474,7 @@ declare global {
   const resolveGeneratedBlockStructureExpectation: typeof import('./lib/ai-write/index').resolveGeneratedBlockStructureExpectation
   const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
+  const resolveInheritedPasteBlockType: typeof import('./components/editor/utils/multilinePaste').resolveInheritedPasteBlockType
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
   const resolvePhysicalResourcePath: typeof import('./components/editor/utils/openResourceExternally').resolvePhysicalResourcePath
@@ -500,14 +508,17 @@ declare global {
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
   const shouldSkipAppHotkeyEvent: typeof import('./hooks/useImeInput').shouldSkipAppHotkeyEvent
+  const shouldSplitMultilinePaste: typeof import('./components/editor/utils/multilinePaste').shouldSplitMultilinePaste
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
   const shouldUploadViaImageStorage: typeof import('./components/editor/utils/pasteClipboardImage').shouldUploadViaImageStorage
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
   const sortNotebooksByOrder: typeof import('./stores/useNotebooks').sortNotebooksByOrder
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
+  const splitPlainTextPasteLines: typeof import('./components/editor/utils/multilinePaste').splitPlainTextPasteLines
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
   const stripComposerDraftImages: typeof import('./stores/useNotebookAiChats').stripComposerDraftImages
+  const stripInheritedListPrefix: typeof import('./components/editor/utils/multilinePaste').stripInheritedListPrefix
   const stripMarkdownHardBreaks: typeof import('./components/editor/utils/clipboard').stripMarkdownHardBreaks
   const subscribeGlobalScrollActivity: typeof import("./hooks/useGlobalScrollActivity").subscribeGlobalScrollActivity
   const subscribePageTitleFocus: typeof import('./lib/page-title-focus').subscribePageTitleFocus
@@ -689,6 +700,9 @@ declare global {
   // @ts-ignore
   export type { ToolbarEdgeSide, ToolbarReferenceRect } from './components/editor/utils/formattingToolbarReference'
   import('./components/editor/utils/formattingToolbarReference')
+  // @ts-ignore
+  export type { ListPasteBlockType, InheritedPasteBlock, MultilinePastePlan, PasteContainerInspect } from './components/editor/utils/multilinePaste'
+  import('./components/editor/utils/multilinePaste')
   // @ts-ignore
   export type { OpenExternalResourceResult } from './components/editor/utils/openResourceExternally'
   import('./components/editor/utils/openResourceExternally')
