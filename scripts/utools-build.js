@@ -37,6 +37,11 @@ try {
     fs.copyFileSync(webFetchHelperSrc, path.join(distDir, 'web-fetch.cjs'));
   }
 
+  const hotkeyToggleSrc = path.join(rootDir, 'preload/pluginHotkeyToggle.cjs');
+  if (fs.existsSync(hotkeyToggleSrc)) {
+    fs.copyFileSync(hotkeyToggleSrc, path.join(distDir, 'pluginHotkeyToggle.cjs'));
+  }
+
   fs.writeFileSync(path.join(distDir, 'package.json'), JSON.stringify({ type: 'commonjs' }));
 
   const logoSrc = path.join(rootDir, 'public/logo.png');
