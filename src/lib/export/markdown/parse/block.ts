@@ -216,11 +216,13 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    if (line.startsWith("```")) {
-      const fenceInfo = parseCodeFenceInfo(line.slice(3).trim());
+    const fenceOpen = line.match(/^(```|~~~)(.*)$/);
+    if (fenceOpen) {
+      const fence = fenceOpen[1];
+      const fenceInfo = parseCodeFenceInfo(fenceOpen[2].trim());
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith("```")) {
+      while (i < lines.length && !lines[i].startsWith(fence)) {
         codeLines.push(lines[i]);
         i++;
       }
@@ -419,6 +421,7 @@ export function markdownToJsonContent(markdown: string): any {
             currentLine.startsWith("#") ||
             currentLine.startsWith(">") ||
             currentLine.startsWith("```") ||
+            currentLine.startsWith("~~~") ||
             currentLine.startsWith("$$") ||
             currentLine.match(/^-\s+\[[ xX]\]/) ||
             currentLine.match(/^[-*+]\s+/) ||
