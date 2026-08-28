@@ -85,6 +85,9 @@ export function WorkspaceLayout({
         getPage: s.getPage,
         isLocked: Boolean(p?.isLocked),
         isTrashed: Boolean(p?.trashedAt),
+        // 订进 shallow，否则改字体/图标时本组件不重渲染，顶栏拿到的仍是旧 page
+        pageFontFamily: p?.fontFamily ?? "default",
+        pageIcon: p?.icon ?? "",
       };
     }),
   );
@@ -533,19 +536,21 @@ function NotebookAiWorkspaceBody({
                         <FolderHomePage page={page} />
                       </div>
                       {showSideAiPanel && aiNotebookId ? (
-                        <GuardedNotebookAiPanel
-                          key={`folder-${aiNotebookId}`}
-                          notebookId={aiNotebookId}
-                          onClose={closeAiPanel}
-                          editorRef={editorRef}
-                          capturedSelection={aiPanelCapturedSelection}
-                          onConsumeCapturedSelection={
-                            consumeAiPanelCapturedSelection
-                          }
-                          layoutMode={aiLayoutMode}
-                          onLayoutModeChange={setAiLayoutMode}
-                          variant="side-panel"
-                        />
+                        <NotebookAiHostScope notebookId={aiNotebookId}>
+                          <GuardedNotebookAiPanel
+                            key={`folder-${aiNotebookId}`}
+                            notebookId={aiNotebookId}
+                            onClose={closeAiPanel}
+                            editorRef={editorRef}
+                            capturedSelection={aiPanelCapturedSelection}
+                            onConsumeCapturedSelection={
+                              consumeAiPanelCapturedSelection
+                            }
+                            layoutMode={aiLayoutMode}
+                            onLayoutModeChange={setAiLayoutMode}
+                            variant="side-panel"
+                          />
+                        </NotebookAiHostScope>
                       ) : null}
                     </div>
                   </>
@@ -554,6 +559,7 @@ function NotebookAiWorkspaceBody({
                   <EditorHostBridge page={page} isEditorFullWidth>
                     <div
                       className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
+                      data-font-family={page.fontFamily ?? "default"}
                       data-local-file-page={
                         isLocalFolderPage ? "true" : undefined
                       }
