@@ -1,5 +1,5 @@
 import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core/blocks";
-import { createHeadingBlockSpec } from "@blocknote/core";
+import { gooseHeadingBlockSpec } from "@/components/editor/blocks/heading/headingBlockSpec";
 import { calloutBlock } from "@/components/editor/blocks/callout/calloutBlock";
 import { customFileBlock } from "../blocks/file/customFileBlock";
 import { customImageBlock } from "../blocks/image/customImageBlock";
@@ -10,12 +10,8 @@ import { gooseEditorStyleSpecs } from "@/components/editor/inline-code/InlineCod
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
-    heading: createHeadingBlockSpec({
-      levels: [1, 2, 3],
-      // 必须开启:否则 heading propSchema 不含 isToggleable 字段、render 不挂折叠箭头,
-      // 导致斜杠菜单「折叠标题」与行首 `> ` 输入规则全部失效(转换被静默丢弃)。
-      allowToggleHeadings: true,
-    }),
+    // 普通 heading + props.collapsed；不用 BlockNote isToggleable children。
+    heading: gooseHeadingBlockSpec,
     callout: calloutBlock,
     image: customImageBlock,
     video: customVideoBlock,

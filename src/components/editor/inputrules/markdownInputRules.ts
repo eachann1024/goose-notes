@@ -1,7 +1,6 @@
 import { createExtension } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
 
 type RestoreState = {
   /** 块内容节点的位置；转换不会改变该位置。 */
@@ -147,24 +146,6 @@ function getBlockTrigger(
     return { type: "quote", props: {}, triggerText: quote[0] };
   }
 
-  const toggle = /^[>》]$/u.exec(textBefore);
-  if (toggle) {
-    if (
-      currentBlock.id === editor.document[0]?.id ||
-      isInsideToggle(editor, currentBlock)
-    ) {
-      return null;
-    }
-
-    if (currentBlock.type === "paragraph") {
-      return {
-        type: "toggleListItem",
-        props: {},
-        triggerText: toggle[0],
-      };
-    }
-  }
-
   return null;
 }
 
@@ -202,7 +183,7 @@ function createMarkdownBlockTrigger(editor: any) {
         const trigger = getBlockTrigger(textBefore, editor, currentBlock);
         if (!trigger) return false;
 
-        // 除折叠列表外，所有 markdown 触发只允许从普通段落开始。
+        // 所有 markdown 触发只允许从普通段落开始。
         if (parent.type.name !== "paragraph") {
           return false;
         }

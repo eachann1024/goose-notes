@@ -4,7 +4,6 @@ import { AIExtension } from "@blocknote/xl-ai";
 import { createRoot, type Root } from "react-dom/client";
 import {
   CheckSquare,
-  ChevronRight,
   Code,
   FileUp,
   GitGraph,
@@ -22,8 +21,6 @@ import {
   Table,
   Video,
 } from "lucide-react";
-import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
-
 const SLASH_ICONS = {
   sparkles: <Sparkles size={18} />,
   heading1: <Heading1 size={18} />,
@@ -32,7 +29,6 @@ const SLASH_ICONS = {
   check: <CheckSquare size={18} />,
   list: <List size={18} />,
   listOrdered: <ListOrdered size={18} />,
-  toggle: <ChevronRight size={18} />,
   quote: <Quote size={18} />,
   info: <Info size={18} />,
   minus: <Minus size={18} />,
@@ -133,7 +129,7 @@ export function getBlockNoteSlashMenuItems(
 
     // 剥掉行首触发字符（/ 或 、），返回剩余 inline 内容。
     // 不能用「先 updateBlock 清空 content 再取光标块」的两步法：清空一个带 children 的块
-    // （如折叠列表 toggleListItem）的标题后，光标会跳进它的第一个子块，第二步
+    // （如带 children 的列表项）的标题后，光标会跳进它的第一个子块，第二步
     // getTextCursorPosition() 取到的是子块而非原块，导致转换落到子块、原块标题与缩进
     // 子内容（含图片）全部错乱丢失。改为对 currentBlock（稳定引用）一次性 updateBlock。
     const stripLeadingTrigger = (
@@ -248,7 +244,7 @@ export function getBlockNoteSlashMenuItems(
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 1, isToggleable: true },
+          props: { level: 1 },
         }),
     },
     {
@@ -260,7 +256,7 @@ export function getBlockNoteSlashMenuItems(
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 2, isToggleable: true },
+          props: { level: 2 },
         }),
     },
     {
@@ -272,7 +268,7 @@ export function getBlockNoteSlashMenuItems(
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 3, isToggleable: true },
+          props: { level: 3 },
         }),
     },
     { type: "divider" } as any,
@@ -307,14 +303,6 @@ export function getBlockNoteSlashMenuItems(
       aliases: ["ordered", "list", "liebiao"],
       badge: "1.",
       onItemClick: () => insertOrUpdate({ type: "numberedListItem" }),
-    },
-    {
-      title: "折叠列表",
-      description: "可展开/收起内容的折叠列表",
-      icon: SLASH_ICONS.toggle,
-      aliases: ["toggle", "collapse", "fold", "zhedie", "shouqi"],
-      badge: "> ",
-      onItemClick: () => insertOrUpdate({ type: "toggleListItem" }),
     },
     {
       title: "引用",
@@ -448,13 +436,6 @@ export function getBlockNoteSlashMenuItems(
     menuItems = menuItems.filter(
       (it) => !isSlashMenuDivider(it) && compactSlashTitles.has(it.title),
     );
-  }
-
-  // 折叠块内部隐藏「折叠列表」项，避免无限折叠嵌套（任意后代）。
-  const currentBlock = editor.getTextCursorPosition().block;
-  if (isInsideToggle(editor, currentBlock)) {
-    const TOGGLE_TITLES = new Set(["折叠列表"]);
-    return menuItems.filter((it) => !TOGGLE_TITLES.has(it.title));
   }
 
   return menuItems;

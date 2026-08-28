@@ -318,7 +318,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
       props: {
         ...firstBlock.props,
         level: TITLE_HEADING_LEVEL,
-        isToggleable: false,
+        collapsed: false,
       },
     } as PartialBlock;
 
@@ -342,7 +342,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
         props: {
           ...firstBlock.props,
           level: TITLE_HEADING_LEVEL,
-          isToggleable: false,
+          collapsed: false,
         },
         content,
       } as PartialBlock,
@@ -360,34 +360,72 @@ export function normalizeBlockContent(content: unknown): BlockNoteContent {
   return normalizeBlocks(content);
 }
 
+function normalizeHeadingProps(props: unknown): Record<string, unknown> {
+  const next = {
+    ...(typeof props === "object" && props ? (props as Record<string, unknown>) : {}),
+  };
+  delete next.isToggleable;
+  if (next.collapsed == null) next.collapsed = false;
+  return next;
+}
+
+function normalizeSectionFoldBlock(block: PartialBlock): PartialBlock[] {
+  let working = block;
+  if (working.type === "toggleListItem") {
+    working = {
+      type: "bulletListItem",
+      props: working.props,
+      content: working.content,
+      ...((working as { children?: PartialBlock[] }).children?.length
+        ? { children: (working as { children?: PartialBlock[] }).children }
+        : {}),
+    } as PartialBlock;
+  }
+
+  if (working.type === "heading") {
+    const nestedChildren = Array.isArray((working as { children?: PartialBlock[] }).children)
+      ? ((working as { children?: PartialBlock[] }).children as PartialBlock[])
+      : [];
+    const { children: _ignored, ...headingOnly } = working as PartialBlock & {
+      children?: PartialBlock[];
+    };
+    const flat: PartialBlock[] = [
+      {
+        ...headingOnly,
+        props: normalizeHeadingProps(headingOnly.props),
+      } as PartialBlock,
+    ];
+    if (nestedChildren.length > 0) {
+      flat.push(...normalizeHeadingSectionFold(normalizeBlocks(nestedChildren)));
+    }
+    return flat;
+  }
+
+  const children = (working as { children?: PartialBlock[] }).children;
+  if (Array.isArray(children) && children.length > 0) {
+    return [
+      {
+        ...working,
+        children: normalizeHeadingSectionFold(children),
+      } as PartialBlock,
+    ];
+  }
+  return [working];
+}
+
 /**
- * 规范 heading 的 isToggleable：文档物理首块（顶层 index 0）为 false，
- * 其余 heading（含嵌套）一律 true。children 不在此函数内改动。
+ * 标题区块折叠数据规范：拍平 heading children 为后续兄弟；toggleListItem → bulletListItem；
+ * 所有 heading isToggleable 清除；collapsed 缺省 false。
  */
+export function normalizeHeadingSectionFold(
+  blocks: PartialBlock[],
+): PartialBlock[] {
+  return blocks.flatMap((block) => normalizeSectionFoldBlock(block));
+}
+
+/** @deprecated 使用 normalizeHeadingSectionFold */
 export function normalizeHeadingToggleableFlags(
   blocks: PartialBlock[],
-  atDocumentRoot = true,
 ): PartialBlock[] {
-  return blocks.map((block, index) => {
-    let next = block;
-    if (block.type === "heading") {
-      const props = {
-        ...((block.props ?? {}) as Record<string, unknown>),
-      };
-      if (atDocumentRoot && index === 0) {
-        props.isToggleable = false;
-      } else {
-        props.isToggleable = true;
-      }
-      next = { ...block, props } as PartialBlock;
-    }
-    const children = (next as { children?: PartialBlock[] }).children;
-    if (Array.isArray(children) && children.length > 0) {
-      next = {
-        ...next,
-        children: normalizeHeadingToggleableFlags(children, false),
-      };
-    }
-    return next;
-  });
+  return normalizeHeadingSectionFold(blocks);
 }

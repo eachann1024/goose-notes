@@ -82,10 +82,9 @@ import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/fi
 import { gooseMediaBlockEnterExtension } from "@/components/editor/extensions/mediaBlockEnterExtension";
 import { gooseEmptyNestedListEnterExtension } from "@/components/editor/extensions/emptyNestedListEnterExtension";
 import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
-import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
+import { gooseHeadingSectionFoldExtension } from "@/components/editor/extensions/headingSectionFoldExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
-import { gooseToggleHeadingJoinBackwardExtension } from "@/components/editor/extensions/toggleHeadingJoinBackwardExtension";
 import { createGooseNumberedListStartNormalizationExtension } from "@/components/editor/extensions/numberedListStartNormalizationExtension";
 import { createGooseBodyParagraphGuardExtension } from "@/components/editor/extensions/bodyParagraphGuardExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
@@ -300,13 +299,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     {
       initialContent: initialContentRef.current as any,
       schema: editorSchema,
-      // `> ` 原本用于引用及相关快捷键。这里把 `>` 让给统一 markdown 触发器的折叠功能，
-      // 引用改用 `| `/`｜ `；斜杠菜单插入引用不受影响。
-      // 同时禁用 toggle-list-item-shortcuts:它的 Enter handler 对非空 toggleListItem
-      // 无条件接管分裂(收起态也照分,把收起的 children 挤给新块,再也收不回去),且注册
-      // 顺序先于自定义扩展、无法被 collapsedToggleEnterExtension 拦截。其全部行为
-      // (空块降级 / 非空分裂 / Mod-Shift-6 转折叠列表)已在 collapsedToggleEnterExtension
-      // 中按收起态感知重新实现。
+      // `>` 不再转折叠列表；引用改用 `| `/`｜ `（见 quoteInputRule / markdownInputRules）。
+      // 同时禁用 toggle-list-item-shortcuts：Enter 对非空 toggleListItem 无条件分裂，
+      // 顺序先于自定义扩展；行为在 collapsedToggleEnterExtension 中按收起态重实现。
       disableExtensions: [
         "quote-block-shortcuts",
         "toggle-list-item-shortcuts",
@@ -336,10 +331,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseMediaBlockEnterExtension,
         gooseEmptyNestedListEnterExtension,
         gooseCollapsedToggleEnterExtension,
-        gooseToggleHeadingAutoCollectExtension(),
+        gooseHeadingSectionFoldExtension,
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
-        gooseToggleHeadingJoinBackwardExtension,
         createGooseNumberedListStartNormalizationExtension(
           usesRawEditorContentRef,
         ),
@@ -387,8 +381,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           default: __GOOSE_LITE__ ? "" : "输入 / 或 、来展开菜单...",
           toggleListItem: "",
         },
-        // 空折叠块展开后的提示行（默认「空的切换区。点击添加区块。」太生硬）
-        toggle_blocks: { add_block_button: "空的折叠块，点击添加内容" },
         // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
         ...(__GOOSE_EDITOR_AI__ ? { ai: aiZh } : {}),
       },

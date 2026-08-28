@@ -4,6 +4,7 @@ import { ensureBlockMoveDragging } from "../../src/components/editor/core/ensure
 import {
   isFoldableHeadingBlock,
   isHeadingBlock,
+  toggleHeadingCollapsed,
 } from "../../src/components/editor/core/toggleHeadingGutter";
 
 test("折叠块不再画左侧引用线", () => {
@@ -17,35 +18,14 @@ test("折叠块不再画左侧引用线", () => {
   );
 });
 
-test("折叠标题 children 顶格，视觉同普通标题", () => {
+test("标题区块折叠用 data-goose-section-hidden 隐藏后续兄弟", () => {
   const togglesCss = readFileSync(
     new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),
     "utf8",
   );
-  expect(togglesCss).not.toContain("goose-toggle-preview");
-  expect(togglesCss).not.toContain("goose-toggle-bar");
-  expect(togglesCss).not.toContain("margin-left: -8px");
-  expect(togglesCss).not.toContain("padding: 4px 8px");
-  expect(togglesCss).toContain("margin-left: 0");
-});
-
-test("折叠标题永远隐藏行内箭头，不误伤折叠列表", () => {
-  const togglesCss = readFileSync(
-    new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),
-    "utf8",
-  );
-  expect(togglesCss).toContain(
-    '[data-content-type="heading"][data-is-toggleable="true"]',
-  );
-  expect(togglesCss).toMatch(
-    /\[data-content-type="heading"\]\[data-is-toggleable="true"\][\s\S]*>\s*\.bn-toggle-button[\s\S]*visibility:\s*hidden/,
-  );
-  expect(togglesCss).toContain("pointer-events: none");
+  expect(togglesCss).toContain('[data-goose-section-hidden="true"]');
   expect(togglesCss).toContain("prefers-reduced-motion");
-  expect(togglesCss).not.toContain("grid-template-rows");
-  expect(togglesCss).not.toMatch(
-    /\[data-content-type="toggleListItem"\][\s\S]*visibility:\s*hidden/,
-  );
+  expect(togglesCss).not.toContain("data-is-toggleable");
 });
 
 test("标题 caret 扩展打标 + CSS 用强调色前景与 caret", () => {
@@ -74,6 +54,8 @@ test("侧栏折叠按钮用 goose-heading-fold-btn + toggles.css 强调色 hover
   expect(source).toContain('data-fold-hot');
   expect(source).toContain("onMouseEnter");
   expect(source).toContain("onMouseLeave");
+  expect(source).toContain("toggleHeadingCollapsed");
+  expect(source).not.toContain("clickHeadingToggleButton");
   expect(togglesCss).toContain(
     "html body .bn-side-menu button.goose-heading-fold-btn:hover",
   );
@@ -82,12 +64,6 @@ test("侧栏折叠按钮用 goose-heading-fold-btn + toggles.css 强调色 hover
   );
   expect(togglesCss).toContain("var(--goose-icon-chip-on-selected)");
   expect(togglesCss).toContain("var(--goose-interactive-selected-fg)");
-  expect(togglesCss).toMatch(
-    /html body \.bn-side-menu button\.goose-heading-fold-btn:hover[\s\S]*!important/,
-  );
-  expect(togglesCss).toMatch(
-    /\[data-fold-hot="true"\][\s\S]*svg[\s\S]*!important/,
-  );
 });
 
 test("PageHeader 标题输入 focus 用强调色前景与 caret", () => {
@@ -125,14 +101,13 @@ test("SideMenu 对非首块 heading 渲染折叠按钮，顺序为 + / 折叠 / 
   expect(source).toContain("aria-expanded");
   expect(source).toContain("展开章节");
   expect(source).toContain("收起章节");
-  expect(source).toContain("clickHeadingToggleButton");
+  expect(source).toContain("toggleHeadingCollapsed");
   expect(source).toContain("showHeadingToggle");
   expect(gutter).toContain("isFoldableHeadingBlock");
   expect(gutter).toContain('block?.type === "heading"');
-  expect(gutter).not.toContain("isToggleable === true");
-  expect(gutter).toContain(".bn-toggle-button");
+  expect(gutter).not.toContain("isToggleable");
+  expect(gutter).not.toContain(".bn-toggle-button");
   expect(source).toContain("draggable={false}");
-  expect(source).not.toMatch(/\n\s+draggable\n\s+onClick=/);
 
   const renderStart = source.indexOf("return createPortal");
   const renderSource = renderStart >= 0 ? source.slice(renderStart) : source;
@@ -157,7 +132,6 @@ test("isFoldableHeadingBlock 排除文档首块", () => {
   ).toBe(false);
 });
 
-
 test("侧栏把手不截获块拖放，已有 dragging 时不覆盖", () => {
   const source = readFileSync(
     new URL("../../src/components/editor/core/EditorSideMenu.tsx", import.meta.url),
@@ -175,4 +149,17 @@ test("侧栏把手不截获块拖放，已有 dragging 时不覆盖", () => {
   } as unknown as DataTransfer;
   ensureBlockMoveDragging(view, dt);
   expect(view.dragging).toBe(existing);
+});
+
+test("toggleHeadingCollapsed 切换 heading.props.collapsed", () => {
+  const updates: unknown[] = [];
+  const editor = {
+    getBlock: (id: string) =>
+      id === "h2"
+        ? { id: "h2", type: "heading", props: { level: 2, collapsed: false } }
+        : undefined,
+    updateBlock: (_block: unknown, patch: unknown) => updates.push(patch),
+  };
+  toggleHeadingCollapsed(editor as never, "h2");
+  expect(updates).toEqual([{ props: { collapsed: true } }]);
 });

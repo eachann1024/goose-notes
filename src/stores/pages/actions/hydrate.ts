@@ -8,7 +8,7 @@ import type { PagesState } from "../types";
 import {
   LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY,
   NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY,
-  HEADING_TOGGLEABLE_MIGRATION_MARK_KEY,
+  HEADING_SECTION_FOLD_MIGRATION_MARK_KEY,
 } from "../types";
 import { isLocalFolderPage, seedLocalPageMetadataCache } from "../persistence";
 import {
@@ -21,7 +21,7 @@ import { getContentSignature } from "@/components/editor/utils/blocknote-content
 import {
   repairLegacyTitleChildrenInPages,
   repairNormalizedContentInPages,
-  repairHeadingToggleableInPages,
+  repairHeadingSectionFoldInPages,
 } from "../migrations";
 
 export type StoreSet = (
@@ -45,14 +45,14 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   } = hasRepairedNestedEmptyWrappers
     ? { pages: repairedPages, repairedPageIds: [] as string[] }
     : repairNormalizedContentInPages(repairedPages);
-  const hasMigratedHeadingToggleable =
-    getDbStorageItem(HEADING_TOGGLEABLE_MIGRATION_MARK_KEY) === "1";
+  const hasMigratedHeadingSectionFold =
+    getDbStorageItem(HEADING_SECTION_FOLD_MIGRATION_MARK_KEY) === "1";
   const {
-    pages: headingMigratedPages,
-    repairedPageIds: headingMigratedPageIds,
-  } = hasMigratedHeadingToggleable
+    pages: sectionFoldPages,
+    repairedPageIds: sectionFoldPageIds,
+  } = hasMigratedHeadingSectionFold
     ? { pages: contentRepairedPages, repairedPageIds: [] as string[] }
-    : repairHeadingToggleableInPages(contentRepairedPages);
+    : repairHeadingSectionFoldInPages(contentRepairedPages);
 
   if (!hasRepairedLegacyTitleChildren) {
     if (repairedPageIds.length > 0) {
@@ -71,7 +71,7 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   if (!hasRepairedNestedEmptyWrappers) {
     if (contentRepairedPageIds.length > 0) {
       contentRepairedPageIds.forEach((pageId) => {
-        const repairedPage = headingMigratedPages[pageId];
+        const repairedPage = contentRepairedPages[pageId];
         if (!repairedPage || isLocalFolderPage(repairedPage)) return;
         saveInternalPage(repairedPage);
       });
@@ -82,21 +82,21 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
     setDbStorageItem(NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY, "1");
   }
 
-  if (!hasMigratedHeadingToggleable) {
-    if (headingMigratedPageIds.length > 0) {
-      headingMigratedPageIds.forEach((pageId) => {
-        const repairedPage = headingMigratedPages[pageId];
+  if (!hasMigratedHeadingSectionFold) {
+    if (sectionFoldPageIds.length > 0) {
+      sectionFoldPageIds.forEach((pageId) => {
+        const repairedPage = sectionFoldPages[pageId];
         if (!repairedPage || repairedPage.localFilePath) return;
         saveInternalPage(repairedPage);
       });
       console.info(
-        `[usePages] migrated heading toggleable flags in ${headingMigratedPageIds.length} page(s).`,
+        `[usePages] migrated heading section fold in ${sectionFoldPageIds.length} page(s).`,
       );
     }
-    setDbStorageItem(HEADING_TOGGLEABLE_MIGRATION_MARK_KEY, "1");
+    setDbStorageItem(HEADING_SECTION_FOLD_MIGRATION_MARK_KEY, "1");
   }
 
-  const recoveredPages = { ...headingMigratedPages };
+  const recoveredPages = { ...sectionFoldPages };
   let recoveredCount = 0;
   let conflictCount = 0;
   for (const entry of listRecoveryEntries("internal-page")) {

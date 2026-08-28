@@ -91,7 +91,7 @@ export function repairNormalizedContentInPages(
   return { pages: nextPages, repairedPageIds };
 }
 
-export function repairHeadingToggleableInPages(
+export function repairHeadingSectionFoldInPages(
   pages: Record<string, Page>,
 ): { pages: Record<string, Page>; repairedPageIds: string[] } {
   let nextPages = pages;
@@ -115,4 +115,11 @@ export function repairHeadingToggleableInPages(
   });
 
   return { pages: nextPages, repairedPageIds };
+}
+
+/** @deprecated 由 repairHeadingSectionFoldInPages 取代 */
+export function repairHeadingToggleableInPages(
+  pages: Record<string, Page>,
+): { pages: Record<string, Page>; repairedPageIds: string[] } {
+  return repairHeadingSectionFoldInPages(pages);
 }

@@ -141,6 +141,16 @@
   left: calc(-2px * var(--editor-scale, 1));
 }
 
+/* 内容列与把手之间有 6px 空隙；补一条透明桥，避免移过去时把手先消失 */
+.bn-side-menu::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 8px;
+}
+
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
    颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
    这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。

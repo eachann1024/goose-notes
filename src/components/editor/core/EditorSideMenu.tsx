@@ -16,18 +16,19 @@ import {
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
 import {
-  clickHeadingToggleButton,
   isFoldableHeadingBlock,
   queryHeadingTextRect,
-  queryHeadingToggleWrapper,
-  readHeadingToggleExpanded,
+  readHeadingCollapsed,
+  toggleHeadingCollapsed,
 } from "@/components/editor/core/toggleHeadingGutter";
+import {
+  SIDE_MENU_CONTENT_GAP,
+  isEditorSideMenuHoverTarget,
+} from "@/components/editor/core/sideMenuHover";
 
 const isMac = /Mac/i.test(navigator.platform);
 const altKeyLabel = isMac ? "⌥" : "Alt";
 
-/** 侧栏 pill 右缘与内容列左缘的间距（px） */
-const SIDE_MENU_CONTENT_GAP = 6;
 const SIDEBAR_INTERACTION_SELECTOR = ".workspace-sidebar-pane, .rct-main-tree";
 const SIDEBAR_HOVER_SELECTOR =
   ".workspace-sidebar-pane:hover, .rct-main-tree:hover";
@@ -38,8 +39,9 @@ export function EditorSideMenu() {
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
-  const [headingExpanded, setHeadingExpanded] = useState(false);
+  const [hoveringEditor, setHoveringEditor] = useState(false);
   const [foldHot, setFoldHot] = useState(false);
+  const [foldTick, setFoldTick] = useState(0);
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>
       s !== undefined
@@ -54,8 +56,11 @@ export function EditorSideMenu() {
   const block = state?.block;
   const firstBlockId = editor.document[0]?.id as string | undefined;
   const showHeadingToggle = isFoldableHeadingBlock(block, firstBlockId);
-  const headingBlockId =
-    showHeadingToggle && block ? block.id : undefined;
+  const liveHeading = block ? editor.getBlock(block.id) ?? block : undefined;
+  const headingExpanded = liveHeading
+    ? !readHeadingCollapsed(liveHeading)
+    : false;
+  void foldTick;
 
   useEffect(() => {
     const updateSidebarInteracting = (
@@ -70,8 +75,10 @@ export function EditorSideMenu() {
       setSidebarInteracting(next);
     };
 
-    const handlePointerMove = (event: PointerEvent) =>
+    const handlePointerMove = (event: PointerEvent) => {
       updateSidebarInteracting(event.target);
+      setHoveringEditor(isEditorSideMenuHoverTarget(event.target));
+    };
     const handleFocusChange = (event: FocusEvent) =>
       updateSidebarInteracting(event.target);
 
@@ -88,32 +95,17 @@ export function EditorSideMenu() {
   const shouldShow =
     Boolean(state?.show && state.referencePos && block) &&
     editor.isEditable &&
-    !sidebarInteracting;
-
-  useEffect(() => {
-    if (!headingBlockId) {
-      setHeadingExpanded(false);
-      return;
-    }
-    const sync = () => setHeadingExpanded(readHeadingToggleExpanded(headingBlockId));
-    sync();
-    const wrapper = queryHeadingToggleWrapper(headingBlockId);
-    if (!wrapper) return;
-    const observer = new MutationObserver(sync);
-    observer.observe(wrapper, {
-      attributes: true,
-      attributeFilter: ["data-show-children"],
-    });
-    return () => observer.disconnect();
-  }, [headingBlockId]);
+    !sidebarInteracting &&
+    (hoveringEditor || isDragging);
 
   const handleToggleHeading = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!block) return;
-      clickHeadingToggleButton(block.id);
+      toggleHeadingCollapsed(editor, block.id);
+      setFoldTick((tick) => tick + 1);
     },
-    [block],
+    [block, editor],
   );
 
   const handleAdd = useCallback(
