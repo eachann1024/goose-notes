@@ -25,6 +25,10 @@ const {
   stripMarkdownSyntax,
 } = require("./mcp-tools.cjs");
 const { fetchPublicText } = require("./web-fetch.cjs");
+const {
+  shouldHideOnHotkeyRetrigger,
+  hidePluginToBackground,
+} = require("./pluginHotkeyToggle.cjs");
 
 if (typeof window !== "undefined" && typeof utools !== "undefined") {
   window.utools = utools;
@@ -1829,16 +1833,34 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     }
   };
 
+  // 快捷键再按一次关闭：对齐小窗 quickNoteVisible。分离窗口 hideMainWindow 无效，
+  // 必须 outPlugin(false) 才能收起到后台。
+  let pluginVisible = false;
+
   // 主插件指令处理。速记小窗已拆为独立插件「鹅的小窗」（quicknote-plugin.json），
   // 主插件不再开内置浮窗，故此处不再有 quicknote_new/quicknote_last 分支。
-  utools.onPluginEnter(({ code, type, payload, optional }) => {
+  utools.onPluginEnter(({ code, type, payload, optional, from }) => {
+    if (
+      shouldHideOnHotkeyRetrigger({
+        code,
+        from,
+        pluginVisible,
+      })
+    ) {
+      pluginVisible = false;
+      hidePluginToBackground(utools);
+      return;
+    }
+
+    pluginVisible = true;
+
     // 普通进入插件时不要挂 uTools 宿主输入框。应用内已有 CommandPalette；
     // 宿主 subInput 会抢走编辑器焦点，导致正文输入跑到窗口左侧。
     clearSubInput();
 
     window.dispatchEvent(
       new CustomEvent("goose-note:plugin-enter", {
-        detail: { code, type, payload, optional },
+        detail: { code, type, payload, optional, from },
       }),
     );
 
@@ -1896,6 +1918,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
   if (typeof utools.onPluginOut === "function") {
     utools.onPluginOut((isKill) => {
+      pluginVisible = false;
       clearSubInput();
       window.dispatchEvent(
         new CustomEvent("goose-note:plugin-out", {

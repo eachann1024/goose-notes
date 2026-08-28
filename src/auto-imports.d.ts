@@ -87,11 +87,13 @@ declare global {
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
-  const FileTrigger: typeof import('./components/ui/file-trigger').FileTrigger
+  const FileTrigger: typeof import("./components/ui/file-trigger").FileTrigger
   const Fragment: typeof import('react').Fragment
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
+  const GOOSE_FAVORITE_KEY: typeof import('./lib/local-frontmatter').GOOSE_FAVORITE_KEY
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
+  const GOOSE_PINNED_KEY: typeof import('./lib/local-frontmatter').GOOSE_PINNED_KEY
   const INTERNAL_ASSET_REF_PREFIXES: typeof import('./lib/internalAssetRef').INTERNAL_ASSET_REF_PREFIXES
   const IconButton: typeof import('./components/ui/icon-button').IconButton
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
@@ -112,9 +114,10 @@ declare global {
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
+  const ONBOARDING_THIRD_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_THIRD_CHILD_CONTENT
   const ORB_PHASE_HOLD_MS: typeof import('./components/ui/ai-motion').ORB_PHASE_HOLD_MS
   const ORB_VISIBLE_MIN_MS: typeof import('./components/ui/ai-motion').ORB_VISIBLE_MIN_MS
-  const PINNED_TITLE_MAX_CHARS: typeof import('./components/editor/utils/page-title').PINNED_TITLE_MAX_CHARS
+  const PINNED_TITLE_MAX_CHARS: typeof import("./components/editor/utils/page-title").PINNED_TITLE_MAX_CHARS
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
@@ -186,6 +189,7 @@ declare global {
   const activateNotebook: typeof import('./lib/notebookNavigation').activateNotebook
   const applyAccentColor: typeof import('./lib/accentColor').applyAccentColor
   const applyAppearanceScaleVariables: typeof import('./lib/appearance').applyAppearanceScaleVariables
+  const applyBlockTypeTransformToContiguousIds: typeof import('./lib/ai-write/index').applyBlockTypeTransformToContiguousIds
   const applyBlockTypeTransformToEditor: typeof import('./lib/ai-write/index').applyBlockTypeTransformToEditor
   const applyFontVariables: typeof import('./lib/fontLoader').applyFontVariables
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
@@ -205,25 +209,27 @@ declare global {
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const clampQuickNoteZoom: typeof import('./stores/useQuickNote').clampQuickNoteZoom
+  const classifyAiLineText: typeof import('./lib/ai-write/index').classifyAiLineText
   const clearAllLocalMdSnapshots: typeof import('./lib/local-md-snapshot').clearAllLocalMdSnapshots
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clearStartupSettling: typeof import('./lib/appearance').clearStartupSettling
   const clearWorkspaceStartupSelection: typeof import('./lib/workspaceStartup').clearWorkspaceStartupSelection
-  const clipPinnedTitle: typeof import('./components/editor/utils/page-title').clipPinnedTitle
+  const clipPinnedTitle: typeof import("./components/editor/utils/page-title").clipPinnedTitle
   const clipboardHasPasteableImage: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableImage
   const clipboardHasPasteableMedia: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableMedia
   const clonePageContent: typeof import('./components/editor/utils/blocknote-content/index').clonePageContent
   const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
   const clsx: typeof import('clsx').clsx
   const cn: typeof import('./lib/utils').cn
+  const coerceGeneratedBlocksToExpectedType: typeof import('./lib/ai-write/index').coerceGeneratedBlocksToExpectedType
   const commitAiWritePlan: typeof import('./lib/ai-write/index').commitAiWritePlan
   const completePageTitleFocus: typeof import('./lib/page-title-focus').completePageTitleFocus
   const composerDraftHasContent: typeof import('./stores/useNotebookAiChats').composerDraftHasContent
   const compressIfNeeded: typeof import('./lib/imageProcessor').compressIfNeeded
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const computeEditorUiScale: typeof import('./lib/appearance').computeEditorUiScale
-  const confirmLocalDelete: typeof import('./lib/confirm-local-delete').confirmLocalDelete
-  const consumePageTitleFocus: typeof import('./lib/page-title-focus').consumePageTitleFocus
+  const confirmLocalDelete: typeof import("./lib/confirm-local-delete").confirmLocalDelete
+  const consumePageTitleFocus: typeof import("./lib/page-title-focus").consumePageTitleFocus
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const convertImageBlobToPng: typeof import('./lib/imageProcessor').convertImageBlobToPng
   const countWords: typeof import('./components/editor/utils/content-text-extractor').countWords
@@ -252,6 +258,7 @@ declare global {
   const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
   const ensureFirstTitleHeading: typeof import('./components/editor/utils/blocknote-content/index').ensureFirstTitleHeading
   const ensurePersistentRemoteFont: typeof import('./lib/fontLoader').ensurePersistentRemoteFont
+  const explodeAiGeneratedBlocks: typeof import('./lib/ai-write/index').explodeAiGeneratedBlocks
   const exportNotebooks: typeof import('./lib/export/index').exportNotebooks
   const exportPageToImage: typeof import('./lib/imageExport/index').exportPageToImage
   const exportSelectionToImage: typeof import('./lib/imageExport/index').exportSelectionToImage
@@ -280,6 +287,8 @@ declare global {
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
+  const formatDualShortcut: typeof import('./lib/onboardingContent').formatDualShortcut
+  const formatDualShortcutGroup: typeof import('./lib/onboardingContent').formatDualShortcutGroup
   const formatLocalFolderOpenAppName: typeof import('./lib/local-folder-open-apps').formatLocalFolderOpenAppName
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
@@ -305,7 +314,7 @@ declare global {
   const getFileUploadAvailability: typeof import('./lib/fileUploadAvailability').getFileUploadAvailability
   const getFixedAppShortcuts: typeof import('./lib/fixed-app-shortcuts').getFixedAppShortcuts
   const getFormattingToolbarReferenceRect: typeof import('./components/editor/utils/formattingToolbarReference').getFormattingToolbarReferenceRect
-  const getGlobalScrollActivitySnapshot: typeof import('./hooks/useGlobalScrollActivity').getGlobalScrollActivitySnapshot
+  const getGlobalScrollActivitySnapshot: typeof import("./hooks/useGlobalScrollActivity").getGlobalScrollActivitySnapshot
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
   const getLocalMdSnapshot: typeof import('./lib/local-md-snapshot').getLocalMdSnapshot
@@ -328,7 +337,7 @@ declare global {
   const getSettingsProviderId: typeof import('./lib/ai-provider/index').getSettingsProviderId
   const getShortcutFromMouseEvent: typeof import('./lib/shortcut-match').getShortcutFromMouseEvent
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
-  const handleFileInsertion: typeof import('./components/editor/utils/handleClipboardFileInsertion').handleFileInsertion
+  const handleFileInsertion: typeof import("./components/editor/utils/handleClipboardFileInsertion").handleFileInsertion
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
   const hasWholePageBlockTypeTransformScope: typeof import('./lib/ai-write/index').hasWholePageBlockTypeTransformScope
   const importFile: typeof import('./lib/export/index').importFile
@@ -410,6 +419,7 @@ declare global {
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
+  const onboardingThirdChildContent: typeof import('./lib/onboardingContent').onboardingThirdChildContent
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const openPageFromSidebar: typeof import('./lib/sidebarPageNavigation').openPageFromSidebar
   const openResourceExternally: typeof import('./components/editor/utils/openResourceExternally').openResourceExternally
@@ -465,6 +475,7 @@ declare global {
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
   const restoreLastNoteIfNeeded: typeof import('./lib/workspaceStartup').restoreLastNoteIfNeeded
   const restorePageWithToast: typeof import('./lib/page-delete-actions').restorePageWithToast
+  const rewriteAiStructureLine: typeof import('./lib/ai-write/index').rewriteAiStructureLine
   const runAIText: typeof import('./lib/ai-provider/index').runAIText
   const runAITextStream: typeof import('./lib/ai-provider/index').runAITextStream
   const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
@@ -497,7 +508,7 @@ declare global {
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
   const stripComposerDraftImages: typeof import('./stores/useNotebookAiChats').stripComposerDraftImages
   const stripMarkdownHardBreaks: typeof import('./components/editor/utils/clipboard').stripMarkdownHardBreaks
-  const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
+  const subscribeGlobalScrollActivity: typeof import("./hooks/useGlobalScrollActivity").subscribeGlobalScrollActivity
   const subscribePageTitleFocus: typeof import('./lib/page-title-focus').subscribePageTitleFocus
   const syncAccentColorCssVars: typeof import('./lib/accentColor').syncAccentColorCssVars
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
@@ -515,7 +526,7 @@ declare global {
   const uploadWebdavBackup: typeof import('./lib/webdavSync').uploadWebdavBackup
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
-  const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
+  const useAiSessions: typeof import("./stores/useAiSessions").useAiSessions
   const useAiStatus: typeof import('./stores/useAiStatus').useAiStatus
   const useAppHotkeys: typeof import('./hooks/useAppHotkeys').useAppHotkeys
   const useCallback: typeof import('react').useCallback
@@ -525,7 +536,7 @@ declare global {
   const useContextMenu: typeof import('./components/editor/state/contextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
-  const useDeletePageWithUndo: typeof import('./hooks/useDeletePageWithUndo').useDeletePageWithUndo
+  const useDeletePageWithUndo: typeof import("./hooks/useDeletePageWithUndo").useDeletePageWithUndo
   const useEditorFind: typeof import('./components/editor/hooks/useEditorFind').useEditorFind
   const useEditorPaste: typeof import('./components/editor/hooks/useEditorPaste').useEditorPaste
   const useEditorShortcuts: typeof import('./components/editor/hooks/useEditorShortcuts').useEditorShortcuts

@@ -808,6 +808,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  caret-color: var(--goose-inline-code-fg);
 }
 
 /* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
@@ -823,8 +824,8 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   color: var(--goose-inline-code-fg);
 }
 
-/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置，
-   inlineCodeCaretExtension 靠它把光标钉进或钉出圆角盒 */
+/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置。
+   高度必须跟字号走，否则光标钉在 boundary 旁时高度为 0，删到边界/盒内就看不见。 */
 .workspace-editor-surface
   .bn-inline-content
   code
@@ -835,10 +836,23 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   > [data-goose-inline-code-boundary] {
   display: inline-block;
   width: 0;
-  height: 0;
+  height: 1em;
+  line-height: 1;
   overflow: hidden;
+  vertical-align: text-bottom;
   pointer-events: none;
   user-select: none;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before,
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before {
+  content: "\\200b";
 }
 
 /* 链接内的行内代码：去掉文字下划线，并保持强调色（不继承链接色） */
@@ -916,6 +930,54 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   color: var(--goose-inline-code-fg);
 }
 
+/* ===== 行内代码相对路径 tag：按住 Cmd/Ctrl 时 hover 下划线扫动，点击打开 ===== */
+.workspace-editor-surface .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path {
+  position: relative;
+}
+
+.workspace-editor-surface .goose-inline-code-path::after,
+.quicknote-editor-surface .goose-inline-code-path::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.06em;
+  height: 1px;
+  background-color: currentColor;
+  opacity: 0.7;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+/* armed 态（按住 Cmd/Ctrl）才给出可点击提示 */
+.workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface .goose-inline-code-path::after,
+  .quicknote-editor-surface .goose-inline-code-path::after {
+    transform: scaleX(1);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    opacity: 0.7;
+  }
+}
+
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
@@ -981,22 +1043,32 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 }
 
 /* ===== BlockNote children 缩进优化 ===== */
-/* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
+/* 普通标题下 children 轻微收进；折叠标题按原型 C 顶格，见 toggles.css。 */
 .workspace-editor-surface
-  .bn-block:has(> .bn-block-content[data-content-type="heading"])
+  .bn-block:has(
+    > .bn-block-content[data-content-type="heading"]:not(
+        [data-is-toggleable="true"]
+      )
+  )
   > .bn-block-children {
   padding-left: 0.5em;
 }
 
-/* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
+/* 页面级字体切换：表面自身 + 编辑器，避免 BlockNote 类名变动后选不中 */
+.workspace-editor-surface[data-font-family="default"],
+.workspace-editor-surface[data-font-family="default"] .bn-editor,
 .workspace-editor-surface[data-font-family="default"] .bn-default-styles {
   font-family: var(--font-default);
 }
 
+.workspace-editor-surface[data-font-family="serif"],
+.workspace-editor-surface[data-font-family="serif"] .bn-editor,
 .workspace-editor-surface[data-font-family="serif"] .bn-default-styles {
   font-family: var(--font-serif);
 }
 
+.workspace-editor-surface[data-font-family="mono"],
+.workspace-editor-surface[data-font-family="mono"] .bn-editor,
 .workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
   font-family: var(--font-mono);
 }
@@ -1038,8 +1110,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
  * - 后面仍有同级列表项时，继续穿过父块 margin 并收在下一 marker 上边缘；
  * - 线不接收指针事件，不影响光标、选择、checkbox 和拖拽。
  *
- * 只替换普通列表的原生 child 分段线；折叠列表 / 折叠标题仍使用上方独立的
- * 引用线规则，避免展开态出现双线。
+ * 只替换普通列表的原生 child 分段线。折叠列表 / 折叠标题不再画引用线。
  */
 .workspace-editor-surface
   .bn-block:has(
@@ -2054,8 +2125,7 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 /* uTools 主窗固定全宽布局的左右留白：
    全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
    需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
-   注：折叠标题箭头与 side menu 同锚内容左缘、向同侧展开，留白只整体右移、消不掉两者
-   重叠——那由折叠标题专门处理（见下方 toggle 列覆盖规则）。 */
+   注：折叠标题箭头已改回行内，不再与 side menu 抢 gutter。 */
 /* 全宽 gutter 由 page-scroll-container 的 px-14 统一承担，避免与页面图标列双重缩进 */
 .workspace-editor-surface.max-w-none .bn-editor {
   padding-inline: 0;
@@ -2081,8 +2151,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
  */
 
 /* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
-   避免 tableEvenColumnWidth 的核心行为依赖旧 Chromium 不支持的 :has()。 */
-.workspace-editor-surface.goose-table-even-column-width
+   表格始终撑满可用宽度并按列均分，避免核心行为依赖旧 Chromium 不支持的 :has()。 */
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   table {
@@ -2090,11 +2160,11 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   table-layout: fixed;
 }
 
-.workspace-editor-surface.goose-table-even-column-width
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   th,
-.workspace-editor-surface.goose-table-even-column-width
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   td {
@@ -2117,6 +2187,32 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] td {
   border-color: hsl(var(--border) / 0.55);
+}
+
+/* CellSelection 时隐藏原生文字高亮，避免和格子装饰叠在一起。
+   :has() 给新内核；.goose-table-cell-grid 给旧 Chromium。
+   选择器要比 goose-accent-colors.css 的 ::selection 更高，才能盖住后加载的强调色。 */
+:root .workspace-editor-surface .bn-editor table:has(.selectedCell) ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor
+  table:has(.selectedCell)
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid ::selection,
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+.workspace-editor-surface .bn-editor .selectedCell {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .workspace-editor-surface [data-content-type="divider"] hr {
@@ -2364,22 +2460,24 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
   margin-bottom: 0.5em;
 }
-
-`,u=`/* 折叠标题与折叠列表的箭头、gutter、引用线和间距。
+`,u=`/* 折叠标题与折叠列表：整行标题条 / 正文顶格 / 无引用线。
  * 被 editor-base.css 按序 @import。
- * 依赖 --goose-icon-chip-on-selected / --muted-foreground / --border。
+ * 依赖 --goose-icon-chip-on-selected / --muted-foreground / --foreground。
  */
 
-/* 隐藏空折叠块展开后的「点击添加区块」提示按钮；
-   空标题按 Enter 会退出折叠块（原生行为），无需此按钮。 */
-/* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈、像没展开），
-   文案在 Editor.tsx dictionary 覆盖，这里只调淡样式不喧宾夺主 */
+.workspace-editor-surface {
+  --goose-toggle-bar: #f1f0ed;
+}
+.dark .workspace-editor-surface {
+  --goose-toggle-bar: #3a3a37;
+}
+
+/* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈），
+   文案在 Editor.tsx dictionary 覆盖。标题 children 顶格，不再跟 22px 缩进。 */
 .bn-editor .bn-toggle-add-block-button {
   opacity: 0.45;
   font-size: 14px;
-  /* 与 children 缩进对齐（见下方 .bn-block-group 规则），读作「子内容占位行」，
-     而不是顶格另起一行盖在标题正下方 */
-  margin-left: 22px;
+  margin-left: 0;
 }
 
 /* 折叠箭头换成与侧栏一致的 Lucide ChevronRight（描边 1.75）：
@@ -2390,8 +2488,10 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   display: none;
 }
 .bn-editor .bn-toggle-button {
-  /* 固定正方形芯片：展开态 rotate(90deg) 后形状不变，避免不对称 padding 拧歪 hover 底 */
+  position: relative;
+  z-index: 2;
   box-sizing: border-box;
+  display: flex;
   width: 1.25em;
   height: 1.25em;
   min-width: 20px;
@@ -2401,6 +2501,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   justify-content: center;
   border-radius: 6px;
   color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  pointer-events: auto;
   transition:
     transform 0.2s ease-out,
     opacity 0.15s ease-out,
@@ -2409,7 +2511,6 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 }
 .bn-editor .bn-toggle-button::before {
   content: "";
-  /* 随块字号缩放：折叠标题(H1~H3)箭头跟着标题变大，普通折叠列表(16px)约等于原 16px */
   width: 0.85em;
   height: 0.85em;
   min-width: 14px;
@@ -2420,100 +2521,64 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
-/* 覆盖 BlockNote 默认 --bn-colors-hovered-background，跟 side menu / 图标 chip 统一 */
 .bn-editor .bn-toggle-button:hover,
 .bn-editor .bn-toggle-add-block-button:hover {
   background: var(--goose-icon-chip-on-selected);
   color: hsl(var(--foreground));
 }
 
-/* 折叠标题的箭头悬挂到左侧 gutter（Notion 手感）：
-   chevron 按钮默认是行内 flex item，会把标题文字/placeholder 往右推一个按钮宽，
-   视觉上像「标题前面多了空格」。改为绝对定位挂在 wrapper 左外侧，
-   标题文字与普通标题左对齐；editor 自带 54px padding-inline，gutter 放得下。
-   普通折叠列表(toggleListItem)的箭头充当列表 marker，保持行内不动。 */
+/* 折叠标题：箭头留在行内（不再挂 gutter），整行是一条可 hover 的标题条。 */
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   > div
   > .bn-toggle-wrapper {
-  position: relative;
-}
-/* 不旋转的热区桥：补上按钮与标题文字之间的 4px 缝。
-   热区挂在 wrapper 上，不跟着按钮 rotate，展开/收起形状一致。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper::before {
-  content: "";
-  position: absolute;
-  left: calc(-1.25em - 4px);
-  top: 50%;
-  width: calc(1.25em + 8px);
-  height: 1.25em;
-  min-width: 28px;
-  min-height: 20px;
-  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
 }
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   > div
   > .bn-toggle-wrapper
-  > .bn-toggle-button {
-  position: absolute;
-  left: calc(-1.25em - 4px);
-  top: 0;
-  bottom: 0;
-  margin: auto 0;
-  /* 展开态只做视觉隐藏，保留 pointer-events：
-     1) 鼠标移向左侧 gutter 时仍算 .bn-block-content:hover，箭头不会中途消失；
-     2) 不可见时也能直接点到箭头收起。 */
-}
-/* 折叠标题展开态（Notion）：gutter 箭头默认隐藏，hover / focus-within 再显示；
-   收起态始终可见。直接命中 .bn-toggle-wrapper[data-show-children]，
-   避免 .bn-block-outer:has() 在 uTools 旧 Chromium 上不生效导致展开时箭头常显。 */
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper[data-show-children="true"]
-  > .bn-toggle-button {
-  opacity: 0;
-}
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover
-  > div
-  > .bn-toggle-wrapper[data-show-children="true"]
-  > .bn-toggle-button,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within
-  > div
-  > .bn-toggle-wrapper[data-show-children="true"]
-  > .bn-toggle-button,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  > div
-  > .bn-toggle-wrapper[data-show-children="true"]:hover
-  > .bn-toggle-button {
-  opacity: 1;
+  > :not(.bn-toggle-button) {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
-/* 折叠标题模块（把手 + children）与上下正文拉开间距，避免误触、强化视觉分隔：
-   上方 = 标题行 margin-top（两态通用，撑大本块顶部空白）；
-   下方 = 展开态 children group margin-bottom（收起态仅一行标题，下方间距交由
-   .bn-block-outer 默认 margin-bottom，无需额外）。em 随标题字号缩放；
-   .bn-block 是 flex column，其内 margin 不发生合并，与相邻块 margin 叠加生效。
-   仅主编辑区生效，速记小窗保持紧凑。 */
 .workspace-editor-surface
   .bn-block-content[data-content-type="heading"][data-is-toggleable="true"] {
   margin-top: 0.4em;
+  margin-left: -8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:has(
+    .bn-toggle-wrapper[data-show-children="false"]
+  ) {
+  background: var(--goose-toggle-bar);
 }
 .workspace-editor-surface
   .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   ~ .bn-block-group {
+  margin-left: 0;
+  padding-left: 0;
   margin-bottom: 0.4em;
 }
 
-/* 普通折叠列表(toggleListItem)的箭头统一手感：
-   箭头不再参与 flex 流（默认它是行内 flex item，多行/空块时会整块垂直居中、
-   把空块的占位行挤到下一行），改为绝对定位钉在首行左侧 marker 位；
-   wrapper 用 padding-left 保留 22px marker 空间，文字 x 在收起/展开/换行
-   三态下恒定不动。 */
+/* 普通折叠列表：箭头钉在首行 marker 位；子块跟标题文字对齐，不画竖线。 */
 .bn-block-content[data-content-type="toggleListItem"]
   > div
   > .bn-toggle-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
   padding-left: 22px;
 }
 .bn-block-content[data-content-type="toggleListItem"]
@@ -2523,39 +2588,12 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   position: absolute;
   left: 0;
   top: 0;
-  /* 钉在首行：高度=正文行高(1.5em)，图标在其内垂直居中；
-     不用 transform——展开态旋转 rotate(90deg) 还要用它 */
   height: 1.5em;
   display: flex;
   align-items: center;
 }
-
-/* 折叠块 children 缩进与标题文字精确对齐（marker 22px），
-   默认 .bn-block-group 的 24px 会比标题文字多出 2px */
 .bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group {
   margin-left: 22px;
-}
-
-/* 折叠块 children 缩进引用线：连续空行没有任何文字时，没这条线
-   完全看不出这些行还在折叠块里（像内容跑到了折叠块外面）。
-   线挂在箭头列正下方，两种折叠块（toggleListItem / 折叠标题）都画。 */
-.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  ~ .bn-block-group {
-  position: relative;
-}
-.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group::before,
-.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
-  ~ .bn-block-group::before {
-  content: "";
-  position: absolute;
-  /* children group 相对标题文字缩进 22px，箭头列中心 ≈ 文字左缘往左 14px */
-  left: -14px;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  border-radius: 1px;
-  background: hsl(var(--border));
 }
 `,d=`/* 格式工具栏、块工具栏、选中节点去描边、极简工作区隐藏首个 H1。
  * 被 editor-base.css 按序 @import。
@@ -2620,8 +2658,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
-  background: var(--goose-icon-chip-on-selected);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
@@ -2757,7 +2795,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 
 .goose-block-toolbar-control:hover,
 .goose-block-toolbar-control:focus-visible {
-  background: var(--goose-icon-chip-on-selected);
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-block-toolbar-control:focus-visible {
