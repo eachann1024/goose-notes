@@ -69,6 +69,20 @@ test.beforeEach(() => {
     selectedByNotebook: {},
     focusedByNotebook: {},
   });
+  // 共享 worker 里其他测试文件（exportHtmlVisual/printPdf）可能已注入 linkedom window，
+  // 其 dispatchEvent 对 Node 原生 CustomEvent 会抛「eventPhase 只读」错误。
+  // 只在 window 已存在时用 Proxy 挡住 dispatchEvent，其余属性原样转发；
+  // 不要凭空定义 window，否则会影响其他测试对平台（Mod 键）的判定。
+  const g = globalThis as typeof globalThis & { window?: object };
+  if (typeof g.window !== "undefined" && g.window !== null) {
+    const win = g.window;
+    g.window = new Proxy(win, {
+      get(target, prop, receiver) {
+        if (prop === "dispatchEvent") return () => true;
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  }
 });
 
 test("预览标签互相替换后，后退仍回到上下选中的文件", async () => {

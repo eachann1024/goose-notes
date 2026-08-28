@@ -104,18 +104,33 @@ test("recorded plus shortcuts can be matched", () => {
 });
 
 test("navigation bracket shortcuts use physical codes on localized layouts", () => {
-  expect(
-    matchShortcut(
-      keyboardEvent({ key: "å", code: "BracketLeft", ctrlKey: true }),
-      "Mod+[",
-    ),
-  ).toBe(true);
-  expect(
-    matchShortcut(
-      keyboardEvent({ key: "¨", code: "BracketRight", ctrlKey: true }),
-      "Mod+]",
-    ),
-  ).toBe(true);
+  // 该用例验证 Win/Linux 物理键位（Mod=Ctrl）。共享 worker 里其他测试文件
+  // 可能泄漏 linkedom window，让 getPlatformKind 读到 Node 的 MacIntel
+  // 平台而误判成 mac（Mod=Meta）。此处临时固定为 Linux 再断言。
+  const realPlatform = navigator.platform;
+  Object.defineProperty(navigator, "platform", {
+    configurable: true,
+    value: "Linux x86_64",
+  });
+  try {
+    expect(
+      matchShortcut(
+        keyboardEvent({ key: "å", code: "BracketLeft", ctrlKey: true }),
+        "Mod+[",
+      ),
+    ).toBe(true);
+    expect(
+      matchShortcut(
+        keyboardEvent({ key: "¨", code: "BracketRight", ctrlKey: true }),
+        "Mod+]",
+      ),
+    ).toBe(true);
+  } finally {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: realPlatform,
+    });
+  }
 });
 
 test("mouse side buttons use stable shortcut names", () => {
