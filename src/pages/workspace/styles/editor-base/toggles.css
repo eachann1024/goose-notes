@@ -90,6 +90,61 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
   color: var(--goose-interactive-selected-fg) !important;
 }
 
+/* 折叠标题整行虚线边框：
+   - 用 outline 不占地，避免顶破 block-background.css 的 width/margin 补偿；
+   - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
+   - 不用 color-mix：当前内核解析失败会让整条 outline 简写作废，
+     颜色一律写死 rgba（取值对应 --goose-interactive-selected-fg /
+     --goose-editor-highlight-purple-text 的半透明实色）；
+   - 选择器用后代链不用 > 子代链，容忍 block-outer 与 block-content
+     之间多一层 wrapper。 */
+.bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"] {
+  outline: 1px dashed rgba(79, 70, 229, 0.45) !important;
+  outline-width: 1px !important;
+  outline-style: dashed !important;
+  outline-offset: -1px !important;
+  outline-color: rgba(79, 70, 229, 0.45) !important;
+  border-radius: 4px;
+}
+
+/* 浅紫背景条：虚线跟标题紫同族（--goose-editor-highlight-purple-text 实色半透明），50% 透明度不抢文字。 */
+.bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"][data-background-color="purple"] {
+  outline-color: rgba(105, 64, 165, 0.5) !important;
+}
+
+.dark
+  .bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"] {
+  outline-color: rgba(165, 180, 252, 0.45) !important;
+}
+
+.dark
+  .bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"][data-background-color="purple"] {
+  outline-color: rgba(208, 186, 248, 0.5) !important;
+}
+
+/* 折叠态侧栏按钮始终呈选中样式；展开态保持默认、hover 才高亮。 */
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"],
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:active {
+  background-color: var(--goose-icon-chip-on-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"] svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"] span,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover span {
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
 /* 普通折叠列表：箭头钉在首行 marker 位；子块跟标题文字对齐，不画竖线。 */
 .bn-block-content[data-content-type="toggleListItem"]
   > div

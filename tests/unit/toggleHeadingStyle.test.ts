@@ -118,6 +118,40 @@ test("SideMenu 对非首块 heading 渲染折叠按钮，顺序为 + / 折叠 / 
   expect(plusIndex).toBeLessThan(toggleIndex);
 });
 
+test("折叠标题整行虚线边框用 data-goose-heading-collapsed 选择器", () => {
+  const togglesCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),
+    "utf8",
+  );
+  expect(togglesCss).toContain('[data-goose-heading-collapsed="true"]');
+  const dashedRule = togglesCss.match(
+    /\.bn-block-outer\[data-goose-heading-collapsed="true"\][^{]*\{[^}]*\}/,
+  );
+  expect(dashedRule).not.toBeNull();
+  expect(dashedRule![0]).toContain("1px dashed");
+  expect(dashedRule![0]).toContain("!important");
+  expect(togglesCss).toContain("--goose-editor-highlight-purple-text");
+  expect(togglesCss).not.toMatch(
+    /\[data-goose-heading-collapsed="true"\][\s\S]*?border-(left|right)-width:\s*[2-9]/,
+  );
+});
+
+test("侧栏折叠按钮在 aria-expanded=false 时保持选中样式", () => {
+  const togglesCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),
+    "utf8",
+  );
+  expect(togglesCss).toContain(
+    'html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]',
+  );
+  const collapsedRule = togglesCss.match(
+    /button\.goose-heading-fold-btn\[aria-expanded="false"\][^{]*\{[^}]*\}/,
+  );
+  expect(collapsedRule).not.toBeNull();
+  expect(collapsedRule![0]).toContain("var(--goose-icon-chip-on-selected)");
+  expect(collapsedRule![0]).toContain("var(--goose-interactive-selected-fg)");
+});
+
 test("isFoldableHeadingBlock 排除文档首块", () => {
   expect(isHeadingBlock({ type: "heading" })).toBe(true);
   expect(isHeadingBlock({ type: "paragraph" })).toBe(false);
