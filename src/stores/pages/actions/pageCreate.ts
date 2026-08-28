@@ -6,6 +6,7 @@ import {
   ONBOARDING_PAGE_CONTENT,
   ONBOARDING_CHILD_PAGE_CONTENT,
   ONBOARDING_SECOND_CHILD_CONTENT,
+  ONBOARDING_THIRD_CHILD_CONTENT,
 } from "@/lib/onboarding";
 import {
   clonePageContent as cloneBlockNotePageContent,
@@ -21,9 +22,21 @@ import {
   toRelativePath,
   writeLocalPageIdMap,
 } from "@/lib/local-page-idmap";
+import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
+import { encodeLocalBlockPropsWrappers } from "@/lib/export/markdown/blockPropsMarker";
+import { decodeUnsupportedMarkdownForDisk } from "@/lib/markdown-raw-guard";
+import {
+  applyTrailingNewlineStyle,
+  markSelfWrite,
+  setLocalMdSnapshot,
+} from "@/lib/local-md-snapshot";
 
 import type { PagesState } from "../types";
-import { persistPageSnapshot, persistPageSnapshots, syncLocalPageMetadataCache } from "../persistence";
+import {
+  persistPageSnapshot,
+  persistPageSnapshots,
+  syncLocalPageMetadataCache,
+} from "../persistence";
 import type { StoreSet, StoreGet } from "./hydrate";
 import { flushEditorContent } from "./flushEditor";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
@@ -31,9 +44,8 @@ import { useSettings } from "@/stores/useSettings";
 import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 import { pickRandomPageIcon } from "@/lib/randomPageIcon";
 
-const initialContent: JSONContent = createEmptyBlockNoteContent(
-  UNTITLED_PAGE_TITLE,
-);
+const initialContent: JSONContent =
+  createEmptyBlockNoteContent(UNTITLED_PAGE_TITLE);
 
 /**
  * 新建页聚焦策略：
@@ -110,6 +122,7 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
     const mainId = uuidv4();
     const childId1 = uuidv4();
     const childId2 = uuidv4();
+    const childId3 = uuidv4();
     const now = Date.now();
 
     createdMainId = mainId;
@@ -156,6 +169,20 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
       order: now + 2,
     };
 
+    const childPage3: Page = {
+      id: childId3,
+      workspaceId,
+      parentId: mainId,
+      content: ONBOARDING_THIRD_CHILD_CONTENT,
+      isFolder: false,
+      isLocked: false,
+      fontSize: "default",
+      fontFamily: "default",
+      createdAt: now + 3,
+      updatedAt: now + 3,
+      order: now + 3,
+    };
+
     return {
       ...state,
       pages: {
@@ -163,6 +190,7 @@ export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
         [mainId]: mainPage,
         [childId1]: childPage1,
         [childId2]: childPage2,
+        [childId3]: childPage3,
       },
       activePageId: mainId,
       onboardingCompleted: true,
@@ -270,7 +298,12 @@ export const createLocalPageAction = async (
 export const createLocalPageRecordAction = async (
   set: StoreSet,
   get: StoreGet,
-  { workspaceId, parentId, title, content }: {
+  {
+    workspaceId,
+    parentId,
+    title,
+    content,
+  }: {
     workspaceId: string;
     parentId?: string;
     title?: string;
@@ -332,7 +365,9 @@ export const createLocalPageRecordAction = async (
   if (await checkExists(filePath)) {
     let suffix = 1;
     while (
-      await checkExists(`${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`)
+      await checkExists(
+        `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`,
+      )
     ) {
       suffix++;
     }
@@ -369,7 +404,10 @@ export const createLocalPageRecordAction = async (
   }));
 
   syncLocalPageMetadataCache(id, null);
-  const saved = await get().saveLocalPageContent(id, cloneLocalPageContent(newPage.content));
+  const saved = await get().saveLocalPageContent(
+    id,
+    cloneLocalPageContent(newPage.content),
+  );
   if (!saved) {
     set((state) => {
       const nextPages = { ...state.pages };
@@ -385,7 +423,11 @@ export const createLocalPageRecordAction = async (
 export const createLocalFolderRecordAction = async (
   set: StoreSet,
   get: StoreGet,
-  { workspaceId, parentId, title }: {
+  {
+    workspaceId,
+    parentId,
+    title,
+  }: {
     workspaceId: string;
     parentId?: string;
     title?: string;
@@ -406,8 +448,9 @@ export const createLocalFolderRecordAction = async (
       ? parentPage.localFilePath
       : notebook.localPath;
   const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
-  const normalizedTitle =
-    ((title || "新建文件夹").trim() || "新建文件夹").replace(/[\\/:*?"<>|]/g, "_");
+  const normalizedTitle = (
+    (title || "新建文件夹").trim() || "新建文件夹"
+  ).replace(/[\\/:*?"<>|]/g, "_");
   const folderPath = `${normalizedBaseDir}/${normalizedTitle}`;
 
   const exists = window.gooseFs.existsAsync
@@ -462,11 +505,139 @@ export const duplicatePageAction = (
   flushEditorContent();
 
   const sourcePage = get().pages[id];
-  const notebook = sourcePage
-    ? useNotebooks.getState().notebooks[sourcePage.workspaceId]
-    : undefined;
+  if (!sourcePage) return id;
+
+  const notebook = useNotebooks.getState().notebooks[sourcePage.workspaceId];
   if (notebook?.source === "local-folder") {
-    return id;
+    if (sourcePage.isFolder || !sourcePage.localFilePath) {
+      return id;
+    }
+    const fs = window.gooseFs;
+    if (!fs) return id;
+
+    const sourcePath = sourcePage.localFilePath;
+    const isWindows = sourcePath.includes("\\") && !sourcePath.includes("/");
+    const slash = isWindows ? "\\" : "/";
+    const lastSlash = Math.max(
+      sourcePath.lastIndexOf("/"),
+      sourcePath.lastIndexOf("\\"),
+    );
+    const dir = lastSlash >= 0 ? sourcePath.slice(0, lastSlash) : "";
+    const fileName =
+      lastSlash >= 0 ? sourcePath.slice(lastSlash + 1) : sourcePath;
+    const dotIdx = fileName.lastIndexOf(".");
+    const baseName = dotIdx > 0 ? fileName.slice(0, dotIdx) : fileName;
+    const ext = dotIdx > 0 ? fileName.slice(dotIdx) : ".md";
+
+    let copyIndex = 1;
+    let candidateName = `${baseName}_副本${ext}`;
+    let candidatePath = dir ? `${dir}${slash}${candidateName}` : candidateName;
+
+    while (
+      (fs.exists && fs.exists(candidatePath)) ||
+      Object.values(get().pages).some(
+        (p) =>
+          p.localFilePath === candidatePath ||
+          p.localFilePath?.replace(/\\/g, "/") ===
+            candidatePath.replace(/\\/g, "/"),
+      )
+    ) {
+      copyIndex += 1;
+      candidateName = `${baseName}_副本 ${copyIndex}${ext}`;
+      candidatePath = dir ? `${dir}${slash}${candidateName}` : candidateName;
+    }
+
+    const copyFmMerge = mergeLocalPageSettingsIntoFrontmatter(
+      sourcePage.localFrontmatter,
+      {
+        fontFamily: sourcePage.fontFamily ?? "default",
+        isLocked: Boolean(sourcePage.isLocked),
+        isPinned: false,
+        isFavorite: false,
+      },
+    );
+    const copyFrontmatterBlob = copyFmMerge.parseFailed
+      ? sourcePage.localFrontmatter
+      : copyFmMerge.blob;
+
+    // 同步读取/生成 Markdown 内容并写盘
+    let fileContent = "";
+    try {
+      // 优先从源文件读取真实内容（如果能读到），或者从 memory content 序列化
+      let rawMd: string | null = null;
+      if (fs.readFile) {
+        rawMd = fs.readFile(sourcePath);
+      }
+      if (rawMd != null) {
+        const { extractFrontmatter } = require("@/lib/markdown-raw-guard");
+        const { body } = extractFrontmatter(rawMd);
+        fileContent = copyFrontmatterBlob
+          ? `${copyFrontmatterBlob}\n\n${body}`
+          : body;
+      }
+    } catch {
+      // fallback
+    }
+
+    if (!fileContent) {
+      fileContent = copyFrontmatterBlob ? `${copyFrontmatterBlob}\n\n` : "";
+    }
+
+    const diskContent = applyTrailingNewlineStyle(
+      candidatePath,
+      decodeUnsupportedMarkdownForDisk(fileContent),
+    );
+
+    markSelfWrite(candidatePath);
+    const writeOk = fs.writeFile
+      ? fs.writeFile(candidatePath, diskContent)
+      : false;
+    if (!writeOk) return id;
+
+    setLocalMdSnapshot(candidatePath, diskContent);
+
+    const basePath = notebook.localPath || "";
+    const idMap = readLocalPageIdMap(notebook.id);
+    const relativePath = toRelativePath(basePath, candidatePath);
+    const { id: newId, dirty } = resolveOrCreateStableId(
+      notebook.id,
+      relativePath,
+      idMap,
+    );
+    if (dirty) {
+      writeLocalPageIdMap(notebook.id, idMap);
+    }
+
+    const now = Date.now();
+    const clonedContent = cloneLocalPageContent(sourcePage.content);
+
+    const newPage: Page = {
+      ...sourcePage,
+      id: newId,
+      workspaceId: notebook.id,
+      parentId: sourcePage.parentId,
+      localFilePath: candidatePath,
+      localFrontmatter: copyFrontmatterBlob,
+      content: clonedContent,
+      isPinned: false,
+      pinnedAt: undefined,
+      isFavorite: false,
+      favoriteOrder: undefined,
+      createdAt: now,
+      updatedAt: now,
+      order: (sourcePage.order ?? 0) + 1,
+      localReadState: "ready",
+      localReadError: undefined,
+    };
+
+    set((state) => ({
+      pages: {
+        ...state.pages,
+        [newId]: newPage,
+      },
+    }));
+
+    return newId;
   }
 
   let newId = "";

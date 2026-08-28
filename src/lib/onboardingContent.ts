@@ -6,10 +6,58 @@ import { formatShortcut } from "@/lib/utils";
 const WELCOME_IMAGE =
   "https://goose-notion-1257312034.cos.ap-guangzhou.myqcloud.com/welcome-cover.png";
 
+function formatKey(part: string, isMac: boolean): string {
+  const p = part.trim().toLowerCase();
+  if (
+    p === "mod" ||
+    p === "cmdorctrl" ||
+    p === "cmdorcontrol" ||
+    p === "commandorcontrol" ||
+    p === "command" ||
+    p === "meta"
+  ) {
+    return isMac ? "⌘" : "Ctrl";
+  }
+  if (p === "ctrl" || p === "control") return isMac ? "⌃" : "Ctrl";
+  if (p === "alt" || p === "option") return isMac ? "⌥" : "Alt";
+  if (p === "shift") return isMac ? "⇧" : "Shift";
+  if (p === "plus") return "+";
+  if (p === "enter") return isMac ? "↵" : "Enter";
+  if (p === "backspace") return isMac ? "⌫" : "Backspace";
+  if (p === "tab") return isMac ? "⇥" : "Tab";
+  if (p === "esc" || p === "escape") return isMac ? "⎋" : "Esc";
+  if (p === "up") return "↑";
+  if (p === "down") return "↓";
+  if (p === "left") return "←";
+  if (p === "right") return "→";
+  return part.trim();
+}
+
+function formatSinglePlatform(shortcut: string, isMac: boolean): string {
+  return shortcut
+    .split("+")
+    .map((part) => formatKey(part, isMac))
+    .join(isMac ? "" : "+");
+}
+
+export function formatDualShortcut(shortcut: string): string {
+  const win = formatSinglePlatform(shortcut, false);
+  const mac = formatSinglePlatform(shortcut, true);
+  if (win === mac) return win;
+  return `${win}（${mac}）`;
+}
+
+export function formatDualShortcutGroup(...shortcuts: string[]): string {
+  const wins = shortcuts.map((s) => formatSinglePlatform(s, false)).join(" / ");
+  const macs = shortcuts.map((s) => formatSinglePlatform(s, true)).join(" / ");
+  if (wins === macs) return wins;
+  return `${wins}（${macs}）`;
+}
+
 const fixedShortcuts = getFixedAppShortcuts();
-const shortcutLabel = (shortcut: string) => formatShortcut(shortcut);
+const shortcutLabel = (shortcut: string) => formatDualShortcut(shortcut);
 const shortcutLabels = (...shortcuts: string[]) =>
-  shortcuts.map(shortcutLabel).join(" / ");
+  formatDualShortcutGroup(...shortcuts);
 
 type ShortcutItem = {
   shortcut: string;
@@ -54,12 +102,13 @@ const quote = (value: string): PartialBlock => ({
   content: value,
 });
 
+// SAFETY: BlockNote 内置类型未导出项目自定义 callout 的 icon prop，运行时 propSchema 接受它。
 const callout = (icon: string, value: string): PartialBlock =>
   ({
     type: "callout",
     props: { icon },
     content: value,
-  } as unknown as PartialBlock);
+  }) as unknown as PartialBlock;
 
 const codeBlock = (value: string, language?: string): PartialBlock => ({
   type: "codeBlock",
@@ -71,10 +120,7 @@ const table = (headers: string[], rows: string[][]): PartialBlock => ({
   type: "table",
   content: {
     type: "tableContent",
-    rows: [
-      { cells: headers },
-      ...rows.map((row) => ({ cells: row })),
-    ],
+    rows: [{ cells: headers }, ...rows.map((row) => ({ cells: row }))],
   },
 });
 
@@ -209,7 +255,8 @@ const shortcutSections: ShortcutSection[] = [
         action: "撤销",
       },
       {
-        shortcut: `${shortcutLabel("Mod+Shift+Z")} 或 ${shortcutLabel("Mod+Y")}`,
+        shortcut:
+          shortcutLabel("Mod+Shift+Z") + " 或 " + shortcutLabel("Mod+Y"),
         action: "重做",
       },
       {
@@ -241,12 +288,18 @@ const shortcutSections: ShortcutSection[] = [
         action: "无序列表 / 有序列表",
       },
       {
-        shortcut: ">",
+        shortcut: "|",
         action: "引用",
       },
       {
-        shortcut: "``` / $$ / tb / co / ---",
-        action: "代码块 / 数学公式 / 表格 / 标注 / 分隔线",
+        shortcut: ">",
+        action: "折叠标题 / 折叠列表",
+        note: "在标题行或空段落行首输入 > 加空格。",
+      },
+      {
+        shortcut: "``` / ---",
+        action: "代码块 / 分隔线",
+        note: "数学公式、Mermaid、表格和标注从斜杠菜单插入。",
       },
     ],
   },
@@ -269,7 +322,9 @@ function buildShortcutSection(section: ShortcutSection): PartialBlock[] {
 
 export const onboardingPageContent: BlockNoteContent = [
   heading(1, "鹅的笔记 · 新手指南"),
-  paragraph("欢迎使用鹅的笔记。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。"),
+  paragraph(
+    "欢迎使用鹅的笔记。这份文档不是功能堆砌，而是带你快速建立第一套使用习惯。",
+  ),
   paragraph("先用 3 分钟扫完，再边试边改，你会比死记快捷键更快上手。"),
   callout(
     "🪶",
@@ -301,11 +356,6 @@ export const onboardingPageContent: BlockNoteContent = [
         `按 ${shortcutLabel("Mod+N")} 或点击侧边栏加号`,
         "先输入顶栏标题，再进入正文",
       ],
-      [
-        "需要多标签时",
-        "在设置中关闭“极简工作区”",
-        "恢复标签栏及其管理快捷键",
-      ],
     ],
   ),
   heading(2, "搜索与查找"),
@@ -326,12 +376,26 @@ export const onboardingPageContent: BlockNoteContent = [
   table(
     ["块类型", "触发方式", "适合记录什么"],
     [
-      ["标题", "# / ## / ###", "搭页面结构、做章节层级"],
-      ["列表与待办", "-、1.、1。、[]、【】", "任务清单、会议纪要、步骤说明"],
-      ["引用与标注", ">、co", "摘录原话、强调重点提醒"],
-      ["代码 / 数学 / Mermaid", "```、$$、斜杠菜单", "技术笔记、公式推导、流程图"],
-      ["表格与分隔线", "tb、---", "信息对比、把内容切成清晰区块"],
-      ["图片与文件", "直接粘贴、拖入或通过菜单插入", "资料归档、截图说明、附件记录"],
+      [
+        "标题与折叠标题",
+        "# / ## / ###；折叠标题在标题行首输 > 或用斜杠菜单",
+        "搭页面结构、章节可展开收起",
+      ],
+      [
+        "列表与待办",
+        "-、1.、1。、[]、【】；> 插入折叠列表",
+        "任务清单、会议纪要、步骤说明",
+      ],
+      ["引用", "|", "摘录原话、留下出处"],
+      ["标注", "斜杠菜单「标注」", "带图标的重点提醒"],
+      ["代码 / 数学 / Mermaid", "```、斜杠菜单", "技术笔记、公式推导、流程图"],
+      ["表格", "斜杠菜单「表格」", "信息对比、把内容切成清晰区块"],
+      ["分隔线", "---", "把不同话题隔开"],
+      [
+        "图片 / 视频 / 文件",
+        "直接粘贴、拖入或通过菜单插入",
+        "截图说明、视频收藏、附件归档",
+      ],
     ],
   ),
   heading(2, "自动保存说明"),
@@ -346,10 +410,16 @@ export const onboardingPageContent: BlockNoteContent = [
   ]),
   heading(2, "常见上手建议"),
   ...taskList([
-    { checked: true, text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。" },
+    {
+      checked: true,
+      text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。",
+    },
     { checked: false, text: "给常用页面加收藏或置顶，减少每天来回翻找。" },
     { checked: false, text: "把搜索面板退出键改成顺手的组合。" },
-    { checked: false, text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。" },
+    {
+      checked: false,
+      text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。",
+    },
   ]),
   heading(2, "示例区块"),
   paragraph("下面这些示例块可以直接改，边改边熟悉编辑体验。"),
@@ -369,6 +439,7 @@ export const onboardingPageContent: BlockNoteContent = [
       ["收藏 / 置顶", "页面头部操作区"],
       ["垃圾箱", "侧边栏底部"],
       ["导入 / 导出 / 锁定页面", "页面右上角更多操作"],
+      ["生产 HTML 与图片指南", "子页面：长图卡片生成、HTML 导出与 AI 可视化"],
     ],
   ),
 ];
@@ -381,14 +452,14 @@ export const onboardingChildPageContent: BlockNoteContent = [
     "页面树：组织父子层级、拖拽调整顺序、收藏常用页。",
     "极简工作区：始终只保留当前笔记，减少页面切换噪音。",
     "搜索：全局找页面内容，或在当前页内精准定位关键词。",
-    "编辑器：支持文本格式、表格、代码块、公式、Mermaid、图片与附件。",
+    "编辑器：支持文本格式、表格、代码块、公式、Mermaid、折叠标题、图片、视频与附件。",
     "页面操作：导入、导出、锁定页面与查看页面历史。",
     "垃圾箱：删除后先暂存，避免误删直接丢失。",
   ]),
   heading(2, "最值得立刻记住的习惯"),
   ...orderedList([
     "输入 / 打开指令菜单，比到处找按钮快很多。",
-    "需要切换页面时优先用搜索；只有确实需要并排处理时再关闭极简工作区。",
+    "需要切换页面时优先用搜索或侧边栏，当前笔记会被直接替换。",
     `需要找一句话时先用 ${shortcutLabel("Mod+F")}，别把全局搜索当页内查找用。`,
     "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
   ]),
@@ -420,4 +491,97 @@ export const onboardingSecondChildContent: BlockNoteContent = [
     `如果你正在编辑本地文件页面，${shortcutLabel("Mod+S")} 更像“现在就立即落盘”。`,
     "真正值得优先记住的，是搜索、查找、标签切换和格式化这几组高频操作。",
   ]),
+];
+
+export const onboardingThirdChildContent: BlockNoteContent = [
+  heading(1, "生产 HTML 与图片指南"),
+  paragraph(
+    "鹅的笔记不仅是本地知识库，更是强大的内容生产与分享工具。你可以一键生成精美长图/选区卡片、导出单文件离线 HTML 网页，或借助 AI 创作可交互的 HTML 小组件。",
+  ),
+  callout(
+    "🎨",
+    "核心优势：无需复杂排版，随时将笔记内容生成高颜值长图、社交分享卡片或独立单文件 HTML 网页，随处分发或永久归档。",
+  ),
+  heading(2, "1. 生成精美图片卡片（长图 & 选区卡片）"),
+  paragraph(
+    "适合将读书笔记、会议结论、技术要点或代码片段快速制作成高颜值长图或分享卡片。",
+  ),
+  table(
+    ["模式", "触发方式", "推荐场景"],
+    [
+      [
+        "整页长图",
+        "点击页面右上角「···」菜单 →「生成图片」",
+        "长文分享、复盘总结、读书笔记完整输出",
+      ],
+      [
+        "选区卡片",
+        "选中一段文字/代码/表格 → 右上角「···」或右键 →「生成选中图片」",
+        "金句卡片、代码片段、重点结论、备忘清单",
+      ],
+    ],
+  ),
+  ...bulletList([
+    "丰富主题配色：内置极简现代、多彩艺术、深色科技等多种精选视觉主题，点击即可实时预览。",
+    "个性化水印：支持在图片底部添加自定义作者昵称或来源署名，也可一键关闭保持极简。",
+    "高画质矢量渲染：Mermaid 流程图、KaTeX 数学公式、代码高亮与表格均保持超清画质导出。",
+    "快捷分发：支持一键「复制图片」直接粘贴到聊天工具，或「保存图片」下载到本地。",
+  ]),
+  heading(2, "2. 生产与导出独立 HTML 网页"),
+  paragraph(
+    "一键将笔记导出为完全独立的单文件 HTML 网页，脱离编辑器也能在任意设备上完美呈现。",
+  ),
+  ...bulletList([
+    "单文件离线可用：所有样式、排版与字体配置全部内嵌，无需服务器或外部依赖，双击即可在浏览器中打开。",
+    "跨设备随处浏览：在手机、平板、电脑的任意浏览器中打开，保持像素级一致的阅读与排版美感。",
+    "完整交互全支持：折叠标题（支持点击展开/收起）、任务清单、多级列表、代码高亮和数学公式均原汁原味呈现。",
+    "导出路径：点击页面右上角「···」菜单 →「导出」→ 选择「HTML」，选择保存路径即可完成。",
+  ]),
+  heading(2, "3. AI 生产交互式 HTML 小组件与数据可视化"),
+  paragraph(
+    "在与内置 AI 助手对话时，AI 可直接为你编写并在聊天区实时渲染交互式 HTML 部件与数据可视化。",
+  ),
+  ...bulletList([
+    "交互式 HTML 部件（```html）：AI 输出的 HTML 代码直接在独立沙箱 iframe 中安全运行，支持动态交互与动画。",
+    "智能主题自适应：自动遵循当前笔记的浅色/深色主题与设计规范，呈现专业级 UI 质感。",
+    "小组件专属工具栏：支持「全屏预览」（在独立浏览器标签中查看）、「另存为 HTML」（保存为本地单文件）、「一键截图」（转为 PNG 下载）和「复制代码」。",
+    "ECharts 与 SVG 数据图表：支持将复杂数据一键生成为专业统计图表（柱状/折线/饼图/雷达图）或 SVG 架构图。",
+  ]),
+  heading(2, "4. 更多专业导出格式"),
+  table(
+    ["导出格式", "操作入口", "适用场景"],
+    [
+      [
+        "PDF 导出",
+        "右上角「···」→ 导出 → PDF",
+        "正式报告、学术资料、打印与长久归档",
+      ],
+      [
+        "Markdown 导出",
+        "右上角「···」→ 导出 → Markdown",
+        "纯文本迁移、Git 版本协同、Obsidian 联动",
+      ],
+      [
+        "JSON 结构化导出",
+        "右上角「···」→ 导出 → JSON",
+        "完整 Block 树与元数据备份、程序二次解析",
+      ],
+    ],
+  ),
+  heading(2, "5. 推荐使用技巧"),
+  ...bulletList([
+    "代码卡片分享：写完技术笔记后，单选代码块直接生成卡片，在群聊中分享代码清晰优雅。",
+    "架构图配图：用 Mermaid 绘制时序图或架构图，导出图片直接插入 PPT 或设计稿中。",
+    "静态知识库：结合本地文件夹模式与 HTML 导出功能，轻松搭建属于自己的本地静态 Wiki。",
+  ]),
+  heading(2, "示例效果体验"),
+  quote("工欲善其事，必先利其器。将想法高效转化为视觉与成果。"),
+  codeBlock(
+    "flowchart LR\n  A[💡 灵感笔记] --> B{生产形式}\n  B -->|长图/卡片| C[🎨 高清图片]\n  B -->|独立网页| D[🌐 单文件 HTML]\n  B -->|专业归档| E[📄 PDF / Markdown]",
+    "mermaid",
+  ),
+  callout(
+    "💡",
+    "提示：选中文档中任意段落或上面的流程图，试试右上角的「生成选中图片」吧！",
+  ),
 ];
