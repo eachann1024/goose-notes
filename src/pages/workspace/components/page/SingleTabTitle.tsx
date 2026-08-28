@@ -212,7 +212,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       title="点击编辑笔记标题"
       spellCheck={false}
       autoComplete="off"
-      className="h-8 min-w-0 flex-1 rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:ring-2 focus:ring-primary/15"
+      className="h-8 min-w-0 flex-1 rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]"
     />
   );
 }

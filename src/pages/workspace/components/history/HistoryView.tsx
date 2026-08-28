@@ -424,7 +424,7 @@ export function HistoryVersionList() {
                           "history-version-item group relative flex items-center rounded-[10px] transition-colors duration-150",
                           isSelected
                             ? "bg-[var(--goose-interactive-selected)]"
-                            : "hover:bg-[var(--goose-interactive-hover)]",
+                            : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
                         )}
                       >
                         {/* 绝对定位轨道：覆盖整行高度（含 padding），相邻项首尾相接不断线 */}
@@ -464,7 +464,7 @@ export function HistoryVersionList() {
                               "min-w-0 text-xs leading-snug",
                               isSelected
                                 ? "font-medium text-[var(--goose-interactive-selected-fg)]"
-                                : "text-foreground",
+                                : "text-foreground group-hover:text-[var(--goose-interactive-selected-fg)]",
                             )}
                           >
                             <span className="tabular-nums">
@@ -476,7 +476,7 @@ export function HistoryVersionList() {
                                   "ml-1.5 font-normal",
                                   isSelected
                                     ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
-                                    : "text-muted-foreground",
+                                    : "text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]",
                                 )}
                               >
                                 {v.label}
@@ -488,7 +488,7 @@ export function HistoryVersionList() {
                                   "ml-1.5 text-[10px] tabular-nums",
                                   isSelected
                                     ? "text-[var(--goose-interactive-selected-fg)] opacity-55"
-                                    : "text-muted-foreground/55",
+                                    : "text-muted-foreground/55 group-hover:text-[var(--goose-interactive-selected-fg)]",
                                 )}
                               >
                                 {deltaText}

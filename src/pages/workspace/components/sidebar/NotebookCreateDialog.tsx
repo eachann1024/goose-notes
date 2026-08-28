@@ -64,7 +64,7 @@ export function NotebookCreateDialog({
                 >
                   <Button
                     variant="outline"
-                    className="inline-flex h-24 w-24 items-center justify-center p-0 rounded-[20px] bg-[hsl(var(--goose-selected-bg)/0.6)] hover:bg-[var(--goose-interactive-hover)] transition-all duration-200 [&>span]:flex [&>span]:items-center [&>span]:justify-center"
+                    className="inline-flex h-24 w-24 items-center justify-center p-0 rounded-[20px] bg-[hsl(var(--goose-selected-bg)/0.6)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] transition-all duration-200 [&>span]:flex [&>span]:items-center [&>span]:justify-center"
                   >
                     {renderNotebookIcon(icon, "!h-14 !w-14 stroke-[1.4] text-[3.25rem]")}
                   </Button>

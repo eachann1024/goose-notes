@@ -195,6 +195,7 @@ export function LocalFileTitle({
       >
         <input
           ref={inputRef}
+          className="focus:text-[var(--goose-interactive-selected-fg)] caret-[var(--goose-interactive-selected-fg)]"
           value={editValue}
           {...imeInputProps}
           onKeyDown={handleKeyDown}
@@ -220,7 +221,6 @@ export function LocalFileTitle({
             outline: "none",
             padding: 0,
             margin: 0,
-            color: "inherit",
             fontFamily: "inherit",
             // Block-level input, matching the h1 display
             display: "block",

@@ -58,7 +58,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         <button
           type="button"
           disabled={disabled}
-          className="flex h-7 max-w-[min(12.5rem,32%)] shrink-0 items-center gap-0.5 rounded-[7px] px-1 text-[11px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 max-w-[12.5rem] shrink-0 items-center gap-0.5 rounded-[7px] px-1 text-[11px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)] disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="切换模型"
           title={`当前模型：${effectiveModel?.id ?? effectiveModelId}`}
         >
@@ -91,11 +91,11 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
                 key={option.id}
                 type="button"
                 onClick={() => selectModel(option.id)}
-                className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
+                className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                 aria-current={isActive ? "true" : undefined}
                 title={option.id}
               >
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                <span className="min-w-0 flex-1 truncate text-sm">
                   {option.label}
                 </span>
                 {isDefault ? (
@@ -105,7 +105,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
                 ) : null}
                 {isActive ? (
                   <Check
-                    className="h-3.5 w-3.5 shrink-0 text-foreground"
+                    className="h-3.5 w-3.5 shrink-0 text-[var(--goose-interactive-selected-fg)]"
                     strokeWidth={2}
                   />
                 ) : null}

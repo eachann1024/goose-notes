@@ -331,7 +331,7 @@ export function NotebookAiPanel({
   // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
     const iconBtn =
-      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground";
+      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]";
     return (
       <div
         className="flex items-center gap-0.5"

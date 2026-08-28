@@ -258,7 +258,7 @@ export function PageMenu() {
             <div
               role="button"
               tabIndex={0}
-              className="grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               onClick={() =>
                 updatePage(activePageId, { isLocked: !page.isLocked })
               }
@@ -269,7 +269,7 @@ export function PageMenu() {
                 }
               }}
             >
-              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]" />
               <span className="min-w-0 truncate">锁定页面</span>
               <Switch
                 aria-label="锁定页面"
@@ -286,10 +286,10 @@ export function PageMenu() {
           {!isLocalItem && (
             <DropdownMenuGroup>
               <DropdownMenuItem
-                className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
+                className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
                 onSelect={handleImport}
               >
-                <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                 <span className="min-w-0 truncate">导入</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -312,8 +312,8 @@ export function PageMenu() {
           {/* Export submenu */}
           <DropdownMenuGroup>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-2 text-xs">
-                <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground" />
+              <DropdownMenuSubTrigger className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-2 text-xs">
+                <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]" />
                 <span className="min-w-0 truncate">导出</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
@@ -329,40 +329,40 @@ export function PageMenu() {
                 }}
               >
                 <DropdownMenuItem
-                  className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() => runExport("JSON", () => exportToJSON(page))}
                 >
-                  <LucideIcons.FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+                  <LucideIcons.FileJson className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                   <span className="min-w-0 truncate">JSON</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() =>
                     runExport("Markdown", () => exportToMarkdown(page))
                   }
                 >
-                  <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground" />
+                  <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                   <span className="min-w-0 truncate">Markdown</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() => runExport("HTML", () => exportToHTML(page))}
                 >
-                  <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground" />
+                  <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                   <span className="min-w-0 truncate">HTML</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() => runExport("PDF", () => exportToPDF(page))}
                 >
-                  <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                   <span className="min-w-0 truncate">PDF</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
             <DropdownMenuItem
-              className="grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
+              className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
               disabled={page?.isFolder}
               onSelect={() => {
                 const pid = activePageId;
@@ -377,7 +377,7 @@ export function PageMenu() {
                 }, 80);
               }}
             >
-              <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground" />
+              <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
               <span className="min-w-0 truncate">页面历史</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>

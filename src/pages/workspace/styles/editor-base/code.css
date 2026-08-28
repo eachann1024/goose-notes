@@ -172,8 +172,8 @@
 
 .goose-code-toolbar-actions button:hover,
 .goose-code-toolbar-actions .goose-code-lang-trigger:hover {
-  background: hsl(var(--muted) / 0.5) !important;
-  color: hsl(var(--foreground)) !important;
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions-visual {
@@ -188,7 +188,7 @@
 
 .goose-code-toolbar-actions-visual button:hover {
   background: var(--goose-interactive-hover) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions-visual .goose-code-display-toggle {
@@ -206,7 +206,7 @@
 
 .goose-code-toolbar-actions-visual button.goose-code-action-active {
   background: var(--goose-interactive-selected) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions button:disabled {

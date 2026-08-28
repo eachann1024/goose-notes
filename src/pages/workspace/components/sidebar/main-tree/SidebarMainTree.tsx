@@ -407,7 +407,7 @@ export function SidebarMainTree({
         <button
           type="button"
           onClick={retryLocalFolderLoad}
-          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:ring-2 focus-visible:ring-ring"
         >
           重新加载
         </button>

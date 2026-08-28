@@ -423,7 +423,7 @@ export function ArtifactPanZoom({
                 type="button"
                 tone="muted"
                 size="sm"
-                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-control-hover-bg)] dark:hover:bg-[var(--goose-control-hover-bg)]"
+                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
                 aria-label="缩小"
                 disabled={atMinZoom}
                 onClick={() => zoomByStep(-1)}
@@ -444,7 +444,7 @@ export function ArtifactPanZoom({
                 type="button"
                 tone="muted"
                 size="sm"
-                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-control-hover-bg)] dark:hover:bg-[var(--goose-control-hover-bg)]"
+                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
                 aria-label="放大"
                 disabled={atMaxZoom}
                 onClick={() => zoomByStep(1)}
@@ -461,7 +461,7 @@ export function ArtifactPanZoom({
                 type="button"
                 tone="muted"
                 size="sm"
-                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-control-hover-bg)] dark:hover:bg-[var(--goose-control-hover-bg)]"
+                className="pointer-events-auto cursor-pointer hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
                 aria-label="适配窗口"
                 disabled={atFitZoom}
                 onClick={() => fitToViewport()}

@@ -539,7 +539,7 @@ export function SettingsAppearance({
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 displayedCodeStyle === t.value
                   ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
             >
               <LucideIcons.Code2 className="h-5 w-5 shrink-0" />

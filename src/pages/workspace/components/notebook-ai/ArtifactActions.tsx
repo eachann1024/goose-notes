@@ -92,7 +92,7 @@ async function copyImagePayload(payload: string | Blob) {
 }
 
 const iconBtnClass =
-  "h-7 w-7 cursor-pointer rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]";
+  "h-7 w-7 cursor-pointer rounded-[7px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]";
 
 export function ArtifactActions({
   copySource,
@@ -284,7 +284,7 @@ export function ArtifactActions({
             type="button"
             variant="ghost"
             size="sm"
-            className="notebook-ai-canvas-card-download h-7 gap-1 rounded-[7px] px-2 text-xs text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground"
+            className="notebook-ai-canvas-card-download h-7 gap-1 rounded-[7px] px-2 text-xs text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
             aria-label="下载图片"
             disabled={downloadingImage}
             onClick={() => {
@@ -317,7 +317,7 @@ export function ArtifactActions({
             type="button"
             variant="ghost"
             size="sm"
-            className="notebook-ai-canvas-card-download h-7 gap-1 rounded-[7px] px-2 text-xs text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground"
+            className="notebook-ai-canvas-card-download h-7 gap-1 rounded-[7px] px-2 text-xs text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
             aria-label="下载"
             onClick={() =>
               void downloadText(downloadSource!, filename, mimeType)

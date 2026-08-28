@@ -489,7 +489,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-accent hover:text-accent-foreground",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                 isTextColorActive && currentTextColor === item.color
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                   : "",
@@ -531,7 +531,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-accent/40",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                 isBgColorActive && currentBgColor === item.color
                   ? "border-primary ring-1 ring-primary/25"
                   : "",

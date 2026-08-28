@@ -90,7 +90,7 @@
 }
 
 .goose-ai-prompt-field:hover {
-  background: rgba(241, 240, 237, 0.75);
+  background: var(--goose-interactive-hover);
 }
 
 .goose-ai-prompt-field:focus-within {
@@ -108,7 +108,7 @@
 
 .dark .goose-ai-prompt-field:hover,
 .bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:hover {
-  background: rgba(42, 42, 40, 0.75);
+  background: var(--goose-interactive-hover);
 }
 
 .dark .goose-ai-prompt-field:focus-within,
@@ -721,18 +721,18 @@
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover {
-  background: #f1f0ed !important;
-  color: #2e2e2e;
-  --menu-item-color: #2e2e2e;
-  --bn-colors-menu-text: #2e2e2e;
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg);
+  --menu-item-color: var(--goose-interactive-selected-fg);
+  --bn-colors-menu-text: var(--goose-interactive-selected-fg);
 }
 
 .dark .bn-mantine .bn-suggestion-menu-item:hover,
 .bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item:hover {
-  background: #2a2a28 !important;
-  color: #e6e6e6;
-  --menu-item-color: #e6e6e6;
-  --bn-colors-menu-text: #e6e6e6;
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg);
+  --menu-item-color: var(--goose-interactive-selected-fg);
+  --bn-colors-menu-text: var(--goose-interactive-selected-fg);
 }
 
 /* 键盘选中项与全局列表选中态同级：鸢尾靛蓝浅底 + 强调文字 */
@@ -776,7 +776,7 @@
 .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: #2e2e2e;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .dark
@@ -787,7 +787,7 @@
   .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: #e6e6e6;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .bn-mantine
@@ -847,7 +847,7 @@
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-title {
-  color: #2e2e2e;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .dark
@@ -858,7 +858,7 @@
   .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-title {
-  color: #e6e6e6;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .bn-mantine
@@ -921,8 +921,8 @@
 }
 
 .goose-ai-tag:hover {
-  background: #f1f0ed;
-  color: #2e2e2e;
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-ai-tag:focus-visible {
@@ -938,8 +938,8 @@
 
 .dark .goose-ai-tag:hover,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag:hover {
-  background: #2a2a28;
-  color: #e6e6e6;
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 /* ➕：圆形虚线，与普通 tag 区分 */
@@ -956,8 +956,8 @@
 }
 
 .goose-ai-tag--plus:hover {
-  color: #4f46e5;
-  border-color: #6366f1;
+  color: var(--goose-interactive-selected-fg);
+  border-color: var(--goose-interactive-selected-fg);
   background: transparent;
 }
 
@@ -968,8 +968,8 @@
 
 .dark .goose-ai-tag--plus:hover,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag--plus:hover {
-  color: #a5b4fc;
-  border-color: #6366f1;
+  color: var(--goose-interactive-selected-fg);
+  border-color: var(--goose-interactive-selected-fg);
   background: transparent;
 }
 

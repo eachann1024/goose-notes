@@ -215,7 +215,7 @@ export function EditorFormattingToolbar() {
             className={cn(
               "goose-formatting-toolbar-control",
               canUseAISelection
-                ? "hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                ? "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 : "cursor-not-allowed text-muted-foreground/55",
             )}
             onClick={() => {

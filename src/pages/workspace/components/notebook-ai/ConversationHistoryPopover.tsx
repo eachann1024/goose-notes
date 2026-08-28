@@ -278,14 +278,14 @@ export function ConversationHistoryList({
                 }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
-                className="group flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--goose-interactive-hover)]"
+                className="group flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-[8px] px-2.5 py-2 text-left text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                 aria-current={isActive ? "true" : undefined}
               >
                 <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="block w-full truncate text-sm text-foreground">
+                  <div className="block w-full truncate text-sm">
                     {summary}
                   </div>
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]">
                     <Clock3 className="h-3 w-3 shrink-0" strokeWidth={1.75} />
                     <span className="truncate">
                       {formatConversationTime(conversation.updatedAt)}
@@ -293,7 +293,7 @@ export function ConversationHistoryList({
                   </div>
                 </div>
                 {isActive ? (
-                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground">
+                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-foreground group-hover:text-[var(--goose-interactive-selected-fg)]">
                     <Check className="h-3 w-3" strokeWidth={2} />
                     当前
                   </span>
@@ -353,7 +353,7 @@ export function ConversationHistoryPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground"
+          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           aria-label="历史会话"
           title="历史会话"
           disabled={disabled}

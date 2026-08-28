@@ -44,7 +44,7 @@ function GuardedNotebookAiPanel(props: ComponentProps<typeof NotebookAiPanel>) {
           <button
             type="button"
             onClick={reset}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-[var(--goose-interactive-hover)]"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
           >
             重试
           </button>
@@ -597,7 +597,7 @@ function NotebookAiWorkspaceBody({
                                   <button
                                     type="button"
                                     onClick={reset}
-                                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-[var(--goose-interactive-hover)]"
+                                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                                   >
                                     重试
                                   </button>

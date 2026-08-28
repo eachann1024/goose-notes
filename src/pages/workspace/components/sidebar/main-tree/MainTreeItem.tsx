@@ -496,7 +496,7 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
   return (
     <span
       {...arrowProps}
-      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
       aria-hidden="true"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {

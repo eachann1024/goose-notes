@@ -139,6 +139,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 
 .workspace-shell .history-version-item[data-selected="false"]:hover {
+  color: var(--goose-interactive-selected-fg) !important;
   background-color: var(--goose-interactive-hover) !important;
 }
 
@@ -220,7 +221,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 
 .workspace-shell .history-star-control:hover svg {
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .workspace-shell .history-star-control[data-marked="true"] svg {

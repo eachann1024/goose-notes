@@ -70,7 +70,7 @@ function SortableNotebookItem({
         // 选中行 hover 不要被 interactive-hover 盖掉，否则图标底又会糊进行底
         isActive
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]"
-          : "hover:bg-[var(--goose-interactive-hover)]",
+          : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
         isDragging && "opacity-60 cursor-grabbing z-10",
         !isDragging && "cursor-pointer",
       )}
@@ -144,7 +144,7 @@ function SortableNotebookItem({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-white/14 group-hover:opacity-100 group-hover:pointer-events-auto"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
                 aria-label="编辑记事本"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -379,7 +379,7 @@ export function NotebookSwitcher() {
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
+                "w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
                 isOpen && "bg-[var(--goose-interactive-hover)]",
               )}
             >

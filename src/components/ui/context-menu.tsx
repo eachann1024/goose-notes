@@ -73,7 +73,7 @@ const ContextMenuSubTrigger = React.forwardRef<
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default select-none items-center rounded-[10px] px-2 py-1.5 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-foreground data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-foreground data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-foreground",
+      "flex cursor-default select-none items-center rounded-[10px] px-2 py-1.5 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-[var(--goose-interactive-selected-fg)] data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
       inset && "pl-8",
       className,
     )}
@@ -170,7 +170,7 @@ const ContextMenuItem = React.forwardRef<
   <ContextMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-[10px] px-1.5 py-1.5 text-[13px] outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-foreground data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center gap-2 rounded-[10px] px-1.5 py-1.5 text-[13px] outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-[var(--goose-interactive-selected-fg)] data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-[var(--goose-interactive-selected-fg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className,
     )}
@@ -186,7 +186,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-foreground data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-[var(--goose-interactive-selected-fg)] data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-[var(--goose-interactive-selected-fg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     checked={checked}
@@ -210,7 +210,7 @@ const ContextMenuRadioItem = React.forwardRef<
   <ContextMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-foreground data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--goose-interactive-selected)] focus:text-[var(--goose-interactive-selected-fg)] data-[highlighted]:bg-[var(--goose-interactive-selected)] data-[highlighted]:text-[var(--goose-interactive-selected-fg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}

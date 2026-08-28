@@ -115,7 +115,7 @@ function SortableTabItem({
             isDragging && "opacity-60",
             isActive
               ? "min-w-24 bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
           )}
         >
           {tab.pinned && (
@@ -155,8 +155,8 @@ function SortableTabItem({
                     // 标签窄于 64px 时不再 hover 出关闭按钮，避免挤掉标题、误点关闭
                     "hidden h-5 w-5 shrink-0 rounded-[6px] p-0 transition-colors @[64px]:group-hover:flex",
                     isActive
-                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
-                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
                   )}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {

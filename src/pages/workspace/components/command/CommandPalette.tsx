@@ -401,7 +401,7 @@ export function CommandPalette() {
               // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
               searchAllNotebooks
                 ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-[var(--goose-interactive-hover)]"
+                : "text-muted-foreground/60 hover:text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)]"
             }`}
           >
             {searchAllNotebooks ? "所有记事本" : currentNotebookName}

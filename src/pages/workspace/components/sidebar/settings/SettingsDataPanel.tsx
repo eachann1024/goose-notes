@@ -46,7 +46,7 @@ const DATA_BADGE_CLASS =
   "rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75 dark:bg-[hsl(var(--foreground)/0.1)]";
 
 const DATA_UNSELECTED_CARD_CLASS =
-  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]";
+  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -404,7 +404,7 @@ export function SettingsDataPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onSelectAll}
-                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                   >
                     {selectedCount === totalCount ? "取消全选" : "全选"}
                   </Button>
@@ -654,7 +654,7 @@ export function SettingsDataPanel({
                   size="sm"
                   disabled={busy || !hasSavedConfig}
                   onClick={fetchRemoteList}
-                  className="h-8 rounded-[10px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)]"
+                  className="h-8 rounded-[10px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", remoteLoading && "animate-spin")} />
                 </Button>
@@ -735,7 +735,7 @@ export function SettingsDataPanel({
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowAllRemote((prev) => !prev)}
-                          className="text-xs hover:bg-[var(--goose-interactive-hover)]"
+                          className="text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                         >
                           {showAllRemote ? "收起备份" : `展开全部远端备份 (还有 ${remoteFiles.length - 3} 个)`}
                         </Button>

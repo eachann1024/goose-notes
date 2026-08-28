@@ -55,7 +55,7 @@
 }
 
 .goose-file-block-icon-btn:hover {
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-file-block-name {
@@ -122,7 +122,7 @@
 
 .goose-file-block-action-btn:hover {
   background-color: var(--goose-interactive-hover);
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
 /* ===== 媒体/文件空状态（替代 BlockNote bn-add-file-button） ===== */

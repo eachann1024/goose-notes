@@ -103,7 +103,7 @@ export function FindInPageBar({
           type="button"
           title={caseSensitive ? "区分大小写：开" : "区分大小写：关"}
           className={cn(
-            "inline-flex h-6 min-w-6 items-center justify-center rounded px-1 text-xs hover:bg-[var(--goose-icon-chip-on-selected)]",
+            "inline-flex h-6 min-w-6 items-center justify-center rounded px-1 text-xs hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
             caseSensitive &&
               "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
           )}
@@ -114,7 +114,7 @@ export function FindInPageBar({
         <button
           type="button"
           title={`上一个（${formatShortcut("Shift+Enter")}）`}
-          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] disabled:opacity-50"
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-50"
           disabled={total === 0}
           onClick={() => handleStep(-1)}
         >
@@ -123,7 +123,7 @@ export function FindInPageBar({
         <button
           type="button"
           title={`下一个（${formatShortcut("Enter")}）`}
-          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] disabled:opacity-50"
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-50"
           disabled={total === 0}
           onClick={() => handleStep(1)}
         >
@@ -132,7 +132,7 @@ export function FindInPageBar({
         <button
           type="button"
           title={`关闭（${formatShortcut("Esc")}）`}
-          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)]"
+          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
           onClick={onClose}
         >
           <LucideIcons.X className="h-3.5 w-3.5" />
