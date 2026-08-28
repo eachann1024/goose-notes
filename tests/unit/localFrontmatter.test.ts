@@ -12,10 +12,15 @@ test.describe("local-frontmatter", () => {
   test("无 frontmatter 时 settings 为默认", () => {
     const parsed = parseLocalFrontmatterBlob(undefined);
     expect(parsed.ok).toBe(true);
-    expect(parsed.settings).toEqual({ fontFamily: "default", isLocked: false });
+    expect(parsed.settings).toEqual({
+      fontFamily: "default",
+      isLocked: false,
+      isPinned: false,
+      isFavorite: false,
+    });
   });
 
-  test("解析 goose-font / goose-locked 并保留未知键", () => {
+  test("解析 goose-font / goose-locked / goose-pinned / goose-favorite 并保留未知键", () => {
     const blob = [
       "---",
       "title: 周会",
@@ -23,11 +28,18 @@ test.describe("local-frontmatter", () => {
       "  - meeting",
       `${GOOSE_FONT_KEY}: serif`,
       `${GOOSE_LOCKED_KEY}: true`,
+      "goose-pinned: true",
+      "goose-favorite: true",
       "---",
     ].join("\n");
     const parsed = parseLocalFrontmatterBlob(blob);
     expect(parsed.ok).toBe(true);
-    expect(parsed.settings).toEqual({ fontFamily: "serif", isLocked: true });
+    expect(parsed.settings).toEqual({
+      fontFamily: "serif",
+      isLocked: true,
+      isPinned: true,
+      isFavorite: true,
+    });
     expect(parsed.data.title).toBe("周会");
     expect(parsed.data.tags).toEqual(["meeting"]);
   });
@@ -43,13 +55,20 @@ test.describe("local-frontmatter", () => {
     const blob = "---\n: [oops\n---";
     const parsed = parseLocalFrontmatterBlob(blob);
     expect(parsed.ok).toBe(false);
-    expect(parsed.settings).toEqual({ fontFamily: "default", isLocked: false });
+    expect(parsed.settings).toEqual({
+      fontFamily: "default",
+      isLocked: false,
+      isPinned: false,
+      isFavorite: false,
+    });
   });
 
   test("merge：默认值省略且不创建空 frontmatter", () => {
     const result = mergeLocalPageSettingsIntoFrontmatter(undefined, {
       fontFamily: "default",
       isLocked: false,
+      isPinned: false,
+      isFavorite: false,
     });
     expect(result.parseFailed).toBe(false);
     expect(result.blob).toBeUndefined();
@@ -59,10 +78,14 @@ test.describe("local-frontmatter", () => {
     const result = mergeLocalPageSettingsIntoFrontmatter(undefined, {
       fontFamily: "mono",
       isLocked: true,
+      isPinned: true,
+      isFavorite: true,
     });
     expect(result.parseFailed).toBe(false);
     expect(result.blob).toContain("goose-font: mono");
     expect(result.blob).toContain("goose-locked: true");
+    expect(result.blob).toContain("goose-pinned: true");
+    expect(result.blob).toContain("goose-favorite: true");
     expect(result.blob?.startsWith("---")).toBe(true);
   });
 
@@ -72,16 +95,22 @@ test.describe("local-frontmatter", () => {
       "title: keep-me",
       "goose-font: serif",
       "goose-locked: true",
+      "goose-pinned: true",
+      "goose-favorite: true",
       "---",
     ].join("\n");
     const result = mergeLocalPageSettingsIntoFrontmatter(existing, {
       fontFamily: "default",
       isLocked: false,
+      isPinned: false,
+      isFavorite: false,
     });
     expect(result.parseFailed).toBe(false);
     expect(result.blob).toContain("title: keep-me");
     expect(result.blob).not.toContain("goose-font");
     expect(result.blob).not.toContain("goose-locked");
+    expect(result.blob).not.toContain("goose-pinned");
+    expect(result.blob).not.toContain("goose-favorite");
   });
 
   test("merge：坏 YAML 原样保留", () => {
@@ -89,6 +118,8 @@ test.describe("local-frontmatter", () => {
     const result = mergeLocalPageSettingsIntoFrontmatter(existing, {
       fontFamily: "serif",
       isLocked: true,
+      isPinned: false,
+      isFavorite: false,
     });
     expect(result.parseFailed).toBe(true);
     expect(result.blob).toBe(existing);
@@ -98,6 +129,7 @@ test.describe("local-frontmatter", () => {
     const md = [
       "---",
       "goose-font: serif",
+      "goose-pinned: true",
       "---",
       "",
       "# hello",
@@ -105,6 +137,8 @@ test.describe("local-frontmatter", () => {
     expect(pageSettingsFromMarkdown(md)).toEqual({
       fontFamily: "serif",
       isLocked: false,
+      isPinned: true,
+      isFavorite: false,
     });
   });
 
@@ -113,8 +147,9 @@ test.describe("local-frontmatter", () => {
       true,
     );
     expect(isLocalPageFrontmatterSettingsUpdate({ isLocked: true })).toBe(true);
+    expect(isLocalPageFrontmatterSettingsUpdate({ isPinned: true })).toBe(true);
     expect(isLocalPageFrontmatterSettingsUpdate({ isFavorite: true })).toBe(
-      false,
+      true,
     );
     expect(isLocalPageFrontmatterSettingsUpdate({ content: [] as any })).toBe(
       false,

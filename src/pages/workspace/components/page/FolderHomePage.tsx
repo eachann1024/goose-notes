@@ -6,7 +6,7 @@
  *
  * 边界态：
  * - 空文件夹：居中空态 + 前置创建入口，不渲染空列表框；
- * - 子项很多：列表固定约 8 行高度内部滚动，标题旁显示总数徽章；
+ * - 子项很多：列表撑满主区剩余高度，超出后内部滚动，标题旁显示总数徽章；
  * - 超长文件名：truncate 截断，与侧栏树行一致。
  */
 import { useMemo, useState } from "react";
@@ -27,7 +27,6 @@ import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
-import { cn } from "@/lib/utils";
 
 interface FolderHomePageProps {
   page: Page;
@@ -122,10 +121,10 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
   const count = children.length;
 
   return (
-    <div className="h-full overflow-y-auto bg-[hsl(var(--goose-editor-bg))]">
-      <div className="mx-auto w-full max-w-3xl px-8 py-8 md:px-12 md:py-10">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-8 py-8 md:px-12 md:py-10">
         {/* 头部 */}
-        <div className="mb-6 flex items-center gap-3.5">
+        <div className="mb-6 flex shrink-0 items-center gap-3.5">
           <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[13px] bg-[hsl(var(--goose-selected-bg))] text-muted-foreground">
             <FolderOpen className="h-6 w-6" />
           </span>
@@ -140,7 +139,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
         </div>
 
         {/* 内容标题行 + 创建入口 */}
-        <div className="mb-2.5 flex items-center gap-2.5">
+        <div className="mb-2.5 flex shrink-0 items-center gap-2.5">
           <h2 className="text-[13px] font-semibold text-muted-foreground">
             内容
             <span className="ml-1.5 rounded-full bg-[hsl(var(--goose-selected-bg))] px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
@@ -178,7 +177,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
 
         {count === 0 ? (
           /* 空文件夹：居中空态，创建入口前置 */
-          <div className="flex flex-col items-center gap-1 rounded-[11px] border border-dashed border-[#d2d2ce] bg-[#fbfbfa] px-5 pb-10 pt-11 text-center dark:border-border dark:bg-transparent">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 rounded-[11px] border border-dashed border-[#d2d2ce] bg-[#fbfbfa] px-5 pb-10 pt-11 text-center dark:border-border dark:bg-transparent">
             <span className="mb-2 flex h-[46px] w-[46px] items-center justify-center rounded-[11px] bg-[hsl(var(--goose-selected-bg))] text-muted-foreground">
               <FolderOpen className="h-5 w-5" />
             </span>
@@ -210,13 +209,8 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
             </div>
           </div>
         ) : (
-          /* 子项列表：固定约 8 行高度内部滚动，头部与创建按钮始终可见 */
-          <div
-            className={cn(
-              "overflow-hidden rounded-[11px] border border-border bg-background",
-              count > 8 && "max-h-[336px] overflow-y-auto",
-            )}
-          >
+          /* 子项列表：撑满主区剩余高度，超出后内部滚动，头部与创建按钮始终可见 */
+          <div className="folder-home-list page-scroll-container min-h-0 flex-1 overflow-y-auto rounded-[11px] border border-border bg-background">
             {children.map((child) => (
               <button
                 key={child.id}

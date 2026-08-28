@@ -114,7 +114,8 @@ export const usePages = create<PagesState>()((set, get) => ({
       isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
     const silent = options?.silent === true;
     const isLocal = isLocalFolderPage(page);
-    const isDurableContentEdit = Boolean(page) && "content" in updates && !silent;
+    const isDurableContentEdit =
+      Boolean(page) && "content" in updates && !silent;
     const recoveryEntry = isDurableContentEdit
       ? recordRecoveryEntry({
           source: isLocal ? "local-file" : "internal-page",
@@ -131,9 +132,7 @@ export const usePages = create<PagesState>()((set, get) => ({
       });
     }
     const shouldMergeFrontmatterSettings =
-      isLocal &&
-      !silent &&
-      isLocalPageFrontmatterSettingsUpdate(updates);
+      isLocal && !silent && isLocalPageFrontmatterSettingsUpdate(updates);
     // 仅改字体/锁定也要落盘；读失败页不写，避免覆盖坏文件
     const shouldQueueLocalSettingsSave =
       shouldMergeFrontmatterSettings && page?.localReadState !== "error";
@@ -177,13 +176,15 @@ export const usePages = create<PagesState>()((set, get) => ({
         updatedAt: isContentEdit ? now : page.updatedAt,
       };
 
-      // 本地页：字体/锁定 merge 进 frontmatter blob（解析失败保留原文，避免破坏手写 YAML）
+      // 本地页：字体/锁定/置顶/收藏 merge 进 frontmatter blob（解析失败保留原文，避免破坏手写 YAML）
       if (shouldMergeFrontmatterSettings) {
         const mergeResult = mergeLocalPageSettingsIntoFrontmatter(
           updatedPage.localFrontmatter,
           {
             fontFamily: updatedPage.fontFamily ?? "default",
             isLocked: Boolean(updatedPage.isLocked),
+            isPinned: Boolean(updatedPage.isPinned),
+            isFavorite: Boolean(updatedPage.isFavorite),
           },
         );
         if (!mergeResult.parseFailed) {

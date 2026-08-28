@@ -156,6 +156,8 @@ const loadLocalFolderPagesOnce = async (
           icon: p.icon,
           isPinned: p.isPinned,
           pinnedAt: p.pinnedAt,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
         });
       }
     });
@@ -185,20 +187,22 @@ const loadLocalFolderPagesOnce = async (
           (acc, page) => {
             const existing = localPageMetadataCache.get(page.id);
             if (existing) {
-              if (existing.isFavorite !== undefined) {
-                page.isFavorite = existing.isFavorite;
-              }
-              if (existing.favoriteOrder !== undefined) {
-                page.favoriteOrder = existing.favoriteOrder;
-              }
+              // icon 等非 frontmatter 属性保留
               if (existing.icon) {
                 page.icon = existing.icon;
               }
-              if (existing.isPinned !== undefined) {
-                page.isPinned = existing.isPinned;
-              }
-              if (existing.pinnedAt !== undefined) {
+              // isPinned / isFavorite 以 frontmatter 为准；若 frontmatter 标为 pinned/favorite，可沿用现有时间戳或排序
+              if (page.isPinned && existing.pinnedAt !== undefined) {
                 page.pinnedAt = existing.pinnedAt;
+              }
+              if (page.isFavorite && existing.favoriteOrder !== undefined) {
+                page.favoriteOrder = existing.favoriteOrder;
+              }
+              if (existing.createdAt !== undefined) {
+                page.createdAt = existing.createdAt;
+              }
+              if (existing.updatedAt !== undefined) {
+                page.updatedAt = existing.updatedAt;
               }
             }
 
@@ -290,9 +294,11 @@ const loadLocalFolderPagesOnce = async (
     let conflictCount = 0;
     for (const entry of listRecoveryEntries("local-file")) {
       const current = get().pages[entry.id];
-      if (!current || current.workspaceId !== notebookId || current.isFolder) continue;
+      if (!current || current.workspaceId !== notebookId || current.isFolder)
+        continue;
       if (
-        getContentSignature(current.content) === getContentSignature(entry.content)
+        getContentSignature(current.content) ===
+        getContentSignature(entry.content)
       ) {
         acknowledgeRecoveryEntry("local-file", entry.id, entry.revision);
         continue;
@@ -337,7 +343,7 @@ const loadLocalFolderPagesOnce = async (
       const { useTabs } = await import("../../../useTabs");
       useTabs.getState().reconcileTabs();
     } catch {
-      // 忽略
+      // ignore tabs reconcile error
     }
   } catch (error) {
     if (latestLocalFolderLoadRequest.get(notebookId) !== requestId) return;
@@ -365,9 +371,7 @@ export const loadLocalFolderPagesAction = (
     return Promise.resolve();
   }
 
-  const hiddenFolders = [
-    ...useSettings.getState().localFolderHiddenFolders,
-  ];
+  const hiddenFolders = [...useSettings.getState().localFolderHiddenFolders];
   const fingerprint = JSON.stringify({
     basePath,
     hiddenFolders,
@@ -457,7 +461,7 @@ export const removeSingleLocalPageAction = (
  */
 export const addSingleLocalPageAction = async (
   set: StoreSet,
-  get: StoreGet,
+  _get: StoreGet,
   notebookId: string,
   basePath: string,
   filePath: string,
@@ -531,6 +535,10 @@ export const addSingleLocalPageAction = async (
     content: parsed.content,
     isFolder: false,
     isLocked: parsed.isLocked,
+    isPinned: parsed.isPinned || undefined,
+    pinnedAt: parsed.isPinned ? (cachedMeta?.pinnedAt ?? now) : undefined,
+    isFavorite: parsed.isFavorite || undefined,
+    favoriteOrder: parsed.isFavorite ? cachedMeta?.favoriteOrder : undefined,
     fontSize: "default",
     fontFamily: parsed.fontFamily,
     localFilePath: filePath,
@@ -539,19 +547,7 @@ export const addSingleLocalPageAction = async (
     localReadError: parsed.readError,
     createdAt: now,
     updatedAt: now,
-    ...(cachedMeta?.isFavorite !== undefined && {
-      isFavorite: cachedMeta.isFavorite,
-    }),
-    ...(cachedMeta?.favoriteOrder !== undefined && {
-      favoriteOrder: cachedMeta.favoriteOrder,
-    }),
     ...(cachedMeta?.icon && { icon: cachedMeta.icon }),
-    ...(cachedMeta?.isPinned !== undefined && {
-      isPinned: cachedMeta.isPinned,
-    }),
-    ...(cachedMeta?.pinnedAt !== undefined && {
-      pinnedAt: cachedMeta.pinnedAt,
-    }),
   };
 
   set((state) => ({

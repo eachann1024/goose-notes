@@ -42,8 +42,13 @@ function dataUrlImageExtension(subtype: string): string {
 
 function findImageSourceTarget(
   node: any,
-): { owner: Record<string, any>; key: "url" | "src"; value: string } | null {
-  const props = node?.props && typeof node.props === "object" ? node.props : null;
+): {
+  owner: Record<string, unknown>;
+  key: "url" | "src";
+  value: string;
+} | null {
+  const props =
+    node?.props && typeof node.props === "object" ? node.props : null;
   if (typeof props?.url === "string") {
     return { owner: props, key: "url", value: props.url };
   }
@@ -51,7 +56,8 @@ function findImageSourceTarget(
     return { owner: props, key: "src", value: props.src };
   }
 
-  const attrs = node?.attrs && typeof node.attrs === "object" ? node.attrs : null;
+  const attrs =
+    node?.attrs && typeof node.attrs === "object" ? node.attrs : null;
   if (typeof attrs?.src === "string") {
     return { owner: attrs, key: "src", value: attrs.src };
   }
@@ -82,7 +88,9 @@ function mergePageContent(
 
   return [
     ...baseBlocks,
-    ...(needsSpacer ? ([{ type: "paragraph", content: "" }] as JSONContent) : []),
+    ...(needsSpacer
+      ? ([{ type: "paragraph", content: "" }] as JSONContent)
+      : []),
     ...additionBlocks,
   ];
 }
@@ -99,7 +107,9 @@ export const writePageContentAction = async (
 
   const isLocal = isLocalFolderPage(page);
   get().updatePage(pageId, {
-    content: isLocal ? cloneLocalPageContent(content) : clonePageContent(content),
+    content: isLocal
+      ? cloneLocalPageContent(content)
+      : clonePageContent(content),
   });
 
   if (isLocal) {
@@ -131,7 +141,9 @@ export const appendPageContentAction = async (
   const isLocal = isLocalFolderPage(page);
   const mergeOpts = isLocal ? { ensureFirstTitle: false } : undefined;
   const mergedContent = mergePageContent(
-    isLocal ? cloneLocalPageContent(page.content) : clonePageContent(page.content),
+    isLocal
+      ? cloneLocalPageContent(page.content)
+      : clonePageContent(page.content),
     isLocal ? cloneLocalPageContent(content) : clonePageContent(content),
     mergeOpts,
   );
@@ -161,9 +173,7 @@ export const replaceBlockRangeAction = async (
   const startIdx = sourceBlocks.findIndex(
     (block) => block?.id === startBlockId,
   );
-  const endIdx = sourceBlocks.findIndex(
-    (block) => block?.id === endBlockId,
-  );
+  const endIdx = sourceBlocks.findIndex((block) => block?.id === endBlockId);
   if (startIdx < 0 || endIdx < 0 || endIdx < startIdx) return false;
 
   const replacementBlocks = Array.isArray(newBlocks)
@@ -201,8 +211,7 @@ export const saveLocalPageContentAction = async (
   content: JSONContent,
   options?: { force?: boolean },
 ): Promise<boolean> => {
-  if (typeof window === "undefined" || !window.gooseFs)
-    return false;
+  if (typeof window === "undefined" || !window.gooseFs) return false;
   const gooseFs = window.gooseFs;
 
   // 与文件重命名共用页面级串行锁；取得锁后再读取路径。
@@ -235,7 +244,11 @@ const saveLocalPageContentUnlocked = async (
   const filePath = get().getLocalFilePath(pageId);
   if (!filePath) return false;
 
-  const duplicatePage = findDuplicateLocalFileOwner(get().pages, pageId, filePath);
+  const duplicatePage = findDuplicateLocalFileOwner(
+    get().pages,
+    pageId,
+    filePath,
+  );
   if (duplicatePage) {
     console.error("[local-folder] refusing to save duplicate local file path", {
       pageId,
@@ -260,7 +273,8 @@ const saveLocalPageContentUnlocked = async (
 
   // 先收集需要落盘的图片，真正有图片要写时才 mkdir——
   // 否则纯打开/flush（内容未变走 diff 跳过）也会在用户目录凭空创建 assets 文件夹。
-  const pendingImageWrites: Array<{ imagePath: string; base64Data: string }> = [];
+  const pendingImageWrites: Array<{ imagePath: string; base64Data: string }> =
+    [];
   const hasExternalDiskChange = async (source: "pre-save" | "pre-write") => {
     try {
       let diskCurrentContent: string | null = null;
@@ -301,33 +315,35 @@ const saveLocalPageContentUnlocked = async (
     if (!value || typeof value !== "object") return;
 
     const node = value as any;
-      if (
-        (node.type === "image" || node.type === "imageResize") &&
-        findImageSourceTarget(node)?.value.startsWith("data:image")
-      ) {
-        const target = findImageSourceTarget(node);
-        const match = target?.value.match(
-          /^data:(image\/([a-zA-Z0-9.+-]+));base64,(.+)$/,
-        );
-        if (target && match) {
-          const ext = dataUrlImageExtension(match[2]);
-          // 按内容哈希命名以去重：相同图片只落盘一次，避免反复保存产生重复文件。
-          const base64Data = match[3];
-          const filename = `img_${hashBase64(base64Data)}.${ext}`;
-          const imagePath = `${assetsDir}/${filename}`;
+    if (
+      (node.type === "image" || node.type === "imageResize") &&
+      findImageSourceTarget(node)?.value.startsWith("data:image")
+    ) {
+      const target = findImageSourceTarget(node);
+      const match = target?.value.match(
+        /^data:(image\/([a-zA-Z0-9.+-]+));base64,(.+)$/,
+      );
+      if (target && match) {
+        const ext = dataUrlImageExtension(match[2]);
+        // 按内容哈希命名以去重：相同图片只落盘一次，避免反复保存产生重复文件。
+        const base64Data = match[3];
+        const filename = `img_${hashBase64(base64Data)}.${ext}`;
+        const imagePath = `${assetsDir}/${filename}`;
 
-          let alreadyExists = false;
-          try {
-            alreadyExists = window.gooseFs?.exists?.(imagePath) ?? false;
-          } catch {}
-
-          if (!alreadyExists) {
-            pendingImageWrites.push({ imagePath, base64Data });
-          }
-
-          target.owner[target.key] = `./assets/${filename}`;
+        let alreadyExists = false;
+        try {
+          alreadyExists = window.gooseFs?.exists?.(imagePath) ?? false;
+        } catch {
+          // ignore fs check error
         }
+
+        if (!alreadyExists) {
+          pendingImageWrites.push({ imagePath, base64Data });
+        }
+
+        target.owner[target.key] = `./assets/${filename}`;
       }
+    }
 
     processImages(node.content);
     processImages(node.children);
@@ -337,8 +353,6 @@ const saveLocalPageContentUnlocked = async (
 
   processImages(processedContent);
 
-
-
   const { blocksToMarkdown } = await import("@/lib/export");
   // 本地文件夹以可见的块级 span 持久化样式，Obsidian Live Preview 也会实际应用。
   // 普通导出、AI 上下文与 native-editor 仍各自使用原有序列化策略。
@@ -347,13 +361,15 @@ const saveLocalPageContentUnlocked = async (
   );
 
   // scanner 抽出 frontmatter 后不入编辑器，保存时 prepend 回去。
-  // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked），
+  // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked / goose-pinned / goose-favorite），
   // 解析失败则原样保留 blob，避免破坏用户手写 YAML。
   const frontmatterMerge = mergeLocalPageSettingsIntoFrontmatter(
     page.localFrontmatter,
     {
       fontFamily: page.fontFamily ?? "default",
       isLocked: Boolean(page.isLocked),
+      isPinned: Boolean(page.isPinned),
+      isFavorite: Boolean(page.isFavorite),
     },
   );
   const frontmatterBlob = frontmatterMerge.parseFailed
@@ -365,12 +381,16 @@ const saveLocalPageContentUnlocked = async (
 
   if (!markdownContent.trim()) {
     let exists = false;
-    try { exists = window.gooseFs?.exists(filePath) ?? false; } catch {}
+    try {
+      exists = window.gooseFs?.exists(filePath) ?? false;
+    } catch {
+      // ignore fs check error
+    }
 
     if (exists) {
       let oldContent: string;
       if (window.gooseFs?.readFileAsync) {
-        oldContent = await window.gooseFs.readFileAsync(filePath) || "";
+        oldContent = (await window.gooseFs.readFileAsync(filePath)) || "";
       } else {
         oldContent = window.gooseFs?.readFile(filePath) || "";
       }
@@ -417,7 +437,9 @@ const saveLocalPageContentUnlocked = async (
       if (gooseFs.mkdir) {
         await gooseFs.mkdir(assetsDir);
       }
-    } catch {}
+    } catch {
+      // ignore mkdir error
+    }
     await Promise.all(
       pendingImageWrites.map(({ imagePath, base64Data }) => {
         if (gooseFs.writeFileAsync) {
@@ -446,10 +468,9 @@ const saveLocalPageContentUnlocked = async (
   if (result) {
     // 落盘成功即清除脏标记（自动保存与显式保存共用此路径）。
     // merge 成功时同步 store 中的 localFrontmatter，与磁盘一致。
-    const nextFrontmatter =
-      !frontmatterMerge.parseFailed
-        ? frontmatterBlob
-        : page.localFrontmatter;
+    const nextFrontmatter = !frontmatterMerge.parseFailed
+      ? frontmatterBlob
+      : page.localFrontmatter;
     set((s) => {
       const current = s.pages[pageId];
       if (!current) {
@@ -493,7 +514,7 @@ export const flushPendingLocalSaveByPageIdAction = async (
 };
 
 export const flushPendingLocalSavesAction = async (
-  set: StoreSet,
+  _set: StoreSet,
   get: StoreGet,
 ) => {
   await flushAllPendingLocalSavesInternal(get);

@@ -22,6 +22,8 @@ export type LocalPageMetadata = {
   icon?: string;
   isPinned?: boolean;
   pinnedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 export interface PagesState {

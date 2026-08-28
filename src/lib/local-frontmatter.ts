@@ -9,15 +9,19 @@
  */
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { FontFamily } from "@/types";
-import { extractFrontmatter } from "@/lib/markdown-raw-guard";
+import { extractFrontmatter } from "./markdown-raw-guard";
 
 export const GOOSE_FONT_KEY = "goose-font";
 export const GOOSE_LOCKED_KEY = "goose-locked";
+export const GOOSE_PINNED_KEY = "goose-pinned";
+export const GOOSE_FAVORITE_KEY = "goose-favorite";
 
 /** 会写入 / 从 frontmatter 恢复的 Page 字段 */
 export const LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS = [
   "fontFamily",
   "isLocked",
+  "isPinned",
+  "isFavorite",
 ] as const;
 
 export type LocalPageFrontmatterSettingsKey =
@@ -26,11 +30,15 @@ export type LocalPageFrontmatterSettingsKey =
 export type LocalPageFrontmatterSettings = {
   fontFamily: FontFamily;
   isLocked: boolean;
+  isPinned: boolean;
+  isFavorite: boolean;
 };
 
 const DEFAULT_SETTINGS: LocalPageFrontmatterSettings = {
   fontFamily: "default",
   isLocked: false,
+  isPinned: false,
+  isFavorite: false,
 };
 
 const VALID_FONTS = new Set<FontFamily>(["default", "serif", "mono"]);
@@ -85,16 +93,41 @@ function normalizeLocked(value: unknown): boolean {
   return Boolean(value);
 }
 
+function normalizePinned(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null) return false;
+  if (typeof value === "string") {
+    const t = value.trim().toLowerCase();
+    if (t === "true" || t === "yes" || t === "1") return true;
+    if (t === "false" || t === "no" || t === "0" || t === "") return false;
+  }
+  return Boolean(value);
+}
+
+function normalizeFavorite(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null) return false;
+  if (typeof value === "string") {
+    const t = value.trim().toLowerCase();
+    if (t === "true" || t === "yes" || t === "1") return true;
+    if (t === "false" || t === "no" || t === "0" || t === "") return false;
+  }
+  return Boolean(value);
+}
+
 function settingsFromData(
   data: Record<string, unknown>,
 ): LocalPageFrontmatterSettings {
   const fontRaw = data[GOOSE_FONT_KEY];
   const lockedRaw = data[GOOSE_LOCKED_KEY];
+  const pinnedRaw = data[GOOSE_PINNED_KEY];
+  const favoriteRaw = data[GOOSE_FAVORITE_KEY];
   return {
-    fontFamily:
-      fontRaw === undefined ? "default" : normalizeFont(fontRaw),
-    isLocked:
-      lockedRaw === undefined ? false : normalizeLocked(lockedRaw),
+    fontFamily: fontRaw === undefined ? "default" : normalizeFont(fontRaw),
+    isLocked: lockedRaw === undefined ? false : normalizeLocked(lockedRaw),
+    isPinned: pinnedRaw === undefined ? false : normalizePinned(pinnedRaw),
+    isFavorite:
+      favoriteRaw === undefined ? false : normalizeFavorite(favoriteRaw),
   };
 }
 
@@ -106,9 +139,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * 解析 frontmatter 原文 blob（可含 --- 定界符）。
  * 失败时 settings 回退默认，调用方应保留原 blob 不覆盖。
  */
-export function parseLocalFrontmatterBlob(
-  blob: string | null | undefined,
-): {
+export function parseLocalFrontmatterBlob(blob: string | null | undefined): {
   ok: boolean;
   data: Record<string, unknown>;
   settings: LocalPageFrontmatterSettings;
@@ -185,7 +216,14 @@ export function mergeLocalPageSettingsIntoFrontmatter(
     ? settings.fontFamily
     : "default";
   const isLocked = Boolean(settings.isLocked);
-  const normalized: LocalPageFrontmatterSettings = { fontFamily, isLocked };
+  const isPinned = Boolean(settings.isPinned);
+  const isFavorite = Boolean(settings.isFavorite);
+  const normalized: LocalPageFrontmatterSettings = {
+    fontFamily,
+    isLocked,
+    isPinned,
+    isFavorite,
+  };
 
   const parsed = parseLocalFrontmatterBlob(existingBlob);
   if (!parsed.ok) {
@@ -209,6 +247,18 @@ export function mergeLocalPageSettingsIntoFrontmatter(
     delete data[GOOSE_LOCKED_KEY];
   } else {
     data[GOOSE_LOCKED_KEY] = true;
+  }
+
+  if (!isPinned) {
+    delete data[GOOSE_PINNED_KEY];
+  } else {
+    data[GOOSE_PINNED_KEY] = true;
+  }
+
+  if (!isFavorite) {
+    delete data[GOOSE_FAVORITE_KEY];
+  } else {
+    data[GOOSE_FAVORITE_KEY] = true;
   }
 
   if (Object.keys(data).length === 0) {

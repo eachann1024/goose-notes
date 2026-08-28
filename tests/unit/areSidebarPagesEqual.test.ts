@@ -54,3 +54,9 @@ test("改标题或父子关系时侧栏要重绘", () => {
   expect(areSidebarPagesEqual(before, renamed)).toBe(false);
   expect(areSidebarPagesEqual(before, moved)).toBe(false);
 });
+
+test("改页面图标时侧栏要重绘", () => {
+  const before = { a: page({ id: "a", icon: "Home" }) };
+  const after = { a: page({ id: "a", icon: "Ruler" }) };
+  expect(areSidebarPagesEqual(before, after)).toBe(false);
+});

@@ -85,7 +85,11 @@ function normalizeLocalFileTitle(name: string) {
   return base || "无标题";
 }
 export function shouldIgnoreEntry(name: string, hiddenFoldersSet: Set<string>) {
-  return name.startsWith(".") || IGNORED_FOLDERS.has(name) || hiddenFoldersSet.has(name);
+  return (
+    name.startsWith(".") ||
+    IGNORED_FOLDERS.has(name) ||
+    hiddenFoldersSet.has(name)
+  );
 }
 
 /** 增量 watch 使用：只要相对路径任一目录段命中扫描器规则，就忽略整条路径。 */
@@ -98,10 +102,15 @@ export function shouldIgnoreLocalRelativePath(
     .split("/")
     .filter((segment) => segment && segment !== ".");
   const hiddenFoldersSet = new Set(hiddenFolders);
-  return segments.some((segment) => shouldIgnoreEntry(segment, hiddenFoldersSet));
+  return segments.some((segment) =>
+    shouldIgnoreEntry(segment, hiddenFoldersSet),
+  );
 }
 
-async function readDirectory(gooseFs: GooseFs, dirPath: string): Promise<LocalFolderEntry[]> {
+async function readDirectory(
+  gooseFs: GooseFs,
+  dirPath: string,
+): Promise<LocalFolderEntry[]> {
   if (gooseFs.readDirAsync) {
     return (await gooseFs.readDirAsync(dirPath)) || [];
   }
@@ -115,7 +124,7 @@ async function readMarkdownFile(
   if (gooseFs.readFileStatAsync) {
     const result = await gooseFs.readFileStatAsync(filePath);
     return {
-      content: result.ok ? result.content ?? "" : null,
+      content: result.ok ? (result.content ?? "") : null,
       error: result.error || undefined,
     };
   }
@@ -123,7 +132,7 @@ async function readMarkdownFile(
   if (gooseFs.readFileStat) {
     const result = gooseFs.readFileStat(filePath);
     return {
-      content: result.ok ? result.content ?? "" : null,
+      content: result.ok ? (result.content ?? "") : null,
       error: result.error || undefined,
     };
   }
@@ -176,6 +185,8 @@ export interface ParsedLocalMarkdown {
   frontmatter?: string;
   fontFamily: FontFamily;
   isLocked: boolean;
+  isPinned: boolean;
+  isFavorite: boolean;
   readState: "ready" | "error";
   readError?: string;
 }
@@ -187,10 +198,13 @@ export async function parseLocalMarkdownContent(
   readError?: string,
 ): Promise<ParsedLocalMarkdown> {
   if (markdown === null) {
+    // SAFETY: 空文档以空数组作为 JSONContent 占位表示
     return {
       content: [] as unknown as JSONContent,
       fontFamily: "default",
       isLocked: false,
+      isPinned: false,
+      isFavorite: false,
       readState: "error",
       readError: readError || "Markdown 文件读取失败",
     };
@@ -202,7 +216,7 @@ export async function parseLocalMarkdownContent(
   //    无 H1 的文件解析后首块保持段落（「文件名标题绑定」已废弃）。
   //    侧栏/tab 标题由 getPageTitle() 从 localFilePath 文件名取得，不依赖 H1。
   //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
-  // 4) 从 frontmatter 恢复 goose-font / goose-locked（解析失败则默认，blob 仍原样保留）
+  // 4) 从 frontmatter 恢复 goose-font / goose-locked / goose-pinned / goose-favorite（解析失败则默认，blob 仍原样保留）
   const { frontmatter, body } = extractFrontmatter(markdown);
   const fmSettings = parseLocalFrontmatterBlob(frontmatter).settings;
   // 先拆本地文件夹专用的最外层块级 span，再交给通用 inline parser，
@@ -214,15 +228,24 @@ export async function parseLocalMarkdownContent(
   const imported = importFromMarkdown(encodedBody, fallbackTitle, {
     preserveStructure: true,
   });
-  const importedBlocks = Array.isArray(imported.content) ? imported.content : [];
+  const importedBlocks = Array.isArray(imported.content)
+    ? imported.content
+    : [];
 
+  // SAFETY: restoreBlockPropsMarkers 返回的 block 结构符合 JSONContent
   return {
-    content: restoreBlockPropsMarkers(importedBlocks as any) as unknown as JSONContent,
+    content: restoreBlockPropsMarkers(
+      importedBlocks as any,
+    ) as unknown as JSONContent,
     frontmatter: frontmatter || undefined,
     fontFamily: fmSettings.fontFamily,
     isLocked: fmSettings.isLocked,
+    isPinned: fmSettings.isPinned,
+    isFavorite: fmSettings.isFavorite,
     readState: imported.success ? "ready" : "error",
-    readError: imported.success ? undefined : imported.error || "Markdown 解析失败",
+    readError: imported.success
+      ? undefined
+      : imported.error || "Markdown 解析失败",
   };
 }
 
@@ -240,7 +263,8 @@ async function buildMarkdownPage(
   resolvedId?: string,
 ): Promise<Page> {
   const fallbackTitle = normalizeLocalFileTitle(entry.name);
-  const fileId = resolvedId ?? buildLocalPageId(notebookId, basePath, entry.path);
+  const fileId =
+    resolvedId ?? buildLocalPageId(notebookId, basePath, entry.path);
   const parsed = await parseLocalMarkdownContent(
     readResult.content,
     fallbackTitle,
@@ -258,6 +282,9 @@ async function buildMarkdownPage(
     content: parsed.content,
     isFolder: false,
     isLocked: parsed.isLocked,
+    isPinned: parsed.isPinned || undefined,
+    pinnedAt: parsed.isPinned ? now : undefined,
+    isFavorite: parsed.isFavorite || undefined,
     fontSize: "default",
     fontFamily: parsed.fontFamily,
     localFilePath: entry.path,
@@ -317,7 +344,13 @@ export async function scanLocalFolderPages({
         );
         if (dirty) idMapDirty = true;
 
-        const folderPage = buildFolderPage(notebookId, basePath, entry, parentId, folderId);
+        const folderPage = buildFolderPage(
+          notebookId,
+          basePath,
+          entry,
+          parentId,
+          folderId,
+        );
         pages.push(folderPage);
         const subPages = await scanDirectory(entry.path, folderPage.id);
         pages.push(...subPages);
