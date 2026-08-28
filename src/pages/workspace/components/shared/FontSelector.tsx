@@ -35,14 +35,10 @@ export function FontSelector({
   compact = false,
 }: FontSelectorProps) {
   const { customFonts } = useSettings();
-  const selectionRequestRef = useRef(0);
 
-  const selectFont = async (fontFamily: Page["fontFamily"]) => {
-    const requestId = ++selectionRequestRef.current;
-    await ensureEditorFontAvailable(fontFamily, customFonts);
-    if (requestId === selectionRequestRef.current) {
-      onChange(fontFamily);
-    }
+  const selectFont = (fontFamily: Page["fontFamily"]) => {
+    onChange(fontFamily);
+    void ensureEditorFontAvailable(fontFamily, customFonts);
   };
 
   return (
@@ -56,12 +52,20 @@ export function FontSelector({
           <button
             key={font.value}
             type="button"
-            onClick={() => void selectFont(font.value)}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              selectFont(font.value);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
             className={cn(
               "flex-1 rounded-md transition-all duration-200",
               compact ? "px-2 py-1.5" : "px-3 py-2",
               "flex flex-col items-center justify-center border border-transparent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "hover:bg-accent/50",
+              "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
               value === font.value &&
                 "bg-background ring-2 ring-primary text-primary shadow-sm",
             )}

@@ -80,14 +80,20 @@ input {
   padding-bottom: var(--space-xxl);
 }
 
+.native-editor-root[data-font-family="default"],
+.native-editor-root[data-font-family="default"] .bn-editor,
 .native-editor-root[data-font-family="default"] .bn-default-styles {
   font-family: var(--consumer-font-sans);
 }
 
+.native-editor-root[data-font-family="serif"],
+.native-editor-root[data-font-family="serif"] .bn-editor,
 .native-editor-root[data-font-family="serif"] .bn-default-styles {
   font-family: var(--consumer-font-serif);
 }
 
+.native-editor-root[data-font-family="mono"],
+.native-editor-root[data-font-family="mono"] .bn-editor,
 .native-editor-root[data-font-family="mono"] .bn-default-styles {
   font-family: var(--consumer-font-mono);
 }
