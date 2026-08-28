@@ -950,7 +950,6 @@ export function NativeEditorApp() {
     () => ({
       theme: appearance,
       editorFontSize: fontSize,
-      tableEvenColumnWidth: true,
       customFonts: {
         default: { label: null, font: null },
         serif: { label: null, font: null },
@@ -989,6 +988,8 @@ export function NativeEditorApp() {
             },
             onOpenPage: () => {},
             getActivePageLocalFilePath: () => pageIDRef.current,
+            // 原生编辑器宿主没有「本地文件夹笔记本」概念，路径 tag 不启用。
+            getActivePageLocalFolderRoot: () => null,
             searchPages: () => [],
             resolvePageContexts: () => [],
             getLatestPage: (pageId) =>

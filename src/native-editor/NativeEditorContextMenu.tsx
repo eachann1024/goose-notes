@@ -12,7 +12,6 @@ interface NativeEditorContextMenuProps {
   customActions: unknown[];
   effectiveTheme: "light" | "dark";
   isEditorFullWidth: boolean;
-  tableEvenColumnWidth: boolean;
   children: React.ReactNode;
 }
 
@@ -27,7 +26,6 @@ export function EditorContextMenu({
   handleEditorPasteCapture,
   handleEditorKeyDownCapture,
   isEditorFullWidth,
-  tableEvenColumnWidth,
   children,
 }: NativeEditorContextMenuProps) {
   return (
@@ -40,7 +38,6 @@ export function EditorContextMenu({
       className={cn(
         "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
         isEditorFullWidth ? "max-w-none" : "max-w-[720px] mx-auto",
-        tableEvenColumnWidth && "goose-table-even-column-width",
       )}
     >
       {children}

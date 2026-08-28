@@ -10,14 +10,16 @@ import {
 } from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
 import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
-import { applyAccentColor, syncAccentColorCssVars } from "../../src/lib/accentColor";
+import {
+  applyAccentColor,
+  syncAccentColorCssVars,
+} from "../../src/lib/accentColor";
 
-test("强调色默认使用黑白配色，非法持久化值安全回退", () => {
-  expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("mono");
+test("强调色默认使用海洋配色，非法持久化值安全回退", () => {
+  expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("ocean");
   expect(APPEARANCE_INITIAL_STATE.randomIconOnCreate).toBe(true);
-  expect(APPEARANCE_INITIAL_STATE.showPinnedTitles).toBe(false);
-  expect(normalizeAccentColor(undefined)).toBe("mono");
-  expect(normalizeAccentColor("unknown")).toBe("mono");
+  expect(normalizeAccentColor(undefined)).toBe("ocean");
+  expect(normalizeAccentColor("unknown")).toBe("ocean");
   expect(normalizeAccentColor("ocean")).toBe("ocean");
   expect(normalizeAccentColor("mono")).toBe("mono");
   expect(normalizeAccentColor("teal")).toBe("mono");
@@ -224,9 +226,7 @@ test("主题轮转顺序为 system → light → dark → system", () => {
   const slice = createAppearanceSlice(
     (updater) => {
       const next =
-        typeof updater === "function"
-          ? updater({ theme } as never)
-          : updater;
+        typeof updater === "function" ? updater({ theme } as never) : updater;
       if (next.theme) theme = next.theme;
     },
     () => ({
@@ -246,4 +246,3 @@ test("主题轮转顺序为 system → light → dark → system", () => {
   expect(theme).toBe("system");
   expect(applied).toEqual(["light", "dark", "system"]);
 });
-

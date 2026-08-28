@@ -12,8 +12,6 @@ interface SettingsAppearanceProps {
   setAccentColor: (accentColor: AccentColor) => void;
   codeStyle: CodeStyle;
   setCodeStyle: (style: CodeStyle) => void;
-  tableEvenColumnWidth: boolean;
-  setTableEvenColumnWidth: (enabled: boolean) => void;
   customFonts: Record<
     "default" | "serif" | "mono",
     { label: string | null; font: string | null }
@@ -32,8 +30,6 @@ interface SettingsAppearanceProps {
   setHideExpandArrows: (hidden: boolean) => void;
   randomIconOnCreate: boolean;
   setRandomIconOnCreate: (enabled: boolean) => void;
-  showPinnedTitles: boolean;
-  setShowPinnedTitles: (enabled: boolean) => void;
 }
 
 type AccentOption = {
@@ -198,8 +194,6 @@ export function SettingsAppearance({
   setAccentColor,
   codeStyle,
   setCodeStyle,
-  tableEvenColumnWidth,
-  setTableEvenColumnWidth,
   customFonts,
   setCustomLabel,
   setCustomFont,
@@ -209,8 +203,6 @@ export function SettingsAppearance({
   setHideExpandArrows,
   randomIconOnCreate,
   setRandomIconOnCreate,
-  showPinnedTitles,
-  setShowPinnedTitles,
 }: SettingsAppearanceProps) {
   const getFontPreview = (type: "default" | "serif" | "mono") =>
     customFonts[type].font || DEFAULT_FONT_NAMES[type];
@@ -473,37 +465,10 @@ export function SettingsAppearance({
 
       <SettingsSectionCard
         title="编辑器布局"
-        description="调整表格、折叠标题等编辑器显示方式。"
+        description="调整折叠标题、新建笔记图标等显示方式。"
       >
         <div
           className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-        >
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.Table2
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label
-                htmlFor="table-even-column-width"
-                className="cursor-pointer"
-              >
-                表格两端对齐
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              让表格撑满可用宽度，并按列数均分每列宽度，像 Notion 表格那样整齐。
-            </p>
-          </div>
-          <Switch
-            id="table-even-column-width"
-            checked={tableEvenColumnWidth}
-            onCheckedChange={setTableEvenColumnWidth}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-        <div
-          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">
@@ -547,30 +512,6 @@ export function SettingsAppearance({
             id="random-icon-on-create"
             checked={randomIconOnCreate}
             onCheckedChange={setRandomIconOnCreate}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-        <div
-          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-        >
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.Pin
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label htmlFor="show-pinned-titles" className="cursor-pointer">
-                置顶显示名称
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              在置顶栏显示笔记名前 4 个字。关闭后只显示图标。
-            </p>
-          </div>
-          <Switch
-            id="show-pinned-titles"
-            checked={showPinnedTitles}
-            onCheckedChange={setShowPinnedTitles}
             className={APPEARANCE_SWITCH_CLASS}
           />
         </div>

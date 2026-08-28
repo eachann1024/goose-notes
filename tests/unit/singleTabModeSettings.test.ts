@@ -6,27 +6,22 @@ test("全新用户默认开启极简工作区", () => {
   expect(APPEARANCE_INITIAL_STATE.singleTabMode).toBe(true);
 });
 
-test("老用户没有模式字段时继续保留多标签", () => {
+test("已有用户也会被迁到极简工作区", () => {
   expect(migrateSettingsPersistedState({ theme: "dark" })).toMatchObject({
     theme: "dark",
-    singleTabMode: false,
+    singleTabMode: true,
     randomIconOnCreate: true,
-    showPinnedTitles: false,
   });
-});
-
-test("已有明确选择不会被迁移覆盖", () => {
-  expect(
-    migrateSettingsPersistedState({ singleTabMode: true }).singleTabMode,
-  ).toBe(true);
   expect(
     migrateSettingsPersistedState({ singleTabMode: false }).singleTabMode,
-  ).toBe(false);
+  ).toBe(true);
 });
 
-test("迁移时丢弃已废弃的全宽设置", () => {
+test("迁移时丢弃已废弃的全宽和表格两端对齐设置", () => {
   const migrated = migrateSettingsPersistedState({
     globalEditorFullWidth: false,
+    tableEvenColumnWidth: false,
   });
   expect(migrated).not.toHaveProperty("globalEditorFullWidth");
+  expect(migrated).not.toHaveProperty("tableEvenColumnWidth");
 });

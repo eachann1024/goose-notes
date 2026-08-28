@@ -66,7 +66,6 @@ interface EditorContextMenuProps {
   customActions: any[];
   effectiveTheme: "light" | "dark";
   isEditorFullWidth: boolean;
-  tableEvenColumnWidth: boolean;
   children: React.ReactNode;
 }
 
@@ -81,7 +80,6 @@ export function EditorContextMenu({
   searchProviders,
   customActions,
   isEditorFullWidth,
-  tableEvenColumnWidth,
   children,
 }: EditorContextMenuProps) {
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
@@ -218,7 +216,6 @@ export function EditorContextMenu({
               "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
               !__GOOSE_EDITOR_COMPACT__ && "pb-[100px]",
               isEditorFullWidth ? "max-w-none" : "max-w-[720px] mx-auto",
-              tableEvenColumnWidth && "goose-table-even-column-width",
             )}
           >
             {children}

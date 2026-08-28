@@ -116,7 +116,6 @@ type EditorComposerProps = {
   silentContentSync: (content: BlockNoteContent) => void;
   isEditorFullWidth: boolean;
   effectiveTheme: "light" | "dark";
-  tableEvenColumnWidth: boolean;
   searchProviders: any[];
   customActions: any[];
   /** 是否渲染块侧边菜单（+ / ⋮⋮）；紧凑布局可关闭。 */
@@ -149,7 +148,6 @@ export function EditorComposer({
   silentContentSync,
   isEditorFullWidth,
   effectiveTheme,
-  tableEvenColumnWidth,
   searchProviders,
   customActions,
   showSideMenu = true,
@@ -504,7 +502,6 @@ export function EditorComposer({
       customActions={customActions}
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
-      tableEvenColumnWidth={tableEvenColumnWidth}
     >
       {page?.localFilePath && !singleTabMode && (
         <LocalFileTitle

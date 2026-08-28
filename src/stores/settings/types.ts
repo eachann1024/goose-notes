@@ -28,7 +28,7 @@ export const ACCENT_COLORS = [
   "grape",
 ] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
-export const DEFAULT_ACCENT_COLOR: AccentColor = "mono";
+export const DEFAULT_ACCENT_COLOR: AccentColor = "ocean";
 
 export type CodeStyle =
   | "default"

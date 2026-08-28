@@ -24,7 +24,6 @@ export interface AppearanceSliceState {
   accentColor: AccentColor;
   codeStyle: CodeStyle;
   defaultCodeBlockWrap: boolean;
-  tableEvenColumnWidth: boolean;
   customFonts: CustomFonts;
   uiFontSize: UIFontSize;
   editorFontSize: number;
@@ -38,9 +37,8 @@ export interface AppearanceSliceState {
   hideExpandArrows: boolean;
   /** 新建内部笔记时自动分配一个随机图标；本地文件夹忽略。 */
   randomIconOnCreate: boolean;
-  /** 置顶栏显示笔记名称（前 4 个字）。默认关闭，只显示图标。 */
-  showPinnedTitles: boolean;
-  /** 单标签模式：所有页面在当前标签中切换，不保留多标签交互。 */
+
+  /** 极简工作区：所有页面在当前标签中切换。产品固定开启，设置里不再提供开关。 */
   singleTabMode: boolean;
 }
 
@@ -50,7 +48,6 @@ export interface AppearanceSliceActions {
   toggleDarkMode: () => void;
   setCodeStyle: (style: CodeStyle) => void;
   setDefaultCodeBlockWrap: (enabled: boolean) => void;
-  setTableEvenColumnWidth: (enabled: boolean) => void;
   setCustomLabel: (
     type: "default" | "serif" | "mono",
     label: string | null,
@@ -72,7 +69,7 @@ export interface AppearanceSliceActions {
   setImageExportThemeId: (id: CardThemeId) => void;
   setHideExpandArrows: (hidden: boolean) => void;
   setRandomIconOnCreate: (enabled: boolean) => void;
-  setShowPinnedTitles: (enabled: boolean) => void;
+
   setSingleTabMode: (enabled: boolean) => void;
 }
 
@@ -83,7 +80,6 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   accentColor: DEFAULT_ACCENT_COLOR,
   codeStyle: "github",
   defaultCodeBlockWrap: false,
-  tableEvenColumnWidth: true,
   customFonts: {
     default: { label: null, font: null },
     serif: { label: null, font: null },
@@ -96,7 +92,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   imageExportThemeId: "github-light",
   hideExpandArrows: false,
   randomIconOnCreate: true,
-  showPinnedTitles: false,
+
   singleTabMode: true,
 };
 
@@ -144,8 +140,6 @@ export function createAppearanceSlice(
     },
     setDefaultCodeBlockWrap: (defaultCodeBlockWrap) =>
       set({ defaultCodeBlockWrap }),
-    setTableEvenColumnWidth: (tableEvenColumnWidth) =>
-      set({ tableEvenColumnWidth }),
     setCustomLabel: (type, label) =>
       set((state) => ({
         customFonts: {
@@ -212,7 +206,7 @@ export function createAppearanceSlice(
     setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
     setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
     setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
-    setShowPinnedTitles: (showPinnedTitles) => set({ showPinnedTitles }),
+
     setSingleTabMode: (singleTabMode) => set({ singleTabMode }),
   };
 }

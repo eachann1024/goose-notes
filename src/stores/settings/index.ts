@@ -135,7 +135,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
-      version: 2,
+      version: 3,
       migrate: (persistedState) =>
         migrateSettingsPersistedState(persistedState),
       storage: createJSONStorage(() => uToolsStorage),
@@ -170,12 +170,10 @@ export const useSettings = create<SettingsState>()(
         if (state && typeof state.randomIconOnCreate !== "boolean") {
           useSettings.setState({ randomIconOnCreate: true });
         }
-        if (state && typeof state.showPinnedTitles !== "boolean") {
-          useSettings.setState({ showPinnedTitles: false });
+        if (state && state.singleTabMode !== true) {
+          useSettings.setState({ singleTabMode: true });
         }
-        if (state && typeof state.tableEvenColumnWidth !== "boolean") {
-          useSettings.setState({ tableEvenColumnWidth: true });
-        }
+
         const normalizedUIFontSize = normalizeUIFontSize(
           state?.uiFontSize as string | undefined,
         );

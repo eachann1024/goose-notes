@@ -183,8 +183,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setAccentColor,
     codeStyle,
     setCodeStyle,
-    tableEvenColumnWidth,
-    setTableEvenColumnWidth,
     searchProviders,
     toggleSearchProvider,
     reorderSearchProviders,
@@ -203,9 +201,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     privacy,
     setAutoOpenLastNote,
     singleTabMode,
-    setSingleTabMode,
-    setAutoCloseInactiveTabs,
-    setAutoCloseInactiveTabsHours,
     showRecentInSearch,
     setShowRecentInSearch,
     closeTabShortcut,
@@ -224,8 +219,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setHideExpandArrows,
     randomIconOnCreate,
     setRandomIconOnCreate,
-    showPinnedTitles,
-    setShowPinnedTitles,
+
     customActions,
     addCustomAction,
     updateCustomAction,
@@ -248,8 +242,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setAccentColor: s.setAccentColor,
       codeStyle: s.codeStyle,
       setCodeStyle: s.setCodeStyle,
-      tableEvenColumnWidth: s.tableEvenColumnWidth,
-      setTableEvenColumnWidth: s.setTableEvenColumnWidth,
       searchProviders: s.searchProviders,
       toggleSearchProvider: s.toggleSearchProvider,
       reorderSearchProviders: s.reorderSearchProviders,
@@ -268,9 +260,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       privacy: s.privacy,
       setAutoOpenLastNote: s.setAutoOpenLastNote,
       singleTabMode: s.singleTabMode,
-      setSingleTabMode: s.setSingleTabMode,
-      setAutoCloseInactiveTabs: s.setAutoCloseInactiveTabs,
-      setAutoCloseInactiveTabsHours: s.setAutoCloseInactiveTabsHours,
       showRecentInSearch: s.showRecentInSearch,
       setShowRecentInSearch: s.setShowRecentInSearch,
       closeTabShortcut: s.closeTabShortcut,
@@ -289,8 +278,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setHideExpandArrows: s.setHideExpandArrows,
       randomIconOnCreate: s.randomIconOnCreate,
       setRandomIconOnCreate: s.setRandomIconOnCreate,
-      showPinnedTitles: s.showPinnedTitles,
-      setShowPinnedTitles: s.setShowPinnedTitles,
+
       customActions: s.customActions,
       addCustomAction: s.addCustomAction,
       updateCustomAction: s.updateCustomAction,
@@ -717,7 +705,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const handleOpenApp = (app: (typeof GOOSE_APPS)[number]) => {
     // 官方：redirect 未找到指令时会跳转插件应用市场并搜索该名称
     // https://www.u-tools.cn/docs/developer/api-reference/utools/window.html
-    if (wnd.redirect(["插件应用市场", "插件应用市场搜一搜"], app.storeQuery)) return;
+    if (wnd.redirect(["插件应用市场", "插件应用市场搜一搜"], app.storeQuery))
+      return;
     if (wnd.redirect("插件应用市场搜一搜", app.storeQuery)) return;
     if (wnd.redirect(app.storeQuery)) return;
     UToolsAdapter.openUrl(app.url, false);
@@ -791,18 +780,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
-                singleTabMode={singleTabMode}
-                setSingleTabMode={(enabled) => {
-                  setSingleTabMode(enabled);
-                  if (enabled) {
-                    useTabs.getState().collapseToActiveTab();
-                    toast.success("已开启极简工作区");
-                  }
-                }}
-                autoCloseInactiveTabs={privacy.autoCloseInactiveTabs}
-                setAutoCloseInactiveTabs={setAutoCloseInactiveTabs}
-                autoCloseInactiveTabsHours={privacy.autoCloseInactiveTabsHours}
-                setAutoCloseInactiveTabsHours={setAutoCloseInactiveTabsHours}
                 showRecentInSearch={showRecentInSearch}
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
@@ -854,8 +831,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setAccentColor={setAccentColor}
                 codeStyle={codeStyle}
                 setCodeStyle={setCodeStyle}
-                tableEvenColumnWidth={tableEvenColumnWidth}
-                setTableEvenColumnWidth={setTableEvenColumnWidth}
                 customFonts={customFonts}
                 setCustomLabel={setCustomLabel}
                 setCustomFont={setCustomFont}
@@ -865,8 +840,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setHideExpandArrows={setHideExpandArrows}
                 randomIconOnCreate={randomIconOnCreate}
                 setRandomIconOnCreate={setRandomIconOnCreate}
-                showPinnedTitles={showPinnedTitles}
-                setShowPinnedTitles={setShowPinnedTitles}
               />
             </div>
           )}
@@ -908,46 +881,67 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       <DialogShell
         open={resetDialogOpen}
         onOpenChange={setResetDialogOpen}
-        layout="center"
-        title="确认重置所有数据？"
-        description="这将永久删除内部记事本、页面、历史、AI 会话、标签和应用设置；不会删除本地文件夹中的磁盘文件"
-        contentClassName="max-w-md"
-        bodyClassName="px-6 pb-6"
+        layout="fullscreen"
+        contentClassName="bg-[hsl(var(--goose-shell-bg))]"
+        bodyClassName="relative h-full overflow-y-auto p-6 animate-in fade-in duration-200"
       >
-        <div className="mb-5 mt-1 space-y-3">
-          <div className="text-xs text-muted-foreground select-none">
-            请输入以下短语以确认重置：
-            <code className="ml-1 select-text font-semibold text-foreground">
-              {resetPhrase}
-            </code>
+        <div className="relative mx-auto w-full max-w-md py-6">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-[var(--goose-color-danger-subtle-bg)]">
+              <LucideIcons.AlertTriangle className="w-7 h-7 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              确认重置所有数据？
+            </h1>
+            <p className="text-muted-foreground">
+              这将永久删除内部记事本、页面、历史、AI
+              会话、标签和应用设置；不会删除本地文件夹中的磁盘文件
+            </p>
           </div>
-          <Input
-            id="reset-all"
-            value={resetInput}
-            onChange={(e) => setResetInput(e.target.value)}
-            placeholder={resetPhrase}
-            className="h-9 w-full text-sm"
-            autoFocus
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setResetDialogOpen(false)}
-            className="flex-1"
-          >
-            取消
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => void handleManualReset()}
-            disabled={!canReset || resetting}
-            className="flex-1"
-          >
-            {resetting ? "正在重置…" : "确认重置"}
-          </Button>
+
+          <div className="bg-[var(--goose-color-danger-subtle-bg)] backdrop-blur-[1px] rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
+            <div className="space-y-3">
+              <div className="text-sm font-medium text-destructive select-none">
+                请输入以下短语以确认重置：
+                <span className="ml-1 select-text font-bold text-foreground">
+                  {resetPhrase}
+                </span>
+              </div>
+              <Input
+                id="reset-all"
+                value={resetInput}
+                onChange={(e) => setResetInput(e.target.value)}
+                placeholder={resetPhrase}
+                className="h-12 text-base"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canReset && !resetting) {
+                    void handleManualReset();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setResetDialogOpen(false)}
+                className="flex-1"
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => void handleManualReset()}
+                disabled={!canReset || resetting}
+                className="flex-1"
+              >
+                {resetting ? "正在重置…" : "确认重置"}
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogShell>
     </>

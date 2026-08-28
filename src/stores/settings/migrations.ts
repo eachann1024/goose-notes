@@ -6,20 +6,16 @@ export function migrateSettingsPersistedState(
       ? { ...(persistedState as Record<string, unknown>) }
       : {};
 
-  // migrate 只会处理已经存在的持久化记录：旧记录没有该字段时继续使用多标签。
-  // 全新安装没有持久化记录，不会进入 migrate，直接采用初始值 true。
-  if (typeof state.singleTabMode !== "boolean") {
-    state.singleTabMode = false;
-  }
+  // 极简工作区已成为固定交互，不再保留可切换设置。
+  state.singleTabMode = true;
   if (typeof state.randomIconOnCreate !== "boolean") {
     state.randomIconOnCreate = true;
   }
-  if (typeof state.showPinnedTitles !== "boolean") {
-    state.showPinnedTitles = false;
-  }
+  delete state.showPinnedTitles;
 
-  // 全宽已成为常规笔记的固定布局，不再保留可切换的持久化设置。
+  // 全宽、表格两端对齐已成为常规笔记的固定布局，不再保留可切换的持久化设置。
   delete state.globalEditorFullWidth;
+  delete state.tableEvenColumnWidth;
 
   return state;
 }

@@ -167,7 +167,8 @@ export function resolveAccentRuntimeTokens(
   accentColor: AccentColor,
   isDark: boolean,
 ): Record<string, string> {
-  const tokens = ACCENT_RUNTIME_TOKENS[accentColor] ?? ACCENT_RUNTIME_TOKENS.mono;
+  const tokens =
+    ACCENT_RUNTIME_TOKENS[accentColor] ?? ACCENT_RUNTIME_TOKENS.ocean;
   const theme = isDark ? tokens.dark : tokens.light;
   const selected = theme["--goose-interactive-selected"];
   return {
@@ -198,10 +199,7 @@ function writeAccentRuntimeTokens(
   accentColor: AccentColor,
 ): void {
   if (!root?.style?.setProperty) return;
-  const tokens = resolveAccentRuntimeTokens(
-    accentColor,
-    isDarkDocument(root),
-  );
+  const tokens = resolveAccentRuntimeTokens(accentColor, isDarkDocument(root));
   for (const [name, value] of Object.entries(tokens)) {
     // 旧内核 / 后续 CSS 偶发盖掉自定义属性时，important 保证行内代码跟强调色
     root.style.setProperty(name, value, "important");
@@ -259,6 +257,6 @@ export function syncAccentColorCssVars(): void {
   const root = document.documentElement;
   if (!root || typeof root.getAttribute !== "function") return;
   const accentAttr = root.getAttribute("data-goose-accent");
-  const accentColor = (accentAttr ?? "mono") as AccentColor;
+  const accentColor = (accentAttr ?? "ocean") as AccentColor;
   writeAccentRuntimeTokens(root, accentColor);
 }
