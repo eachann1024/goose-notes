@@ -29,6 +29,44 @@ function plainText(block: { content?: unknown } | undefined | null): string {
     .join("");
 }
 
+test("apply 伪待办多行拆成独立可勾选 checkListItem，而不是一个段落", () => {
+  const editor = createEditor([
+    {
+      id: "title",
+      type: "heading",
+      props: { level: 1 },
+      content: "标题",
+    },
+    {
+      id: "para",
+      type: "paragraph",
+      content: "生成打卡待办",
+    },
+  ]);
+
+  const result = applyMarkdownToInlineTarget(
+    editor as unknown as InlineMarkdownEditor,
+    ["✅ 白天不犯困，效率翻倍", "☑️ 连心情都变好啦"].join("\n"),
+    { sourceBlockIds: ["para"] },
+  );
+
+  expect(result.replacedCount).toBe(1);
+  expect(result.blockCount).toBe(2);
+  const body = editor.document.filter((b) => b.id !== "title");
+  expect(body.map((b) => b.type)).toEqual([
+    "checkListItem",
+    "checkListItem",
+  ]);
+  expect(body.map((b) => (b as { props?: { checked?: boolean } }).props?.checked)).toEqual([
+    true,
+    true,
+  ]);
+  expect(body.map((b) => plainText(b as any))).toEqual([
+    "白天不犯困，效率翻倍",
+    "连心情都变好啦",
+  ]);
+});
+
 test("apply multi-line bullet markdown 将单段替换为 3 个 bulletListItem", () => {
   const editor = createEditor([
     {

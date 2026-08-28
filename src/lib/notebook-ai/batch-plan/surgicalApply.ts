@@ -6,6 +6,7 @@ import type { JSONContent } from "@/types";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { restoreBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
+import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 
 const LIST_ITEM_TYPES = new Set([
@@ -268,9 +269,9 @@ function parseFragment(markdown: string): any[] {
   if (!fragment || !Array.isArray(fragment) || fragment.length === 0) {
     return [];
   }
-  // 顺序：import → 恢复 props 标记 → 去掉 id（避免与原页冲突）
+  // 顺序：import → 恢复 props 标记 → 去掉 id（避免与原页冲突）→ 拆行成独立块
   const restored = restoreBlockPropsMarkers(fragment as any);
-  return stripBlockIds(restored as any[]);
+  return stripBlockIds(explodeAiGeneratedBlocks(restored as any[]) as any[]);
 }
 
 /**

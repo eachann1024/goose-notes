@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 import {
   buildAiPageContent,
   normalizeAiMarkdown,
+  parseAiMarkdownToBlocks,
 } from "@/lib/notebook-ai/markdown";
-import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
   getPageTitle,
@@ -825,8 +825,7 @@ function plannedContent(
       useNotebooks.getState().notebooks[journal.notebookId]?.source ===
       "local-folder";
     if (isLocal) {
-      const markdown = normalizeAiMarkdown(operation.markdown).trim();
-      const content = markdown ? importMarkdownFragment(markdown) : [];
+      const content = parseAiMarkdownToBlocks(operation.markdown);
       return normalizePageContent(content, {
         ensureFirstTitle: false,
       }) as JSONContent;

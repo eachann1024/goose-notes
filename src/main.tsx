@@ -224,8 +224,7 @@ import "./index.css";
 import "./fonts.css";
 import {
   applyFontVariables,
-  DEFAULT_FONT_NAMES,
-  ensurePersistentRemoteFont,
+  preloadFonts,
 } from "./lib/fontLoader";
 import {
   applyAppearanceScaleVariables,
@@ -243,6 +242,12 @@ import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+
+try {
+  preloadFonts();
+} catch (error) {
+  console.warn("[fontLoader] preloadFonts failed", error);
+}
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -596,10 +601,6 @@ export const bootstrap = async (
         },
       });
       if (startupResult === "error") return;
-
-      // 从持久缓存在后台安装大体积衬线字体：首次只下载一次，
-      // 后续切到任意衬线体页面时已可直接渲染，不发生字体替换重排。
-      void ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
     }
   } catch (error) {
     console.error("[bootstrap] 初始化失败", error);

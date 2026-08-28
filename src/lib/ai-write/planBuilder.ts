@@ -1,6 +1,11 @@
 import type { JSONContent } from "@/types";
 import { extractTextFromContent, extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
-import { importFromMarkdown, importMarkdownFragment } from "@/lib/export";
+import { importFromMarkdown } from "@/lib/export";
+import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
+import {
+  normalizeAiMarkdown,
+  parseAiMarkdownToBlocks,
+} from "@/lib/notebook-ai/markdown";
 import type { AiResolvedTarget, AiWritePlan } from "./targetResolution";
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -85,7 +90,7 @@ export function buildAiWritePlan(params: {
   if (params.resolvedTarget.action === "chat_only") return null;
 
   if (params.resolvedTarget.action === "replace_block_range") {
-    const fragment = importMarkdownFragment(params.markdown);
+    const fragment = parseAiMarkdownToBlocks(params.markdown);
     const fragmentContent: JSONContent | null =
       fragment && fragment.length ? (cloneContent(fragment) as JSONContent) : null;
     const fallbackContent =
@@ -106,10 +111,10 @@ export function buildAiWritePlan(params: {
     } satisfies AiWritePlan;
   }
 
-  const imported = importFromMarkdown(params.markdown);
+  const imported = importFromMarkdown(normalizeAiMarkdown(params.markdown));
   let content =
     imported.success && imported.content.length
-      ? cloneContent(imported.content)
+      ? (explodeAiGeneratedBlocks(cloneContent(imported.content)) as JSONContent)
       : createPlainTextDoc(params.markdown);
 
   let previewTitle = inferTitleFromContent(content);

@@ -42,7 +42,9 @@ export type {
 } from "./blockTypeTransform";
 
 export {
+  applyBlockTypeTransformToContiguousIds,
   applyBlockTypeTransformToEditor,
+  coerceGeneratedBlocksToExpectedType,
   createBlockTypeTransformSelectionSnapshot,
   createPageBodyBlockTypeTransformSnapshot,
   getBlockTypeTransformSignature,
@@ -67,3 +69,9 @@ export {
   resolveGeneratedBlockStructureExpectation,
   validateGeneratedBlockStructure,
 } from "./blockStructureValidation";
+
+export {
+  classifyAiLineText,
+  explodeAiGeneratedBlocks,
+  rewriteAiStructureLine,
+} from "./explodeAiGeneratedBlocks";

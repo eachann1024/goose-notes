@@ -1,6 +1,7 @@
 import { expect, test } from "playwright/test";
 import {
   applyBlockTypeTransformToEditor,
+  coerceGeneratedBlocksToExpectedType,
   createPageBodyBlockTypeTransformSnapshot,
   hasWholePageBlockTypeTransformScope,
   planBlockTypeTransform,
@@ -314,4 +315,30 @@ test("编辑器入口在一个事务中替换全部源块", () => {
   expect(
     replacements.map((block) => (block as { type?: string }).type),
   ).toEqual(["checkListItem", "checkListItem"]);
+});
+
+test("强制转类型不把标题和普通句子收成待办", () => {
+  const document: BlockTypeTransformBlock[] = [
+    { id: "h", type: "heading", props: { level: 2 }, content: "坚持下来" },
+    { id: "todo", type: "paragraph", content: "✅ 白天不犯困" },
+    { id: "plain", type: "paragraph", content: "这是一句普通说明。" },
+  ];
+  const replaced: Array<{ ids: string[]; types: string[] }> = [];
+  const editor = {
+    document,
+    transact(callback: () => void) {
+      callback();
+    },
+    replaceBlocks(ids: string[], blocks: Array<{ type?: string }>) {
+      replaced.push({ ids, types: blocks.map((block) => block.type ?? "") });
+    },
+  };
+
+  coerceGeneratedBlocksToExpectedType(editor, ["h", "todo", "plain"], {
+    blockType: "checkListItem",
+  });
+
+  expect(replaced).toHaveLength(1);
+  expect(replaced[0]?.ids).toEqual(["todo"]);
+  expect(replaced[0]?.types).toEqual(["checkListItem"]);
 });

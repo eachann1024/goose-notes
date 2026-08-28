@@ -7,9 +7,11 @@ import {
   createAndFinalizePage,
   reloadEditorIfActive,
 } from "@/lib/notebook-ai/liveWriter";
-import { buildAiPageContent } from "@/lib/notebook-ai/markdown";
-import { normalizeAiMarkdown } from "@/lib/notebook-ai/markdown";
-import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import {
+  buildAiPageContent,
+  normalizeAiMarkdown,
+  parseAiMarkdownToBlocks,
+} from "@/lib/notebook-ai/markdown";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
   guardPageForAiWrite,
@@ -222,7 +224,7 @@ export const appendToPage = tool({
       return { pageId, ok: false, error: "要追加的内容不能为空" };
     }
 
-    const addition = importMarkdownFragment(markdown);
+    const addition = parseAiMarkdownToBlocks(markdown);
     if (!addition?.length) {
       return { pageId, ok: false, error: "追加内容无法解析为 Markdown" };
     }

@@ -2,7 +2,7 @@
  * 将「仅局部差异」的整页 edit 自动拆成一条或多条 search_replace，
  * 避免误用 edit 导致块 id / props 丢失。纯函数，便于单测。
  */
-import { normalizeAiMarkdown } from "@/lib/notebook-ai/markdown";
+import { normalizeAiMarkdownForDiff } from "@/lib/notebook-ai/markdown";
 import type { BatchPlanOperationInput } from "./types";
 
 export type SearchReplaceFromEdit = Extract<
@@ -164,8 +164,8 @@ export function tryConvertEditToSearchReplace(params: {
   newMarkdown: string;
   baseOperationId: string;
 }): SearchReplaceFromEdit[] | null {
-  const oldMd = normalizeAiMarkdown(params.oldMarkdown ?? "");
-  const newMd = normalizeAiMarkdown(params.newMarkdown ?? "");
+  const oldMd = normalizeAiMarkdownForDiff(params.oldMarkdown ?? "");
+  const newMd = normalizeAiMarkdownForDiff(params.newMarkdown ?? "");
   const oldNorm = oldMd.trim();
   const newNorm = newMd.trim();
 

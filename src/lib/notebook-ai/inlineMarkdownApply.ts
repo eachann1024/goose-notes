@@ -4,8 +4,11 @@
  */
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
-import { normalizeAiMarkdown } from "@/lib/notebook-ai/markdown";
-import { normalizeGeneratedStructureMarkdown } from "@/lib/ai-write/blockStructureValidation";
+import {
+  normalizeAiMarkdown,
+  parseAiMarkdownToBlocks,
+} from "@/lib/notebook-ai/markdown";
+import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 export type InlineEditMode = "selection" | "cursor";
@@ -75,10 +78,16 @@ function parseMarkdownToBlocks(
   editor: InlineMarkdownEditor,
   markdown: string,
 ): unknown[] {
+  const fromAi = parseAiMarkdownToBlocks(markdown);
+  if (fromAi.length > 0) return fromAi;
+
   if (typeof editor.tryParseMarkdownToBlocks === "function") {
     try {
       const parsed = editor.tryParseMarkdownToBlocks(markdown);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const exploded = explodeAiGeneratedBlocks(parsed);
+        return exploded.length > 0 ? exploded : parsed;
+      }
     } catch {
       // fall through
     }
@@ -87,7 +96,8 @@ function parseMarkdownToBlocks(
   if (!fragment || fragment.length === 0) {
     throw new Error("AI 返回的内容无法解析为有效块。");
   }
-  return fragment;
+  const exploded = explodeAiGeneratedBlocks(fragment);
+  return exploded.length > 0 ? exploded : fragment;
 }
 
 /** 去掉解析结果上的 id，交给 replaceBlocks 生成新块，避免与源 id 冲突。 */
@@ -214,9 +224,7 @@ export function applyMarkdownToInlineTarget(
     );
   }
 
-  const normalized = normalizeAiMarkdown(
-    normalizeGeneratedStructureMarkdown(newMarkdown ?? ""),
-  ).trim();
+  const normalized = normalizeAiMarkdown(newMarkdown ?? "").trim();
   if (!normalized) {
     throw new Error("AI 未返回可写入的内容。");
   }

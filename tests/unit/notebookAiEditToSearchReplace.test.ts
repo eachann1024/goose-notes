@@ -60,6 +60,21 @@ test("近乎整页重写返回 null", () => {
   ).toBeNull();
 });
 
+test("相邻正文硬换行不会被拆成多个 diff hunk", () => {
+  const original = ["## 标题", "第一行\n第二行\n第三行", "## 后面"].join("\n\n");
+  const next = ["## 标题", "第一行\n第二行已改\n第三行", "## 后面"].join("\n\n");
+  const ops = tryConvertEditToSearchReplace({
+    pageId: "page-1",
+    oldMarkdown: original,
+    newMarkdown: next,
+    baseOperationId: "edit-hardbreak",
+  });
+  expect(ops).not.toBeNull();
+  expect(ops).toHaveLength(1);
+  expect(ops![0]!.oldString).toBe("第一行\n第二行\n第三行");
+  expect(ops![0]!.newString).toBe("第一行\n第二行已改\n第三行");
+});
+
 test("空原文返回 null", () => {
   expect(
     tryConvertEditToSearchReplace({
