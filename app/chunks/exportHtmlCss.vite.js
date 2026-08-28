@@ -172,8 +172,8 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 
 .goose-code-toolbar-actions button:hover,
 .goose-code-toolbar-actions .goose-code-lang-trigger:hover {
-  background: hsl(var(--muted) / 0.5) !important;
-  color: hsl(var(--foreground)) !important;
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions-visual {
@@ -188,7 +188,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 
 .goose-code-toolbar-actions-visual button:hover {
   background: var(--goose-interactive-hover) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions-visual .goose-code-display-toggle {
@@ -206,7 +206,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 
 .goose-code-toolbar-actions-visual button.goose-code-action-active {
   background: var(--goose-interactive-selected) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 .goose-code-toolbar-actions button:disabled {
@@ -538,7 +538,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 }
 
 .goose-file-block-icon-btn:hover {
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-file-block-name {
@@ -605,7 +605,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 
 .goose-file-block-action-btn:hover {
   background-color: var(--goose-interactive-hover);
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
 /* ===== 媒体/文件空状态（替代 BlockNote bn-add-file-button） ===== */
@@ -2125,7 +2125,7 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 /* uTools 主窗固定全宽布局的左右留白：
    全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
    需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
-   注：折叠标题箭头已改回行内，不再与 side menu 抢 gutter。 */
+   注：side menu 锚在内容列左缘，translateX(-100%) 整颗 pill 落在 gutter。 */
 /* 全宽 gutter 由 page-scroll-container 的 px-14 统一承担，避免与页面图标列双重缩进 */
 .workspace-editor-surface.max-w-none .bn-editor {
   padding-inline: 0;
@@ -2135,6 +2135,15 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   .bn-block-content[data-content-type="heading"]
   h1:first-child {
   margin-top: 0;
+}
+
+/* 光标在标题内：由 goose-active-heading-caret 扩展打 data-goose-heading-caret；
+   ProseMirror focus 在 .ProseMirror 根上，:focus-within 不可靠。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-goose-heading-caret="true"]
+  .bn-inline-content {
+  color: var(--goose-interactive-selected-fg);
+  caret-color: var(--goose-interactive-selected-fg);
 }
 
 /* BlockNote 块间距全局优化 */
@@ -2381,7 +2390,7 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 
 .goose-table-extend-button:hover,
 .goose-table-extend-button.is-editing {
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-table-extend-button:hover > svg,
@@ -2436,8 +2445,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 }
 
 .goose-table-handle-btn:hover {
-  background: hsl(var(--accent) / 0.5);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
   opacity: 1;
 }
 
@@ -2451,7 +2460,8 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 }
 .workspace-editor-surface .bn-table-handle:hover {
   opacity: 1;
-  background: hsl(var(--accent) / 0.5);
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .workspace-editor-surface
@@ -2460,17 +2470,10 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
   margin-bottom: 0.5em;
 }
-`,u=`/* 折叠标题与折叠列表：整行标题条 / 正文顶格 / 无引用线。
+`,u=`/* 折叠标题与折叠列表：heading 视觉同普通标题；children 顶格 / 无引用线。
  * 被 editor-base.css 按序 @import。
  * 依赖 --goose-icon-chip-on-selected / --muted-foreground / --foreground。
  */
-
-.workspace-editor-surface {
-  --goose-toggle-bar: #f1f0ed;
-}
-.dark .workspace-editor-surface {
-  --goose-toggle-bar: #3a3a37;
-}
 
 /* 空折叠块展开后的「点击添加」提示行：保留（否则空块展开毫无反馈），
    文案在 Editor.tsx dictionary 覆盖。标题 children 顶格，不再跟 22px 缩进。 */
@@ -2524,16 +2527,47 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 .bn-editor .bn-toggle-button:hover,
 .bn-editor .bn-toggle-add-block-button:hover {
   background: var(--goose-icon-chip-on-selected);
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
 }
 
-/* 折叠标题：箭头留在行内（不再挂 gutter），整行是一条可 hover 的标题条。 */
+/* 侧栏折叠按钮：默认 muted；hover/active/data-fold-hot 用高特异 + !important 压 portal 层叠 */
+.bn-side-menu button.goose-heading-fold-btn {
+  color: hsl(var(--muted-foreground) / 0.55);
+  background-color: transparent;
+  transition:
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn:hover,
+html body .bn-side-menu button.goose-heading-fold-btn:active,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] {
+  background-color: var(--goose-icon-chip-on-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn:hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn:hover span,
+html body .bn-side-menu button.goose-heading-fold-btn:active svg,
+html body .bn-side-menu button.goose-heading-fold-btn:active span,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover span,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active span,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] svg,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span {
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+/* 折叠标题：行内箭头永远隐藏，折叠只走侧栏按钮；视觉同普通标题。 */
 .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   > div
   > .bn-toggle-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
   min-width: 0;
   width: 100%;
 }
@@ -2544,24 +2578,26 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   flex: 0 1 auto;
   min-width: 0;
 }
+.bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
+  > div
+  > .bn-toggle-wrapper
+  > .bn-toggle-button {
+  visibility: hidden;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
 
-.workspace-editor-surface
-  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"] {
-  margin-top: 0.4em;
-  margin-left: -8px;
-  padding: 4px 8px;
-  border-radius: 8px;
+@media (prefers-reduced-motion: reduce) {
+  .bn-editor .bn-toggle-button {
+    transition: none;
+  }
 }
-.workspace-editor-surface
-  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:hover,
-.workspace-editor-surface
-  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:focus-within,
-.workspace-editor-surface
-  .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]:has(
-    .bn-toggle-wrapper[data-show-children="false"]
-  ) {
-  background: var(--goose-toggle-bar);
-}
+
 .workspace-editor-surface
   .bn-block-content[data-content-type="heading"][data-is-toggleable="true"]
   ~ .bn-block-group {
