@@ -8,6 +8,7 @@ import {
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
+import { ensureBlockMoveDragging } from "@/components/editor/core/ensureBlockMoveDragging";
 import {
   Tooltip,
   TooltipContent,
@@ -42,15 +43,6 @@ export function EditorSideMenu() {
   });
 
   const block = state?.block;
-  // 折叠标题的折叠箭头悬挂在内容左缘外侧，与 side menu(+/拖拽把手)同列重叠
-  // （留白消不掉，因二者同锚内容左缘、向同侧展开）。折叠标题整块不显示 side menu，
-  // 加块/拖拽改走其它入口。toggleListItem 箭头是行内 marker、不重叠，不受影响。
-  const headingProps = (
-    block as { props?: { isToggleable?: boolean; n?: boolean } }
-  )?.props;
-  const isToggleableHeading =
-    block?.type === "heading" &&
-    Boolean(headingProps?.isToggleable ?? headingProps?.n);
 
   useEffect(() => {
     const updateSidebarInteracting = (
@@ -80,11 +72,9 @@ export function EditorSideMenu() {
     };
   }, []);
 
-  // 先判定是否应显示，再更新位置/挂载 DOM，避免折叠标题上把手闪一下
   const shouldShow =
     Boolean(state?.show && state.referencePos && block) &&
     editor.isEditable &&
-    !isToggleableHeading &&
     !sidebarInteracting;
 
   const handleAdd = useCallback(
@@ -120,8 +110,9 @@ export function EditorSideMenu() {
         { dataTransfer: e.dataTransfer, clientY: e.clientY },
         block,
       );
+      ensureBlockMoveDragging(editor.prosemirrorView, e.dataTransfer);
     },
-    [block, sideMenu],
+    [block, editor, sideMenu],
   );
 
   const handleDragEnd = useCallback(() => {
@@ -161,18 +152,6 @@ export function EditorSideMenu() {
         pointerEvents: "auto",
       }}
       onMouseDown={(e) => e.stopPropagation()}
-      onDragEnter={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
     >
       <div className="goose-editor-inline-context-ui flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1 shadow-[0_1px_2px_hsl(var(--foreground)/0.05),0_8px_22px_hsl(var(--foreground)/0.06)] dark:border-white/12 dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)]">
         <TooltipProvider delayDuration={600} disableHoverableContent>

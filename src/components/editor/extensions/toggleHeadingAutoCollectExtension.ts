@@ -98,6 +98,11 @@ function collectSection(editor: Editor, headingId: string): void {
   });
 }
 
+/** 已有 children 的折叠标题（拖放复制、粘贴）不再收编后续兄弟，避免多出行。 */
+export function shouldAutoCollectToggleHeading(block: Block): boolean {
+  return isToggleableHeading(block) && block.children.length === 0;
+}
+
 // createExtension 的函数形态：BlockNote 会以 { editor, options } 调用该工厂
 // （mount 回调本身只拿得到 { dom, root, signal }，editor 经工厂闭包捕获）。
 // 注意 createExtension(fn) 返回的是「options 应用器」，注册时需调用一次：
@@ -119,7 +124,12 @@ export const gooseToggleHeadingAutoCollectExtension = createExtension(
         // 先更新快照再收编：收编的 transact 会同步触发嵌套 onChange，
         // 若快照未先更新，同一 id 会被再次判定为新折叠标题。
         known = current;
-        for (const id of fresh) collectSection(ed, id);
+        for (const id of fresh) {
+          const found = findSiblings(ed.document, id);
+          const heading = found?.siblings[found.index];
+          if (!heading || !shouldAutoCollectToggleHeading(heading)) continue;
+          collectSection(ed, id);
+        }
       });
       signal.addEventListener("abort", () => off?.());
     },

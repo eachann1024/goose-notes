@@ -1,5 +1,6 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { TextSelection, type EditorState } from "@tiptap/pm/state";
+import { CellSelection } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
 import {
   deleteSelectedBlocks,
@@ -56,9 +57,9 @@ test("选区端点只接触上一块行尾时，不把上一块算作跨块整�
     // 仅与 second 正文正重叠，但选区从上一块行尾越界而来。
     // 旧实现直接放行默认 deleteSelection，会连结构删掉 second 整块；
     // 现在钳制为只删 second 内被选中的 inline，两块都保留。
-    expect(isOvershootingSingleTextblockSelection(editor.prosemirrorState)).toBe(
-      true,
-    );
+    expect(
+      isOvershootingSingleTextblockSelection(editor.prosemirrorState),
+    ).toBe(true);
     expect(deleteSelectedBlocks(editor)).toBe(true);
     expect(editor.document.map((block) => block.id)).toEqual([
       "title",
@@ -394,4 +395,109 @@ test("顶层空列表项继续交给原生退格逻辑", () => {
     false,
   );
   expect(editor.document.map((block) => block.id)).toEqual(["title", "empty"]);
+});
+
+test("跨行选中包含完整表格时，删除能把整个表格彻底删除并保留两端剩余内容", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "p1", type: "paragraph", content: "前置段落内容" },
+      {
+        id: "tbl",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [
+            { cells: [["A1"], ["B1"], ["C1"]] },
+            { cells: [["A2"], ["B2"], ["C2"]] },
+          ],
+        },
+      },
+      { id: "p2", type: "paragraph", content: "后置段落内容" },
+    ],
+  });
+
+  const p1Range = contentRanges(editor).get("p1")!;
+  const p2Range = contentRanges(editor).get("p2")!;
+
+  // 模拟用户从 p1 中间（"前置" 之后）一直划选，穿过中间表格，直到 p2 中间（"后置" 之后）
+  editor.transact((tr) =>
+    tr.setSelection(
+      TextSelection.create(tr.doc, p1Range.from + 2, p2Range.from + 2),
+    ),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+
+  // 表格被完全删除，保留 p1 和 p2 的未选中部分
+  expect(editor.document.map((b) => b.id)).toEqual(["title", "p1", "p2"]);
+  expect(editor.getBlock("p1")!.content).toEqual([
+    { type: "text", text: "前置", styles: {} },
+  ]);
+  expect(editor.getBlock("p2")!.content).toEqual([
+    { type: "text", text: "段落内容", styles: {} },
+  ]);
+  expect(editor.getBlock("tbl")).toBeUndefined();
+});
+
+test("跨行选中从前置段落完整覆盖表格时，表格被删除", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "p1", type: "paragraph", content: "前置" },
+      {
+        id: "tbl",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [{ cells: [["1"], ["2"]] }],
+        },
+      },
+    ],
+  });
+
+  const p1Range = contentRanges(editor).get("p1")!;
+  // 选区从 p1 起点到表格后（即全选 p1 和 tbl）
+  const endPos = editor.prosemirrorState.doc.content.size - 1;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, p1Range.from, endPos)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  // tbl 被删除，p1 被删除（非首块且完全选中）
+  expect(editor.document.map((b) => b.id)).toEqual(["title"]);
+  expect(editor.getBlock("tbl")).toBeUndefined();
+});
+
+test("表格内部 CellSelection 选区不被 crossBlockDelete 拦截，交由原生表格逻辑", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      {
+        id: "tbl",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [{ cells: [["A1"], ["B1"]] }, { cells: [["A2"], ["B2"]] }],
+        },
+      },
+    ],
+  });
+
+  // 找到表格内部单元格并在其上构造 CellSelection
+  let cellPos = -1;
+  editor.prosemirrorState.doc.descendants((node, pos) => {
+    if (node.type.name === "tableCell" && cellPos === -1) {
+      cellPos = pos;
+    }
+  });
+  expect(cellPos).toBeGreaterThan(-1);
+
+  editor.transact((tr) =>
+    tr.setSelection(CellSelection.create(tr.doc, cellPos)),
+  );
+
+  // CellSelection 不应该由 crossBlockDelete 接管
+  expect(deleteSelectedBlocks(editor)).toBe(false);
+  expect(editor.getBlock("tbl")).toBeDefined();
 });
