@@ -34,13 +34,29 @@
   z-index: 21;
 }
 
-.sidebar-tree-row--selected {
+.sidebar-tree-row--selected,
+.sidebar-tree-row--hovered {
   color: var(--goose-interactive-selected-fg) !important;
   background: var(--goose-interactive-selected) !important;
 }
 
-/* 选中行内图标统一吃强调文字色（lucide 为 currentColor）；语义色图标不动。 */
-.sidebar-tree-row--selected svg:not([class*="text-destructive"]) {
+/* 收藏/虚拟树多行共用 .sidebar-tree-row。uTools 旧内核会把
+   `.sidebar-tree-row:hover` 套到所有同类，两项一起亮。
+   悬停由每行 --hovered 类标记，不要写 :hover。 */
+.workspace-shell
+  [data-goose-context-trigger][data-context-open="true"]
+  > .sidebar-tree-row {
+  color: var(--goose-interactive-selected-fg) !important;
+  background-color: var(--goose-interactive-selected) !important;
+}
+
+/* 选中 / 悬停 / 右键行内图标统一吃强调文字色；语义色图标不动。 */
+.sidebar-tree-row--selected svg:not([class*="text-destructive"]),
+.sidebar-tree-row--hovered svg:not([class*="text-destructive"]),
+.workspace-shell
+  [data-goose-context-trigger][data-context-open="true"]
+  > .sidebar-tree-row
+  svg:not([class*="text-destructive"]) {
   color: var(--goose-interactive-selected-fg);
 }
 

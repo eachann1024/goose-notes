@@ -133,36 +133,41 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 
 /* 历史页交互状态使用扁平选择器：uTools 旧内核不执行 Tailwind v4 的嵌套 hover CSS。 */
-.workspace-shell .history-secondary-control:hover,
-.workspace-shell .history-version-row[data-selected="false"]:hover {
+.workspace-shell .history-secondary-control:hover {
   color: hsl(var(--foreground)) !important;
   background-color: var(--goose-control-hover-bg) !important;
 }
 
-/* 历史页星标独立图标按钮：强调色图标底，暗色回退 interactive-hover。 */
-.workspace-shell .history-star-control:hover {
-  color: hsl(var(--foreground)) !important;
-  background-color: var(--goose-icon-chip-on-selected) !important;
-}
-
-.dark .workspace-shell .history-star-control:hover {
+.workspace-shell .history-version-item[data-selected="false"]:hover {
   background-color: var(--goose-interactive-hover) !important;
 }
 
-/* 侧栏底部独立图标按钮：强调色图标底，暗色回退 interactive-hover。 */
+.workspace-shell .history-version-item[data-selected="true"] {
+  background-color: var(--goose-interactive-selected) !important;
+}
+
+.workspace-shell .history-version-item[data-selected="true"]:hover {
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-fg) !important;
+}
+
+.workspace-shell .history-version-item[data-selected="true"]:active {
+  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
+}
+
+.workspace-shell .history-version-item:focus-within {
+  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
+}
+
+/* 历史页星标、侧栏底栏图标：hover 与侧栏选中一致（强调底 + 强调色）。 */
+.workspace-shell .history-star-control:hover,
 .workspace-shell .sidebar-footer-control:hover {
-  color: hsl(var(--foreground)) !important;
-  background-color: var(--goose-icon-chip-on-selected) !important;
-}
-
-.dark .workspace-shell .sidebar-footer-control:hover {
-  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  background-color: var(--goose-interactive-selected) !important;
 }
 
 .workspace-shell .history-secondary-control:active,
 .workspace-shell .sidebar-footer-control:active,
-.workspace-shell .history-star-control:active,
-.workspace-shell .history-version-row:active {
+.workspace-shell .history-star-control:active {
   color: var(--goose-interactive-selected-fg) !important;
   background-color: var(--goose-interactive-selected) !important;
 }
@@ -172,30 +177,16 @@ html[data-sidebar-collapsed] .bn-side-menu {
   transform: translateY(1px) !important;
 }
 
-.workspace-shell .history-star-control:active {
-  transform: translateY(-50%) scale(0.95) !important;
-}
-
-.workspace-shell .history-version-row[data-selected="true"]:hover {
-  background-color: var(--goose-interactive-selected) !important;
-  box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-fg) !important;
-}
-
 .workspace-shell .sidebar-footer-control[data-active="true"]:hover {
   color: var(--goose-interactive-selected-fg) !important;
   background-color: var(--goose-interactive-selected) !important;
   box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-fg) !important;
 }
 
-.workspace-shell .history-version-row[data-selected="true"]:active {
-  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
-}
-
 .workspace-shell .history-secondary-control:focus-visible,
 .workspace-shell .history-primary-control:focus-visible,
 .workspace-shell .sidebar-footer-control:focus-visible,
-.workspace-shell .history-star-control:focus-visible,
-.workspace-shell .history-version-row:focus-visible {
+.workspace-shell .history-star-control:focus-visible {
   outline: none !important;
   box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
 }
@@ -216,16 +207,16 @@ html[data-sidebar-collapsed] .bn-side-menu {
   opacity: 0.5 !important;
 }
 
-.workspace-shell .history-star-control {
-  opacity: 0 !important;
+.workspace-shell .history-star-control svg {
+  opacity: 0;
 }
 
-.workspace-shell .history-version-item:hover .history-star-control,
-.workspace-shell .history-version-item:focus-within .history-star-control,
-.workspace-shell .history-star-control:focus-visible,
-.workspace-shell .history-star-control[data-marked="true"],
-.workspace-shell .history-star-control[aria-busy="true"] {
-  opacity: 1 !important;
+.workspace-shell .history-version-item:hover .history-star-control svg,
+.workspace-shell .history-version-item:focus-within .history-star-control svg,
+.workspace-shell .history-star-control:focus-visible svg,
+.workspace-shell .history-star-control[data-marked="true"] svg,
+.workspace-shell .history-star-control[aria-busy="true"] svg {
+  opacity: 1;
 }
 
 .workspace-shell .history-star-control:hover svg {
@@ -235,11 +226,6 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .history-star-control[data-marked="true"] svg {
   color: var(--goose-color-favorite) !important;
   fill: var(--goose-color-favorite) !important;
-}
-
-.workspace-shell .history-star-control:disabled {
-  cursor: wait !important;
-  opacity: 0.7 !important;
 }
 
 .workspace-shell .sidebar-expand-attention {

@@ -1,5 +1,5 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
-import { getPageTitle, clipPinnedTitle } from "@/components/editor/utils/page-title";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useStoreWithEqualityFn } from "zustand/traditional";
@@ -30,16 +30,8 @@ export function SidebarHeader({
   const setPendingNavigatePageId = usePages(
     (state) => state.setPendingNavigatePageId,
   );
-  const openTab = useTabs((state) => state.openTab);
   const openPreviewTab = useTabs((state) => state.openPreviewTab);
   const setActiveNotebook = useNotebooks((state) => state.setActiveNotebook);
-  const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
-  const isLocalFolder = useNotebooks((state) =>
-    activeNotebookId
-      ? state.notebooks[activeNotebookId]?.source === "local-folder"
-      : false,
-  );
-  const showPinnedTitles = useSettings((state) => state.showPinnedTitles);
   const pinnedScrollerRef = useRef<HTMLDivElement>(null);
   const activePinnedRef = useRef<HTMLButtonElement | null>(null);
   const autoScrollFrameRef = useRef<number | null>(null);
@@ -55,7 +47,6 @@ export function SidebarHeader({
     height: number;
   } | null>(null);
   const pinnedPages = useMemo(() => {
-    if (isLocalFolder) return [];
     return Object.values(pages)
       .filter((page) => !page.trashedAt && page.isPinned)
       .sort((a, b) => {
@@ -64,26 +55,38 @@ export function SidebarHeader({
         if (pinA !== pinB) return pinB - pinA;
         return b.updatedAt - a.updatedAt;
       });
-  }, [isLocalFolder, pages]);
+  }, [pages]);
 
   // 胶囊位置实测选中按钮的 offset*，nav 即 offsetParent，坐标不受 scrollLeft 影响
   const measurePinnedPill = useCallback(() => {
     const activeButton = activePinnedRef.current;
     if (!activeButton) {
-      setPillBox(null);
+      setPillBox((prev) => (prev === null ? prev : null));
       return;
     }
-    setPillBox({
+    const nextBox = {
       left: activeButton.offsetLeft,
       top: activeButton.offsetTop,
       width: activeButton.offsetWidth,
       height: activeButton.offsetHeight,
+    };
+    setPillBox((prev) => {
+      if (
+        prev &&
+        prev.left === nextBox.left &&
+        prev.top === nextBox.top &&
+        prev.width === nextBox.width &&
+        prev.height === nextBox.height
+      ) {
+        return prev;
+      }
+      return nextBox;
     });
   }, []);
 
-  const pinnedMeasureKey = `${showPinnedTitles}|${pinnedPages
+  const pinnedMeasureKey = pinnedPages
     .map((page) => `${page.id}:${page.icon ?? ""}:${getPageTitle(page)}`)
-    .join("|")}`;
+    .join("|");
 
   useLayoutEffect(() => {
     measurePinnedPill();
@@ -396,7 +399,6 @@ export function SidebarHeader({
                 {pinnedPages.map((page) => {
                   const isActive = highlightedPageId === page.id;
                   const title = getPageTitle(page);
-                  const pinnedLabel = clipPinnedTitle(title);
                   return (
                     <TooltipProvider key={page.id} delayDuration={600}>
                       <Tooltip>
@@ -407,24 +409,16 @@ export function SidebarHeader({
                             aria-label={title}
                             aria-current={isActive ? "page" : undefined}
                             className={cn(
-                              "relative z-[1] h-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center",
+                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center justify-center",
                               "transition-colors duration-150 active:[&_svg]:scale-[0.97]",
                               "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
-                              showPinnedTitles
-                                ? "gap-1 pl-1.5 pr-2"
-                                : "w-8 justify-center",
                               isActive
                                 ? "text-[var(--goose-interactive-selected-fg)]"
-                                : "text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
+                                : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
                             {renderPinnedIcon(page, isActive)}
-                            {showPinnedTitles ? (
-                              <span className="whitespace-nowrap text-xs font-medium leading-none">
-                                {pinnedLabel}
-                              </span>
-                            ) : null}
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">{title}</TooltipContent>
@@ -467,7 +461,7 @@ export function SidebarHeader({
                     canScrollLeft
                       ? "opacity-0 -translate-x-1"
                       : "opacity-0 -translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
+                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronLeft className="h-3.5 w-3.5" />
@@ -490,7 +484,7 @@ export function SidebarHeader({
                     canScrollRight
                       ? "opacity-0 translate-x-1"
                       : "opacity-0 translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]",
+                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronRight className="h-3.5 w-3.5" />

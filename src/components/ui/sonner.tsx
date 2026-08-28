@@ -55,15 +55,17 @@ function successToast(message: ToastMessage, data?: ExternalToast) {
       ...classNames,
       toast: cn("goose-toast-success", classNames?.toast),
       success: cn("goose-toast-success", classNames?.success),
-      actionButton: cn(
-        "goose-toast-success-action",
-        classNames?.actionButton,
-      ),
+      actionButton: cn("goose-toast-success-action", classNames?.actionButton),
     },
   });
 }
 
-const Toaster = ({ className, toastOptions, icons, ...props }: ToasterProps) => {
+const Toaster = ({
+  className,
+  toastOptions,
+  icons,
+  ...props
+}: ToasterProps) => {
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
@@ -83,8 +85,8 @@ const Toaster = ({ className, toastOptions, icons, ...props }: ToasterProps) => 
     <Sonner
       theme="system"
       position="bottom-right"
-      offset={14}
-      mobileOffset={14}
+      offset={22}
+      mobileOffset={22}
       closeButton
       swipeDirections={["left", "right", "top"]}
       className={cn("toaster group goose-toaster z-[22000]", className)}
@@ -100,8 +102,14 @@ const Toaster = ({ className, toastOptions, icons, ...props }: ToasterProps) => 
         ...toastOptions,
         classNames: {
           ...toastOptions?.classNames,
-          toast: cn(defaultToastClassNames.toast, toastOptions?.classNames?.toast),
-          title: cn(defaultToastClassNames.title, toastOptions?.classNames?.title),
+          toast: cn(
+            defaultToastClassNames.toast,
+            toastOptions?.classNames?.toast,
+          ),
+          title: cn(
+            defaultToastClassNames.title,
+            toastOptions?.classNames?.title,
+          ),
           description: cn(
             defaultToastClassNames.description,
             toastOptions?.classNames?.description,
@@ -118,7 +126,10 @@ const Toaster = ({ className, toastOptions, icons, ...props }: ToasterProps) => 
             defaultToastClassNames.closeButton,
             toastOptions?.classNames?.closeButton,
           ),
-          error: cn(defaultToastClassNames.error, toastOptions?.classNames?.error),
+          error: cn(
+            defaultToastClassNames.error,
+            toastOptions?.classNames?.error,
+          ),
           success: cn(
             defaultToastClassNames.success,
             toastOptions?.classNames?.success,

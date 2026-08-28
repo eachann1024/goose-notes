@@ -64,8 +64,14 @@ function SortableTabItem({
   onPromotePreview,
   onLocateInTree,
 }: SortableTabItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: tab.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tab.id });
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -211,7 +217,6 @@ function SortableTabItem({
   );
 }
 
-
 interface PageHeaderProps {
   page?: Page;
   onOpenSearch: () => void;
@@ -305,7 +310,9 @@ export function PageHeader({
     ? formatShortcut(closeTabShortcut)
     : "";
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
-  const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
+  const toggleSidebarCollapsed = useSidebarView(
+    (s) => s.toggleSidebarCollapsed,
+  );
   const toggleSidebarShortcutLabel = appShortcuts.toggleSidebar
     ? formatShortcut(appShortcuts.toggleSidebar)
     : "";
@@ -353,9 +360,9 @@ export function PageHeader({
     event.preventDefault();
   };
 
-  /** 顶栏通用图标按钮：透明底，hover 才起底，与 PageIconButton 一致 */
+  /** 顶栏通用图标按钮：透明底，hover 才起底；选中用强调色底 */
   const actionButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground";
+    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-selected-fg)]";
 
   return (
     <div
@@ -375,7 +382,7 @@ export function PageHeader({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                     sidebarExpandAttention && "sidebar-expand-attention",
                   )}
                   onClick={toggleSidebarCollapsed}
@@ -427,9 +434,7 @@ export function PageHeader({
                     aria-pressed={aiPanelOpen}
                   >
                     <AiGradientIcon
-                      key={
-                        aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase
-                      }
+                      key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
                       className="h-4 w-4"
                       state={aiPhase}
                     />
@@ -540,7 +545,7 @@ export function PageHeader({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
                       onClick={onOpenSearch}
                     >
                       <LucideIcons.Plus className="h-4 w-4" />
@@ -556,7 +561,7 @@ export function PageHeader({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
                       aria-label="全部标签页"
                     >
                       <LucideIcons.ChevronDown
@@ -583,15 +588,14 @@ export function PageHeader({
                             : "";
                       const isActive =
                         activeTabId === tab.id &&
-                        !(
-                          aiPanelOpen && isFullscreenAiLayout(aiLayoutMode)
-                        );
+                        !(aiPanelOpen && isFullscreenAiLayout(aiLayoutMode));
                       return (
                         <DropdownMenuItem
                           key={tab.id}
                           className={cn(
                             "flex items-center gap-2 text-[13px]",
-                            isActive && "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
+                            isActive &&
+                              "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
                           )}
                           onSelect={() => {
                             onBeforeActivateTab?.();
@@ -601,9 +605,16 @@ export function PageHeader({
                               const scroller = tabsScrollerRef.current;
                               if (!scroller) return;
                               const el = tab.pageId
-                                ? scroller.querySelector<HTMLElement>(`[data-tab-page-id="${tab.pageId}"]`)
-                                : scroller.querySelector<HTMLElement>('[data-tab-active="true"]');
-                              el?.scrollIntoView({ inline: "nearest", block: "nearest" });
+                                ? scroller.querySelector<HTMLElement>(
+                                    `[data-tab-page-id="${tab.pageId}"]`,
+                                  )
+                                : scroller.querySelector<HTMLElement>(
+                                    '[data-tab-active="true"]',
+                                  );
+                              el?.scrollIntoView({
+                                inline: "nearest",
+                                block: "nearest",
+                              });
                             }, 0);
                           }}
                         >
@@ -638,7 +649,9 @@ export function PageHeader({
         </div>
 
         {page?.isLocked && (
-          <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">已锁定</span>
+          <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">
+            已锁定
+          </span>
         )}
         {page?.trashedAt && (
           <span className="text-xs bg-[var(--goose-color-lock-bg)] text-[var(--goose-color-lock-text)] px-1.5 py-0.5 rounded">

@@ -16,8 +16,12 @@ interface PageIconButtonProps {
  */
 export function PageIconButton({ page, className }: PageIconButtonProps) {
   const updatePage = usePages((s) => s.updatePage);
+  // 不依赖父级传入的 page.icon：WorkspaceLayout 的 shallow 订阅漏字段时顶栏会卡住旧图标
+  const iconName = usePages((s) => {
+    const live = s.pages[page.id];
+    return live ? live.icon : page.icon;
+  });
   const disabled = Boolean(page.trashedAt || page.isLocked);
-  const iconName = page.icon;
   const LucideIcon =
     iconName && (LucideIcons as any)[iconName]
       ? ((LucideIcons as any)[iconName] as typeof LucideIcons.Smile)
@@ -33,7 +37,7 @@ export function PageIconButton({ page, className }: PageIconButtonProps) {
         "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] transition-colors",
         disabled
           ? "cursor-not-allowed opacity-40"
-          : "text-muted-foreground/75 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+          : "text-muted-foreground/75 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         iconName && "text-foreground/85",
         className,
       )}

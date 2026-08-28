@@ -8,15 +8,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-[0_6px_14px_rgba(15,23,42,0.12)] hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]",
+        default:
+          "bg-primary text-primary-foreground shadow-[0_6px_14px_rgba(15,23,42,0.12)] hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-transparent bg-background hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground",
+          "border border-transparent bg-background hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         secondary:
           "bg-secondary text-secondary-foreground shadow-[inset_0_0_0_1px_hsl(var(--input)/0.55)] hover:bg-secondary/85",
         ghost:
-          "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground",
+          "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -30,7 +31,7 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
 export interface ButtonProps
@@ -49,7 +50,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       />
     );
-  }
+  },
 );
 Button.displayName = "Button";
 

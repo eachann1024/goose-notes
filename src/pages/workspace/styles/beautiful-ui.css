@@ -349,6 +349,12 @@
   color: var(--bui-ink, hsl(var(--foreground)));
 }
 
+/* 对话列跟审批卡同一张纸，不要透出外壳灰底 */
+.bui-chat,
+.notebook-ai-messages {
+  background: hsl(var(--goose-editor-bg));
+}
+
 .bui-chip-row {
   display: flex;
   min-width: 0;
@@ -445,10 +451,14 @@
 
 .bui-approval {
   overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid var(--goose-block-subtle-border, var(--bui-line, #e4e4e8));
+  border: 0;
+  border-radius: 20px;
+  padding: 22px 20px 18px;
   background: hsl(var(--goose-editor-bg));
   color: hsl(var(--foreground));
+  box-shadow:
+    inset 0 0 0 1px var(--goose-block-subtle-bg),
+    0 8px 22px rgba(15, 23, 42, 0.08);
 }
 
 .bui-diff {
@@ -510,7 +520,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--goose-block-subtle-border, var(--bui-line, #e4e4e8));
+  border-bottom: 1px solid
+    var(--goose-block-subtle-border, var(--bui-line, #e4e4e8));
   font-size: 13px;
   font-weight: 500;
 }
@@ -535,7 +546,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  border-bottom: 1px solid var(--goose-block-subtle-border, var(--bui-line, #e4e4e8));
+  border-bottom: 1px solid
+    var(--goose-block-subtle-border, var(--bui-line, #e4e4e8));
   font-size: 12px;
 }
 

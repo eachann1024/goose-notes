@@ -1,4 +1,5 @@
 import { toast } from "@/components/ui/sonner";
+import { DialogShell } from "@/components/ui/dialog-shell";
 
 interface SidebarRenameDialogProps {
   open: boolean;
@@ -20,43 +21,14 @@ export function SidebarRenameDialog({
   onConfirm,
 }: SidebarRenameDialogProps) {
   return (
-    <Dialog
+    <DialogShell
       open={open}
       onOpenChange={onOpenChange}
-    >
-      <DialogContent className="sm:max-w-[400px] z-[100]">
-        <DialogHeader>
-          <DialogTitle>
-            {isLocalFolder ? "重命名文件" : "重命名页面"}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-6">
-          <div className="grid gap-2">
-            <Label htmlFor="rename-input">新名称</Label>
-            <Input
-              id="rename-input"
-              value={renameValue}
-              onChange={(e) => onRenameValueChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onConfirm();
-                } else if (e.key === "Escape") {
-                  onOpenChange(false);
-                }
-              }}
-              autoFocus
-              placeholder={isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+      title={isLocalFolder ? "重命名文件" : "重命名页面"}
+      description={isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
+      footer={
+        <>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button
@@ -65,9 +37,31 @@ export function SidebarRenameDialog({
           >
             确认
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="px-6 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="rename-input">新名称</Label>
+          <Input
+            id="rename-input"
+            value={renameValue}
+            onChange={(e) => onRenameValueChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onConfirm();
+              } else if (e.key === "Escape") {
+                onOpenChange(false);
+              }
+            }}
+            autoFocus
+            placeholder={
+              isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"
+            }
+          />
+        </div>
+      </div>
+    </DialogShell>
   );
 }
 

@@ -378,7 +378,10 @@ export function NotebookSwitcher() {
           >
             <Button
               variant="ghost"
-              className="w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] transition-colors"
+              className={cn(
+                "w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
+                isOpen && "bg-[var(--goose-interactive-hover)]",
+              )}
             >
               <div className="flex items-center gap-2 truncate min-w-0">
                 {activeNotebook && (

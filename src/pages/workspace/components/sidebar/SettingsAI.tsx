@@ -96,10 +96,7 @@ function ProviderIconTile({
       )}
       aria-hidden
     >
-      <Icon
-        className={isSm ? "h-3.5 w-3.5" : "h-4 w-4"}
-        strokeWidth={1.75}
-      />
+      <Icon className={isSm ? "h-3.5 w-3.5" : "h-4 w-4"} strokeWidth={1.75} />
     </span>
   );
 }
@@ -123,7 +120,8 @@ function readStoredApiKey(
       ""
     );
   }
-  if (protocol === "openai-responses") return ai.customOpenAIResponsesApiKey || "";
+  if (protocol === "openai-responses")
+    return ai.customOpenAIResponsesApiKey || "";
   if (protocol === "openai") return ai.customOpenAIApiKey || "";
   return ai.customClaudeApiKey || "";
 }
@@ -488,68 +486,6 @@ export function SettingsAI({
       <SettingsSectionCard
         title={
           <span className="flex items-center gap-2">
-            <LucideIcons.FolderCog
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            本地 AI 上下文
-          </span>
-        }
-        description="开启后，全局提示词与本地 Skill 会参与 AI 对话。"
-      >
-        <div className="space-y-2">
-          <div
-            className={cn(
-              "flex items-center justify-between gap-4 p-4",
-              SETTINGS_OPTION_ROW_CLASS,
-            )}
-          >
-            <div className="space-y-1">
-              <Label
-                htmlFor="ai-read-global-prompt"
-                className="cursor-pointer text-sm font-medium text-foreground"
-              >
-                读取全局提示词
-              </Label>
-              <div className="text-xs leading-5 text-muted-foreground">
-                并入 AI 系统提示词
-              </div>
-            </div>
-            <Switch
-              id="ai-read-global-prompt"
-              checked={ai.readGlobalPrompt}
-              onCheckedChange={setReadGlobalPrompt}
-            />
-          </div>
-          <div
-            className={cn(
-              "flex items-center justify-between gap-4 p-4",
-              SETTINGS_OPTION_ROW_CLASS,
-            )}
-          >
-            <div className="space-y-1">
-              <Label
-                htmlFor="ai-read-local-skills"
-                className="cursor-pointer text-sm font-medium text-foreground"
-              >
-                读取本地 Skill
-              </Label>
-              <div className="text-xs leading-5 text-muted-foreground">
-                输入 / 调用
-              </div>
-            </div>
-            <Switch
-              id="ai-read-local-skills"
-              checked={ai.readLocalSkills}
-              onCheckedChange={setReadLocalSkills}
-            />
-          </div>
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title={
-          <span className="flex items-center gap-2">
             <LucideIcons.Bot
               className="h-4 w-4 shrink-0 text-muted-foreground"
               strokeWidth={1.75}
@@ -699,7 +635,10 @@ export function SettingsAI({
                   aria-pressed={apiKeyVisible}
                 >
                   {apiKeyVisible ? (
-                    <LucideIcons.EyeOff className="h-4 w-4" strokeWidth={1.75} />
+                    <LucideIcons.EyeOff
+                      className="h-4 w-4"
+                      strokeWidth={1.75}
+                    />
                   ) : (
                     <LucideIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
                   )}
@@ -902,6 +841,68 @@ export function SettingsAI({
           </div>
         </SettingsSectionCard>
       </div>
+
+      <SettingsSectionCard
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.FolderCog
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            本地 AI 上下文
+          </span>
+        }
+        description="开启后，全局提示词与本地 Skill 会参与 AI 对话。"
+      >
+        <div className="space-y-2">
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 p-4",
+              SETTINGS_OPTION_ROW_CLASS,
+            )}
+          >
+            <div className="space-y-1">
+              <Label
+                htmlFor="ai-read-global-prompt"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
+                读取全局提示词
+              </Label>
+              <div className="text-xs leading-5 text-muted-foreground">
+                并入 AI 系统提示词
+              </div>
+            </div>
+            <Switch
+              id="ai-read-global-prompt"
+              checked={ai.readGlobalPrompt}
+              onCheckedChange={setReadGlobalPrompt}
+            />
+          </div>
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 p-4",
+              SETTINGS_OPTION_ROW_CLASS,
+            )}
+          >
+            <div className="space-y-1">
+              <Label
+                htmlFor="ai-read-local-skills"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
+                读取本地 Skill
+              </Label>
+              <div className="text-xs leading-5 text-muted-foreground">
+                输入 / 调用
+              </div>
+            </div>
+            <Switch
+              id="ai-read-local-skills"
+              checked={ai.readLocalSkills}
+              onCheckedChange={setReadLocalSkills}
+            />
+          </div>
+        </div>
+      </SettingsSectionCard>
     </div>
   );
 }

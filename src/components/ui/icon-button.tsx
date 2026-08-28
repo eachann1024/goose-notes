@@ -1,15 +1,16 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
 const iconButtonVariants = cva(
   "inline-flex shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       tone: {
-        default: "text-foreground/90 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)]",
+        default:
+          "text-foreground/90 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         muted:
-          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:text-foreground dark:hover:text-foreground/85 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)]",
+          "text-muted-foreground/70 dark:text-muted-foreground/55 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         danger:
           "text-[var(--goose-color-danger)] hover:bg-[var(--goose-color-danger-subtle-bg)]",
         handle:
@@ -30,18 +31,18 @@ const iconButtonVariants = cva(
       size: "sm",
       active: false,
     },
-  }
-)
+  },
+);
 
 export interface IconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof iconButtonVariants> {
-  asChild?: boolean
+  asChild?: boolean;
 }
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, tone, size, active, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = asChild ? Slot : "button";
 
     return (
       <Comp
@@ -49,10 +50,10 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         className={cn(iconButtonVariants({ tone, size, active, className }))}
         {...props}
       />
-    )
-  }
-)
+    );
+  },
+);
 
-IconButton.displayName = "IconButton"
+IconButton.displayName = "IconButton";
 
-export { IconButton }
+export { IconButton };

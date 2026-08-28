@@ -47,7 +47,10 @@ function TreeRowIcon({
   onToggleExpanded: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const iconName = page?.icon;
+  const iconName = usePages((s) => {
+    const live = s.pages[page.id];
+    return live ? live.icon : page?.icon;
+  });
   const renderedIcon = (
     <LocalFileIcon
       page={page}
@@ -84,7 +87,7 @@ function TreeRowIcon({
     return (
       <button
         type="button"
-        className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
+        className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
         draggable={false}
         aria-label={isExpanded ? "折叠子项" : "展开子项"}
         aria-expanded={isExpanded}
@@ -153,7 +156,7 @@ function TreeRowIcon({
     >
       <button
         type="button"
-        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer shrink-0 mr-0.5"
+        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer shrink-0 mr-0.5"
         draggable={false}
         {...stopBubble}
         onClick={(e) => {
@@ -410,7 +413,7 @@ export function renderItem({
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
           : isActive
             ? "main-tree-row--selected"
-            : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92",
+            : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
         // drop 高亮：使用 workspace-drag-line token 调性，更克制
         isOver && "main-tree-row--drop-target",
         isDragging && "main-tree-row--dragging",

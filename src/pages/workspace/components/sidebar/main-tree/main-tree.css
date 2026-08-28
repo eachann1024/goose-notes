@@ -83,9 +83,26 @@
   background: var(--goose-interactive-selected) !important;
 }
 
+/* uTools 旧内核不解析 Tailwind v4 嵌套 hover，整行底用扁平 CSS。 */
+.main-tree-row:hover {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+}
+
+/* 右键菜单是 modal：遮罩一出现行就失去 :hover。菜单开着时保住与选中一致的行底。
+   已选中 / 拖拽 / 落点仍靠各自 !important。 */
+[data-goose-context-trigger][data-context-open="true"] .main-tree-row {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+}
+
 /* 选中行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
    text-muted-foreground 工具类，需显式覆盖；语义色图标（如读取失败红）不动。 */
 .main-tree-row--selected svg:not([class*="text-destructive"]) {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.main-tree-row:hover svg:not([class*="text-destructive"]) {
   color: var(--goose-interactive-selected-fg);
 }
 

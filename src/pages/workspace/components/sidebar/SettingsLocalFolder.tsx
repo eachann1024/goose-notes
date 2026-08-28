@@ -164,7 +164,7 @@ function OpenAppField({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] focus:bg-[var(--goose-interactive-selected)]"
+              className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] focus:bg-[var(--goose-interactive-selected)] data-[state=open]:bg-[var(--goose-interactive-hover)]"
             >
               <span className="truncate">{selectedLabel}</span>
               <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -342,8 +342,18 @@ function getLocalAssetKind(name: string): LocalAssetKind {
     ? name.slice(name.lastIndexOf(".") + 1).toLowerCase()
     : "";
   if (
-    ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "heic", "ico"]
-      .includes(ext)
+    [
+      "png",
+      "jpg",
+      "jpeg",
+      "gif",
+      "webp",
+      "svg",
+      "bmp",
+      "avif",
+      "heic",
+      "ico",
+    ].includes(ext)
   ) {
     return "image";
   }
@@ -533,10 +543,7 @@ function LocalAssetMaintenanceDialog({
                 {formatFileSize(releaseSize)}
               </span>
               {selectedPaths.length > 0 ? (
-                <span>
-                  {" "}
-                  · 已选 {selectedPaths.length}
-                </span>
+                <span> · 已选 {selectedPaths.length}</span>
               ) : null}
             </div>
             <Button
@@ -658,7 +665,9 @@ export function SettingsLocalFolder({
   const [fileManagerOptions, setFileManagerOptions] = useState<
     LocalFolderOpenAppCandidate[]
   >(() => {
-    const cached = getCachedAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES);
+    const cached = getCachedAvailableOpenApps(
+      LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
+    );
     return cached ? cached.filter((item) => item.id !== "finder") : [];
   });
   const [editorOptions, setEditorOptions] = useState<
@@ -815,7 +824,9 @@ export function SettingsLocalFolder({
     const cachedFileManagers = getCachedAvailableOpenApps(
       LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
     );
-    const cachedEditors = getCachedAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES);
+    const cachedEditors = getCachedAvailableOpenApps(
+      LOCAL_FOLDER_EDITOR_CANDIDATES,
+    );
     const cachedTerminals = getCachedAvailableOpenApps(
       LOCAL_FOLDER_TERMINAL_CANDIDATES,
     );

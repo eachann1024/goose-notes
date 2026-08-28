@@ -8,7 +8,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import * as LucideIcons from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -150,7 +150,17 @@ export function SortablePageRow({
   const hasChildren = item.hasChildren;
   const showArrow = hasChildren;
   const isLocalFolder = isLocalNotebook;
-  const iconName = page.icon;
+  const iconName = usePages((s) => {
+    const live = s.pages[page.id];
+    return live ? live.icon : page.icon;
+  });
+  const displayHasChildren = usePages((s) => {
+    const pid = page.id;
+    for (const p of Object.values(s.pages)) {
+      if (p.parentId === pid && !p.trashedAt) return true;
+    }
+    return false;
+  });
 
   // 拖动时原行留在树中作为位置锚点，真正跟随指针的内容由 DragOverlay 渲染。
   // 这能保留父子结构和原始位置，避免整行“被拔走”后只剩一块空白。
@@ -158,6 +168,11 @@ export function SortablePageRow({
     typeof rowStyle.transform === "string" ? rowStyle.transform : "";
   const mergedTransform = virtualTransform;
   const [titleExpanded, setTitleExpanded] = useState(false);
+  const [rowHovered, setRowHovered] = useState(false);
+
+  useEffect(() => {
+    if (isDragging) setRowHovered(false);
+  }, [isDragging]);
 
   const handleAddChild = (e: MouseEvent) => {
     e.stopPropagation();
@@ -257,6 +272,8 @@ export function SortablePageRow({
         transform: mergedTransform,
         transition,
       }}
+      onPointerEnter={() => setRowHovered(true)}
+      onPointerLeave={() => setRowHovered(false)}
       className={cn(
         "goose-sidebar-tree-row group relative px-0",
         isDragging &&
@@ -280,15 +297,18 @@ export function SortablePageRow({
 
       <SidebarContextMenu page={page}>
         <div
-          data-goose-context-trigger="true"
           {...sortableHandlers}
           className={cn(
-            "relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
+            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive &&
-              "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-hover)] hover:text-foreground dark:hover:text-foreground/92 transition-colors duration-200",
+              "text-muted-foreground dark:text-muted-foreground/65",
             isActive && "sidebar-tree-row--selected",
+            !isActive &&
+              !isDragging &&
+              rowHovered &&
+              "sidebar-tree-row--hovered",
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -324,7 +344,7 @@ export function SortablePageRow({
                 className={cn(
                   "ml-1.5 flex items-center justify-center w-5 h-5 shrink-0 rounded border-0 bg-transparent p-0 transition-all duration-300 ease-out",
                   showArrow
-                    ? "hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+                    ? "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] cursor-pointer"
                     : "opacity-0 pointer-events-none",
                 )}
                 onPointerDown={handleArrowPointerDown}
@@ -345,7 +365,7 @@ export function SortablePageRow({
                   type="button"
                   aria-label={item.isOpen ? "折叠子项" : "展开子项"}
                   aria-expanded={item.isOpen}
-                  className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] focus-visible:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] dark:focus-visible:bg-[var(--goose-interactive-hover)]"
+                  className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
                   onPointerDown={handleHiddenArrowPointerDown}
                   onClick={handleHiddenArrowClick}
                   onDoubleClick={(e) => {
@@ -362,7 +382,7 @@ export function SortablePageRow({
                       page={page}
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
-                      hasChildren={hasChildren}
+                      hasChildren={displayHasChildren}
                     />
                   </span>
                   <LucideIcons.ChevronRight
@@ -379,7 +399,7 @@ export function SortablePageRow({
                       page={page}
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
-                      hasChildren={hasChildren}
+                      hasChildren={displayHasChildren}
                     />
                   </div>
                 </div>
@@ -397,7 +417,7 @@ export function SortablePageRow({
                       page={page}
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
-                      hasChildren={hasChildren}
+                      hasChildren={displayHasChildren}
                     />
                   </div>
                 ) : (
@@ -407,13 +427,13 @@ export function SortablePageRow({
                       updatePage(page.id, { icon: newIcon as string })
                     }
                   >
-                    <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] transition-colors cursor-pointer">
+                    <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
                       <div className="h-4 w-4 flex items-center justify-center">
                         <LocalFileIcon
                           page={page}
                           iconName={iconName}
                           isLocalFolder={false}
-                          hasChildren={hasChildren}
+                          hasChildren={displayHasChildren}
                         />
                       </div>
                     </div>
@@ -426,7 +446,7 @@ export function SortablePageRow({
               className="text-sm"
               text={titleText}
               expandedText={expandedTitleText}
-              active={isActive}
+              active={isActive || rowHovered}
               disabled={titleRevealDisabled}
               resetSignal={revealResetSignal}
               onExpandedChange={setTitleExpanded}
@@ -451,7 +471,7 @@ export function SortablePageRow({
               )}
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
                 onClick={handleAddChild}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}

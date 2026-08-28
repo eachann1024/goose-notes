@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import * as LucideIcons from "lucide-react";
 import {
-  AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX,
-  AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN,
   UTOOLS_WINDOW_HEIGHT_MAX,
   UTOOLS_WINDOW_HEIGHT_MIN,
   type CustomAction,
@@ -34,12 +32,6 @@ interface SettingsGeneralProps {
   setWindowHeight: (height: number) => void;
   autoOpenLastNote: boolean;
   setAutoOpenLastNote: (enabled: boolean) => void;
-  singleTabMode: boolean;
-  setSingleTabMode: (enabled: boolean) => void;
-  autoCloseInactiveTabs: boolean;
-  setAutoCloseInactiveTabs: (enabled: boolean) => void;
-  autoCloseInactiveTabsHours: number;
-  setAutoCloseInactiveTabsHours: (hours: number) => void;
   showRecentInSearch: boolean;
   setShowRecentInSearch: (enabled: boolean) => void;
   notebookDropdownHoverExpand: boolean;
@@ -72,12 +64,6 @@ export function SettingsGeneral({
   setWindowHeight,
   autoOpenLastNote,
   setAutoOpenLastNote,
-  singleTabMode,
-  setSingleTabMode,
-  autoCloseInactiveTabs,
-  setAutoCloseInactiveTabs,
-  autoCloseInactiveTabsHours,
-  setAutoCloseInactiveTabsHours,
   showRecentInSearch,
   setShowRecentInSearch,
   notebookDropdownHoverExpand,
@@ -101,30 +87,6 @@ export function SettingsGeneral({
       <SettingsSectionCard title="行为设置">
         <div
           className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <LucideIcons.PanelTop
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label htmlFor="single-tab-mode" className="cursor-pointer">
-                极简工作区
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              只保留当前笔记；从侧栏、搜索或最近访问打开时直接替换，不显示标签管理操作。
-            </p>
-          </div>
-          <Switch
-            id="single-tab-mode"
-            checked={singleTabMode}
-            onCheckedChange={setSingleTabMode}
-            className={SETTINGS_SWITCH_CLASS}
-          />
-        </div>
-        <div
-          className={`mt-2 flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">
@@ -171,54 +133,6 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-        {!singleTabMode && (
-          <div
-            className={`flex items-center justify-between gap-4 p-4 mt-2 ${SETTINGS_OPTION_ROW_CLASS}`}
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <LucideIcons.TimerOff
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <Label
-                  htmlFor="auto-close-inactive-tabs"
-                  className="cursor-pointer"
-                >
-                  自动关闭未访问标签
-                </Label>
-              </div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">
-                开启后，超过设定时间未访问的普通标签会自动关闭；固定标签和当前标签会保留。
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Input
-                type="number"
-                min={AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN}
-                max={AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX}
-                step={1}
-                value={autoCloseInactiveTabsHours}
-                disabled={!autoCloseInactiveTabs}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  if (Number.isFinite(next)) {
-                    setAutoCloseInactiveTabsHours(next);
-                  }
-                }}
-                className="h-8 w-20 text-right text-sm"
-                aria-label="自动关闭标签小时数"
-              />
-              <span className="text-xs text-muted-foreground">小时</span>
-              <Switch
-                id="auto-close-inactive-tabs"
-                checked={autoCloseInactiveTabs}
-                onCheckedChange={setAutoCloseInactiveTabs}
-                className={SETTINGS_SWITCH_CLASS}
-              />
-            </div>
-          </div>
-        )}
       </SettingsSectionCard>
 
       <SettingsSectionCard title="搜索设置">

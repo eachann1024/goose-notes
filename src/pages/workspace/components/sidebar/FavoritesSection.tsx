@@ -24,11 +24,6 @@ export function FavoritesSection({
   );
   const reorderFavorites = usePages((state) => state.reorderFavorites);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
-  const isLocalFolder = useNotebooks((state) =>
-    activeNotebookId
-      ? state.notebooks[activeNotebookId]?.source === "local-folder"
-      : false,
-  );
   const favoritesCollapsed = useSidebarView((s) => s.favoritesCollapsed);
   const setFavoritesCollapsed = useSidebarView((s) => s.setFavoritesCollapsed);
 
@@ -72,7 +67,7 @@ export function FavoritesSection({
     [reorderFavorites],
   );
 
-  if (isLocalFolder || favorites.length === 0 || favoriteRootIds.length === 0) {
+  if (favorites.length === 0 || favoriteRootIds.length === 0) {
     return null;
   }
 

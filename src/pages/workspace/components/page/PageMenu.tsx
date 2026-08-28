@@ -135,7 +135,7 @@ export function PageMenu() {
             variant="ghost"
             size="icon"
             aria-label="更多操作"
-            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           >
             <LucideIcons.MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">更多操作</span>
@@ -192,7 +192,7 @@ export function PageMenu() {
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isFavorite
                     ? "border-[#ead39b] bg-[#fff8e6] text-[#8a621a] hover:bg-[#fff3d6] dark:border-[#654f23] dark:bg-[#3a2d16] dark:text-[#fbbf24] dark:hover:bg-[#44351a]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-block-subtle-bg)]",
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                 )}
               >
                 <span
@@ -228,7 +228,7 @@ export function PageMenu() {
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isPinned
                     ? "border-[#e8c0bc] bg-[#fff0ee] text-[#91433d] hover:bg-[#ffe7e4] dark:border-[#6b3734] dark:bg-[#3f2020] dark:text-[#f87171] dark:hover:bg-[#492525]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-block-subtle-bg)]",
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                 )}
               >
                 <span
@@ -258,7 +258,7 @@ export function PageMenu() {
             <div
               role="button"
               tabIndex={0}
-              className="grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-block-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               onClick={() =>
                 updatePage(activePageId, { isLocked: !page.isLocked })
               }

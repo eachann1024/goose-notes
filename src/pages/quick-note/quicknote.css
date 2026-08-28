@@ -145,7 +145,8 @@ body,
     color 150ms ease;
 }
 
-.quicknote-help-trigger:hover {
+.quicknote-help-trigger:hover,
+.quicknote-help-trigger[data-state="open"] {
   background: hsl(var(--goose-selected-bg));
   color: hsl(var(--foreground));
 }
@@ -324,7 +325,9 @@ body,
   background: transparent;
   color: #047857;
   cursor: pointer;
-  transition: background 180ms ease, color 180ms ease;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
 }
 
 .quicknote-collect-icon-btn svg {
@@ -390,7 +393,9 @@ body,
   line-height: 24px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 180ms ease, border-color 180ms ease;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease;
 }
 
 .quicknote-collect-simulate-btn:hover,
@@ -442,13 +447,25 @@ body,
 }
 
 @keyframes quicknote-collect-enter {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes quicknote-collect-shelf-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */

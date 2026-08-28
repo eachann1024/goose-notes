@@ -54,6 +54,7 @@ export function SidebarContextMenu({
   children,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const updatePage = usePages((s) => s.updatePage);
   const duplicatePage = usePages((s) => s.duplicatePage);
   const movePageTreeToNotebook = usePages((s) => s.movePageTreeToNotebook);
@@ -163,9 +164,13 @@ export function SidebarContextMenu({
 
   return (
     <>
-      <ContextMenu>
+      <ContextMenu onOpenChange={setMenuOpen}>
         <ContextMenuTrigger asChild className="w-full">
-          <div data-goose-context-trigger="true" className="h-full w-full">
+          <div
+            data-goose-context-trigger="true"
+            data-context-open={menuOpen ? "true" : undefined}
+            className="h-full w-full"
+          >
             {children}
           </div>
         </ContextMenuTrigger>
@@ -234,7 +239,7 @@ export function SidebarContextMenu({
               <span>{page.isFolder ? "复制文件夹路径" : "复制文件路径"}</span>
             </ContextMenuItem>
           )}
-          {!isTrashed && !isLocalFolder && (
+          {!isTrashed && !page.isFolder && (
             <ContextMenuItem onSelect={toggleFavorite}>
               <LucideIcons.Star
                 className={cn(
@@ -246,7 +251,7 @@ export function SidebarContextMenu({
               <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
             </ContextMenuItem>
           )}
-          {!isTrashed && !isLocalFolder && (
+          {!isTrashed && !page.isFolder && (
             <ContextMenuItem onSelect={togglePinned}>
               <LucideIcons.Pin
                 className={cn(
@@ -258,7 +263,7 @@ export function SidebarContextMenu({
               <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
             </ContextMenuItem>
           )}
-          {!isTrashed && !isLocalFolder && (
+          {!isTrashed && !page.isFolder && (
             <ContextMenuItem onSelect={handleDuplicatePage}>
               <LucideIcons.Copy className="h-4 w-4" />
               <span>创建副本</span>

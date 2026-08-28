@@ -324,7 +324,9 @@
       ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
       "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-    --font-serif: "仓耳今楷", Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-serif:
+      "仓耳今楷", "Songti SC", "STSong", "SimSun", Georgia, Cambria,
+      "Times New Roman", Times, serif;
     --font-mono:
       ui-monospace, "DM Mono", Menlo, Consolas, "HarmonyOS Sans SC",
       "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
@@ -581,6 +583,20 @@
   .dark .bn-editor:hover,
   .dark .page-scroll-container:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  /* 本地文件夹目录列表：滚动条始终可见，提示还有更多子项 */
+  .folder-home-list {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  }
+  .dark .folder-home-list {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+  .folder-home-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .dark .folder-home-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
   }
 }
 
@@ -1124,7 +1140,7 @@
   border-color: rgba(149, 243, 216, 0.65);
 }
 
-/* 默认透明底；hover 与顶栏其它图标一致起底；选中仍不画边框，靠发光/缩放 */
+/* 默认透明底；hover 与顶栏其它图标一致起底；选中用强调色底 + 强调色图标 */
 .ai-icon-button {
   position: relative;
   isolation: isolate;
@@ -1132,15 +1148,15 @@
   background: transparent;
   box-shadow: none;
   border: none;
-  color: hsl(var(--muted-foreground) / 0.75);
+  color: hsl(var(--muted-foreground));
   transition:
     background-color 150ms ease,
     color 150ms ease;
 }
 
 .ai-icon-button:hover {
-  background: var(--goose-interactive-hover);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .ai-icon-button:focus-visible {
@@ -1148,14 +1164,11 @@
   outline-offset: 2px;
 }
 
-.ai-icon-button[aria-pressed="true"] {
-  color: inherit;
-  background: transparent;
-  box-shadow: none;
-}
-
+.ai-icon-button[aria-pressed="true"],
 .ai-icon-button[aria-pressed="true"]:hover {
-  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  box-shadow: none;
 }
 
 .ai-icon-button .ai-icon {
@@ -1177,36 +1190,38 @@
   transform: scale(1.06);
 }
 
-.ai-icon-button[aria-pressed="true"] .ai-icon {
-  filter: saturate(1.65) contrast(1.28) brightness(1.18)
-    drop-shadow(0 0 4px rgba(99, 215, 255, 0.78))
-    drop-shadow(0 0 8px rgba(159, 134, 255, 0.46));
-  transform: scale(1.08);
+/* 打开面板：空闲星标跟强调色走，不要青绿发光 */
+.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
 }
 
-.ai-icon-button[aria-pressed="true"]:hover .ai-icon {
-  transform: scale(1.1);
+.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph path,
+.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph circle {
+  stroke: var(--goose-interactive-selected-fg);
+}
+
+.ai-icon-button[aria-pressed="true"]:hover .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
 }
 
 .dark .ai-icon-button {
   background: transparent;
   box-shadow: none;
-  color: hsl(var(--muted-foreground) / 0.7);
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .ai-icon-button:hover {
-  background: var(--goose-interactive-hover);
-  color: hsl(var(--foreground) / 0.9);
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
-.dark .ai-icon-button[aria-pressed="true"] {
-  color: inherit;
-  background: transparent;
-  box-shadow: none;
-}
-
+.dark .ai-icon-button[aria-pressed="true"],
 .dark .ai-icon-button[aria-pressed="true"]:hover {
-  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  box-shadow: none;
 }
 
 .dark .ai-icon-button .ai-icon {
@@ -1214,11 +1229,14 @@
 }
 
 /* 深色选中态必须写在 .dark .ai-icon-button .ai-icon 之后，否则同优先级会被 idle 滤镜盖掉 */
-.dark .ai-icon-button[aria-pressed="true"] .ai-icon {
-  filter: saturate(1.55) contrast(1.22) brightness(1.28)
-    drop-shadow(0 0 5px rgba(99, 215, 255, 0.88))
-    drop-shadow(0 0 12px rgba(159, 134, 255, 0.55));
-  transform: scale(1.08);
+.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
+}
+
+.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph path,
+.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph circle {
+  stroke: var(--goose-interactive-selected-fg);
 }
 
 .dark .ai-icon-button:hover .ai-icon {
@@ -1226,11 +1244,9 @@
   transform: scale(1.06);
 }
 
-.dark .ai-icon-button[aria-pressed="true"]:hover .ai-icon {
-  filter: saturate(1.6) contrast(1.25) brightness(1.32)
-    drop-shadow(0 0 6px rgba(99, 215, 255, 0.95))
-    drop-shadow(0 0 14px rgba(159, 134, 255, 0.6));
-  transform: scale(1.1);
+.dark .ai-icon-button[aria-pressed="true"]:hover .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
 }
 
 /* AI 运行时把星云状态延展到整条顶栏；空闲或仅打开面板时完全撤回。 */
