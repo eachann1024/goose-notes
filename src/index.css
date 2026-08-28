@@ -529,60 +529,55 @@
     -webkit-user-select: text;
   }
 
-  /* 全局隐藏滚动条（编辑器和页面滚动容器除外） */
-  *:not(.bn-editor):not(.page-scroll-container)::-webkit-scrollbar {
-    display: none;
+  /*
+   * 全局低入侵 overlay 滚动条：8px 槽位里 2px 透明边当空隙，
+   * 胶囊 thumb 默认全透明，容器 hover 才淡入，thumb 自身 hover 再加深。
+   * 显式 scrollbar-width:none 的区域（标签栏、工具栏等）选择器更具体，不受影响。
+   */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-  *:not(.bn-editor):not(.page-scroll-container) {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  /* 编辑器和页面内容区保留滚动条 */
-  .bn-editor::-webkit-scrollbar,
-  .page-scroll-container::-webkit-scrollbar {
-    display: block !important;
-    width: 6px;
-  }
-  .bn-editor::-webkit-scrollbar-track,
-  .page-scroll-container::-webkit-scrollbar-track {
+  *::-webkit-scrollbar-track {
     background: transparent;
   }
-  .bn-editor::-webkit-scrollbar-thumb,
-  .page-scroll-container::-webkit-scrollbar-thumb {
+  *::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0);
-    border-radius: 10px;
-    transition: background 0.3s ease;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    transition: background 220ms cubic-bezier(0.23, 1, 0.32, 1);
   }
-  .bn-editor:hover::-webkit-scrollbar-thumb,
-  .page-scroll-container:hover::-webkit-scrollbar-thumb {
+  *:hover::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.15);
+    background-clip: padding-box;
   }
-  .bn-editor::-webkit-scrollbar-thumb:hover,
-  .page-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.25) !important;
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+    background-clip: padding-box;
   }
-  .dark .bn-editor:hover::-webkit-scrollbar-thumb,
-  .dark .page-scroll-container:hover::-webkit-scrollbar-thumb {
+  .dark *:hover::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
+    background-clip: padding-box;
   }
-  .dark .bn-editor::-webkit-scrollbar-thumb:hover,
-  .dark .page-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25) !important;
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+    background-clip: padding-box;
   }
-  .bn-editor,
-  .page-scroll-container {
-    -ms-overflow-style: auto;
+  * {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
-  .bn-editor:hover,
-  .page-scroll-container:hover {
+  *:hover {
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
   }
-  .dark .bn-editor:hover,
-  .dark .page-scroll-container:hover {
+  .dark *:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *::-webkit-scrollbar-thumb {
+      transition: none;
+    }
   }
 
   /* 本地文件夹目录列表：滚动条始终可见，提示还有更多子项 */
