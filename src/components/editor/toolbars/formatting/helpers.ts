@@ -8,6 +8,7 @@ import {
   type TableContent,
 } from "@blocknote/core";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
+import { Selection } from "prosemirror-state";
 import { CellSelection } from "prosemirror-tables";
 
 export const NON_FORMATTABLE_TYPES = new Set([
@@ -211,9 +212,7 @@ export function selectionIsInsideFirstTitleBlock(
   if (fromContainer !== firstContainer) return false;
 
   const contentNode = fromContainer.firstChild;
-  return (
-    contentNode?.type.name === "heading" && contentNode.attrs?.level === 1
-  );
+  return contentNode?.type.name === "heading" && contentNode.attrs?.level === 1;
 }
 
 /**
@@ -248,7 +247,7 @@ export function shouldRenderFormattingToolbar(
   const { selection, doc } = editor.prosemirrorState;
 
   if (selection.empty) return false;
-  // 单元格 / 多 cell 选区：只要覆盖到实际文字就允许工具栏（含 AI）。
+  // 单单元格文字选区：覆盖到实际文字才允许工具栏（含 AI）。
   if (doc.textBetween(selection.from, selection.to).length === 0) return false;
   // 代码块、媒体块等非格式化块不触发格式工具栏。
   // 纯行内 code 选区仍允许（便于取消 code / 改其它样式 / AI）。
@@ -285,7 +284,10 @@ export function resolveFormattingToolbarAiBlockId(
     const $pos = selection.$from;
     for (let d = $pos.depth; d > 0; d -= 1) {
       const node = $pos.node(d);
-      if (node.type.name === "blockContainer" && typeof node.attrs?.id === "string") {
+      if (
+        node.type.name === "blockContainer" &&
+        typeof node.attrs?.id === "string"
+      ) {
         return node.attrs.id;
       }
     }
@@ -325,8 +327,7 @@ function findAncestorOfRole(
     const node = $pos.node(d);
     const nodeRole = node?.type?.spec?.tableRole;
     const matches =
-      nodeRole === role ||
-      (role === "cell" && nodeRole === "header_cell");
+      nodeRole === role || (role === "cell" && nodeRole === "header_cell");
     if (matches) {
       return { depth: d, pos: $pos.before(d) };
     }
@@ -365,10 +366,7 @@ type CellSelectionInfo = {
 };
 
 /** 选区是否触及表格（tableRole 或 type.name === "table"）。 */
-function selectionTouchesTable(selection: {
-  $from: any;
-  $to: any;
-}): boolean {
+function selectionTouchesTable(selection: { $from: any; $to: any }): boolean {
   if (findAncestorOfRole(selection.$from, "table")) return true;
   if (findAncestorOfRole(selection.$to, "table")) return true;
   for (const $pos of [selection.$from, selection.$to]) {
@@ -583,22 +581,12 @@ function normalizeTextAlignment(value: unknown): FormattingTextAlignment {
   return "left";
 }
 
-function selectionHasExtractableText(
-  editor: BlockNoteEditor<any, any, any>,
-): boolean {
-  const { selection, doc } = editor.prosemirrorState;
-  if (selection.empty) return false;
-  return doc.textBetween(selection.from, selection.to).length > 0;
-}
-
 /**
  * 是否应显示对齐控件：
  * - 无任何选中块支持 textAlignment，且无表格单元格选区 → false
  * - 表格无 getCellSelection() 且无块级 textAlignment → false
  */
-export function canShowAlign(
-  editor: BlockNoteEditor<any, any, any>,
-): boolean {
+export function canShowAlign(editor: BlockNoteEditor<any, any, any>): boolean {
   const blocks = getSelectedBlocksSafe(editor);
   const cellSelection = getCellSelectionSafe(editor);
 
@@ -640,10 +628,10 @@ export function getFormattingSelectionMode(
   }
 
   if (selectionTouchesTable(selection)) {
-    return "cellText";
+    return isSelectionInsideSingleCell(selection) ? "cellText" : "cellGrid";
   }
 
-  let blockCount = 0;
+  let blockCount: number;
   try {
     blockCount = dropBlocksWithoutSelectedContent(
       editor,
@@ -708,7 +696,6 @@ export function getFormattingToolbarCapabilities(
 ): FormattingToolbarCapabilities {
   const mode = getFormattingSelectionMode(editor);
   const isInHeading = Boolean(options?.isInHeading);
-  const hasText = mode !== "none" && selectionHasExtractableText(editor);
   const textAlignment = getSelectionTextAlignment(editor);
 
   if (mode === "none") {
@@ -740,12 +727,12 @@ export function getFormattingToolbarCapabilities(
   if (mode === "cellGrid") {
     return {
       mode,
-      showMarks: hasText,
-      showColors: hasText,
+      showMarks: !isInHeading,
+      showColors: true,
       showLink: false,
       showAlign: true,
-      showAi: hasText,
-      showClear: hasText,
+      showAi: true,
+      showClear: true,
       textAlignment,
     };
   }
@@ -827,14 +814,26 @@ function applyAlignmentToSelection(
         rows: newTable,
       } as any,
     });
-
-    // updateBlock 会把选区移出表格，需复位光标（官方 TextAlignButton 同路径）
-    try {
-      editor.setTextCursorPosition(block);
-    } catch {
-      /* ignore */
-    }
   }
+}
+
+function restoreSelectionAfterFormat(
+  editor: BlockNoteEditor<any, any, any>,
+  snapshot: { json: any },
+) {
+  try {
+    const view = editor.prosemirrorView;
+    const sel = Selection.fromJSON(view.state.doc, snapshot.json);
+    if (!view.state.selection.eq(sel)) {
+      view.dispatch(view.state.tr.setSelection(sel));
+    }
+  } catch {
+    /* 文档结构变了就保持当前选区 */
+  }
+}
+
+function snapshotCurrentSelection(editor: BlockNoteEditor<any, any, any>) {
+  return { json: editor.prosemirrorState.selection.toJSON() };
 }
 
 export function applySelectionTextAlignment(
@@ -844,6 +843,7 @@ export function applySelectionTextAlignment(
   // transact 回调内读 prosemirrorState 会抛错，选区解析必须先于事务完成
   const blocks = getSelectedBlocksSafe(editor);
   const cellSelection = getCellSelectionSafe(editor);
+  const snapshot = snapshotCurrentSelection(editor);
   try {
     editor.focus();
   } catch {
@@ -852,6 +852,7 @@ export function applySelectionTextAlignment(
   editor.transact(() => {
     applyAlignmentToSelection(editor, alignment, blocks, cellSelection);
   });
+  restoreSelectionAfterFormat(editor, snapshot);
 }
 
 /**
@@ -862,6 +863,7 @@ export function clearSelectionFormatting(
 ): void {
   const blocks = getSelectedBlocksSafe(editor);
   const cellSelection = getCellSelectionSafe(editor);
+  const snapshot = snapshotCurrentSelection(editor);
   try {
     editor.focus();
   } catch {
@@ -883,4 +885,5 @@ export function clearSelectionFormatting(
     }
     applyAlignmentToSelection(editor, "left", blocks, cellSelection);
   });
+  restoreSelectionAfterFormat(editor, snapshot);
 }

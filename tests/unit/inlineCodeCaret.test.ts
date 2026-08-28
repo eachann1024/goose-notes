@@ -5,7 +5,12 @@ import {
   edgeGraphemeLength,
   inlineCodeEdgeArrowAction,
   inlineCodeEdgeAt,
+  shouldKeepInlineCodeDomCaret,
 } from "../../src/components/editor/extensions/inlineCodeCaretExtension";
+import {
+  resolveWordDelete,
+  storedMarksForCodeEdge,
+} from "../../src/components/editor/extensions/inlineCodeWordBoundary";
 
 function createEditor() {
   return BlockNoteEditor.create({
@@ -66,7 +71,7 @@ test("只有代码段两端算边界，段内与纯文本都不算", () => {
   expect(edgeAt(codeFrom + 3)).toBe(null);
 });
 
-test("代码 mark 保持 inclusive，右边界缺省即盒内、左边界缺省即盒外", () => {
+test("代码 mark 右边界缺省在盒外，左边界缺省也在盒外", () => {
   const editor = createEditor();
   const state = editor.prosemirrorState;
   const codeType = state.schema.marks.code;
@@ -77,6 +82,161 @@ test("代码 mark 保持 inclusive，右边界缺省即盒内、左边界缺省�
     return codeFrom < 0;
   });
 
-  expect(codeType.isInSet(state.doc.resolve(codeFrom + 2).marks())).toBeTruthy();
+  expect(codeType.isInSet(state.doc.resolve(codeFrom + 2).marks())).toBeFalsy();
   expect(codeType.isInSet(state.doc.resolve(codeFrom).marks())).toBeFalsy();
+  expect(
+    codeType.isInSet(state.doc.resolve(codeFrom + 1).marks()),
+  ).toBeTruthy();
+});
+
+test("按词删除在行内代码两端截断，盒外不会把代码内容一起删掉", () => {
+  const editor = createEditor();
+  const state = editor.prosemirrorState;
+  const codeType = state.schema.marks.code;
+
+  let codeFrom = -1;
+  state.doc.descendants((node, pos) => {
+    if (node.isText && codeType.isInSet(node.marks)) codeFrom = pos;
+    return codeFrom < 0;
+  });
+  const codeTo = codeFrom + 2;
+  const afterTextEnd = codeTo + 2;
+
+  const planAfter = resolveWordDelete(
+    state.doc.resolve(afterTextEnd),
+    "backward",
+    codeType,
+    false,
+    null,
+  );
+  expect(planAfter).toEqual({ from: codeTo, to: afterTextEnd });
+
+  const planAtEdge = resolveWordDelete(
+    state.doc.resolve(codeTo),
+    "backward",
+    codeType,
+    false,
+    "end",
+  );
+  expect(planAtEdge).toBe("swallow");
+
+  const planInside = resolveWordDelete(
+    state.doc.resolve(codeTo),
+    "backward",
+    codeType,
+    true,
+    "end",
+  );
+  expect(planInside).toEqual({ from: codeFrom, to: codeTo });
+
+  const planBefore = resolveWordDelete(
+    state.doc.resolve(codeFrom),
+    "forward",
+    codeType,
+    false,
+    "start",
+  );
+  expect(planBefore).toBe("swallow");
+});
+
+test("紧贴行内代码的中文按词删，不会把代码内容算进同一段", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      {
+        id: "body",
+        type: "paragraph",
+        content: [
+          { type: "text", text: "*-lock.yaml", styles: { code: true } },
+          { type: "text", text: "这类文件" },
+        ],
+      },
+    ] as never,
+  });
+  const state = editor.prosemirrorState;
+  const codeType = state.schema.marks.code;
+  let codeFrom = -1;
+  let codeText = "";
+  state.doc.descendants((node, pos) => {
+    if (node.isText && codeType.isInSet(node.marks) && codeFrom < 0) {
+      codeFrom = pos;
+      codeText = node.text ?? "";
+    }
+  });
+  const codeTo = codeFrom + codeText.length;
+  const end = codeTo + "这类文件".length;
+
+  expect(
+    resolveWordDelete(state.doc.resolve(end), "backward", codeType, false, null),
+  ).toEqual({ from: codeTo, to: end });
+  expect(
+    resolveWordDelete(
+      state.doc.resolve(codeTo),
+      "backward",
+      codeType,
+      false,
+      "end",
+    ),
+  ).toBe("swallow");
+});
+
+test("盒外 storedMarks 是 null，避免组字被 markCursor 打断", () => {
+  const editor = createEditor();
+  const state = editor.prosemirrorState;
+  const codeType = state.schema.marks.code;
+
+  let codeFrom = -1;
+  state.doc.descendants((node, pos) => {
+    if (node.isText && codeType.isInSet(node.marks)) codeFrom = pos;
+    return codeFrom < 0;
+  });
+  const $end = state.doc.resolve(codeFrom + 2);
+  expect(storedMarksForCodeEdge($end, codeType, false)).toBeNull();
+  expect(codeType.isInSet(storedMarksForCodeEdge($end, codeType, true) ?? [])).toBeTruthy();
+});
+
+test("删到边界时，落在 boundary 节点或盒内外不一致都要重钉光标", () => {
+  expect(
+    shouldKeepInlineCodeDomCaret({
+      wantInside: true,
+      contentContainsAnchor: false,
+      anchorInBoundary: true,
+      atContentInnerEdge: false,
+      atCodeOuterEdge: false,
+      codeContainsAnchor: true,
+    }),
+  ).toBe(false);
+
+  expect(
+    shouldKeepInlineCodeDomCaret({
+      wantInside: true,
+      contentContainsAnchor: true,
+      anchorInBoundary: false,
+      atContentInnerEdge: false,
+      atCodeOuterEdge: false,
+      codeContainsAnchor: true,
+    }),
+  ).toBe(true);
+
+  expect(
+    shouldKeepInlineCodeDomCaret({
+      wantInside: false,
+      contentContainsAnchor: false,
+      anchorInBoundary: false,
+      atContentInnerEdge: false,
+      atCodeOuterEdge: true,
+      codeContainsAnchor: false,
+    }),
+  ).toBe(true);
+
+  expect(
+    shouldKeepInlineCodeDomCaret({
+      wantInside: false,
+      contentContainsAnchor: true,
+      anchorInBoundary: false,
+      atContentInnerEdge: false,
+      atCodeOuterEdge: false,
+      codeContainsAnchor: true,
+    }),
+  ).toBe(false);
 });

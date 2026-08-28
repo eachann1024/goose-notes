@@ -69,6 +69,7 @@ import {
   warmupSlashMenuIcons,
 } from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
+import { gooseTableCellSelectionExtension } from "@/components/editor/extensions/tableCellSelectionExtension";
 import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
 import { gooseMoveBlockExtension } from "@/components/editor/extensions/moveBlockExtension";
 import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
@@ -92,6 +93,8 @@ import { gooseDividerInputRuleExtension } from "@/components/editor/inputrules/d
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseInlineCodeCaretExtension } from "@/components/editor/extensions/inlineCodeCaretExtension";
+import { createInlineCodePathTagExtension } from "@/components/editor/extensions/inlineCodePathTagExtension";
+import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
@@ -157,7 +160,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     theme,
     searchProviders,
     customActions,
-    tableEvenColumnWidth,
     ai: aiSettings,
     openLinksInHost,
   } = settings;
@@ -167,6 +169,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     isEditorFullWidth,
     onContentChange,
     getActivePageLocalFilePath,
+    getActivePageLocalFolderRoot,
+    onOpenAttachment,
     getLatestPage,
   } = useEditorPageContext();
   const platform = useEditorPlatform();
@@ -195,6 +199,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   onContentChangeRef.current = onContentChange;
   const getActivePageLocalFilePathRef = useRef(getActivePageLocalFilePath);
   getActivePageLocalFilePathRef.current = getActivePageLocalFilePath;
+  const getActivePageLocalFolderRootRef = useRef(getActivePageLocalFolderRoot);
+  getActivePageLocalFolderRootRef.current = getActivePageLocalFolderRoot;
+  const onOpenAttachmentRef = useRef(onOpenAttachment);
+  onOpenAttachmentRef.current = onOpenAttachment;
   const pageRef = useRef(page);
   pageRef.current = page;
   const contentModeRef = useRef(contentMode);
@@ -251,6 +259,31 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     onContentChangeRef.current(content, { silent: true });
   }, []);
 
+  // 行内代码相对路径 tag：扩展实例只建一次（extensions 数组变化会重建编辑器），
+  // 依赖全部走 ref 读取。放在 inlineCodeCaret 之前，Cmd/Ctrl 点击先被它短路。
+  const inlineCodePathTagExtension = useMemo(
+    () =>
+      createInlineCodePathTagExtension({
+        getPageLocalFilePath: () => getActivePageLocalFilePathRef.current(),
+        getLocalFolderRoot: () => getActivePageLocalFolderRootRef.current(),
+        existsAsync: (path) => platformRef.current.fs.existsAsync(path),
+        isFsAvailable: () => platformRef.current.fs.isAvailable(),
+        openPath: (rawText) => {
+          const open = onOpenAttachmentRef.current;
+          if (!open) return;
+          const fileName = rawText.split(/[\\/]/).pop() || rawText;
+          void open(rawText, fileName).then((result) => {
+            if (!result.ok) {
+              toast.error("无法打开该路径", {
+                description: result.error,
+              });
+            }
+          });
+        },
+      }),
+    [],
+  );
+
   const initialContentRef = useRef(
     createEditorSafeContent(normalizeContent(page?.content), editorSchema),
   );
@@ -282,12 +315,14 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         createGooseBodyParagraphGuardExtension(usesRawEditorContentRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
+        inlineCodePathTagExtension,
         gooseInlineCodeCaretExtension,
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
+        gooseTableCellSelectionExtension,
         gooseCopyCurrentBlockExtension,
         gooseMoveBlockExtension,
         createGooseLinkKeyboardExtension(settingsRef),
@@ -334,8 +369,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
                   },
                   getCustomFetch: () => platformRef.current.ai.customFetch,
                 }),
-                documentStateBuilder:
-                  goosePrivateSelectionDocumentStateBuilder,
+                documentStateBuilder: goosePrivateSelectionDocumentStateBuilder,
                 streamToolsProvider: gooseSelectionScopedStreamToolsProvider,
               }),
             ]),
@@ -538,7 +572,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       let items = getBlockNoteSlashMenuItems(
         editor,
         aiSettingsRef.current.enabled &&
-          (contentModeRef.current === "normalized" || __HOST_TARGET__ === "native-editor"),
+          (contentModeRef.current === "normalized" ||
+            __HOST_TARGET__ === "native-editor"),
         settingsRef.current.features,
       );
       if (hiddenSlashItemTitles && hiddenSlashItemTitles.length > 0) {
@@ -886,7 +921,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         if (blocks.length === 0) return false;
         const target = usesRawEditorContentRef.current
           ? blocks[0]
-          : blocks[1] ?? blocks[0];
+          : (blocks[1] ?? blocks[0]);
         try {
           if (!usesRawEditorContentRef.current && blocks.length === 1) {
             const [inserted] = editor.insertBlocks(
@@ -1000,7 +1035,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         "goose-note:focus-editor-start",
         handleFocusStart,
       );
-      window.removeEventListener("goose-note:focus-editor-body", handleFocusBody);
+      window.removeEventListener(
+        "goose-note:focus-editor-body",
+        handleFocusBody,
+      );
       window.removeEventListener("goose-note:plugin-enter", handlePluginEnter);
       window.removeEventListener(
         "goose-note:reload-active-editor",
@@ -1074,7 +1112,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       silentContentSync={silentContentSync}
       isEditorFullWidth={isEditorFullWidth}
       effectiveTheme={effectiveTheme}
-      tableEvenColumnWidth={tableEvenColumnWidth}
       searchProviders={searchProviders}
       customActions={customActions}
       showSideMenu={showSideMenu}

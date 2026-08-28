@@ -70,7 +70,41 @@ export function getFormattingToolbarReferenceRect(
     );
   }
 
+  if (resolvedMode === "cellGrid") {
+    return (
+      getSelectedCellsUnionRect(editor) ?? editor.getSelectionBoundingBox()
+    );
+  }
+
   return editor.getSelectionBoundingBox();
+}
+
+function getSelectedCellsUnionRect(
+  editor: BlockNoteEditor<any, any, any>,
+): DOMRect | undefined {
+  const root = editor.domElement;
+  if (!root) return undefined;
+
+  const cells = root.querySelectorAll(".selectedCell");
+  let minTop = Infinity;
+  let minLeft = Infinity;
+  let maxBottom = -Infinity;
+  let maxRight = -Infinity;
+  let found = false;
+
+  for (const cell of cells) {
+    if (!(cell instanceof Element)) continue;
+    const r = cell.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    found = true;
+    minTop = Math.min(minTop, r.top);
+    minLeft = Math.min(minLeft, r.left);
+    maxBottom = Math.max(maxBottom, r.bottom);
+    maxRight = Math.max(maxRight, r.right);
+  }
+
+  if (!found) return undefined;
+  return new DOMRect(minLeft, minTop, maxRight - minLeft, maxBottom - minTop);
 }
 
 /**

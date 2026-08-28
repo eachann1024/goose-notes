@@ -65,7 +65,6 @@ export function EditorHostBridge({
 }: EditorHostBridgeProps) {
   const theme = useSettings((s) => s.theme);
   const editorFontSize = useSettings((s) => s.editorFontSize);
-  const tableEvenColumnWidth = useSettings((s) => s.tableEvenColumnWidth);
   const customFonts = useSettings((s) => s.customFonts);
   const defaultCodeBlockWrap = useSettings((s) => s.defaultCodeBlockWrap);
   const setDefaultCodeBlockWrap = useSettings((s) => s.setDefaultCodeBlockWrap);
@@ -78,7 +77,6 @@ export function EditorHostBridge({
     () => ({
       theme,
       editorFontSize,
-      tableEvenColumnWidth,
       customFonts,
       defaultCodeBlockWrap,
       onDefaultCodeBlockWrapChange: setDefaultCodeBlockWrap,
@@ -100,7 +98,6 @@ export function EditorHostBridge({
     [
       theme,
       editorFontSize,
-      tableEvenColumnWidth,
       customFonts,
       defaultCodeBlockWrap,
       setDefaultCodeBlockWrap,
@@ -147,6 +144,17 @@ export function EditorHostBridge({
           : null;
         return activePage?.localFilePath ?? null;
       },
+      getActivePageLocalFolderRoot: () => {
+        const activeId = usePages.getState().activePageId;
+        const activePage = activeId
+          ? usePages.getState().pages[activeId]
+          : null;
+        if (!activePage) return null;
+        const notebook = useNotebooks.getState().notebooks[activePage.workspaceId];
+        return notebook?.source === "local-folder"
+          ? (notebook.localPath ?? null)
+          : null;
+      },
       onOpenAttachment: async (source, fileName) => {
         const activeId = usePages.getState().activePageId;
         const activePage = activeId
@@ -167,11 +175,17 @@ export function EditorHostBridge({
       searchPages: (query: string) => {
         const { pages } = usePages.getState();
         const { notebooks, activeNotebookId } = useNotebooks.getState();
+        const includeFolders =
+          (page.workspaceId &&
+            notebooks[page.workspaceId]?.source === "local-folder") ||
+          (activeNotebookId != null &&
+            notebooks[activeNotebookId]?.source === "local-folder");
         return getAiReferenceSuggestionItems(
           query,
           pages,
           notebooks,
           activeNotebookId,
+          { includeFolders },
         );
       },
       resolvePageContexts: (refs) => {

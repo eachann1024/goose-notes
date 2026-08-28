@@ -36,6 +36,7 @@
   vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  caret-color: var(--goose-inline-code-fg);
 }
 
 /* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
@@ -51,8 +52,8 @@
   color: var(--goose-inline-code-fg);
 }
 
-/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置，
-   inlineCodeCaretExtension 靠它把光标钉进或钉出圆角盒 */
+/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置。
+   高度必须跟字号走，否则光标钉在 boundary 旁时高度为 0，删到边界/盒内就看不见。 */
 .workspace-editor-surface
   .bn-inline-content
   code
@@ -63,10 +64,23 @@
   > [data-goose-inline-code-boundary] {
   display: inline-block;
   width: 0;
-  height: 0;
+  height: 1em;
+  line-height: 1;
   overflow: hidden;
+  vertical-align: text-bottom;
   pointer-events: none;
   user-select: none;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before,
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before {
+  content: "\200b";
 }
 
 /* 链接内的行内代码：去掉文字下划线，并保持强调色（不继承链接色） */
@@ -144,6 +158,54 @@
   color: var(--goose-inline-code-fg);
 }
 
+/* ===== 行内代码相对路径 tag：按住 Cmd/Ctrl 时 hover 下划线扫动，点击打开 ===== */
+.workspace-editor-surface .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path {
+  position: relative;
+}
+
+.workspace-editor-surface .goose-inline-code-path::after,
+.quicknote-editor-surface .goose-inline-code-path::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.06em;
+  height: 1px;
+  background-color: currentColor;
+  opacity: 0.7;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+/* armed 态（按住 Cmd/Ctrl）才给出可点击提示 */
+.workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface .goose-inline-code-path::after,
+  .quicknote-editor-surface .goose-inline-code-path::after {
+    transform: scaleX(1);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    opacity: 0.7;
+  }
+}
+
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
@@ -209,22 +271,32 @@
 }
 
 /* ===== BlockNote children 缩进优化 ===== */
-/* 减少 heading 下 children 的默认缩进，避免内容看起来像是被强制嵌套了一层 */
+/* 普通标题下 children 轻微收进；折叠标题按原型 C 顶格，见 toggles.css。 */
 .workspace-editor-surface
-  .bn-block:has(> .bn-block-content[data-content-type="heading"])
+  .bn-block:has(
+    > .bn-block-content[data-content-type="heading"]:not(
+        [data-is-toggleable="true"]
+      )
+  )
   > .bn-block-children {
   padding-left: 0.5em;
 }
 
-/* 页面级字体切换：覆盖 BlockNote 默认的 .bn-default-styles */
+/* 页面级字体切换：表面自身 + 编辑器，避免 BlockNote 类名变动后选不中 */
+.workspace-editor-surface[data-font-family="default"],
+.workspace-editor-surface[data-font-family="default"] .bn-editor,
 .workspace-editor-surface[data-font-family="default"] .bn-default-styles {
   font-family: var(--font-default);
 }
 
+.workspace-editor-surface[data-font-family="serif"],
+.workspace-editor-surface[data-font-family="serif"] .bn-editor,
 .workspace-editor-surface[data-font-family="serif"] .bn-default-styles {
   font-family: var(--font-serif);
 }
 
+.workspace-editor-surface[data-font-family="mono"],
+.workspace-editor-surface[data-font-family="mono"] .bn-editor,
 .workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
   font-family: var(--font-mono);
 }

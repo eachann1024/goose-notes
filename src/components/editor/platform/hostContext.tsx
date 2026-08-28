@@ -85,7 +85,6 @@ export interface EditorSettings {
   theme: "light" | "dark" | "system";
   /** 正文字号（px）；由宿主同步到编辑器的 CSS 变量。 */
   editorFontSize: number;
-  tableEvenColumnWidth: boolean;
   customFonts: EditorCustomFonts;
   defaultCodeBlockWrap: boolean;
   onDefaultCodeBlockWrapChange: (v: boolean) => void;
@@ -122,6 +121,8 @@ export interface EditorPageContext {
   onOpenPage: (pageId: string) => void;
   /** 图片相对路径解析：返回当前激活页的本地文件路径 */
   getActivePageLocalFilePath: () => string | null;
+  /** 本地文件夹笔记本根目录；非本地文件夹笔记本返回 null */
+  getActivePageLocalFolderRoot: () => string | null;
   /** 宿主负责把持久化附件还原为真实文件并交给系统默认应用。 */
   onOpenAttachment?: (
     source: string,

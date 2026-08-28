@@ -61,8 +61,8 @@
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
-  background: var(--goose-icon-chip-on-selected);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
@@ -198,7 +198,8 @@
 
 .goose-block-toolbar-control:hover,
 .goose-block-toolbar-control:focus-visible {
-  background: var(--goose-icon-chip-on-selected);
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
 .goose-block-toolbar-control:focus-visible {

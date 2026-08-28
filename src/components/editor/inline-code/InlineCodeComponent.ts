@@ -12,6 +12,9 @@ import {
  * 内容 span 是 ProseMirror 的要求：内容洞必须是父节点的唯一子节点。
  */
 const inlineCodeMark = defaultStyleSpecs.code.implementation.mark.extend({
+  // 右边界默认在盒外：盒后继续打中文时不必靠 storedMarks 维持「在外」，
+  // 否则 compositionstart 会走 ProseMirror markCursor 并打断拼音。
+  inclusive: false,
   renderHTML({ HTMLAttributes }) {
     return [
       "code",

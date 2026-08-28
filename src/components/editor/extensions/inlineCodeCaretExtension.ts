@@ -1,17 +1,25 @@
 import { createExtension } from "@blocknote/core";
-import type { Mark, MarkType, ResolvedPos } from "@tiptap/pm/model";
+import type { MarkType, ResolvedPos } from "@tiptap/pm/model";
 import { Plugin, TextSelection } from "@tiptap/pm/state";
-import type { EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import {
+  isInsideCode,
+  resolveWordDelete,
+  storedMarksForCodeEdge,
+  towardInlineCode,
+  wordDeleteRange,
+  wordMoveTarget,
+  type WordAxis,
+} from "@/components/editor/extensions/inlineCodeWordBoundary";
 
 /**
  * 行内代码的光标进出。
  *
  * 「盒内 / 盒外」不是插件自己的状态，而是直接读 ProseMirror 的
- * storedMarks（缺省时读 `$pos.marks()`）：含 code 即盒内。code mark 是
- * inclusive 的，所以右边界缺省就是盒内、左边界缺省就是盒外，两个非缺省
- * 组合由本插件写 storedMarks 得到。渲染侧只需在这两种情况下把浏览器光标
- * 挪到 boundary span 的另一侧。
+ * storedMarks（缺省时读 `$pos.marks()`）：含 code 即盒内。code mark
+ * inclusive: false，右边界缺省在盒外、左边界缺省在盒外；盒内两端由
+ * storedMarks 带上 code。盒外不写 storedMarks，避免 compositionstart
+ * 把 truthy storedMarks 当成 markCursor 重启、打断拼音。
  */
 
 export type InlineCodeEdge = "start" | "end";
@@ -93,39 +101,42 @@ export function inlineCodeEdgeArrowAction(
   return inside ? "leave" : null;
 }
 
-function currentMarks(state: EditorState, $pos: ResolvedPos): readonly Mark[] {
-  return state.storedMarks ?? $pos.marks();
-}
-
-function isInside(
-  state: EditorState,
-  $pos: ResolvedPos,
-  codeType: MarkType,
-): boolean {
-  return !!codeType.isInSet(currentMarks(state, $pos));
-}
-
-/** 落到新位置时补 storedMarks：只有左边界的缺省 marks 不含 code。 */
-function marksForCaretAt(
-  $pos: ResolvedPos,
-  codeType: MarkType,
-): readonly Mark[] | null {
-  return inlineCodeEdgeAt($pos, codeType) === "start"
-    ? ($pos.nodeAfter?.marks ?? null)
-    : null;
+/**
+ * 边界上的 DOM 选区是否已经落在「看得见光标」的那一侧。
+ * 落在零宽 boundary 节点里、或盒内/盒外和 storedMarks 不一致时，必须重钉。
+ */
+export function shouldKeepInlineCodeDomCaret(options: {
+  wantInside: boolean;
+  contentContainsAnchor: boolean;
+  anchorInBoundary: boolean;
+  atContentInnerEdge: boolean;
+  atCodeOuterEdge: boolean;
+  codeContainsAnchor: boolean;
+}): boolean {
+  if (options.anchorInBoundary) return false;
+  if (options.wantInside) {
+    return options.contentContainsAnchor || options.atContentInnerEdge;
+  }
+  if (options.contentContainsAnchor) return false;
+  if (options.codeContainsAnchor && !options.atCodeOuterEdge) return false;
+  return true;
 }
 
 function moveCaret(
   view: EditorView,
   target: number,
   codeType: MarkType,
+  inside: boolean,
 ): boolean {
   const { state } = view;
   const $target = state.doc.resolve(target);
+  const edge = inlineCodeEdgeAt($target, codeType);
   view.dispatch(
     state.tr
       .setSelection(TextSelection.create(state.doc, target))
-      .setStoredMarks(marksForCaretAt($target, codeType) as Mark[] | null),
+      .setStoredMarks(
+        edge ? storedMarksForCodeEdge($target, codeType, inside) : null,
+      ),
   );
   return true;
 }
@@ -160,12 +171,12 @@ function handleArrow(view: EditorView, direction: "left" | "right"): boolean {
     if (inlineCodeEdgeAt(state.doc.resolve(target), codeType) !== "start") {
       return false;
     }
-    return moveCaret(view, target, codeType);
+    return moveCaret(view, target, codeType, true);
   }
 
   const action = inlineCodeEdgeArrowAction(
     edge,
-    isInside(state, $pos, codeType),
+    isInsideCode(state, $pos, codeType),
     direction,
   );
   if (!action) return false;
@@ -173,15 +184,14 @@ function handleArrow(view: EditorView, direction: "left" | "right"): boolean {
   if (action === "step-inward") {
     const target = stepTarget($pos, selection.from, direction);
     if (target === null) return false;
-    return moveCaret(view, target, codeType);
+    return moveCaret(view, target, codeType, true);
   }
 
-  const marks = currentMarks(state, $pos);
-  const next =
-    action === "enter"
-      ? codeType.create().addToSet(marks as Mark[])
-      : codeType.removeFromSet(marks as Mark[]);
-  view.dispatch(state.tr.setStoredMarks(next));
+  view.dispatch(
+    state.tr.setStoredMarks(
+      storedMarksForCodeEdge($pos, codeType, action === "enter"),
+    ),
+  );
   return true;
 }
 
@@ -211,24 +221,123 @@ function handleDelete(
   );
   if (!length) return false;
 
-  const inside = isInside(state, $pos, codeType);
+  const inside = isInsideCode(state, $pos, codeType);
   const tr =
     direction === "backward"
       ? state.tr.delete(selection.from - length, selection.from)
       : state.tr.delete(selection.from, selection.from + length);
 
-  // 删除会清掉 storedMarks，这里把删除前的「盒内 / 盒外」补回去。
   const $after = tr.selection.$from;
   if (inlineCodeEdgeAt($after, codeType)) {
-    const marks = $after.marks();
-    tr.setStoredMarks(
-      inside
-        ? codeType.create().addToSet(marks)
-        : codeType.removeFromSet(marks),
-    );
+    tr.setStoredMarks(storedMarksForCodeEdge($after, codeType, inside));
   }
   view.dispatch(tr.scrollIntoView());
+  queueCaretSync(view);
   return true;
+}
+
+let lastWordEditAt = 0;
+
+function sameStroke(): boolean {
+  const now = Date.now();
+  if (now - lastWordEditAt < 50) return true;
+  lastWordEditAt = now;
+  return false;
+}
+
+function handleWordDelete(
+  view: EditorView,
+  direction: WordAxis,
+): boolean {
+  const { state } = view;
+  const codeType = state.schema.marks.code;
+  if (!codeType) return false;
+
+  const selection = state.selection;
+  if (!(selection instanceof TextSelection) || !selection.empty) return false;
+
+  const $pos = selection.$from;
+  const inside = isInsideCode(state, $pos, codeType);
+  const plan = resolveWordDelete(
+    $pos,
+    direction,
+    codeType,
+    inside,
+    inlineCodeEdgeAt($pos, codeType),
+  );
+  if (!plan) return false;
+  if (sameStroke()) return true;
+  if (plan === "swallow") {
+    queueCaretSync(view);
+    return true;
+  }
+
+  const tr = state.tr.delete(plan.from, plan.to);
+  const $after = tr.selection.$from;
+  const edge = inlineCodeEdgeAt($after, codeType);
+  if (edge) {
+    tr.setStoredMarks(storedMarksForCodeEdge($after, codeType, inside));
+  }
+  view.dispatch(tr.scrollIntoView());
+  queueCaretSync(view);
+  return true;
+}
+
+function handleWordMove(
+  view: EditorView,
+  direction: WordAxis,
+  extend: boolean,
+): boolean {
+  const { state } = view;
+  const codeType = state.schema.marks.code;
+  if (!codeType) return false;
+
+  const selection = state.selection;
+  if (!(selection instanceof TextSelection)) return false;
+  if (!selection.empty && !extend) return false;
+
+  const $pos = selection.$head;
+  const inside = isInsideCode(state, $pos, codeType);
+  const edgeHere = inlineCodeEdgeAt($pos, codeType);
+  const clamped = wordDeleteRange($pos, direction, codeType, inside, true);
+  const raw = wordDeleteRange($pos, direction, codeType, inside, false);
+  const crosses =
+    !!raw &&
+    !!clamped &&
+    (raw.from !== clamped.from || raw.to !== clamped.to);
+  const target = wordMoveTarget($pos, direction, codeType, inside);
+
+  if (target !== null && (inside || edgeHere || crosses)) {
+    const next = extend
+      ? TextSelection.create(state.doc, selection.anchor, target)
+      : TextSelection.create(state.doc, target);
+    const $target = state.doc.resolve(target);
+    const edge = inlineCodeEdgeAt($target, codeType);
+    view.dispatch(
+      state.tr
+        .setSelection(next)
+        .setStoredMarks(
+          edge ? storedMarksForCodeEdge($target, codeType, inside) : null,
+        ),
+    );
+    return true;
+  }
+
+  if (!edgeHere) return false;
+  if (towardInlineCode(edgeHere, direction)) {
+    if (inside) return false;
+    view.dispatch(
+      state.tr.setStoredMarks(storedMarksForCodeEdge($pos, codeType, true)),
+    );
+    return true;
+  }
+  if (inside) {
+    view.dispatch(
+      state.tr.setStoredMarks(storedMarksForCodeEdge($pos, codeType, false)),
+    );
+    return true;
+  }
+  return false;
 }
 
 function inlineCodeElementAt(
@@ -256,6 +365,43 @@ function inlineCodeElementAt(
   return element?.closest<HTMLElement>(CODE_SELECTOR) ?? null;
 }
 
+function collapsedRangeAt(
+  doc: Document,
+  place: (range: Range) => void,
+): { node: Node; offset: number } {
+  const range = doc.createRange();
+  place(range);
+  range.collapse(true);
+  return { node: range.startContainer, offset: range.startOffset };
+}
+
+function selectionMatchesPoint(
+  selection: Selection,
+  point: { node: Node; offset: number },
+): boolean {
+  return (
+    selection.isCollapsed &&
+    selection.anchorNode === point.node &&
+    selection.anchorOffset === point.offset
+  );
+}
+
+function isBoundaryAnchor(node: Node | null): boolean {
+  if (!node) return false;
+  const el =
+    node.nodeType === Node.ELEMENT_NODE
+      ? (node as Element)
+      : node.parentElement;
+  return !!el?.closest("[data-goose-inline-code-boundary]");
+}
+
+function queueCaretSync(view: EditorView): void {
+  syncCaretSide(view);
+  requestAnimationFrame(() => {
+    if (view.dom.isConnected) syncCaretSide(view);
+  });
+}
+
 /** 把浏览器光标钉到 boundary span 的正确一侧；两侧映射回的文档位置相同。 */
 function syncCaretSide(view: EditorView): void {
   const { state } = view;
@@ -272,19 +418,19 @@ function syncCaretSide(view: EditorView): void {
   const code = inlineCodeElementAt(view, selection.from, edge);
   if (!code) return;
 
-  const domSelection = view.dom.ownerDocument.getSelection();
+  const content = code.querySelector(CONTENT_SELECTOR);
+  if (!content) return;
+
+  const doc = view.dom.ownerDocument;
+  const domSelection = doc.getSelection();
   if (!domSelection?.isCollapsed || !domSelection.anchorNode) return;
 
-  const wantInside = isInside(state, $pos, codeType);
-  if (code.contains(domSelection.anchorNode) === wantInside) return;
-
-  const range = view.dom.ownerDocument.createRange();
-  if (wantInside) {
-    const content = code.querySelector(CONTENT_SELECTOR);
-    if (!content) return;
+  const wantInside = isInsideCode(state, $pos, codeType);
+  const innerPoint = collapsedRangeAt(doc, (range) => {
     if (edge === "start") range.setStartBefore(content);
     else range.setStartAfter(content);
-  } else {
+  });
+  const outerPoint = collapsedRangeAt(doc, (range) => {
     const sibling = edge === "start" ? code.previousSibling : code.nextSibling;
     if (sibling?.nodeType === Node.TEXT_NODE) {
       range.setStart(
@@ -296,7 +442,24 @@ function syncCaretSide(view: EditorView): void {
     } else {
       range.setStartAfter(code);
     }
+  });
+
+  if (
+    shouldKeepInlineCodeDomCaret({
+      wantInside,
+      contentContainsAnchor: content.contains(domSelection.anchorNode),
+      anchorInBoundary: isBoundaryAnchor(domSelection.anchorNode),
+      atContentInnerEdge: selectionMatchesPoint(domSelection, innerPoint),
+      atCodeOuterEdge: selectionMatchesPoint(domSelection, outerPoint),
+      codeContainsAnchor: code.contains(domSelection.anchorNode),
+    })
+  ) {
+    return;
   }
+
+  const range = doc.createRange();
+  const point = wantInside ? innerPoint : outerPoint;
+  range.setStart(point.node, point.offset);
   range.collapse(true);
   domSelection.removeAllRanges();
   domSelection.addRange(range);
@@ -309,16 +472,26 @@ function inlineCodeCaretPlugin() {
   return new Plugin({
     props: {
       handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
-        if (
-          event.shiftKey ||
-          event.metaKey ||
-          event.ctrlKey ||
-          event.altKey ||
-          event.isComposing ||
-          view.composing
-        ) {
-          return false;
+        if (event.isComposing || view.composing) return false;
+        // Cmd+Backspace 等整行删除保持浏览器 / PM 默认，可连同行内代码一起删。
+        if (event.metaKey) return false;
+
+        if (event.altKey && !event.ctrlKey) {
+          if (event.key === "Backspace" || event.keyCode === 8) {
+            return handleWordDelete(view, "backward");
+          }
+          if (event.key === "Delete" || event.keyCode === 46) {
+            return handleWordDelete(view, "forward");
+          }
+          if (event.key === "ArrowLeft" || event.keyCode === 37) {
+            return handleWordMove(view, "backward", event.shiftKey);
+          }
+          if (event.key === "ArrowRight" || event.keyCode === 39) {
+            return handleWordMove(view, "forward", event.shiftKey);
+          }
         }
+
+        if (event.shiftKey || event.ctrlKey || event.altKey) return false;
         if (event.key === "ArrowLeft" || event.keyCode === 37) {
           return handleArrow(view, "left");
         }
@@ -332,6 +505,23 @@ function inlineCodeCaretPlugin() {
           return handleDelete(view, "forward");
         }
         return false;
+      },
+      handleDOMEvents: {
+        beforeinput(view: EditorView, event: Event): boolean {
+          if (view.composing) return false;
+          const input = event as InputEvent;
+          if (input.inputType === "deleteWordBackward") {
+            if (!handleWordDelete(view, "backward")) return false;
+            event.preventDefault();
+            return true;
+          }
+          if (input.inputType === "deleteWordForward") {
+            if (!handleWordDelete(view, "forward")) return false;
+            event.preventDefault();
+            return true;
+          }
+          return false;
+        },
       },
       /** 点在盒子矩形内落盒内、点在左右留白里落盒外。 */
       handleClick(view: EditorView, pos: number, event: MouseEvent): boolean {
@@ -351,14 +541,10 @@ function inlineCodeCaretPlugin() {
         const rect = code.getBoundingClientRect();
         const inside =
           event.clientX > rect.left && event.clientX < rect.right;
-        const marks = inside
-          ? marksForCaretAt($pos, codeType)
-          : codeType.removeFromSet($pos.marks());
-
         view.dispatch(
           state.tr
             .setSelection(TextSelection.create(state.doc, pos))
-            .setStoredMarks(marks as Mark[] | null),
+            .setStoredMarks(storedMarksForCodeEdge($pos, codeType, inside)),
         );
         return true;
       },

@@ -59,7 +59,7 @@ function ToolbarSectionSeparator() {
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
   // 未启用 AI 的构建跳过 useExtension；编译期分支在同一构建内保持稳定。
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+
   const aiExtension = __GOOSE_EDITOR_AI__
     ? useExtension(AIExtension)
     : undefined;
@@ -78,7 +78,9 @@ export function EditorFormattingToolbar() {
         .trim();
 
       return {
-        hasTextSelection: !selection.empty && selectedText.length > 0,
+        hasTextSelection:
+          (!selection.empty && selectedText.length > 0) ||
+          shouldRenderFormattingToolbar(editor),
         disallowsFormattingToolbar: selectionDisallowsFormattingToolbar(editor),
       };
     },
@@ -231,8 +233,7 @@ export function EditorFormattingToolbar() {
     return null;
   }
 
-  const showAiButton =
-    __GOOSE_EDITOR_AI__ && aiSettings.enabled && caps.showAi;
+  const showAiButton = __GOOSE_EDITOR_AI__ && aiSettings.enabled && caps.showAi;
 
   // 分节渲染：仅在「相邻两节都可见」时插入 Separator，避免双分隔线 / 尾随分隔线。
   const sections: ReactNode[] = [];

@@ -1,9 +1,6 @@
 import { BlockNoteEditor } from "@blocknote/core";
-import {
-  AllSelection,
-  NodeSelection,
-  TextSelection,
-} from "@tiptap/pm/state";
+import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { CellSelection } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
@@ -20,7 +17,10 @@ function createEditor(content: Array<Record<string, unknown>>) {
   });
 }
 
-function findNodePosition(editor: ReturnType<typeof createEditor>, type: string) {
+function findNodePosition(
+  editor: ReturnType<typeof createEditor>,
+  type: string,
+) {
   let result: number | null = null;
   editor.prosemirrorState.doc.descendants((node, pos) => {
     if (node.type.name === type) {
@@ -155,10 +155,7 @@ test("行内代码与普通文字混合选中时仍允许格式工具栏", () =>
   expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });
 
-function findTextRange(
-  editor: ReturnType<typeof createEditor>,
-  text: string,
-) {
+function findTextRange(editor: ReturnType<typeof createEditor>, text: string) {
   let result: { from: number; to: number } | null = null;
   editor.prosemirrorState.doc.descendants((node, pos) => {
     if (node.isText && node.text === text) {
@@ -169,6 +166,42 @@ function findTextRange(
   });
   if (result === null) throw new Error(`Missing text: ${text}`);
   return result;
+}
+
+function cellPosForText(editor: ReturnType<typeof createEditor>, text: string) {
+  const range = findTextRange(editor, text);
+  const $pos = editor.prosemirrorState.doc.resolve(range.from);
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    const role = $pos.node(d).type.spec?.tableRole;
+    if (role === "cell" || role === "header_cell") return $pos.before(d);
+  }
+  throw new Error(`Missing cell for: ${text}`);
+}
+
+function createTableEditor() {
+  return createEditor([
+    {
+      id: "tbl",
+      type: "table",
+      content: {
+        type: "tableContent",
+        rows: [
+          {
+            cells: [
+              [{ type: "text", text: "维度" }],
+              [{ type: "text", text: "pi-mono" }],
+            ],
+          },
+          {
+            cells: [
+              [{ type: "text", text: "用途" }],
+              [{ type: "text", text: "Agent" }],
+            ],
+          },
+        ],
+      },
+    },
+  ]);
 }
 
 test("表格单元格内选中文字时允许格式工具栏", () => {
@@ -218,7 +251,10 @@ test("表格块无文字选区时不触发格式工具栏", () => {
         type: "tableContent",
         rows: [
           {
-            cells: [[{ type: "text", text: "A" }], [{ type: "text", text: "B" }]],
+            cells: [
+              [{ type: "text", text: "A" }],
+              [{ type: "text", text: "B" }],
+            ],
           },
         ],
       },
@@ -269,4 +305,28 @@ test("表格内选中文字时能解析 AI 锚点 block id", () => {
 
   const blockId = resolveFormattingToolbarAiBlockId(editor);
   expect(blockId).toBeTruthy();
+});
+
+test("跨单元格 TextSelection（用途→维度）→ mode cellGrid，仍显示格式工具栏", () => {
+  const editor = createTableEditor();
+  const from = findTextRange(editor, "用途");
+  const to = findTextRange(editor, "维度");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, from.from, to.to));
+  });
+
+  expect(getFormattingSelectionMode(editor)).toBe("cellGrid");
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
+});
+
+test("CellSelection 覆盖两格 → mode cellGrid，仍显示格式工具栏", () => {
+  const editor = createTableEditor();
+  const fromCell = cellPosForText(editor, "用途");
+  const toCell = cellPosForText(editor, "维度");
+  editor.transact((tr) => {
+    tr.setSelection(CellSelection.create(tr.doc, fromCell, toCell));
+  });
+
+  expect(getFormattingSelectionMode(editor)).toBe("cellGrid");
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });

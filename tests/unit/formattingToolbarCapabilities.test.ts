@@ -1,6 +1,7 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { mapTableCell } from "@blocknote/core";
 import { AllSelection, TextSelection } from "@tiptap/pm/state";
+import { CellSelection } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
@@ -30,6 +31,55 @@ function findTextRange(editor: ReturnType<typeof createEditor>, text: string) {
   });
   if (result === null) throw new Error(`Missing text: ${text}`);
   return result;
+}
+
+function cellPosForText(editor: ReturnType<typeof createEditor>, text: string) {
+  const range = findTextRange(editor, text);
+  const $pos = editor.prosemirrorState.doc.resolve(range.from);
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    const role = $pos.node(d).type.spec?.tableRole;
+    if (role === "cell" || role === "header_cell") return $pos.before(d);
+  }
+  throw new Error(`Missing cell for: ${text}`);
+}
+
+function createTableEditor() {
+  return createEditor([
+    {
+      id: "tbl",
+      type: "table",
+      content: {
+        type: "tableContent",
+        rows: [
+          {
+            cells: [
+              [{ type: "text", text: "维度" }],
+              [{ type: "text", text: "pi-mono" }],
+            ],
+          },
+          {
+            cells: [
+              [{ type: "text", text: "用途" }],
+              [{ type: "text", text: "Agent" }],
+            ],
+          },
+        ],
+      },
+    },
+  ]);
+}
+
+function expectCellGridToolbar(editor: ReturnType<typeof createEditor>) {
+  expect(getFormattingSelectionMode(editor)).toBe("cellGrid");
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
+  const caps = getFormattingToolbarCapabilities(editor);
+  expect(caps.mode).toBe("cellGrid");
+  expect(caps.showMarks).toBe(true);
+  expect(caps.showColors).toBe(true);
+  expect(caps.showLink).toBe(false);
+  expect(caps.showAlign).toBe(true);
+  expect(caps.showAi).toBe(true);
+  expect(caps.showClear).toBe(true);
 }
 
 function findTableBlock(editor: ReturnType<typeof createEditor>) {
@@ -254,6 +304,10 @@ test("表格单元格对齐 applySelectionTextAlignment 写入 cell props", () =
   expect(getCellAlignment(editor, 0, 0)).toBe("left");
   expect(getCellAlignment(editor, 1, 0)).toBe("left");
   expect(getCellAlignment(editor, 1, 1)).toBe("left");
+  // updateBlock 不得把选区收成光标，否则格式栏会立刻消失
+  expect(editor.prosemirrorState.selection.empty).toBe(false);
+  expect(getFormattingSelectionMode(editor)).toBe("cellText");
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
 });
 
 test("clearSelectionFormatting 重置段落对齐", () => {
@@ -275,4 +329,41 @@ test("clearSelectionFormatting 重置段落对齐", () => {
 
   const block = editor.document.find((b: any) => b.id === "body") as any;
   expect(block?.props?.textAlignment).toBe("left");
+});
+
+test("跨单元格 TextSelection（用途→维度）→ mode cellGrid，仍显示格式工具栏", () => {
+  const editor = createTableEditor();
+  const from = findTextRange(editor, "用途");
+  const to = findTextRange(editor, "维度");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, from.from, to.to));
+  });
+  expectCellGridToolbar(editor);
+});
+
+test("CellSelection 覆盖两格 → mode cellGrid，仍显示格式工具栏", () => {
+  const editor = createTableEditor();
+  const fromCell = cellPosForText(editor, "用途");
+  const toCell = cellPosForText(editor, "维度");
+  editor.transact((tr) => {
+    tr.setSelection(CellSelection.create(tr.doc, fromCell, toCell));
+  });
+  expectCellGridToolbar(editor);
+});
+
+test("表格跨格对齐后仍保持 CellSelection，格式工具栏不消失", () => {
+  const editor = createTableEditor();
+  const fromCell = cellPosForText(editor, "用途");
+  const toCell = cellPosForText(editor, "维度");
+  editor.transact((tr) => {
+    tr.setSelection(CellSelection.create(tr.doc, fromCell, toCell));
+  });
+
+  applySelectionTextAlignment(editor, "center");
+
+  expect(editor.prosemirrorState.selection).toBeInstanceOf(CellSelection);
+  expect(getFormattingSelectionMode(editor)).toBe("cellGrid");
+  expect(shouldRenderFormattingToolbar(editor)).toBe(true);
+  expect(getCellAlignment(editor, 0, 0)).toBe("center");
+  expect(getCellAlignment(editor, 1, 0)).toBe("center");
 });

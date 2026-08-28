@@ -4,8 +4,8 @@
  */
 
 /* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
-   避免 tableEvenColumnWidth 的核心行为依赖旧 Chromium 不支持的 :has()。 */
-.workspace-editor-surface.goose-table-even-column-width
+   表格始终撑满可用宽度并按列均分，避免核心行为依赖旧 Chromium 不支持的 :has()。 */
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   table {
@@ -13,11 +13,11 @@
   table-layout: fixed;
 }
 
-.workspace-editor-surface.goose-table-even-column-width
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   th,
-.workspace-editor-surface.goose-table-even-column-width
+.workspace-editor-surface
   .bn-editor
   [data-content-type="table"]
   td {
@@ -40,6 +40,32 @@
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] th,
 .dark .workspace-editor-surface .bn-editor [data-content-type="table"] td {
   border-color: hsl(var(--border) / 0.55);
+}
+
+/* CellSelection 时隐藏原生文字高亮，避免和格子装饰叠在一起。
+   :has() 给新内核；.goose-table-cell-grid 给旧 Chromium。
+   选择器要比 goose-accent-colors.css 的 ::selection 更高，才能盖住后加载的强调色。 */
+:root .workspace-editor-surface .bn-editor table:has(.selectedCell) ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor
+  table:has(.selectedCell)
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid ::selection,
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+.workspace-editor-surface .bn-editor .selectedCell {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .workspace-editor-surface [data-content-type="divider"] hr {
@@ -287,4 +313,3 @@
   .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
   margin-bottom: 0.5em;
 }
-
