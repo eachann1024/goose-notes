@@ -1,4 +1,9 @@
 import { createExtension } from "@blocknote/core";
+import {
+  getSectionInsertAnchorId,
+  isFoldableHeadingBlock,
+  readHeadingCollapsed,
+} from "@/components/editor/core/headingSectionFold";
 
 /**
  * 文档首块是「文档标题」（恒为 H1，见 ensureFirstTitleHeading / titleHeadingBlock）。
@@ -52,6 +57,27 @@ export const gooseFirstTitleEnterExtension = createExtension({
       const contentSize = $from.parent.content.size;
       const atStart = offset === 0;
       const atEnd = offset >= contentSize;
+
+      // ── 折叠中的可折叠 heading：一律在 section 尾部后插空段落。
+      // 不能走 splitBlock（会插进 heading 正后方），插在快照外也保证可见。
+      if (
+        readHeadingCollapsed(headingBlock) &&
+        isFoldableHeadingBlock(headingBlock, editor.document[0]?.id)
+      ) {
+        const anchorId = getSectionInsertAnchorId(
+          editor.document as any,
+          headingBlock.id,
+        );
+        const anchor = editor.getBlock(anchorId) ?? headingBlock;
+        const [inserted] = editor.insertBlocks(
+          [{ type: "paragraph", content: "" }],
+          anchor,
+          "after",
+        );
+        if (inserted) editor.setTextCursorPosition(inserted, "start");
+        editor.focus();
+        return true;
+      }
 
       // ── 非首块 heading：仅拦截「光标在开头」避免拆出空标题 ──
       if (firstContainerPos === null || curContainerPos !== firstContainerPos) {

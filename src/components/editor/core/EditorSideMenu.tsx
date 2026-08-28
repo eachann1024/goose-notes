@@ -21,6 +21,7 @@ import {
   readHeadingCollapsed,
   toggleHeadingCollapsed,
 } from "@/components/editor/core/toggleHeadingGutter";
+import { getSectionInsertAnchorId } from "@/components/editor/core/headingSectionFold";
 import {
   SIDE_MENU_CONTENT_GAP,
   isEditorSideMenuHoverTarget,
@@ -114,15 +115,26 @@ export function EditorSideMenu() {
       if (!block) return;
       const placement: "before" | "after" =
         e.altKey || e.ctrlKey || e.metaKey ? "before" : "after";
-      const content = block.content;
+      const current = editor.getBlock(block.id) ?? block;
+      // 折叠中的 heading 点加号：插到 section 尾部，否则新块会立刻被快照外隐藏规则波及。
+      const collapsedHeadingAfter =
+        placement === "after" &&
+        current.type === "heading" &&
+        readHeadingCollapsed(current);
+      const content = current.content;
       const isEmpty =
         content !== undefined && Array.isArray(content) && content.length === 0;
-      if (isEmpty && placement === "after") {
-        editor.setTextCursorPosition(block);
+      if (isEmpty && placement === "after" && !collapsedHeadingAfter) {
+        editor.setTextCursorPosition(current);
       } else {
+        const anchor = collapsedHeadingAfter
+          ? (editor.getBlock(
+              getSectionInsertAnchorId(editor.document as any, current.id),
+            ) ?? current)
+          : current;
         const [inserted] = editor.insertBlocks(
           [{ type: "paragraph" }],
-          block,
+          anchor,
           placement,
         );
         editor.setTextCursorPosition(inserted);

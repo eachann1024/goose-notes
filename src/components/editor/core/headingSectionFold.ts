@@ -66,6 +66,74 @@ export function collectSectionBlockIds(
   return hiddenIds;
 }
 
+/** section 插入锚点：最后一个被扫描到的 sibling id；没有则返回 headingId。 */
+export function getSectionInsertAnchorId(
+  blocks: SectionFoldBlock[],
+  headingId: string,
+): string {
+  const ids = collectSectionBlockIds(blocks, headingId);
+  return ids.length > 0 ? ids[ids.length - 1] : headingId;
+}
+
+/** 捕获折叠快照：collapse 那一刻 section 扫描到的 sibling id 列表。 */
+export function captureFoldSnapshot(
+  blocks: SectionFoldBlock[],
+  headingId: string,
+): string[] {
+  return collectSectionBlockIds(blocks, headingId);
+}
+
+/**
+ * 推进折叠快照：展开→折叠重新 capture；仍折叠保留旧快照（剔除已不在文档的 id，
+ * 不吸收新 sibling）；展开或 heading 被删则丢弃。prevDocument 为 null 表示初始化，
+ * 对所有 collapsed heading 直接 capture。
+ */
+export function updateFoldSnapshots(
+  snapshots: Map<string, string[]>,
+  prevDocument: SectionFoldBlock[] | null,
+  nextDocument: SectionFoldBlock[],
+  firstBlockId: string | undefined,
+): Map<string, string[]> {
+  const nextIds = new Set<string>();
+  collectDescendantIds(nextDocument, nextIds);
+
+  const prevCollapsed = new Map<string, boolean>();
+  if (prevDocument) {
+    const scanPrev = (blocks: SectionFoldBlock[]) => {
+      for (const block of blocks) {
+        if (block.type === "heading" && block.id) {
+          prevCollapsed.set(block.id, isCollapsedProp(block.props?.collapsed));
+        }
+        if (block.children?.length) scanPrev(block.children);
+      }
+    };
+    scanPrev(prevDocument);
+  }
+
+  const next = new Map<string, string[]>();
+  const walk = (blocks: SectionFoldBlock[]) => {
+    for (const block of blocks) {
+      if (
+        block.type === "heading" &&
+        isCollapsedProp(block.props?.collapsed) &&
+        isFoldableHeadingBlock(block, firstBlockId)
+      ) {
+        const keep =
+          prevDocument !== null && prevCollapsed.get(block.id) === true
+            ? (snapshots.get(block.id) ?? captureFoldSnapshot(blocks, block.id))
+            : captureFoldSnapshot(blocks, block.id);
+        next.set(
+          block.id,
+          keep.filter((id) => nextIds.has(id)),
+        );
+      }
+      if (block.children?.length) walk(block.children);
+    }
+  };
+  walk(nextDocument);
+  return next;
+}
+
 export function collectAllHiddenSectionBlockIds(
   document: SectionFoldBlock[],
   firstBlockId: string | undefined,
