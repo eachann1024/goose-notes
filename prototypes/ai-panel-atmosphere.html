@@ -1,0 +1,1065 @@
+<!doctype html>
+<!--
+  THROW AWAY PROTOTYPE.
+  Question: 合法的一整轮 AI 回复（进度 + 正文 + 提议 + 下一步）怎样收进一张卡，
+  而不是「工作卡 + 卡外旁白 + 再一张审批卡」？
+  四个变体：current 现状拆件 / A 信封同纸 / B 答案当封面 / C 一览折叠。
+  ?variant=current|A|B|C。用完即弃，不进生产。
+-->
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 对话流选型 · 一张卡概括</title>
+    <style>
+      :root {
+        --bg: #ecebe8;
+        --panel: #f7f6f5;
+        --paper: #ffffff;
+        --ink: #1c1c1c;
+        --ink-2: #5c5c66;
+        --ink-3: #8b8b96;
+        --line: #e8e7e5;
+        --subtle: #f3f2f1;
+        --hover: #ebeae8;
+        --chip: rgba(99, 102, 241, 0.2);
+        --chip-ink: #4f46e5;
+        --chip-line: rgba(99, 102, 241, 0.45);
+        --user: var(--paper);
+        --teal: #58d7b8;
+        --danger: #dc2626;
+        --success: #16a34a;
+        --shadow: inset 0 0 0 1px #f3f2f1, 0 8px 22px rgba(15, 23, 42, 0.08);
+        --radius-card: 20px;
+        --radius-bubble: 14px;
+        --ease: cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      [data-theme="dark"] {
+        --bg: #1a1a18;
+        --panel: #232322;
+        --paper: #2c2c2a;
+        --ink: #ececec;
+        --ink-2: #a1a1aa;
+        --ink-3: #71717a;
+        --line: #3d3d3b;
+        --subtle: #252525;
+        --hover: #2e2e2e;
+        --chip: rgba(99, 102, 241, 0.28);
+        --chip-ink: #c7d2fe;
+        --chip-line: rgba(129, 140, 248, 0.45);
+        --user: var(--paper);
+        --teal: #58d7b8;
+        --danger: #f87171;
+        --success: #4ade80;
+        --shadow: inset 0 0 0 1px #363636, 0 8px 22px rgba(0, 0, 0, 0.32);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+      }
+      .page {
+        width: 800px;
+        margin: 0 auto;
+        padding: 20px 0 140px;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+
+      .brief {
+        width: 800px;
+        padding: 0 0 12px;
+      }
+      .brief h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 650;
+        letter-spacing: -0.03em;
+      }
+      .brief p {
+        margin: 0 0 8px;
+        color: var(--ink-2);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .brief b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .stage {
+        width: 800px;
+        height: 800px;
+        background: var(--panel);
+        border-radius: 16px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chrome {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 48px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: #4f7cff;
+        color: #fff;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+      .chrome-title {
+        flex: 1;
+        min-width: 0;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .chrome-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        color: var(--ink-2);
+        display: grid;
+        place-items: center;
+      }
+      .chrome-btn:hover,
+      .chrome-btn:focus-visible {
+        background: var(--hover);
+        color: var(--ink);
+      }
+
+      .thread {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 20px 48px 16px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .time {
+        text-align: center;
+        font-size: 11px;
+        line-height: 16px;
+        color: var(--ink-3);
+        margin: 4px 0 0;
+        user-select: none;
+      }
+
+      .user-row {
+        display: flex;
+        justify-content: flex-end;
+        padding-left: 80px;
+      }
+      .user-bubble {
+        max-width: 520px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius-bubble);
+        border-top-right-radius: 4px;
+        padding: 10px 14px;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .mention {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        margin: 0 4px 0 0;
+        padding: 0 6px;
+        border-radius: 6px;
+        border: 1px solid var(--chip-line);
+        background: var(--chip);
+        color: var(--chip-ink);
+        font-size: 11px;
+        font-weight: 500;
+        vertical-align: middle;
+      }
+
+      /* ── 共用：A 方案那张纸 ── */
+      .paper {
+        border-radius: var(--radius-card);
+        padding: 22px 20px 16px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+      .kicker {
+        margin: 0;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--ink-3);
+      }
+      .kicker.danger {
+        color: var(--danger);
+      }
+      .kicker.success {
+        color: var(--success);
+      }
+      .title {
+        margin: 8px 0 0;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.25;
+        letter-spacing: -0.04em;
+      }
+
+      .fold-toggle {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 6px 0;
+        color: var(--ink-2);
+        font-size: 12.5px;
+        text-align: left;
+        border-radius: 8px;
+      }
+      .fold-toggle:hover,
+      .fold-toggle:focus-visible {
+        color: var(--ink);
+      }
+      .fold-toggle:focus-visible {
+        outline: 2px solid var(--chip-ink);
+        outline-offset: 2px;
+      }
+      .chev {
+        width: 14px;
+        height: 14px;
+        flex: 0 0 auto;
+        transition: transform 220ms var(--ease);
+      }
+      .fold[data-open="true"] > .fold-toggle .chev,
+      .fold[data-open="true"] .digest-head .chev {
+        transform: rotate(180deg);
+      }
+      .fold-rows {
+        display: grid;
+        grid-template-rows: 0fr;
+        opacity: 0;
+        transition:
+          grid-template-rows 220ms var(--ease),
+          opacity 220ms var(--ease);
+      }
+      .fold[data-open="true"] > .fold-rows,
+      .fold[data-open="true"] .fold-rows {
+        grid-template-rows: 1fr;
+        opacity: 1;
+      }
+      .fold-rows > div {
+        overflow: hidden;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 28px;
+        font-size: 12.5px;
+        color: var(--ink);
+      }
+      .step .sec {
+        margin-left: auto;
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
+      .step.fail .sec {
+        color: var(--danger);
+      }
+
+      .letter {
+        margin: 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .prose {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--ink);
+      }
+      .prose.muted {
+        color: var(--ink-2);
+      }
+      .proposal {
+        margin: 0;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--subtle);
+      }
+      .proposal h4 {
+        margin: 0 0 8px;
+        font-size: 13.5px;
+        font-weight: 650;
+      }
+      .check {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+      .box {
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        border-radius: 4px;
+        border: 1.5px solid var(--ink-3);
+        color: var(--ink-3);
+      }
+      .sub {
+        margin: 6px 0 0 24px;
+        font-size: 13px;
+        line-height: 1.55;
+        font-weight: 400;
+        color: var(--ink-2);
+      }
+      .card-foot {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+        padding-top: 4px;
+      }
+      .ghost {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        color: var(--ink-3);
+        display: grid;
+        place-items: center;
+      }
+      .ghost:hover,
+      .ghost:focus-visible {
+        background: var(--hover);
+        color: var(--ink);
+      }
+      .ghost:focus-visible {
+        outline: 2px solid var(--chip-ink);
+        outline-offset: 2px;
+      }
+      .hint {
+        margin: 0;
+        flex: 1;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .btn {
+        height: 40px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 550;
+      }
+      .btn.soft {
+        background: var(--subtle);
+      }
+      .btn.solid {
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 650;
+      }
+      .btn:focus-visible {
+        outline: 2px solid var(--chip-ink);
+        outline-offset: 2px;
+      }
+
+      /* ── current：工作卡 + 卡外正文（对照） ── */
+      .split {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .loose {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 2px 2px 0;
+      }
+
+      /* ── B：答案当封面，过程退成一行 ── */
+      .cover .kicker-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chip-quiet {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: var(--subtle);
+        color: var(--ink-2);
+        font-size: 11.5px;
+      }
+      .cover .title {
+        font-size: 22px;
+      }
+      .cover .proposal {
+        background: transparent;
+        padding: 4px 0 0;
+      }
+      .cover .letter {
+        margin-top: 12px;
+      }
+
+      /* ── C：一览折叠，默认只露概括 ── */
+      .digest-head {
+        display: flex;
+        width: 100%;
+        align-items: flex-start;
+        gap: 10px;
+        text-align: left;
+        border-radius: 10px;
+      }
+      .digest-head:focus-visible {
+        outline: 2px solid var(--chip-ink);
+        outline-offset: 4px;
+      }
+      .digest-copy {
+        flex: 1;
+        min-width: 0;
+      }
+      .digest-head .title {
+        margin-top: 6px;
+      }
+      .excerpt {
+        margin: 8px 0 0;
+        font-size: 13.5px;
+        line-height: 1.55;
+        color: var(--ink-2);
+      }
+      .digest-meta {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 22px;
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .digest .letter {
+        margin-top: 8px;
+      }
+
+      [data-variant="A"] .paper,
+      [data-variant="B"] .paper,
+      [data-variant="C"] .paper,
+      [data-variant="current"] .paper {
+        animation: fade-up 220ms var(--ease) both;
+      }
+      @keyframes fade-up {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .swap {
+        display: inline-block;
+      }
+      [data-replay="1"] .swap {
+        animation: text-swap 160ms var(--ease);
+      }
+      @keyframes text-swap {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      .dock {
+        flex: 0 0 auto;
+        padding: 8px 48px 20px;
+      }
+      .composer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 6px 8px 6px 10px;
+        border-radius: 999px;
+        background: var(--paper);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+      }
+      [data-theme="dark"] .composer {
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+      }
+      .plus {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        color: var(--ink-2);
+        display: grid;
+        place-items: center;
+      }
+      .ph {
+        flex: 1;
+        font-size: 13px;
+        color: var(--ink-3);
+      }
+      .model {
+        font-size: 11px;
+        color: var(--ink-3);
+        white-space: nowrap;
+      }
+      .send {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+      }
+
+      .switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: #111;
+        color: #f5f5f5;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+        font-size: 13px;
+      }
+      .switcher button {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: #2a2a2a;
+        color: #fff;
+      }
+      .switcher button:hover,
+      .switcher button:focus-visible {
+        background: #3a3a3a;
+      }
+      .switcher .name {
+        min-width: 176px;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .tools {
+        position: fixed;
+        right: 16px;
+        bottom: 18px;
+        display: flex;
+        gap: 8px;
+        z-index: 40;
+      }
+      .tools button {
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #111;
+        color: #f5f5f5;
+        font-size: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .dbg {
+        width: 800px;
+        margin: 12px 0 0;
+        padding: 0;
+        font-size: 12px;
+        color: var(--ink-3);
+        font-family: ui-monospace, Menlo, monospace;
+        line-height: 1.6;
+      }
+      .dbg b {
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+
+      svg.mark,
+      svg.chev,
+      svg.box {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="brief">
+        <h1>AI 对话流：合法回复收进一张卡</h1>
+        <p>
+          沿用 A 方案的纸面（字距 kicker、20px 标题、20px 圆角、一层阴影）。新问题是：
+          <b>进度、旁白、提议稿、确认</b>不再拆成卡外散件，一轮合法回复只占一张纸。
+        </p>
+        <p>
+          current 是现状对照。A 过程当抬头、正文进同一张纸；B 把答案当成封面；C
+          默认只露一行概括。左右方向键切换。选型原型，正式代码还没动。
+        </p>
+      </header>
+
+      <div class="stage">
+        <div class="chrome" aria-hidden="true">
+          <span class="brand">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
+            </svg>
+          </span>
+          <div class="chrome-title">功能速览</div>
+          <span class="chrome-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="chrome-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="6" cy="12" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="18" cy="12" r="1.2" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <span class="chrome-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
+            </svg>
+          </span>
+        </div>
+        <div id="thread" class="thread" data-variant="A"></div>
+        <div class="dock">
+          <div class="composer" aria-hidden="true">
+            <span class="plus">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+              </svg>
+            </span>
+            <span class="ph">继续改这篇笔记…</span>
+            <span class="model">work/deepseek-v4-flash</span>
+            <span class="send">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 19V5M6 11l6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <pre class="dbg" id="dbg"></pre>
+    </div>
+
+    <nav class="switcher" aria-label="方案切换">
+      <button type="button" id="prev" aria-label="上一个方案">←</button>
+      <div class="name" id="variant-label">A — 信封同纸</div>
+      <button type="button" id="next" aria-label="下一个方案">→</button>
+    </nav>
+    <div class="tools">
+      <button type="button" id="scene-toggle">成功 / 失败</button>
+      <button type="button" id="replay">重播动效</button>
+      <button type="button" id="theme-toggle">亮 / 暗</button>
+    </div>
+
+    <script>
+      const ORDER = ["current", "A", "B", "C"];
+      const META = {
+        current: {
+          label: "现状 — 卡外散件",
+          hierarchy: "工作卡自己一张，正文和提议掉在卡外",
+          motion: "卡片 fade-up，正文无入场",
+          noise: "一眼看不出这轮回复已经结束在哪",
+        },
+        A: {
+          label: "A — 信封同纸",
+          hierarchy: "过程当抬头，正文 / 提议 / 确认都在同一张纸里",
+          motion: "整卡 220ms fade-up，步骤 grid-rows 开合",
+          noise: "失败只在 kicker 说一次，不再另起审批卡",
+        },
+        B: {
+          label: "B — 答案当封面",
+          hierarchy: "标题就是提议，过程缩成一行 chip",
+          motion: "整卡入场；步骤仍可展开",
+          noise: "先看见要改成什么，再决定看不看过程",
+        },
+        C: {
+          label: "C — 一览折叠",
+          hierarchy: "默认一行概括，点开才是全文和步骤",
+          motion: "开合同一套 grid-rows",
+          noise: "长回复先占一行高度，细节按需展开",
+        },
+      };
+
+      const check = `<svg class="mark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+      const alert = `<svg class="mark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>`;
+      const chev = `<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+      const copy = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+      const box = `<svg class="box" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="13" rx="3"/><path d="M4.5 8.2 7 10.6 11.5 5.4"/></svg>`;
+
+      const user1 = `
+        <div class="user-row">
+          <div class="user-bubble">
+            <span class="mention">@学习</span>帮我把 28 号第一项写清楚
+          </div>
+        </div>`;
+      const user2 = `
+        <div class="user-row">
+          <div class="user-bubble">不对 写的太啰嗦了</div>
+        </div>`;
+
+      const stepsWrite = `
+        <div class="step">${check}<span>已加载修改笔记能力</span><span class="sec">完成</span></div>
+        <div class="step">${check}<span>已读取《学习》</span><span class="sec">完成</span></div>
+        <div class="step">${check}<span>写入 4 条要点</span><span class="sec">完成</span></div>`;
+      const stepsTrim = `
+        <div class="step">${check}<span>已读取《学习》</span><span class="sec">完成</span></div>
+        <div class="step">${check}<span>对照原文 4 条</span><span class="sec">完成</span></div>
+        <div class="step">${check}<span>拟好一行精简稿</span><span class="sec">完成</span></div>`;
+      const stepsFail = `
+        <div class="step">${check}<span>定位刚生成的文案</span><span class="sec">完成</span></div>
+        <div class="step fail">${alert}<span>写入笔记</span><span class="sec">已取消</span></div>`;
+
+      const proposal = `
+        <div class="proposal">
+          <h4>28 号第一项改为：</h4>
+          <div class="check">${box}<span>学习造航母</span></div>
+          <p class="sub">起飞（滑跃/弹射/垂直起降）· 斜角甲板同时起降 · 常规/核动力 · 电磁弹射冲击小</p>
+        </div>`;
+
+      function copyFoot(hint) {
+        return `
+          <div class="card-foot">
+            <button type="button" class="ghost" aria-label="复制回复">${copy}</button>
+            <p class="hint">${hint}</p>
+          </div>`;
+      }
+
+      function currentTurn(ok) {
+        if (ok) {
+          return `
+            <div class="split">
+              <section class="paper fold" data-open="false">
+                <p class="kicker">处理完成</p>
+                <h3 class="title"><span class="swap">已读取《学习》</span></h3>
+                <button type="button" class="fold-toggle" aria-expanded="false">${chev}3 步 · 读取笔记</button>
+                <div class="fold-rows"><div>${stepsTrim}</div></div>
+              </section>
+              <div class="loose">
+                <p class="prose">明白～我先看看笔记当前长什么样，再给你精简版 📖</p>
+                <p class="prose">看到啦，之前写的那 4 条确实有点长。我把它精简成一句紧凑的，比如：</p>
+                ${proposal}
+                <p class="prose">这样一行搞定，够简洁吗？还是你想再少一点？确认后我就帮你替换 🚢</p>
+                ${copyFoot("")}
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="split">
+            <section class="paper fold" data-open="true">
+              <p class="kicker danger">写入已取消</p>
+              <h3 class="title"><span class="swap">页面已被改过</span></h3>
+              <button type="button" class="fold-toggle" aria-expanded="true">${chev}2 步 · 避免覆盖新的编辑</button>
+              <div class="fold-rows"><div>${stepsFail}</div></div>
+            </section>
+            <div class="loose">
+              <p class="prose muted">本想按你的反馈把文案改短，但笔记在写入前已经变了。</p>
+              <section class="paper">
+                <p class="kicker danger">执行失败</p>
+                <h3 class="title">精简 28 号第一项</h3>
+                <p class="prose muted" style="margin-top:18px">页面内容已发生变化，为避免覆盖新的编辑，本次写入已取消</p>
+              </section>
+            </div>
+          </div>`;
+      }
+
+      function aTurn(ok) {
+        if (ok) {
+          return `
+            <section class="paper fold" data-open="false" aria-label="本轮回复">
+              <p class="kicker">处理完成</p>
+              <h3 class="title"><span class="swap">已拟好精简版</span></h3>
+              <button type="button" class="fold-toggle" aria-expanded="false">${chev}3 步 · 已读取《学习》</button>
+              <div class="fold-rows"><div>${stepsTrim}</div></div>
+              <div class="letter">
+                <p class="prose">明白～对照了现在的 4 条，确实偏长。我收成一行紧凑的：</p>
+                ${proposal}
+                <p class="prose">这样一行搞定。确认后我就帮你替换。</p>
+                <div class="actions">
+                  <button type="button" class="btn soft">再短一点</button>
+                  <button type="button" class="btn solid">就这样，替换</button>
+                </div>
+                ${copyFoot("复制全文")}
+              </div>
+            </section>`;
+        }
+        return `
+          <section class="paper fold" data-open="true" aria-label="本轮回复">
+            <p class="kicker danger">写入已取消</p>
+            <h3 class="title"><span class="swap">页面已被改过</span></h3>
+            <button type="button" class="fold-toggle" aria-expanded="true">${chev}2 步 · 避免覆盖新的编辑</button>
+            <div class="fold-rows"><div>${stepsFail}</div></div>
+            <div class="letter">
+              <p class="prose">本想按你的反馈把文案改短，但笔记在写入前已经变了。这次没有动原文。</p>
+              ${copyFoot("没有可执行的替换")}
+            </div>
+          </section>`;
+      }
+
+      function bTurn(ok) {
+        if (ok) {
+          return `
+            <section class="paper cover fold" data-open="false" aria-label="本轮回复">
+              <div class="kicker-row">
+                <p class="kicker">处理完成</p>
+                <span class="chip-quiet">已读《学习》 · 3 步</span>
+              </div>
+              <h3 class="title"><span class="swap">28 号第一项改为</span></h3>
+              <div class="letter">
+                <div class="proposal">
+                  <div class="check">${box}<span>学习造航母</span></div>
+                  <p class="sub">起飞（滑跃/弹射/垂直起降）· 斜角甲板同时起降 · 常规/核动力 · 电磁弹射冲击小</p>
+                </div>
+                <p class="prose muted">之前 4 条太长，收成这一行。确认后替换。</p>
+                <div class="actions">
+                  <button type="button" class="btn soft">再短一点</button>
+                  <button type="button" class="btn solid">就这样，替换</button>
+                </div>
+                <button type="button" class="fold-toggle" aria-expanded="false">${chev}过程</button>
+                <div class="fold-rows"><div>${stepsTrim}</div></div>
+                ${copyFoot("")}
+              </div>
+            </section>`;
+        }
+        return `
+          <section class="paper cover fold" data-open="true" aria-label="本轮回复">
+            <div class="kicker-row">
+              <p class="kicker danger">写入已取消</p>
+              <span class="chip-quiet">避免覆盖</span>
+            </div>
+            <h3 class="title"><span class="swap">笔记已被改过，这次没动</span></h3>
+            <div class="letter">
+              <p class="prose muted">定位到了刚生成的文案，但写入前页面变了。</p>
+              <button type="button" class="fold-toggle" aria-expanded="true">${chev}过程</button>
+              <div class="fold-rows"><div>${stepsFail}</div></div>
+              ${copyFoot("")}
+            </div>
+          </section>`;
+      }
+
+      function cTurn(ok) {
+        if (ok) {
+          return `
+            <section class="paper digest fold" data-open="false" aria-label="本轮回复">
+              <button type="button" class="digest-head" aria-expanded="false">
+                <div class="digest-copy">
+                  <p class="kicker">处理完成</p>
+                  <h3 class="title"><span class="swap">已拟好精简版 · 学习造航母</span></h3>
+                  <p class="excerpt">28 号第一项收成一行：起飞方式 · 斜角甲板 · 动力 · 电磁弹射。</p>
+                </div>
+                <span class="digest-meta">${chev}全文</span>
+              </button>
+              <div class="fold-rows">
+                <div>
+                  <div class="letter">
+                    <p class="prose">明白～对照了现在的 4 条，确实偏长。我收成一行紧凑的：</p>
+                    ${proposal}
+                    <p class="prose">这样一行搞定。确认后我就帮你替换。</p>
+                    <div class="actions">
+                      <button type="button" class="btn soft">再短一点</button>
+                      <button type="button" class="btn solid">就这样，替换</button>
+                    </div>
+                    <div style="margin-top:4px">${stepsTrim}</div>
+                    ${copyFoot("")}
+                  </div>
+                </div>
+              </div>
+            </section>`;
+        }
+        return `
+          <section class="paper digest fold" data-open="true" aria-label="本轮回复">
+            <button type="button" class="digest-head" aria-expanded="true">
+              <div class="digest-copy">
+                <p class="kicker danger">写入已取消</p>
+                <h3 class="title"><span class="swap">页面已被改过 · 原文未动</span></h3>
+                <p class="excerpt">写入前笔记变了，为避免覆盖新的编辑，这次没有替换。</p>
+              </div>
+              <span class="digest-meta">${chev}详情</span>
+            </button>
+            <div class="fold-rows">
+              <div>
+                <div class="letter">
+                  ${stepsFail}
+                  ${copyFoot("")}
+                </div>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      const thread = document.getElementById("thread");
+      let current = new URLSearchParams(location.search).get("variant");
+      if (!META[current]) current = "A";
+      let replay = 0;
+      let scene = "ok";
+
+      function firstCard() {
+        if (current === "B") {
+          return `
+            <section class="paper cover fold" data-open="false" aria-label="本轮回复">
+              <div class="kicker-row">
+                <p class="kicker success">已撤回</p>
+                <span class="chip-quiet">已读《学习》 · 3 步</span>
+              </div>
+              <h3 class="title">28 号写下 4 条要点</h3>
+              <div class="letter">
+                <p class="prose muted">已按你的要求写进笔记，刚才已撤回。</p>
+                <button type="button" class="fold-toggle" aria-expanded="false">${chev}过程</button>
+                <div class="fold-rows"><div>${stepsWrite}</div></div>
+              </div>
+            </section>`;
+        }
+        if (current === "C") {
+          return `
+            <section class="paper digest fold" data-open="false" aria-label="本轮回复">
+              <button type="button" class="digest-head" aria-expanded="false">
+                <div class="digest-copy">
+                  <p class="kicker success">已撤回</p>
+                  <h3 class="title">已写入 4 条要点</h3>
+                  <p class="excerpt">28 号第一项写成了 4 条，刚才已撤回。</p>
+                </div>
+                <span class="digest-meta">${chev}全文</span>
+              </button>
+              <div class="fold-rows"><div><div class="letter">${stepsWrite}</div></div></div>
+            </section>`;
+        }
+        if (current === "current") {
+          return `
+            <section class="paper fold" data-open="false">
+              <p class="kicker success">已撤回</p>
+              <h3 class="title">已写入 4 条要点</h3>
+              <button type="button" class="fold-toggle" aria-expanded="false">${chev}3 步 · 写入笔记</button>
+              <div class="fold-rows"><div>${stepsWrite}</div></div>
+            </section>`;
+        }
+        return `
+          <section class="paper fold" data-open="false" aria-label="本轮回复">
+            <p class="kicker success">已撤回</p>
+            <h3 class="title">已写入 4 条要点</h3>
+            <button type="button" class="fold-toggle" aria-expanded="false">${chev}3 步 · 写入笔记</button>
+            <div class="fold-rows"><div>${stepsWrite}</div></div>
+            <div class="letter">
+              <p class="prose">按你的要求在 28 号写下 4 条。刚才已撤回，原文回到写入前。</p>
+              ${copyFoot("已撤回，笔记未保留这次写入")}
+            </div>
+          </section>`;
+      }
+
+      function paint() {
+        const turn = { current: currentTurn, A: aTurn, B: bTurn, C: cTurn }[current];
+        thread.dataset.variant = current;
+        thread.dataset.replay = String(replay);
+        thread.innerHTML = `
+          <div class="time">10:59</div>
+          ${user1}
+          ${firstCard()}
+          <div class="time">11:13</div>
+          ${user2}
+          ${turn(scene === "ok")}
+        `;
+        document.getElementById("variant-label").textContent = META[current].label;
+        const m = META[current];
+        document.getElementById("dbg").textContent =
+          `variant=${current} scene=${scene}\n层级：${m.hierarchy}\n动效：${m.motion}\n少了什么：${m.noise}`;
+        const url = new URL(location.href);
+        url.searchParams.set("variant", current);
+        history.replaceState(null, "", url);
+      }
+
+      thread.addEventListener("click", (e) => {
+        const btn = e.target.closest(".fold-toggle, .digest-head");
+        if (!btn || !thread.contains(btn)) return;
+        const fold = btn.closest(".fold");
+        if (!fold) return;
+        const open = fold.dataset.open !== "true";
+        fold.dataset.open = open ? "true" : "false";
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      function step(dir) {
+        const i = ORDER.indexOf(current);
+        current = ORDER[(i + dir + ORDER.length) % ORDER.length];
+        replay = 0;
+        paint();
+      }
+      document.getElementById("prev").addEventListener("click", () => step(-1));
+      document.getElementById("next").addEventListener("click", () => step(1));
+      document.getElementById("scene-toggle").addEventListener("click", () => {
+        scene = scene === "ok" ? "fail" : "ok";
+        replay = 0;
+        paint();
+      });
+      document.getElementById("replay").addEventListener("click", () => {
+        replay += 1;
+        paint();
+      });
+      document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.documentElement;
+        html.dataset.theme = html.dataset.theme === "dark" ? "light" : "dark";
+      });
+      document.addEventListener("keydown", (e) => {
+        const t = e.target;
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable))
+          return;
+        if (e.key === "ArrowRight") step(1);
+        if (e.key === "ArrowLeft") step(-1);
+      });
+
+      paint();
+    </script>
+  </body>
+</html>
