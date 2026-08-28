@@ -5,54 +5,64 @@
  */
 import type { JSONContent } from "@/types";
 import type {
-  AiComposerPayload,
-  AiFileReferenceAttrs,
-  AiReferenceSuggestionItem,
+ AiComposerPayload,
+ AiFileReferenceAttrs,
+ AiReferenceSuggestionItem,
 } from "./referenceLookup";
 
 export interface AiComposerInputHandle {
-  focus: () => void;
-  clear: () => void;
-  getPayload: () => AiComposerPayload;
-  /** 解析 payload 中的内联图片 token → 真实 File 附件，按出现顺序 */
-  resolveImages: (payload: AiComposerPayload) => { file: File; previewUrl: string }[];
-  /** 在光标处插入图片 chip（无光标时追加到末尾） */
-  insertImages: (files: File[]) => void;
-  /** 在光标处插入页面引用 chip（无光标时追加到末尾） */
-  insertReference: (reference: AiFileReferenceAttrs) => void;
+ focus: () => void;
+ clear: () => void;
+ getPayload: () => AiComposerPayload;
+ /** 解析 payload 中的内联图片 token → 真实 File 附件，按出现顺序 */
+ resolveImages: (
+  payload: AiComposerPayload,
+ ) => { file: File; previewUrl: string }[];
+ /** 在光标处插入图片 chip（无光标时追加到末尾） */
+ insertImages: (files: File[]) => void;
+ /** 在光标处插入页面引用 chip（无光标时追加到末尾） */
+ insertReference: (reference: AiFileReferenceAttrs) => void;
+ /**
+  * 空会话默认 @ 当前页：输入区仍是「空 / 仅一条文件引用」时替换为最新页。
+  * 用户已打字或加入其他 chip 时跳过。
+  */
+ replaceDefaultPageReference: (
+  reference: AiFileReferenceAttrs,
+ ) => "applied" | "already" | "skipped";
 }
 
 export interface AiComposerInputProps {
-  placeholder: string;
-  placeholderOverlayText?: string;
-  autoFocusToken: number;
-  onSubmit: () => void;
-  onEscape: () => void;
-  initialContent?: JSONContent | null;
-  onContentChange?: (content: JSONContent | null) => void;
-  onIsEmptyChange?: (isEmpty: boolean) => void;
-  onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
-  searchPages?: (query: string) => AiReferenceSuggestionItem[];
-  referencePlacement?: "inline" | "external";
-  variant?: "compact" | "panel";
-  compactWidthClass?: string;
-  disabled?: boolean;
-  /** 单张图片最大字节数，超出触发 onImageRejected */
-  maxImageBytes?: number;
-  /** 输入框内最多同时存在的图片数量，超出触发 onImageRejected */
-  maxImageCount?: number;
-  onImageRejected?: (message: string) => void;
+ placeholder: string;
+ placeholderOverlayText?: string;
+ autoFocusToken: number;
+ onSubmit: () => void;
+ onEscape: () => void;
+ initialContent?: JSONContent | null;
+ onContentChange?: (content: JSONContent | null) => void;
+ onIsEmptyChange?: (isEmpty: boolean) => void;
+ onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
+ searchPages?: (query: string) => AiReferenceSuggestionItem[];
+ referencePlacement?: "inline" | "external";
+ variant?: "compact" | "panel";
+ compactWidthClass?: string;
+ disabled?: boolean;
+ /** 单张图片最大字节数，超出触发 onImageRejected */
+ maxImageBytes?: number;
+ /** 输入框内最多同时存在的图片数量，超出触发 onImageRejected */
+ maxImageCount?: number;
+ onImageRejected?: (message: string) => void;
+ notebookId?: string;
 }
 
 export interface ComposerNativeHandlers {
-  onBeforeInput: (event: Event) => void;
-  onInput: (event: Event) => void;
-  onKeyDown: (event: KeyboardEvent) => void;
-  onClick: (event: MouseEvent) => void;
-  onMouseOver: (event: MouseEvent) => void;
-  onMouseOut: (event: MouseEvent) => void;
-  onPaste: (event: ClipboardEvent) => void;
-  onBlur: () => void;
-  onCompositionStart: () => void;
-  onCompositionEnd: () => void;
+ onBeforeInput: (event: Event) => void;
+ onInput: (event: Event) => void;
+ onKeyDown: (event: KeyboardEvent) => void;
+ onClick: (event: MouseEvent) => void;
+ onMouseOver: (event: MouseEvent) => void;
+ onMouseOut: (event: MouseEvent) => void;
+ onPaste: (event: ClipboardEvent) => void;
+ onBlur: () => void;
+ onCompositionStart: () => void;
+ onCompositionEnd: () => void;
 }

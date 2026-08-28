@@ -13,6 +13,7 @@ import {
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import {
   ensureComposerCaretAnchors,
+  getComposerCaretTextContext,
   placeCaretAfterNode,
   pruneEmptyComposerTextNodes,
 } from "./useSkillCommands";
@@ -46,37 +47,34 @@ const INACTIVE_MENTION: MentionState = {
 };
 
 function detectMentionAtCaret(container: HTMLElement): DetectedMention | null {
-  const selection = window.getSelection();
-  if (!selection?.isCollapsed) return null;
+  const caret = getComposerCaretTextContext(container);
+  if (!caret) return null;
 
-  const anchor = selection.anchorNode;
-  if (!anchor || anchor.nodeType !== Node.TEXT_NODE) return null;
-  if (!container.contains(anchor)) return null;
-
-  const text = anchor.textContent ?? "";
-  const offset = selection.anchorOffset;
-  const beforeCaret = text.slice(0, offset);
-
-  const atIndex = beforeCaret.lastIndexOf("@");
+  const atIndex = caret.beforeCaret.lastIndexOf("@");
   if (atIndex === -1) return null;
+  if (atIndex > 0) {
+    const prevChar = caret.beforeCaret[atIndex - 1];
+    if (!/[\s\n\u200B\uFEFF]/.test(prevChar)) {
+      const textBefore = caret.beforeCaret.slice(0, atIndex);
+      if (textBefore.replace(/[\u200B\uFEFF]/g, "").length > 0) {
+        return null;
+      }
+    }
+  }
 
-  if (atIndex > 0 && !/[\s\n]/.test(beforeCaret[atIndex - 1])) return null;
-
-  const query = beforeCaret.slice(atIndex + 1);
-  if (/[\s\n]/.test(query)) return null;
+  const rawQuery = caret.beforeCaret.slice(atIndex + 1);
+  if (/[\s\n]/.test(rawQuery)) return null;
+  const query = rawQuery.replace(/[\u200B\uFEFF]/g, "");
 
   const range = document.createRange();
-  range.setStart(anchor, atIndex);
-  range.setEnd(anchor, offset);
+  range.setStart(caret.textNode, atIndex);
+  range.setEnd(caret.textNode, caret.beforeCaret.length);
 
   return { query, range };
 }
 
 /** 解析 @ 菜单锚点；range 为空时退到 caret / 编辑器矩形，避免菜单飞到左上角。 */
-function resolveMentionAnchorRect(
-  range: Range,
-  editor: HTMLElement,
-): DOMRect {
+function resolveMentionAnchorRect(range: Range, editor: HTMLElement): DOMRect {
   const rect = range.getBoundingClientRect();
   if (rect.width > 0 || rect.height > 0) {
     return rect;
@@ -112,7 +110,7 @@ export function createChipElement(
   // 高度/行高/垂直对齐由 notebook-ai.css 与编辑器行高对齐；勿加 leading-none/h-*
   span.className =
     "ai-composer-chip inline-flex items-center justify-center rounded text-[11px] font-medium" +
-    " bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-border" +
+    " bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-[var(--goose-inline-code-border-hover)]" +
     " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none";
   span.textContent = `@${attrs.titleSnapshot}`;
   return span;
@@ -133,11 +131,7 @@ export function useReferenceMentions({
 
   const mentionItems = useMemo(
     () =>
-      mention.active
-        ? (searchPagesOverride ?? searchPages)(mention.query).filter(
-            (item) => !item.isFolder,
-          )
-        : [],
+      mention.active ? (searchPagesOverride ?? searchPages)(mention.query) : [],
     [mention.active, mention.query, searchPages, searchPagesOverride],
   );
 

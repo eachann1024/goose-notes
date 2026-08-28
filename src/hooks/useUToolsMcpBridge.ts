@@ -7,11 +7,12 @@ import {
   extractPlainText,
   normalizePageContent,
 } from "@/components/editor/utils/blocknote-content";
+import { importFromMarkdown } from "@/lib/export/markdown/parse";
 import {
-  importFromMarkdown,
-  importMarkdownFragment,
-} from "@/lib/export/markdown/parse";
-import { buildAiPageContent, normalizeAiMarkdown } from "@/lib/notebook-ai/markdown";
+  buildAiPageContent,
+  normalizeAiMarkdown,
+  parseAiMarkdownToBlocks,
+} from "@/lib/notebook-ai/markdown";
 import {
   guardPageForAiWrite,
   writePageContentSafely,
@@ -114,7 +115,7 @@ const replaceHeadingSection = (
     }
   }
 
-  const addition = importMarkdownFragment(normalizeAiMarkdown(markdown).trim());
+  const addition = parseAiMarkdownToBlocks(markdown);
   if (!addition?.length) throw new Error("要写入的 Markdown 无法解析");
   return [...blocks.slice(0, start + 1), ...addition, ...blocks.slice(end)] as JSONContent;
 };
@@ -257,7 +258,7 @@ async function executeTool(tool: string, params: ToolParams): Promise<unknown> {
       await ensurePageLoaded(noteId);
       requireWritablePage(noteId);
 
-      const addition = importMarkdownFragment(markdown);
+      const addition = parseAiMarkdownToBlocks(markdown);
       if (!addition?.length) throw new Error("追加内容无法解析为 Markdown");
       const result = await appendPageContentSafely(noteId, addition as JSONContent);
       if (!result.ok) throw new Error(result.error);

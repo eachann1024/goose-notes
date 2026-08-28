@@ -33,6 +33,11 @@ test("navigateNotebookAiReference：空 id 不导航", () => {
   expect(opened).toEqual([]);
 });
 
+test("用户气泡跟卡片同一张纸，不再用青绿底", () => {
+  expect(messageSource).toContain("notebook-ai-user-bubble");
+  expect(messageSource).not.toContain("58d7b8");
+});
+
 test("行内 mention chip 与文字垂直居中且左右留缝", () => {
   const mentionIdx = messageSource.indexOf("data-ai-mention-chip");
   expect(mentionIdx).toBeGreaterThan(-1);

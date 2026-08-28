@@ -1,6 +1,9 @@
 import type { JSONContent, Page } from "@/types";
 import type { Notebook } from "@/stores/useNotebooks";
-import { extractStructureSummary, extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
+import {
+  extractStructureSummary,
+  extractTextFromContent,
+} from "@/components/editor/utils/content-text-extractor";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
 
@@ -95,7 +98,8 @@ export interface NormalizedAiComposerPayload {
 const TARGET_CUE_PATTERN =
   /(生成到|写到|写入到|写进|放到|放进|保存到|同步到|输出到|替换到|覆盖到|改写到|更新到|汇总到|合并到|追加到|删除|移除|重命名|改名)/i;
 const TARGET_PREFIX_PATTERN = /(删除|移除|重命名|改名)$/i;
-const CONTEXT_CUE_PATTERN = /(参考|参照|结合|基于|根据|对照|引用|读取|查看|分析|汇总)/i;
+const CONTEXT_CUE_PATTERN =
+  /(参考|参照|结合|基于|根据|对照|引用|读取|查看|分析|汇总)/i;
 
 function collectReferenceNeighborText(
   tokens: AiComposerToken[],
@@ -192,7 +196,8 @@ export function normalizeAiComposerPayload(
 
   const rolesByPage = new Map<string, Set<AiReferenceRole>>();
   occurrences.forEach((occurrence) => {
-    const roles = rolesByPage.get(occurrence.pageId) ?? new Set<AiReferenceRole>();
+    const roles =
+      rolesByPage.get(occurrence.pageId) ?? new Set<AiReferenceRole>();
     roles.add(occurrence.role);
     rolesByPage.set(occurrence.pageId, roles);
   });
@@ -241,7 +246,10 @@ function getSourceType(page: Page): AiFileReferenceSourceType {
   return page.localFilePath ? "local-file" : "app-page";
 }
 
-function getNotebookSnapshot(workspaceId: string, notebooks: Record<string, Notebook>) {
+function getNotebookSnapshot(
+  workspaceId: string,
+  notebooks: Record<string, Notebook>,
+) {
   return notebooks[workspaceId];
 }
 
@@ -254,7 +262,9 @@ function getLocationSnapshot(page: Page, notebooks: Record<string, Notebook>) {
   const normalizedBase = basePath.replace(/[\\/]+/g, "/");
 
   if (normalizedBase && normalizedPath.startsWith(normalizedBase)) {
-    const relativePath = normalizedPath.slice(normalizedBase.length).replace(/^\/+/, "");
+    const relativePath = normalizedPath
+      .slice(normalizedBase.length)
+      .replace(/^\/+/, "");
     return relativePath || normalizedPath;
   }
 
@@ -270,10 +280,11 @@ function buildDescription(
   notebooks: Record<string, Notebook>,
   activeNotebookId: string | null,
 ) {
-  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
+  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
+  const notebook = getNotebookSnapshot(wsId, notebooks);
   const notebookName = notebook?.name ?? "未知笔记本";
   const isActiveNotebook =
-    activeNotebookId != null && page.workspaceId === activeNotebookId;
+    activeNotebookId != null && wsId === activeNotebookId;
 
   if (page.isFolder || page.localFilePath) {
     const location = getLocationSnapshot(page, notebooks);
@@ -285,7 +296,8 @@ function buildDescription(
 }
 
 function getSearchHaystack(page: Page, notebooks: Record<string, Notebook>) {
-  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
+  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
+  const notebook = getNotebookSnapshot(wsId, notebooks);
   return [
     getPageTitle(page),
     notebook?.name ?? "",
@@ -312,19 +324,27 @@ function matchesAiReferenceQuery(
   const title = getPageTitle(page);
   if (pinyinMatchIndices(title, rawQuery.trim()) !== null) return true;
 
-  const notebookName = getNotebookSnapshot(page.workspaceId, notebooks)?.name ?? "";
+  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
+  const notebookName = getNotebookSnapshot(wsId, notebooks)?.name ?? "";
   return pinyinMatchIndices(notebookName, rawQuery.trim()) !== null;
 }
 
-function compareSuggestionItems(a: Page, b: Page, activeNotebookId: string | null, notebooks: Record<string, Notebook>) {
-  const aIsActiveNotebook = a.workspaceId === activeNotebookId;
-  const bIsActiveNotebook = b.workspaceId === activeNotebookId;
+function compareSuggestionItems(
+  a: Page,
+  b: Page,
+  activeNotebookId: string | null,
+  notebooks: Record<string, Notebook>,
+) {
+  const aWsId = a.workspaceId ?? (a as { notebookId?: string }).notebookId;
+  const bWsId = b.workspaceId ?? (b as { notebookId?: string }).notebookId;
+  const aIsActiveNotebook = aWsId === activeNotebookId;
+  const bIsActiveNotebook = bWsId === activeNotebookId;
   if (aIsActiveNotebook !== bIsActiveNotebook) {
     return aIsActiveNotebook ? -1 : 1;
   }
 
-  const aNotebook = getNotebookSnapshot(a.workspaceId, notebooks);
-  const bNotebook = getNotebookSnapshot(b.workspaceId, notebooks);
+  const aNotebook = getNotebookSnapshot(aWsId, notebooks);
+  const bNotebook = getNotebookSnapshot(bWsId, notebooks);
   const notebookCompare = (aNotebook?.name ?? "").localeCompare(
     bNotebook?.name ?? "",
     "zh-CN",
@@ -340,11 +360,15 @@ function compareSuggestionItems(a: Page, b: Page, activeNotebookId: string | nul
   return a.id.localeCompare(b.id);
 }
 
-export function buildAiFileReferenceAttrs(page: Page, notebooks: Record<string, Notebook>): AiFileReferenceAttrs {
-  const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
+export function buildAiFileReferenceAttrs(
+  page: Page,
+  notebooks: Record<string, Notebook>,
+): AiFileReferenceAttrs {
+  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
+  const notebook = getNotebookSnapshot(wsId, notebooks);
   return {
     pageId: page.id,
-    workspaceId: page.workspaceId,
+    workspaceId: wsId ?? "",
     titleSnapshot: getPageTitle(page),
     sourceType: getSourceType(page),
     localFilePath: page.localFilePath,
@@ -367,7 +391,12 @@ export function getAiReferenceSuggestionItems(
 
   return Object.values(pages)
     .filter((page) => !page.trashedAt)
-    .filter((page) => !options?.notebookId || page.workspaceId === options.notebookId)
+    .filter((page) => {
+      if (!options?.notebookId) return true;
+      const wsId =
+        page.workspaceId ?? (page as { notebookId?: string }).notebookId;
+      return wsId === options.notebookId;
+    })
     .filter((page) => options?.includeFolders || !page.isFolder)
     .filter((page) =>
       matchesAiReferenceQuery(page, notebooks, normalizedQuery, query),
@@ -385,7 +414,9 @@ export function getAiReferenceSuggestionItems(
     });
 }
 
-function normalizeImageAttachmentAttrs(attrs: unknown): AiImageAttachmentAttrs | null {
+function normalizeImageAttachmentAttrs(
+  attrs: unknown,
+): AiImageAttachmentAttrs | null {
   if (!attrs || typeof attrs !== "object") return null;
   const source = attrs as Record<string, unknown>;
   const imageId = typeof source.imageId === "string" ? source.imageId : "";
@@ -393,12 +424,15 @@ function normalizeImageAttachmentAttrs(attrs: unknown): AiImageAttachmentAttrs |
   return {
     imageId,
     fileName: typeof source.fileName === "string" ? source.fileName : "图片",
-    mediaType: typeof source.mediaType === "string" ? source.mediaType : "image/*",
+    mediaType:
+      typeof source.mediaType === "string" ? source.mediaType : "image/*",
     size: typeof source.size === "number" ? source.size : 0,
   };
 }
 
-function normalizeSkillCommandAttrs(attrs: unknown): AiSkillCommandAttrs | null {
+function normalizeSkillCommandAttrs(
+  attrs: unknown,
+): AiSkillCommandAttrs | null {
   if (!attrs || typeof attrs !== "object") return null;
   const source = attrs as Record<string, unknown>;
   const name = typeof source.name === "string" ? source.name.trim() : "";
@@ -510,7 +544,9 @@ function collectInlineContent(
   return { promptText, freeformText };
 }
 
-export function serializeAiComposerDoc(content: JSONContent | null | undefined): AiComposerPayload {
+export function serializeAiComposerDoc(
+  content: JSONContent | null | undefined,
+): AiComposerPayload {
   if (!content?.content?.length) {
     return {
       promptText: "",
@@ -561,13 +597,63 @@ export function serializeAiComposerDoc(content: JSONContent | null | undefined):
   };
 }
 
-function resolveReferenceLocation(page: Page, notebooks: Record<string, Notebook>) {
+function resolveReferenceLocation(
+  page: Page,
+  notebooks: Record<string, Notebook>,
+) {
   const notebook = getNotebookSnapshot(page.workspaceId, notebooks);
   if (!page.localFilePath) {
     return notebook?.name ?? "未知笔记本";
   }
 
   return getLocationSnapshot(page, notebooks);
+}
+
+function listFolderChildLines(
+  page: Page,
+  pages: Record<string, Page>,
+): string[] {
+  return Object.values(pages)
+    .filter((child) => child.parentId === page.id && !child.trashedAt)
+    .sort((a, b) => {
+      if (Boolean(a.isFolder) !== Boolean(b.isFolder))
+        return a.isFolder ? -1 : 1;
+      return getPageTitle(a).localeCompare(getPageTitle(b), "zh-CN", {
+        numeric: true,
+      });
+    })
+    .map((child) => {
+      const title = getPageTitle(child);
+      return child.isFolder ? `${title}/` : title;
+    });
+}
+
+export function buildFolderReferenceContext(
+  page: Page,
+  pages: Record<string, Page>,
+  notebooks: Record<string, Notebook>,
+  reference: AiFileReferenceAttrs,
+): ResolvedAiReferenceContext {
+  const notebookName =
+    notebooks[page.workspaceId]?.name ??
+    reference.notebookNameSnapshot ??
+    "未知笔记本";
+  const childLines = listFolderChildLines(page, pages);
+  const listing = childLines.length
+    ? `目录子项：\n${childLines.map((line) => `- ${line}`).join("\n")}`
+    : "（空目录）";
+  return {
+    reference,
+    title: getPageTitle(page),
+    sourceType: getSourceType(page),
+    notebookName,
+    location: resolveReferenceLocation(page, notebooks),
+    contentText: listing,
+    structureSummary: childLines.length
+      ? `目录，${childLines.length} 个子项：\n${childLines.map((line) => `- ${line}`).join("\n")}`
+      : "空目录",
+    readStatus: "ready",
+  };
 }
 
 function buildFallbackReferenceContext(
@@ -595,7 +681,10 @@ export function resolveAiReferenceContexts(
   return references.map((reference) => {
     const page = pages[reference.pageId];
     if (!page) {
-      return buildFallbackReferenceContext(reference, "引用目标不存在或尚未加载");
+      return buildFallbackReferenceContext(
+        reference,
+        "引用目标不存在或尚未加载",
+      );
     }
 
     const notebookName =
@@ -608,6 +697,10 @@ export function resolveAiReferenceContexts(
         reference,
         page.localReadError || "本地文件当前不可读取",
       );
+    }
+
+    if (page.isFolder) {
+      return buildFolderReferenceContext(page, pages, notebooks, reference);
     }
 
     return {
@@ -623,7 +716,9 @@ export function resolveAiReferenceContexts(
   });
 }
 
-export function formatAiReferenceContextBlock(contexts: ResolvedAiReferenceContext[]) {
+export function formatAiReferenceContextBlock(
+  contexts: ResolvedAiReferenceContext[],
+) {
   if (!contexts.length) return "";
 
   return contexts

@@ -1,9 +1,9 @@
 /**
  * 行内 AI：对选区/光标块做 agent 对齐的 markdown 改写（非 xl-ai tool stream）。
- * 走与面板相同的 runAIText（SSE），避免 generateText 按整段 JSON 解析失败。
+ * 走与面板相同的 runAITextStream（SSE），边思考边把最新一句盖进输入槽。
  */
-import type { AISettingsLike } from "@/lib/ai-provider/types";
-import { runAIText } from "@/lib/ai-provider";
+import type { AISettingsLike, AIStreamUpdate } from "@/lib/ai-provider/types";
+import { runAITextStream } from "@/lib/ai-provider";
 
 export interface RunInlineMarkdownRewriteOptions {
   settings: AISettingsLike;
@@ -11,6 +11,7 @@ export interface RunInlineMarkdownRewriteOptions {
   userPrompt: string;
   oldMarkdown: string;
   abortSignal?: AbortSignal;
+  onUpdate?: (update: AIStreamUpdate) => void;
 }
 
 const SYSTEM_PROMPT = [
@@ -46,7 +47,7 @@ export async function runInlineMarkdownRewrite(
     "请直接输出改写后的 Markdown：",
   ].join("\n");
 
-  const text = await runAIText(
+  const text = await runAITextStream(
     settings,
     [
       { role: "system", content: SYSTEM_PROMPT },
@@ -55,6 +56,7 @@ export async function runInlineMarkdownRewrite(
     {
       abortSignal,
       requestOverrides: { selectedModelId: modelId },
+      onUpdate: options.onUpdate,
     },
   );
 

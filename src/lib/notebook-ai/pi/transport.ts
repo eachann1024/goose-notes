@@ -52,6 +52,7 @@ export function buildPiTransport(
         execute: async ({ writer }) => {
           const assistantMessageId = createMessageId("msg");
           let textId: string | null = null;
+          let reasoningId: string | null = null;
           let stepOpen = false;
           let finished = false;
 
@@ -81,6 +82,20 @@ export function buildPiTransport(
               textId = null;
             }
           };
+          const ensureReasoning = () => {
+            if (!reasoningId) {
+              openStep();
+              reasoningId = createMessageId("reason");
+              writer.write({ type: "reasoning-start", id: reasoningId });
+            }
+            return reasoningId;
+          };
+          const endReasoning = () => {
+            if (reasoningId) {
+              writer.write({ type: "reasoning-end", id: reasoningId });
+              reasoningId = null;
+            }
+          };
 
           writer.write({
             type: "start",
@@ -101,7 +116,17 @@ export function buildPiTransport(
                 }
                 case "message_update": {
                   const ame = event.assistantMessageEvent;
+                  if (ame.type === "thinking_delta" && ame.delta) {
+                    endText();
+                    const id = ensureReasoning();
+                    writer.write({
+                      type: "reasoning-delta",
+                      id,
+                      delta: ame.delta,
+                    });
+                  }
                   if (ame.type === "text_delta" && ame.delta) {
+                    endReasoning();
                     const id = ensureText();
                     writer.write({
                       type: "text-delta",
@@ -109,18 +134,17 @@ export function buildPiTransport(
                       delta: ame.delta,
                     });
                   }
-                  if (ame.type === "thinking_delta" && ame.delta) {
-                    // 可选：映射 reasoning；当前 UI 不强依赖
-                  }
                   break;
                 }
                 case "message_end": {
                   if (event.message.role === "assistant") {
+                    endReasoning();
                     endText();
                   }
                   break;
                 }
                 case "tool_execution_start": {
+                  endReasoning();
                   endText();
                   openStep();
                   writer.write({
@@ -162,11 +186,13 @@ export function buildPiTransport(
                   break;
                 }
                 case "turn_end": {
+                  endReasoning();
                   endText();
                   closeStep();
                   break;
                 }
                 case "agent_end": {
+                  endReasoning();
                   endText();
                   closeStep();
                   if (!finished) {
@@ -204,6 +230,7 @@ export function buildPiTransport(
               if (err) {
                 writer.write({ type: "error", errorText: err });
               }
+              endReasoning();
               endText();
               closeStep();
               writer.write({
@@ -217,6 +244,7 @@ export function buildPiTransport(
               const errorText =
                 error instanceof Error ? error.message : String(error);
               writer.write({ type: "error", errorText });
+              endReasoning();
               endText();
               closeStep();
               writer.write({ type: "finish", finishReason: "error" });

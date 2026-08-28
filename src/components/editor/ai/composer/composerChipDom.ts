@@ -55,8 +55,7 @@ export function rangeContainsComposerChip(
       : range.commonAncestorContainer.parentElement);
   if (!root) return false;
   const scope =
-    (root.closest?.("[data-ai-composer-editor]") as HTMLElement | null) ??
-    root;
+    (root.closest?.("[data-ai-composer-editor]") as HTMLElement | null) ?? root;
   const chips = scope.querySelectorAll?.(COMPOSER_CHIP_SELECTOR);
   if (!chips) return false;
   for (const chip of chips) {
@@ -79,9 +78,7 @@ function skipEmptyTextSiblings(
     // 空节点或纯 ZWSP 锚点：对 chip 边界探测视为“无内容”
     if (text.length > 0 && !isComposerZwspOnlyText(text)) break;
     current =
-      direction === "previous"
-        ? current.previousSibling
-        : current.nextSibling;
+      direction === "previous" ? current.previousSibling : current.nextSibling;
   }
   return current;
 }
@@ -252,6 +249,40 @@ export function removeComposerChipsIntersectingRange(
     } catch {
       // ignore
     }
+  }
+}
+
+/** 清理 chip 移除后残留的孤儿 ZWSP / 空文本节点 */
+export function cleanupOrphanComposerZwspNodes(editor: HTMLElement) {
+  const hasChips = editorHasComposerChips(editor);
+  const rawText = editor.textContent ?? "";
+  const visible = stripComposerCaretZwsp(rawText).trim();
+
+  // 如果已经没有任何 chip 且没有可视文本，彻底置空以重置 DOM 状态
+  if (!hasChips && visible.length === 0) {
+    editor.innerHTML = "";
+    return;
+  }
+
+  // 清理未与 chip 相邻的纯 ZWSP 节点
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const toRemove: Text[] = [];
+  let node = walker.nextNode() as Text | null;
+  while (node) {
+    const val = node.data;
+    if (isComposerZwspOnlyText(val)) {
+      const prev = node.previousSibling;
+      const next = node.nextSibling;
+      const isAdjacentToChip =
+        isComposerChipElement(prev) || isComposerChipElement(next);
+      if (!isAdjacentToChip) {
+        toRemove.push(node);
+      }
+    }
+    node = walker.nextNode() as Text | null;
+  }
+  for (const n of toRemove) {
+    n.remove();
   }
 }
 

@@ -63,9 +63,11 @@ export function getNotebookAiReferenceSuggestions(
 ): AiReferenceSuggestionItem[] {
   const { pages } = usePages.getState();
   const { notebooks } = useNotebooks.getState();
+  const includeFolders = notebooks[notebookId]?.source === "local-folder";
   return getAiReferenceSuggestionItems(query, pages, notebooks, notebookId, {
     notebookId,
-  }).filter((item) => !item.isFolder);
+    includeFolders,
+  });
 }
 
 export const NOTEBOOK_AI_CONTEXT_CHARACTER_BUDGETS: Record<
@@ -216,10 +218,7 @@ export function buildNotebookAiUserMessage(params: {
   const isAvailableReference = (reference: AiFileReferenceAttrs) => {
     const page = usePages.getState().pages[reference.pageId];
     return Boolean(
-      page &&
-        page.workspaceId === params.notebookId &&
-        !page.trashedAt &&
-        !page.isFolder,
+      page && page.workspaceId === params.notebookId && !page.trashedAt,
     );
   };
   const references = dedupeReferences(normalized.resources).filter(

@@ -105,6 +105,59 @@ export function buildPayloadFromTokens(tokens: AiComposerToken[]): AiComposerPay
   };
 }
 
+/** 发送按钮 / 占位符：无文本、引用、图片、Skill 才视为空 */
+export function isComposerPayloadEmpty(
+  payload: Pick<
+    AiComposerPayload,
+    "promptText" | "references" | "images" | "skills"
+  >,
+): boolean {
+  return (
+    payload.promptText.length === 0 &&
+    payload.references.length === 0 &&
+    payload.images.length === 0 &&
+    payload.skills.length === 0
+  );
+}
+
+/** 空会话默认 @：无内容或只有一条文件引用（可带空白）才允许自动替换 */
+export function inspectDefaultComposerTokens(tokens: AiComposerToken[]): {
+  replaceable: boolean;
+  solePageId: string | null;
+} {
+  let solePageId: string | null = null;
+  for (const token of tokens) {
+    if (token.type === "text") {
+      if (token.text.trim()) return { replaceable: false, solePageId: null };
+      continue;
+    }
+    if (token.type === "reference") {
+      const nextPageId = token.reference.pageId;
+      if (!nextPageId || (solePageId && solePageId !== nextPageId)) {
+        return { replaceable: false, solePageId: null };
+      }
+      solePageId = nextPageId;
+      continue;
+    }
+    return { replaceable: false, solePageId: null };
+  }
+  return { replaceable: true, solePageId };
+}
+
+export function buildComposerDraftFromReference(
+  reference: AiFileReferenceAttrs,
+): JSONContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "aiFileReference", attrs: reference }],
+      },
+    ],
+  };
+}
+
 export function buildJsonContentFromTokens(
   tokens: AiComposerToken[],
 ): JSONContent | null {

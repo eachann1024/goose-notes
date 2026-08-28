@@ -27,9 +27,7 @@ import type { RefObject } from "react";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
-import {
-  useNotebookAiChats,
-} from "@/stores/useNotebookAiChats";
+import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import { ChatChrome } from "./beautiful-ui/ChatChrome";
 import { ChatMessages } from "./ChatMessages";
 import { Composer, type ComposerHandle } from "./Composer";
@@ -57,7 +55,11 @@ import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { cn } from "@/lib/utils";
 import { readEditorScale } from "./artifactPanZoomScale";
-import { shouldSeedCurrentPageReference } from "./defaultComposerReference";
+import {
+  buildComposerDraftFromReference,
+  resolveEmptySessionComposerSeed,
+  shouldSeedCurrentPageReference,
+} from "./defaultComposerReference";
 import {
   clearAiPanelSurface,
   dismissAiFloatingLayers,
@@ -211,8 +213,8 @@ export function NotebookAiPanel({
     onBatchUndo,
   } = useNotebookAiSession();
 
-  // 初次打开和新建会话时锁定当时的当前页，作为可见、可移除的默认上下文。
-  // 若已有持久化草稿，不再强插默认引用，避免覆盖用户未发送内容。
+  // 空会话默认 @ 跟随当前页：切笔记本 / 切页后再打开面板时换成最新笔记。
+  // 用户已打字、加过其他 chip，或会话里已有消息，都保持原样。
   const currentPageId =
     getCurrentNotebookAiPageId(notebookId) ??
     (activePageId && pages[activePageId]?.workspaceId === notebookId
@@ -222,18 +224,46 @@ export function NotebookAiPanel({
     const page = currentPageId ? pages[currentPageId] : undefined;
     return page ? buildAiFileReferenceAttrs(page, notebooks) : null;
   }, [currentPageId, notebooks, pages]);
+  const composerSeedContent = useMemo(
+    () =>
+      resolveEmptySessionComposerSeed(
+        messages.length,
+        useNotebookAiChats.getState().getComposerDraft(notebookId),
+        initialReference,
+      ),
+    [initialReference, messages.length, notebookId, composerRevision],
+  );
 
-  // Composer 挂载（或 key 重挂载）后：仅空会话且无草稿时植入当前页引用 chip。
-  // 已有消息的会话即使输入框为空，也不能被自动修改。
+  // Composer 挂载（或 key 重挂载）后：空会话且输入区仍是默认 @ 时跟到当前页。
   useEffect(() => {
     if (!bodyReady || !initialReference) return;
     const draft = useNotebookAiChats.getState().getComposerDraft(notebookId);
-    if (!shouldSeedCurrentPageReference(messages.length, draft)) return;
+    if (
+      !shouldSeedCurrentPageReference(messages.length, draft, currentPageId)
+    ) {
+      return;
+    }
     const timer = setTimeout(() => {
-      composerRef.current?.insertReference(initialReference);
+      const result = composerRef.current?.replaceDefaultPageReference(
+        initialReference,
+      );
+      if (result === "skipped") return;
+      useNotebookAiChats
+        .getState()
+        .setComposerDraft(
+          notebookId,
+          buildComposerDraftFromReference(initialReference),
+        );
     }, 0);
     return () => clearTimeout(timer);
-  }, [bodyReady, initialReference, messages.length, composerRevision, notebookId]);
+  }, [
+    bodyReady,
+    currentPageId,
+    initialReference,
+    messages.length,
+    composerRevision,
+    notebookId,
+  ]);
 
   // 面板打开即聚焦输入框；已打开时重复触发「打开」走 goose-note:focus-ai-composer
   useEffect(() => {
@@ -301,7 +331,7 @@ export function NotebookAiPanel({
   // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
     const iconBtn =
-      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50";
+      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground";
     return (
       <div
         className="flex items-center gap-0.5"
@@ -420,9 +450,7 @@ export function NotebookAiPanel({
           : "z-[50] shrink-0 rounded-[12px]",
       )}
       style={
-        isFullscreen
-          ? undefined
-          : { width: effectiveWidth, maxWidth: "100%" }
+        isFullscreen ? undefined : { width: effectiveWidth, maxWidth: "100%" }
       }
     >
       {!isFullscreen ? (
@@ -447,7 +475,9 @@ export function NotebookAiPanel({
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
                   <CircleAlert className="h-5 w-5" strokeWidth={1.75} />
                 </div>
-                <p className="text-sm font-medium text-foreground">AI 暂不可用</p>
+                <p className="text-sm font-medium text-foreground">
+                  AI 暂不可用
+                </p>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {unavailableReason}
                 </p>
@@ -510,6 +540,7 @@ export function NotebookAiPanel({
             ref={composerRef}
             key={`${notebookId}-${composerRevision}`}
             notebookId={notebookId}
+            initialContent={composerSeedContent}
             onSend={handleSend}
             isStreaming={isBusy}
             disabled={!!unavailableReason}

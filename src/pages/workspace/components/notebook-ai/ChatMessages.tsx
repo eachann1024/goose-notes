@@ -68,16 +68,10 @@ import type { PreviewContent } from "@/lib/preview/previewAction";
 import { cn } from "@/lib/utils";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import { AssistantUiThreadViewport } from "./AssistantUiThreadViewport";
-import {
-  THINKING_PLACEHOLDER_MIN_MS,
-  useMinHoldActive,
-} from "@/components/ui/ai-motion";
 import { ChatChrome } from "./beautiful-ui/ChatChrome";
 import { CodeBlock } from "./beautiful-ui/CodeBlock";
 import { StreamingText } from "./beautiful-ui/StreamingText";
 import { navigateNotebookAiReference } from "@/lib/notebook-ai/navigateReference";
-import { ThinkingState } from "./beautiful-ui/ThinkingState";
-import { resolveLoaderHold } from "./beautifulUiMap";
 import { useSettings } from "@/stores/useSettings";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 import { getMermaidInitConfig } from "@/lib/imageExport/mermaidTheme";
@@ -242,8 +236,7 @@ const AssistantToolRenderContext =
 
 function languageFromCodeChild(children: ReactNode): string | undefined {
   if (!isValidElement(children)) return undefined;
-  const className =
-    (children.props as { className?: string }).className ?? "";
+  const className = (children.props as { className?: string }).className ?? "";
   const match = /(?:^|\s)language-([\w+-]+)/.exec(className);
   return match?.[1];
 }
@@ -253,17 +246,13 @@ function reactNodeToText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(reactNodeToText).join("");
   if (isValidElement(node)) {
-    return reactNodeToText(
-      (node.props as { children?: ReactNode }).children,
-    );
+    return reactNodeToText((node.props as { children?: ReactNode }).children);
   }
   return "";
 }
 
 /** 只包一层 catalog CodeBlock，不替换 Streamdown 高亮。可视化源码走画布卡片。 */
-function MdPre({
-  children,
-}: ComponentProps<"pre"> & { node?: unknown }) {
+function MdPre({ children }: ComponentProps<"pre"> & { node?: unknown }) {
   const ctx = useContext(AssistantToolRenderContext);
   const language = languageFromCodeChild(children);
   const source = reactNodeToText(children);
@@ -280,10 +269,9 @@ function MdPre({
     return <DiagramCard source={source} editorRef={ctx?.editorRef} />;
   }
   const marked = isValidElement(children)
-    ? cloneElement(
-        children as ReactElement<{ "data-block"?: string }>,
-        { "data-block": "true" },
-      )
+    ? cloneElement(children as ReactElement<{ "data-block"?: string }>, {
+        "data-block": "true",
+      })
     : children;
   return <CodeBlock language={language}>{marked}</CodeBlock>;
 }
@@ -343,7 +331,10 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
 }) {
   const theme = useSettings((state) => state.theme);
   const resolvedTheme = useResolvedTheme(theme);
-  const mermaid = resolvedTheme === "dark" ? STREAMDOWN_MERMAID_DARK : STREAMDOWN_MERMAID_LIGHT;
+  const mermaid =
+    resolvedTheme === "dark"
+      ? STREAMDOWN_MERMAID_DARK
+      : STREAMDOWN_MERMAID_LIGHT;
   const segments = useMemo(
     () => parseCanvasAwareSegments(text, isStreaming),
     [isStreaming, text],
@@ -381,7 +372,9 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
                   plugins={STREAMDOWN_PLUGINS}
                   controls={STREAMDOWN_CONTROLS}
                   mermaid={mermaid}
-                  parseIncompleteMarkdown={isStreaming && index === segments.length - 1}
+                  parseIncompleteMarkdown={
+                    isStreaming && index === segments.length - 1
+                  }
                 >
                   {segment.content}
                 </Streamdown>
@@ -448,7 +441,12 @@ function AssistantToolPart({ artifact }: ToolCallMessagePartProps) {
       />
     );
   }
-  return renderToolVisual(part, part.toolCallId ?? part.type, editorRef, isStreaming);
+  return renderToolVisual(
+    part,
+    part.toolCallId ?? part.type,
+    editorRef,
+    isStreaming,
+  );
 }
 
 /** MessagePrimitive.Parts 的 components 必须模块级常量，避免 identity 抖动 */
@@ -457,33 +455,6 @@ const ASSISTANT_MESSAGE_PARTS = {
   Reasoning: EmptyReasoningPart,
   tools: { Override: AssistantToolPart },
 };
-
-/**
- * 首 token / 工具进度出现前的预热占位。
- * 有正文立刻让位（不叠在气泡里）。
- */
-function AssistantThinkingPlaceholder({ active }: { active: boolean }) {
-  const held = useMinHoldActive(active, THINKING_PLACEHOLDER_MIN_MS);
-  const show = resolveLoaderHold(active, held);
-  if (!active || !show) return null;
-
-  return (
-    <div
-      className="bui-root flex w-fit max-w-full flex-col gap-1 rounded-[14px] bg-[var(--goose-interactive-hover)] px-3.5 py-2.5"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <ThinkingState
-        variant="Reasoning"
-        working
-        activeLabel="思考中"
-        doneLabel="思考完成"
-        rows={[]}
-        defaultExpanded={false}
-      />
-    </div>
-  );
-}
 
 interface ChatMessagesProps {
   messages: NotebookAiMessage[];
@@ -510,6 +481,16 @@ function getTextPartText(message: NotebookAiMessage) {
   return textPart && "text" in textPart
     ? (textPart as { text: string }).text
     : "";
+}
+
+function collectReasoningText(message: NotebookAiMessage): string {
+  const chunks: string[] = [];
+  for (const part of message.parts ?? []) {
+    if (part.type !== "reasoning" || !("text" in part)) continue;
+    const text = String(part.text ?? "").trim();
+    if (text) chunks.push(text);
+  }
+  return chunks.join("\n");
 }
 
 function getUserDisplayText(message: NotebookAiMessage) {
@@ -609,9 +590,7 @@ function renderToolVisual(
       series: Array<{ name: string; data: number[] }>;
     };
     if (!Array.isArray(chartData.series) || chartData.series.length === 0) {
-      return (
-        <ChartIncompleteNotice key={key} title={chartData.title} />
-      );
+      return <ChartIncompleteNotice key={key} title={chartData.title} />;
     }
     return (
       <ChartCard
@@ -721,7 +700,7 @@ export function ChatMessages({
       >
         <ActionBarPrimitive.Copy
           copiedDuration={1600}
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground disabled:hidden"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:hidden"
           aria-label="复制消息"
           title="复制"
         >
@@ -733,7 +712,7 @@ export function ChatMessages({
         className="flex items-center gap-0.5 text-[11px] text-muted-foreground"
       >
         <BranchPickerPrimitive.Previous
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-background/60 disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] disabled:opacity-40"
           aria-label="上一个回答分支"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -742,7 +721,7 @@ export function ChatMessages({
           <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
         </span>
         <BranchPickerPrimitive.Next
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-background/60 disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] disabled:opacity-40"
           aria-label="下一个回答分支"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -764,7 +743,7 @@ export function ChatMessages({
       // 左侧 pl 留呼吸缝；气泡 min-w-0 可在剩余宽度内换行，不再横向撑破后被左侧裁切。
       <MessagePrimitive.Root className="notebook-ai-message notebook-ai-message-user flex w-full min-w-0 justify-end pl-5">
         <div className="flex min-w-0 max-w-full flex-col items-end gap-1">
-          <div className="notebook-ai-message-text min-w-0 max-w-full space-y-2 rounded-[14px] rounded-tr-[4px] bg-[#58d7b8]/12 px-3 py-2 text-sm text-foreground leading-relaxed">
+          <div className="notebook-ai-message-text notebook-ai-user-bubble min-w-0 max-w-full space-y-2 rounded-[14px] rounded-tr-[4px] px-3 py-2 text-sm text-foreground leading-relaxed">
             <MessagePrimitive.Attachments>
               {({ attachment }) => {
                 const imagePart = attachment.content.find(
@@ -800,7 +779,10 @@ export function ChatMessages({
                     key={`${image.filename}-${image.mediaType}`}
                     className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-background/45 px-1.5 py-1 text-[11px] text-muted-foreground"
                   >
-                    <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+                    <ImageIcon
+                      className="h-3 w-3 shrink-0"
+                      strokeWidth={1.75}
+                    />
                     <span className="max-w-[170px] truncate">
                       {image.filename}
                     </span>
@@ -873,9 +855,11 @@ export function ChatMessages({
       progressToolParts.length > 0 &&
       shouldShowToolProgress(progressToolParts, isStreaming);
     const hasText = getTextPartText(msg).trim().length > 0;
-    // 发送后、正文/工具进度都还没出来：用思考球 + 光束预热，避免空长条
-    const needsThinkingPlaceholder =
-      isStreaming && !hasText && !showToolProgress;
+    const reasoningText = collectReasoningText(msg);
+    // 发送后立刻走处理进度，不再单独出一张「思考中」卡片
+    const showWorkCard =
+      showToolProgress ||
+      (isStreaming && (!hasText || reasoningText.length > 0));
 
     const toolRenderValue: AssistantToolRenderContextValue = {
       ...toolRenderBase,
@@ -885,18 +869,9 @@ export function ChatMessages({
     return (
       <AssistantToolRenderContext.Provider value={toolRenderValue}>
         <MessagePrimitive.Root
-          className={cn(
-            // min-w-0 + overflow-x-hidden：子表格 scroll 有确定宽度，不被宽表撑破
-            "notebook-ai-message min-w-0 max-w-full overflow-x-hidden space-y-2",
-            // 仅预热占位时不铺整宽空壳；有正文后再用气泡底
-            needsThinkingPlaceholder
-              ? "w-fit max-w-full"
-              // 实色 hover token，避免 /70 透明度在 uTools 旧内核上退化
-              : "rounded-[14px] bg-[var(--goose-interactive-hover)] px-3.5 py-2.5",
-          )}
+          className="notebook-ai-message notebook-ai-message-assistant min-w-0 max-w-full overflow-x-hidden space-y-4"
         >
-          <AssistantThinkingPlaceholder active={needsThinkingPlaceholder} />
-          {showToolProgress ? (
+          {showWorkCard ? (
             <ToolProgressCard
               parts={progressToolParts}
               isMessageStreaming={isStreaming}
@@ -915,109 +890,109 @@ export function ChatMessages({
 
   return (
     <ChatChrome className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
-    <AssistantUiThreadViewport
-      className={cn(
-        // min-w-0：flex 子项可收缩；横向溢出由消息内表格滚动，这里只负责纵向
-        "notebook-ai-messages min-w-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]",
-        messages.length === 0
-          ? "flex items-center justify-center pb-[var(--ai-composer-float-pad,7.5rem)]"
-          : undefined,
-        isFullscreen ? "px-6 pt-5" : "px-3 pt-3",
-      )}
-    >
-      {messages.length === 0 ? (
-        <div
-          className={cn(
-            "flex flex-col items-center gap-3 text-center",
-            isFullscreen ? "max-w-[360px]" : "max-w-[260px]",
-          )}
-        >
+      <AssistantUiThreadViewport
+        className={cn(
+          // min-w-0：flex 子项可收缩；横向溢出由消息内表格滚动，这里只负责纵向
+          "notebook-ai-messages min-w-0 flex-1 overflow-x-hidden overflow-y-scroll [scrollbar-width:thin]",
+          messages.length === 0
+            ? "flex items-center justify-center pb-[var(--ai-composer-float-pad,7.5rem)]"
+            : undefined,
+          isFullscreen ? "px-6 pt-5" : "px-3 pt-3",
+        )}
+      >
+        {messages.length === 0 ? (
           <div
             className={cn(
-              "relative flex items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground",
-              isFullscreen ? "h-12 w-12" : "h-11 w-11",
+              "flex flex-col items-center gap-3 text-center",
+              isFullscreen ? "max-w-[360px]" : "max-w-[260px]",
             )}
           >
-            <MessageSquareText
-              className={isFullscreen ? "h-6 w-6" : "h-5 w-5"}
-              strokeWidth={1.75}
-            />
-            <Sparkles
-              className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground"
-              strokeWidth={1.75}
+            <div
+              className={cn(
+                "relative flex items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground",
+                isFullscreen ? "h-12 w-12" : "h-11 w-11",
+              )}
+            >
+              <MessageSquareText
+                className={isFullscreen ? "h-6 w-6" : "h-5 w-5"}
+                strokeWidth={1.75}
+              />
+              <Sparkles
+                className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+            </div>
+            <p
+              className={cn(
+                "font-medium text-foreground",
+                isFullscreen ? "text-[15px]" : "text-sm",
+              )}
+            >
+              开始和 AI 对话
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {isFullscreen
+                ? "全屏会话模式：整理、搜索、创作笔记，随时可切回侧栏并排。"
+                : "让它帮你整理、搜索、创作笔记。"}
+            </p>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "mx-auto w-full min-w-0 max-w-full space-y-3",
+              isFullscreen ? "max-w-[720px]" : "max-w-none",
+            )}
+          >
+            <ThreadPrimitive.Messages>
+              {({ message }) => {
+                const sourceMessage = messageById.get(message.id);
+                if (!sourceMessage) return null;
+                const timeLabel = showTimeById.get(sourceMessage.id);
+                const body =
+                  sourceMessage.role === "user"
+                    ? renderUserMessage(sourceMessage)
+                    : renderAssistantMessage(
+                        sourceMessage,
+                        streamingMessageId === sourceMessage.id,
+                      );
+                return (
+                  <>
+                    {timeLabel ? (
+                      <div
+                        className="notebook-ai-message-time"
+                        role="separator"
+                        aria-label={timeLabel}
+                      >
+                        {timeLabel}
+                      </div>
+                    ) : null}
+                    {body}
+                  </>
+                );
+              }}
+            </ThreadPrimitive.Messages>
+            <ThreadPrimitive.ViewportFooter className="pointer-events-none sticky bottom-[calc(var(--ai-composer-float-pad,7.5rem)+12px)] z-10 flex h-0 justify-center overflow-visible">
+              <ThreadPrimitive.ScrollToBottom
+                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
+                aria-label="滚动到底部"
+                title="滚动到底部"
+              >
+                <ArrowDown className="h-4 w-4" strokeWidth={1.75} />
+              </ThreadPrimitive.ScrollToBottom>
+            </ThreadPrimitive.ViewportFooter>
+            <div
+              className="pointer-events-none h-[var(--ai-composer-float-pad,7.5rem)] shrink-0"
+              aria-hidden
             />
           </div>
-          <p
-            className={cn(
-              "font-medium text-foreground",
-              isFullscreen ? "text-[15px]" : "text-sm",
-            )}
-          >
-            开始和 AI 对话
-          </p>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {isFullscreen
-              ? "全屏会话模式：整理、搜索、创作笔记，随时可切回侧栏并排。"
-              : "让它帮你整理、搜索、创作笔记。"}
-          </p>
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "mx-auto w-full min-w-0 max-w-full space-y-3",
-            isFullscreen ? "max-w-[720px]" : "max-w-none",
-          )}
-        >
-          <ThreadPrimitive.Messages>
-            {({ message }) => {
-              const sourceMessage = messageById.get(message.id);
-              if (!sourceMessage) return null;
-              const timeLabel = showTimeById.get(sourceMessage.id);
-              const body =
-                sourceMessage.role === "user"
-                  ? renderUserMessage(sourceMessage)
-                  : renderAssistantMessage(
-                      sourceMessage,
-                      streamingMessageId === sourceMessage.id,
-                    );
-              return (
-                <>
-                  {timeLabel ? (
-                    <div
-                      className="notebook-ai-message-time"
-                      role="separator"
-                      aria-label={timeLabel}
-                    >
-                      {timeLabel}
-                    </div>
-                  ) : null}
-                  {body}
-                </>
-              );
-            }}
-          </ThreadPrimitive.Messages>
-          <ThreadPrimitive.ViewportFooter className="sticky bottom-[calc(var(--ai-composer-float-pad,7.5rem)+8px)] flex justify-center">
-            <ThreadPrimitive.ScrollToBottom
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
-              aria-label="滚动到底部"
-              title="滚动到底部"
-            >
-              <ArrowDown className="h-4 w-4" strokeWidth={1.75} />
-            </ThreadPrimitive.ScrollToBottom>
-          </ThreadPrimitive.ViewportFooter>
-          <div
-            className="pointer-events-none h-[var(--ai-composer-float-pad,7.5rem)] shrink-0"
-            aria-hidden
-          />
-        </div>
-      )}
-    </AssistantUiThreadViewport>
-    <FullscreenPreview
-      open={Boolean(previewContent)}
-      content={previewContent}
-      title={previewContent?.fileName}
-      onClose={() => setPreviewContent(null)}
-    />
+        )}
+      </AssistantUiThreadViewport>
+      <FullscreenPreview
+        open={Boolean(previewContent)}
+        content={previewContent}
+        title={previewContent?.fileName}
+        onClose={() => setPreviewContent(null)}
+      />
     </ChatChrome>
   );
 }

@@ -24,6 +24,7 @@ import {
 } from "./useReferenceMentions";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import { useSettings } from "@/stores/useSettings";
+import { composerDraftHasContent } from "@/stores/useNotebookAiChats";
 import {
   ensureComposerCaretAnchors,
   navigateComposerChipArrow,
@@ -45,6 +46,7 @@ import {
   shouldProcessComposerInput,
 } from "./composerInputGuards";
 import {
+  cleanupOrphanComposerZwspNodes,
   editorHasComposerChips,
   getComposerChipAfterCaret,
   getComposerChipBeforeCaret,
@@ -65,6 +67,9 @@ import {
 import {
   buildJsonContentFromTokens,
   buildPayloadFromTokens,
+  isComposerPayloadEmpty,
+  inspectDefaultComposerTokens,
+  buildComposerDraftFromReference,
   readTokensFromDom,
   setDomFromJsonContent,
 } from "./composerTokens";
@@ -125,6 +130,7 @@ export const AiComposerInput = forwardRef<
       maxImageBytes,
       maxImageCount,
       onImageRejected,
+      notebookId,
     },
     ref,
   ) => {
@@ -140,7 +146,7 @@ export const AiComposerInput = forwardRef<
     const nativeHandlersRef = useRef<ComposerNativeHandlers | null>(null);
     /** 标准 composition 标记 */
     const isComposingRef = useRef(false);
-    const isEmptyRef = useRef(true);
+    const isEmptyRef = useRef(!composerDraftHasContent(initialContent));
     // Track the most recent content we emitted upward so we can ignore the echo
     // back via `initialContent` — otherwise the sync useEffect rebuilds the DOM
     // on every keystroke, invalidating the live selection and any cached ranges.
@@ -158,7 +164,7 @@ export const AiComposerInput = forwardRef<
     const activePreviewImageIdRef = useRef<string | null>(null);
     const activePreviewChipRef = useRef<HTMLElement | null>(null);
 
-    const [isEmpty, setIsEmpty] = useState(true);
+    const [isEmpty, setIsEmpty] = useState(() => isEmptyRef.current);
 
     /** 占位符只用 DOM 显隐，避免 IME 中途 setState 触发 React 重渲染 */
     const setPlaceholderVisible = useCallback((visible: boolean) => {
@@ -241,11 +247,7 @@ export const AiComposerInput = forwardRef<
       }
 
       const payload = buildPayloadFromTokens(tokens);
-      const empty =
-        payload.promptText.length === 0 &&
-        payload.references.length === 0 &&
-        payload.images.length === 0 &&
-        payload.skills.length === 0;
+      const empty = isComposerPayloadEmpty(payload);
       syncEmptyState(empty);
       const nextContent = buildJsonContentFromTokens(tokens);
       lastEmittedContentRef.current = nextContent;
@@ -280,6 +282,7 @@ export const AiComposerInput = forwardRef<
     } = useSkillCommands({
       editorRef,
       isComposingRef,
+      notebookId,
       enabled: readLocalSkills,
       onContentMutation: emitCurrentContent,
     });
@@ -379,6 +382,27 @@ export const AiComposerInput = forwardRef<
       [emitCurrentContent],
     );
 
+    const replaceDefaultPageReference = useCallback(
+      (reference: AiFileReferenceAttrs): "applied" | "already" | "skipped" => {
+        const el = editorRef.current;
+        if (!el) return "skipped";
+
+        const { replaceable, solePageId } = inspectDefaultComposerTokens(
+          readTokensFromDom(el),
+        );
+        if (!replaceable) return "skipped";
+        if (solePageId === reference.pageId) return "already";
+
+        const next = buildComposerDraftFromReference(reference);
+        setDomFromJsonContent(el, next, imageRegistryRef.current);
+        const chip = el.querySelector("[data-ai-mention-attrs]");
+        if (chip) placeCaretAfterNode(chip);
+        emitCurrentContent();
+        return "applied";
+      },
+      [emitCurrentContent],
+    );
+
     useImperativeHandle(
       ref,
       () => ({
@@ -423,13 +447,17 @@ export const AiComposerInput = forwardRef<
           payload.images
             .map((attrs) => {
               const entry = imageRegistryRef.current.get(attrs.imageId);
-              return entry ? { file: entry.file, previewUrl: entry.previewUrl } : null;
+              return entry
+                ? { file: entry.file, previewUrl: entry.previewUrl }
+                : null;
             })
             .filter(
-              (item): item is { file: File; previewUrl: string } => item !== null,
+              (item): item is { file: File; previewUrl: string } =>
+                item !== null,
             ),
         insertImages,
         insertReference,
+        replaceDefaultPageReference,
       }),
       [
         clearMentionState,
@@ -439,6 +467,7 @@ export const AiComposerInput = forwardRef<
         releaseAllImages,
         insertImages,
         insertReference,
+        replaceDefaultPageReference,
         setPlaceholderVisible,
       ],
     );
@@ -454,7 +483,8 @@ export const AiComposerInput = forwardRef<
       if (!el) return;
       setDomFromJsonContent(el, initialContent, imageRegistryRef.current);
       const tokens = readTokensFromDom(el);
-      const empty = buildPayloadFromTokens(tokens).promptText.length === 0;
+      const empty = isComposerPayloadEmpty(buildPayloadFromTokens(tokens));
+      isEmptyRef.current = empty;
       setIsEmpty(empty);
       onIsEmptyChange?.(empty);
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -491,7 +521,10 @@ export const AiComposerInput = forwardRef<
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
         const range = selection.getRangeAt(0);
-        if (!el.contains(range.commonAncestorContainer) && el !== range.commonAncestorContainer) {
+        if (
+          !el.contains(range.commonAncestorContainer) &&
+          el !== range.commonAncestorContainer
+        ) {
           // 选区不在编辑器内
           if (!el.contains(range.startContainer)) return;
         }
@@ -533,6 +566,7 @@ export const AiComposerInput = forwardRef<
           } catch {
             // ignore
           }
+          cleanupOrphanComposerZwspNodes(el);
           setPlaceholderVisible(isEditorDomEmpty(el));
           scheduleFlush(COMPOSER_CHIP_DELETE_FLUSH_MS);
           return;
@@ -540,6 +574,7 @@ export const AiComposerInput = forwardRef<
 
         if (action === "remove-chip-before" && chipBefore) {
           chipBefore.remove();
+          cleanupOrphanComposerZwspNodes(el);
           setPlaceholderVisible(isEditorDomEmpty(el));
           scheduleFlush(COMPOSER_CHIP_DELETE_FLUSH_MS);
           return;
@@ -547,6 +582,7 @@ export const AiComposerInput = forwardRef<
 
         if (action === "remove-chip-after" && chipAfter) {
           chipAfter.remove();
+          cleanupOrphanComposerZwspNodes(el);
           setPlaceholderVisible(isEditorDomEmpty(el));
           scheduleFlush(COMPOSER_CHIP_DELETE_FLUSH_MS);
         }
@@ -806,6 +842,7 @@ export const AiComposerInput = forwardRef<
       setPlaceholderVisible,
       isEmptyRef,
       setIsEmpty,
+      onIsEmptyChange,
     });
 
     return (

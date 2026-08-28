@@ -174,7 +174,9 @@ function requestDeleteConversation(
   if (conversationDeleteInFlight.has(conversationId)) return;
   const trimmedSummary = summary.trim() || "新会话";
   const displaySummary =
-    trimmedSummary.length > 20 ? `${trimmedSummary.slice(0, 20)}…` : trimmedSummary;
+    trimmedSummary.length > 20
+      ? `${trimmedSummary.slice(0, 20)}…`
+      : trimmedSummary;
   const toastId = `delete-ai-conversation:${conversationId}`;
 
   // 从弹出确认 toast 起就占位，保证同一会话同时只有一个待确认 toast
@@ -351,7 +353,7 @@ export function ConversationHistoryPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50"
+          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground"
           aria-label="历史会话"
           title="历史会话"
           disabled={disabled}

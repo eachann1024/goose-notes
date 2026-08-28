@@ -137,10 +137,9 @@ export function GooseAIMenuController({
   );
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
-    // 菜单固定视觉宽度（与 editor-ai-menu.css 中 .goose-ai-menu-floating 一致），
+    // 菜单目标宽度 ≈ 70% 视口宽（上限 960px，下限 360px），
     // 不再把浮层撑成「整块宽度」：块锚点时宽度=块宽会把输入框拉成满行，
     // 多行时图标与首行错位，且 placement:bottom 会让窄内容视觉上偏离选区。
-    const MENU_WIDTH_PX = 520;
     const pad = 8;
 
     const sharedMiddleware = [
@@ -148,8 +147,13 @@ export function GooseAIMenuController({
       flip({
         fallbackPlacements: ["top-start", "bottom-end", "top-end"],
         padding: pad,
+        boundary: editor.domElement ?? undefined,
       }),
-      shift({ padding: pad, crossAxis: true }),
+      shift({
+        padding: pad,
+        crossAxis: true,
+        boundary: editor.domElement ?? undefined,
+      }),
       size({
         apply({ availableWidth, elements }) {
           const scale =
@@ -160,9 +164,13 @@ export function GooseAIMenuController({
                   ) || "1",
                 ) || 1
               : 1;
+          const desired = Math.min(
+            (typeof window !== "undefined" ? window.innerWidth : 960) * 0.7,
+            960,
+          );
           const maxW = Math.max(
             360,
-            Math.min(MENU_WIDTH_PX, availableWidth / Math.max(scale, 0.5) - pad),
+            Math.min(desired, availableWidth / Math.max(scale, 0.5) - pad),
           );
           Object.assign(elements.floating.style, {
             width: `${maxW}px`,

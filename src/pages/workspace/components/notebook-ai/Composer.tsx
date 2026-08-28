@@ -31,7 +31,10 @@ import {
   isImageUploadFile,
   resolveImageMimeForUpload,
 } from "@/components/editor/utils/pasteClipboardImage";
-import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
+import {
+  composerDraftHasContent,
+  useNotebookAiChats,
+} from "@/stores/useNotebookAiChats";
 import type { JSONContent } from "@/types";
 import { ModelSelectorPopover } from "./ModelSelectorPopover";
 
@@ -56,11 +59,17 @@ export interface ComposerHandle {
   focus: () => void;
   /** 打开面板后立即给输入框植入初始引用（当前页上下文） */
   insertReference: (reference: AiFileReferenceAttrs) => void;
+  /** 空会话默认 @ 仍可替换时，改成最新当前页 */
+  replaceDefaultPageReference: (
+    reference: AiFileReferenceAttrs,
+  ) => "applied" | "already" | "skipped";
 }
 
 interface ComposerProps {
   /** 用于按笔记本持久化输入草稿 */
   notebookId: string;
+  /** 面板解析后的初始草稿；不传则读 store */
+  initialContent?: JSONContent | null;
   onSend: (
     payload: AiComposerPayload,
     images: NotebookAiImageAttachment[],
@@ -78,6 +87,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
   function Composer(
     {
       notebookId,
+      initialContent,
       onSend,
       isStreaming,
       disabled,
@@ -93,13 +103,18 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const draftSeqRef = useRef(0);
-    const [isEmpty, setIsEmpty] = useState(true);
     const [autoFocusToken, setAutoFocusToken] = useState(0);
     const [dropActive, setDropActive] = useState(false);
     // 仅在挂载时读一次草稿作种子；运行中由 onContentChange 写回 store，
     // 避免把 store 回灌成受控值导致 contenteditable 选区被重建。
     const [seedContent] = useState<JSONContent | null>(() =>
-      useNotebookAiChats.getState().getComposerDraft(notebookId),
+      initialContent !== undefined
+        ? initialContent
+        : useNotebookAiChats.getState().getComposerDraft(notebookId),
+    );
+    // 切回面板时草稿已在 DOM 水合前就决定发送按钮高亮，避免先暗后亮。
+    const [isEmpty, setIsEmpty] = useState(
+      () => !composerDraftHasContent(seedContent),
     );
 
     const cancelPendingDraftPersist = useCallback(() => {
@@ -250,6 +265,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         insertReference: (reference: AiFileReferenceAttrs) => {
           inputRef.current?.insertReference(reference);
         },
+        replaceDefaultPageReference: (reference: AiFileReferenceAttrs) =>
+          inputRef.current?.replaceDefaultPageReference(reference) ?? "skipped",
       }),
       [],
     );
@@ -267,7 +284,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         }}
         className={cn(
           "pointer-events-none",
-          isFullscreen ? "px-6 pb-5" : "px-3 pb-3",
+          isFullscreen ? "px-6 pb-5" : "px-3 pb-5",
         )}
       >
         <div
@@ -278,12 +295,12 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         >
           <PromptBar
             streaming={isStreaming}
-            className="overflow-hidden rounded-[12px]"
+            className="rounded-full shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]"
           >
             <div
               className={cn(
-                "bui-root flex flex-col overflow-hidden rounded-[12px] border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-3 py-2.5",
-                "shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]",
+                "bui-root flex min-h-[44px] items-center gap-2 overflow-hidden rounded-full",
+                "bg-[hsl(var(--goose-editor-bg))] py-1.5 pl-2.5 pr-2",
                 "transition-colors duration-150",
                 dropActive &&
                   "ring-2 ring-[var(--goose-interactive-selected)] ring-offset-1 ring-offset-background",
@@ -295,6 +312,35 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               onDragLeave={handleDockDragLeave}
               onDrop={handleDockDrop}
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                className="sr-only"
+                onChange={handleImageInput}
+                disabled={disabled || isStreaming}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || isStreaming}
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                  "text-muted-foreground transition-colors duration-150",
+                  "hover:bg-[var(--goose-interactive-hover)] hover:text-foreground",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-40",
+                  isStreaming && "invisible pointer-events-none",
+                )}
+                aria-hidden={isStreaming}
+                tabIndex={isStreaming ? -1 : undefined}
+                aria-label="上传图片"
+                title="上传图片"
+              >
+                <Plus className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+
               <AiComposerInput
                 ref={inputRef}
                 placeholder={placeholder}
@@ -307,75 +353,43 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 searchPages={searchPages}
                 referencePlacement="inline"
                 variant="panel"
+                notebookId={notebookId}
                 disabled={disabled || isStreaming}
                 maxImageBytes={MAX_IMAGE_FILE_BYTES}
                 maxImageCount={MAX_IMAGE_ATTACHMENTS}
                 onImageRejected={(message) => toast.error(message)}
               />
 
-              <div className="mt-1.5 flex items-center gap-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  multiple
-                  className="sr-only"
-                  onChange={handleImageInput}
-                  disabled={disabled || isStreaming}
-                />
+              <ModelSelectorPopover disabled={disabled} />
+
+              {isStreaming ? (
+                <ComposerPrimitive.Cancel
+                  className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#f4f4f5] dark:text-[#171717]"
+                  aria-label="停止生成"
+                  title="停止生成"
+                >
+                  <LoadingState
+                    variant="Dots"
+                    compact
+                    label=""
+                    showElapsed={false}
+                  />
+                </ComposerPrimitive.Cancel>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={disabled || isStreaming}
+                  onClick={handleSubmit}
+                  disabled={!canClickSend}
                   className={cn(
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-                    "text-[#3f3f46] transition-colors duration-150",
-                    "bg-[#e8e8ec] hover:bg-[#dcdce2] hover:text-[#18181b]",
-                    "dark:bg-[#3f3f46] dark:text-[#e4e4e7] dark:hover:bg-[#52525b] dark:hover:text-[#fafafa]",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-                    "disabled:cursor-not-allowed disabled:opacity-40",
-                    isStreaming && "invisible pointer-events-none",
+                    "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white dark:bg-[#f4f4f5] dark:text-[#171717]",
+                    !sendLooksReady && "cursor-not-allowed opacity-35",
                   )}
-                  aria-hidden={isStreaming}
-                  tabIndex={isStreaming ? -1 : undefined}
-                  aria-label="上传图片"
-                  title="上传图片"
+                  aria-label="发送消息"
+                  title="发送消息"
                 >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.2} />
                 </button>
-
-                <ModelSelectorPopover disabled={disabled} />
-                <div className="flex-1" />
-
-                {isStreaming ? (
-                  <ComposerPrimitive.Cancel
-                    className="bui-composer-send flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#f4f4f5] dark:text-[#171717]"
-                    aria-label="停止生成"
-                    title="停止生成"
-                  >
-                    <LoadingState
-                      variant="Dots"
-                      compact
-                      label=""
-                      showElapsed={false}
-                    />
-                  </ComposerPrimitive.Cancel>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!canClickSend}
-                    className={cn(
-                      "bui-composer-send flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white dark:bg-[#f4f4f5] dark:text-[#171717]",
-                      !sendLooksReady && "cursor-not-allowed opacity-35",
-                    )}
-                    aria-label="发送消息"
-                    title="发送消息"
-                  >
-                    <ArrowUp className="h-[22px] w-[22px]" strokeWidth={2.25} />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </PromptBar>
         </div>

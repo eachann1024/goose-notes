@@ -13,11 +13,11 @@ import {
 } from "@blocknote/xl-ai";
 import { Square } from "lucide-react";
 import { RiSparkling2Fill } from "react-icons/ri";
-import { LoadingState } from "@/pages/workspace/components/notebook-ai/beautiful-ui/LoadingState";
 import { SelectionActions } from "@/pages/workspace/components/notebook-ai/beautiful-ui/SelectionActions";
 import { toast } from "@/components/ui/sonner";
 import {
   applyBlockTypeTransformToEditor,
+  coerceGeneratedBlocksToExpectedType,
   createBlockTypeTransformSelectionSnapshot,
   getBlockTypeTransformTargetLabel,
   resolveBlockTypeTransformIntent,
@@ -41,14 +41,51 @@ import {
   formatAiMenuError,
   isMissingTargetBlockError,
 } from "./formatAiMenuError";
-import { GoosePromptSuggestionMenu } from "./GoosePromptSuggestionMenu";
+import {
+  GoosePromptSuggestionMenu,
+  type GooseAiMenuTag,
+} from "./GoosePromptSuggestionMenu";
+import { resolveInlineBusyTicker } from "./inlineBusyTicker";
+
+/** idle 态的 5 个改写 tag：全部走 markdown 改写路径。 */
+const IDLE_REWRITE_TAGS: Array<{ key: string; label: string; prompt: string }> =
+  [
+    {
+      key: "jargon",
+      label: "工作黑话",
+      prompt: "把选中文字改写成工作黑话，保留原意。",
+    },
+    {
+      key: "simplify",
+      label: "精简表达",
+      prompt: "精简选中文字，保留关键信息。",
+    },
+    {
+      key: "to-english",
+      label: "翻译成英文",
+      prompt: "将选中文字翻译成英文。",
+    },
+    {
+      key: "to-chinese",
+      label: "翻译成中文",
+      prompt: "将选中文字翻译成中文。",
+    },
+    {
+      key: "colloquial",
+      label: "口语化",
+      prompt: "把选中文字改得更口语、自然。",
+    },
+  ];
 
 /** 这些默认项会走 xl-ai HTML update，块 id 一变就半替换失败。改走 markdown 整段替换。 */
-const MARKDOWN_REWRITE_ITEM_KEYS = new Set([
-  "improve_writing",
-  "fix_spelling",
-  "simplify",
-]);
+const MARKDOWN_REWRITE_ITEM_PROMPTS: Record<string, string> = {
+  improve_writing: "润色选中文字，保留原意。",
+  fix_spelling: "修正选中文字的拼写和语法。",
+  simplify: "精简选中文字，保留关键信息。",
+  continue_writing: "继续往后写，保持语气和结构。需要列表或待办时每行一个独立项。",
+  summarize: "总结当前内容。若有要点或待办，每行一项。",
+  action_items: "列出待办事项，每项独立一行。",
+};
 
 type AiMenuStatus =
   | "user-input"
@@ -89,10 +126,7 @@ function resolveInlineModelId(ai: {
   const ws = ai.workspaceSelectedModelId?.trim();
   const wsOk = !!ws && options.some((o) => o.id === ws);
   return (
-    (wsOk ? ws : null) ||
-    ai.selectedModelId?.trim() ||
-    options[0]?.id ||
-    ""
+    (wsOk ? ws : null) || ai.selectedModelId?.trim() || options[0]?.id || ""
   );
 }
 
@@ -109,6 +143,10 @@ export function GooseAIMenu(props: AIMenuProps) {
   const [prompt, setPrompt] = useState("");
   /** 本地 markdown 改写忙态（不依赖 xl-ai status）。 */
   const [isLocalRewriting, setIsLocalRewriting] = useState(false);
+  /** 忙态单行 ticker：思考优先，新内容盖住旧内容。 */
+  const [busyTickerText, setBusyTickerText] = useState("");
+  const busyTickerRef = useRef("");
+  const busyTickerRafRef = useRef(0);
   /** 最近一次用户提交 / 动作的提示词，拒绝后写回输入框，不被忙态清空。 */
   const lastPromptRef = useRef("");
   /** 拒绝后重开菜单时跳过一次「进入 user-input 的清空逻辑」。 */
@@ -135,6 +173,29 @@ export function GooseAIMenu(props: AIMenuProps) {
   const aiErrorMessage = formatAiErrorMessage(aiErrorRaw);
 
   const isBusy = isBusyStatus(aiResponseStatus) || isLocalRewriting;
+
+  const flushBusyTicker = useCallback((text: string) => {
+    busyTickerRef.current = text;
+    if (busyTickerRafRef.current) return;
+    busyTickerRafRef.current = requestAnimationFrame(() => {
+      busyTickerRafRef.current = 0;
+      setBusyTickerText(busyTickerRef.current);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (busyTickerRafRef.current) {
+        cancelAnimationFrame(busyTickerRafRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isBusy) return;
+    busyTickerRef.current = "";
+    setBusyTickerText("");
+  }, [isBusy]);
 
   // busy → user-reviewing：提示用户必须接受才会写入；若文档签名未变则提示无改动
   const prevAiStatusRef = useRef<AiMenuStatus>("closed");
@@ -172,7 +233,12 @@ export function GooseAIMenu(props: AIMenuProps) {
     }
 
     prevAiStatusRef.current = next;
-  }, [aiResponseStatus, dict.ai_menu.actions.accept.title, dict.ai_menu.actions.revert.title, editor]);
+  }, [
+    aiResponseStatus,
+    dict.ai_menu.actions.accept.title,
+    dict.ai_menu.actions.revert.title,
+    editor,
+  ]);
 
   const rememberPrompt = useCallback((text: string) => {
     lastPromptRef.current = text;
@@ -338,6 +404,7 @@ export function GooseAIMenu(props: AIMenuProps) {
       const abortController = new AbortController();
       localAbortRef.current = abortController;
       setIsLocalRewriting(true);
+      flushBusyTicker("");
 
       try {
         const newMarkdown = await runInlineMarkdownRewrite({
@@ -346,6 +413,9 @@ export function GooseAIMenu(props: AIMenuProps) {
           userPrompt,
           oldMarkdown: target.oldMarkdown,
           abortSignal: abortController.signal,
+          onUpdate: (update) => {
+            flushBusyTicker(resolveInlineBusyTicker(update));
+          },
         });
 
         const beforeBlocks = structuredClone(
@@ -365,13 +435,33 @@ export function GooseAIMenu(props: AIMenuProps) {
         );
 
         if (structureExpectation) {
-          const validation = validateGeneratedBlockStructure({
+          let validation = validateGeneratedBlockStructure({
             beforeBlocks,
             afterBlocks: editor.document as BlockTypeTransformBlock[],
             expectation: structureExpectation,
           });
+          if (!validation.ok && applyResult.newBlockIds.length > 0) {
+            const failedReason = validation.reason;
+            try {
+              coerceGeneratedBlocksToExpectedType(
+                editor as never,
+                applyResult.newBlockIds,
+                structureExpectation,
+              );
+              validation = validateGeneratedBlockStructure({
+                beforeBlocks,
+                afterBlocks: editor.document as BlockTypeTransformBlock[],
+                expectation: structureExpectation,
+              });
+            } catch {
+              validation = {
+                ok: false,
+                reason: failedReason,
+                pseudoMarkers: [],
+              };
+            }
+          }
           if (!validation.ok) {
-            // 结构校验失败：快照还原，保留 prompt 继续改
             try {
               restoreBlocks(
                 editor as never,
@@ -411,14 +501,7 @@ export function GooseAIMenu(props: AIMenuProps) {
         setIsLocalRewriting(false);
       }
     },
-    [
-      ai,
-      aiSettings,
-      editor,
-      page,
-      rememberPrompt,
-      reopenMenuWithPrompt,
-    ],
+    [ai, aiSettings, editor, page, rememberPrompt, reopenMenuWithPrompt, flushBusyTicker],
   );
 
   const handleRetryViaMarkdown = useCallback(() => {
@@ -445,15 +528,12 @@ export function GooseAIMenu(props: AIMenuProps) {
 
   const { items: externalItems } = props;
   const items = useMemo(() => {
-    let next: AIMenuSuggestionItem[] = [];
-    // 忙时只保留输入框右侧停止按钮，不在列表再放一项「停止」
-    if (isBusy) {
-      next = [];
-    } else if (externalItems) {
-      next = externalItems(editor, aiResponseStatus);
-    } else {
-      next = getDefaultAIMenuItems(editor, aiResponseStatus);
-    }
+    // 忙时只保留输入框右侧停止按钮；列表仅给 reviewing 的「接受」用
+    const next: AIMenuSuggestionItem[] = isBusy
+      ? []
+      : externalItems
+        ? externalItems(editor, aiResponseStatus)
+        : getDefaultAIMenuItems(editor, aiResponseStatus);
 
     return next.map((item) => ({
       ...item,
@@ -466,8 +546,9 @@ export function GooseAIMenu(props: AIMenuProps) {
           handleRetryViaMarkdown();
           return;
         }
-        if (MARKDOWN_REWRITE_ITEM_KEYS.has(item.key)) {
-          void handleManualPromptSubmit(item.title || item.key);
+        const rewritePrompt = MARKDOWN_REWRITE_ITEM_PROMPTS[item.key];
+        if (rewritePrompt) {
+          void handleManualPromptSubmit(rewritePrompt);
           return;
         }
         item.onItemClick(setPromptRemembering);
@@ -507,10 +588,7 @@ export function GooseAIMenu(props: AIMenuProps) {
     }
 
     // 审阅 / 错误态：输入框保持空（列表是接受/恢复），但绝不擦 lastPromptRef
-    if (
-      aiResponseStatus === "user-reviewing" ||
-      aiResponseStatus === "error"
-    ) {
+    if (aiResponseStatus === "user-reviewing" || aiResponseStatus === "error") {
       setPrompt("");
     }
   }, [aiResponseStatus, isBusy]);
@@ -535,16 +613,6 @@ export function GooseAIMenu(props: AIMenuProps) {
     if (isBusy) {
       return (
         <div className="goose-ai-menu-busy-actions bn-combobox-right-section">
-          <LoadingState
-            variant={
-              isLocalRewriting || aiResponseStatus === "thinking"
-                ? "Drive"
-                : "Dots"
-            }
-            compact
-            label=""
-            showElapsed={false}
-          />
           <button
             type="button"
             className="goose-ai-menu-stop"
@@ -584,17 +652,67 @@ export function GooseAIMenu(props: AIMenuProps) {
     }
 
     return undefined;
-  }, [aiResponseStatus, handleStop, isBusy, isLocalRewriting]);
+  }, [aiResponseStatus, handleStop, isBusy]);
+
+  const tags = useMemo<GooseAiMenuTag[]>(() => {
+    if (isBusy || aiResponseStatus === "error") return [];
+    if (aiResponseStatus === "user-reviewing") {
+      const acceptItem = items.find((item) => item.key === "accept");
+      const next: GooseAiMenuTag[] = [];
+      if (acceptItem) {
+        next.push({
+          key: "accept",
+          label: acceptItem.title || "接受",
+          onClick: () => acceptItem.onItemClick(),
+        });
+      }
+      next.push(
+        { key: "reject", label: "拒绝", onClick: handleRejectAndContinue },
+        { key: "retry", label: "重试", onClick: handleRetryViaMarkdown },
+      );
+      return next;
+    }
+    if (aiResponseStatus === "user-input") {
+      return IDLE_REWRITE_TAGS.map((tag) => ({
+        key: tag.key,
+        label: tag.label,
+        onClick: () => void handleManualPromptSubmit(tag.prompt),
+      }));
+    }
+    return [];
+  }, [
+    aiResponseStatus,
+    handleManualPromptSubmit,
+    handleRejectAndContinue,
+    handleRetryViaMarkdown,
+    isBusy,
+    items,
+  ]);
+
+  const showPlus = aiResponseStatus === "user-input" && !isBusy;
+
+  const handleOpenSettings = useCallback(() => {
+    ai.closeAIMenu();
+    window.dispatchEvent(
+      new CustomEvent("goose-note:open-settings", {
+        detail: { tab: "ai" },
+      }),
+    );
+  }, [ai]);
 
   return (
     <SelectionActions busy={isBusy} className="goose-ai-menu-selection">
       <GoosePromptSuggestionMenu
         onManualPromptSubmit={handleManualPromptSubmit}
-        items={items}
         promptText={prompt}
         onPromptTextChange={setPromptRemembering}
         placeholder={placeholder}
         disabled={isBusy}
+        busy={isBusy}
+        busyTickerText={busyTickerText}
+        tags={tags}
+        showPlus={showPlus}
+        onOpenAiPanel={handleOpenSettings}
         icon={
           <div className="bn-combobox-icon">
             <RiSparkling2Fill />

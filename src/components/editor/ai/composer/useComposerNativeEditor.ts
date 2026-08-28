@@ -18,6 +18,7 @@ import {
 } from "./composerImageChip";
 import {
   buildPayloadFromTokens,
+  isComposerPayloadEmpty,
   readTokensFromDom,
   setDomFromJsonContent,
 } from "./composerTokens";
@@ -38,6 +39,7 @@ export function useComposerNativeEditor(options: {
   setPlaceholderVisible: (visible: boolean) => void;
   isEmptyRef: RefObject<boolean>;
   setIsEmpty: Dispatch<SetStateAction<boolean>>;
+  onIsEmptyChange?: (isEmpty: boolean) => void;
 }) {
   const {
     editorHostRef,
@@ -54,6 +56,7 @@ export function useComposerNativeEditor(options: {
     setPlaceholderVisible,
     isEmptyRef,
     setIsEmpty,
+    onIsEmptyChange,
   } = options;
 
   useLayoutEffect(() => {
@@ -138,24 +141,18 @@ export function useComposerNativeEditor(options: {
     host.appendChild(el);
     editorRef.current = el;
 
-    // 首次种子（若有）
-    if (lastEmittedContentRef.current) {
-      setDomFromJsonContent(
-        el,
-        lastEmittedContentRef.current,
-        imageRegistryRef.current,
-      );
-      const tokens = readTokensFromDom(el);
-      const payload = buildPayloadFromTokens(tokens);
-      const empty =
-        payload.promptText.length === 0 &&
-        payload.references.length === 0 &&
-        payload.images.length === 0 &&
-        payload.skills.length === 0;
-      setPlaceholderVisible(empty);
-      isEmptyRef.current = empty;
-      setIsEmpty(empty);
+    // 首次种子（若有）：同步空态给发送按钮，避免切回面板时草稿已在但按钮仍灰
+    const seed = lastEmittedContentRef.current;
+    if (seed) {
+      setDomFromJsonContent(el, seed, imageRegistryRef.current);
     }
+    const tokens = readTokensFromDom(el);
+    const payload = buildPayloadFromTokens(tokens);
+    const empty = isComposerPayloadEmpty(payload);
+    setPlaceholderVisible(empty);
+    isEmptyRef.current = empty;
+    setIsEmpty(empty);
+    onIsEmptyChange?.(empty);
 
     return () => {
       el.removeEventListener("beforeinput", onBeforeInput);

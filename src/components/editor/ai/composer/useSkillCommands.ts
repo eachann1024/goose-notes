@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { searchLocalSkills, type LocalSkill } from "@/lib/notebook-ai/localContext";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import {
+  searchLocalSkills,
+  type LocalSkill,
+} from "@/lib/notebook-ai/localContext";
 import type { AiSkillCommandAttrs } from "./referenceLookup";
 
 interface DetectedCommand {
@@ -7,10 +17,15 @@ interface DetectedCommand {
   range: Range;
 }
 
-const INACTIVE = { active: false, query: "", anchorRect: null as DOMRect | null, activeIndex: 0 };
+const INACTIVE = {
+  active: false,
+  query: "",
+  anchorRect: null as DOMRect | null,
+  activeIndex: 0,
+};
 
 /**
- * 当前 text node 内 `/query` 探测（与 @ 一致：任意位置，前一字符须为空白或行首）。
+ * 当前 text node 内 `/query` 探测（与 @ 一致：任意位置，前一字符须为空白、零宽字符或行首）。
  * query 中不能有空白。
  */
 export function parseSlashCommandBeforeCaret(beforeCaret: string): {
@@ -19,23 +34,75 @@ export function parseSlashCommandBeforeCaret(beforeCaret: string): {
 } | null {
   const slashIndex = beforeCaret.lastIndexOf("/");
   if (slashIndex === -1) return null;
-  if (slashIndex > 0 && !/[\s\n]/.test(beforeCaret[slashIndex - 1])) return null;
-  const query = beforeCaret.slice(slashIndex + 1);
-  if (/\s/.test(query)) return null;
+  // 前置字符若不是空白、换行、零宽字符且不是行首，则不算合法命令
+  if (slashIndex > 0) {
+    const prevChar = beforeCaret[slashIndex - 1];
+    if (!/[\s\n\u200B\uFEFF]/.test(prevChar)) {
+      // 进一步检查 slashIndex 之前是否全部是零宽字符（等效于行首）
+      const textBefore = beforeCaret.slice(0, slashIndex);
+      if (textBefore.replace(/[\u200B\uFEFF]/g, "").length > 0) {
+        return null;
+      }
+    }
+  }
+  const rawQuery = beforeCaret.slice(slashIndex + 1);
+  if (/[\s\n]/.test(rawQuery)) return null;
+  const query = rawQuery.replace(/[\u200B\uFEFF]/g, "");
   return { query, slashIndex };
 }
 
-function detectCommandAtCaret(container: HTMLElement): DetectedCommand | null {
+/**
+ * 空输入框在旧 Chromium 里 caret 常落在 contenteditable 元素上，不是 TEXT_NODE。
+ * 只认文本节点时，本地文件夹空会话（没有默认 @chip）输入 @ / 会探测失败。
+ */
+export function getComposerCaretTextContext(container: HTMLElement): {
+  textNode: Text;
+  beforeCaret: string;
+} | null {
   const selection = window.getSelection();
   if (!selection?.isCollapsed) return null;
   const anchor = selection.anchorNode;
-  if (!anchor || anchor.nodeType !== Node.TEXT_NODE || !container.contains(anchor)) return null;
-  const beforeCaret = (anchor.textContent ?? "").slice(0, selection.anchorOffset);
-  const parsed = parseSlashCommandBeforeCaret(beforeCaret);
+  if (!anchor || !container.contains(anchor)) return null;
+
+  if (anchor.nodeType === Node.TEXT_NODE) {
+    const textNode = anchor as Text;
+    return {
+      textNode,
+      beforeCaret: (textNode.textContent ?? "").slice(
+        0,
+        selection.anchorOffset,
+      ),
+    };
+  }
+
+  if (anchor.nodeType !== Node.ELEMENT_NODE) return null;
+  const offset = selection.anchorOffset;
+  const prev = anchor.childNodes[offset - 1];
+  if (prev?.nodeType === Node.TEXT_NODE) {
+    const textNode = prev as Text;
+    return { textNode, beforeCaret: textNode.textContent ?? "" };
+  }
+  const next = anchor.childNodes[offset];
+  if (next?.nodeType === Node.TEXT_NODE) {
+    return { textNode: next as Text, beforeCaret: "" };
+  }
+  const walker = document.createTreeWalker(anchor, NodeFilter.SHOW_TEXT);
+  const first = walker.nextNode();
+  if (first && container.contains(first)) {
+    const textNode = first as Text;
+    return { textNode, beforeCaret: textNode.textContent ?? "" };
+  }
+  return null;
+}
+
+function detectCommandAtCaret(container: HTMLElement): DetectedCommand | null {
+  const caret = getComposerCaretTextContext(container);
+  if (!caret) return null;
+  const parsed = parseSlashCommandBeforeCaret(caret.beforeCaret);
   if (!parsed) return null;
   const range = document.createRange();
-  range.setStart(anchor, parsed.slashIndex);
-  range.setEnd(anchor, selection.anchorOffset);
+  range.setStart(caret.textNode, parsed.slashIndex);
+  range.setEnd(caret.textNode, caret.beforeCaret.length);
   return { query: parsed.query, range };
 }
 
@@ -141,8 +208,7 @@ export function collapseComposerZwspNodes(editor: HTMLElement) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node as Text;
       const raw = text.data;
-      const onlyZwspOrEmpty =
-        raw.length === 0 || isComposerZwspOnlyText(raw);
+      const onlyZwspOrEmpty = raw.length === 0 || isComposerZwspOnlyText(raw);
       if (onlyZwspOrEmpty && next && next.nodeType === Node.TEXT_NODE) {
         const nextText = next as Text;
         const nextOnly =
@@ -176,9 +242,7 @@ export function collapseComposerZwspNodes(editor: HTMLElement) {
  * 插入 / 水合后调用，避免“只有 chip 时光标消失”，并去掉多余空档。
  */
 export function ensureComposerCaretAnchors(editor: HTMLElement) {
-  const chips = Array.from(
-    editor.querySelectorAll<HTMLElement>(CHIP_SELECTOR),
-  );
+  const chips = Array.from(editor.querySelectorAll<HTMLElement>(CHIP_SELECTOR));
   for (const chip of chips) {
     const prev = chip.previousSibling;
     if (!prev) {
@@ -290,18 +354,25 @@ function toSkillAttrs(skill: LocalSkill): AiSkillCommandAttrs {
 export function useSkillCommands(options: {
   editorRef: RefObject<HTMLDivElement | null>;
   isComposingRef: RefObject<boolean>;
+  notebookId?: string;
   enabled: boolean;
   onContentMutation: () => void;
 }) {
-  const { editorRef, isComposingRef, enabled, onContentMutation } = options;
+  const { editorRef, isComposingRef, notebookId, enabled, onContentMutation } =
+    options;
   const lastDetectedRef = useRef<DetectedCommand | null>(null);
   const [command, setCommand] = useState(INACTIVE);
   const items = useMemo(
-    () => (enabled && command.active ? searchLocalSkills(command.query) : []),
-    [command.active, command.query, enabled],
+    () =>
+      enabled && command.active
+        ? searchLocalSkills(command.query, notebookId)
+        : [],
+    [command.active, command.query, enabled, notebookId],
   );
   const itemsRef = useRef(items);
-  useEffect(() => { itemsRef.current = items; }, [items]);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const clearCommandState = useCallback(() => {
     lastDetectedRef.current = null;
@@ -319,60 +390,79 @@ export function useSkillCommands(options: {
     setCommand((previous) => ({
       active: true,
       query: detected.query,
-      anchorRect: rect.width || rect.height ? rect : editor.getBoundingClientRect(),
+      anchorRect:
+        rect.width || rect.height ? rect : editor.getBoundingClientRect(),
       activeIndex: detected.query === previous.query ? previous.activeIndex : 0,
     }));
   }, [clearCommandState, editorRef, enabled, isComposingRef]);
 
-  const insertCommand = useCallback((skill: LocalSkill) => {
-    const editor = editorRef.current;
-    const detected = lastDetectedRef.current ?? (editor ? detectCommandAtCaret(editor) : null);
-    clearCommandState();
-    if (!editor || !detected) return;
-
-    try {
-      detected.range.deleteContents();
-      // 间距靠 CSS；插入后用 ZWSP 锚点保证旧 Chromium 光标可见。
-      const chip = createSkillChipElement(toSkillAttrs(skill));
-      detected.range.insertNode(chip);
-      pruneEmptyComposerTextNodes(editor);
-      ensureComposerCaretAnchors(editor);
-      editor.focus();
-      placeCaretAfterNode(chip);
-    } catch {
-      return;
-    }
-
-    onContentMutation();
-  }, [clearCommandState, editorRef, onContentMutation]);
-
-  const handleCommandKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!command.active) return false;
-    const currentItems = itemsRef.current;
-    const count = Math.max(1, currentItems.length);
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      const delta = event.key === "ArrowDown" ? 1 : -1;
-      setCommand((previous) => ({ ...previous, activeIndex: (previous.activeIndex + delta + count) % count }));
-      return true;
-    }
-    if (event.key === "Enter" && !event.shiftKey) {
-      const skill = currentItems[command.activeIndex];
-      if (!skill) {
-        clearCommandState();
-        return false;
-      }
-      event.preventDefault();
-      insertCommand(skill);
-      return true;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
+  const insertCommand = useCallback(
+    (skill: LocalSkill) => {
+      const editor = editorRef.current;
+      const detected =
+        lastDetectedRef.current ??
+        (editor ? detectCommandAtCaret(editor) : null);
       clearCommandState();
-      return true;
-    }
-    return false;
-  }, [clearCommandState, command.active, command.activeIndex, insertCommand]);
+      if (!editor || !detected) return;
 
-  return { command, items, detectCommand, insertCommand, handleCommandKeyDown, clearCommandState };
+      try {
+        detected.range.deleteContents();
+        // 间距靠 CSS；插入后用 ZWSP 锚点保证旧 Chromium 光标可见。
+        const chip = createSkillChipElement(toSkillAttrs(skill));
+        detected.range.insertNode(chip);
+        pruneEmptyComposerTextNodes(editor);
+        ensureComposerCaretAnchors(editor);
+        editor.focus();
+        placeCaretAfterNode(chip);
+      } catch {
+        return;
+      }
+
+      onContentMutation();
+    },
+    [clearCommandState, editorRef, onContentMutation],
+  );
+
+  const handleCommandKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!command.active) return false;
+      const currentItems = itemsRef.current;
+      const count = Math.max(1, currentItems.length);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setCommand((previous) => ({
+          ...previous,
+          activeIndex: (previous.activeIndex + delta + count) % count,
+        }));
+        return true;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        const skill = currentItems[command.activeIndex];
+        if (!skill) {
+          clearCommandState();
+          return false;
+        }
+        event.preventDefault();
+        insertCommand(skill);
+        return true;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        clearCommandState();
+        return true;
+      }
+      return false;
+    },
+    [clearCommandState, command.active, command.activeIndex, insertCommand],
+  );
+
+  return {
+    command,
+    items,
+    detectCommand,
+    insertCommand,
+    handleCommandKeyDown,
+    clearCommandState,
+  };
 }

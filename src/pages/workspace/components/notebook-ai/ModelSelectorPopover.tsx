@@ -18,7 +18,9 @@ interface ModelSelectorPopoverProps {
 
 export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
   const [open, setOpen] = useState(false);
-  const customModelOptions = useSettings((state) => state.ai.customModelOptions);
+  const customModelOptions = useSettings(
+    (state) => state.ai.customModelOptions,
+  );
   const selectedModelId = useSettings((state) => state.ai.selectedModelId);
   const workspaceSelectedModelId = useSettings(
     (state) => state.ai.workspaceSelectedModelId,
@@ -31,7 +33,9 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
   const effectiveModelId = useMemo(() => {
     if (
       workspaceSelectedModelId &&
-      customModelOptions.some((option) => option.id === workspaceSelectedModelId)
+      customModelOptions.some(
+        (option) => option.id === workspaceSelectedModelId,
+      )
     ) {
       return workspaceSelectedModelId;
     }
@@ -44,9 +48,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
     customModelOptions.find((option) => option.id === effectiveModelId) ?? null;
 
   const selectModel = (modelId: string) => {
-    setAIWorkspaceSelectedModelId(
-      modelId === selectedModelId ? null : modelId,
-    );
+    setAIWorkspaceSelectedModelId(modelId === selectedModelId ? null : modelId);
     setOpen(false);
   };
 
@@ -56,7 +58,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         <button
           type="button"
           disabled={disabled}
-          className="flex h-7 max-w-[200px] shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 max-w-[min(12.5rem,32%)] shrink-0 items-center gap-0.5 rounded-[7px] px-1 text-[11px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="切换模型"
           title={`当前模型：${effectiveModel?.id ?? effectiveModelId}`}
         >
@@ -67,12 +69,12 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         </button>
       </PopoverTrigger>
       {/*
-        触发器在 composer 左侧：用 align="start" 让菜单从按钮左缘向右展开，
-        避免 align="end" 把宽菜单甩到按钮左侧（视觉上像「跑偏」）。
+        触发器在胶囊输入条右侧、发送按钮左边：align="end" 让菜单贴右缘往左展，
+        窄侧栏里不会把宽菜单甩出面板。
       */}
       <PopoverContent
         side="top"
-        align="start"
+        align="end"
         sideOffset={6}
         collisionPadding={12}
         className="w-56 p-1.5"

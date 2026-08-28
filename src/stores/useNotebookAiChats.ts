@@ -50,7 +50,7 @@ export function stripComposerDraftImages(
   return { type: "doc", content: nextBlocks };
 }
 
-/** 草稿是否包含用户可见内容（文本或引用 chip） */
+/** 草稿是否包含用户可见内容（文本、引用或 Skill chip） */
 export function composerDraftHasContent(
   content: JSONContent | null | undefined,
 ): boolean {
@@ -65,7 +65,7 @@ export function composerDraftHasContent(
     for (const node of nodes) {
       if (!node || typeof node !== "object") continue;
       const type = (node as { type?: string }).type;
-      if (type === "aiFileReference") return true;
+      if (type === "aiFileReference" || type === "aiSkillCommand") return true;
       if (type === "text") {
         const text = (node as { text?: unknown }).text;
         if (typeof text === "string" && text.trim().length > 0) return true;

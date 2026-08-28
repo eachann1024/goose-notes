@@ -13,9 +13,12 @@ const skillIdSchema = z.enum([
   "webResearch",
 ]);
 
+const skillCatalog = skillIdSchema.options
+  .map((id) => `${id}：${NOTEBOOK_SKILLS[id].description}`)
+  .join("；");
+
 export const loadSkill = tool({
-  description:
-    "有明确任务时加载最匹配的 Skill。短确认或无新需求时不要调用。",
+  description: `有明确任务时加载最匹配的 Skill。${skillCatalog}。`,
   inputSchema: z.object({
     skill: skillIdSchema.describe("要加载的 Skill"),
   }),

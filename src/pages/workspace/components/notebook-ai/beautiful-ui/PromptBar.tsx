@@ -25,16 +25,16 @@ export function PromptBar({
             className="bui-prompt-bar-beam-glow"
             width="100%"
             height="100%"
-            rx="11"
-            ry="11"
+            rx="999"
+            ry="999"
             pathLength="1"
           />
           <rect
             className="bui-prompt-bar-beam-core"
             width="100%"
             height="100%"
-            rx="11"
-            ry="11"
+            rx="999"
+            ry="999"
             pathLength="1"
           />
         </svg>

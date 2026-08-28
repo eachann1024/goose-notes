@@ -1,10 +1,4 @@
 import { mergeCSSClasses } from "@blocknote/core";
-import { filterSuggestionItems } from "@blocknote/core/extensions";
-import {
-  type DefaultReactSuggestionItem,
-  useComponentsContext,
-  useSuggestionMenuKeyboardHandler,
-} from "@blocknote/react";
 import {
   type ChangeEvent,
   type KeyboardEvent,
@@ -12,13 +6,18 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
+import { Plus } from "lucide-react";
+
+export type GooseAiMenuTag = {
+  key: string;
+  label: string;
+  onClick: () => void;
+};
 
 export type GoosePromptSuggestionMenuProps = {
-  items: DefaultReactSuggestionItem[];
   onManualPromptSubmit: (userPrompt: string) => void;
   promptText?: string;
   onPromptTextChange?: (userPrompt: string) => void;
@@ -26,6 +25,14 @@ export type GoosePromptSuggestionMenuProps = {
   rightSection?: ReactNode;
   placeholder?: string;
   disabled?: boolean;
+  busy?: boolean;
+  /** 忙态时在输入槽里滚动覆盖的思考/生成文本；不撑开高度。 */
+  busyTickerText?: string;
+  /** 可换行 tag 行；为空则不渲染。 */
+  tags?: GooseAiMenuTag[];
+  /** tag 行末尾的 ➕（打开 AI 设置），仅 idle 传入。 */
+  showPlus?: boolean;
+  onOpenAiPanel?: () => void;
   /** 自动增高上限（px），超出后内部滚动。默认约 6 行。 */
   maxAutoHeightPx?: number;
 };
@@ -42,11 +49,12 @@ const DEFAULT_MAX_AUTO_HEIGHT_PX =
   DEFAULT_LINE_HEIGHT_PX * 6 + DEFAULT_PAD_Y_PX * 2; // 136
 
 /**
- * 行内 AI 提示菜单：多行 textarea + 高度随内容增长。
- * 键盘：Enter 提交 / 选中建议；Shift+Enter 换行。
+ * 行内 AI 提示菜单：多行 textarea + 高度随内容增长 + 可换行 tag 行。
+ * 键盘：Enter 提交自由提示；Shift+Enter 换行。tag 是原生 button，Enter 由浏览器处理。
  */
-export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps) {
-  const Components = useComponentsContext()!;
+export function GoosePromptSuggestionMenu(
+  props: GoosePromptSuggestionMenuProps,
+) {
   const {
     onManualPromptSubmit,
     promptText,
@@ -71,18 +79,6 @@ export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps)
     [onPromptTextChange, promptText],
   );
 
-  const items: DefaultReactSuggestionItem[] = useMemo(() => {
-    return filterSuggestionItems(props.items, promptTextToUse);
-  }, [promptTextToUse, props.items]);
-
-  const { selectedIndex, setSelectedIndex, handler } =
-    useSuggestionMenuKeyboardHandler(items, (item) => item.onItemClick());
-
-  const activeDescendantId =
-    items.length > 0 && selectedIndex >= 0 && selectedIndex < items.length
-      ? `bn-suggestion-menu-item-${selectedIndex}`
-      : undefined;
-
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       // 换行：Shift+Enter（或 IME 组合中不处理）
@@ -97,41 +93,18 @@ export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps)
 
       if (event.key === "Enter" && !event.nativeEvent.isComposing) {
         event.preventDefault();
-        if (items.length > 0) {
-          handler(event as unknown as KeyboardEvent);
-        } else {
-          const trimmed = promptTextToUse.trim();
-          if (trimmed) {
-            onManualPromptSubmit(promptTextToUse);
-          }
+        const trimmed = promptTextToUse.trim();
+        if (trimmed) {
+          onManualPromptSubmit(promptTextToUse);
         }
         return;
       }
-
-      // 多行时：光标不在首行/末行则让上下键在文内移动，不抢建议列表
-      if (
-        (event.key === "ArrowUp" || event.key === "ArrowDown") &&
-        promptTextToUse.includes("\n")
-      ) {
-        const el = event.currentTarget;
-        const value = el.value;
-        const start = el.selectionStart ?? 0;
-        const atFirstLine = !value.slice(0, start).includes("\n");
-        const atLastLine = !value.slice(start).includes("\n");
-        if (event.key === "ArrowUp" && !atFirstLine) return;
-        if (event.key === "ArrowDown" && !atLastLine) return;
-      }
-
-      handler(event as unknown as KeyboardEvent);
     },
-    [handler, items.length, onManualPromptSubmit, promptTextToUse],
+    [onManualPromptSubmit, promptTextToUse],
   );
 
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [promptTextToUse, setSelectedIndex]);
-
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const tickerScrollerRef = useRef<HTMLDivElement>(null);
   const hasBeenDisabled = useRef(disabled);
 
   useEffect(() => {
@@ -160,7 +133,16 @@ export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps)
     el.style.overflowY = measured > maxAutoHeightPx ? "auto" : "hidden";
   }, [promptTextToUse, disabled, maxAutoHeightPx, props.placeholder]);
 
+  useLayoutEffect(() => {
+    if (!props.busy) return;
+    const el = tickerScrollerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [props.busy, props.busyTickerText, props.placeholder]);
+
   const hasRightSection = props.rightSection != null;
+  const tags = props.tags ?? [];
+  const showTagRow = tags.length > 0 || (props.showPlus && props.onOpenAiPanel);
 
   return (
     <div className="bn-combobox goose-ai-prompt-menu">
@@ -169,11 +151,17 @@ export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps)
           "goose-ai-prompt-field",
           hasRightSection ? "goose-ai-prompt-field--with-right" : "",
           disabled ? "goose-ai-prompt-field--disabled" : "",
+          props.busy ? "goose-ai-prompt-field--busy" : "",
         )}
+        aria-busy={props.busy ? true : undefined}
       >
         {props.icon != null && (
           <div className="goose-ai-prompt-field__icon" aria-hidden>
             {props.icon}
+            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--a" />
+            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--b" />
+            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--c" />
+            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--d" />
           </div>
         )}
         <textarea
@@ -187,33 +175,67 @@ export function GoosePromptSuggestionMenu(props: GoosePromptSuggestionMenuProps)
           onKeyDown={handleKeyDown}
           onChange={handleChange}
           autoComplete="off"
-          aria-activedescendant={activeDescendantId}
           aria-multiline="true"
+          aria-hidden={props.busy ? true : undefined}
           spellCheck={false}
         />
+        {props.busy ? (
+          <div className="goose-ai-think-ticker" aria-hidden="true">
+            <div
+              ref={tickerScrollerRef}
+              className="goose-ai-think-ticker__scroller"
+            >
+              {props.busyTickerText?.trim()
+                ? props.busyTickerText
+                : props.placeholder}
+            </div>
+          </div>
+        ) : null}
         {hasRightSection && (
-          <div className="goose-ai-prompt-field__right">{props.rightSection}</div>
+          <div className="goose-ai-prompt-field__right">
+            {props.rightSection}
+          </div>
         )}
       </div>
-      {items.length > 0 && (
-        <Components.SuggestionMenu.Root
-          className="bn-combobox-items"
-          id="ai-suggestion-menu"
-        >
-          {items.map((item, i) => (
-            <Components.SuggestionMenu.Item
-              key={item.title}
-              className={mergeCSSClasses(
-                "bn-suggestion-menu-item",
-                item.size === "small" ? "bn-suggestion-menu-item-small" : "",
-              )}
-              id={`bn-suggestion-menu-item-${i}`}
-              isSelected={i === selectedIndex}
-              onClick={item.onItemClick}
-              item={item}
-            />
+      {showTagRow && (
+        <div className="goose-ai-tags" role="group" aria-label="AI 快捷操作">
+          {tags.map((tag) => (
+            <button
+              key={tag.key}
+              type="button"
+              className="goose-ai-tag"
+              onMouseDown={(event) => {
+                // 避免 mousedown 抢走 textarea 焦点导致浮层抖动
+                event.preventDefault();
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                tag.onClick();
+              }}
+            >
+              {tag.label}
+            </button>
           ))}
-        </Components.SuggestionMenu.Root>
+          {props.showPlus && props.onOpenAiPanel && (
+            <button
+              type="button"
+              className="goose-ai-tag goose-ai-tag--plus"
+              aria-label="打开 AI 设置"
+              title="打开 AI 设置"
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                props.onOpenAiPanel?.();
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 import type { NotebookAiMessage } from "../../src/lib/notebook-ai/types";
 import {
   CONVERSATION_STALE_MS,
+  composerDraftHasContent,
   migrateNotebookAiChatsState,
   useNotebookAiChats,
 } from "../../src/stores/useNotebookAiChats";
@@ -71,6 +72,59 @@ test("输入草稿按笔记本读写，空内容会清除", () => {
 
   store.clearComposerDraft("nb-draft");
   expect(store.getComposerDraft("nb-draft")).toBeNull();
+});
+
+test("草稿有文本、引用或 Skill 时视为有内容", () => {
+  expect(composerDraftHasContent(null)).toBe(false);
+  expect(
+    composerDraftHasContent({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "  " }] }],
+    }),
+  ).toBe(false);
+  expect(
+    composerDraftHasContent({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "还有未发送的问题" }],
+        },
+      ],
+    }),
+  ).toBe(true);
+  expect(
+    composerDraftHasContent({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "aiFileReference",
+              attrs: { pageId: "p1", titleSnapshot: "笔记" },
+            },
+          ],
+        },
+      ],
+    }),
+  ).toBe(true);
+  expect(
+    composerDraftHasContent({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "aiSkillCommand",
+              attrs: { name: "summarize", path: "/tmp/summarize.md" },
+            },
+          ],
+        },
+      ],
+    }),
+  ).toBe(true);
 });
 
 test("持久化配置保留原 key 并启用 v1 迁移", () => {

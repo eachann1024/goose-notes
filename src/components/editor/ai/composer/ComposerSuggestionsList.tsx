@@ -22,7 +22,7 @@ const POPOVER_MAX_WIDTH = 340;
 const VIEWPORT_PADDING = 8;
 const GAP = 4;
 /** 双行项（标题 + 路径）估算高度，需与下方 py/gap 保持同步 */
-const ITEM_HEIGHT = 48;
+const ITEM_HEIGHT = 44;
 const ITEM_GAP = 4;
 const LIST_PADDING = 12;
 const getMentionItemSelector = (index: number) =>
@@ -112,7 +112,7 @@ export function ComposerSuggestionsList({
         }}
       >
         {items.length === 0 ? (
-          <div className="px-3 py-2.5 text-[13px] text-muted-foreground">
+          <div className="px-3 py-2 text-[12px] text-muted-foreground">
             未找到匹配笔记
           </div>
         ) : (
@@ -126,9 +126,9 @@ export function ComposerSuggestionsList({
                 <button
                   type="button"
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left",
+                    "flex w-full cursor-pointer flex-nowrap items-start gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors",
                     index === activeIndex
-                      ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                      ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] [&_svg]:text-[var(--goose-interactive-selected-fg)]"
                       : "hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]",
                   )}
                   onMouseDown={(e) => {
@@ -136,18 +136,22 @@ export function ComposerSuggestionsList({
                     onSelect(item);
                   }}
                 >
-                  {item.isFolder ? (
-                    <LucideIcons.Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <LucideIcons.FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                    <div className="truncate text-[13px] font-medium leading-snug text-foreground">
+                  <span className="flex h-[18px] w-3.5 shrink-0 items-center justify-center">
+                    {item.isFolder ? (
+                      <LucideIcons.Folder className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </span>
+                  <div className="flex min-w-0 flex-1 flex-col justify-start gap-0.5">
+                    <div className="truncate text-[12px] font-medium leading-[18px] text-foreground">
                       {item.title}
                     </div>
-                    <div className="truncate text-[11px] leading-snug text-muted-foreground">
-                      {item.description}
-                    </div>
+                    {item.description ? (
+                      <div className="truncate text-[10.5px] leading-[14px] text-muted-foreground">
+                        {item.description}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               </li>

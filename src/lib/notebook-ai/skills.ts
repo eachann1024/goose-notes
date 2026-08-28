@@ -19,7 +19,7 @@ export const NOTEBOOK_SKILLS = {
     tools: ["executeBatchPlan"],
   },
   updateNote: {
-    description: "改写、追加或重命名页面",
+    description: "改写、追加、补充或重命名当前页",
     content: updateNoteSkill.trim(),
     tools: ["readPage", "executeBatchPlan"],
   },
@@ -39,7 +39,7 @@ export const NOTEBOOK_SKILLS = {
     tools: ["listPages", "searchNotes", "readPage"],
   },
   chat: {
-    description: "基于已有上下文回答，不写入笔记",
+    description: "仅解释或建议，不改笔记",
     content: chatSkill.trim(),
     tools: ["readPage"],
   },

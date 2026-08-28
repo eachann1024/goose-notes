@@ -1,6 +1,7 @@
 /* BlockNote xl-ai AI 菜单样式覆盖：把 Mantine 默认外观对齐项目设计系统。
    目标：选中文字 → 点 AI 图标后弹出的 input + 命令列表。
-   覆盖原 CSS：@blocknote/xl-ai/style.css 与 @blocknote/mantine/style.css。 */
+   覆盖原 CSS：@blocknote/xl-ai/style.css 与 @blocknote/mantine/style.css。
+   注意：uTools 旧内核对 hsl(var(--xxx)/alpha) 支持差，本文件只用 rgba/hex。 */
 
 /* ---------- Popover 卡片（input + items 共用容器） ---------- */
 .bn-combobox {
@@ -11,28 +12,32 @@
   width: 100% !important;
   min-width: 360px;
   max-width: 100% !important;
-  padding: 6px;
+  padding: 5px 6px;
   gap: 2px;
   border-radius: 14px;
-  background: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid rgba(219, 219, 219, 0.7);
   box-shadow:
     0 8px 22px rgba(15, 23, 42, 0.08),
     0 1px 2px rgba(15, 23, 42, 0.04);
   font-family: var(--font-default, inherit);
 }
 
-/* Floating UI 外层：没有可用宽度信息时的兜底宽度 */
+/* Floating UI 外层：JS size 中间件会覆写 width/maxWidth，这里是兜底 */
 .goose-ai-menu-floating {
   box-sizing: border-box;
-  width: 520px;
-  max-width: min(560px, calc(100vw - 16px));
+  width: min(70vw, 960px);
+  min-width: 360px;
+  max-width: min(70vw, 960px, calc(100vw - 16px));
 }
 
 .dark .bn-combobox,
-.bn-root.dark .bn-combobox {
-  border-color: rgba(255, 255, 255, 0.08);
+.bn-root.dark .bn-combobox,
+.bn-root[data-color-scheme="dark"] .bn-combobox {
+  background: #323230;
+  color: #e6e6e6;
+  border-color: rgba(61, 61, 61, 0.7);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.04),
     0 16px 36px rgba(0, 0, 0, 0.42),
@@ -77,18 +82,41 @@
   gap: 0;
   min-height: var(--goose-ai-row);
   border-radius: 10px;
-  background: hsl(var(--muted) / 0.55);
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.6);
-  transition: box-shadow 120ms ease-out, background-color 120ms ease-out;
+  background: rgba(241, 240, 237, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.6);
+  transition:
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
 }
 
 .goose-ai-prompt-field:hover {
-  background: hsl(var(--muted) / 0.75);
+  background: rgba(241, 240, 237, 0.75);
 }
 
 .goose-ai-prompt-field:focus-within {
-  background: hsl(var(--muted) / 0.75);
-  box-shadow: inset 0 0 0 1px hsl(var(--border));
+  background: rgba(241, 240, 237, 0.75);
+  box-shadow:
+    inset 0 0 0 1px rgba(219, 219, 219, 1),
+    inset 0 0 0 2px rgba(99, 102, 241, 0.22);
+}
+
+.dark .goose-ai-prompt-field,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field {
+  background: rgba(42, 42, 40, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
+}
+
+.dark .goose-ai-prompt-field:hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:hover {
+  background: rgba(42, 42, 40, 0.75);
+}
+
+.dark .goose-ai-prompt-field:focus-within,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:focus-within {
+  background: rgba(42, 42, 40, 0.75);
+  box-shadow:
+    inset 0 0 0 1px rgba(61, 61, 61, 1),
+    inset 0 0 0 2px rgba(99, 102, 241, 0.32);
 }
 
 .goose-ai-prompt-field--disabled {
@@ -110,9 +138,13 @@
   pointer-events: none;
   align-self: flex-start;
   line-height: 0;
+  position: relative;
+  overflow: visible;
 }
 
 .goose-ai-prompt-field__icon .bn-combobox-icon {
+  position: relative;
+  overflow: hidden;
   width: var(--goose-ai-icon);
   height: var(--goose-ai-icon);
   flex: 0 0 var(--goose-ai-icon);
@@ -121,6 +153,256 @@
   justify-content: center;
   margin: 0;
   line-height: 0;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon {
+  overflow: visible;
+}
+
+/* 忙态：星星旋转缩放 + 碎星飞溅 + 扫光（仅 opacity/transform） */
+.goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.42);
+  transform: scale(0.72);
+  opacity: 0.4;
+  animation: goose-ai-sparkle-glow 1.05s ease-in-out infinite;
+  z-index: 0;
+}
+
+.goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -70%;
+  width: 70%;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(0);
+  animation: goose-ai-sparkle-shimmer 0.95s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon svg {
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 50%;
+  animation: goose-ai-sparkle-pulse 1.15s ease-in-out infinite;
+}
+
+.dark
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before {
+  background: rgba(165, 180, 252, 0.48);
+}
+
+.dark
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(199, 210, 254, 0.95) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.goose-ai-sparkle-bit {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: #6366f1;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transform: rotate(45deg) scale(0.4);
+}
+
+.goose-ai-sparkle-bit--b,
+.goose-ai-sparkle-bit--d {
+  width: 3px;
+  height: 3px;
+  background: #a855f7;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--a {
+  animation: goose-ai-sparkle-bit-a 1.15s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--b {
+  animation: goose-ai-sparkle-bit-b 1.35s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--c {
+  animation: goose-ai-sparkle-bit-c 1.05s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--d {
+  animation: goose-ai-sparkle-bit-d 1.5s ease-in-out infinite;
+}
+
+@keyframes goose-ai-sparkle-pulse {
+  0%,
+  100% {
+    transform: rotate(-14deg) scale(1);
+    opacity: 0.82;
+  }
+  32% {
+    transform: rotate(16deg) scale(1.38);
+    opacity: 1;
+  }
+  62% {
+    transform: rotate(-8deg) scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes goose-ai-sparkle-glow {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.78;
+  }
+}
+
+@keyframes goose-ai-sparkle-shimmer {
+  0% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(280%);
+    opacity: 0.15;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-a {
+  0% {
+    transform: translate(-2px, 4px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  22% {
+    transform: translate(-11px, -6px) rotate(45deg) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-4px, -13px) rotate(45deg) scale(0.7);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(8px, -2px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-b {
+  0% {
+    transform: translate(3px, -2px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+  28% {
+    transform: translate(12px, -8px) rotate(45deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(6px, 10px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-c {
+  0% {
+    transform: translate(0, 2px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  35% {
+    transform: translate(-9px, 10px) rotate(45deg) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(10px, 6px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-d {
+  0% {
+    transform: translate(2px, 0) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  40% {
+    transform: translate(11px, 8px) rotate(45deg) scale(0.95);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-8px, 8px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-ai-prompt-field--busy
+    .goose-ai-prompt-field__icon
+    .bn-combobox-icon::before {
+    animation: none;
+    opacity: 0.45;
+    transform: scale(1);
+  }
+
+  .goose-ai-prompt-field--busy
+    .goose-ai-prompt-field__icon
+    .bn-combobox-icon::after {
+    animation: none;
+    opacity: 0.45;
+    transform: none;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon svg {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .goose-ai-prompt-field--busy .goose-ai-sparkle-bit {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .goose-ai-prompt-field__textarea {
@@ -141,7 +423,7 @@
   box-shadow: none !important;
   resize: none;
   outline: none;
-  color: hsl(var(--popover-foreground));
+  color: #1f1f1f;
   font-size: 13px !important;
   line-height: var(--goose-ai-line) !important;
   font-family: inherit;
@@ -153,8 +435,13 @@
   field-sizing: content;
 }
 
+.dark .goose-ai-prompt-field__textarea,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea {
+  color: #e6e6e6;
+}
+
 .goose-ai-prompt-field__textarea::placeholder {
-  color: hsl(var(--muted-foreground));
+  color: #6e6e6e;
   opacity: 1;
   /* placeholder 单行省略，避免撑开高度错觉 */
   white-space: nowrap;
@@ -163,10 +450,69 @@
   line-height: var(--goose-ai-line);
 }
 
+.dark .goose-ai-prompt-field__textarea::placeholder,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field__textarea::placeholder {
+  color: #a8a8a8;
+}
+
 .goose-ai-prompt-field__textarea:disabled {
   cursor: default;
   opacity: 1;
-  color: hsl(var(--muted-foreground));
+  color: #6e6e6e;
+}
+
+.dark .goose-ai-prompt-field__textarea:disabled,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea:disabled {
+  color: #a8a8a8;
+}
+
+/* 忙态：输入槽改成单行 ticker，原文/placeholder 让位 */
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__textarea {
+  color: transparent !important;
+  caret-color: transparent;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__textarea::placeholder {
+  color: transparent;
+}
+
+.goose-ai-think-ticker {
+  position: absolute;
+  left: var(--goose-ai-icon-slot);
+  right: 8px;
+  top: 0;
+  height: var(--goose-ai-row);
+  box-sizing: border-box;
+  padding: var(--goose-ai-pad-y) 12px var(--goose-ai-pad-y) 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.goose-ai-prompt-field--with-right .goose-ai-think-ticker {
+  right: 40px;
+}
+
+.goose-ai-think-ticker__scroller {
+  height: var(--goose-ai-line);
+  overflow: hidden;
+  overflow-anchor: none;
+  scrollbar-width: none;
+  font-size: 13px;
+  line-height: var(--goose-ai-line);
+  color: #6e6e6e;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.goose-ai-think-ticker__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.dark .goose-ai-think-ticker__scroller,
+.bn-root[data-color-scheme="dark"] .goose-ai-think-ticker__scroller {
+  color: #a8a8a8;
 }
 
 .goose-ai-prompt-field--with-right .goose-ai-prompt-field__textarea {
@@ -208,17 +554,49 @@
   padding-inline-end: 12px;
   border-radius: 10px;
   border: 0;
-  background: hsl(var(--muted) / 0.55);
-  color: hsl(var(--popover-foreground));
+  background: rgba(241, 240, 237, 0.55);
+  color: #1f1f1f;
   font-size: 13px;
   line-height: 1.4;
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.6);
-  transition: box-shadow 120ms ease-out, background-color 120ms ease-out;
+  box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.6);
+  transition:
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.dark .bn-mantine .bn-combobox .bn-combobox-input .mantine-TextInput-input,
+.dark .bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-TextInput-input,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input {
+  background: rgba(42, 42, 40, 0.55);
+  color: #e6e6e6;
+  box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
 }
 
 .bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input::placeholder {
-  color: hsl(var(--muted-foreground));
+  color: #6e6e6e;
   opacity: 1;
+}
+
+.dark
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input::placeholder,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input::placeholder {
+  color: #a8a8a8;
 }
 
 .bn-combobox .mantine-Input-section[data-position="left"] {
@@ -232,8 +610,15 @@
   padding-inline-end: 6px;
   pointer-events: auto;
   z-index: 2;
-  background: hsl(var(--muted));
+  background: #f1f0ed;
   border-radius: 0 10px 10px 0;
+}
+
+.dark .bn-combobox .mantine-Input-section[data-position="right"],
+.bn-root[data-color-scheme="dark"]
+  .bn-combobox
+  .mantine-Input-section[data-position="right"] {
+  background: #2a2a28;
 }
 
 .bn-combobox .bn-combobox-icon {
@@ -243,7 +628,7 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  color: hsl(var(--primary)); /* 与 AiButton 共用项目主题强调色 */
+  color: #6366f1; /* 与 AiButton 共用项目主题强调色 */
 }
 
 .bn-combobox .bn-combobox-icon svg {
@@ -276,7 +661,7 @@
 }
 
 .goose-ai-menu-stop:focus-visible {
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid #6366f1;
   outline-offset: 1px;
 }
 
@@ -288,7 +673,12 @@
   margin-top: 4px !important;
   padding: 4px 0 0 !important;
   gap: 1px !important;
-  border-top: 1px solid hsl(var(--border) / 0.5) !important;
+  border-top: 1px solid rgba(219, 219, 219, 0.5) !important;
+}
+
+.dark .bn-mantine .bn-combobox-items:not(:empty),
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-combobox-items:not(:empty) {
+  border-top-color: rgba(61, 61, 61, 0.5) !important;
 }
 
 /* 当列表为空（仅输入态），藏掉分隔线 */
@@ -307,27 +697,42 @@
  */
 .bn-mantine .bn-suggestion-menu-item {
   --group-gap: 10px !important;
-  --menu-item-color: hsl(var(--popover-foreground));
-  --bn-colors-menu-text: hsl(var(--popover-foreground));
+  --menu-item-color: #1f1f1f;
+  --bn-colors-menu-text: #1f1f1f;
   /* 与 22px 图标槽对齐：上下对称，单行时图标/文字视觉居中 */
-  padding: 6px 8px !important;
+  padding: 5px 8px !important;
   border-radius: 8px !important;
   background: transparent !important;
-  color: hsl(var(--popover-foreground));
+  color: #1f1f1f;
   cursor: pointer;
   transition: background-color 100ms ease-out;
   flex-wrap: nowrap !important;
   /* 单行项：图标与标题垂直居中（用户标注的问题） */
   align-items: center !important;
   height: auto !important;
-  min-height: 34px;
+  min-height: 32px;
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item,
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item {
+  --menu-item-color: #e6e6e6;
+  --bn-colors-menu-text: #e6e6e6;
+  color: #e6e6e6;
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover {
-  background: hsl(var(--accent)) !important;
-  color: hsl(var(--accent-foreground));
-  --menu-item-color: hsl(var(--accent-foreground));
-  --bn-colors-menu-text: hsl(var(--accent-foreground));
+  background: #f1f0ed !important;
+  color: #2e2e2e;
+  --menu-item-color: #2e2e2e;
+  --bn-colors-menu-text: #2e2e2e;
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item:hover,
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item:hover {
+  background: #2a2a28 !important;
+  color: #e6e6e6;
+  --menu-item-color: #e6e6e6;
+  --bn-colors-menu-text: #e6e6e6;
 }
 
 /* 键盘选中项与全局列表选中态同级：鸢尾靛蓝浅底 + 强调文字 */
@@ -339,7 +744,9 @@
 }
 
 /* 左侧图标：与标题同高 22px 槽，内部居中 glyph */
-.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-section[data-position="left"] {
+.bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
   width: 22px !important;
   height: 22px !important;
   min-height: 22px !important;
@@ -352,14 +759,40 @@
   margin-inline-end: 10px !important;
   padding: 0 !important;
   line-height: 0 !important;
-  color: hsl(var(--muted-foreground));
+  color: #6e6e6e;
 }
 
-.bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: hsl(var(--accent-foreground));
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"],
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: #a8a8a8;
 }
 
-.bn-mantine .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+.bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: #2e2e2e;
+}
+
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"],
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: #e6e6e6;
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item[aria-selected="true"]
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
   color: var(--goose-interactive-selected-fg);
 }
 
@@ -391,34 +824,153 @@
   height: 22px !important;
   margin: 0 !important;
   padding: 0 !important;
-  color: hsl(var(--popover-foreground));
+  color: #1f1f1f;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
 }
 
+.dark .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-title,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-title {
+  color: #e6e6e6;
+}
+
 /* small 项不展示副标题；若将来有副标题，整行改为顶对齐以免挤扁 */
-.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-subtitle:not(:empty) {
+.bn-mantine
+  .bn-suggestion-menu-item-small
+  .bn-mt-suggestion-menu-item-subtitle:not(:empty) {
   display: none;
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-title {
-  color: hsl(var(--accent-foreground));
+  color: #2e2e2e;
 }
 
-.bn-mantine .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-title {
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-title,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-title {
+  color: #e6e6e6;
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item[aria-selected="true"]
+  .bn-mt-suggestion-menu-item-title {
   color: var(--goose-interactive-selected-fg);
 }
 
 .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle {
   font-size: 11px !important;
   line-height: 1.3 !important;
-  color: hsl(var(--muted-foreground));
+  color: #6e6e6e;
 }
 
-.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle:empty {
+.dark .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-subtitle {
+  color: #a8a8a8;
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-subtitle:empty {
   display: none;
+}
+
+/* ---------- Tag 行（可换行 chip + ➕） ---------- */
+.goose-ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 2px 2px;
+  border-top: 1px solid rgba(219, 219, 219, 0.5);
+}
+
+.dark .goose-ai-tags,
+.bn-root[data-color-scheme="dark"] .goose-ai-tags {
+  border-top-color: rgba(61, 61, 61, 0.5);
+}
+
+.goose-ai-tag {
+  appearance: none;
+  border: 1px solid rgba(219, 219, 219, 0.9);
+  background: transparent;
+  color: #1f1f1f;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color 100ms ease-out,
+    color 100ms ease-out;
+}
+
+.goose-ai-tag:hover {
+  background: #f1f0ed;
+  color: #2e2e2e;
+}
+
+.goose-ai-tag:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.dark .goose-ai-tag,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag {
+  border-color: rgba(61, 61, 61, 0.9);
+  color: #e6e6e6;
+}
+
+.dark .goose-ai-tag:hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag:hover {
+  background: #2a2a28;
+  color: #e6e6e6;
+}
+
+/* ➕：圆形虚线，与普通 tag 区分 */
+.goose-ai-tag--plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-style: dashed;
+  border-radius: 999px;
+  color: #6e6e6e;
+}
+
+.goose-ai-tag--plus:hover {
+  color: #4f46e5;
+  border-color: #6366f1;
+  background: transparent;
+}
+
+.dark .goose-ai-tag--plus,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag--plus {
+  color: #a8a8a8;
+}
+
+.dark .goose-ai-tag--plus:hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag--plus:hover {
+  color: #a5b4fc;
+  border-color: #6366f1;
+  background: transparent;
 }
 
 /* ---------- AI 结果回显区（thinking / error / 流式文本） ---------- */
@@ -431,8 +983,8 @@
 ins,
 [data-type="modification"] {
   color: inherit;
-  background: hsl(var(--accent) / 0.65);
-  border-bottom: 1px solid hsl(var(--border));
+  background: rgba(99, 102, 241, 0.18);
+  border-bottom: 1px solid #dbdbdb;
   text-decoration: none;
   padding: 0 1px;
   border-radius: 2px;
@@ -440,6 +992,6 @@ ins,
 
 .dark ins,
 .dark [data-type="modification"] {
-  background: hsl(var(--accent) / 0.45);
-  border-bottom-color: hsl(var(--border) / 0.8);
+  background: rgba(99, 102, 241, 0.28);
+  border-bottom-color: rgba(61, 61, 61, 0.8);
 }
