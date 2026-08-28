@@ -5,7 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   CheckSquare,
   ChevronRight,
-  ChevronRightSquare,
   Code,
   FileUp,
   GitGraph,
@@ -30,7 +29,6 @@ const SLASH_ICONS = {
   heading1: <Heading1 size={18} />,
   heading2: <Heading2 size={18} />,
   heading3: <Heading3 size={18} />,
-  toggleHeading: <ChevronRightSquare size={18} />,
   check: <CheckSquare size={18} />,
   list: <List size={18} />,
   listOrdered: <ListOrdered size={18} />,
@@ -250,7 +248,7 @@ export function getBlockNoteSlashMenuItems(
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 1 },
+          props: { level: 1, isToggleable: true },
         }),
     },
     {
@@ -262,7 +260,7 @@ export function getBlockNoteSlashMenuItems(
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
-          props: { level: 2 },
+          props: { level: 2, isToggleable: true },
         }),
     },
     {
@@ -271,62 +269,6 @@ export function getBlockNoteSlashMenuItems(
       icon: SLASH_ICONS.heading3,
       aliases: ["h3", "heading3", "biaoti"],
       badge: "###",
-      onItemClick: () =>
-        insertOrUpdate({
-          type: "heading",
-          props: { level: 3 },
-        }),
-    },
-    {
-      title: "折叠一级标题",
-      description: "可展开/收起下方内容的一级标题",
-      icon: SLASH_ICONS.toggleHeading,
-      aliases: [
-        "toggleheading",
-        "toggleh1",
-        "toggle",
-        "collapseheading",
-        "fold",
-        "zhediebiaoti",
-        "zhedie",
-        "shouqibiaoti",
-      ],
-      onItemClick: () =>
-        insertOrUpdate({
-          type: "heading",
-          props: { level: 1, isToggleable: true },
-        }),
-    },
-    {
-      title: "折叠二级标题",
-      description: "可展开/收起下方内容的二级标题",
-      icon: SLASH_ICONS.toggleHeading,
-      aliases: [
-        "toggleheading2",
-        "toggleh2",
-        "toggle",
-        "fold",
-        "zhedie",
-        "zhedieerji",
-      ],
-      onItemClick: () =>
-        insertOrUpdate({
-          type: "heading",
-          props: { level: 2, isToggleable: true },
-        }),
-    },
-    {
-      title: "折叠三级标题",
-      description: "可展开/收起下方内容的三级标题",
-      icon: SLASH_ICONS.toggleHeading,
-      aliases: [
-        "toggleheading3",
-        "toggleh3",
-        "toggle",
-        "fold",
-        "zhedie",
-        "zhediesanji",
-      ],
       onItemClick: () =>
         insertOrUpdate({
           type: "heading",
@@ -508,16 +450,10 @@ export function getBlockNoteSlashMenuItems(
     );
   }
 
-  // 折叠块内部隐藏「折叠标题/折叠列表」项,避免无限折叠嵌套(任意后代)。
-  // 统一 markdown 触发器也做了同样拦截。光标此时已在目标块。
+  // 折叠块内部隐藏「折叠列表」项，避免无限折叠嵌套（任意后代）。
   const currentBlock = editor.getTextCursorPosition().block;
   if (isInsideToggle(editor, currentBlock)) {
-    const TOGGLE_TITLES = new Set([
-      "折叠一级标题",
-      "折叠二级标题",
-      "折叠三级标题",
-      "折叠列表",
-    ]);
+    const TOGGLE_TITLES = new Set(["折叠列表"]);
     return menuItems.filter((it) => !TOGGLE_TITLES.has(it.title));
   }
 

@@ -1,7 +1,7 @@
 import type { PartialBlock } from "@blocknote/core";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent, createEmptyBlockNoteContent } from "./emptyContent";
-import { normalizeBlockContent, ensureFirstTitleHeading } from "./normalize";
+import { normalizeBlockContent, ensureFirstTitleHeading, normalizeHeadingToggleableFlags } from "./normalize";
 import { ensureBodyParagraphAfterTitle } from "./ensureBodyParagraph";
 
 export interface LegacyPageContent {
@@ -183,10 +183,14 @@ export function normalizePageContent(
     const sanitized = isBlockNoteContent(content)
       ? normalizeBlockContent(content)
       : normalizeBlockContent(childrenFromLegacy(content.content));
-    if (!ensureTitle) return sanitized;
+    const withToggleableFlags = (blocks: BlockNoteContent) =>
+      normalizeHeadingToggleableFlags(blocks);
+    if (!ensureTitle) return withToggleableFlags(sanitized);
     if (!sanitized.length) return createEmptyBlockNoteContent();
-    return ensureBodyParagraphAfterTitle(
-      stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized)),
+    return withToggleableFlags(
+      ensureBodyParagraphAfterTitle(
+        stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized)),
+      ),
     );
   } catch {
     return ensureTitle ? createEmptyBlockNoteContent() : [];

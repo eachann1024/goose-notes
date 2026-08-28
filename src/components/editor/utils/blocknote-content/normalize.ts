@@ -279,23 +279,8 @@ function normalizeBlock(block: any): PartialBlock[] {
 
   const children = normalizeBlocks(block.children);
 
-  // 可折叠标题（isToggleable）的 children 是折叠内容本体，必须保留；
-  // 下面的「heading 带 children 拍平」只针对旧数据里的普通标题。
-  const isToggleableHeading =
-    type === "heading" &&
-    Boolean(block.props?.isToggleable ?? block.attrs?.isToggleable);
-
-  if (children.length > 0 && type === "heading" && !isToggleableHeading) {
-    if (!hasInlineText(block.content)) {
-      return children;
-    }
-    const headingBlock: PartialBlock = { type };
-    if (block.props || block.attrs) headingBlock.props = block.props ?? block.attrs;
-    if (block.content !== undefined) headingBlock.content = block.content;
-    return [headingBlock, ...children];
-  }
-
-  if (children.length > 0 && !isToggleableHeading && isEmptyWrapperBlock(type, block)) {
+  // 所有 heading 都保留 children；物理首块拍平由 ensureFirstTitleHeading 负责。
+  if (children.length > 0 && isEmptyWrapperBlock(type, block)) {
     return children;
   }
 
@@ -333,6 +318,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
       props: {
         ...firstBlock.props,
         level: TITLE_HEADING_LEVEL,
+        isToggleable: false,
       },
     } as PartialBlock;
 
@@ -356,6 +342,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
         props: {
           ...firstBlock.props,
           level: TITLE_HEADING_LEVEL,
+          isToggleable: false,
         },
         content,
       } as PartialBlock,
@@ -371,4 +358,36 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
 export function normalizeBlockContent(content: unknown): BlockNoteContent {
   if (!Array.isArray(content)) return [];
   return normalizeBlocks(content);
+}
+
+/**
+ * 规范 heading 的 isToggleable：文档物理首块（顶层 index 0）为 false，
+ * 其余 heading（含嵌套）一律 true。children 不在此函数内改动。
+ */
+export function normalizeHeadingToggleableFlags(
+  blocks: PartialBlock[],
+  atDocumentRoot = true,
+): PartialBlock[] {
+  return blocks.map((block, index) => {
+    let next = block;
+    if (block.type === "heading") {
+      const props = {
+        ...((block.props ?? {}) as Record<string, unknown>),
+      };
+      if (atDocumentRoot && index === 0) {
+        props.isToggleable = false;
+      } else {
+        props.isToggleable = true;
+      }
+      next = { ...block, props } as PartialBlock;
+    }
+    const children = (next as { children?: PartialBlock[] }).children;
+    if (Array.isArray(children) && children.length > 0) {
+      next = {
+        ...next,
+        children: normalizeHeadingToggleableFlags(children, false),
+      };
+    }
+    return next;
+  });
 }

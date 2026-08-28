@@ -62,7 +62,7 @@
 /* uTools 主窗固定全宽布局的左右留白：
    全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
    需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
-   注：折叠标题箭头已改回行内，不再与 side menu 抢 gutter。 */
+   注：side menu 锚在内容列左缘，translateX(-100%) 整颗 pill 落在 gutter。 */
 /* 全宽 gutter 由 page-scroll-container 的 px-14 统一承担，避免与页面图标列双重缩进 */
 .workspace-editor-surface.max-w-none .bn-editor {
   padding-inline: 0;
@@ -72,6 +72,15 @@
   .bn-block-content[data-content-type="heading"]
   h1:first-child {
   margin-top: 0;
+}
+
+/* 光标在标题内：由 goose-active-heading-caret 扩展打 data-goose-heading-caret；
+   ProseMirror focus 在 .ProseMirror 根上，:focus-within 不可靠。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-goose-heading-caret="true"]
+  .bn-inline-content {
+  color: var(--goose-interactive-selected-fg);
+  caret-color: var(--goose-interactive-selected-fg);
 }
 
 /* BlockNote 块间距全局优化 */

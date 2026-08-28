@@ -2,7 +2,6 @@ import { createExtension } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { isInsideToggle } from "@/components/editor/utils/toggleNesting";
-import { scheduleToggleHeadingSiblingAbsorption } from "./toggleHeadingInputRule";
 
 type RestoreState = {
   /** 块内容节点的位置；转换不会改变该位置。 */
@@ -150,34 +149,11 @@ function getBlockTrigger(
 
   const toggle = /^[>》]$/u.exec(textBefore);
   if (toggle) {
-    // 复用旧折叠输入规则的边界：首块、折叠块内部与已是折叠标题的场景均原样输入。
     if (
       currentBlock.id === editor.document[0]?.id ||
       isInsideToggle(editor, currentBlock)
     ) {
       return null;
-    }
-
-    if (currentBlock.type === "heading") {
-      const props = currentBlock.props as {
-        isToggleable?: boolean;
-        level?: number;
-      };
-      if (props.isToggleable) return null;
-
-      const headingId = currentBlock.id;
-      const headingLevel = props.level ?? 1;
-      return {
-        type: "heading",
-        props: { isToggleable: true },
-        triggerText: toggle[0],
-        afterTransform: () =>
-          scheduleToggleHeadingSiblingAbsorption(
-            editor,
-            headingId,
-            headingLevel,
-          ),
-      };
     }
 
     if (currentBlock.type === "paragraph") {
@@ -226,11 +202,8 @@ function createMarkdownBlockTrigger(editor: any) {
         const trigger = getBlockTrigger(textBefore, editor, currentBlock);
         if (!trigger) return false;
 
-        // 除折叠标题外，所有 markdown 触发只允许从普通段落开始。
-        if (
-          parent.type.name !== "paragraph" &&
-          !(trigger.type === "heading" && /^[>》]$/u.test(textBefore))
-        ) {
+        // 除折叠列表外，所有 markdown 触发只允许从普通段落开始。
+        if (parent.type.name !== "paragraph") {
           return false;
         }
 

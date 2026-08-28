@@ -19,6 +19,7 @@ export {
   normalizeBlocks,
   normalizeBlockContent,
   ensureFirstTitleHeading,
+  normalizeHeadingToggleableFlags,
 } from "./normalize";
 export {
   ensureBodyParagraphAfterTitle,

@@ -85,6 +85,7 @@ import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensio
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
+import { gooseToggleHeadingJoinBackwardExtension } from "@/components/editor/extensions/toggleHeadingJoinBackwardExtension";
 import { createGooseNumberedListStartNormalizationExtension } from "@/components/editor/extensions/numberedListStartNormalizationExtension";
 import { createGooseBodyParagraphGuardExtension } from "@/components/editor/extensions/bodyParagraphGuardExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
@@ -97,6 +98,7 @@ import { createInlineCodePathTagExtension } from "@/components/editor/extensions
 import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
+import { gooseActiveHeadingCaretExtension } from "@/components/editor/extensions/activeHeadingCaretExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
@@ -319,6 +321,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseInlineCodeCaretExtension,
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
+        gooseActiveHeadingCaretExtension,
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
@@ -336,6 +339,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseToggleHeadingAutoCollectExtension(),
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
+        gooseToggleHeadingJoinBackwardExtension,
         createGooseNumberedListStartNormalizationExtension(
           usesRawEditorContentRef,
         ),

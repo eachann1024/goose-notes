@@ -6,7 +6,7 @@ import {
   useExtensionState,
 } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
-import { Plus, GripVertical } from "lucide-react";
+import { Plus, GripVertical, ChevronRight } from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
 import { ensureBlockMoveDragging } from "@/components/editor/core/ensureBlockMoveDragging";
 import {
@@ -15,11 +15,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
+import {
+  clickHeadingToggleButton,
+  isFoldableHeadingBlock,
+  queryHeadingTextRect,
+  queryHeadingToggleWrapper,
+  readHeadingToggleExpanded,
+} from "@/components/editor/core/toggleHeadingGutter";
 
 const isMac = /Mac/i.test(navigator.platform);
 const altKeyLabel = isMac ? "⌥" : "Alt";
 
-/** 把手与正文左缘的间距（px） */
+/** 侧栏 pill 右缘与内容列左缘的间距（px） */
 const SIDE_MENU_CONTENT_GAP = 6;
 const SIDEBAR_INTERACTION_SELECTOR = ".workspace-sidebar-pane, .rct-main-tree";
 const SIDEBAR_HOVER_SELECTOR =
@@ -31,6 +38,8 @@ export function EditorSideMenu() {
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
+  const [headingExpanded, setHeadingExpanded] = useState(false);
+  const [foldHot, setFoldHot] = useState(false);
   const state = useExtensionState(SideMenuExtension, {
     selector: (s) =>
       s !== undefined
@@ -43,6 +52,10 @@ export function EditorSideMenu() {
   });
 
   const block = state?.block;
+  const firstBlockId = editor.document[0]?.id as string | undefined;
+  const showHeadingToggle = isFoldableHeadingBlock(block, firstBlockId);
+  const headingBlockId =
+    showHeadingToggle && block ? block.id : undefined;
 
   useEffect(() => {
     const updateSidebarInteracting = (
@@ -76,6 +89,32 @@ export function EditorSideMenu() {
     Boolean(state?.show && state.referencePos && block) &&
     editor.isEditable &&
     !sidebarInteracting;
+
+  useEffect(() => {
+    if (!headingBlockId) {
+      setHeadingExpanded(false);
+      return;
+    }
+    const sync = () => setHeadingExpanded(readHeadingToggleExpanded(headingBlockId));
+    sync();
+    const wrapper = queryHeadingToggleWrapper(headingBlockId);
+    if (!wrapper) return;
+    const observer = new MutationObserver(sync);
+    observer.observe(wrapper, {
+      attributes: true,
+      attributeFilter: ["data-show-children"],
+    });
+    return () => observer.disconnect();
+  }, [headingBlockId]);
+
+  const handleToggleHeading = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!block) return;
+      clickHeadingToggleButton(block.id);
+    },
+    [block],
+  );
 
   const handleAdd = useCallback(
     (e: React.MouseEvent) => {
@@ -125,21 +164,18 @@ export function EditorSideMenu() {
     return null;
   }
 
-  // BlockNote 为 heading 设置了 padding-top:18px，底部仅 3px，
-  // 导致几何中心比文字视觉中心偏高 (18-3)/2 = 7.5px，需补偿。
-  const headingOffset = block.type === "heading" ? 7.5 : 0;
-  const top = referencePos.top + referencePos.height / 2 + headingOffset;
-  // 锚在内容左缘，再向左平移自身 100% 宽度，避免硬编码宽度不足时压住 placeholder。
-  const anchorLeft = Math.max(
-    SIDE_MENU_CONTENT_GAP + 4,
-    referencePos.left - SIDE_MENU_CONTENT_GAP,
-  );
+  const textRect =
+    block.type === "heading" ? queryHeadingTextRect(block.id) : null;
+  const top = textRect
+    ? textRect.top + textRect.height / 2
+    : referencePos.top + referencePos.height / 2;
+  const anchorLeft = referencePos.left - SIDE_MENU_CONTENT_GAP;
   const portalTarget = editor.portalElement ?? document.body;
   return createPortal(
     <div
       className={cn(
         "bn-side-menu fixed z-[70]",
-        "transition-[opacity,transform] duration-150 ease-out",
+        "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
         "[body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none",
       )}
       style={{
@@ -165,7 +201,7 @@ export function EditorSideMenu() {
                 onClick={handleAdd}
                 className={cn(
                   "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
-                  "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground",
+                  "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                 )}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -187,6 +223,36 @@ export function EditorSideMenu() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        {showHeadingToggle ? (
+          <button
+            type="button"
+            draggable={false}
+            aria-expanded={headingExpanded}
+            aria-label={headingExpanded ? "收起章节" : "展开章节"}
+            data-fold-hot={foldHot ? "true" : undefined}
+            onMouseEnter={() => setFoldHot(true)}
+            onMouseLeave={() => setFoldHot(false)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={handleToggleHeading}
+            className={cn(
+              "goose-heading-fold-btn flex h-6 w-[22px] items-center justify-center rounded-[7px]",
+              "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-flex transition-transform duration-150 ease-out motion-reduce:transition-none",
+                headingExpanded ? "rotate-90" : "rotate-0",
+              )}
+              aria-hidden
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </span>
+          </button>
+        ) : null}
         <button
           type="button"
           draggable
@@ -195,7 +261,7 @@ export function EditorSideMenu() {
           className={cn(
             "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
             "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
-            "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground active:cursor-grabbing",
+            "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] active:cursor-grabbing",
           )}
         >
           <GripVertical className="h-3.5 w-3.5" />

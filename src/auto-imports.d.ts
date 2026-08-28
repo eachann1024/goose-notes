@@ -411,6 +411,7 @@ declare global {
   const normalizeEditorUiScale: typeof import('./components/editor/utils/editorContextUi').normalizeEditorUiScale
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
+  const normalizeHeadingToggleableFlags: typeof import('./components/editor/utils/blocknote-content/index').normalizeHeadingToggleableFlags
   const normalizeMarkdownPasteText: typeof import('./components/editor/utils/clipboard').normalizeMarkdownPasteText
   const normalizePageContent: typeof import('./components/editor/utils/blocknote-content/index').normalizePageContent
   const normalizePageTitle: typeof import('./components/editor/utils/page-title').normalizePageTitle

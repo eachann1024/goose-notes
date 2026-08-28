@@ -8,6 +8,7 @@ import type { PagesState } from "../types";
 import {
   LEGACY_TITLE_CHILDREN_REPAIR_MARK_KEY,
   NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY,
+  HEADING_TOGGLEABLE_MIGRATION_MARK_KEY,
 } from "../types";
 import { isLocalFolderPage, seedLocalPageMetadataCache } from "../persistence";
 import {
@@ -20,6 +21,7 @@ import { getContentSignature } from "@/components/editor/utils/blocknote-content
 import {
   repairLegacyTitleChildrenInPages,
   repairNormalizedContentInPages,
+  repairHeadingToggleableInPages,
 } from "../migrations";
 
 export type StoreSet = (
@@ -43,6 +45,14 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   } = hasRepairedNestedEmptyWrappers
     ? { pages: repairedPages, repairedPageIds: [] as string[] }
     : repairNormalizedContentInPages(repairedPages);
+  const hasMigratedHeadingToggleable =
+    getDbStorageItem(HEADING_TOGGLEABLE_MIGRATION_MARK_KEY) === "1";
+  const {
+    pages: headingMigratedPages,
+    repairedPageIds: headingMigratedPageIds,
+  } = hasMigratedHeadingToggleable
+    ? { pages: contentRepairedPages, repairedPageIds: [] as string[] }
+    : repairHeadingToggleableInPages(contentRepairedPages);
 
   if (!hasRepairedLegacyTitleChildren) {
     if (repairedPageIds.length > 0) {
@@ -61,7 +71,7 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   if (!hasRepairedNestedEmptyWrappers) {
     if (contentRepairedPageIds.length > 0) {
       contentRepairedPageIds.forEach((pageId) => {
-        const repairedPage = contentRepairedPages[pageId];
+        const repairedPage = headingMigratedPages[pageId];
         if (!repairedPage || isLocalFolderPage(repairedPage)) return;
         saveInternalPage(repairedPage);
       });
@@ -72,7 +82,21 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
     setDbStorageItem(NESTED_EMPTY_WRAPPER_REPAIR_MARK_KEY, "1");
   }
 
-  const recoveredPages = { ...contentRepairedPages };
+  if (!hasMigratedHeadingToggleable) {
+    if (headingMigratedPageIds.length > 0) {
+      headingMigratedPageIds.forEach((pageId) => {
+        const repairedPage = headingMigratedPages[pageId];
+        if (!repairedPage || repairedPage.localFilePath) return;
+        saveInternalPage(repairedPage);
+      });
+      console.info(
+        `[usePages] migrated heading toggleable flags in ${headingMigratedPageIds.length} page(s).`,
+      );
+    }
+    setDbStorageItem(HEADING_TOGGLEABLE_MIGRATION_MARK_KEY, "1");
+  }
+
+  const recoveredPages = { ...headingMigratedPages };
   let recoveredCount = 0;
   let conflictCount = 0;
   for (const entry of listRecoveryEntries("internal-page")) {
