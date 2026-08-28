@@ -134,6 +134,7 @@ test("已保存的 AI 服务配置 rehydrate 后完整保留", () => {
   expect(normalized.customClaudeApiKey).toBe("sk-claude");
   expect(normalized.selectedModelId).toBe("gpt-4.1-mini");
   expect(normalized.workspaceSelectedModelId).toBe("gpt-4.1");
+  expect(normalized.tinyfishApiKey).toBe("");
   expect(normalized.customModelOptions.map((item) => item.id)).toEqual([
     "gpt-4.1",
     "gpt-4.1-mini",
@@ -170,4 +171,13 @@ test("Claude 协议配置 rehydrate 后保留 Base URL / Key / 默认模型", ()
   expect(normalized.customClaudeApiKey).toBe("sk-ant-keep");
   expect(normalized.selectedModelId).toBe("claude-sonnet-4");
   expect(normalized.customModelOptions).toHaveLength(2);
+});
+
+test("tinyfishApiKey 独立持久化且会被 trim", () => {
+  const normalized = normalizeAISettings({
+    tinyfishApiKey: "  tf-live-key  ",
+    customOpenAIResponsesApiKey: "sk-live-keep",
+  });
+  expect(normalized.tinyfishApiKey).toBe("tf-live-key");
+  expect(normalized.customOpenAIResponsesApiKey).toBe("sk-live-keep");
 });

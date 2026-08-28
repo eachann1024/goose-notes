@@ -3,6 +3,8 @@ export {}
 
 interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
+  readonly VITE_TINYFISH_API_KEY_A?: string;
+  readonly VITE_TINYFISH_API_KEY_B?: string;
 }
 
 declare global {

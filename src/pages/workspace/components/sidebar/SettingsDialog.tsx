@@ -197,6 +197,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setAIReadLocalSkills,
     setAISelectedModelId,
     saveAICustomConfig,
+    setTinyfishApiKey,
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
@@ -256,6 +257,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setAIReadLocalSkills: s.setAIReadLocalSkills,
       setAISelectedModelId: s.setAISelectedModelId,
       saveAICustomConfig: s.saveAICustomConfig,
+      setTinyfishApiKey: s.setTinyfishApiKey,
       setUToolsWindowHeight: s.setUToolsWindowHeight,
       privacy: s.privacy,
       setAutoOpenLastNote: s.setAutoOpenLastNote,
@@ -733,7 +735,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <button
                   type="button"
                   onClick={handleCloseAppsBanner}
-                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
+                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
                   aria-label="关闭鹅的全家桶"
                 >
                   <LucideIcons.X className="h-3 w-3" />
@@ -749,7 +751,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleOpenApp(app)}
-                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
                     >
                       <img
                         src={app.icon}
@@ -855,6 +857,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 selectedModelId={ai.selectedModelId}
                 setSelectedModelId={setAISelectedModelId}
                 saveCustomConfig={saveAICustomConfig}
+                setTinyfishApiKey={setTinyfishApiKey}
               />
             </div>
           )}

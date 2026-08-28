@@ -70,6 +70,8 @@ export interface AISettings {
   customOpenAIApiKey: string;
   customClaudeApiKey: string;
   customModelOptions: AIModelOption[];
+  /** TinyFish 联网搜索 / 读网页密钥；与供应商槽位独立。 */
+  tinyfishApiKey: string;
 }
 
 export type DesktopHotkeyStatusState =
@@ -567,5 +569,6 @@ export function normalizeAISettings(
       customProtocol === "claude" ? legacyApiKey : "",
     ),
     customModelOptions,
+    tinyfishApiKey: normalizeAIApiKey(ai?.tinyfishApiKey),
   };
 }

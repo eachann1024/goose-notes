@@ -30,6 +30,9 @@ default.profraw
 !src/lib/vite-stubs/
 !src/lib/vite-stubs/*
 *.local
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 !.vscode/extensions.json

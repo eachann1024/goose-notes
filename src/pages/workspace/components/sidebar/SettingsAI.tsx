@@ -59,6 +59,7 @@ interface SettingsAIProps {
     apiKey: string;
     modelOptions: AIModelOption[];
   }) => void;
+  setTinyfishApiKey: (key: string) => void;
 }
 
 const SETTINGS_OPTION_ROW_CLASS =
@@ -151,6 +152,7 @@ export function SettingsAI({
   selectedModelId,
   setSelectedModelId,
   saveCustomConfig,
+  setTinyfishApiKey,
 }: SettingsAIProps) {
   const initialProviderId: AIProviderId = isAIProviderId(ai.customProviderId)
     ? ai.customProviderId
@@ -165,6 +167,7 @@ export function SettingsAI({
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [tinyfishKeyVisible, setTinyfishKeyVisible] = useState(false);
   const modelSectionRef = useRef<HTMLDivElement | null>(null);
   const modelRequestIdRef = useRef(0);
 
@@ -483,6 +486,147 @@ export function SettingsAI({
         </div>
       </SettingsSectionCard>
 
+      <div
+        ref={modelSectionRef}
+        id="ai-model-settings"
+        tabIndex={-1}
+        className="scroll-mt-6 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <SettingsSectionCard
+          title={
+            <span className="flex items-center gap-2">
+              <LucideIcons.Brain
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              AI 模型
+            </span>
+          }
+          description={
+            <span className="block">
+              选择全局默认模型
+              <span
+                className="mt-1 block font-medium text-foreground/75"
+                role="status"
+                aria-live="polite"
+              >
+                {savingCustomConfig
+                  ? "正在获取模型列表…"
+                  : customSaveError
+                    ? `获取失败：${customSaveError}`
+                    : customModels.length > 0
+                      ? `已获取 ${customModels.length} 个${currentModel ? ` · ${currentModel.label}` : ""}`
+                      : "尚未获取到模型"}
+              </span>
+            </span>
+          }
+          actions={
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={Boolean(saveButtonReason)}
+              onClick={() => {
+                void refreshCustomModels(
+                  getConnectionForProvider(providerId),
+                  "refresh",
+                );
+              }}
+            >
+              {savingCustomConfig ? (
+                <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <LucideIcons.RefreshCw className="h-4 w-4" />
+              )}
+              {savingCustomConfig ? "获取中…" : "重新获取模型"}
+            </Button>
+          }
+        >
+          <div className="space-y-3">
+            <div
+              className={cn(
+                "flex items-center justify-between gap-4 p-4",
+                SETTINGS_OPTION_ROW_CLASS,
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <LucideIcons.Cpu
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  strokeWidth={1.75}
+                />
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-foreground">
+                    默认模型
+                  </Label>
+                </div>
+              </div>
+              <TooltipProvider delayDuration={600}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={modelButtonDisabled}
+                            className={cn(
+                              "min-w-[220px] justify-between rounded-[10px]",
+                              modelButtonDisabled && "cursor-not-allowed",
+                            )}
+                          >
+                            <span className="truncate">
+                              {currentModel?.label ??
+                                modelButtonReason ??
+                                "请选择模型"}
+                            </span>
+                            <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-[280px]"
+                          style={{
+                            maxHeight:
+                              "min(360px, var(--radix-dropdown-menu-content-available-height))",
+                          }}
+                        >
+                          <DropdownMenuRadioGroup
+                            value={selectedModelId ?? ""}
+                            onValueChange={handleModelChange}
+                          >
+                            {customModels.map((model) => (
+                              <DropdownMenuRadioItem
+                                key={model.id}
+                                value={model.id}
+                                className="items-start gap-2"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-medium text-foreground">
+                                    {model.label}
+                                  </div>
+                                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                    {model.description || model.id}
+                                  </div>
+                                </div>
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TooltipTrigger>
+                  {modelButtonReason ? (
+                    <TooltipContent side="left">
+                      {modelButtonReason}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        </SettingsSectionCard>
+      </div>
+
       <SettingsSectionCard
         title={
           <span className="flex items-center gap-2">
@@ -629,7 +773,7 @@ export function SettingsAI({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-foreground dark:hover:bg-[var(--goose-interactive-hover)]"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
                   onClick={() => setApiKeyVisible((visible) => !visible)}
                   aria-label={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
                   aria-pressed={apiKeyVisible}
@@ -701,146 +845,65 @@ export function SettingsAI({
         </div>
       </SettingsSectionCard>
 
-      <div
-        ref={modelSectionRef}
-        id="ai-model-settings"
-        tabIndex={-1}
-        className="scroll-mt-6 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      <SettingsSectionCard
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Globe
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            联网搜索
+          </span>
+        }
+        description="打包会内置两个 TinyFish key 轮询；这里填写可覆盖。"
       >
-        <SettingsSectionCard
-          title={
-            <span className="flex items-center gap-2">
-              <LucideIcons.Brain
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              AI 模型
-            </span>
-          }
-          description={
-            <span className="block">
-              选择全局默认模型
-              <span
-                className="mt-1 block font-medium text-foreground/75"
-                role="status"
-                aria-live="polite"
-              >
-                {savingCustomConfig
-                  ? "正在获取模型列表…"
-                  : customSaveError
-                    ? `获取失败：${customSaveError}`
-                    : customModels.length > 0
-                      ? `已获取 ${customModels.length} 个${currentModel ? ` · ${currentModel.label}` : ""}`
-                      : "尚未获取到模型"}
-              </span>
-            </span>
-          }
-          actions={
+        <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
+          <div className="flex items-center gap-3">
+            <LucideIcons.KeyRound
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            <Label
+              htmlFor="tinyfish-api-key"
+              className="text-sm font-medium text-foreground"
+            >
+              TinyFish API Key
+            </Label>
+          </div>
+          <div className="relative">
+            <Input
+              id="tinyfish-api-key"
+              type={tinyfishKeyVisible ? "text" : "password"}
+              value={ai.tinyfishApiKey ?? ""}
+              onChange={(event) => setTinyfishApiKey(event.target.value)}
+              placeholder="在 agent.tinyfish.ai 申请后填写"
+              autoComplete="off"
+              spellCheck={false}
+              className="pr-10"
+            />
             <Button
-              variant="secondary"
-              size="sm"
-              disabled={Boolean(saveButtonReason)}
-              onClick={() => {
-                void refreshCustomModels(
-                  getConnectionForProvider(providerId),
-                  "refresh",
-                );
-              }}
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+              onClick={() => setTinyfishKeyVisible((visible) => !visible)}
+              aria-label={
+                tinyfishKeyVisible ? "隐藏 TinyFish API Key" : "显示 TinyFish API Key"
+              }
+              aria-pressed={tinyfishKeyVisible}
             >
-              {savingCustomConfig ? (
-                <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <LucideIcons.RefreshCw className="h-4 w-4" />
-              )}
-              {savingCustomConfig ? "获取中…" : "重新获取模型"}
-            </Button>
-          }
-        >
-          <div className="space-y-3">
-            <div
-              className={cn(
-                "flex items-center justify-between gap-4 p-4",
-                SETTINGS_OPTION_ROW_CLASS,
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <LucideIcons.Cpu
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
+              {tinyfishKeyVisible ? (
+                <LucideIcons.EyeOff
+                  className="h-4 w-4"
                   strokeWidth={1.75}
                 />
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-foreground">
-                    默认模型
-                  </Label>
-                </div>
-              </div>
-              <TooltipProvider delayDuration={600}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={modelButtonDisabled}
-                            className={cn(
-                              "min-w-[220px] justify-between rounded-[10px]",
-                              modelButtonDisabled && "cursor-not-allowed",
-                            )}
-                          >
-                            <span className="truncate">
-                              {currentModel?.label ??
-                                modelButtonReason ??
-                                "请选择模型"}
-                            </span>
-                            <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-[280px]"
-                          style={{
-                            maxHeight:
-                              "min(360px, var(--radix-dropdown-menu-content-available-height))",
-                          }}
-                        >
-                          <DropdownMenuRadioGroup
-                            value={selectedModelId ?? ""}
-                            onValueChange={handleModelChange}
-                          >
-                            {customModels.map((model) => (
-                              <DropdownMenuRadioItem
-                                key={model.id}
-                                value={model.id}
-                                className="items-start gap-2"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-sm font-medium text-foreground">
-                                    {model.label}
-                                  </div>
-                                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                    {model.description || model.id}
-                                  </div>
-                                </div>
-                              </DropdownMenuRadioItem>
-                            ))}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TooltipTrigger>
-                  {modelButtonReason ? (
-                    <TooltipContent side="left">
-                      {modelButtonReason}
-                    </TooltipContent>
-                  ) : null}
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+              ) : (
+                <LucideIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </Button>
           </div>
-        </SettingsSectionCard>
-      </div>
+        </div>
+      </SettingsSectionCard>
 
       <SettingsSectionCard
         title={

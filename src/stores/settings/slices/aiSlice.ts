@@ -36,6 +36,7 @@ export interface AISliceActions {
     apiKey: string;
     modelOptions: AIModelOption[];
   }) => void;
+  setTinyfishApiKey: (key: string) => void;
 }
 
 export type AISlice = AISliceState & AISliceActions;
@@ -58,6 +59,7 @@ export const AI_INITIAL_STATE: AISliceState = {
     customOpenAIApiKey: "",
     customClaudeApiKey: "",
     customModelOptions: [],
+    tinyfishApiKey: "",
   },
 };
 
@@ -167,5 +169,9 @@ export function createAISlice(set: SetFn): AISlice {
 
         return { ai: nextAI };
       }),
+    setTinyfishApiKey: (key) =>
+      set((state) => ({
+        ai: { ...state.ai, tinyfishApiKey: normalizeAIApiKey(key) },
+      })),
   };
 }
