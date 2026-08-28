@@ -287,31 +287,47 @@ function useHistoryViewLogic() {
       });
   };
 
+  const applyMilestoneLocally = (versionId: string, willBe: boolean) => {
+    setIndex((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        versions: prev.versions.map((entry) =>
+          entry.versionId === versionId
+            ? { ...entry, isMilestone: willBe }
+            : entry,
+        ),
+      };
+    });
+  };
+
   const handleToggleMilestone = (versionId: string, willBe: boolean) => {
     if (!pageId || pendingMilestoneVersionId) return;
-    setPendingMilestoneVersionId(versionId);
-    if (willBe) {
-      markMilestone(pageId, versionId)
-        .then(() => {
-          toast.success("已标记为里程碑");
-          bumpRefresh();
-        })
-        .catch((err) => {
-          console.error("[history] markMilestone failed:", err);
-          toast.error("标记失败，请重试");
-        })
-        .finally(() => setPendingMilestoneVersionId(null));
-    } else {
-      unmarkMilestone(pageId, versionId)
-        .then(() => {
-          bumpRefresh();
-        })
-        .catch((err) => {
-          console.error("[history] unmarkMilestone failed:", err);
-          toast.error("取消标记失败，请重试");
-        })
-        .finally(() => setPendingMilestoneVersionId(null));
+    if (!willBe) {
+      const ok = window.confirm(
+        "取消后该版本不再受保护，历史数量超限时可能被自动清理。确定取消里程碑？",
+      );
+      if (!ok) return;
     }
+    setPendingMilestoneVersionId(versionId);
+    applyMilestoneLocally(versionId, willBe);
+    const op = willBe
+      ? markMilestone(pageId, versionId)
+      : unmarkMilestone(pageId, versionId);
+    op.then(() => {
+      if (willBe) toast.success("已标记为里程碑，清理历史时会保留此版本");
+      else toast.success("已取消里程碑");
+      bumpRefresh();
+    })
+      .catch((err) => {
+        console.error(
+          `[history] ${willBe ? "markMilestone" : "unmarkMilestone"} failed:`,
+          err,
+        );
+        applyMilestoneLocally(versionId, !willBe);
+        toast.error(willBe ? "标记失败，请重试" : "取消标记失败，请重试");
+      })
+      .finally(() => setPendingMilestoneVersionId(null));
   };
 
   return {
@@ -403,8 +419,9 @@ export function HistoryVersionList() {
                     return (
                       <div
                         key={v.versionId}
+                        data-selected={isSelected ? "true" : "false"}
                         className={cn(
-                          "history-version-item group relative rounded-[10px] transition-colors duration-150",
+                          "history-version-item group relative flex items-center rounded-[10px] transition-colors duration-150",
                           isSelected
                             ? "bg-[var(--goose-interactive-selected)]"
                             : "hover:bg-[var(--goose-interactive-hover)]",
@@ -440,27 +457,23 @@ export function HistoryVersionList() {
                             closeNotebookAiIfFullscreen();
                             select(v.versionId);
                           }}
-                          className={cn(
-                            "flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-[10px] py-1.5 pl-8 pr-11 text-left transition-[background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
-                            "history-version-row",
-                            isSelected
-                              ? "hover:bg-[var(--goose-interactive-selected)] hover:shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-fg)] active:bg-[var(--goose-interactive-selected)] active:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]"
-                              : "hover:bg-[var(--goose-control-hover-bg)] active:bg-[var(--goose-interactive-selected)]",
-                          )}
+                          className="history-version-row flex min-h-8 w-full min-w-0 cursor-pointer items-start py-1.5 pl-8 pr-8 text-left transition-colors duration-150 focus-visible:outline-none"
                         >
                           <span
                             className={cn(
-                              "min-w-0 flex-1 truncate text-xs leading-none tabular-nums",
+                              "min-w-0 text-xs leading-snug",
                               isSelected
                                 ? "font-medium text-[var(--goose-interactive-selected-fg)]"
                                 : "text-foreground",
                             )}
                           >
-                            {formatTime(v.createdAt)}
+                            <span className="tabular-nums">
+                              {formatTime(v.createdAt)}
+                            </span>
                             {v.label ? (
                               <span
                                 className={cn(
-                                  "ml-1.5 truncate text-[11px] font-normal leading-none",
+                                  "ml-1.5 font-normal",
                                   isSelected
                                     ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
                                     : "text-muted-foreground",
@@ -469,17 +482,13 @@ export function HistoryVersionList() {
                                 {v.label}
                               </span>
                             ) : null}
-                          </span>
-                          <span className="flex shrink-0 items-center gap-1.5">
                             {deltaText ? (
                               <span
                                 className={cn(
-                                  "text-[10px] leading-none tabular-nums",
+                                  "ml-1.5 text-[10px] tabular-nums",
                                   isSelected
-                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
-                                    : delta > 0
-                                      ? "text-foreground/55"
-                                      : "text-muted-foreground/55",
+                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-55"
+                                    : "text-muted-foreground/55",
                                 )}
                               >
                                 {deltaText}
@@ -489,7 +498,6 @@ export function HistoryVersionList() {
                         </button>
                         <button
                           type="button"
-                          disabled={isMilestonePending}
                           data-marked={v.isMilestone ? "true" : "false"}
                           aria-busy={isMilestonePending || undefined}
                           aria-pressed={v.isMilestone}
@@ -502,29 +510,29 @@ export function HistoryVersionList() {
                                 ? "取消标记此版本"
                                 : "标记此版本"
                           }
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                            if (event.button !== 0) return;
+                            event.preventDefault();
+                            handleToggleMilestone(v.versionId, !v.isMilestone);
+                          }}
                           onClick={(event) => {
                             event.stopPropagation();
+                            if (event.detail !== 0) return;
                             handleToggleMilestone(v.versionId, !v.isMilestone);
                           }}
                           className={cn(
-                            "history-star-control group/star absolute right-1 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color,opacity,transform] duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] active:scale-95 active:bg-[var(--goose-interactive-selected)] disabled:cursor-wait disabled:opacity-70",
+                            "history-star-control group/star absolute right-0.5 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color] duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] active:bg-[var(--goose-interactive-selected)]",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                            v.isMilestone || isMilestonePending
-                              ? "opacity-100"
-                              : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100",
                           )}
                         >
-                          {isMilestonePending ? (
-                            <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
-                          ) : (
-                            <LucideIcons.Star
-                              className={cn(
-                                "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
-                                v.isMilestone &&
-                                  "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)] group-hover/star:text-[var(--goose-color-favorite)]",
-                              )}
-                            />
-                          )}
+                          <LucideIcons.Star
+                            className={cn(
+                              "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
+                              v.isMilestone &&
+                                "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)] group-hover/star:text-[var(--goose-color-favorite)]",
+                            )}
+                          />
                         </button>
                       </div>
                     );

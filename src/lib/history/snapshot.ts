@@ -2,6 +2,7 @@ import type { BlockNoteContent } from "@/components/editor/utils/blocknote-conte
 import { countWords } from "@/components/editor/utils/content-text-extractor";
 import { resolveHistoryBackend, type HistoryBackend } from "./backend";
 import { getHistoryVisibleSignature } from "./contentSignature";
+import { selectEvictedVersionIds } from "./retention";
 import { usePages } from "@/stores/usePages";
 import type {
   HistoryIndexEntry,
@@ -9,11 +10,20 @@ import type {
   HistoryVersion,
 } from "./types";
 
-/** 单页面历史版本硬上限。超过时淘汰最旧的非里程碑。 */
-const MAX_VERSIONS_PER_PAGE = 50;
-
 /** 自动历史之间至少相隔 5 分钟；期间编辑由记录器合并为最新 pending。 */
 export const AUTOMATIC_SNAPSHOT_MIN_INTERVAL_MS = 5 * 60_000;
+
+const indexWriteChains = new Map<string, Promise<unknown>>();
+
+function withIndexLock<T>(pageId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = indexWriteChains.get(pageId) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  indexWriteChains.set(pageId, next);
+  next.finally(() => {
+    if (indexWriteChains.get(pageId) === next) indexWriteChains.delete(pageId);
+  });
+  return next;
+}
 
 function genVersionId(now: number): string {
   return `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -74,6 +84,14 @@ export async function recordHistorySnapshot(
 export async function recordHistorySnapshotDetailed(
   params: RecordSnapshotParams,
 ): Promise<RecordHistorySnapshotResult> {
+  return withIndexLock(params.pageId, () =>
+    recordHistorySnapshotUnlocked(params),
+  );
+}
+
+async function recordHistorySnapshotUnlocked(
+  params: RecordSnapshotParams,
+): Promise<RecordHistorySnapshotResult> {
   const { pageId, workspaceId, content, trigger, isMilestone, label } = params;
 
   const backend = resolveHistoryBackend(pageId);
@@ -100,7 +118,7 @@ export async function recordHistorySnapshotDetailed(
       (!latestEntry.isMilestone ||
         (label !== undefined && label !== latestEntry.label))
     ) {
-      await patchEntry(pageId, latestEntry.versionId, {
+      await patchEntryUnlocked(pageId, latestEntry.versionId, {
         ...(isMilestone ? { isMilestone: true } : {}),
         ...(label !== undefined ? { label } : {}),
       });
@@ -160,21 +178,13 @@ export async function recordHistorySnapshotDetailed(
   };
 
   let nextVersions = [...index.versions, entry];
-
-  if (nextVersions.length > MAX_VERSIONS_PER_PAGE) {
-    const evictCount = nextVersions.length - MAX_VERSIONS_PER_PAGE;
-    const evictedVersionIds = nextVersions
-      .filter((v) => !v.isMilestone)
-      .slice(0, evictCount)
-      .map((v) => v.versionId);
-
-    if (evictedVersionIds.length > 0) {
-      const evictedSet = new Set(evictedVersionIds);
-      for (const versionId of evictedVersionIds) {
-        await backend.removeVersion(pageId, versionId);
-      }
-      nextVersions = nextVersions.filter((v) => !evictedSet.has(v.versionId));
+  const evictedVersionIds = selectEvictedVersionIds(nextVersions);
+  if (evictedVersionIds.length > 0) {
+    const evictedSet = new Set(evictedVersionIds);
+    for (const versionId of evictedVersionIds) {
+      await backend.removeVersion(pageId, versionId);
     }
+    nextVersions = nextVersions.filter((v) => !evictedSet.has(v.versionId));
   }
 
   await backend.saveIndex({
@@ -187,6 +197,16 @@ export async function recordHistorySnapshotDetailed(
 }
 
 async function patchEntry(
+  pageId: string,
+  versionId: string,
+  patch: Partial<HistoryIndexEntry>,
+): Promise<void> {
+  await withIndexLock(pageId, () =>
+    patchEntryUnlocked(pageId, versionId, patch),
+  );
+}
+
+async function patchEntryUnlocked(
   pageId: string,
   versionId: string,
   patch: Partial<HistoryIndexEntry>,
@@ -234,9 +254,15 @@ export async function deleteVersion(
   pageId: string,
   versionId: string,
 ): Promise<void> {
-  const backend = resolveHistoryBackend(pageId);
-  const index = await backend.loadIndex(pageId);
-  const nextVersions = index.versions.filter((v) => v.versionId !== versionId);
-  await backend.removeVersion(pageId, versionId);
-  await backend.saveIndex({ ...index, versions: nextVersions });
+  await withIndexLock(pageId, async () => {
+    const backend = resolveHistoryBackend(pageId);
+    const index = await backend.loadIndex(pageId);
+    const target = index.versions.find((v) => v.versionId === versionId);
+    if (!target || target.isMilestone) return;
+    const nextVersions = index.versions.filter(
+      (v) => v.versionId !== versionId,
+    );
+    await backend.removeVersion(pageId, versionId);
+    await backend.saveIndex({ ...index, versions: nextVersions });
+  });
 }

@@ -41,15 +41,26 @@ export async function filterAdjacentDuplicateHistoryEntries(
 
     const previousLabel = previous.entry.label?.trim();
     const currentLabel = entry.label?.trim();
-    if (
-      (previousLabel && currentLabel && previousLabel !== currentLabel) ||
-      (previous.entry.isMilestone && entry.isMilestone)
-    ) {
+
+    if (entry.isMilestone) {
+      if (previous.entry.isMilestone || previousLabel) {
+        kept.push({ entry, signature });
+        return;
+      }
+      kept[kept.length - 1] = { entry, signature };
+      return;
+    }
+
+    if (previous.entry.isMilestone) {
+      return;
+    }
+
+    if (previousLabel && currentLabel && previousLabel !== currentLabel) {
       kept.push({ entry, signature });
       return;
     }
 
-    if (previous.entry.isMilestone || (previousLabel && !currentLabel)) {
+    if (previousLabel && !currentLabel) {
       return;
     }
 

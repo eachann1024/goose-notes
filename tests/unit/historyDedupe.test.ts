@@ -109,3 +109,23 @@ test("history view collapses adjacent duplicate content and preserves meaningful
     "mono",
   ]);
 });
+
+test("history view never drops a milestone that duplicates a named version", async () => {
+  const named = entry("named", 1, { label: "命名版本" });
+  const milestone = entry("milestone", 2, { isMilestone: true });
+  const versions = [
+    version(named, [{ type: "paragraph", content: "same" }]),
+    version(milestone, [{ type: "paragraph", content: "same" }]),
+  ];
+
+  const filtered = await filterAdjacentDuplicateHistoryEntries(
+    "page",
+    versions.map(indexEntryFromVersion),
+    backendFor(versions),
+  );
+
+  expect(filtered.map((item) => item.versionId)).toEqual([
+    "named",
+    "milestone",
+  ]);
+});

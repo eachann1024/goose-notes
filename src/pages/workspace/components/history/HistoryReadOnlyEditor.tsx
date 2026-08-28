@@ -35,7 +35,7 @@ export function HistoryReadOnlyEditor({
   content,
   versionKey,
 }: HistoryReadOnlyEditorProps) {
-  const { tableEvenColumnWidth, theme } = useSettings();
+  const { theme } = useSettings();
   const { activePageId } = usePages();
   const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
   const effectiveTheme = useResolvedTheme(theme);
@@ -124,7 +124,6 @@ export function HistoryReadOnlyEditor({
       className={cn(
         "workspace-editor-surface mt-1 flex min-h-0 w-full flex-1 flex-col pt-1 pb-12",
         "max-w-full",
-        tableEvenColumnWidth && "goose-table-even-column-width",
       )}
     >
       <BlockNoteView

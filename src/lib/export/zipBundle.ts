@@ -748,7 +748,9 @@ export async function importNotebooksFromZip(
     // 还原并合并历史记录数据到本地数据库
     if (meta.history) {
       const { resolveHistoryBackend } = await import("@/lib/history/backend");
-      const MAX_VERSIONS_PER_PAGE = 50;
+      const { selectEvictedVersionIds } = await import(
+        "@/lib/history/retention"
+      );
 
       for (const [sourcePageId, historyItem] of Object.entries(
         meta.history,
@@ -782,21 +784,12 @@ export async function importNotebooksFromZip(
           );
 
           // 2. 超出数量限制裁剪（淘汰最旧的非 Milestone）
-          const evictedVersionIds: string[] = [];
-          if (mergedVersions.length > MAX_VERSIONS_PER_PAGE) {
-            const evictCount = mergedVersions.length - MAX_VERSIONS_PER_PAGE;
-            evictedVersionIds.push(
-              ...mergedVersions
-                .filter((v) => !v.isMilestone)
-                .slice(0, evictCount)
-                .map((v) => v.versionId),
+          const evictedVersionIds = selectEvictedVersionIds(mergedVersions);
+          if (evictedVersionIds.length > 0) {
+            const evictedSet = new Set(evictedVersionIds);
+            mergedVersions = mergedVersions.filter(
+              (v) => !evictedSet.has(v.versionId),
             );
-            if (evictedVersionIds.length > 0) {
-              const evictedSet = new Set(evictedVersionIds);
-              mergedVersions = mergedVersions.filter(
-                (v) => !evictedSet.has(v.versionId),
-              );
-            }
           }
 
           // 3. 计算最新的字符数

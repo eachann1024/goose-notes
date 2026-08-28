@@ -1,6 +1,8 @@
 import { expect, test } from "playwright/test";
 import {
   AUTOMATIC_SNAPSHOT_MIN_INTERVAL_MS,
+  deleteVersion,
+  markMilestone,
   recordHistorySnapshot,
   recordHistorySnapshotDetailed,
 } from "../../src/lib/history/snapshot";
@@ -216,6 +218,33 @@ test("same-content milestone upgrades the latest version without duplicating it"
   });
 });
 
+test("marking a milestone is not overwritten by a concurrent snapshot", async () => {
+  const first = await recordHistorySnapshot({
+    pageId,
+    workspaceId,
+    content: paragraph("keep"),
+    trigger: "idle",
+  });
+  expect(first).not.toBeNull();
+
+  now += AUTOMATIC_SNAPSHOT_MIN_INTERVAL_MS;
+  await Promise.all([
+    markMilestone(pageId, first!.versionId),
+    recordHistorySnapshot({
+      pageId,
+      workspaceId,
+      content: paragraph("next"),
+      trigger: "manual",
+    }),
+  ]);
+
+  const index = await resolveHistoryBackend(pageId).loadIndex(pageId);
+  expect(
+    index.versions.find((entry) => entry.versionId === first!.versionId)
+      ?.isMilestone,
+  ).toBe(true);
+});
+
 test("capacity eviction never removes or overwrites milestone versions", async () => {
   const milestone = await recordHistorySnapshot({
     pageId,
@@ -258,4 +287,24 @@ test("capacity eviction never removes or overwrites milestone versions", async (
   ).toBe(true);
   const preserved = await backend.loadVersion(pageId, milestone!.versionId);
   expect(preserved?.content).toEqual(paragraph("milestone"));
+});
+
+test("deleteVersion does not remove milestone versions", async () => {
+  const milestone = await recordHistorySnapshot({
+    pageId,
+    workspaceId,
+    content: paragraph("keep"),
+    trigger: "manual",
+    isMilestone: true,
+  });
+  expect(milestone).not.toBeNull();
+
+  await deleteVersion(pageId, milestone!.versionId);
+
+  const index = await resolveHistoryBackend(pageId).loadIndex(pageId);
+  expect(index.versions).toHaveLength(1);
+  expect(index.versions[0]).toMatchObject({
+    versionId: milestone!.versionId,
+    isMilestone: true,
+  });
 });
