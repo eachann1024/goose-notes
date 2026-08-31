@@ -164,6 +164,14 @@
   transition: none !important;
 }
 
+/* 拖动源保持选中底，避免半透明占位把当前操作对象“摘出”选中态。 */
+.rct-main-tree .main-tree-row.main-tree-row--selected.main-tree-row--dragging {
+  color: var(--goose-interactive-selected-fg) !important;
+  background: var(--goose-interactive-selected) !important;
+  box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset !important;
+  opacity: 1;
+}
+
 /* 5) rct 的非键盘聚焦态仍不显示额外边框，避免与选中背景叠加。 */
 .rct-main-tree [data-rct-item-interactive]:focus:not(:focus-visible),
 .rct-main-tree [data-rct-item-focus="true"]:focus:not(:focus-visible) {
