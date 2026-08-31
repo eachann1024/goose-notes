@@ -2,6 +2,8 @@ import { NotebookSwitcher } from "./NotebookSwitcher";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { isElectronHost } from "@/lib/local-vault";
+import { useSidebarView } from "@/stores/useSidebarView";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 
@@ -337,6 +339,16 @@ export function SidebarHeader({
       if (useNotebooks.getState().activeNotebookId !== targetPage.workspaceId) {
         setPendingNavigatePageId(targetPage.id);
         setActiveNotebook(targetPage.workspaceId);
+      }
+      if (
+        isElectronHost &&
+        targetPage.isFolder &&
+        useNotebooks.getState().notebooks[targetPage.workspaceId]?.source ===
+          "local-folder"
+      ) {
+        useSidebarView.getState().expand(targetPage.workspaceId, targetPage.id);
+        setExpandPageId(targetPage.id);
+        return;
       }
       openPreviewTab(targetPage.id);
       setExpandPageId(targetPage.id);

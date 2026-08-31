@@ -90,20 +90,27 @@ function generateId() {
 // 默认记事本
 const DEFAULT_NOTEBOOK_ID = "default-notebook";
 
+// Electron 桌面端为「仅本地文件夹」模式：无内置笔记本，数据层不种 default-notebook。
+// 单元测试没有 vite define，用 typeof 兜底避免模块加载即 ReferenceError。
+const isElectronHost =
+  typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron";
+
 export const useNotebooks = create<NotebooksState>()(
   persist(
     (set, get) => ({
-      notebooks: {
-        [DEFAULT_NOTEBOOK_ID]: {
-          id: DEFAULT_NOTEBOOK_ID,
-          name: "Note",
-          icon: "BookOpen",
-          order: 0,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        },
-      },
-      activeNotebookId: DEFAULT_NOTEBOOK_ID,
+      notebooks: isElectronHost
+        ? ({} as Record<string, Notebook>)
+        : {
+            [DEFAULT_NOTEBOOK_ID]: {
+              id: DEFAULT_NOTEBOOK_ID,
+              name: "Note",
+              icon: "BookOpen",
+              order: 0,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            },
+          },
+      activeNotebookId: isElectronHost ? null : DEFAULT_NOTEBOOK_ID,
       lastActivePageByNotebook: {},
       localFolderLoadStates: {},
 
@@ -113,6 +120,8 @@ export const useNotebooks = create<NotebooksState>()(
         overrideIfExists = false,
         customId?: string,
       ) => {
+        // Electron 仅本地文件夹模式：拒绝创建内置记事本
+        if (isElectronHost) return "";
         const dupNotebook = overrideIfExists
           ? Object.values(get().notebooks).find(
               (n) => (customId && n.id === customId) || n.name === name,
@@ -286,7 +295,8 @@ export const useNotebooks = create<NotebooksState>()(
       deleteNotebook: (id) => {
         const state = get();
         const notebookCount = Object.keys(state.notebooks).length;
-        if (notebookCount <= 1) return;
+        // 桌面端允许移除最后一个文件夹（回到空态）；uTools 至少保留一本。
+        if (!isElectronHost && notebookCount <= 1) return;
         const deletedNotebook = state.notebooks[id];
 
         const pagesStore = usePages.getState();
@@ -484,6 +494,24 @@ export const useNotebooks = create<NotebooksState>()(
         lastActivePageByNotebook: state.lastActivePageByNotebook,
       }),
       skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        // Electron 仅本地文件夹模式：水合后立刻丢掉内置本（含历史 default-notebook），
+        // 绝不回种；activeNotebookId 失效时回空态。
+        if (!isElectronHost || !state) return;
+        const localOnly = Object.fromEntries(
+          Object.entries(state.notebooks).filter(
+            ([, notebook]) => notebook.source === "local-folder",
+          ),
+        );
+        const activeValid =
+          state.activeNotebookId && localOnly[state.activeNotebookId]
+            ? state.activeNotebookId
+            : null;
+        useNotebooks.setState({
+          notebooks: localOnly,
+          activeNotebookId: activeValid,
+        });
+      },
       migrate: (persistedState: unknown) => {
         const safeState = persistedState as
           | {

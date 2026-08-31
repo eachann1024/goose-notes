@@ -20,6 +20,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
+import { isElectronHost } from "@/lib/local-vault";
 import { closeNotebookAiIfFullscreen } from "../../notebook-ai/useNotebookAiPanel";
 import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
@@ -223,6 +224,7 @@ export function SortablePageRow({
       onToggleOpen(page.id);
     }
     const newId = createPage(page.id, activeNotebookId || DEFAULT_NOTEBOOK);
+    if (!newId) return;
     openInCurrentTab(newId);
   };
 
@@ -312,6 +314,10 @@ export function SortablePageRow({
           )}
           onClick={(e) => {
             e.stopPropagation();
+            if (isElectronHost && isLocalNotebook && page.isFolder) {
+              if (hasChildren) onToggleOpen(page.id);
+              return;
+            }
             // 收藏等复用 SidebarTree 的区域不应为识别双击而延迟单击。
             // 双击随后会把这次即时打开的预览标签晋升为永久标签。
             openPageFromSidebar(
@@ -322,12 +328,17 @@ export function SortablePageRow({
           onDoubleClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (isElectronHost && isLocalNotebook && page.isFolder) return;
             openPageFromSidebar(page.id, "permanent");
           }}
           onAuxClick={(e) => {
             if (e.button === 1) {
               e.preventDefault();
               e.stopPropagation();
+              if (isElectronHost && isLocalNotebook && page.isFolder) {
+                if (hasChildren) onToggleOpen(page.id);
+                return;
+              }
               openPageFromSidebar(page.id, "permanent");
             }
           }}

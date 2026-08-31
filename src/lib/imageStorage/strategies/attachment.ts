@@ -49,13 +49,13 @@ export class AttachmentStrategy implements IImageStorageStrategy {
     const id = `${ID_PREFIX}${hash}.${ext}`
 
     // 去重：已存在则直接复用，不重复写入
-    const existing = UToolsAdapter.db.getAttachment(id)
+    const existing = await UToolsAdapter.db.getAttachment(id)
     if (existing) {
       return `${ATT_PREFIX}${id}`
     }
 
-    // 存储到 uTools attachment（宿主上限约 10MB）
-    const result = UToolsAdapter.db.postAttachment(id, buffer, out.type)
+    // 存储到宿主附件（uTools 上限约 10MB，Electron 桌面端 50MB）
+    const result = await UToolsAdapter.db.postAttachment(id, buffer, out.type)
     if (!result || result.ok === false) {
       const detail =
         result && typeof result.error === 'string'
@@ -63,9 +63,10 @@ export class AttachmentStrategy implements IImageStorageStrategy {
           : result?.error
             ? JSON.stringify(result.error)
             : 'unknown'
-      throw new Error(
-        `图片保存失败（可能超过 uTools 附件上限）: ${detail}`,
-      )
+      if (detail.includes('上限')) {
+        throw new Error(detail)
+      }
+      throw new Error(`图片写入附件存储失败: ${detail}`)
     }
 
     return `${ATT_PREFIX}${id}`
@@ -76,10 +77,10 @@ export class AttachmentStrategy implements IImageStorageStrategy {
    */
   async load(ref: string): Promise<Blob | null> {
     const id = ref.slice(ATT_PREFIX.length)
-    const data = UToolsAdapter.db.getAttachment(id)
+    const data = await UToolsAdapter.db.getAttachment(id)
     if (!data) return null
 
-    const mimeType = UToolsAdapter.db.getAttachmentType(id) || 'image/jpeg'
+    const mimeType = (await UToolsAdapter.db.getAttachmentType(id)) || 'image/jpeg'
     return new Blob([data.buffer as ArrayBuffer], { type: mimeType })
   }
 

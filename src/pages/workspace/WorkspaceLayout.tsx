@@ -10,6 +10,8 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { PageEmptyState } from "./components/page/PageEmptyState";
 import { FolderHomePage } from "./components/page/FolderHomePage";
 import { PageHeader } from "./components/page/PageHeader";
+import { DesktopTitleBar } from "./components/page/DesktopTitleBar";
+import { useDesktopWindowTitleSync } from "@/hooks/useDesktopWindowTitle";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
@@ -33,6 +35,11 @@ import {
 } from "./components/notebook-ai/useNotebookAiPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { subscribePageTitleFocus } from "@/lib/page-title-focus";
+import { isElectronRuntime } from "@/lib/electron/runtime";
+
+// Electron 桌面端 chrome：全宽 overlay 顶栏挂在 .workspace-shell 顶部（覆盖侧栏+主区），
+// 主区内不再重复渲染 PageHeader/HistoryToolbar。uTools 构建保持现状，一行不挪。
+const isElectronChrome = isElectronRuntime();
 
 function GuardedNotebookAiPanel(props: ComponentProps<typeof NotebookAiPanel>) {
   return (
@@ -141,6 +148,8 @@ export function WorkspaceLayout({
 
   const page = activePageId ? getPage(activePageId) : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
+  // Electron：订阅 activePage 标题，防抖同步系统窗口 title（uTools 构建内部 no-op）。
+  useDesktopWindowTitleSync();
   // 以页面本身是否带本地路径为准（比 notebook.source 更贴合「正文无 H1 标题块」）
   const isLocalFolderPage =
     Boolean(page?.localFilePath) || pageNotebook?.source === "local-folder";
@@ -280,11 +289,32 @@ export function WorkspaceLayout({
     <>
       <div
         className="workspace-shell window-shell-safe-top flex overflow-hidden bg-background text-foreground"
+        data-electron-chrome={isElectronChrome || undefined}
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
+        {isElectronChrome && (
+          <DesktopTitleBar
+            page={page}
+            isWelcomeTab={isWelcomeTab}
+            inHistoryMode={inHistoryMode}
+            onRestore={
+              activePageId ? () => restorePageWithToast(activePageId) : undefined
+            }
+            onDelete={
+              activePageId
+                ? () => void permanentlyDeletePageWithCleanup(activePageId)
+                : undefined
+            }
+            aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+            aiLayoutMode={aiLayoutMode}
+            onToggleAiPanel={
+              aiAvailableForNotebook ? toggleAiPanel : undefined
+            }
+          />
+        )}
         {isDragging && (
           <div className="fixed inset-0 z-[25000] flex items-center justify-center bg-[hsl(var(--goose-editor-bg)/0.96)] animate-in fade-in duration-150">
             <div className="flex min-h-[188px] min-w-[312px] flex-col items-center justify-center rounded-[14px] border border-border/70 bg-[hsl(var(--goose-shell-bg)/0.98)] px-10 py-8 text-center shadow-[0_18px_42px_rgba(15,23,42,0.12),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
@@ -452,6 +482,8 @@ function NotebookAiWorkspaceBody({
       }
     : openWelcomeTabHandler;
   const handleBeforeActivateTab = showFullscreenAi ? closeAiPanel : undefined;
+  const hideFolderHome =
+    isElectronChrome && Boolean(page?.isFolder) && isLocalFolderPage;
 
   return (
     <>
@@ -462,15 +494,17 @@ function NotebookAiWorkspaceBody({
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {isWelcomeTab ? (
                 <>
-                  <PageHeader
-                    onOpenSearch={handleOpenSearch}
-                    onBeforeActivateTab={handleBeforeActivateTab}
-                    aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
-                    aiLayoutMode={aiLayoutMode}
-                    onToggleAiPanel={
-                      aiAvailableForNotebook ? toggleAiPanel : undefined
-                    }
-                  />
+                  {!isElectronChrome && (
+                    <PageHeader
+                      onOpenSearch={handleOpenSearch}
+                      onBeforeActivateTab={handleBeforeActivateTab}
+                      aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                      aiLayoutMode={aiLayoutMode}
+                      onToggleAiPanel={
+                        aiAvailableForNotebook ? toggleAiPanel : undefined
+                      }
+                    />
+                  )}
                   <div className="relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
                     <div
                       className={cn(
@@ -500,7 +534,7 @@ function NotebookAiWorkspaceBody({
                 </>
               ) : activePageId && page && inHistoryMode ? (
                 <>
-                  <HistoryToolbar />
+                  {!isElectronChrome && <HistoryToolbar />}
                   <div className="workspace-editor-surface relative ml-0 mt-0 flex-1 min-h-0 overflow-hidden">
                     <div
                       className={cn(
@@ -513,26 +547,28 @@ function NotebookAiWorkspaceBody({
                     </div>
                   </div>
                 </>
-              ) : activePageId && page ? (
+              ) : activePageId && page && !hideFolderHome ? (
                 page.isFolder && isLocalFolderPage ? (
-                  /* 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
+                  /* uTools 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
                   <>
                     <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
-                        <PageHeader
-                          page={page}
-                          onOpenSearch={handleOpenSearch}
-                          onBeforeActivateTab={handleBeforeActivateTab}
-                          onRestore={() => restorePageWithToast(activePageId)}
-                          onDelete={() =>
-                            void permanentlyDeletePageWithCleanup(activePageId)
-                          }
-                          aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
-                          aiLayoutMode={aiLayoutMode}
-                          onToggleAiPanel={
-                            aiAvailableForNotebook ? toggleAiPanel : undefined
-                          }
-                        />
+                        {!isElectronChrome && (
+                          <PageHeader
+                            page={page}
+                            onOpenSearch={handleOpenSearch}
+                            onBeforeActivateTab={handleBeforeActivateTab}
+                            onRestore={() => restorePageWithToast(activePageId)}
+                            onDelete={() =>
+                              void permanentlyDeletePageWithCleanup(activePageId)
+                            }
+                            aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+                            aiLayoutMode={aiLayoutMode}
+                            onToggleAiPanel={
+                              aiAvailableForNotebook ? toggleAiPanel : undefined
+                            }
+                          />
+                        )}
                         <FolderHomePage page={page} />
                       </div>
                       {showSideAiPanel && aiNotebookId ? (
@@ -565,22 +601,24 @@ function NotebookAiWorkspaceBody({
                       }
                     >
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
-                        <PageHeader
-                          page={page}
-                          onOpenSearch={handleOpenSearch}
-                          onBeforeActivateTab={handleBeforeActivateTab}
-                          onRestore={() => restorePageWithToast(activePageId)}
-                          onDelete={() =>
-                            void permanentlyDeletePageWithCleanup(activePageId)
-                          }
-                          aiPanelOpen={
-                            aiAvailableForNotebook && aiPanelOpen
-                          }
-                          aiLayoutMode={aiLayoutMode}
-                          onToggleAiPanel={
-                            aiAvailableForNotebook ? toggleAiPanel : undefined
-                          }
-                        />
+                        {!isElectronChrome && (
+                          <PageHeader
+                            page={page}
+                            onOpenSearch={handleOpenSearch}
+                            onBeforeActivateTab={handleBeforeActivateTab}
+                            onRestore={() => restorePageWithToast(activePageId)}
+                            onDelete={() =>
+                              void permanentlyDeletePageWithCleanup(activePageId)
+                            }
+                            aiPanelOpen={
+                              aiAvailableForNotebook && aiPanelOpen
+                            }
+                            aiLayoutMode={aiLayoutMode}
+                            onToggleAiPanel={
+                              aiAvailableForNotebook ? toggleAiPanel : undefined
+                            }
+                          />
+                        )}
                         <div
                           ref={scrollContainerRef}
                           className={cn(

@@ -18,6 +18,14 @@
     "test:native-editor": "playwright test -c playwright.native-editor.config.ts",
     "verify:native-editor": "bun run build:native-editor && bun run audit:native-editor && bun run test:native-editor",
     "build:debug": "node src/lib/vite-stubs/assert-present.mjs && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 GOOSE_BUILD_TARGET=quicknote vite build && GOOSE_DEBUG=1 node scripts/utools-build.js",
+    "mac": "bun run build:electron && node scripts/electron-build-mac.mjs && node scripts/collect-desktop-artifacts.mjs",
+    "mac:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
+    "win": "bun run build:electron && node scripts/electron-build-win.mjs && node scripts/collect-desktop-artifacts.mjs",
+    "build:win": "bun run win",
+    "win:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
+    "linux": "bun run build:electron && node scripts/electron-build-linux.mjs && node scripts/collect-desktop-artifacts.mjs",
+    "build:linux": "bun run linux",
+    "linux:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test:unit": "playwright test -c playwright.unit.config.ts",
@@ -26,7 +34,8 @@
     "test:e2e:headed": "E2E_AUTO_START=1 PW_HEADED=1 playwright test",
     "test:e2e:ui": "E2E_AUTO_START=1 playwright test --ui",
     "test:e2e:report": "playwright show-report output/playwright/report",
-    "test:e2e:codegen": "playwright codegen http://localhost:6001"
+    "test:e2e:codegen": "playwright codegen http://localhost:6001",
+    "build:electron": "GOOSE_BUILD_TARGET=electron vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.81",
@@ -163,6 +172,12 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.60.1",
     "vite": "8.0.16",
-    "vite-node": "^6.0.0"
-  }
+    "vite-node": "^6.0.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26",
+    "esbuild": "^0.25.0",
+    "concurrently": "^9.2.1",
+    "wait-on": "^8.0.4"
+  },
+  "main": "dist-electron/main/index.js"
 }

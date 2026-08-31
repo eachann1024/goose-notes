@@ -48,6 +48,50 @@ bun run build
 
 速记小窗（B 插件）产物在 `dist-quicknote/plugin.json`，加载方式相同。
 
+### Electron 桌面端（仅本地模式）
+
+默认 `bun run build` 仍是 uTools 插件，与桌面端产物隔离。
+
+```bash
+# 开发调试（Vite http://localhost:6001 + Electron；不经过 uTools 打包）
+bun run mac:dev
+
+# 构建 macOS .app（Apple Silicon arm64；前端产物在 dist-electron/renderer/）
+# 未签名：CSC_IDENTITY_AUTO_DISCOVERY=false
+bun run mac
+
+# Windows：开发调试
+bun run win:dev
+
+# Windows：构建 NSIS 安装包（bun run build:win 为等价别名）
+# - Windows 上原生构建；
+# - 在 macOS 上需要 Wine。缺少 Wine 时脚本会失败并提示，不使用 mingw 交叉编译。
+bun run win
+```
+
+微信无法直接发送 `.app`。请把 `.app` 打成 zip 再发；接收方解压后若提示已损坏，在终端执行 `xattr -cr "/path/to/Goose Note.app"` 去掉隔离属性后再打开。
+
+桌面端 = Obsidian 式「仅本地文件夹」：无自带/内置笔记本（不种 default-notebook、不种新手引导页、UI 无「新建记事本」），仓库 = local-folder 挂载列表；无仓库时为空态（打开文件夹 / 新建仓库），允许移除最后一个仓库回到空态。残留的旧内置页（web-db `gn:page:*`）不灌进侧栏，可在「设置 → 本地文件夹」一次性导出为 .md（不静默迁移、不自动删除）。
+
+桌面端数据只落本机：内部记事本走 localStorage，附件走 `appDataDir/attachments` 磁盘（上限 50MB），本地文件夹走磁盘 `.md`；无账号、速记小窗、全局热键等 uTools 生态能力。构建目标互不污染：`bun run build` 只产出 uTools 包，`bun run mac` 只产出 macOS 桌面 App，`bun run win` 只产出 Windows NSIS 安装包。
+
+构建完成后，最终产物会自动收集到顶层 `dist-desktop/`：
+
+- `dist-desktop/mac/arm64/Goose Note.app`（Apple Silicon）
+- `dist-desktop/win/` 的 NSIS 安装包
+
+源码构建中间产物在 `dist-electron/packaged/` 下。macOS 主窗 hiddenInset + traffic lights；Windows 使用系统原生边框（无 overlay）。
+
+桌面端冒烟清单（macOS 用 `bun run mac` 产物或 `bun run mac:dev`，Windows 用 `bun run win` 产物或 `bun run win:dev`；完整 GUI 验收需人工逐项过）：
+
+1. 启动：`.app` 能打开，主窗口 1250x800 正常渲染，无白屏
+2. 选文件夹：设置里添加本地文件夹记事本，目录选择器可用
+3. 读写：本地文件夹内新建/编辑/删除 `.md` 页面，磁盘内容同步
+4. 复制：编辑器内复制文本/块，系统剪贴板有内容
+5. 附件：内部记事本插入图片/文件附件（>10MB 且 ≤50MB 可存），刷新后仍可打开
+6. 外链：点击 http(s) 链接用系统默认浏览器打开
+7. Ollama：AI 设置指向 `http://localhost:11434` 可连通并出文
+
 ## 📦 构建产物
 
 `bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。

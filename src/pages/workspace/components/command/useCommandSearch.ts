@@ -144,7 +144,9 @@ export function useCommandSearch({
     if (searchAllNotebooks) {
       return allPagesArray;
     }
-    const currentNotebookId = activeNotebookId || DEFAULT_NOTEBOOK;
+    const currentNotebookId =
+      activeNotebookId ||
+      (__HOST_TARGET__ === "electron" ? "__no-notebook__" : DEFAULT_NOTEBOOK);
     return allPagesArray.filter((p) => p.workspaceId === currentNotebookId);
   }, [pages, notebooks, searchAllNotebooks, activeNotebookId]);
 

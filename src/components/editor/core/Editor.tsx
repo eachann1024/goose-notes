@@ -93,6 +93,7 @@ import { gooseDividerInputRuleExtension } from "@/components/editor/inputrules/d
 import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/editor/inputrules/suppressMarkdownInSpecialBlocks";
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseInlineCodeCaretExtension } from "@/components/editor/extensions/inlineCodeCaretExtension";
+import { gooseTrailingBlankClickExtension } from "@/components/editor/extensions/trailingBlankClickExtension";
 import { createInlineCodePathTagExtension } from "@/components/editor/extensions/inlineCodePathTagExtension";
 import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
@@ -106,11 +107,14 @@ import { reconcileSlashSuggestionMenu } from "@/components/editor/utils/slashMen
 import {
   EditorComposer,
   editorSchema,
+  clearEditorSelectedBlocksCache,
   getSelectedCellPlainText,
   getSelectedImageUrl,
   getSelectedPlainTextContext,
   isBottomEditorBlankClick,
   normalizeClipboardLineEndings,
+  readLiveEditorSelectedBlocks,
+  rememberEditorSelectedBlocks,
   shouldPreferVisibleSelectionText,
   stripMarkdownHardBreaks,
 } from "./EditorComposer";
@@ -240,9 +244,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   // 内容未变签名相等不会入队，变了还有写盘前 diff 兜底）。切页/外部重载后重置。
   const userInteractedRef = useRef(false);
   useEffect(() => {
-    const markInteracted = () => {
+    const markInteracted = (event: Event) => {
       userInteractedRef.current = true;
       markUserInteraction();
+      const currentEditor = editorInstanceRef.current;
+      if (!currentEditor || event.type !== "pointerdown") return;
+      const target = event.target;
+      const insideEditor =
+        target instanceof Node &&
+        Boolean(currentEditor.domElement?.contains(target));
+      if (insideEditor) return;
+      rememberEditorSelectedBlocks(currentEditor);
     };
     const events = ["pointerdown", "keydown", "paste", "cut", "drop"] as const;
     events.forEach((name) =>
@@ -313,6 +325,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
         inlineCodePathTagExtension,
+        gooseTrailingBlankClickExtension,
         gooseInlineCodeCaretExtension,
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
@@ -1053,10 +1066,34 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
   useEffect(() => {
     (window as any).__gooseNoteEditor = editor;
+    const rememberLiveSelection = () => {
+      rememberEditorSelectedBlocks(editor);
+    };
+    const syncSelectionCacheAfterPointer = (event: Event) => {
+      const target = event.target;
+      const insideEditor =
+        target instanceof Node && Boolean(editor.domElement?.contains(target));
+      if (!insideEditor) return;
+      const live = readLiveEditorSelectedBlocks(editor);
+      if (live.length > 0) {
+        rememberEditorSelectedBlocks(editor);
+        return;
+      }
+      clearEditorSelectedBlocksCache(editor);
+    };
+    document.addEventListener("selectionchange", rememberLiveSelection);
+    document.addEventListener("pointerup", syncSelectionCacheAfterPointer, true);
     return () => {
+      document.removeEventListener("selectionchange", rememberLiveSelection);
+      document.removeEventListener(
+        "pointerup",
+        syncSelectionCacheAfterPointer,
+        true,
+      );
       if ((window as any).__gooseNoteEditor === editor) {
         (window as any).__gooseNoteEditor = null;
       }
+      clearEditorSelectedBlocksCache(editor);
     };
   }, [editor]);
 

@@ -1,21 +1,25 @@
 import type { Page } from "@/types";
-import {
-  extractPlainText,
-  type BlockNoteContent,
-} from "@/components/editor/utils/blocknote-content";
+import { type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { toCanvas } from "html-to-image";
-import type { CardThemeId } from "./themes";
-import { getCardTheme } from "./themes";
+import type { CardThemeId, NotebookCardThemeContext } from "./themes";
+import { resolveCardTheme } from "./themes";
 import type { WatermarkConfig } from "./watermark";
 import { normalizeWatermarkConfig } from "./watermark";
-import { buildStyledHTML, renderBlocks } from "./domSerializer";
+import {
+  buildStyledHTML,
+  collectBlockInlineStyles,
+  renderBlocks,
+} from "./domSerializer";
 import { resolveImageUrls } from "./remoteImageResolver";
 import { renderMermaidBlocksAsImages } from "./mermaid";
 import { renderMathBlocksAsImages } from "./math";
 import { toast } from "@/components/ui/sonner";
 import { cloneExportBlocks } from "@/lib/export/prepareExportBlocks";
+import { splitImageExportTitle } from "./titleLift";
+
+export { getSelectionBlocksToRender } from "./titleLift";
 
 const MAX_CAPTURE_PIXEL_RATIO = 3;
 const MIN_CAPTURE_PIXEL_RATIO = 0.1;
@@ -119,34 +123,6 @@ function getElementCapturePixelRatios(element: HTMLElement): number[] {
   const width = element.scrollWidth || rect.width;
   const height = element.scrollHeight || rect.height;
   return getCapturePixelRatios(width, height);
-}
-
-function normalizeTitleText(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-/**
- * 选区包含页面 H1 时，“显示标题”已经会在卡片头部渲染同一标题，
- * 因此跳过选区里的重复 H1；普通章节标题仍按原样保留。
- */
-export function getSelectionBlocksToRender(
-  selectionBlocks: BlockNoteContent,
-  pageTitle: string,
-  showTitle: boolean,
-): BlockNoteContent {
-  if (!showTitle || selectionBlocks.length === 0) return selectionBlocks;
-
-  const firstBlock = selectionBlocks[0] as any;
-  const headingLevel = Number(firstBlock?.props?.level) || 1;
-  if (firstBlock?.type !== "heading" || headingLevel !== 1) {
-    return selectionBlocks;
-  }
-
-  const selectedTitle = normalizeTitleText(extractPlainText([firstBlock]));
-  const generatedTitle = normalizeTitleText(pageTitle);
-  return selectedTitle && selectedTitle === generatedTitle
-    ? selectionBlocks.slice(1)
-    : selectionBlocks;
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -396,7 +372,7 @@ function sanitizeFileName(name: string): string {
 
 function buildFileName(
   title: string,
-  theme: ReturnType<typeof getCardTheme>,
+  theme: { nameEn: string },
   suffix?: string,
 ): string {
   const now = new Date();
@@ -413,12 +389,33 @@ function buildFileName(
 }
 
 // ── Public API: Full Page Export ───────────────────────────────
+function notebookThemeContextFromPage(
+  page?: Pick<Page, "fontFamily"> | null,
+): NotebookCardThemeContext {
+  const isDark =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark");
+  const editorFontSize =
+    typeof document === "undefined"
+      ? undefined
+      : Number.parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--editor-font-size",
+          ),
+        );
+  return {
+    fontFamily: page?.fontFamily ?? "default",
+    editorFontSize: Number.isFinite(editorFontSize) ? editorFontSize : undefined,
+    resolvedTheme: isDark ? "dark" : "light",
+  };
+}
+
 export async function exportPageToImage(
   page: Page,
-  themeId: CardThemeId = "github-light",
+  themeId: CardThemeId = "notebook",
   watermarkConfig?: WatermarkConfig,
 ) {
-  const theme = getCardTheme(themeId);
+  const theme = resolveCardTheme(themeId, notebookThemeContextFromPage(page));
   const wm = normalizeWatermarkConfig(watermarkConfig);
   const title = getPageTitle(page) || extractTitleFromContent(page.content);
   const content = cloneExportBlocks(page.content, {
@@ -436,17 +433,19 @@ export async function exportPageToImage(
   document.body.appendChild(container);
 
   try {
-    const firstBlock = content[0];
-    const blocksToRender =
-      wm.showTitle && firstBlock?.type === "heading"
-        ? content.slice(1)
-        : content;
+    const { blocks: blocksToRender, titleBlock } = splitImageExportTitle({
+      blocks: content,
+      pageTitle: title,
+      showTitle: wm.showTitle,
+      mode: "page",
+    });
     const blocksHtml = renderBlocks(blocksToRender, theme);
     const html = buildStyledHTML({
       title,
       blocksHtml,
       theme,
       watermarkConfig: wm,
+      titleInlineStyle: collectBlockInlineStyles(titleBlock, theme),
     });
     container.innerHTML = html;
 
@@ -465,16 +464,19 @@ export async function exportPageToImage(
 export async function exportSelectionToImage(
   selectionBlocks: BlockNoteContent,
   pageTitle?: string,
-  themeId: CardThemeId = "github-light",
+  themeId: CardThemeId = "notebook",
   watermarkConfig?: WatermarkConfig,
+  page?: Pick<Page, "fontFamily"> | null,
 ) {
   if (!Array.isArray(selectionBlocks) || selectionBlocks.length === 0) return;
 
-  const theme = getCardTheme(themeId);
+  const theme = resolveCardTheme(themeId, notebookThemeContextFromPage(page));
   const wm = normalizeWatermarkConfig(watermarkConfig);
   const title = pageTitle || "选中内容";
 
-  const clonedBlocks = structuredClone(selectionBlocks) as BlockNoteContent;
+  const clonedBlocks = cloneExportBlocks(selectionBlocks, {
+    ensureFirstTitle: false,
+  });
   await resolveImageUrls(clonedBlocks);
   await renderMermaidBlocksAsImages(clonedBlocks, theme);
   await renderMathBlocksAsImages(clonedBlocks, theme);
@@ -487,11 +489,12 @@ export async function exportSelectionToImage(
   document.body.appendChild(container);
 
   try {
-    const blocksToRender = getSelectionBlocksToRender(
-      clonedBlocks,
-      title,
-      wm.showTitle,
-    );
+    const { blocks: blocksToRender, titleBlock } = splitImageExportTitle({
+      blocks: clonedBlocks,
+      pageTitle: title,
+      showTitle: wm.showTitle,
+      mode: "selection",
+    });
     const blocksHtml = renderBlocks(blocksToRender, theme);
 
     const html = buildStyledHTML({
@@ -499,6 +502,7 @@ export async function exportSelectionToImage(
       blocksHtml,
       theme,
       watermarkConfig: wm,
+      titleInlineStyle: collectBlockInlineStyles(titleBlock, theme),
     });
     container.innerHTML = html;
 
@@ -516,7 +520,7 @@ export async function exportSelectionToImage(
 // ── Legacy alias ───────────────────────────────────────────────
 export async function exportToImage(
   page: Page,
-  themeId: CardThemeId = "github-light",
+  themeId: CardThemeId = "notebook",
 ) {
   return exportPageToImage(page, themeId);
 }

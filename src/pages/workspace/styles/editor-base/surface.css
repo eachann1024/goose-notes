@@ -83,6 +83,19 @@
   caret-color: var(--goose-interactive-selected-fg);
 }
 
+/*
+ * 点击行尾空白时光标跳到行首。
+ * Chromium（含 Electron）对 flex 容器的 caretRangeFromPoint 会落到第一个子节点；
+ * BlockNote 的 .bn-block-content 是 flex，行内内容默认随文字收缩。
+ * 让段落 / 列表 / 待办的 .bn-inline-content，以及标题 / 引用外壳吃掉剩余宽度，
+ * 点击落在文字节点上。不只列表，短行的所有文本块都会中招。
+ */
+.bn-block-content > .bn-inline-content,
+.bn-block-content > :is(h1, h2, h3, h4, h5, h6, blockquote) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* BlockNote 块间距全局优化 */
 .workspace-editor-surface .bn-block-outer {
   margin-bottom: 0.5em;

@@ -93,8 +93,12 @@ export interface DesktopSettings {
   wakeHotkeyEnabled: boolean;
   searchHotkey: string;
   searchHotkeyEnabled: boolean;
+  /** 速记小窗唤出/隐藏（仅 Electron 桌面端展示与注册）。 */
+  quicknoteHotkey: string;
+  quicknoteHotkeyEnabled: boolean;
   wakeHotkeyStatus: DesktopHotkeyStatus;
   searchHotkeyStatus: DesktopHotkeyStatus;
+  quicknoteHotkeyStatus: DesktopHotkeyStatus;
 }
 
 export interface PrivacySettings {
@@ -131,6 +135,7 @@ export const EDITOR_FONT_SIZE_MAX = 24;
 export const EDITOR_FONT_SIZE_DEFAULT = 16;
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N";
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K";
+export const DEFAULT_QUICKNOTE_HOTKEY = "CmdOrCtrl+Alt+Q";
 export const DEFAULT_CLOSE_TAB_SHORTCUT = "";
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = "";
 export const UTOOLS_WINDOW_HEIGHT_MIN = 600;
@@ -228,6 +233,25 @@ export function normalizeDesktopHotkeyStatus(
     state,
     message: status?.message,
     rawError: status?.rawError,
+  };
+}
+
+/** 水合合并：持久化里缺省的 desktop 字段（含后加的 quicknote 三字段）回退默认值。 */
+export function mergeDesktopSettings(
+  stored: Partial<DesktopSettings> | undefined,
+): DesktopSettings {
+  return {
+    wakeHotkey: stored?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
+    wakeHotkeyEnabled: stored?.wakeHotkeyEnabled ?? true,
+    searchHotkey: stored?.searchHotkey ?? DEFAULT_SEARCH_HOTKEY,
+    searchHotkeyEnabled: stored?.searchHotkeyEnabled ?? true,
+    quicknoteHotkey: stored?.quicknoteHotkey ?? DEFAULT_QUICKNOTE_HOTKEY,
+    quicknoteHotkeyEnabled: stored?.quicknoteHotkeyEnabled ?? true,
+    wakeHotkeyStatus: normalizeDesktopHotkeyStatus(stored?.wakeHotkeyStatus),
+    searchHotkeyStatus: normalizeDesktopHotkeyStatus(stored?.searchHotkeyStatus),
+    quicknoteHotkeyStatus: normalizeDesktopHotkeyStatus(
+      stored?.quicknoteHotkeyStatus,
+    ),
   };
 }
 

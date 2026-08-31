@@ -33,7 +33,7 @@ import {
   getAiReferenceSuggestionItems,
   resolveAiReferenceContexts,
 } from "@/components/editor/ai/composer/referenceLookup";
-import { utoolsEditorPlatform } from "@/lib/editor-platform/utools";
+import { editorPlatform } from "@/lib/editor-platform/resolve";
 import { UToolsAdapter } from "@/lib/utools";
 import { fileStorage } from "@/lib/fileStorage";
 import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
@@ -83,17 +83,23 @@ export function EditorHostBridge({
       ai,
       searchProviders,
       customActions,
-      openLinksInHost: utools.openSearchInUtools,
+      openLinksInHost:
+        __HOST_TARGET__ === "electron" ? false : utools.openSearchInUtools,
       useInternalImageViewer: utools.useInternalImageViewer,
       features: {
         tablePresentationControls: true,
         mermaidUnsafeHTML: true,
-        transcodeVideoUploads: true,
+        // Electron 无 FFmpeg：视频原文件保存，slash 文案走「保存为相对资源」。
+        transcodeVideoUploads: __HOST_TARGET__ !== "electron",
         openAttachmentsExternally: true,
       },
-      redirectAction: (label, payload) => {
-        UToolsAdapter.redirect(label as string | [string, string], payload);
-      },
+      // Electron 无 uTools redirect 生态：不传 redirectAction，右键「快捷动作」整块不渲染。
+      redirectAction:
+        __HOST_TARGET__ === "electron"
+          ? undefined
+          : (label, payload) => {
+              UToolsAdapter.redirect(label as string | [string, string], payload);
+            },
     }),
     [
       theme,
@@ -165,10 +171,10 @@ export function EditorHostBridge({
           fileName,
           mimeType: /\.html?$/i.test(fileName) ? "text/html" : undefined,
           pageLocalFilePath: activePage?.localFilePath ?? null,
-          platform: utoolsEditorPlatform,
+          platform: editorPlatform,
           loadInternalResource: async (ref) => {
             if (ref.startsWith("att-file:")) return fileStorage.load(ref);
-            return utoolsEditorPlatform.imageStorage.load(ref);
+            return editorPlatform.imageStorage.load(ref);
           },
         });
       },
@@ -201,7 +207,7 @@ export function EditorHostBridge({
   );
 
   return (
-    <EditorPlatformProvider platform={utoolsEditorPlatform}>
+    <EditorPlatformProvider platform={editorPlatform}>
       <EditorHostProvider settings={settings} pageContext={pageContext}>
         {children}
       </EditorHostProvider>

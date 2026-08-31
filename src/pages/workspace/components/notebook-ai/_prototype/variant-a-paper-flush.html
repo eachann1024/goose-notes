@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<!--
+PROTOTYPE / 方案 A 纸面白底
+问题：AI 顶栏和滚到底部如何贴合白色笔记？
+本变体：顶栏与消息区都用笔记白，居中小圆「回到底部」。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PROTOTYPE · A 纸面白底</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: #1f2329;
+  }
+  body {
+    background: #e9e9e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== 800×800 窗体外壳 ===== */
+  .window {
+    width: 800px;
+    height: 800px;
+    background: #f4f4f4;
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== 左侧窄侧栏 ===== */
+  .sidebar {
+    width: 160px;
+    flex: none;
+    background: #f4f4f4;
+    border-right: 1px solid #ececec;
+    padding: 14px 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .sidebar .brand {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2329;
+    padding: 4px 8px 12px;
+  }
+  .sidebar .item {
+    padding: 7px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 2px;
+  }
+  .sidebar .item.active {
+    background: #ffffff;
+    color: #1f2329;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .sidebar .sec {
+    margin: 14px 8px 6px;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+
+  /* ===== 中间笔记区 ===== */
+  .note {
+    flex: 1;
+    background: #ffffff;
+    padding: 28px 26px;
+    overflow: hidden;
+  }
+  .note h1 { font-size: 20px; font-weight: 650; margin-bottom: 14px; }
+  .note p  { font-size: 13px; line-height: 1.9; color: #4b5563; margin-bottom: 10px; }
+  .note .line { height: 10px; border-radius: 5px; background: #f2f2f2; margin-bottom: 10px; }
+
+  /* ===== 右侧 AI 面板 ===== */
+  .ai {
+    width: 360px;
+    flex: none;
+    background: #ffffff;
+    border-radius: 12px;
+    margin: 10px 10px 10px 8px;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* 顶栏：与面板同白，无独立色带 */
+  .ai-topbar {
+    height: 48px;
+    flex: none;
+    background: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .ai-topbar .sparkle {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: #eaf2ff;
+    display: flex; align-items: center; justify-content: center;
+    color: #3b82f6;
+    font-size: 13px;
+  }
+  .ai-topbar .doc {
+    width: 20px; height: 20px;
+    border-radius: 5px;
+    background: #f3f4f6;
+    display: flex; align-items: center; justify-content: center;
+    color: #6b7280;
+    font-size: 11px;
+  }
+  .ai-topbar .title {
+    font-size: 13px;
+    font-weight: 600;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ai-topbar .act {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: #6b7280;
+    font-size: 14px;
+  }
+  .ai-topbar .act:hover { background: #f5f5f5; }
+
+  /* 消息区：纯白 */
+  .ai-body {
+    flex: 1;
+    background: #ffffff;
+    overflow-y: auto;
+    padding: 16px 14px 12px;
+    position: relative;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    color: #9ca3af;
+    border: 1px solid #f0f0f0;
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-bottom: 14px;
+  }
+
+  .msg-user {
+    margin-left: auto;
+    max-width: 78%;
+    background: #f4f4f5;
+    border-radius: 12px 12px 4px 12px;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+
+  .msg-card {
+    background: #ffffff;
+    border: 1px solid #f3f2f1;
+    border-radius: 12px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #374151;
+  }
+  .msg-card h3 {
+    font-size: 14px;
+    font-weight: 650;
+    color: #1f2329;
+    margin-bottom: 8px;
+  }
+
+  /* 回到底部：居中小白圆 */
+  .scroll-bottom {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    font-size: 14px;
+    cursor: default;
+    z-index: 5;
+  }
+
+  /* Composer：白底胶囊 */
+  .ai-composer {
+    flex: none;
+    background: #ffffff;
+    padding: 10px 12px 12px;
+  }
+  .composer-pill {
+    background: #ffffff;
+    border: 1px solid #ececec;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+    padding: 10px 12px;
+  }
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .composer-plus {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    border: 1px solid #ececec;
+    display: flex; align-items: center; justify-content: center;
+    color: #6b7280;
+    font-size: 15px;
+    flex: none;
+  }
+  .composer-input {
+    flex: 1;
+    font-size: 13px;
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .composer-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .composer-model {
+    font-size: 11px;
+    color: #6b7280;
+    background: #f6f6f7;
+    border-radius: 999px;
+    padding: 3px 10px;
+  }
+  .composer-send {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #1f2329;
+    color: #ffffff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="window">
+
+    <!-- 左侧窄侧栏 -->
+    <aside class="sidebar">
+      <div class="brand">鹅的笔记</div>
+      <div class="sec">收藏</div>
+      <div class="item">⭐ 周报模板</div>
+      <div class="sec">页面</div>
+      <div class="item active">✨ AI 功能演示</div>
+      <div class="item">📖 新手指南</div>
+      <div class="item">🗒 随手记</div>
+    </aside>
+
+    <!-- 中间白色笔记 -->
+    <main class="note">
+      <h1>AI 功能演示</h1>
+      <p>这页笔记用来演示 AI 面板与白色纸面的贴合效果。顶栏、消息区、回到底部按钮都使用与笔记一致的纯白。</p>
+      <div class="line" style="width: 92%"></div>
+      <div class="line" style="width: 78%"></div>
+      <div class="line" style="width: 85%"></div>
+      <div class="line" style="width: 60%"></div>
+    </main>
+
+    <!-- 右侧 AI 面板 -->
+    <section class="ai">
+      <!-- 顶栏：与面板同白 -->
+      <header class="ai-topbar">
+        <span class="sparkle">✦</span>
+        <span class="doc">📄</span>
+        <span class="title">AI 功能演示</span>
+        <span class="act">＋</span>
+        <span class="act">⋯</span>
+        <span class="act">×</span>
+      </header>
+
+      <!-- 消息区 -->
+      <div class="ai-body">
+        <span class="badge">PROTOTYPE · A 纸面白底</span>
+
+        <div class="msg-user">不对 写的太啰嗦了</div>
+
+        <div class="msg-card">
+          <h3>鹅的笔记 AI：把笔记变成可执行工作台</h3>
+          <p>好的，我精简一下。AI 可以直接在这页笔记里续写、改写和总结，也能把选中的内容转成待办、表格或图示。你只管写，剩下的交给它：一键润色语气、提取行动项、生成会议纪要，还能基于整本笔记回答问题，让每一页笔记都能直接落地执行。</p>
+        </div>
+
+        <!-- 回到底部 -->
+        <div class="scroll-bottom">↓</div>
+      </div>
+
+      <!-- Composer -->
+      <footer class="ai-composer">
+        <div class="composer-pill">
+          <div class="composer-row">
+            <span class="composer-plus">＋</span>
+            <span class="composer-input">让 AI 画一个流程图或架构图...</span>
+          </div>
+          <div class="composer-meta">
+            <span class="composer-model">ds/deepseek-v4-flash ▾</span>
+            <span class="composer-send">↑</span>
+          </div>
+        </div>
+      </footer>
+    </section>
+
+  </div>
+</body>
+</html>

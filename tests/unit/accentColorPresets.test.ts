@@ -202,3 +202,31 @@ test("hover 与图标底都跟选中表面同步", () => {
     }
   }
 });
+
+test("跨块选区只给文字节点上色，块壳 ::selection 保持透明", () => {
+  const shellCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/shell.css", import.meta.url),
+    "utf8",
+  );
+  const shellTransparent = shellCss.match(
+    /\.goose-blocknote-editor \.bn-block-outer::selection,[\s\S]*?\{[^}]*\}/,
+  );
+  expect(shellTransparent).not.toBeNull();
+  expect(shellTransparent![0]).toContain("background-color: transparent");
+  expect(shellCss).toContain(".bn-inline-content::selection");
+  expect(shellCss).toContain(".bn-inline-content *::selection");
+  expect(shellCss).toContain(".goose-code-pre::selection");
+  expect(shellCss).not.toMatch(/\.goose-blocknote-editor ::selection/);
+  expect(shellCss).not.toMatch(/\.bn-inline-content ::selection/);
+
+  expect(css).toContain(".bn-inline-content::selection");
+  expect(css).toContain(".bn-inline-content *::selection");
+  expect(css).toContain('.bn-block-content[data-content-type="codeBlock"] pre::selection');
+  expect(css).not.toMatch(
+    /:root\[data-goose-accent="[a-z]+"\] \.goose-blocknote-editor ::selection/,
+  );
+  expect(css).not.toMatch(
+    /:root\[data-goose-accent="[a-z]+"\] \.bn-editor ::selection/,
+  );
+  expect(css).not.toContain(".bn-inline-content ::selection");
+});

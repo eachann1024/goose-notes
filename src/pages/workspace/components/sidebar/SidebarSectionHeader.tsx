@@ -1,8 +1,9 @@
 interface SidebarSectionHeaderProps {
   title: string;
   onSearch: () => void;
-  onCreate: () => void;
-  createTitle: string;
+  /** 不传则不渲染「新建」按钮（如 Electron 无仓库时） */
+  onCreate?: () => void;
+  createTitle?: string;
   view: "pages" | "outline";
   onSwitchToPages: () => void;
   onSwitchToOutline: () => void;
@@ -102,29 +103,31 @@ export function SidebarSectionHeader({
               </div>
             </TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
-                aria-label={createTitle}
-                onClick={onCreate}
-              >
-                <LucideIcons.Plus className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <div className="flex items-center gap-2">
-                <span>{createTitle}</span>
-                {createShortcut && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {createShortcut}
-                  </span>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
+          {onCreate && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
+                  aria-label={createTitle}
+                  onClick={onCreate}
+                >
+                  <LucideIcons.Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>{createTitle}</span>
+                  {createShortcut && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {createShortcut}
+                    </span>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </TooltipProvider>
     </div>

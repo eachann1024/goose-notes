@@ -154,9 +154,36 @@
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
    颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
    这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
-   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。 */
-.goose-blocknote-editor ::selection,
-.bn-editor ::selection,
+   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。
+
+   WKWebView / Safari 跨块选区会把块容器（含 .bn-block-outer 的 0.5em
+   底间距）也画成 ::selection，列表项之间就会出现空白高亮条。
+   块壳先透明；文字高亮必须写在元素自身的 ::selection 上
+   （.bn-inline-content::selection），带空格的后代选择器在 WebKit 上不生效。 */
+.goose-blocknote-editor .bn-block-outer::selection,
+.bn-editor .bn-block-outer::selection,
+.goose-blocknote-editor .bn-block::selection,
+.bn-editor .bn-block::selection,
+.goose-blocknote-editor .bn-block-content::selection,
+.bn-editor .bn-block-content::selection,
+.goose-blocknote-editor .bn-block-group::selection,
+.bn-editor .bn-block-group::selection {
+  background-color: transparent;
+  color: inherit;
+}
+
+.goose-blocknote-editor .bn-inline-content::selection,
+.bn-editor .bn-inline-content::selection,
+.goose-blocknote-editor .bn-inline-content *::selection,
+.bn-editor .bn-inline-content *::selection,
+.goose-blocknote-editor .goose-code-pre::selection,
+.bn-editor .goose-code-pre::selection,
+.goose-blocknote-editor .goose-code-pre *::selection,
+.bn-editor .goose-code-pre *::selection,
+.goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+.bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+.goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+.bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 .goose-blocknote-editor .goose-fake-selection,
 .bn-editor .goose-fake-selection {
   background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));

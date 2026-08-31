@@ -1,33 +1,22 @@
 import { FontSelector } from "@/pages/workspace/components/shared/FontSelector";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { CardThemeId, WatermarkConfig } from "@/lib/imageExport";
 import { exportPageToImage, exportSelectionToImage } from "@/lib/imageExport";
 import { extractBlockNoteTitle } from "@/components/editor/utils/blocknote-content";
+import {
+  getActiveGooseNoteEditor,
+  getEditorSelectedBlocksForExport,
+} from "@/components/editor/utils/selection";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
-function getEditorSelectedBlocks(): BlockNoteContent {
-  try {
-    const editor = (window as any).__gooseNoteEditor;
-    if (editor && typeof editor.getSelection === "function") {
-      const $from = editor.prosemirrorState.selection.$from;
-      for (let d = $from.depth; d > 0; d--) {
-        if ($from.node(d).type.name === "blockContainer") {
-          const sel = editor.getSelection();
-          if (Array.isArray(sel?.blocks)) return sel.blocks as BlockNoteContent;
-          break;
-        }
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
+function captureEditorSelectedBlocks(): BlockNoteContent {
+  return getEditorSelectedBlocksForExport(getActiveGooseNoteEditor());
 }
 
 export function PageMenu() {
@@ -41,7 +30,15 @@ export function PageMenu() {
   const page = activePageId ? getPage(activePageId) : undefined;
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
+  const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const isLocalItem = Boolean(page?.localFilePath);
+
+  const captureSelectedBlocks = () => {
+    const blocks = captureEditorSelectedBlocks();
+    selectedBlocksRef.current = blocks;
+    setSelectedBlocks(blocks);
+    return blocks;
+  };
 
   useEffect(() => {
     const updateViewport = () =>
@@ -61,7 +58,15 @@ export function PageMenu() {
       }
 
       closeNotebookAiIfFullscreen();
+      // Electron 仅本地文件夹模式：无仓库时禁止导入到内置本
+      if (__HOST_TARGET__ === "electron" && !activeNotebookId) {
+        toast.error("请先打开文件夹", {
+          description: "Electron 桌面端仅支持本地文件夹仓库。",
+        });
+        return;
+      }
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
+      if (!newId) return;
 
       const content = result.content;
       const blocks = [
@@ -105,13 +110,14 @@ export function PageMenu() {
     watermarkConfig: WatermarkConfig,
   ) => {
     if (!page) return;
-    const blocks = getEditorSelectedBlocks();
+    const blocks = selectedBlocksRef.current;
     if (blocks.length > 0) {
       exportSelectionToImage(
         blocks,
         extractBlockNoteTitle(page.content) || "选中内容",
         themeId,
         watermarkConfig,
+        page,
       );
     } else {
       exportPageToImage(page, themeId, watermarkConfig);
@@ -124,10 +130,7 @@ export function PageMenu() {
     <>
       <DropdownMenu
         onOpenChange={(open) => {
-          if (open) {
-            const blocks = getEditorSelectedBlocks();
-            setSelectedBlocks(blocks);
-          }
+          if (open) captureSelectedBlocks();
         }}
       >
         <DropdownMenuTrigger asChild>
@@ -135,6 +138,7 @@ export function PageMenu() {
             variant="ghost"
             size="icon"
             aria-label="更多操作"
+            onPointerDownCapture={captureSelectedBlocks}
             className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           >
             <LucideIcons.MoreHorizontal className="h-4 w-4" />
@@ -299,7 +303,6 @@ export function PageMenu() {
           <DropdownMenuItem
             className="page-menu-generate-image grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs text-foreground"
             onSelect={() => {
-              setSelectedBlocks(getEditorSelectedBlocks());
               setThemeSelectorOpen(true);
             }}
           >
@@ -412,6 +415,8 @@ export function PageMenu() {
         onOpenChange={setThemeSelectorOpen}
         onConfirm={handleThemeConfirm}
         mode={selectedBlocks.length > 0 ? "selection" : "page"}
+        page={page}
+        blocks={selectedBlocks}
       />
     </>
   );

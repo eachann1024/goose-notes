@@ -11,6 +11,7 @@ import { useFileDrop } from "./hooks/useFileDrop";
 import { useHistoryRecorder } from "@/hooks/useHistoryRecorder";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { WorkspaceLayout } from "./WorkspaceLayout";
+import { isElectronRuntime } from "@/lib/electron/runtime";
 
 function PageHistoryBinder() {
   const activePageId = usePages((s) => s.activePageId);
@@ -39,7 +40,12 @@ export function WorkspacePage() {
 
   const editorRef = useRef<EditorRef>(null);
   useEffect(() => {
-    document.documentElement.classList.add("is-utools");
+    // Electron 桌面端打 is-electron（顶栏在文档流里，安全区为 0）；其余保持 is-utools。
+    const root = document.documentElement;
+    root.classList.add(isElectronRuntime() ? "is-electron" : "is-utools");
+    if (isElectronRuntime() && /Win/i.test(navigator.platform)) {
+      root.classList.add("is-win");
+    }
   }, []);
 
   // Hooks

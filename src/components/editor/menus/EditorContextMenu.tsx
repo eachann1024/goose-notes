@@ -23,6 +23,7 @@ import {
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
 } from "@/components/editor/utils/clipboard";
+import { getEditorSelectedBlocksForExport } from "@/components/editor/utils/selection";
 import { cn, formatShortcut } from "@/lib/utils";
 
 // 展示型块在这些类型上右键无意义，阻断编辑器右键菜单（含浏览器默认菜单）
@@ -121,31 +122,7 @@ export function EditorContextMenu({
     setSelectedText(trimmedText);
     selectedTextRef.current = trimmedText;
 
-    let blocks: BlockNoteContent = [];
-    if (!trimmedText) {
-      try {
-        const pmSel = editor.prosemirrorState.selection;
-        const $from = pmSel.$from;
-        let inBlock = false;
-        for (let d = $from.depth; d > 0; d--) {
-          if ($from.node(d).type.name === "blockContainer") {
-            inBlock = true;
-            break;
-          }
-        }
-        if (inBlock) {
-          const selected = editor.getSelection();
-          if (Array.isArray(selected?.blocks)) {
-            blocks = selected.blocks as BlockNoteContent;
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      if (blocks.length <= 1) {
-        blocks = [];
-      }
-    }
+    const blocks = getEditorSelectedBlocksForExport(editor);
     setSelectedBlocks(blocks);
     selectedBlocksRef.current = blocks;
   };
@@ -189,7 +166,7 @@ export function EditorContextMenu({
     const blocks = selectedBlocksRef.current;
     if (!Array.isArray(blocks) || blocks.length === 0) return;
     const title = extractBlockNoteTitle(page?.content) || "选中内容";
-    exportSelectionToImage(blocks, title, themeId, watermarkConfig);
+    exportSelectionToImage(blocks, title, themeId, watermarkConfig, page);
   };
 
   return (
@@ -251,7 +228,11 @@ export function EditorContextMenu({
               <ContextMenuSeparator />
             </>
           )}
-          {selectedText && enabledCustomActions.length > 0 && (
+          {/* 快捷动作依赖 uTools redirect 生态：Electron 桌面端或宿主未注入 redirectAction 时整块不渲染 */}
+          {__HOST_TARGET__ !== "electron" &&
+            redirectAction &&
+            selectedText &&
+            enabledCustomActions.length > 0 && (
             <>
               <ContextMenuSub>
                 <ContextMenuSubTrigger>
@@ -330,6 +311,8 @@ export function EditorContextMenu({
         onOpenChange={setThemeSelectorOpen}
         onConfirm={handleSelectionThemeConfirm}
         mode="selection"
+        page={page}
+        blocks={selectedBlocks}
       />
     </>
   );

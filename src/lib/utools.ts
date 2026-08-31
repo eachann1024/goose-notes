@@ -82,33 +82,33 @@ export class UToolsAdapter {
     },
 
     /**
-     * 存储附件（二进制数据，最大 10MB）
+     * 存储附件（uTools 上限 10MB，Electron 桌面端上限 50MB）
      * @param id 附件 ID
      * @param data 二进制数据
      * @param type MIME 类型
      */
-    postAttachment: (
+    postAttachment: async (
       id: string,
       data: Uint8Array,
       type: string,
-    ): { id: string; ok: boolean; error?: any } => {
-      return hostRuntime.db.postAttachment(id, data, type);
+    ): Promise<{ id: string; ok: boolean; error?: any }> => {
+      return await Promise.resolve(hostRuntime.db.postAttachment(id, data, type));
     },
 
     /**
      * 读取附件
      * @param id 附件 ID
      */
-    getAttachment: (id: string): Uint8Array | null => {
-      return hostRuntime.db.getAttachment(id);
+    getAttachment: async (id: string): Promise<Uint8Array | null> => {
+      return await Promise.resolve(hostRuntime.db.getAttachment(id));
     },
 
     /**
      * 获取附件 MIME 类型
      * @param id 附件 ID
      */
-    getAttachmentType: (id: string): string | null => {
-      return hostRuntime.db.getAttachmentType(id);
+    getAttachmentType: async (id: string): Promise<string | null> => {
+      return await Promise.resolve(hostRuntime.db.getAttachmentType(id));
     },
   };
 
@@ -197,5 +197,13 @@ export class UToolsAdapter {
 
   static async unregisterSearchHotkey(shortcut: string): Promise<void> {
     await hostRuntime.unregisterSearchHotkey(shortcut);
+  }
+
+  static async registerQuicknoteHotkey(shortcut: string): Promise<{ ok: boolean; error?: string }> {
+    return hostRuntime.registerQuicknoteHotkey(shortcut);
+  }
+
+  static async unregisterQuicknoteHotkey(shortcut: string): Promise<void> {
+    await hostRuntime.unregisterQuicknoteHotkey(shortcut);
   }
 }

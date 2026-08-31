@@ -130,6 +130,8 @@ test("折叠标题整行虚线边框用 data-goose-heading-collapsed 选择器",
   expect(dashedRule).not.toBeNull();
   expect(dashedRule![0]).toContain("1px dashed");
   expect(dashedRule![0]).toContain("!important");
+  expect(dashedRule![0]).toContain("margin-top: 15px");
+  expect(dashedRule![0]).toContain("padding-top: 3px");
   expect(togglesCss).toContain("--goose-editor-highlight-purple-text");
   expect(togglesCss).not.toMatch(
     /\[data-goose-heading-collapsed="true"\][\s\S]*?border-(left|right)-width:\s*[2-9]/,

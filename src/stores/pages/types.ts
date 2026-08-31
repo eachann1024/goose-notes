@@ -77,7 +77,7 @@ export interface PagesState {
     restoredCount?: number;
     itemLabel?: string;
   };
-  duplicatePage: (id: string) => string;
+  duplicatePage: (id: string) => Promise<string>;
   permanentlyDeletePage: (id: string) => Promise<void>;
   reorderPages: (ids: string[], parentId: string | undefined) => void;
   reorderFavorites: (ids: string[]) => void;

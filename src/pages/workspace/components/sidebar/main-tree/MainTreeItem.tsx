@@ -23,6 +23,7 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
+import { isElectronHost } from "@/lib/local-vault";
 import { getPageTitle } from "./treeAdapter";
 
 const INDENT = 18;
@@ -376,12 +377,15 @@ export function renderItem({
     if (isLocalDirectory) {
       e.preventDefault();
       e.stopPropagation();
-      const pageId = String(item.index);
-      if (pageId && pageId !== "root") {
-        onActivateLocalDirectory?.(
-          pageId,
-          e.metaKey || e.ctrlKey ? "permanent" : "preview",
-        );
+      // Electron：点击文件夹只展开/收起，不打开目录详情页。
+      if (!isElectronHost) {
+        const pageId = String(item.index);
+        if (pageId && pageId !== "root") {
+          onActivateLocalDirectory?.(
+            pageId,
+            e.metaKey || e.ctrlKey ? "permanent" : "preview",
+          );
+        }
       }
       if (e.detail <= 1) toggleLocalDirectory();
       return;
@@ -431,7 +435,8 @@ export function renderItem({
           e.preventDefault();
           e.stopPropagation();
           if (isLocalDirectory) {
-            // 双击文件夹：晋升永久标签（主页），与文件双击行为对齐
+            if (isElectronHost) return;
+            // uTools：双击文件夹晋升永久标签（目录主页）
             onActivateLocalDirectory?.(String(item.index), "permanent");
             return;
           }

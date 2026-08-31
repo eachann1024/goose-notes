@@ -31,6 +31,9 @@
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
+  --workspace-stage-pad-left: 10px;
+  --workspace-sidebar-gap: 8px;
+  --workspace-sidebar-width: 180px;
   --workspace-resize-line: linear-gradient(
     180deg,
     hsl(218 18% 60% / 0) 0%,
@@ -99,9 +102,53 @@
   display: flex;
   height: 100%;
   width: 100%;
-  gap: 8px;
-  padding: 10px 10px 12px 10px;
+  gap: var(--workspace-sidebar-gap);
+  padding: 10px 10px 12px var(--workspace-stage-pad-left);
 }
+
+/* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
+   shell 改纵向布局，stage 占满剩余高度。仅 Electron 构建渲染该顶栏。
+   标题输入左缘对齐主栏（stage 左垫 + 侧栏宽 + gap），且不小于红绿灯占位。 */
+.workspace-shell[data-electron-chrome] {
+  flex-direction: column;
+}
+.workspace-shell[data-electron-chrome] .workspace-stage {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  padding-top: 0;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar {
+  background: var(--workspace-sidebar-surface);
+  padding-left: max(
+    var(--electron-traffic-inset, 78px),
+    calc(
+      var(--workspace-stage-pad-left) + var(--workspace-sidebar-width) +
+        var(--workspace-sidebar-gap)
+    )
+  );
+}
+
+html.is-electron {
+  --electron-traffic-inset: 78px;
+}
+html.is-electron.is-win {
+  --electron-traffic-inset: 12px;
+}
+
+html.is-electron .electron-titlebar {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electron-no-drag], [role="button"]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
+  --workspace-sidebar-gap: 0px;
+}
+
 
 /* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
    导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。

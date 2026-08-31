@@ -8,7 +8,7 @@ interface ImportMetaEnv {
 }
 
 declare global {
-  const __HOST_TARGET__: "utools" | "native-editor";
+  const __HOST_TARGET__: "utools" | "native-editor" | "electron";
 
   /**
    * 速记小窗（plugin B / dist-quicknote）精简构建标志。
@@ -33,6 +33,7 @@ declare global {
     readFile: (path: string) => string | null;
     readFileAsync?: (path: string) => Promise<string | null>;
     readFileBase64?: (path: string) => string | null;
+    readFileBase64Async?: (path: string) => Promise<string | null>;
     readFileStat?: (
       path: string,
     ) => { ok: boolean; error?: string | null; content?: string | null };
@@ -62,6 +63,44 @@ declare global {
     openTerminalAtPath?: (path: string, terminal?: string) => Promise<boolean>;
   }
 
+
+  interface GooseDesktop {
+    selectDirectory: () => Promise<string | null>
+    showOpenDialog: (opts: { filters?: {name:string;extensions:string[]}[]; multiple?: boolean }) => Promise<string[] | null>
+    showSaveDialog: (opts: { defaultPath?: string; filters?: {name:string;extensions:string[]}[] }) => Promise<string | null>
+    fsReadText: (p: string) => Promise<string>
+    fsWriteText: (p: string, data: string) => Promise<void>
+    fsRead: (p: string) => Promise<Uint8Array>
+    fsWrite: (p: string, data: Uint8Array) => Promise<void>
+    fsReadDir: (p: string) => Promise<{ name: string; isDirectory: boolean; path: string }[]>
+    fsMkdir: (p: string) => Promise<void>
+    fsExists: (p: string) => Promise<boolean>
+    fsStat: (p: string) => Promise<{ size: number; isDirectory: boolean; mtimeMs: number }>
+    fsRename: (from: string, to: string) => Promise<void>
+    fsRemove: (p: string) => Promise<void>
+    fsWatch: (p: string) => Promise<string>
+    fsUnwatch: (id: string) => Promise<void>
+    onFsChange: (cb: (e: { path: string; type: string }) => void) => () => void
+    getUserDataPath: () => Promise<string>
+    getDownloadsPath: () => Promise<string>
+    joinPath: (...parts: string[]) => Promise<string>
+    openUrl: (url: string) => Promise<void>
+    openPath: (p: string) => Promise<void>
+    showItemInFolder: (p: string) => Promise<void>
+    listOpenApps: () => Promise<{ name: string; path: string }[]>
+    openWithApp: (app: string, p: string) => Promise<void>
+    openTerminalAtPath: (p: string) => Promise<void>
+    writeText: (t: string) => Promise<void>
+    readText: () => Promise<string>
+    netFetch: (url: string, init?: { method?: string; headers?: Record<string,string>; body?: string }) => Promise<{ status: number; headers: Record<string,string>; body: string }>
+    setTitle: (t: string) => Promise<void>
+    toggleMainWindow: () => Promise<void>
+    toggleQuicknote: () => Promise<void>
+    hideQuicknote: () => Promise<void>
+    registerHotkeys: (k: { wake: string; quicknote: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean }>
+    notify: (n: { title: string; body: string }) => Promise<void>
+  }
+
   interface Window {
     utools?: any;
     gooseAiContext?: {
@@ -69,6 +108,7 @@ declare global {
       listLocalSkills: () => Array<{ path: string; content: string }>;
     };
     gooseFs?: GooseFs;
+    gooseDesktop?: GooseDesktop;
     gooseWeb?: {
       fetchText: (url: string) => Promise<{
         ok: true;

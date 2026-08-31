@@ -213,9 +213,10 @@ export function NotebookEditDialog({
         {/* 操作按钮 - 编辑模式 */}
         {!showDeleteConfirm && (
           <div className="flex flex-col gap-4 mt-6">
-            {/* 删除按钮（仅在有多个记事本时显示） */}
+            {/* 删除按钮（Electron 允许移除最后一个文件夹；uTools 至少保留一本） */}
             {notebookId &&
-              Object.keys(useNotebooks.getState().notebooks).length > 1 && (
+              (__HOST_TARGET__ === "electron" ||
+                Object.keys(useNotebooks.getState().notebooks).length > 1) && (
                 <Button
                   variant="ghost"
                   size="lg"

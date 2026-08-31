@@ -29,3 +29,5 @@
 不把笔记默认送到别人的云。不把「搜索 / 暗色 / 多平台」当卖点。
 
 开发说明见 [DEVELOP.md](DEVELOP.md)。
+
+桌面端 `.app` 未签名：微信无法直接发送 `.app`，请 zip 后发送；接收方解压后执行 `xattr -cr "Goose Note.app"` 再打开。

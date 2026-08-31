@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { isElectronHost } from "@/lib/local-vault";
 
 interface TreeEmptyStateProps {
   isLocalNotebook: boolean;
@@ -21,7 +22,11 @@ export function TreeEmptyState({
       style={hasMeasuredHeight ? { height, minHeight: height } : undefined}
     >
       <p className="text-center text-xs font-normal text-muted-foreground">
-        {isLocalNotebook ? "暂无文件可选" : "暂无页面可选"}
+        {isLocalNotebook
+          ? "暂无文件可选"
+          : isElectronHost
+            ? "尚未打开仓库"
+            : "暂无页面可选"}
       </p>
     </div>
   );

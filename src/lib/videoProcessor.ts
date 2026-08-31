@@ -34,7 +34,8 @@ export async function transcodeVideo(
 ): Promise<Blob> {
   const utools = typeof window !== "undefined" ? window.utools : undefined;
   if (!utools || typeof utools.runFFmpeg !== "function") {
-    throw new Error("视频压缩仅支持在最新版 uTools 中使用");
+    // 无 FFmpeg 的宿主（Electron 桌面端 / 浏览器）：原文件透传保存，不转码。
+    return input;
   }
   if (!fs.isAvailable()) {
     throw new Error("本地文件服务未就绪，无法处理视频");

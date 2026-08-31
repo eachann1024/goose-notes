@@ -10,6 +10,7 @@ import { Base64Strategy } from './strategies/base64'
 import { FileSystemStrategy } from './strategies/file-system'
 import { InlinedStrategy } from './strategies/inlined'
 import { UToolsAdapter } from '../utools'
+import { hostRuntime } from '../host'
 import { compressIfNeeded } from '../imageProcessor'
 
 type LocalFolderAccessState =
@@ -48,7 +49,8 @@ export class ImageStorage {
         return new FileSystemStrategy(() => this.resolveLocalFolderPath())
       }
 
-      if (UToolsAdapter.isUTools) {
+      // Electron 桌面端（非本地文件夹）也走附件磁盘存储，不再 base64 内嵌大图。
+      if (UToolsAdapter.isUTools || hostRuntime.kind === 'electron') {
         return new AttachmentStrategy()
       }
 
@@ -98,6 +100,10 @@ export class ImageStorage {
     }
 
     // 大图片使用策略存储（策略内 compressIfNeeded 幂等，不会重复编码）
+    // Electron 仅本地文件夹模式：无仓库时禁止附件写入内置 db
+    if (hostRuntime.kind === 'electron' && !(await this.resolveLocalFolderPath())) {
+      throw new Error('桌面端本地模式：请先打开文件夹仓库再插入图片')
+    }
     const strategy = await this.resolveStrategy()
     return strategy.save(processed, processedMime)
   }

@@ -6,10 +6,19 @@ import {
   DEFAULT_CLOSE_TAB_SHORTCUT,
   DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
   DEFAULT_APP_SHORTCUTS,
+  DEFAULT_WAKE_HOTKEY,
+  DEFAULT_QUICKNOTE_HOTKEY,
+  useSettings,
 } from "@/stores/useSettings"
+import type { DesktopHotkeyStatus } from "@/stores/settings/types"
 import { SettingsSectionCard } from "./SettingsSectionCard"
 import { ShortcutField } from "./ShortcutField"
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
+
+// Electron 桌面端（仅本地模式）：设置-快捷键页多出「桌面全局快捷键」分区；uTools 不出现。
+// 单元测试没有 vite define，用 typeof 兜底避免模块加载即 ReferenceError。
+const isElectronHost =
+  typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron"
 
 interface SettingsShortcutsProps {
   closeTabShortcut: string
@@ -106,6 +115,7 @@ export function getAllConfiguredShortcuts(
   excludeId: string,
   isMac = isMacPlatform(),
   singleTabMode = false,
+  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
 ): string[] {
   const fixedValues = singleTabMode
     ? ALWAYS_FIXED_SHORTCUT_VALUES
@@ -126,6 +136,15 @@ export function getAllConfiguredShortcuts(
   if (excludeId !== "search-panel-close" && searchPanelCloseShortcut) {
     shortcuts.push(normalizeShortcutForConflict(searchPanelCloseShortcut, isMac))
   }
+  // 桌面全局快捷键（Electron）也参与冲突占用；excludeId 用 wake-hotkey / quicknote-hotkey。
+  if (excludeId !== "wake-hotkey" && desktopHotkeys?.wakeHotkey) {
+    shortcuts.push(normalizeShortcutForConflict(desktopHotkeys.wakeHotkey, isMac))
+  }
+  if (excludeId !== "quicknote-hotkey" && desktopHotkeys?.quicknoteHotkey) {
+    shortcuts.push(
+      normalizeShortcutForConflict(desktopHotkeys.quicknoteHotkey, isMac),
+    )
+  }
   return shortcuts
 }
 
@@ -136,6 +155,7 @@ function makeAppShortcutSetter(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   singleTabMode: boolean,
+  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
 ) {
   return (shortcut: string) => {
     if (shortcut) {
@@ -146,6 +166,7 @@ function makeAppShortcutSetter(
         id,
         isMacPlatform(),
         singleTabMode,
+        desktopHotkeys,
       )
       if (existing.includes(normalizeShortcutForConflict(shortcut))) {
         toast.warning("快捷键冲突", {
@@ -165,6 +186,7 @@ function makeCloseSetter(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   singleTabMode: boolean,
+  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
 ) {
   return (shortcut: string) => {
     if (shortcut) {
@@ -175,6 +197,7 @@ function makeCloseSetter(
         excludeId,
         isMacPlatform(),
         singleTabMode,
+        desktopHotkeys,
       )
       if (existing.includes(normalizeShortcutForConflict(shortcut))) {
         toast.warning("快捷键冲突", {
@@ -239,6 +262,139 @@ function KbdShortcut({ shortcut }: { shortcut: string }) {
   )
 }
 
+/** 桌面全局快捷键状态文案（占用/无效/已关闭/错误/已生效）。 */
+function desktopHotkeyStatusText(status: DesktopHotkeyStatus): {
+  text: string
+  isError: boolean
+} {
+  switch (status.state) {
+    case "active":
+      return { text: "已生效", isError: false }
+    case "occupied":
+      return {
+        text: `快捷键被占用${status.message ? `：${status.message}` : ""}`,
+        isError: true,
+      }
+    case "invalid":
+      return { text: "快捷键无效，请重新录制", isError: true }
+    case "disabled":
+      return { text: status.message || "已关闭", isError: false }
+    case "error":
+      return {
+        text: `注册失败${status.message ? `：${status.message}` : ""}`,
+        isError: true,
+      }
+    default:
+      return { text: "", isError: false }
+  }
+}
+
+/** 「桌面全局快捷键」分区：仅 Electron 桌面端渲染。 */
+function DesktopGlobalHotkeysCard({
+  appShortcuts,
+  closeTabShortcut,
+  searchPanelCloseShortcut,
+  singleTabMode,
+}: {
+  appShortcuts: Record<string, string>
+  closeTabShortcut: string
+  searchPanelCloseShortcut: string
+  singleTabMode: boolean
+}) {
+  const desktop = useSettings((s) => s.desktop)
+  const setWakeHotkey = useSettings((s) => s.setWakeHotkey)
+  const setWakeHotkeyEnabled = useSettings((s) => s.setWakeHotkeyEnabled)
+  const setQuicknoteHotkey = useSettings((s) => s.setQuicknoteHotkey)
+  const setQuicknoteHotkeyEnabled = useSettings(
+    (s) => s.setQuicknoteHotkeyEnabled,
+  )
+
+  const makeDesktopSetter = (
+    excludeId: "wake-hotkey" | "quicknote-hotkey",
+    setHotkey: (shortcut: string) => void,
+    setEnabled: (enabled: boolean) => void,
+  ) =>
+    (shortcut: string) => {
+      // 清空 = 禁用
+      if (!shortcut) {
+        setHotkey("")
+        setEnabled(false)
+        return
+      }
+      const existing = getAllConfiguredShortcuts(
+        appShortcuts,
+        closeTabShortcut,
+        searchPanelCloseShortcut,
+        excludeId,
+        isMacPlatform(),
+        singleTabMode,
+        {
+          wakeHotkey: desktop.wakeHotkey,
+          quicknoteHotkey: desktop.quicknoteHotkey,
+        },
+      )
+      if (existing.includes(normalizeShortcutForConflict(shortcut))) {
+        toast.warning("快捷键冲突", {
+          description: `${formatShortcut(shortcut)} 已被其他操作占用，请选择其他快捷键。`,
+        })
+        return
+      }
+      setHotkey(shortcut)
+      setEnabled(true)
+    }
+
+  const wakeStatus = desktopHotkeyStatusText(desktop.wakeHotkeyStatus)
+  const quicknoteStatus = desktopHotkeyStatusText(desktop.quicknoteHotkeyStatus)
+
+  return (
+    <SettingsSectionCard title="桌面全局快捷键">
+      <p className="mb-3 text-xs text-muted-foreground">
+        应用未聚焦时也可唤出。同一快捷键再按一次：已聚焦则隐藏，未聚焦则聚焦，不可见则显示。
+      </p>
+      <ShortcutField
+        id="wake-hotkey"
+        title="主窗口唤出 / 隐藏"
+        description="全局唤出或隐藏 Goose Note 主窗口。"
+        value={desktop.wakeHotkeyEnabled ? desktop.wakeHotkey : ""}
+        onChange={makeDesktopSetter(
+          "wake-hotkey",
+          setWakeHotkey,
+          setWakeHotkeyEnabled,
+        )}
+        resetValue={DEFAULT_WAKE_HOTKEY}
+      />
+      {wakeStatus.text && (
+        <p
+          className={`mt-1 pl-4 text-[11px] ${wakeStatus.isError ? "text-[var(--goose-color-danger)]" : "text-muted-foreground"}`}
+        >
+          {wakeStatus.text}
+        </p>
+      )}
+      <div className="mt-2">
+        <ShortcutField
+          id="quicknote-hotkey"
+          title="速记小窗唤出 / 隐藏"
+          description="全局唤出或隐藏速记小窗，随手记录草稿。"
+          value={desktop.quicknoteHotkeyEnabled ? desktop.quicknoteHotkey : ""}
+          onChange={makeDesktopSetter(
+            "quicknote-hotkey",
+            setQuicknoteHotkey,
+            setQuicknoteHotkeyEnabled,
+          )}
+          resetValue={DEFAULT_QUICKNOTE_HOTKEY}
+        />
+        {quicknoteStatus.text && (
+          <p
+            className={`mt-1 pl-4 text-[11px] ${quicknoteStatus.isError ? "text-[var(--goose-color-danger)]" : "text-muted-foreground"}`}
+          >
+            {quicknoteStatus.text}
+          </p>
+        )}
+      </div>
+    </SettingsSectionCard>
+  )
+}
+
 export function SettingsShortcuts({
   closeTabShortcut,
   setCloseTabShortcut,
@@ -250,6 +406,12 @@ export function SettingsShortcuts({
   singleTabMode,
 }: SettingsShortcutsProps) {
   const [confirmReset, setConfirmReset] = useState(false)
+  // zustand v5 忽略第二个 equalityFn 参数，对象选择器会导致重复渲染，故拆成原始值。
+  const wakeHotkey = useSettings((s) => s.desktop.wakeHotkey)
+  const quicknoteHotkey = useSettings((s) => s.desktop.quicknoteHotkey)
+  const desktopHotkeys = isElectronHost
+    ? { wakeHotkey, quicknoteHotkey }
+    : undefined
 
   const handleReset = () => {
     if (!confirmReset) {
@@ -259,6 +421,14 @@ export function SettingsShortcuts({
     resetAppShortcuts()
     setCloseTabShortcut(DEFAULT_CLOSE_TAB_SHORTCUT)
     setSearchPanelCloseShortcut(DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT)
+    if (isElectronHost) {
+      // 桌面全局快捷键一并恢复默认并重新启用
+      const settings = useSettings.getState()
+      settings.setWakeHotkey(DEFAULT_WAKE_HOTKEY)
+      settings.setWakeHotkeyEnabled(true)
+      settings.setQuicknoteHotkey(DEFAULT_QUICKNOTE_HOTKEY)
+      settings.setQuicknoteHotkeyEnabled(true)
+    }
     setConfirmReset(false)
     toast.success("已恢复全部快捷键默认值")
   }
@@ -271,6 +441,7 @@ export function SettingsShortcuts({
       closeTabShortcut,
       searchPanelCloseShortcut,
       singleTabMode,
+      desktopHotkeys,
     )
 
   const safeSetCloseTab = makeCloseSetter(
@@ -280,6 +451,7 @@ export function SettingsShortcuts({
     closeTabShortcut,
     searchPanelCloseShortcut,
     singleTabMode,
+    desktopHotkeys,
   )
   const safeSetSearchPanelClose = makeCloseSetter(
     "search-panel-close",
@@ -288,6 +460,7 @@ export function SettingsShortcuts({
     closeTabShortcut,
     searchPanelCloseShortcut,
     singleTabMode,
+    desktopHotkeys,
   )
 
   return (
@@ -307,6 +480,15 @@ export function SettingsShortcuts({
           {confirmReset ? "再次点击确认恢复" : "恢复默认"}
         </Button>
       </div>
+
+      {isElectronHost && (
+        <DesktopGlobalHotkeysCard
+          appShortcuts={appShortcuts}
+          closeTabShortcut={closeTabShortcut}
+          searchPanelCloseShortcut={searchPanelCloseShortcut}
+          singleTabMode={singleTabMode}
+        />
+      )}
 
       <SettingsSectionCard title="全局动作">
         <ShortcutField

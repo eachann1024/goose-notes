@@ -113,6 +113,14 @@ export function useFileDrop() {
     const currentNotebook = currentNotebookId
       ? useNotebooks.getState().notebooks[currentNotebookId]
       : null;
+    // Electron 仅本地文件夹模式：文本文件不允许导入内置 db，引导用户改为挂载文件夹
+    if (__HOST_TARGET__ === "electron") {
+      toast.error("请改为打开文件夹", {
+        description:
+          "Electron 桌面端仅支持本地文件夹仓库，请拖入整个文件夹或在侧栏打开文件夹。",
+      });
+      return;
+    }
     const targetNotebookId =
       currentNotebookId && currentNotebook?.source !== "local-folder"
         ? currentNotebookId

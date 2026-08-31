@@ -1,7 +1,100 @@
 import { CellSelection } from "prosemirror-tables";
 import { NodeSelection, type EditorState } from "prosemirror-state";
 
+import {
+  clonePageContent,
+  type BlockNoteContent,
+} from "./blocknote-content";
 import { normalizeClipboardLineEndings } from "./clipboard";
+
+const SELECTED_BLOCKS_CACHE_KEY = "__gooseNoteSelectedBlocks";
+
+type EditorSelectedBlocksSource = {
+  getSelection?: () => { blocks?: unknown } | undefined;
+  getSelectionCutBlocks?: (expandToWords?: boolean) => {
+    blocks?: unknown;
+  };
+  prosemirrorState?: { selection?: { empty?: boolean } };
+  isFocused?: () => boolean;
+  [SELECTED_BLOCKS_CACHE_KEY]?: BlockNoteContent;
+};
+
+function asSelectedBlocks(value: unknown): BlockNoteContent {
+  return Array.isArray(value) ? (value as BlockNoteContent) : [];
+}
+
+function cloneSelectedBlocks(blocks: BlockNoteContent): BlockNoteContent {
+  if (blocks.length === 0) return [];
+  try {
+    return clonePageContent(blocks);
+  } catch {
+    return blocks.slice();
+  }
+}
+
+function readCachedSelectedBlocks(
+  editor: EditorSelectedBlocksSource | null | undefined,
+): BlockNoteContent {
+  return asSelectedBlocks(editor?.[SELECTED_BLOCKS_CACHE_KEY]);
+}
+
+function writeCachedSelectedBlocks(
+  editor: EditorSelectedBlocksSource,
+  blocks: BlockNoteContent,
+) {
+  editor[SELECTED_BLOCKS_CACHE_KEY] = cloneSelectedBlocks(blocks);
+}
+
+/**
+ * 只读当前 ProseMirror 选区覆盖的块。光标塌缩、NodeSelection 或读失败时返回空数组。
+ */
+export function readLiveEditorSelectedBlocks(
+  editor: EditorSelectedBlocksSource | null | undefined,
+): BlockNoteContent {
+  if (!editor) return [];
+  try {
+    if (editor.prosemirrorState?.selection?.empty) return [];
+    const selected = editor.getSelection?.();
+    const selectedBlocks = asSelectedBlocks(selected?.blocks);
+    if (selectedBlocks.length > 0) return selectedBlocks;
+    const cut = editor.getSelectionCutBlocks?.(false);
+    return asSelectedBlocks(cut?.blocks);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 有非空选区时写入快照。WKWebView / Electron 点到顶栏后常把选区收成光标，
+ * 菜单打开时要靠这份快照，而不是再去现场读。
+ */
+export function rememberEditorSelectedBlocks(
+  editor: EditorSelectedBlocksSource | null | undefined,
+): BlockNoteContent {
+  const live = readLiveEditorSelectedBlocks(editor);
+  if (!editor) return live;
+  if (live.length > 0) {
+    writeCachedSelectedBlocks(editor, live);
+    return readCachedSelectedBlocks(editor);
+  }
+  return readCachedSelectedBlocks(editor);
+}
+
+export function clearEditorSelectedBlocksCache(
+  editor: EditorSelectedBlocksSource | null | undefined,
+) {
+  if (!editor) return;
+  editor[SELECTED_BLOCKS_CACHE_KEY] = [];
+}
+
+/**
+ * 导出选区图片用：优先现场选区，失焦塌缩后回落到打开菜单前的快照。
+ */
+export function getEditorSelectedBlocksForExport(
+  editor: EditorSelectedBlocksSource | null | undefined,
+): BlockNoteContent {
+  return rememberEditorSelectedBlocks(editor);
+}
 
 /** 当前是否选中了单个图片块；是则返回图片原始引用。 */
 export function getSelectedImageUrl(state: EditorState): string | null {
@@ -138,4 +231,12 @@ export function getSelectedPlainTextContext(container: HTMLElement): {
     selectedText,
     withinCodeBlock,
   };
+}
+
+export function getActiveGooseNoteEditor(): EditorSelectedBlocksSource | null {
+  if (typeof window === "undefined") return null;
+  const editor = (window as Window & {
+    __gooseNoteEditor?: EditorSelectedBlocksSource | null;
+  }).__gooseNoteEditor;
+  return editor ?? null;
 }

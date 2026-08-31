@@ -74,6 +74,18 @@ export function usePluginEvents() {
       const text = customEvent.detail?.text ?? "";
 
       const pagesStore = usePages.getState();
+      // Electron 仅本地文件夹模式：无活跃仓库时 new_page 入口 no-op（不回落内置本）
+      const activeNotebook = useNotebooks.getState().activeNotebookId
+        ? useNotebooks.getState().notebooks[
+            useNotebooks.getState().activeNotebookId!
+          ]
+        : undefined;
+      if (
+        __HOST_TARGET__ === "electron" &&
+        activeNotebook?.source !== "local-folder"
+      ) {
+        return;
+      }
       const nbId =
         useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
 

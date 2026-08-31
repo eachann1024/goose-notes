@@ -505,6 +505,26 @@ export const bootstrap = async (
       useNotebookAiChats.persist.rehydrate();
       // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
       await usePages.getState().hydrateFromStorage();
+      // Electron 仅本地文件夹模式：内置页（gn:page:* 里非 local-folder 工作区的残留）
+      // 不灌进侧栏；数据仍保留在 db，可在「设置 → 本地文件夹」一次性导出。
+      if (__HOST_TARGET__ === "electron") {
+        const localIds = new Set(
+          Object.values(useNotebooks.getState().notebooks)
+            .filter((n) => n.source === "local-folder")
+            .map((n) => n.id),
+        );
+        const pagesState = usePages.getState();
+        const localOnlyPages = Object.fromEntries(
+          Object.entries(pagesState.pages).filter(([, page]) =>
+            localIds.has(page.workspaceId),
+          ),
+        );
+        usePages.setState({
+          pages: localOnlyPages,
+          activePageId: null,
+          onboardingCompleted: true,
+        });
+      }
     }
     if (import.meta.env.DEV) {
       const { installTestBridge } = await import("@/testBridge");
@@ -513,10 +533,14 @@ export const bootstrap = async (
     if (!lean) {
       const pagesStore = usePages.getState();
       const notebooksStore = useNotebooks.getState();
-      const recoveredNotebooks = recoverMissingNotebooksFromPages({
-        notebooks: notebooksStore.notebooks,
-        pages: pagesStore.pages,
-      });
+      // Electron 仅本地文件夹模式：禁止从页面数据回种内置本（含 default-notebook）
+      const recoveredNotebooks =
+        __HOST_TARGET__ === "electron"
+          ? null
+          : recoverMissingNotebooksFromPages({
+              notebooks: notebooksStore.notebooks,
+              pages: pagesStore.pages,
+            });
 
       if (recoveredNotebooks) {
         const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
@@ -541,8 +565,11 @@ export const bootstrap = async (
       if (
         !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
       ) {
+        // Electron：无仓库时保持 null（空态），绝不回落 DEFAULT_NOTEBOOK
         const firstNotebookId =
-          Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK;
+          __HOST_TARGET__ === "electron"
+            ? (Object.keys(nextNotebooksStore.notebooks)[0] ?? null)
+            : (Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK);
         useNotebooks.setState({ activeNotebookId: firstNotebookId });
       }
     }
@@ -646,10 +673,14 @@ export const bootstrap = async (
       }
     }
   };
-  // 冷启动消费（React 刚 mount，已有积压）
-  consumeQuickNoteInbox();
-  // 热场景监听
-  window.addEventListener("goose-note:quicknote-inbox", consumeQuickNoteInbox);
+  // Electron 桌面端无速记小窗（quicknote 入口不构建、无 preload 注入、无 redirect 唤起），
+  // 跳过收件箱消费与监听。
+  if (__HOST_TARGET__ !== "electron") {
+    // 冷启动消费（React 刚 mount，已有积压）
+    consumeQuickNoteInbox();
+    // 热场景监听
+    window.addEventListener("goose-note:quicknote-inbox", consumeQuickNoteInbox);
+  }
 
   // 主窗启动后后台静默预热所有 local-folder 记事本页面，使「所有记事本」全局搜索覆盖全量。
   // 不 await：不阻塞首屏；小窗（quicknote）不预热。idle 时机执行，避开首屏渲染高峰。
@@ -660,13 +691,16 @@ export const bootstrap = async (
       } catch (err) {
         console.error("预加载本地文件夹页面失败", err);
       }
-      import("@/lib/webdavSync")
-        .then(({ triggerAutoWebdavBackup }) => {
-          void triggerAutoWebdavBackup();
-        })
-        .catch((e) => {
-          console.error("加载 webdavSync 模块失败", e);
-        });
+      // Electron 桌面端（仅本地模式）：WebDAV 自动备份默认不触发（设置 UI 保留，仍可手动备份）。
+      if (__HOST_TARGET__ !== "electron") {
+        import("@/lib/webdavSync")
+          .then(({ triggerAutoWebdavBackup }) => {
+            void triggerAutoWebdavBackup();
+          })
+          .catch((e) => {
+            console.error("加载 webdavSync 模块失败", e);
+          });
+      }
     };
     if (typeof requestIdleCallback === "function") {
       requestIdleCallback(preloadAll, { timeout: 4000 });

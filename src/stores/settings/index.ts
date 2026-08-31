@@ -18,14 +18,12 @@ import {
   normalizeUIFontSize,
   normalizeAutoCloseInactiveTabsHours,
   normalizeAISettings,
-  normalizeDesktopHotkeyStatus,
+  mergeDesktopSettings,
   mergeSearchProvidersWithDefaults,
   normalizeCustomActions,
   UTOOLS_WINDOW_HEIGHT_MIN,
   UTOOLS_WINDOW_HEIGHT_MAX,
   UTOOLS_WINDOW_HEIGHT_DEFAULT,
-  DEFAULT_WAKE_HOTKEY,
-  DEFAULT_SEARCH_HOTKEY,
   DEFAULT_CLOSE_TAB_SHORTCUT,
   DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
 } from "./types";
@@ -353,18 +351,8 @@ export const useSettings = create<SettingsState>()(
           const storedDesktop = state.desktop as
             | Partial<DesktopSettings>
             | undefined;
-          const mergedDesktop: DesktopSettings = {
-            wakeHotkey: storedDesktop?.wakeHotkey ?? DEFAULT_WAKE_HOTKEY,
-            wakeHotkeyEnabled: storedDesktop?.wakeHotkeyEnabled ?? true,
-            searchHotkey: storedDesktop?.searchHotkey ?? DEFAULT_SEARCH_HOTKEY,
-            searchHotkeyEnabled: storedDesktop?.searchHotkeyEnabled ?? true,
-            wakeHotkeyStatus: normalizeDesktopHotkeyStatus(
-              storedDesktop?.wakeHotkeyStatus,
-            ),
-            searchHotkeyStatus: normalizeDesktopHotkeyStatus(
-              storedDesktop?.searchHotkeyStatus,
-            ),
-          };
+          const mergedDesktop: DesktopSettings =
+            mergeDesktopSettings(storedDesktop);
           if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
             useSettings.setState({ desktop: mergedDesktop });
           }
@@ -479,6 +467,7 @@ export {
   EDITOR_FONT_SIZE_DEFAULT,
   DEFAULT_WAKE_HOTKEY,
   DEFAULT_SEARCH_HOTKEY,
+  DEFAULT_QUICKNOTE_HOTKEY,
   DEFAULT_CLOSE_TAB_SHORTCUT,
   DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
   AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN,

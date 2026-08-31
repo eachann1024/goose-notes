@@ -133,6 +133,76 @@ test("navigation bracket shortcuts use physical codes on localized layouts", () 
   }
 });
 
+test("Mod+, 打开设置：mac meta 通过，中文逗号/Comma 归一后也通过", () => {
+  const g = globalThis as typeof globalThis & { window?: unknown };
+  const hadWindow = typeof g.window !== "undefined";
+  if (!hadWindow) {
+    Object.defineProperty(g, "window", {
+      configurable: true,
+      value: globalThis,
+    });
+  }
+  const realPlatform = navigator.platform;
+  Object.defineProperty(navigator, "platform", {
+    configurable: true,
+    value: "MacIntel",
+  });
+  const normalizeOpenSettingsKey = (event: {
+    key: string;
+    code?: string;
+  }) => (event.key === "，" || event.code === "Comma" ? "," : event.key);
+  try {
+    expect(
+      matchShortcut(
+        keyboardEvent({ key: ",", code: "Comma", metaKey: true }),
+        "Mod+,",
+      ),
+    ).toBe(true);
+
+    const chineseComma = keyboardEvent({
+      key: "，",
+      code: "Comma",
+      metaKey: true,
+    });
+    expect(
+      matchShortcut(
+        {
+          ...chineseComma,
+          key: normalizeOpenSettingsKey(chineseComma),
+        },
+        "Mod+,",
+      ),
+    ).toBe(true);
+
+    const codeOnly = keyboardEvent({
+      key: "Unidentified",
+      code: "Comma",
+      metaKey: true,
+    });
+    expect(
+      matchShortcut(
+        {
+          ...codeOnly,
+          key: normalizeOpenSettingsKey(codeOnly),
+        },
+        "Mod+,",
+      ),
+    ).toBe(true);
+
+    expect(
+      matchShortcut(keyboardEvent({ key: ",", code: "Comma" }), "Mod+,"),
+    ).toBe(false);
+  } finally {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: realPlatform,
+    });
+    if (!hadWindow) {
+      delete g.window;
+    }
+  }
+});
+
 test("mouse side buttons use stable shortcut names", () => {
   expect(getShortcutFromMouseEvent({ button: 3 })).toBe("MouseBack");
   expect(getShortcutFromMouseEvent({ button: 4 })).toBe("MouseForward");

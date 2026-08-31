@@ -53,3 +53,43 @@ test("本地文件夹不强制插入首块 H1", () => {
   );
   expect(blocks[0].type).toBe("paragraph");
 });
+
+test("导出前拍平 heading.children，不把下一节塞进上一节", () => {
+  const blocks = cloneExportBlocks(
+    [
+      {
+        type: "heading",
+        props: { level: 2 },
+        content: [{ type: "text", text: "旧系统体系", styles: {} }],
+        children: [
+          {
+            type: "bulletListItem",
+            content: [{ type: "text", text: "列表", styles: {} }],
+          },
+          {
+            type: "heading",
+            props: { level: 2 },
+            content: [{ type: "text", text: "AI Agent", styles: {} }],
+            children: [
+              {
+                type: "bulletListItem",
+                content: [{ type: "text", text: "定时任务", styles: {} }],
+              },
+            ],
+          },
+        ],
+      },
+    ] as any,
+    { ensureFirstTitle: false },
+  );
+  expect(blocks.map((block) => block.type)).toEqual([
+    "heading",
+    "bulletListItem",
+    "heading",
+    "bulletListItem",
+  ]);
+  expect((blocks[0] as { children?: unknown[] }).children).toEqual([]);
+  expect((blocks[2] as { content: Array<{ text?: string }> }).content[0]?.text).toBe(
+    "AI Agent",
+  );
+});

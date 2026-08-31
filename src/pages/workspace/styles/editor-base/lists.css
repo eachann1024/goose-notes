@@ -25,6 +25,16 @@
   transform: translateY(var(--goose-list-marker-optical-offset-y));
 }
 
+/* 自定义圆点给 ::before 设了真实高度，覆盖 BlockNote #1588 的 height:0 规避，
+   点行尾空白时 Chromium 会把光标算到块首。marker 不接收指针，点击落到文字。 */
+.bn-editor
+  .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  pointer-events: none;
+}
+
 /*
  * 嵌套列表连接线：BlockNote 默认把线拆到每个 child outer 上，线段高度不包含
  * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽

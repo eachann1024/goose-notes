@@ -92,6 +92,11 @@ export {
   getSelectedImageUrl,
   getElementFromNode,
   isInteractiveEditorTarget,
+  getActiveGooseNoteEditor,
+  getEditorSelectedBlocksForExport,
+  readLiveEditorSelectedBlocks,
+  rememberEditorSelectedBlocks,
+  clearEditorSelectedBlocksCache,
 } from "@/components/editor/utils/selection";
 
 export { editorSchema } from "@/components/editor/core/schema";

@@ -6,6 +6,9 @@ import { useSettings } from "@/stores/useSettings";
 import { useTabs } from "@/stores/useTabs";
 import type { Page } from "@/types";
 
+const isElectronHost =
+  typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron";
+
 export type LastNoteRestoreResult =
   | "restored"
   | "already-active"
@@ -40,7 +43,10 @@ export async function renderWorkspaceAfterStartup({
 }
 
 const isVisiblePageInNotebook = (page: Page | undefined, notebookId: string) =>
-  !!page && page.workspaceId === notebookId && !page.trashedAt;
+  !!page &&
+  page.workspaceId === notebookId &&
+  !page.trashedAt &&
+  !(isElectronHost && page.isFolder);
 
 const resolveWorkspaceStartupPageId = (
   notebookId: string | null,
@@ -85,7 +91,12 @@ export const clearWorkspaceStartupSelection = () => {
 export function restoreLastNoteIfNeeded(): LastNoteRestoreResult {
   const pagesStore = usePages.getState();
   if (!pagesStore.hydrated) return "not-ready";
-  if (pagesStore.activePageId) return "already-active";
+  if (pagesStore.activePageId) {
+    const current = pagesStore.pages[pagesStore.activePageId];
+    // 桌面端文件夹不是可打开页面：清掉水合残留后再走普通恢复。
+    if (!(isElectronHost && current?.isFolder)) return "already-active";
+    pagesStore.setActivePage(null);
+  }
   if (!useSettings.getState().privacy.autoOpenLastNote) return "disabled";
 
   const targetPageId = resolveWorkspaceStartupPageId(

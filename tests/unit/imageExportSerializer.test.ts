@@ -6,10 +6,13 @@ import {
 } from "../../src/lib/imageExport/themes";
 import { buildStyledHTML } from "../../src/lib/imageExport/serializer/builder";
 import {
+  collectBlockInlineStyles,
   renderBlock,
   renderBlocks,
   renderInline,
 } from "../../src/lib/imageExport/serializer/renderer";
+import { buildImageExportPreviewHtml } from "../../src/lib/imageExport/livePreview";
+import { cloneExportBlocks } from "../../src/lib/export/prepareExportBlocks";
 import {
   BLOCKNOTE_TEXT_COLORS_DARK,
 } from "../../src/lib/imageExport/serializer/utils";
@@ -509,10 +512,252 @@ test("主题字体与水印微调生效", () => {
 });
 
 test("已删除主题会迁移到保留的代表主题", () => {
-  expect(CARD_THEMES).toHaveLength(15);
+  expect(CARD_THEMES).toHaveLength(16);
+  expect(CARD_THEMES[0].id).toBe("notebook");
+  expect(normalizeCardThemeId(undefined)).toBe("notebook");
+  expect(normalizeCardThemeId("missing-theme")).toBe("notebook");
   expect(normalizeCardThemeId("notion")).toBe("github-light");
   expect(normalizeCardThemeId("obsidian")).toBe("github-dark");
   expect(normalizeCardThemeId("academic")).toBe("medium");
   expect(normalizeCardThemeId("linear")).toBe("github-light");
   expect(normalizeCardThemeId("solarized-light")).toBe("typewriter");
+});
+
+function headingBlock(
+  text: string,
+  props: Record<string, unknown> = {},
+  children: unknown[] = [],
+) {
+  return {
+    type: "heading",
+    props,
+    content: [{ type: "text", text, styles: {} }],
+    children,
+  };
+}
+
+function bullet(text: string) {
+  return {
+    type: "bulletListItem",
+    content: [{ type: "text", text, styles: {} }],
+  };
+}
+
+test("heading 保留居中和对齐色带", () => {
+  const theme = getCardTheme("notebook");
+  const html = renderBlock(
+    headingBlock("任务列表", {
+      level: 1,
+      textAlignment: "center",
+      backgroundColor: "brown",
+    }),
+    theme,
+  );
+  expect(html).toContain("<h1");
+  expect(html).toContain("text-align:center");
+  expect(html).toContain("background-color:#e9e5e3");
+  expect(html).toContain("任务列表");
+});
+
+test("显示标题时把首块 heading 的对齐和背景带到卡片标题", () => {
+  const theme = getCardTheme("notebook");
+  const html = buildImageExportPreviewHtml({
+    title: "任务列表",
+    blocks: [
+      headingBlock("任务列表", {
+        level: 1,
+        textAlignment: "center",
+        backgroundColor: "brown",
+      }),
+      headingBlock("旧系统体系", { level: 2 }),
+      bullet("要点一"),
+    ],
+    theme,
+    mode: "page",
+    watermarkConfig: { showTitle: true },
+  });
+  expect(html).toMatch(/class="gooseshot-title has-block-bg"/);
+  expect(html).toContain("text-align:center");
+  expect(html).toContain("background-color:#e9e5e3");
+  expect(html).not.toMatch(/<h1[^>]*>任务列表/);
+  expect(html).toContain("<h2>旧系统体系</h2>");
+});
+
+test("浏览器中标题居中色带生效，且两节列表不被合并", async ({ page }) => {
+  const theme = getCardTheme("notebook");
+  const html = buildImageExportPreviewHtml({
+    title: "任务列表",
+    blocks: [
+      headingBlock("任务列表", {
+        level: 1,
+        textAlignment: "center",
+        backgroundColor: "brown",
+      }),
+      headingBlock("旧系统体系", { level: 2 }, [
+        bullet("销售模组"),
+        bullet("数据中台"),
+        bullet("列表"),
+        headingBlock("AI Agent", { level: 2 }, [
+          bullet("定时任务"),
+          bullet("office 套件"),
+          bullet("管理界面"),
+        ]),
+      ]),
+    ],
+    theme,
+    mode: "page",
+    watermarkConfig: { showTitle: true, showWatermark: false },
+  });
+  await page.setContent(html);
+
+  const computed = await page.evaluate(() => {
+    const title = document.querySelector(".gooseshot-title") as HTMLElement | null;
+    const lists = [...document.querySelectorAll("ul.bn-list")];
+    const headings = [...document.querySelectorAll(".gooseshot-content h2")].map(
+      (el) => el.textContent,
+    );
+    const agentAsListItem = [...document.querySelectorAll("li")].some(
+      (el) => el.childNodes[0]?.textContent === "AI Agent",
+    );
+    const titleStyle = title ? getComputedStyle(title) : null;
+    return {
+      titleAlign: titleStyle?.textAlign,
+      titleBg: titleStyle?.backgroundColor,
+      listCount: lists.length,
+      headings,
+      agentAsListItem,
+    };
+  });
+
+  expect(computed.titleAlign).toBe("center");
+  expect(computed.titleBg).toBe("rgb(233, 229, 227)");
+  expect(computed.listCount).toBe(2);
+  expect(computed.headings).toEqual(["旧系统体系", "AI Agent"]);
+  expect(computed.agentAsListItem).toBe(false);
+});
+
+test("heading 夹在两组 bullet 之间时拆成两个 ul", () => {
+  const theme = getCardTheme("notebook");
+  const html = renderBlocks(
+    [
+      headingBlock("旧系统体系", { level: 2 }),
+      bullet("销售模组"),
+      bullet("数据中台"),
+      bullet("列表"),
+      headingBlock("AI Agent", { level: 2 }),
+      bullet("定时任务"),
+      bullet("office 套件"),
+      bullet("管理界面"),
+    ],
+    theme,
+  );
+  expect((html.match(/<ul class="bn-list">/g) || []).length).toBe(2);
+  expect(html).toContain("<h2>旧系统体系</h2>");
+  expect(html).toContain("<h2>AI Agent</h2>");
+  expect(html).not.toMatch(/<li[^>]*>AI Agent<\/li>/);
+});
+
+test("heading.children 嵌套章节拍平后仍保持两个独立列表", () => {
+  const theme = getCardTheme("notebook");
+  const nested = [
+    headingBlock("旧系统体系", { level: 2 }, [
+      bullet("销售模组"),
+      bullet("数据中台"),
+      bullet("列表"),
+      headingBlock("AI Agent", { level: 2 }, [
+        bullet("定时任务"),
+        bullet("office 套件"),
+        bullet("管理界面"),
+      ]),
+    ]),
+  ];
+  const flattened = cloneExportBlocks(nested as any, { ensureFirstTitle: false });
+  const html = renderBlocks(flattened, theme);
+  expect(flattened.map((block) => block.type)).toEqual([
+    "heading",
+    "bulletListItem",
+    "bulletListItem",
+    "bulletListItem",
+    "heading",
+    "bulletListItem",
+    "bulletListItem",
+    "bulletListItem",
+  ]);
+  expect((html.match(/<ul class="bn-list">/g) || []).length).toBe(2);
+  expect(html).toContain("<h2>AI Agent</h2>");
+  expect(html).not.toContain("nested-children");
+});
+
+test("表格单元格保留对齐、背景和跨列", () => {
+  const theme = getCardTheme("notebook");
+  const html = renderBlock(
+    {
+      type: "table",
+      props: { textAlignment: "center" },
+      content: {
+        type: "tableContent",
+        headerRows: 1,
+        headerCols: 1,
+        rows: [
+          {
+            cells: [
+              {
+                type: "tableCell",
+                props: { backgroundColor: "yellow", textAlignment: "center" },
+                content: [{ type: "text", text: "头", styles: {} }],
+              },
+              {
+                type: "tableCell",
+                props: { colspan: 1 },
+                content: [{ type: "text", text: "值", styles: {} }],
+              },
+            ],
+          },
+          {
+            cells: [
+              {
+                type: "tableCell",
+                content: [{ type: "text", text: "A", styles: {} }],
+              },
+              {
+                type: "tableCell",
+                props: { backgroundColor: "blue", colspan: 1 },
+                content: [{ type: "text", text: "B", styles: {} }],
+              },
+            ],
+          },
+        ],
+      },
+    },
+    theme,
+  );
+  expect(html).toContain("<th");
+  expect(html).toContain("text-align:center");
+  expect(html).toContain("background-color:#fbf3db");
+  expect(html).toContain("background-color:#ddebf1");
+  expect(html).toContain("<td");
+  expect(html).toContain("style=\"text-align:center\"");
+});
+
+test("图片 previewWidth 写入 max-width", () => {
+  const theme = getCardTheme("notebook");
+  const html = renderBlock(
+    {
+      type: "image",
+      props: {
+        url: "https://example.com/a.png",
+        previewWidth: 240,
+        textAlignment: "center",
+      },
+    },
+    theme,
+  );
+  expect(html).toContain("max-width:240px");
+  expect(html).toContain("margin-left:auto;margin-right:auto");
+});
+
+test("collectBlockInlineStyles 空块返回空字符串", () => {
+  const theme = getCardTheme("notebook");
+  expect(collectBlockInlineStyles(null, theme)).toBe("");
+  expect(collectBlockInlineStyles({ props: {} }, theme)).toBe("");
 });

@@ -1,4 +1,4 @@
-import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
+import { Search, Plus, Sparkles, FolderOpen, FolderPlus, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import {
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { dialogs } from "@/lib/utools/dialogs";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
+import { isElectronHost, pickVaultParentDirectory } from "@/lib/local-vault";
+import { CreateVaultDialog } from "@/pages/workspace/components/sidebar/CreateVaultDialog";
 
 const isEmptyContent = (
   content:
@@ -157,8 +159,14 @@ export function PageEmptyState() {
   const aiTilt = useAiChipTilt(aiEnabled);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
+  const [vaultDialog, setVaultDialog] = useState<{
+    open: boolean;
+    parentDir: string | null;
+  }>({ open: false, parentDir: null });
 
   const activateOrCreatePage = useCallback(async () => {
+    // Electron 仅本地文件夹模式：无仓库时禁止建页，也绝不自动创建内置笔记本
+    if (isElectronHost && activeNotebook?.source !== "local-folder") return null;
     // 如果没有活跃笔记本，创建一个默认笔记本
     let notebookId = activeNotebookId;
     if (!notebookId) {
@@ -208,7 +216,9 @@ export function PageEmptyState() {
     openInCurrentTab(newPageId);
     return newPageId;
   }, [
+    activeNotebook,
     activeNotebookId,
+    isLocalFolder,
     notebooks,
     createNotebook,
     setActiveNotebook,
@@ -286,6 +296,13 @@ export function PageEmptyState() {
     };
   }, [onCreatePage]);
 
+  const onCreateVault = useCallback(async () => {
+    const parentDir = await pickVaultParentDirectory();
+    if (parentDir) {
+      setVaultDialog({ open: true, parentDir });
+    }
+  }, []);
+
   const actions = useMemo(() => {
     const list: Array<{
       key: string;
@@ -294,8 +311,12 @@ export function PageEmptyState() {
       onClick: () => void | Promise<void>;
       icon: LucideIcon;
       variant?: "default" | "ai";
-    }> = [
-      {
+    }> = [];
+
+    // Electron 无仓库空态：只有「打开文件夹 / 新建仓库」，不展示新建页面
+    const showCreatePage = !isElectronHost || isLocalFolder;
+    if (showCreatePage) {
+      list.push({
         key: "create-page",
         icon: Plus,
         title: isLocalFolder ? "新建文件" : "新建页面",
@@ -303,15 +324,26 @@ export function PageEmptyState() {
           ? "在当前文件夹创建 Markdown 文件"
           : "创建一个空白页面开始记录",
         onClick: onCreatePage,
-      },
-      {
-        key: "open-folder",
-        icon: FolderOpen,
-        title: "打开本地文件夹",
-        description: "批量管理 Markdown 笔记",
-        onClick: onOpenLocalFolder,
-      },
-    ];
+      });
+    }
+
+    list.push({
+      key: "open-folder",
+      icon: FolderOpen,
+      title: "打开本地文件夹",
+      description: "批量管理 Markdown 笔记",
+      onClick: onOpenLocalFolder,
+    });
+
+    if (isElectronHost && !isLocalFolder) {
+      list.push({
+        key: "create-vault",
+        icon: FolderPlus,
+        title: "新建仓库",
+        description: "在磁盘上创建新的笔记文件夹",
+        onClick: onCreateVault,
+      });
+    }
 
     if (aiEnabled) {
       list.push({
@@ -338,6 +370,7 @@ export function PageEmptyState() {
     isLocalFolder,
     onCreatePage,
     onOpenLocalFolder,
+    onCreateVault,
     onOpenAi,
     onSearch,
   ]);
@@ -353,9 +386,11 @@ export function PageEmptyState() {
               准备好记录想法了吗？
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              {isLocalFolder
-                ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
-                : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
+              {isElectronHost && !isLocalFolder
+                ? "打开一个本地文件夹，或新建仓库开始记录"
+                : isLocalFolder
+                  ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
+                  : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
             </p>
           </div>
 
@@ -418,6 +453,15 @@ export function PageEmptyState() {
           </div>
         </div>
       </div>
+      {vaultDialog.open && (
+        <CreateVaultDialog
+          open={vaultDialog.open}
+          parentDir={vaultDialog.parentDir}
+          onOpenChange={(open) =>
+            setVaultDialog((prev) => ({ ...prev, open }))
+          }
+        />
+      )}
     </div>
   );
 }

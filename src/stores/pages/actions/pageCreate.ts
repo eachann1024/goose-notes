@@ -1,6 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "../../useNotebooks";
+
+// 单元测试没有 vite define，用 typeof 兜底避免 ReferenceError。
+const isElectronHostTarget = () =>
+  typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron";
 import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import {
   ONBOARDING_PAGE_CONTENT,
@@ -24,7 +28,10 @@ import {
 } from "@/lib/local-page-idmap";
 import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
 import { encodeLocalBlockPropsWrappers } from "@/lib/export/markdown/blockPropsMarker";
-import { decodeUnsupportedMarkdownForDisk } from "@/lib/markdown-raw-guard";
+import {
+  decodeUnsupportedMarkdownForDisk,
+  extractFrontmatter,
+} from "@/lib/markdown-raw-guard";
 import {
   applyTrailingNewlineStyle,
   markSelfWrite,
@@ -103,6 +110,8 @@ function generateLocalPageId(notebookId: string, filePath: string): string {
 }
 
 export const createOnboardingPagesAction = (set: StoreSet, get: StoreGet) => {
+  // Electron 仅本地文件夹模式：无内置笔记本，不种新手引导页
+  if (isElectronHostTarget()) return;
   let createdMainId: string | null = null;
   const workspaceId = DEFAULT_NOTEBOOK;
 
@@ -217,6 +226,11 @@ export const createPageAction = (
   workspaceId = DEFAULT_NOTEBOOK,
   id?: string,
 ): string => {
+  // Electron 仅本地文件夹模式：非 local-folder 工作区禁止建页（内置数据层关闭）
+  if (isElectronHostTarget()) {
+    const target = useNotebooks.getState().notebooks[workspaceId];
+    if (target?.source !== "local-folder") return "";
+  }
   flushEditorContent();
 
   const notebook = useNotebooks.getState().notebooks[workspaceId];
@@ -249,6 +263,11 @@ export const createPageRecordAction = (
   } & Partial<Page>,
 ): string => {
   const { workspaceId, parentId, id, content, ...extra } = options;
+  // Electron 仅本地文件夹模式：拒绝写入内置工作区（含 AI / MCP 通路）
+  if (isElectronHostTarget()) {
+    const notebook = useNotebooks.getState().notebooks[workspaceId];
+    if (notebook?.source !== "local-folder") return "";
+  }
   const finalId = id || uuidv4();
   const now = Date.now();
   const newPage: Page = {
@@ -497,11 +516,11 @@ export const createLocalFolderRecordAction = async (
   return id;
 };
 
-export const duplicatePageAction = (
+export const duplicatePageAction = async (
   set: StoreSet,
   get: StoreGet,
   id: string,
-): string => {
+): Promise<string> => {
   flushEditorContent();
 
   const sourcePage = get().pages[id];
@@ -529,12 +548,20 @@ export const duplicatePageAction = (
     const baseName = dotIdx > 0 ? fileName.slice(0, dotIdx) : fileName;
     const ext = dotIdx > 0 ? fileName.slice(dotIdx) : ".md";
 
+    // 碰撞检测必须等 async exists（Electron 同步 exists 只读冷缓存，未命中会误判不存在）。
+    const checkExists = async (path: string): Promise<boolean> => {
+      if (fs.existsAsync) {
+        return await fs.existsAsync(path);
+      }
+      return fs.exists?.(path) ?? false;
+    };
+
     let copyIndex = 1;
     let candidateName = `${baseName}_副本${ext}`;
     let candidatePath = dir ? `${dir}${slash}${candidateName}` : candidateName;
 
     while (
-      (fs.exists && fs.exists(candidatePath)) ||
+      (await checkExists(candidatePath)) ||
       Object.values(get().pages).some(
         (p) =>
           p.localFilePath === candidatePath ||
@@ -560,27 +587,36 @@ export const duplicatePageAction = (
       ? sourcePage.localFrontmatter
       : copyFmMerge.blob;
 
-    // 同步读取/生成 Markdown 内容并写盘
+    // 异步读取源文件真实内容；读不到（如 Electron 无同步 IPC）则从内存页序列化正文，
+    // 避免只写 frontmatter 丢正文。
     let fileContent = "";
     try {
-      // 优先从源文件读取真实内容（如果能读到），或者从 memory content 序列化
       let rawMd: string | null = null;
-      if (fs.readFile) {
+      if (fs.readFileAsync) {
+        rawMd = await fs.readFileAsync(sourcePath);
+      } else if (fs.readFile) {
         rawMd = fs.readFile(sourcePath);
       }
       if (rawMd != null) {
-        const { extractFrontmatter } = require("@/lib/markdown-raw-guard");
         const { body } = extractFrontmatter(rawMd);
         fileContent = copyFrontmatterBlob
           ? `${copyFrontmatterBlob}\n\n${body}`
           : body;
       }
     } catch {
-      // fallback
+      // fallback 到内存序列化
     }
 
     if (!fileContent) {
-      fileContent = copyFrontmatterBlob ? `${copyFrontmatterBlob}\n\n` : "";
+      const { blocksToMarkdown } = await import("@/lib/export");
+      const markdownContent = await blocksToMarkdown(
+        encodeLocalBlockPropsWrappers(
+          cloneLocalPageContent(sourcePage.content) as any,
+        ),
+      );
+      fileContent = copyFrontmatterBlob
+        ? `${copyFrontmatterBlob}\n\n${markdownContent}`
+        : markdownContent;
     }
 
     const diskContent = applyTrailingNewlineStyle(
@@ -589,9 +625,11 @@ export const duplicatePageAction = (
     );
 
     markSelfWrite(candidatePath);
-    const writeOk = fs.writeFile
-      ? fs.writeFile(candidatePath, diskContent)
-      : false;
+    const writeOk = fs.writeFileAsync
+      ? await fs.writeFileAsync(candidatePath, diskContent)
+      : fs.writeFile
+        ? fs.writeFile(candidatePath, diskContent)
+        : false;
     if (!writeOk) return id;
 
     setLocalMdSnapshot(candidatePath, diskContent);
@@ -637,6 +675,7 @@ export const duplicatePageAction = (
       },
     }));
 
+    persistPageSnapshot(get().pages[newId]);
     return newId;
   }
 

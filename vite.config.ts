@@ -6,14 +6,16 @@ import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
 import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 
-const hostTarget = "utools";
-
 // 构建目标区分：
 // - 默认（app）：input=index.html → dist/，完整功能（plugin A 鹅的笔记）。行为与改动前一致。
 // - GOOSE_BUILD_TARGET=quicknote：input=quicknote.html → dist-quicknote/，精简（plugin B 鹅的小窗）。
 //   通过 __GOOSE_LITE__ 标志 + 重型依赖 alias 到空壳，把 katex/mermaid/prettier/PDF/echarts
 //   等「文档级」代码排除出小窗包（约省 9MB），小窗只保留快速记文字/标题/清单/代码高亮等。
+// - GOOSE_BUILD_TARGET=electron：input=index.html + quicknote.html → dist-electron/renderer/，Electron 桌面端（仅本地模式）。
+//   不经过 scripts/utools-build.js（不注入 plugin.json/preload），与 uTools 产物互不污染。
 const isQuicknoteBuild = process.env.GOOSE_BUILD_TARGET === "quicknote";
+const isElectronBuild = process.env.GOOSE_BUILD_TARGET === "electron";
+const hostTarget = isElectronBuild ? "electron" : "utools";
 
 // 小窗精简构建专用：把这些「仅经动态 import 进入图」的重型 JS 依赖 alias 到极小空壳，
 // 确保它们不被打进 dist-quicknote（消费点已被 __GOOSE_LITE__ 短路，运行时不会真正调用）。
@@ -216,7 +218,11 @@ export default defineConfig({
     {
       name: "exclude-guide-assets-from-utools",
       closeBundle() {
-        const outDir = isQuicknoteBuild ? "dist-quicknote" : "dist";
+        const outDir = isQuicknoteBuild
+          ? "dist-quicknote"
+          : isElectronBuild
+            ? "dist-electron/renderer"
+            : "dist";
         rmSync(path.resolve(__dirname, outDir, "guide"), { recursive: true, force: true });
         // 禁止 NotoSansSC 打进产物；其它 public/fonts（如 UI 字体）不动
         for (const name of ["NotoSansSC-Regular.ttf", "NotoSansSC-Regular.otf"]) {
@@ -327,7 +333,15 @@ export default defineConfig({
       ...liteStubAliases,
       // 浏览器打包：吞掉 pi-ai 对 node:fs 的静态 require（见 src/lib/vite-stubs/node-fs-stub.ts）。
       { find: /^node:fs$/, replacement: nodeFsStubModule },
-      { find: "@host-runtime", replacement: path.resolve(__dirname, "./src/lib/host/runtime.utools.ts") },
+      {
+        find: "@host-runtime",
+        replacement: path.resolve(
+          __dirname,
+          isElectronBuild
+            ? "./src/lib/host/runtime.electron.ts"
+            : "./src/lib/host/runtime.utools.ts",
+        ),
+      },
 
       { find: "@", replacement: path.resolve(__dirname, "./src") },
     ],
@@ -361,8 +375,13 @@ export default defineConfig({
   },
 
   build: {
-    // app → dist/；quicknote → dist-quicknote/（两个 uTools 插件各自独立打包，互不共享 chunk）。
-    outDir: isQuicknoteBuild ? "dist-quicknote" : "dist",
+    // app → dist/；quicknote → dist-quicknote/（两个 uTools 插件各自独立打包，互不共享 chunk）；
+    // electron → dist-electron/renderer/（桌面端独立产物，utools-build.js 只认 dist/dist-quicknote，不会触碰）。
+    outDir: isQuicknoteBuild
+      ? "dist-quicknote"
+      : isElectronBuild
+        ? "dist-electron/renderer"
+        : "dist",
     // 正式 'hidden'（写盘后由 utools-build 删）；GOOSE_DEBUG=1 时 true（保留，供 DevTools 还原 src/）
     sourcemap: debugSourcemap,
     minify: debugMinify,
@@ -370,9 +389,15 @@ export default defineConfig({
       // 单入口按构建目标切换：主应用打 index.html，小窗只打 quicknote.html。
       // 分开构建让 rolldown 各自按入口可达性裁剪——小窗图不含 workspace <App/>，
       // 自动甩掉 echarts / PDF 导出 / AI 图表等仅主应用需要的代码。
+      // Electron 桌面端同时打 index.html（主窗）与 quicknote.html（速记小窗），outDir 为 dist-electron/renderer。
       input: isQuicknoteBuild
         ? { quicknote: path.resolve(__dirname, "quicknote.html") }
-        : { index: path.resolve(__dirname, "index.html") },
+        : isElectronBuild
+          ? {
+              index: path.resolve(__dirname, "index.html"),
+              quicknote: path.resolve(__dirname, "quicknote.html"),
+            }
+          : { index: path.resolve(__dirname, "index.html") },
       output: {
         // rolldown 原生分包；不用废弃的 manualChunks
         codeSplitting: {

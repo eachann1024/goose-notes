@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE：预览条在主题网格上方，窄屏也缩小显示。勿进生产。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C — 顶部预览条</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0f1115; color: #ececec; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+  .stage { padding: 24px 16px 96px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .hint, .toolbar { width: min(1180px, 100%); color: #a3a3a3; }
+  .toolbar button { border: 1px solid #3f3f46; background: #18181b; color: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: #38bdf8; color: #082f49; }
+  .frame { width: 1200px; max-width: 100%; }
+  .frame.narrow { width: 800px; }
+  .dialog { background: #18181b; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; }
+  .head { padding: 18px 20px 8px; }
+  .strip {
+    margin: 0 20px 16px;
+    height: 168px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #f8f8f6, #fff);
+    color: #171717;
+    padding: 14px 16px;
+    transform-origin: top center;
+  }
+  .frame.narrow .strip { height: 96px; transform: scale(.92); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 20px 20px; }
+  .frame.narrow .grid { grid-template-columns: repeat(3, 1fr); }
+  .card { min-height: 92px; border-radius: 10px; background: #27272a; padding: 10px; }
+  .foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #27272a; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="hint">PROTOTYPE C：预览始终在网格上方。1200 完整展示，800 缩小条带，不隐藏。</div>
+  <div class="toolbar">
+    <button id="w800" type="button">800 缩小条</button>
+    <button id="w1200" type="button" aria-pressed="true">1200 完整条</button>
+  </div>
+  <div id="frame" class="frame">
+    <div class="dialog">
+      <div class="head">
+        <h1>选择卡片主题</h1>
+        <p>顶部预览条不随宽度消失，只缩放。</p>
+      </div>
+      <div class="strip" aria-label="图片导出预览">
+        <strong>图片导出预览</strong>
+        <div>2026-05-15-手动更新</div>
+        <div>手动更新流程（raven / ERP 标准版）</div>
+      </div>
+      <div class="grid">
+        <div class="card">笔记本</div>
+        <div class="card">GitHub 浅</div>
+        <div class="card">Medium</div>
+        <div class="card">GitHub 深</div>
+      </div>
+      <div class="foot"><button type="button">取消</button><button type="button">生成图片</button></div>
+    </div>
+  </div>
+</div>
+<script>
+  function setWidth(width) {
+    var wide = width >= 1000;
+    document.getElementById('frame').classList.toggle('narrow', !wide);
+    document.getElementById('w800').setAttribute('aria-pressed', String(!wide));
+    document.getElementById('w1200').setAttribute('aria-pressed', String(wide));
+    document.getElementById('frame').style.width = wide ? '1200px' : '800px';
+  }
+  document.getElementById('w800').onclick = function () { setWidth(800); };
+  document.getElementById('w1200').onclick = function () { setWidth(1200); };
+  setWidth(1200);
+</script>
+</body>
+</html>

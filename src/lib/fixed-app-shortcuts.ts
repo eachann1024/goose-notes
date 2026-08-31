@@ -18,10 +18,10 @@ export const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS = new Set<string>([
 ]);
 
 export function getFixedAppShortcuts(
-  platform: PlatformKind = getPlatformKind(),
+  _platform: PlatformKind = getPlatformKind(),
 ): Record<FixedAppShortcutId, string> {
   return {
-    openSettings: platform === "mac" ? "Ctrl+," : "Alt+,",
+    openSettings: "Mod+,",
     editorFindOpen: "Mod+F",
     newNote: "Mod+N",
     reopenTab: "Mod+Shift+T",

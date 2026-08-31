@@ -3,6 +3,46 @@ import type { BlockNoteContent } from "@/components/editor/utils/blocknote-conte
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import { inlineExportMediaAsBase64 } from "./inlineImagesBase64";
 
+type ExportBlock = {
+  type?: string;
+  children?: ExportBlock[];
+  [key: string]: unknown;
+};
+
+/**
+ * 编辑器把 heading 后续内容当同级章节（折叠只藏后续兄弟），
+ * 但 BlockNote / 旧 isToggleable 数据会把它们放进 heading.children。
+ * 导出前拍平，避免章节标题变成上一节列表里的一项。
+ */
+export function flattenHeadingChildrenForExport<T extends ExportBlock>(
+  blocks: T[],
+): T[] {
+  if (!Array.isArray(blocks)) return [];
+  const out: T[] = [];
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") {
+      out.push(block);
+      continue;
+    }
+    const children = Array.isArray(block.children) ? block.children : undefined;
+    if (block.type === "heading" && children && children.length > 0) {
+      const { children: nested, ...rest } = block;
+      out.push({ ...(rest as T), children: [] as T[] });
+      out.push(...flattenHeadingChildrenForExport(nested as T[]));
+      continue;
+    }
+    if (children && children.length > 0) {
+      out.push({
+        ...block,
+        children: flattenHeadingChildrenForExport(children as T[]),
+      });
+      continue;
+    }
+    out.push(block);
+  }
+  return out;
+}
+
 function asInlineContent(content: unknown): unknown[] {
   if (Array.isArray(content)) return content;
   if (typeof content === "string") {
@@ -40,7 +80,9 @@ export function cloneExportBlocks(
     : normalizePageContent(content as never, {
         ensureFirstTitle: options?.ensureFirstTitle,
       });
-  return normalized.map(sanitizeExportBlock) as BlockNoteContent;
+  return flattenHeadingChildrenForExport(
+    normalized as ExportBlock[],
+  ).map(sanitizeExportBlock) as BlockNoteContent;
 }
 
 export async function prepareExportBlocks(page: Page): Promise<BlockNoteContent> {

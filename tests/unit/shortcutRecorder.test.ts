@@ -149,9 +149,9 @@ test("single-tab mode ignores inactive tab-only shortcuts for conflict detection
 });
 
 test("fixed shortcuts adapt to the current operating system", () => {
-  expect(getFixedAppShortcuts("mac").openSettings).toBe("Ctrl+,");
-  expect(getFixedAppShortcuts("windows").openSettings).toBe("Alt+,");
-  expect(getFixedAppShortcuts("linux").openSettings).toBe("Alt+,");
+  expect(getFixedAppShortcuts("mac").openSettings).toBe("Mod+,");
+  expect(getFixedAppShortcuts("windows").openSettings).toBe("Mod+,");
+  expect(getFixedAppShortcuts("linux").openSettings).toBe("Mod+,");
   expect(getFixedAppShortcuts("mac").reopenTab).toBe("Mod+Shift+T");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("newNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("saveNote");
@@ -160,4 +160,43 @@ test("fixed shortcuts adapt to the current operating system", () => {
 
 test("new users start without a close-tab shortcut", () => {
   expect(DEFAULT_CLOSE_TAB_SHORTCUT).toBe("");
+});
+
+test("desktop global hotkeys join the conflict list and respect excludeId", () => {
+  const isMac = true;
+  const desktopHotkeys = {
+    wakeHotkey: "CmdOrCtrl+Alt+N",
+    quicknoteHotkey: "CmdOrCtrl+Alt+Q",
+  };
+  const configured = getAllConfiguredShortcuts(
+    {},
+    "",
+    "",
+    "unused",
+    isMac,
+    false,
+    desktopHotkeys,
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Alt+N", isMac),
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
+  );
+
+  const excludingWake = getAllConfiguredShortcuts(
+    {},
+    "",
+    "",
+    "wake-hotkey",
+    isMac,
+    false,
+    desktopHotkeys,
+  );
+  expect(excludingWake).not.toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Alt+N", isMac),
+  );
+  expect(excludingWake).toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
+  );
 });

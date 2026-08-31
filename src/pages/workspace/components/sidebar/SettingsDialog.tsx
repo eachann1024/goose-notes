@@ -104,6 +104,9 @@ const GOOSE_APPS = [
 const FEEDBACK_URL = "https://wj.qq.com/s2/25958121/2d2e/";
 const SETTINGS_APPS_BANNER_ID = "settings:recommended-apps-banner";
 
+// Electron 桌面端（仅本地模式）：无 uTools 生态，隐藏鹅的全家桶入口。
+const isElectronHost = __HOST_TARGET__ === "electron";
+
 const recordPreOverwriteHistory = async (id: string | undefined) => {
   if (!id) return;
   const existingPage = usePages.getState().pages[id];
@@ -522,6 +525,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         ([, notebook]) => notebook.source === "local-folder",
       ),
     );
+    // Electron 仅本地文件夹模式：重置后不种回内置本，保持空态
+    if (isElectronHost) {
+      useNotebooks.setState({
+        notebooks: localNotebooks,
+        activeNotebookId: Object.keys(localNotebooks)[0] ?? null,
+        lastActivePageByNotebook: {},
+        localFolderLoadStates: {},
+      });
+      return;
+    }
     useNotebooks.setState({
       notebooks: {
         ...localNotebooks,
@@ -705,6 +718,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   const handleOpenApp = (app: (typeof GOOSE_APPS)[number]) => {
+    if (isElectronHost) return;
     // 官方：redirect 未找到指令时会跳转插件应用市场并搜索该名称
     // https://www.u-tools.cn/docs/developer/api-reference/utools/window.html
     if (wnd.redirect(["插件应用市场", "插件应用市场搜一搜"], app.storeQuery))
@@ -730,7 +744,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           tabs={SETTINGS_TABS}
           feedbackBanner={null}
           appsBanner={
-            appsBannerVisible ? (
+            appsBannerVisible && !isElectronHost ? (
               <div className="relative rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
                 <button
                   type="button"

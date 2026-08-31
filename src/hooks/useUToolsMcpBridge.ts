@@ -406,7 +406,10 @@ async function executeTool(tool: string, params: ToolParams): Promise<unknown> {
       const notebooks = useNotebooks.getState().notebooks;
       const notebook = notebooks[notebookId];
       if (!notebook) throw new Error(`未找到记事本：${notebookId}`);
-      if (Object.keys(notebooks).length <= 1) {
+      if (
+        __HOST_TARGET__ !== "electron" &&
+        Object.keys(notebooks).length <= 1
+      ) {
         throw new Error("至少需要保留一本记事本");
       }
       const isLocal = notebook.source === "local-folder";

@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { toast } from "@/components/ui/sonner";
 import {
   getPageTitle,
@@ -15,19 +21,41 @@ import {
 } from "@/lib/page-title-focus";
 import { useImeInput } from "@/hooks/useImeInput";
 import { splitFilePath } from "@/lib/local-title-binding";
+import {
+  shouldStartWindowDrag,
+  startWindowDragging,
+} from "@/lib/electron/windowDrag";
 
 interface SingleTabTitleProps {
   page: Page;
+  /** Electron 顶栏：闲置按住拖窗口，单击才进入编辑。uTools 页头不传。 */
+  idleWindowDrag?: boolean;
 }
 
 const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 
-export function SingleTabTitle({ page }: SingleTabTitleProps) {
+const TITLE_IDLE_CLASS =
+  "h-8 rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
+
+const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]`;
+
+/** Electron 顶栏占满主栏剩余宽度；uTools 页头仍随文字收缩。 */
+const TITLE_SIZE_FILL = "w-full min-w-full";
+const TITLE_SIZE_HUG = "max-w-full shrink-0";
+
+export function SingleTabTitle({
+  page,
+  idleWindowDrag = false,
+}: SingleTabTitleProps) {
   const currentTitle = getPageTitle(page);
   const locked = Boolean(page.isLocked || page.trashedAt);
   const [initiallyFocused] = useState(() =>
     isPageTitleFocusRequested(page.id),
   );
+  const [editing, setEditing] = useState(
+    () => idleWindowDrag && isPageTitleFocusRequested(page.id),
+  );
+  const windowDragStartedRef = useRef(false);
   const {
     value,
     valueRef,
@@ -96,6 +124,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
     const unsubscribe = subscribePageTitleFocus((pageId) => {
       if (locked) return;
       if (pageId === page.id && isPageTitleFocusRequested(page.id)) {
+        if (idleWindowDrag) setEditing(true);
         scheduleFocus();
       }
     });
@@ -105,6 +134,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
     if (locked) {
       completePageTitleFocus(page.id);
     } else if (isPageTitleFocusRequested(page.id)) {
+      if (idleWindowDrag) setEditing(true);
       scheduleFocus();
     }
     return () => {
@@ -117,7 +147,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       if (focusFrame !== null) window.cancelAnimationFrame(focusFrame);
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
-  }, [focusAsNewPage, locked, page.id]);
+  }, [focusAsNewPage, idleWindowDrag, locked, page.id]);
 
   const commit = useCallback(async (moveToBody = false) => {
     if (locked || committingRef.current) return;
@@ -167,14 +197,63 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
     }
   }, [currentTitle, locked, page, setValue, valueRef]);
 
+  const sizeClass = idleWindowDrag ? TITLE_SIZE_FILL : TITLE_SIZE_HUG;
+
   if (locked) {
     return (
       <span
-        className="h-8 min-w-0 flex-1 truncate px-2 text-sm font-semibold leading-8 text-foreground"
+        className={`${sizeClass} h-8 truncate px-2 text-sm font-semibold leading-8 text-foreground`}
         title={currentTitle}
       >
         {currentTitle}
       </span>
+    );
+  }
+
+  const exitEditing = () => {
+    if (idleWindowDrag) setEditing(false);
+  };
+
+  const beginEditing = () => {
+    if (windowDragStartedRef.current) return;
+    setEditing(true);
+  };
+
+  const onIdlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    windowDragStartedRef.current = false;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const onMove = (ev: PointerEvent) => {
+      if (windowDragStartedRef.current) return;
+      if (!shouldStartWindowDrag(startX, startY, ev.clientX, ev.clientY)) return;
+      windowDragStartedRef.current = true;
+      window.removeEventListener("pointermove", onMove);
+      void startWindowDragging();
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  if (idleWindowDrag && !editing) {
+    return (
+      <button
+        type="button"
+        data-electron-no-drag
+        aria-label="笔记标题"
+        title="点击编辑笔记标题"
+        className={`${TITLE_IDLE_CLASS} ${sizeClass} cursor-default truncate text-left`}
+        onPointerDown={onIdlePointerDown}
+        onClick={beginEditing}
+      >
+        {value || currentTitle}
+      </button>
     );
   }
 
@@ -183,6 +262,7 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
       ref={inputRef}
       value={value}
       {...imeInputProps}
+      autoFocus={idleWindowDrag}
       onBlur={() => {
         if (isComposing()) return;
         // 新建页切换期间编辑器会短暂抢焦；聚焦请求尚未完成时忽略这次
@@ -190,9 +270,13 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
         if (isPageTitleFocusRequested(page.id)) return;
         if (skipNextBlurCommitRef.current) {
           skipNextBlurCommitRef.current = false;
+          exitEditing();
           return;
         }
-        void commit();
+        void commit().then(() => {
+          if (document.activeElement === inputRef.current) return;
+          exitEditing();
+        });
       }}
       onKeyDown={(event) => {
         if (isComposing(event)) return;
@@ -201,18 +285,20 @@ export function SingleTabTitle({ page }: SingleTabTitleProps) {
           skipNextBlurCommitRef.current = true;
           event.currentTarget.blur();
           void commit(true);
+          exitEditing();
         } else if (event.key === "Escape") {
           event.preventDefault();
           setValue(currentTitle);
           skipNextBlurCommitRef.current = true;
           event.currentTarget.blur();
+          exitEditing();
         }
       }}
       aria-label="笔记标题"
       title="点击编辑笔记标题"
       spellCheck={false}
       autoComplete="off"
-      className="h-8 min-w-0 flex-1 rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]"
+      className={`${TITLE_INPUT_CLASS} ${sizeClass}`}
     />
   );
 }

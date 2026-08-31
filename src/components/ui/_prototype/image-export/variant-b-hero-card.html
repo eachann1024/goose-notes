@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE：预览作为网格第一张跨列大卡，无独立左栏。勿进生产。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B — 网格首张大卡</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ece7dc; font: 14px/1.5 "Iowan Old Style", "Songti SC", serif; }
+  .stage { padding: 24px 16px 96px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .hint, .toolbar { width: min(980px, 100%); }
+  .toolbar button { border: 1px solid #c4b9a5; background: #fff; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: #1f1a14; color: #fff; }
+  .frame { width: 1200px; max-width: 100%; background: #f7f1e6; border-radius: 8px; padding: 20px; }
+  .frame.narrow { width: 800px; }
+  .dialog { background: #fffaf1; border: 1px solid #e4d8c4; border-radius: 8px; }
+  .head { padding: 20px 20px 8px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 20px 20px; }
+  .hero { grid-column: 1 / -1; min-height: 220px; border: 2px solid #1f1a14; border-radius: 8px; padding: 16px; background: #fff; }
+  .hero.hidden { display: none; }
+  .card { min-height: 110px; border: 1px solid #e4d8c4; border-radius: 8px; padding: 12px; background: #fff; }
+  .foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #eadfcd; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="hint">PROTOTYPE B：真实内容预览作为网格第一张跨列大卡。800 宽时隐藏大卡，只留主题网格。</div>
+  <div class="toolbar">
+    <button id="w800" type="button">800</button>
+    <button id="w1200" type="button" aria-pressed="true">1200</button>
+  </div>
+  <div id="frame" class="frame">
+    <div class="dialog">
+      <div class="head">
+        <h1>选择卡片主题</h1>
+        <p>预览不占左栏，而是铺在主题卡最上方。</p>
+      </div>
+      <div class="grid">
+        <div id="preview" class="hero" aria-label="图片导出预览">
+          <strong>图片导出预览 · 笔记本</strong>
+          <p>2026-05-15-手动更新</p>
+          <p>手动更新流程（raven / ERP 标准版）</p>
+        </div>
+        <div class="card">笔记本 / Notebook</div>
+        <div class="card">GitHub 浅</div>
+        <div class="card">Medium</div>
+        <div class="card">GitHub 深</div>
+        <div class="card">Tokyo Night</div>
+      </div>
+      <div class="foot"><button type="button">取消</button><button type="button">生成图片</button></div>
+    </div>
+  </div>
+</div>
+<script>
+  function setWidth(width) {
+    var wide = width >= 1000;
+    document.getElementById('preview').classList.toggle('hidden', !wide);
+    document.getElementById('frame').classList.toggle('narrow', !wide);
+    document.getElementById('w800').setAttribute('aria-pressed', String(!wide));
+    document.getElementById('w1200').setAttribute('aria-pressed', String(wide));
+    document.getElementById('frame').style.width = wide ? '1200px' : '800px';
+  }
+  document.getElementById('w800').onclick = function () { setWidth(800); };
+  document.getElementById('w1200').onclick = function () { setWidth(1200); };
+  setWidth(1200);
+</script>
+</body>
+</html>

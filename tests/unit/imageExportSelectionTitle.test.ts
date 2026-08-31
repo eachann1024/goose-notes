@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 import { getSelectionBlocksToRender } from "../../src/lib/imageExport/renderer";
+import { splitImageExportTitle } from "../../src/lib/imageExport/titleLift";
 
 const pageTitleBlock = {
   id: "title",
@@ -45,4 +46,22 @@ test("不同内容或不同级别的章节标题不会被误删", () => {
     .toHaveLength(2);
   expect(getSelectionBlocksToRender([matchingH2, bodyBlock] as any, "快捷键指南", true))
     .toHaveLength(2);
+});
+
+test("整页提升标题时仍返回带对齐和背景的 heading 块", () => {
+  const styledTitle = {
+    ...pageTitleBlock,
+    props: { level: 1, textAlignment: "center", backgroundColor: "brown" },
+  };
+  const { blocks, titleBlock } = splitImageExportTitle({
+    blocks: [styledTitle, bodyBlock] as any,
+    pageTitle: "快捷键指南",
+    showTitle: true,
+    mode: "page",
+  });
+  expect(blocks).toEqual([bodyBlock]);
+  expect(titleBlock).toEqual(styledTitle);
+  expect((titleBlock as { props?: { textAlignment?: string } })?.props?.textAlignment).toBe(
+    "center",
+  );
 });

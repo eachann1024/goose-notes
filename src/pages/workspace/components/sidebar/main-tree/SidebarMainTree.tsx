@@ -30,6 +30,7 @@ import {
 } from "./MainTreeItem";
 import {
   isLocalFolderDirectoryPage,
+  isElectronLocalFolderDirectory,
   openPageFromSidebar,
   shouldSuppressSidebarSelect,
 } from "@/lib/sidebarPageNavigation";
@@ -376,6 +377,8 @@ export function SidebarMainTree({
   const activateLocalDirectory = useCallback(
     (pageId: string, mode: "preview" | "permanent") => {
       if (!activeNotebookId || !isLocalFolderDirectoryPage(pageId)) return;
+      // Electron：文件夹不进主区，只由行点击负责展开/收起。
+      if (isElectronLocalFolderDirectory(pageId)) return;
       // activePageId 会等标签切换链完成后才更新；先建立本次点击的即时视觉选择，
       // 避免展开挂载子项时旧 activePageId 让旧子项闪现高亮。
       setPendingTreeSelection({
@@ -591,6 +594,7 @@ export function SidebarMainTree({
               e.stopPropagation();
               if (isLocalFolderDirectoryPage(pageId)) {
                 toggleLocalDirectory(pageId);
+                if (isElectronLocalFolderDirectory(pageId)) return;
               }
               openPageFromSidebar(pageId, "permanent");
             }}
@@ -642,6 +646,7 @@ export function SidebarMainTree({
                 if (!verticalKeyboardNavigationRef.current) return;
                 verticalKeyboardNavigationRef.current = false;
                 if (pageId === "root" || !pages[pageId]) return;
+                if (isElectronLocalFolderDirectory(pageId)) return;
                 setSelectedView(activeNotebookId, pageId);
                 openPageFromSidebar(pageId, "preview");
               }}
@@ -651,6 +656,15 @@ export function SidebarMainTree({
                   selected.length > 0
                     ? String(selected[selected.length - 1])
                     : null;
+                if (
+                  last &&
+                  last !== "root" &&
+                  isElectronLocalFolderDirectory(last)
+                ) {
+                  if (shouldSuppressSidebarSelect()) return;
+                  toggleLocalDirectory(last);
+                  return;
+                }
                 setSelectedView(activeNotebookId, last);
                 if (!last || last === "root") return;
                 if (shouldSuppressSidebarSelect()) return;
@@ -671,6 +685,7 @@ export function SidebarMainTree({
                 if (id === "root") return;
                 if (isLocalFolderDirectoryPage(id)) {
                   toggleLocalDirectory(id);
+                  if (isElectronLocalFolderDirectory(id)) return;
                 }
                 openPageFromSidebar(id, "preview");
               }}

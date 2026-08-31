@@ -15,6 +15,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
+import { CreateVaultDialog } from "./CreateVaultDialog";
+import { isElectronHost, pickVaultParentDirectory } from "@/lib/local-vault";
 import { renderNotebookIcon } from "./notebookUtils";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { dialogs } from "@/lib/utools/dialogs";
@@ -74,10 +76,14 @@ function SortableNotebookItem({
         isDragging && "opacity-60 cursor-grabbing z-10",
         !isDragging && "cursor-pointer",
       )}
+      {...attributes}
+      {...listeners}
       role="menuitem"
       tabIndex={-1}
-      onPointerDown={() => {
+      onPointerDown={(event) => {
         dragMoved.current = false;
+        if (event.button !== 0 || event.ctrlKey) return;
+        listeners?.onPointerDown?.(event);
       }}
       onClick={() => {
         if (dragMoved.current) {
@@ -92,9 +98,6 @@ function SortableNotebookItem({
         <span
           className={cn(
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-            // 图标是唯一拖动手柄：hover 才 grab，行本身是 pointer 点选
-            !isDragging && "cursor-grab",
-            isDragging && "cursor-grabbing",
             // 图标底始终要比当前行底更抬一点：
             // - 未选中 hover：亮色用 chip token；暗色勿用 interactive-hover（与行 hover 同色会“消失”）
             // - 选中：亮色 chip token；暗色 white/20，hover 再抬一点
@@ -102,9 +105,6 @@ function SortableNotebookItem({
               ? "bg-[var(--goose-icon-chip-on-selected)] dark:bg-white/20 dark:group-hover:bg-white/28"
               : "group-hover:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-white/14",
           )}
-          {...attributes}
-          {...listeners}
-          aria-label={`拖拽调整 ${notebook.name} 排序`}
         >
           {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
         </span>
@@ -183,7 +183,8 @@ export function NotebookSwitcher() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      // 整行按住再拖：短点选切换仓库，按住后才进入排序，避免再做拖拽把手
+      activationConstraint: { delay: 200, tolerance: 8 },
     }),
   );
 
@@ -227,7 +228,23 @@ export function NotebookSwitcher() {
 
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const notebookList = sortNotebooksByOrder(notebooks);
-  const canDeleteNotebook = Object.keys(notebooks).length > 1;
+  // Electron 仅本地文件夹模式：最后一个文件夹也允许移除（回到空态）
+  const canDeleteNotebook = isElectronHost
+    ? notebookList.length > 0
+    : notebookList.length > 1;
+
+  const [vaultDialog, setVaultDialog] = useState<{
+    open: boolean;
+    parentDir: string | null;
+  }>({ open: false, parentDir: null });
+
+  const handleCreateVault = async () => {
+    setIsOpen(false);
+    const parentDir = await pickVaultParentDirectory();
+    if (parentDir) {
+      setVaultDialog({ open: true, parentDir });
+    }
+  };
 
   const handleCreate = () => {
     setCreateDialog({ open: true, name: "", icon: "BookOpen", error: "" });
@@ -394,7 +411,8 @@ export function NotebookSwitcher() {
                 )}
                 {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
                 <span className="truncate text-[13px] tracking-[0.01em] leading-snug">
-                  {activeNotebook?.name || "选择记事本"}
+                  {activeNotebook?.name ||
+                    (isElectronHost ? "打开文件夹" : "选择记事本")}
                 </span>
               </div>
               {isOpen ? (
@@ -460,13 +478,23 @@ export function NotebookSwitcher() {
             </SortableContext>
           </DndContext>
           <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-0 pt-1.5 pb-1.5">
-            <DropdownMenuItem
-              className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
-              onClick={handleCreate}
-            >
-              <LucideIcons.BookPlus className="h-4 w-4" />
-              新建记事本
-            </DropdownMenuItem>
+            {isElectronHost ? (
+              <DropdownMenuItem
+                className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
+                onClick={() => void handleCreateVault()}
+              >
+                <LucideIcons.FolderPlus className="h-4 w-4" />
+                新建仓库
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
+                onClick={handleCreate}
+              >
+                <LucideIcons.BookPlus className="h-4 w-4" />
+                新建记事本
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
               onClick={handleOpenLocalFolder}
@@ -499,7 +527,7 @@ export function NotebookSwitcher() {
         />
       )}
 
-      {createDialog.open && (
+      {createDialog.open && !isElectronHost && (
         <NotebookCreateDialog
           open={createDialog.open}
           name={createDialog.name}
@@ -515,6 +543,16 @@ export function NotebookSwitcher() {
             createDialog.error &&
             setCreateDialog({ ...createDialog, error: "" })
           }
+        />
+      )}
+      {vaultDialog.open && (
+        <CreateVaultDialog
+          open={vaultDialog.open}
+          parentDir={vaultDialog.parentDir}
+          onOpenChange={(open) =>
+            setVaultDialog((prev) => ({ ...prev, open }))
+          }
+          onCreated={(id) => void activateNotebook(id)}
         />
       )}
     </>

@@ -17,19 +17,43 @@ function bgPalette(theme?: CardTheme) {
   return theme?.mode === "dark" ? BLOCKNOTE_BACKGROUND_COLORS_DARK : BLOCKNOTE_BACKGROUND_COLORS;
 }
 
-/** 块级对齐 + 文字色 + 背景色 → style 属性字符串（含前导空格） */
-function buildBlockStyleAttr(block: any, theme: CardTheme): string {
+/** 块级对齐 + 文字色 + 背景色 → 分号分隔的 CSS 声明（不含 style=） */
+export function collectBlockInlineStyles(block: any, theme: CardTheme): string {
   const styles: string[] = [];
-  const align = block.props?.textAlignment;
+  const align = block?.props?.textAlignment;
   if (align === "center" || align === "right" || align === "justify") {
     styles.push(`text-align:${align}`);
   }
-  const tc = resolveExportColor(block.props?.textColor, textPalette(theme));
+  const tc = resolveExportColor(block?.props?.textColor, textPalette(theme));
   if (tc) styles.push(`color:${tc}`);
-  const bg = resolveExportColor(block.props?.backgroundColor, bgPalette(theme));
+  const bg = resolveExportColor(block?.props?.backgroundColor, bgPalette(theme));
   if (bg) styles.push(`background-color:${bg}`);
-  if (styles.length === 0) return "";
-  return ` style="${styles.join(";")}"`;
+  return styles.join(";");
+}
+
+/** 块级对齐 + 文字色 + 背景色 → style 属性字符串（含前导空格） */
+function buildBlockStyleAttr(block: any, theme: CardTheme): string {
+  const css = collectBlockInlineStyles(block, theme);
+  return css ? ` style="${css}"` : "";
+}
+
+function tableCellProps(cell: any): Record<string, unknown> {
+  if (cell && typeof cell === "object" && !Array.isArray(cell) && cell.props) {
+    return cell.props as Record<string, unknown>;
+  }
+  return {};
+}
+
+function buildTableCellTagAttr(cell: any, theme: CardTheme): string {
+  const props = tableCellProps(cell);
+  const parts: string[] = [];
+  const colspan = Number(props.colspan ?? props.colSpan);
+  const rowspan = Number(props.rowspan ?? props.rowSpan);
+  if (Number.isInteger(colspan) && colspan > 1) parts.push(`colspan="${colspan}"`);
+  if (Number.isInteger(rowspan) && rowspan > 1) parts.push(`rowspan="${rowspan}"`);
+  const styleAttr = buildBlockStyleAttr({ props }, theme).trim();
+  if (styleAttr) parts.push(styleAttr);
+  return parts.length ? ` ${parts.join(" ")}` : "";
 }
 
 function looksLikeImageUrl(src: string): boolean {
@@ -239,7 +263,12 @@ export function renderBlock(block: any, theme: CardTheme): string {
           : alignment === "right"
             ? "display:block;margin-left:auto;"
             : "";
-      const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}" style="${imgAlignStyle}" />`;
+      const previewWidth = Number(block.props?.previewWidth ?? block.props?.width);
+      const widthStyle =
+        Number.isFinite(previewWidth) && previewWidth > 0
+          ? `max-width:${previewWidth}px;`
+          : "";
+      const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}" style="${imgAlignStyle}${widthStyle}" />`;
       if (caption) {
         return `<figure class="export-figure"${styleAttr}>${img}<figcaption>${escapeHtml(caption)}</figcaption></figure>`;
       }
@@ -273,14 +302,19 @@ export function renderBlock(block: any, theme: CardTheme): string {
       const headerRowsRaw = Number(block.content?.headerRows);
       const headerRows =
         Number.isFinite(headerRowsRaw) && headerRowsRaw >= 0 ? Math.floor(headerRowsRaw) : 1;
+      const headerColsRaw = Number(block.content?.headerCols);
+      const headerCols =
+        Number.isFinite(headerColsRaw) && headerColsRaw > 0 ? Math.floor(headerColsRaw) : 0;
       const htmlRows = rows.map((row: any, i: number) => {
         const cells = row.cells || [];
-        const tag = i < headerRows ? "th" : "td";
         return `<tr>${cells
-          .map((cell: any) => `<${tag}>${renderTableCellContent(cell, theme)}</${tag}>`)
+          .map((cell: any, j: number) => {
+            const tag = i < headerRows || j < headerCols ? "th" : "td";
+            return `<${tag}${buildTableCellTagAttr(cell, theme)}>${renderTableCellContent(cell, theme)}</${tag}>`;
+          })
           .join("")}</tr>`;
       });
-      return `<table><tbody>${htmlRows.join("")}</tbody></table>`;
+      return `<table${styleAttr}><tbody>${htmlRows.join("")}</tbody></table>`;
     }
 
     case "divider": {

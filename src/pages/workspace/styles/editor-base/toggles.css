@@ -93,6 +93,9 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 /* 折叠标题整行虚线边框：
    - 用 outline 不占地，避免顶破 block-background.css 的 width/margin 补偿；
    - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
+   - BlockNote 标题默认 padding-top:18px 制造块间距，outline 会把这段空白
+     一起框进去；折叠态把 15px 挪到透明 margin-top，虚线只贴文字行。
+     无背景标题原本没有这条补偿，所以折叠态也要补上。
    - 不用 color-mix：当前内核解析失败会让整条 outline 简写作废，
      颜色一律写死 rgba（取值对应 --goose-interactive-selected-fg /
      --goose-editor-highlight-purple-text 的半透明实色）；
@@ -101,6 +104,8 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 .bn-editor
   .bn-block-outer[data-goose-heading-collapsed="true"]
   .bn-block-content[data-content-type="heading"] {
+  margin-top: 15px;
+  padding-top: 3px;
   outline: 1px dashed rgba(79, 70, 229, 0.45) !important;
   outline-width: 1px !important;
   outline-style: dashed !important;

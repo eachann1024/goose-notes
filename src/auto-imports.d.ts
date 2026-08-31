@@ -47,6 +47,7 @@ declare global {
   const DEFAULT_FONT_NAMES: typeof import('./lib/fontLoader').DEFAULT_FONT_NAMES
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_OPENAI_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_OPENAI_BASE_URL
+  const DEFAULT_QUICKNOTE_HOTKEY: typeof import('./stores/settings/index').DEFAULT_QUICKNOTE_HOTKEY
   const DEFAULT_SEARCH_HOTKEY: typeof import('./stores/settings/index').DEFAULT_SEARCH_HOTKEY
   const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT: typeof import('./stores/settings/index').DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT
   const DEFAULT_SEARCH_PROVIDERS: typeof import('./stores/settings/index').DEFAULT_SEARCH_PROVIDERS
@@ -83,6 +84,8 @@ declare global {
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MIN
   const EDITOR_UI_SCALE_CHANGE_EVENT: typeof import('./lib/appearance').EDITOR_UI_SCALE_CHANGE_EVENT
+  const ELECTRON_MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').ELECTRON_MAX_FILE_ATTACHMENT_SIZE
+  const ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE
   const FILE_NAV_AI_PANEL: typeof import('./stores/useFileNavHistory').FILE_NAV_AI_PANEL
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
@@ -94,6 +97,8 @@ declare global {
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
   const GOOSE_PINNED_KEY: typeof import('./lib/local-frontmatter').GOOSE_PINNED_KEY
+  const IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH: typeof import('./lib/imageExport/index').IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH
+  const IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH: typeof import('./lib/imageExport/index').IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH
   const INTERNAL_ASSET_REF_PREFIXES: typeof import('./lib/internalAssetRef').INTERNAL_ASSET_REF_PREFIXES
   const IconButton: typeof import('./components/ui/icon-button').IconButton
   const ImageExportThemeSelector: typeof import('./components/ui/image-export-theme-selector').ImageExportThemeSelector
@@ -112,6 +117,7 @@ declare global {
   const MINIMAX_BASE_URL: typeof import('./lib/ai-provider/index').MINIMAX_BASE_URL
   const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').NON_CUSTOMIZABLE_APP_SHORTCUT_IDS
   const NOTEBOOK_AI_TAB_PAGE_ID_PREFIX: typeof import('./stores/useTabs').NOTEBOOK_AI_TAB_PAGE_ID_PREFIX
+  const NOTEBOOK_THEME: typeof import('./lib/imageExport/index').NOTEBOOK_THEME
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
@@ -205,6 +211,7 @@ declare global {
   const buildAiWritePlan: typeof import('./lib/ai-write/index').buildAiWritePlan
   const buildInheritedPasteBlocks: typeof import('./components/editor/utils/multilinePaste').buildInheritedPasteBlocks
   const buildLocalPageId: typeof import('./lib/local-folder-scanner').buildLocalPageId
+  const buildNotebookCardTheme: typeof import('./lib/imageExport/index').buildNotebookCardTheme
   const buildQuickNoteDraftPage: typeof import('./stores/useQuickNote').buildQuickNoteDraftPage
   const buildSinglePageExport: typeof import('./lib/export/index').buildSinglePageExport
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
@@ -213,6 +220,7 @@ declare global {
   const clampQuickNoteZoom: typeof import('./stores/useQuickNote').clampQuickNoteZoom
   const classifyAiLineText: typeof import('./lib/ai-write/index').classifyAiLineText
   const clearAllLocalMdSnapshots: typeof import('./lib/local-md-snapshot').clearAllLocalMdSnapshots
+  const clearEditorSelectedBlocksCache: typeof import('./components/editor/utils/selection').clearEditorSelectedBlocksCache
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
   const clearStartupSettling: typeof import('./lib/appearance').clearStartupSettling
   const clearWorkspaceStartupSelection: typeof import('./lib/workspaceStartup').clearWorkspaceStartupSelection
@@ -247,6 +255,7 @@ declare global {
   const createPageBodyBlockTypeTransformSnapshot: typeof import('./lib/ai-write/index').createPageBodyBlockTypeTransformSnapshot
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write/index').createStickyTargetFromResolvedTarget
+  const createVaultNotebook: typeof import('./lib/local-vault').createVaultNotebook
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const deleteLocalMdSnapshot: typeof import('./lib/local-md-snapshot').deleteLocalMdSnapshot
   const deletePageWithUndo: typeof import('./lib/page-delete-actions').deletePageWithUndo
@@ -299,6 +308,7 @@ declare global {
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
   const getAIProviderPreset: typeof import('./lib/ai-provider/index').getAIProviderPreset
   const getActiveDraftContent: typeof import('./stores/useQuickNote').getActiveDraftContent
+  const getActiveGooseNoteEditor: typeof import('./components/editor/utils/selection').getActiveGooseNoteEditor
   const getApiKeyMissingMessage: typeof import('./lib/ai-provider/index').getApiKeyMissingMessage
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
   const getBlockTypeTransformSignature: typeof import('./lib/ai-write/index').getBlockTypeTransformSignature
@@ -311,6 +321,7 @@ declare global {
   const getDbStorageItem: typeof import('./lib/storage').getDbStorageItem
   const getDefaultCustomAIBaseURL: typeof import('./lib/ai-provider/index').getDefaultCustomAIBaseURL
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
+  const getEditorSelectedBlocksForExport: typeof import('./components/editor/utils/selection').getEditorSelectedBlocksForExport
   const getEditorUiScale: typeof import('./components/editor/utils/editorContextUi').getEditorUiScale
   const getElementFromNode: typeof import('./components/editor/utils/selection').getElementFromNode
   const getFileUploadAvailability: typeof import('./lib/fileUploadAvailability').getFileUploadAvailability
@@ -320,6 +331,7 @@ declare global {
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
   const getImageStorage: typeof import('./lib/docxExport/docxImages').getImageStorage
   const getLocalMdSnapshot: typeof import('./lib/local-md-snapshot').getLocalMdSnapshot
+  const getMaxFileAttachmentSize: typeof import('./lib/fileStorage').getMaxFileAttachmentSize
   const getModifierOnlyShortcut: typeof import('./lib/shortcut-match').getModifierOnlyShortcut
   const getMultiBlockToolbarEdgeRect: typeof import('./components/editor/utils/formattingToolbarReference').getMultiBlockToolbarEdgeRect
   const getNotebookAiTabPageId: typeof import('./stores/useTabs').getNotebookAiTabPageId
@@ -360,6 +372,8 @@ declare global {
   const isDeepSeekProModel: typeof import('./lib/ai-provider/index').isDeepSeekProModel
   const isDiskContentMatchingSnapshot: typeof import('./lib/local-md-snapshot').isDiskContentMatchingSnapshot
   const isDuplicateCompositionEndChange: typeof import('./hooks/useImeInput').isDuplicateCompositionEndChange
+  const isElectronHost: typeof import('./lib/local-vault').isElectronHost
+  const isElectronLocalFolderDirectory: typeof import('./lib/sidebarPageNavigation').isElectronLocalFolderDirectory
   const isImageUploadFile: typeof import('./components/editor/utils/pasteClipboardImage').isImageUploadFile
   const isImeKeyboardEvent: typeof import('./hooks/useImeInput').isImeKeyboardEvent
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
@@ -445,6 +459,7 @@ declare global {
   const permanentlyDeletePageWithCleanup: typeof import('./lib/page-delete-actions').permanentlyDeletePageWithCleanup
   const persistQuickNoteSlotNames: typeof import('./stores/useQuickNote').persistQuickNoteSlotNames
   const pickRandomPageIcon: typeof import('./lib/randomPageIcon').pickRandomPageIcon
+  const pickVaultParentDirectory: typeof import('./lib/local-vault').pickVaultParentDirectory
   const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const planBlockTypeTransform: typeof import('./lib/ai-write/index').planBlockTypeTransform
   const planMultilinePaste: typeof import('./components/editor/utils/multilinePaste').planMultilinePaste
@@ -453,11 +468,13 @@ declare global {
   const processBlockChildren: typeof import('./lib/docxExport/docxBlocks').processBlockChildren
   const pruneLocalPageIdMap: typeof import('./lib/local-page-idmap').pruneLocalPageIdMap
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
+  const readLiveEditorSelectedBlocks: typeof import('./components/editor/utils/selection').readLiveEditorSelectedBlocks
   const readLocalPageIdMap: typeof import('./lib/local-page-idmap').readLocalPageIdMap
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
   const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
   const recoverQuickNoteDrafts: typeof import('./stores/useQuickNote').recoverQuickNoteDrafts
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
+  const rememberEditorSelectedBlocks: typeof import('./components/editor/utils/selection').rememberEditorSelectedBlocks
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const removeLocalPageIdMap: typeof import('./lib/local-page-idmap').removeLocalPageIdMap
   const renderExportHtml: typeof import('./lib/export/index').renderExportHtml
@@ -470,6 +487,7 @@ declare global {
   const resolveAiTargetReference: typeof import('./lib/ai-write/index').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write/index').resolveAiTargetSelection
   const resolveBlockTypeTransformIntent: typeof import('./lib/ai-write/index').resolveBlockTypeTransformIntent
+  const resolveCardTheme: typeof import('./lib/imageExport/index').resolveCardTheme
   const resolveExplicitBlockTypeTarget: typeof import('./lib/ai-write/index').resolveExplicitBlockTypeTarget
   const resolveGeneratedBlockStructureExpectation: typeof import('./lib/ai-write/index').resolveGeneratedBlockStructureExpectation
   const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
@@ -507,6 +525,8 @@ declare global {
   const shouldIsolateTitleStructurePaste: typeof import('./components/editor/hooks/useEditorPaste').shouldIsolateTitleStructurePaste
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
+  const shouldShowImageExportLivePreview: typeof import('./lib/imageExport/index').shouldShowImageExportLivePreview
+  const shouldShowImageExportOptionsCorner: typeof import('./lib/imageExport/index').shouldShowImageExportOptionsCorner
   const shouldSkipAppHotkeyEvent: typeof import('./hooks/useImeInput').shouldSkipAppHotkeyEvent
   const shouldSplitMultilinePaste: typeof import('./components/editor/utils/multilinePaste').shouldSplitMultilinePaste
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
@@ -549,6 +569,8 @@ declare global {
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
   const useDeletePageWithUndo: typeof import("./hooks/useDeletePageWithUndo").useDeletePageWithUndo
+  const useDesktopHotkeys: typeof import('./hooks/useDesktopHotkeys').useDesktopHotkeys
+  const useDesktopWindowTitleSync: typeof import('./hooks/useDesktopWindowTitle').useDesktopWindowTitleSync
   const useEditorFind: typeof import('./components/editor/hooks/useEditorFind').useEditorFind
   const useEditorPaste: typeof import('./components/editor/hooks/useEditorPaste').useEditorPaste
   const useEditorShortcuts: typeof import('./components/editor/hooks/useEditorShortcuts').useEditorShortcuts
@@ -641,7 +663,7 @@ declare global {
   export type { FixedAppShortcutId } from './lib/fixed-app-shortcuts'
   import('./lib/fixed-app-shortcuts')
   // @ts-ignore
-  export type { CardTheme, CardThemeId, WatermarkConfig } from './lib/imageExport/index'
+  export type { CardTheme, CardThemeId, NotebookCardThemeContext, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
   // @ts-ignore
   export type { UnreferencedLocalAsset } from './lib/local-folder-asset-maintenance'

@@ -13,6 +13,7 @@ import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
+import { isElectronHost } from "@/lib/local-vault";
 
 const _platform = navigator.platform || navigator.userAgent;
 const _isMac = /Mac/i.test(_platform);
@@ -79,8 +80,8 @@ export function SidebarContextMenu({
     updatePage(page.id, { parentId: undefined });
   };
 
-  const handleDuplicatePage = () => {
-    const newId = duplicatePage(page.id);
+  const handleDuplicatePage = async () => {
+    const newId = await duplicatePage(page.id);
     if (!newId || newId === page.id) return;
     openPageFromSidebar(newId, "permanent");
   };
@@ -175,7 +176,8 @@ export function SidebarContextMenu({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="goose-sidebar-context-menu w-60 !border-0">
-          {!singleTabMode && (
+          {!singleTabMode &&
+            !(isElectronHost && isLocalFolder && page.isFolder) && (
             <ContextMenuItem
               onSelect={() => {
                 if (isTrashed) return;

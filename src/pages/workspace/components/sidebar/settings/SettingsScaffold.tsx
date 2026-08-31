@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { Settings as SettingsIcon } from "lucide-react";
 import type { SettingsTab, SettingsTabConfig } from "./types";
+import { isElectronRuntime } from "@/lib/electron/runtime";
 
 interface SettingsScaffoldProps {
   activeTab: SettingsTab;
@@ -52,7 +53,13 @@ export function SettingsScaffold({
 
   return (
     <div className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground">
-      <div className="flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] pt-4 px-6 pr-14">
+      <div
+        className={
+          isElectronRuntime()
+            ? "flex h-11 items-center justify-between bg-[hsl(var(--goose-shell-bg))] pl-[78px] pr-14"
+            : "flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] px-6 pb-0 pt-4 pr-14"
+        }
+      >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
             <SettingsIcon className="h-5 w-5 text-foreground/80" />

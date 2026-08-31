@@ -240,4 +240,9 @@ export const hostRuntime: HostRuntime = {
     error: "uTools 版本不支持全局搜索快捷键。",
   }),
   unregisterSearchHotkey: async () => {},
+  registerQuicknoteHotkey: async () => ({
+    ok: false,
+    error: "uTools 版本不支持速记小窗全局快捷键。",
+  }),
+  unregisterQuicknoteHotkey: async () => {},
 };

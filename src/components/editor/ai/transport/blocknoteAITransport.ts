@@ -121,7 +121,7 @@ export interface CreateGooseAITransportOptions {
   getSettings: () => AISettingsLike;
   getModelId: () => string;
   /**
-   * 宿主注入的 fetch（如 Tauri plugin-http，绕过 WebView CORS）。
+   * 宿主注入的 fetch（如 Electron netFetch，绕过 WebView CORS）。
    * 未提供时回退 globalThis.fetch。
    */
   getCustomFetch?: () => typeof fetch | undefined;

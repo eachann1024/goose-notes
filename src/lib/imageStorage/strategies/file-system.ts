@@ -219,7 +219,15 @@ export class FileSystemStrategy implements IImageStorageStrategy {
     const base64Data = base64.split(",")[1];
     const fullPath = `${assetsDir}/${filename}`;
 
-    fs.writeFile(fullPath, base64Data, "base64");
+    // 不 fire-and-forget：桌面端同步写是乐观落盘，必须等异步写结果。
+    const gfs = (window as any).gooseFs;
+    const saved =
+      typeof gfs?.writeFileAsync === "function"
+        ? await fs.writeFileAsync(fullPath, base64Data, "base64")
+        : fs.writeFile(fullPath, base64Data, "base64");
+    if (!saved) {
+      throw new Error("图片写入本地文件夹失败");
+    }
 
     return `./assets/${filename}`;
   }

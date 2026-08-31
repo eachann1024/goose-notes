@@ -131,17 +131,25 @@ export function useAppHotkeys() {
           );
         },
       },
-      // 设置快捷键固定：macOS 用 Ctrl+,，Windows/Linux 用 Alt+,。
+      // 设置快捷键固定：全平台 Mod+,（mac ⌘, / win·linux Ctrl+,）。中文逗号与 Comma 归一后再匹配。
       {
         id: "open-settings",
-        match: (event) =>
-          !event.repeat &&
-          !event.metaKey &&
-          !event.shiftKey &&
-          (event.key === "," || event.key === "，" || event.code === "Comma") &&
-          (fixedShortcuts.openSettings === "Ctrl+,"
-            ? event.ctrlKey && !event.altKey
-            : event.altKey && !event.ctrlKey),
+        match: (event) => {
+          if (event.repeat) return false;
+          const key =
+            event.key === "，" || event.code === "Comma" ? "," : event.key;
+          return matchShortcut(
+            {
+              key,
+              code: event.code,
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+              altKey: event.altKey,
+              shiftKey: event.shiftKey,
+            } as KeyboardEvent,
+            fixedShortcuts.openSettings,
+          );
+        },
         handler: (event) => {
           event.preventDefault();
           closeAllOverlays();

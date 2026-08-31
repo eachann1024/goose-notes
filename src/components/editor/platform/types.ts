@@ -49,7 +49,7 @@ export interface EditorPlatformFs {
   isAvailable(): boolean;
   readFileAsync(path: string): Promise<string | null>;
   readFileStatAsync(path: string): Promise<FileStat | null>;
-  /** 图片读取，统一 async（WKWebView/Tauri 无同步桥） */
+  /** 图片读取，统一 async（WKWebView/Electron 无同步桥） */
   readFileBase64(path: string): Promise<string | null>;
   writeFileAsync(
     path: string,
@@ -76,7 +76,7 @@ export interface EditorPlatformFs {
 export interface EditorPlatformShell {
   openPath(targetPath: string): Promise<boolean>;
   showItemInFolder(targetPath: string): Promise<boolean>;
-  /** Tauri 无内置浏览器，忽略 useInternalBrowser 走系统浏览器 */
+  /** Electron 无内置浏览器，忽略 useInternalBrowser 走系统浏览器 */
   openUrl(url: string, useInternalBrowser?: boolean): Promise<void>;
   showNotification(body: string): void;
   getDownloadsPath(): Promise<string | null>;

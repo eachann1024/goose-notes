@@ -423,6 +423,11 @@
     margin-top: var(--goose-top-safe-area);
   }
 
+  /* Electron 桌面端：顶栏在文档流里（overlay 融合条），无额外安全区。 */
+  html.is-electron {
+    --goose-top-safe-area: 0px;
+  }
+
   [data-sonner-toaster][data-y-position="top"] {
     top: calc(var(--offset-top, 14px) + var(--goose-top-safe-area)) !important;
   }

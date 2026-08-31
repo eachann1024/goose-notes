@@ -17,6 +17,7 @@ import { SidebarOutline } from "./SidebarOutline";
 import { HistoryVersionList } from "../history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
+import { isElectronHost } from "@/lib/local-vault";
 
 type SidebarView = "pages" | "trash" | "outline";
 type SidebarDragGuideMode = "sort" | "nest-ready";
@@ -53,6 +54,8 @@ export function Sidebar({
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
+  // Electron 仅本地模式：没有仓库时不露出「新建页面」入口与内置本语义
+  const electronNoVault = isElectronHost && !activeNotebookId;
 
   const itemHeight = useSidebarItemHeight();
   const rowHeight = itemHeight + 1;
@@ -173,6 +176,15 @@ export function Sidebar({
     };
   }, [sidebarCollapsed]);
 
+  useLayoutEffect(() => {
+    const shell = sidebarRef.current?.closest(".workspace-shell");
+    if (!(shell instanceof HTMLElement)) return;
+    shell.style.setProperty(
+      "--workspace-sidebar-width",
+      `${sidebarCollapsed ? 0 : width}px`,
+    );
+  }, [sidebarCollapsed, width]);
+
   useEffect(() => {
     if (!scrollAreaRef.current) return;
     const updateHeight = () => {
@@ -271,9 +283,11 @@ export function Sidebar({
                 <div className="flex-1 min-h-0 flex flex-col">
                   <div className="mt-1 shrink-0">
                     <SidebarSectionHeader
-                      title={isLocalFolder ? "本地" : "页面"}
+                      title={
+                        isLocalFolder ? "本地" : electronNoVault ? "仓库" : "页面"
+                      }
                       onSearch={handleSearch}
-                      onCreate={handleCreatePage}
+                      onCreate={electronNoVault ? undefined : handleCreatePage}
                       createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                       view={currentView}
                       onSwitchToPages={() => {

@@ -100,6 +100,10 @@ export function buildStyledHTML(params: {
   blocksHtml: string;
   theme: CardTheme;
   watermarkConfig?: WatermarkConfig;
+  /** 弹层预览用：文档底透明，避免卡片变矮后露出白底。不影响真实导出。 */
+  preview?: boolean;
+  /** 被提升为首标题的 heading 的 inline CSS（对齐 / 颜色 / 背景） */
+  titleInlineStyle?: string;
 }): string {
   const { title, blocksHtml, theme } = params;
   const wm = normalizeWatermarkConfig(params.watermarkConfig);
@@ -107,6 +111,12 @@ export function buildStyledHTML(params: {
   const headingSize = contentHeadingSizes(t);
   const headingWeight = contentHeadingWeights(t);
   const checkMarkColor = getContrastingInk(t.accent);
+  const titleInline = (params.titleInlineStyle || "").trim();
+  const titleHasBlockBg = titleInline.includes("background-color");
+  const titleInlineAttr = titleInline ? ` style="${titleInline}"` : "";
+  const titleClass = titleHasBlockBg
+    ? ' class="gooseshot-title has-block-bg"'
+    : ' class="gooseshot-title"';
   const decoStyle = t.showDecorations
     ? `
     .gooseshot-container::before {
@@ -147,6 +157,7 @@ export function buildStyledHTML(params: {
 <link rel="stylesheet" href="${getGoogleFontsUrl()}">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
+${params.preview ? "html, body { background: transparent; }" : ""}
 body {
   font-family: ${t.bodyFont};
   color: ${t.textColor};
@@ -174,6 +185,24 @@ ${decoStyle}
 }
 .gooseshot-header { ${headerBorder} }
 .gooseshot-title { ${titleStyle} }
+.gooseshot-title.has-block-bg,
+.gooseshot-content h1[style*="background-color"],
+.gooseshot-content h2[style*="background-color"],
+.gooseshot-content h3[style*="background-color"] {
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.gooseshot-content p[style*="background-color"],
+.gooseshot-content li[style*="background-color"],
+.gooseshot-content blockquote[style*="background-color"],
+.gooseshot-content .task-item[style*="background-color"],
+.gooseshot-content .callout[style*="background-color"],
+.gooseshot-content td[style*="background-color"],
+.gooseshot-content th[style*="background-color"] {
+  border-radius: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
 .gooseshot-content > * { margin-bottom: 14px; }
 .gooseshot-content > *:last-child { margin-bottom: 0; }
 .gooseshot-content h1,
@@ -544,7 +573,7 @@ ${decoStyle}
     ${
       wm.showTitle
         ? `<div class="gooseshot-header">
-      <div class="gooseshot-title">${escapeHtml(title || "无标题")}</div>
+      <div${titleClass}${titleInlineAttr}>${escapeHtml(title || "无标题")}</div>
     </div>`
         : ""
     }

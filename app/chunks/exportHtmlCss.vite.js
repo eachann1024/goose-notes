@@ -1099,6 +1099,16 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   transform: translateY(var(--goose-list-marker-optical-offset-y));
 }
 
+/* 自定义圆点给 ::before 设了真实高度，覆盖 BlockNote #1588 的 height:0 规避，
+   点行尾空白时 Chromium 会把光标算到块首。marker 不接收指针，点击落到文字。 */
+.bn-editor
+  .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  pointer-events: none;
+}
+
 /*
  * 嵌套列表连接线：BlockNote 默认把线拆到每个 child outer 上，线段高度不包含
  * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽
@@ -2054,9 +2064,36 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
    颜色由 goose-accent-colors.css 按 data-goose-accent 写实色；
    这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
-   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。 */
-.goose-blocknote-editor ::selection,
-.bn-editor ::selection,
+   不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。
+
+   WKWebView / Safari 跨块选区会把块容器（含 .bn-block-outer 的 0.5em
+   底间距）也画成 ::selection，列表项之间就会出现空白高亮条。
+   块壳先透明；文字高亮必须写在元素自身的 ::selection 上
+   （.bn-inline-content::selection），带空格的后代选择器在 WebKit 上不生效。 */
+.goose-blocknote-editor .bn-block-outer::selection,
+.bn-editor .bn-block-outer::selection,
+.goose-blocknote-editor .bn-block::selection,
+.bn-editor .bn-block::selection,
+.goose-blocknote-editor .bn-block-content::selection,
+.bn-editor .bn-block-content::selection,
+.goose-blocknote-editor .bn-block-group::selection,
+.bn-editor .bn-block-group::selection {
+  background-color: transparent;
+  color: inherit;
+}
+
+.goose-blocknote-editor .bn-inline-content::selection,
+.bn-editor .bn-inline-content::selection,
+.goose-blocknote-editor .bn-inline-content *::selection,
+.bn-editor .bn-inline-content *::selection,
+.goose-blocknote-editor .goose-code-pre::selection,
+.bn-editor .goose-code-pre::selection,
+.goose-blocknote-editor .goose-code-pre *::selection,
+.bn-editor .goose-code-pre *::selection,
+.goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+.bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+.goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+.bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 .goose-blocknote-editor .goose-fake-selection,
 .bn-editor .goose-fake-selection {
   background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
@@ -2154,6 +2191,19 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   .bn-inline-content {
   color: var(--goose-interactive-selected-fg);
   caret-color: var(--goose-interactive-selected-fg);
+}
+
+/*
+ * 点击行尾空白时光标跳到行首。
+ * Chromium（含 Electron）对 flex 容器的 caretRangeFromPoint 会落到第一个子节点；
+ * BlockNote 的 .bn-block-content 是 flex，行内内容默认随文字收缩。
+ * 让段落 / 列表 / 待办的 .bn-inline-content，以及标题 / 引用外壳吃掉剩余宽度，
+ * 点击落在文字节点上。不只列表，短行的所有文本块都会中招。
+ */
+.bn-block-content > .bn-inline-content,
+.bn-block-content > :is(h1, h2, h3, h4, h5, h6, blockquote) {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* BlockNote 块间距全局优化 */
@@ -2575,6 +2625,9 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 /* 折叠标题整行虚线边框：
    - 用 outline 不占地，避免顶破 block-background.css 的 width/margin 补偿；
    - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
+   - BlockNote 标题默认 padding-top:18px 制造块间距，outline 会把这段空白
+     一起框进去；折叠态把 15px 挪到透明 margin-top，虚线只贴文字行。
+     无背景标题原本没有这条补偿，所以折叠态也要补上。
    - 不用 color-mix：当前内核解析失败会让整条 outline 简写作废，
      颜色一律写死 rgba（取值对应 --goose-interactive-selected-fg /
      --goose-editor-highlight-purple-text 的半透明实色）；
@@ -2583,6 +2636,8 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 .bn-editor
   .bn-block-outer[data-goose-heading-collapsed="true"]
   .bn-block-content[data-content-type="heading"] {
+  margin-top: 15px;
+  padding-top: 3px;
   outline: 1px dashed rgba(79, 70, 229, 0.45) !important;
   outline-width: 1px !important;
   outline-style: dashed !important;

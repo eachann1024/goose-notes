@@ -6,4 +6,5 @@ export {
   renderInline,
   extractInlineText,
   extractCellTextForHtml,
+  collectBlockInlineStyles,
 } from "./serializer/renderer";

@@ -2,9 +2,18 @@ import type { CardTheme } from "./types";
 import { TECH_THEMES } from "./presets/tech";
 import { ARTISTIC_THEMES } from "./presets/artistic";
 import { COLORFUL_THEMES } from "./presets/colorful";
+import {
+  NOTEBOOK_THEME,
+  buildNotebookCardTheme,
+  type NotebookCardThemeContext,
+} from "./presets/notebook";
+
+export type { NotebookCardThemeContext } from "./presets/notebook";
+export { buildNotebookCardTheme, NOTEBOOK_THEME } from "./presets/notebook";
 
 // Helper to find a theme by id from category sheets
 const findTheme = (id: string): CardTheme => {
+  if (id === "notebook") return NOTEBOOK_THEME;
   const all = [...TECH_THEMES, ...ARTISTIC_THEMES, ...COLORFUL_THEMES];
   const found = all.find((t) => t.id === id);
   if (!found) throw new Error(`Theme ${id} not found in presets!`);
@@ -12,6 +21,7 @@ const findTheme = (id: string): CardTheme => {
 };
 
 const CARD_THEME_IDS = [
+  "notebook",
   "github-light",
   "medium",
   "kenya-hara",
@@ -49,9 +59,18 @@ export function normalizeCardThemeId(themeId: unknown): CardThemeId {
     const replacement = REMOVED_THEME_REPLACEMENTS[themeId];
     if (replacement) return replacement;
   }
-  return "github-light";
+  return "notebook";
 }
 
 export function getCardTheme(themeId: CardThemeId): CardTheme {
   return CARD_THEMES.find((t) => t.id === themeId) ?? CARD_THEMES[0];
+}
+
+export function resolveCardTheme(
+  themeId: CardThemeId,
+  ctx?: NotebookCardThemeContext,
+): CardTheme {
+  const id = normalizeCardThemeId(themeId);
+  if (id === "notebook") return buildNotebookCardTheme(ctx);
+  return getCardTheme(id);
 }

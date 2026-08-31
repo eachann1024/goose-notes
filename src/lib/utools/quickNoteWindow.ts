@@ -17,12 +17,29 @@ const send = (channel: string, ...args: unknown[]) => {
   return false;
 };
 
+// Electron 桌面端：小窗是静态第二窗（label=quicknote，visible:false），
+// 收起=隐藏 BrowserWindow（常驻后台、草稿随窗口存活），不依赖 sendToParent。
+// 动态 import + 构建期常量守卫：uTools 构建里该分支被整体摇掉。
+const isElectronHost = __HOST_TARGET__ === "electron";
+
+const hideElectronQuicknoteWindow = (): void => {
+  const api = window.gooseDesktop;
+  if (!api) return;
+  void api.hideQuicknote().catch((error) => {
+    console.warn("[quicknote] Electron 小窗隐藏失败", error);
+  });
+};
+
 export const quickNoteWindow = {
   /**
    * 收起小窗。请求主窗把窗口「隐藏」（常驻后台，下次唤起秒显，不销毁），
    * 兜底 window.close()。主窗侧 quicknote:close → hideQuickNoteWindow。
    */
   close(): void {
+    if (isElectronHost) {
+      hideElectronQuicknoteWindow();
+      return;
+    }
     if (!send("quicknote:close")) {
       try {
         window.close();
@@ -81,6 +98,10 @@ export const quickNoteWindow = {
    * 窗口常驻后台、下次秒显。保留此导出名以维持外部调用兼容性。
    */
   hide(): void {
+    if (isElectronHost) {
+      hideElectronQuicknoteWindow();
+      return;
+    }
     if (!send("quicknote:close")) {
       try {
         window.close();

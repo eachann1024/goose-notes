@@ -129,5 +129,6 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   else if (/^Digit[0-9]$/.test(code)) codeKey = code.slice(5);
   else if (code === "BracketLeft") codeKey = "[";
   else if (code === "BracketRight") codeKey = "]";
+  else if (code === "Comma") codeKey = ",";
   return !!codeKey && codeKey === keyToken;
 }
