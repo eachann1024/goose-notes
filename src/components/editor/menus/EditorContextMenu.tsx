@@ -90,6 +90,10 @@ export function EditorContextMenu({
   const selectedTextRef = useRef("");
   const platform = useEditorPlatform();
   const { redirectAction, openLinksInHost } = useEditorSettings();
+  // 速记小窗不展示「生成选中图片」：生产包靠 __GOOSE_LITE__ 裁掉；
+  // 开发态 / Electron 小窗靠草稿页 id 运行时隐藏。
+  const showSelectionImageExport =
+    !__GOOSE_LITE__ && page?.id !== "__quicknote_draft__";
 
   const activeSearchProviders = useMemo(
     () => searchProviders.filter((provider) => provider.isEnabled),
@@ -122,9 +126,11 @@ export function EditorContextMenu({
     setSelectedText(trimmedText);
     selectedTextRef.current = trimmedText;
 
-    const blocks = getEditorSelectedBlocksForExport(editor);
-    setSelectedBlocks(blocks);
-    selectedBlocksRef.current = blocks;
+    if (showSelectionImageExport) {
+      const blocks = getEditorSelectedBlocksForExport(editor);
+      setSelectedBlocks(blocks);
+      selectedBlocksRef.current = blocks;
+    }
   };
 
   const handleContextPaste = useCallback(async () => {
@@ -292,7 +298,7 @@ export function EditorContextMenu({
               </span>
             </ContextMenuItem>
           )}
-          {selectedBlocks.length > 0 && (
+          {showSelectionImageExport && selectedBlocks.length > 0 && (
             <ContextMenuItem
               onSelect={() => {
                 selectedBlocksRef.current = selectedBlocks;
@@ -306,14 +312,16 @@ export function EditorContextMenu({
         </ContextMenuContent>
       </ContextMenu>
 
-      <ImageExportThemeSelector
-        open={themeSelectorOpen}
-        onOpenChange={setThemeSelectorOpen}
-        onConfirm={handleSelectionThemeConfirm}
-        mode="selection"
-        page={page}
-        blocks={selectedBlocks}
-      />
+      {showSelectionImageExport && (
+        <ImageExportThemeSelector
+          open={themeSelectorOpen}
+          onOpenChange={setThemeSelectorOpen}
+          onConfirm={handleSelectionThemeConfirm}
+          mode="selection"
+          page={page}
+          blocks={selectedBlocks}
+        />
+      )}
     </>
   );
 }
