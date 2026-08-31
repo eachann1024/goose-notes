@@ -49,14 +49,21 @@ interface SidebarMainTreeProps {
   onCreatePage: () => void;
 }
 
-const PENDING_FOLDER_ID_PREFIX = "local-pending-folder-";
+const PENDING_CREATE_ID_PREFIX = "local-pending-";
+
+function normalizePendingFileTitle(name: string): string {
+  return name.replace(/\.(md|markdown)$/i, "").trim();
+}
+
+function scheduleAfterMenuClose(action: () => void) {
+  window.setTimeout(action, 0);
+}
 
 export function SidebarMainTree({
   activeNotebookId,
   selectedPageId,
   width,
   viewportHeight,
-  onCreatePage,
 }: SidebarMainTreeProps) {
   const pages = useStoreWithEqualityFn(
     usePages,
@@ -67,10 +74,13 @@ export function SidebarMainTree({
   const reorderPages = usePages((s) => s.reorderPages);
   const moveLocalPage = usePages((s) => s.moveLocalPage);
   const createLocalFolderRecord = usePages((s) => s.createLocalFolderRecord);
+  const createLocalPageRecord = usePages((s) => s.createLocalPageRecord);
   const getChildren = usePages((s) => s.getChildren);
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
-  const [pendingFolder, setPendingFolder] = useState<Page | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<Page | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const draggingItemIdRef = useRef<string | null>(null);
   const [pendingTreeSelection, setPendingTreeSelection] = useState<{
     notebookId: string;
     pageId: string;
@@ -123,14 +133,15 @@ export function SidebarMainTree({
       ? pendingTreeSelection.pageId
       : null;
 
-  const startCreateLocalFolder = useCallback(
-    (parentId?: string) => {
+  const startCreateLocalItem = useCallback(
+    (kind: "folder" | "file", parentId?: string) => {
       if (!activeNotebookId || !isLocalFolder) return;
       const parentPage = parentId ? pages[parentId] : undefined;
       const safeParentId = parentPage?.isFolder ? parentId : undefined;
-      const pendingId = `${PENDING_FOLDER_ID_PREFIX}${Date.now()}`;
+      const pendingId = `${PENDING_CREATE_ID_PREFIX}${kind}-${Date.now()}`;
       const now = Date.now();
-      setPendingFolder({
+      const defaultTitle = kind === "folder" ? "新建文件夹" : "未命名";
+      setPendingCreate({
         id: pendingId,
         workspaceId: activeNotebookId,
         parentId: safeParentId,
@@ -140,12 +151,12 @@ export function SidebarMainTree({
             {
               type: "heading",
               attrs: { level: 1 },
-              content: [{ type: "text", text: "新建文件夹" }],
+              content: [{ type: "text", text: defaultTitle }],
             },
           ],
         },
-        isFolder: true,
-        localPendingCreate: "folder",
+        isFolder: kind === "folder",
+        localPendingCreate: kind,
         isLocked: false,
         fontSize: "default",
         fontFamily: "default",
@@ -160,52 +171,106 @@ export function SidebarMainTree({
     [activeNotebookId, expandedIds, expandView, isLocalFolder, pages],
   );
 
-  const cancelPendingFolder = useCallback((id: string) => {
-    setPendingFolder((current) => (current?.id === id ? null : current));
+  const startCreateLocalFolder = useCallback(
+    (parentId?: string) => startCreateLocalItem("folder", parentId),
+    [startCreateLocalItem],
+  );
+
+  const startCreateLocalFile = useCallback(
+    (parentId?: string) => startCreateLocalItem("file", parentId),
+    [startCreateLocalItem],
+  );
+
+  const cancelPendingCreate = useCallback((id: string) => {
+    setPendingCreate((current) => (current?.id === id ? null : current));
   }, []);
 
-  const commitPendingFolder = useCallback(
+  const commitPendingCreate = useCallback(
     (id: string, name: string) => {
-      const current = pendingFolder;
+      const current = pendingCreate;
       if (!current || current.id !== id || !activeNotebookId) return;
+      const kind = current.localPendingCreate === "file" ? "file" : "folder";
       void (async () => {
-        const createdId = await createLocalFolderRecord({
-          workspaceId: activeNotebookId,
-          parentId: current.parentId,
-          title: name,
-        });
-        if (!createdId) {
-          toast.error("新建文件夹失败：名称冲突或文件系统错误");
+        if (kind === "folder") {
+          const createdId = await createLocalFolderRecord({
+            workspaceId: activeNotebookId,
+            parentId: current.parentId,
+            title: name,
+          });
+          if (!createdId) {
+            setPendingCreate((latest) => (latest?.id === id ? null : latest));
+            toast.error("新建文件夹失败：名称冲突或文件系统错误");
+            return;
+          }
+          setPendingCreate((latest) => (latest?.id === id ? null : latest));
+          if (current.parentId) {
+            expandView(activeNotebookId, current.parentId);
+          }
+          setExpandPageId(createdId);
+          toast.success("已新建文件夹");
           return;
         }
-        setPendingFolder((latest) => (latest?.id === id ? null : latest));
+
+        const createdId = await createLocalPageRecord({
+          workspaceId: activeNotebookId,
+          parentId: current.parentId,
+          title: normalizePendingFileTitle(name) || "未命名",
+        });
+        if (!createdId) {
+          setPendingCreate((latest) => (latest?.id === id ? null : latest));
+          toast.error("新建文件失败：名称冲突或文件系统错误");
+          return;
+        }
+        setPendingCreate((latest) => (latest?.id === id ? null : latest));
         if (current.parentId) {
           expandView(activeNotebookId, current.parentId);
         }
+        usePages.getState().setActivePage(createdId);
         setExpandPageId(createdId);
-        toast.success("已新建文件夹");
+        openPageFromSidebar(createdId, "preview");
       })();
     },
     [
       activeNotebookId,
       createLocalFolderRecord,
+      createLocalPageRecord,
       expandView,
-      pendingFolder,
+      pendingCreate,
       setExpandPageId,
     ],
   );
 
+  const handleItemDragStart = useCallback(
+    (id: string) => {
+      draggingItemIdRef.current = id;
+      setDraggingItemId(id);
+      if (!activeNotebookId) return;
+      setSelectedView(activeNotebookId, id);
+      setPendingTreeSelection({
+        notebookId: activeNotebookId,
+        pageId: id,
+        previousHighlightedPageId: highlightedPageId ?? null,
+      });
+    },
+    [activeNotebookId, highlightedPageId, setSelectedView],
+  );
+
+  const handleItemDragEnd = useCallback(() => {
+    draggingItemIdRef.current = null;
+    setDraggingItemId(null);
+  }, []);
+
   const scopedPages = useMemo(() => {
     const list = Object.values(pages);
     if (
-      pendingFolder &&
+      pendingCreate &&
       activeNotebookId &&
-      pendingFolder.workspaceId === activeNotebookId
+      pendingCreate.workspaceId === activeNotebookId
     ) {
-      return [...list, pendingFolder];
+      return [...list, pendingCreate];
     }
     return list;
-  }, [activeNotebookId, pages, pendingFolder]);
+  }, [activeNotebookId, pages, pendingCreate]);
 
   const items = useMemo<Record<TreeItemIndex, TreeItem<Page>>>(() => {
     if (!activeNotebookId) {
@@ -245,13 +310,15 @@ export function SidebarMainTree({
 
   const viewState = useMemo(() => {
     const highlightSelection =
-      pendingSelectedId && items[pendingSelectedId]
-        ? [pendingSelectedId]
-        : highlightedPageId && items[highlightedPageId]
-          ? [highlightedPageId]
-          : selectedId
-            ? [selectedId]
-            : [];
+      draggingItemId && items[draggingItemId]
+        ? [draggingItemId]
+        : pendingSelectedId && items[pendingSelectedId]
+          ? [pendingSelectedId]
+          : highlightedPageId && items[highlightedPageId]
+            ? [highlightedPageId]
+            : selectedId
+              ? [selectedId]
+              : [];
     return {
       main: {
         expandedItems: expandedIds,
@@ -260,6 +327,7 @@ export function SidebarMainTree({
       },
     };
   }, [
+    draggingItemId,
     expandedIds,
     focusedId,
     selectedId,
@@ -436,15 +504,31 @@ export function SidebarMainTree({
             {emptyState}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="goose-sidebar-context-menu w-48 !border-0">
-          <ContextMenuItem onSelect={() => startCreateLocalFolder(undefined)}>
-            <LucideIcons.FolderPlus className="h-4 w-4" />
-            <span>新建文件夹</span>
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={onCreatePage}>
-            <LucideIcons.FilePlus2 className="h-4 w-4" />
-            <span>新建文件</span>
-          </ContextMenuItem>
+        <ContextMenuContent
+          className="goose-sidebar-context-menu w-48 !border-0"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          <ContextMenuGroup>
+            <ContextMenuLabel className="px-1.5 py-1">
+              新建
+            </ContextMenuLabel>
+            <ContextMenuItem
+              onSelect={() =>
+                scheduleAfterMenuClose(() => startCreateLocalFile(undefined))
+              }
+            >
+              <LucideIcons.FilePlus2 className="h-4 w-4" />
+              <span>新建文件</span>
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() =>
+                scheduleAfterMenuClose(() => startCreateLocalFolder(undefined))
+              }
+            >
+              <LucideIcons.FolderPlus className="h-4 w-4" />
+              <span>新建文件夹</span>
+            </ContextMenuItem>
+          </ContextMenuGroup>
         </ContextMenuContent>
       </ContextMenu>
     );
@@ -482,6 +566,17 @@ export function SidebarMainTree({
       return;
     }
 
+    const keepDragSelection = () => {
+      const keepId = dragIds[0];
+      if (!keepId) return;
+      setSelectedView(activeNotebookId, keepId);
+      setPendingTreeSelection({
+        notebookId: activeNotebookId,
+        pageId: keepId,
+        previousHighlightedPageId: highlightedPageId ?? null,
+      });
+    };
+
     // ── 本地文件夹：文件系统移动，无自定义排序 ────────────────────────────────
     if (isLocalFolder) {
       void (async () => {
@@ -495,6 +590,7 @@ export function SidebarMainTree({
         if (newParentId && !expandedIds.includes(newParentId)) {
           expandView(activeNotebookId, newParentId);
         }
+        keepDragSelection();
       })();
       return;
     }
@@ -529,6 +625,7 @@ export function SidebarMainTree({
     if (newParentId && !expandedIds.includes(newParentId)) {
       expandView(activeNotebookId, newParentId);
     }
+    keepDragSelection();
   };
 
   return (
@@ -652,6 +749,7 @@ export function SidebarMainTree({
               }}
               onSelectItems={(selected) => {
                 if (!activeNotebookId) return;
+                if (draggingItemIdRef.current) return;
                 const last =
                   selected.length > 0
                     ? String(selected[selected.length - 1])
@@ -662,7 +760,7 @@ export function SidebarMainTree({
                   isElectronLocalFolderDirectory(last)
                 ) {
                   if (shouldSuppressSidebarSelect()) return;
-                  toggleLocalDirectory(last);
+                  setSelectedView(activeNotebookId, last);
                   return;
                 }
                 setSelectedView(activeNotebookId, last);
@@ -693,9 +791,12 @@ export function SidebarMainTree({
               renderItem={(args) =>
                 renderItem({
                   ...args,
+                  onCreateLocalFile: startCreateLocalFile,
                   onCreateLocalFolder: startCreateLocalFolder,
-                  onCommitPendingFolder: commitPendingFolder,
-                  onCancelPendingFolder: cancelPendingFolder,
+                  onCommitPendingCreate: commitPendingCreate,
+                  onCancelPendingCreate: cancelPendingCreate,
+                  onItemDragStart: handleItemDragStart,
+                  onItemDragEnd: handleItemDragEnd,
                   onActivateLocalDirectory: activateLocalDirectory,
                 })
               }
@@ -714,15 +815,33 @@ export function SidebarMainTree({
           </div>
         </ContextMenuTrigger>
         {isLocalFolder && activeNotebookId && (
-          <ContextMenuContent className="goose-sidebar-context-menu w-48 !border-0">
-            <ContextMenuItem onSelect={() => startCreateLocalFolder(undefined)}>
-              <LucideIcons.FolderPlus className="h-4 w-4" />
-              <span>新建文件夹</span>
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={onCreatePage}>
-              <LucideIcons.FilePlus2 className="h-4 w-4" />
-              <span>新建文件</span>
-            </ContextMenuItem>
+          <ContextMenuContent
+            className="goose-sidebar-context-menu w-48 !border-0"
+            onCloseAutoFocus={(event) => event.preventDefault()}
+          >
+            <ContextMenuGroup>
+              <ContextMenuLabel className="px-1.5 py-1">
+                新建
+              </ContextMenuLabel>
+              <ContextMenuItem
+                onSelect={() =>
+                  scheduleAfterMenuClose(() => startCreateLocalFile(undefined))
+                }
+              >
+                <LucideIcons.FilePlus2 className="h-4 w-4" />
+                <span>新建文件</span>
+              </ContextMenuItem>
+              <ContextMenuItem
+                onSelect={() =>
+                  scheduleAfterMenuClose(() =>
+                    startCreateLocalFolder(undefined),
+                  )
+                }
+              >
+                <LucideIcons.FolderPlus className="h-4 w-4" />
+                <span>新建文件夹</span>
+              </ContextMenuItem>
+            </ContextMenuGroup>
           </ContextMenuContent>
         )}
       </ContextMenu>

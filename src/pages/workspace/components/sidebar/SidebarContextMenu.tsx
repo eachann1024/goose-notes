@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Page } from "@/types";
 import {
   deletePageWithUndo,
@@ -44,15 +45,21 @@ function getTerminalLabel(terminal: string): string {
   return `在 ${formatLocalFolderOpenAppName(terminal, "终端")} 中打开`;
 }
 
+function scheduleAfterMenuClose(action: () => void) {
+  window.setTimeout(action, 0);
+}
+
 interface SidebarContextMenuProps {
   page: Page;
   children: React.ReactNode;
+  onCreateLocalFile?: (parentId?: string) => void;
   onCreateLocalFolder?: (parentId?: string) => void;
 }
 
 export function SidebarContextMenu({
   page,
   children,
+  onCreateLocalFile,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -129,6 +136,7 @@ export function SidebarContextMenu({
   const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
   const singleTabMode = useSettings((s) => s.singleTabMode);
   const hasParent = !!page.parentId;
+  const createParentId = page.isFolder ? page.id : page.parentId;
 
   const handleOpenInFileManager = async () => {
     if (!page.localFilePath) return;
@@ -175,177 +183,268 @@ export function SidebarContextMenu({
             {children}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="goose-sidebar-context-menu w-60 !border-0">
-          {!singleTabMode &&
-            !(isElectronHost && isLocalFolder && page.isFolder) && (
-            <ContextMenuItem
-              onSelect={() => {
-                if (isTrashed) return;
-                closeNotebookAiIfFullscreen();
-                useTabs.getState().openTab(page.id);
-              }}
-              disabled={isTrashed}
-            >
-              <LucideIcons.PanelTopOpen className="h-4 w-4" />
-              <span>在新标签页打开</span>
-              <span className="ml-auto text-xs text-muted-foreground">
-                {formatShortcut("Mod")}+点击
-              </span>
-            </ContextMenuItem>
-          )}
-          {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem
-              onSelect={() => {
-                onCreateLocalFolder?.(page.isFolder ? page.id : page.parentId);
-              }}
-            >
-              <LucideIcons.FolderPlus className="h-4 w-4" />
-              {/* 右键目标是文件夹时按需求显示「新建文件」；行为不变，仍创建子文件夹 */}
-              <span>{page.isFolder ? "新建文件" : "新建文件夹"}</span>
-            </ContextMenuItem>
-          )}
-          {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem
-              onSelect={() => {
-                void shell
-                  .openWithEditor(
-                    page.localFilePath!,
-                    localFolderExternalEditor,
-                  )
-                  .then((ok) => {
-                    if (!ok) toast.error("打开失败，请检查外部应用设置");
-                  });
-              }}
-            >
-              <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
-              <span>{getExternalAppLabel(localFolderExternalEditor)}</span>
-            </ContextMenuItem>
-          )}
-          {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem onSelect={() => void handleOpenInFileManager()}>
-              <LucideIcons.FolderOpen className="h-4 w-4" />
-              <span>
-                {getFileManagerLabel(!!page.isFolder, localFolderFileManager)}
-              </span>
-            </ContextMenuItem>
-          )}
-          {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem onSelect={() => void handleOpenInTerminal()}>
-              <LucideIcons.Terminal className="h-4 w-4" />
-              <span>{getTerminalLabel(localFolderTerminal)}</span>
-            </ContextMenuItem>
-          )}
-          {isLocalFolder && !isTrashed && page.localFilePath && (
-            <ContextMenuItem onSelect={() => void handleCopyFilePath()}>
-              <LucideIcons.ClipboardCopy className="h-4 w-4" />
-              <span>{page.isFolder ? "复制文件夹路径" : "复制文件路径"}</span>
-            </ContextMenuItem>
-          )}
-          {!isTrashed && !page.isFolder && (
-            <ContextMenuItem onSelect={toggleFavorite}>
-              <LucideIcons.Star
-                className={cn(
-                  "h-4 w-4",
-                  page.isFavorite &&
-                    "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
-                )}
-              />
-              <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
-            </ContextMenuItem>
-          )}
-          {!isTrashed && !page.isFolder && (
-            <ContextMenuItem onSelect={togglePinned}>
-              <LucideIcons.Pin
-                className={cn(
-                  "h-4 w-4",
-                  page.isPinned &&
-                    "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
-                )}
-              />
-              <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
-            </ContextMenuItem>
-          )}
-          {!isTrashed && !page.isFolder && (
-            <ContextMenuItem onSelect={handleDuplicatePage}>
-              <LucideIcons.Copy className="h-4 w-4" />
-              <span>创建副本</span>
-            </ContextMenuItem>
-          )}
+        <ContextMenuContent
+          className="goose-sidebar-context-menu w-60 !border-0"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          {(() => {
+            const showCreate =
+              isLocalFolder &&
+              !isTrashed &&
+              !!page.localFilePath &&
+              (!!onCreateLocalFile || !!onCreateLocalFolder);
+            const showOpenTab =
+              !singleTabMode &&
+              !(isElectronHost && isLocalFolder && page.isFolder);
+            const showLocalOpen =
+              isLocalFolder && !isTrashed && !!page.localFilePath;
+            const showOpen = showOpenTab || showLocalOpen;
+            const showOrganize = !isTrashed && !page.isFolder;
+            const showMoveTop = hasParent && !isTrashed && !isLocalFolder;
+            const showMoveNotebook =
+              !isTrashed && !isLocalFolder && movableNotebooks.length > 0;
+            const showMove = showMoveTop || showMoveNotebook;
+            const showCopy = showLocalOpen;
 
-          <ContextMenuSeparator className="bg-transparent" />
+            const sections: ReactNode[] = [];
 
-          {/* 只有当页面有父级时才显示"移至顶层"选项 */}
-          {hasParent && !isTrashed && !isLocalFolder && (
-            <ContextMenuItem onSelect={handleMoveToTopLevel}>
-              <LucideIcons.ArrowUpToLine className="h-4 w-4" />
-              <span>移至顶层</span>
-            </ContextMenuItem>
-          )}
-
-          {!isTrashed && !isLocalFolder && movableNotebooks.length > 0 && (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="gap-2 rounded-[6px] px-1.5 py-1.5 text-[13px]">
-                <LucideIcons.FolderOutput className="h-4 w-4" />
-                <span>移动到笔记本</span>
-              </ContextMenuSubTrigger>
-              <ContextMenuPortal>
-                <ContextMenuSubContent
-                  sideOffset={8}
-                  alignOffset={-4}
-                  collisionPadding={12}
-                  className="w-56 max-h-72 overflow-y-auto !border-0"
-                >
-                  {movableNotebooks.map((item) => (
+            if (showCreate) {
+              sections.push(
+                <ContextMenuGroup key="create">
+                  <ContextMenuLabel className="px-1.5 py-1">
+                    新建
+                  </ContextMenuLabel>
+                  {onCreateLocalFile ? (
                     <ContextMenuItem
-                      key={item.id}
-                      onSelect={() => handleMoveToNotebook(item.id)}
+                      onSelect={() =>
+                        scheduleAfterMenuClose(() =>
+                          onCreateLocalFile(createParentId),
+                        )
+                      }
                     >
-                      <span className="truncate">{item.name}</span>
+                      <LucideIcons.FilePlus2 className="h-4 w-4" />
+                      <span>新建文件</span>
                     </ContextMenuItem>
-                  ))}
-                </ContextMenuSubContent>
-              </ContextMenuPortal>
-            </ContextMenuSub>
-          )}
+                  ) : null}
+                  {onCreateLocalFolder ? (
+                    <ContextMenuItem
+                      onSelect={() =>
+                        scheduleAfterMenuClose(() =>
+                          onCreateLocalFolder(createParentId),
+                        )
+                      }
+                    >
+                      <LucideIcons.FolderPlus className="h-4 w-4" />
+                      <span>新建文件夹</span>
+                    </ContextMenuItem>
+                  ) : null}
+                </ContextMenuGroup>,
+              );
+            }
 
-          <ContextMenuSeparator className="bg-transparent" />
+            if (showOpen) {
+              sections.push(
+                <ContextMenuGroup key="open">
+                  <ContextMenuLabel className="px-1.5 py-1">
+                    打开
+                  </ContextMenuLabel>
+                  {showOpenTab ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        if (isTrashed) return;
+                        closeNotebookAiIfFullscreen();
+                        useTabs.getState().openTab(page.id);
+                      }}
+                      disabled={isTrashed}
+                    >
+                      <LucideIcons.PanelTopOpen className="h-4 w-4" />
+                      <span>在新标签页打开</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {formatShortcut("Mod")}+点击
+                      </span>
+                    </ContextMenuItem>
+                  ) : null}
+                  {showLocalOpen ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        void shell
+                          .openWithEditor(
+                            page.localFilePath!,
+                            localFolderExternalEditor,
+                          )
+                          .then((ok) => {
+                            if (!ok) toast.error("打开失败，请检查外部应用设置");
+                          });
+                      }}
+                    >
+                      <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
+                      <span>{getExternalAppLabel(localFolderExternalEditor)}</span>
+                    </ContextMenuItem>
+                  ) : null}
+                  {showLocalOpen ? (
+                    <ContextMenuItem
+                      onSelect={() => void handleOpenInFileManager()}
+                    >
+                      <LucideIcons.FolderOpen className="h-4 w-4" />
+                      <span>
+                        {getFileManagerLabel(
+                          !!page.isFolder,
+                          localFolderFileManager,
+                        )}
+                      </span>
+                    </ContextMenuItem>
+                  ) : null}
+                  {showLocalOpen ? (
+                    <ContextMenuItem
+                      onSelect={() => void handleOpenInTerminal()}
+                    >
+                      <LucideIcons.Terminal className="h-4 w-4" />
+                      <span>{getTerminalLabel(localFolderTerminal)}</span>
+                    </ContextMenuItem>
+                  ) : null}
+                </ContextMenuGroup>,
+              );
+            }
 
-          {isTrashed ? (
-            <>
-              <ContextMenuItem onSelect={handleRestore}>
-                <LucideIcons.RotateCcw className="h-4 w-4" />
-                <span>
-                  {isLocalFolder
-                    ? page.isFolder
-                      ? "恢复文件夹"
-                      : "恢复文件"
-                    : "恢复页面"}
-                </span>
-              </ContextMenuItem>
-              <ContextMenuItem
-                onSelect={() => void permanentlyDeletePageWithCleanup(page.id)}
-                className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
-              >
-                <LucideIcons.Trash2 className="h-4 w-4" />
-                <span>永久删除</span>
-              </ContextMenuItem>
-            </>
-          ) : (
-            <ContextMenuItem
-              onSelect={() => void deletePageWithUndo(page.id)}
-              className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
-            >
-              {isLocalFolder ? (
-                <LucideIcons.FileX className="h-4 w-4" />
-              ) : (
-                <LucideIcons.Trash2 className="h-4 w-4" />
-              )}
-              <span>{isLocalFolder ? "移到系统回收站" : "移至垃圾箱"}</span>
-              <span className="ml-auto text-xs text-muted-foreground">
-                {formatShortcut("Mod+Backspace")}
-              </span>
-            </ContextMenuItem>
-          )}
+            if (showOrganize) {
+              sections.push(
+                <ContextMenuGroup key="organize">
+                  <ContextMenuLabel className="px-1.5 py-1">
+                    整理
+                  </ContextMenuLabel>
+                  <ContextMenuItem onSelect={toggleFavorite}>
+                    <LucideIcons.Star
+                      className={cn(
+                        "h-4 w-4",
+                        page.isFavorite &&
+                          "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                      )}
+                    />
+                    <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
+                  </ContextMenuItem>
+                  <ContextMenuItem onSelect={togglePinned}>
+                    <LucideIcons.Pin
+                      className={cn(
+                        "h-4 w-4",
+                        page.isPinned &&
+                          "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+                      )}
+                    />
+                    <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
+                  </ContextMenuItem>
+                  <ContextMenuItem onSelect={handleDuplicatePage}>
+                    <LucideIcons.Copy className="h-4 w-4" />
+                    <span>创建副本</span>
+                  </ContextMenuItem>
+                </ContextMenuGroup>,
+              );
+            }
+
+            if (showMove) {
+              sections.push(
+                <ContextMenuGroup key="move">
+                  {showMoveTop ? (
+                    <ContextMenuItem onSelect={handleMoveToTopLevel}>
+                      <LucideIcons.ArrowUpToLine className="h-4 w-4" />
+                      <span>移至顶层</span>
+                    </ContextMenuItem>
+                  ) : null}
+                  {showMoveNotebook ? (
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger className="gap-2 rounded-[6px] px-1.5 py-1.5 text-[13px]">
+                        <LucideIcons.FolderOutput className="h-4 w-4" />
+                        <span>移动到笔记本</span>
+                      </ContextMenuSubTrigger>
+                      <ContextMenuPortal>
+                        <ContextMenuSubContent
+                          sideOffset={8}
+                          alignOffset={-4}
+                          collisionPadding={12}
+                          className="w-56 max-h-72 overflow-y-auto !border-0"
+                        >
+                          {movableNotebooks.map((item) => (
+                            <ContextMenuItem
+                              key={item.id}
+                              onSelect={() => handleMoveToNotebook(item.id)}
+                            >
+                              <span className="truncate">{item.name}</span>
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuPortal>
+                    </ContextMenuSub>
+                  ) : null}
+                </ContextMenuGroup>,
+              );
+            }
+
+            if (showCopy) {
+              sections.push(
+                <ContextMenuGroup key="clipboard">
+                  <ContextMenuItem onSelect={() => void handleCopyFilePath()}>
+                    <LucideIcons.ClipboardCopy className="h-4 w-4" />
+                    <span>
+                      {page.isFolder ? "复制文件夹路径" : "复制文件路径"}
+                    </span>
+                  </ContextMenuItem>
+                </ContextMenuGroup>,
+              );
+            }
+
+            sections.push(
+              <ContextMenuGroup key="danger">
+                {isTrashed ? (
+                  <>
+                    <ContextMenuItem onSelect={handleRestore}>
+                      <LucideIcons.RotateCcw className="h-4 w-4" />
+                      <span>
+                        {isLocalFolder
+                          ? page.isFolder
+                            ? "恢复文件夹"
+                            : "恢复文件"
+                          : "恢复页面"}
+                      </span>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onSelect={() =>
+                        void permanentlyDeletePageWithCleanup(page.id)
+                      }
+                      className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
+                    >
+                      <LucideIcons.Trash2 className="h-4 w-4" />
+                      <span>永久删除</span>
+                    </ContextMenuItem>
+                  </>
+                ) : (
+                  <ContextMenuItem
+                    onSelect={() => void deletePageWithUndo(page.id)}
+                    className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
+                  >
+                    {isLocalFolder ? (
+                      <LucideIcons.FileX className="h-4 w-4" />
+                    ) : (
+                      <LucideIcons.Trash2 className="h-4 w-4" />
+                    )}
+                    <span>
+                      {isLocalFolder ? "移到系统回收站" : "移至垃圾箱"}
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {formatShortcut("Mod+Backspace")}
+                    </span>
+                  </ContextMenuItem>
+                )}
+              </ContextMenuGroup>,
+            );
+
+            return sections.flatMap((section, index) =>
+              index === 0
+                ? [section]
+                : [
+                    <ContextMenuSeparator key={`sep-${index}`} />,
+                    section,
+                  ],
+            );
+          })()}
         </ContextMenuContent>
       </ContextMenu>
     </>

@@ -6,6 +6,9 @@ export { getPageTitle };
 
 function sortPages(items: Page[], isLocalFolder: boolean): Page[] {
   return items.slice().sort((a, b) => {
+    if (!!a.localPendingCreate !== !!b.localPendingCreate) {
+      return a.localPendingCreate ? -1 : 1;
+    }
     if (isLocalFolder) {
       if (!!a.isFolder !== !!b.isFolder) {
         return a.isFolder ? -1 : 1;
@@ -69,7 +72,7 @@ export function pagesToTreeItems(
       children,
       isFolder,
       data: page,
-      canMove: true,
+      canMove: !page.localPendingCreate,
       canRename: false,
     };
   }

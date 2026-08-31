@@ -181,28 +181,34 @@ interface RenderItemArgs {
   arrow: ReactNode;
   context: TreeItemRenderContext<never>;
   info: TreeInformation;
+  onCreateLocalFile?: (parentId?: string) => void;
   onCreateLocalFolder?: (parentId?: string) => void;
-  onCommitPendingFolder?: (id: string, name: string) => void;
-  onCancelPendingFolder?: (id: string) => void;
+  onCommitPendingCreate?: (id: string, name: string) => void;
+  onCancelPendingCreate?: (id: string) => void;
+  onItemDragStart?: (id: string) => void;
+  onItemDragEnd?: () => void;
   onActivateLocalDirectory?: (
     id: string,
     mode: "preview" | "permanent",
   ) => void;
 }
 
-function PendingFolderNameInput({
+function PendingCreateNameInput({
   id,
+  kind,
   onCommit,
   onCancel,
 }: {
   id: string;
+  kind: "folder" | "file";
   onCommit?: (id: string, name: string) => void;
   onCancel?: (id: string) => void;
 }) {
-  const [value, setValue] = useState("");
+  const defaultName = kind === "folder" ? "新建文件夹" : "未命名";
+  const [value, setValue] = useState(defaultName);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const committedRef = useRef(false);
   const readyToCommitBlurRef = useRef(false);
-  const touchedRef = useRef(false);
 
   useLayoutEffect(() => {
     const focusInput = (shouldSelect: boolean) => {
@@ -215,16 +221,15 @@ function PendingFolderNameInput({
     focusInput(true);
     const raf = window.requestAnimationFrame(() => {
       if (document.activeElement !== inputRef.current) {
-        focusInput(!touchedRef.current);
+        focusInput(true);
       }
-      readyToCommitBlurRef.current = true;
     });
     const timer = window.setTimeout(() => {
-      if (document.activeElement !== inputRef.current) {
-        focusInput(!touchedRef.current);
-      }
       readyToCommitBlurRef.current = true;
-    }, 80);
+      if (document.activeElement !== inputRef.current) {
+        focusInput(true);
+      }
+    }, 280);
     return () => {
       window.cancelAnimationFrame(raf);
       window.clearTimeout(timer);
@@ -232,11 +237,14 @@ function PendingFolderNameInput({
   }, []);
 
   const commit = () => {
+    if (committedRef.current) return;
     const next = value.trim();
-    if (!touchedRef.current || !next) {
+    if (!next) {
+      committedRef.current = true;
       onCancel?.(id);
       return;
     }
+    committedRef.current = true;
     onCommit?.(id, next);
   };
 
@@ -244,16 +252,21 @@ function PendingFolderNameInput({
     <span className="relative z-20 flex min-w-0 flex-1 items-center">
       <input
         ref={inputRef}
-        className="h-[22px] w-full min-w-0 rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-[13px] leading-[20px] text-foreground outline-none focus:border-[hsl(var(--ring))]"
+        className="h-[22px] w-full min-w-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-sm leading-5 text-foreground outline-none focus:border-[hsl(var(--ring))]"
         value={value}
-        placeholder="新建文件夹"
+        placeholder={defaultName}
         draggable={false}
         onChange={(e) => {
-          touchedRef.current = true;
           setValue(e.target.value);
         }}
         onBlur={() => {
-          if (!readyToCommitBlurRef.current) return;
+          if (!readyToCommitBlurRef.current) {
+            window.requestAnimationFrame(() => {
+              inputRef.current?.focus();
+              inputRef.current?.select();
+            });
+            return;
+          }
           commit();
         }}
         onKeyDown={(e) => {
@@ -262,6 +275,8 @@ function PendingFolderNameInput({
             commit();
           } else if (e.key === "Escape") {
             e.preventDefault();
+            if (committedRef.current) return;
+            committedRef.current = true;
             onCancel?.(id);
           }
         }}
@@ -269,7 +284,7 @@ function PendingFolderNameInput({
         onDoubleClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
-        aria-label="文件夹名称"
+        aria-label={kind === "folder" ? "文件夹名称" : "文件名称"}
       />
     </span>
   );
@@ -281,9 +296,12 @@ export function renderItem({
   children,
   arrow,
   context,
+  onCreateLocalFile,
   onCreateLocalFolder,
-  onCommitPendingFolder,
-  onCancelPendingFolder,
+  onCommitPendingCreate,
+  onCancelPendingCreate,
+  onItemDragStart,
+  onItemDragEnd,
   onActivateLocalDirectory,
 }: RenderItemArgs) {
   const hideExpandArrows = useSettings.getState().hideExpandArrows;
@@ -306,7 +324,8 @@ export function renderItem({
     : undefined;
   const isLocalFolder = notebook?.source === "local-folder";
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
-  const isPendingFolder = page.localPendingCreate === "folder";
+  const isPendingCreate =
+    page.localPendingCreate === "folder" || page.localPendingCreate === "file";
   const isLocalDirectory = isLocalFolder && !!page.isFolder;
   const isDragging = activeMainTreeDragId === String(item.index);
 
@@ -333,6 +352,7 @@ export function renderItem({
     )?.(e);
     if (!e.dataTransfer) return;
     activeMainTreeDragId = String(item.index);
+    onItemDragStart?.(String(item.index));
 
     const ghost = document.createElement("div");
     ghost.className = "main-tree-drag-ghost";
@@ -354,12 +374,13 @@ export function renderItem({
     window.setTimeout(() => ghost.remove(), 0);
 
     if (rowEl instanceof HTMLElement) {
-      rowEl.classList.add("main-tree-row--dragging");
+      rowEl.classList.add("main-tree-row--dragging", "main-tree-row--selected");
     }
     e.currentTarget.addEventListener(
       "dragend",
       () => {
         activeMainTreeDragId = null;
+        onItemDragEnd?.();
         if (rowEl instanceof HTMLElement) {
           rowEl.classList.remove("main-tree-row--dragging");
         }
@@ -413,7 +434,7 @@ export function renderItem({
         "text-[13px] font-medium leading-none cursor-pointer select-none",
         "transition-colors duration-150",
         "outline-none",
-        isPendingFolder
+        isPendingCreate
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
           : isActive
             ? "main-tree-row--selected"
@@ -445,18 +466,19 @@ export function renderItem({
         aria-label={title}
         className={cn(
           "absolute inset-0 rounded-[8px] outline-none",
-          isPendingFolder && "pointer-events-none",
+          isPendingCreate && "pointer-events-none",
         )}
       />
       {hideExpandArrows ? null : arrow}
       {iconNode}
       {/* leading-snug 抵消行容器的 leading-none：truncate(overflow hidden) 配 1 倍行高
           会把 g/y/p 等字母的降部裁掉 */}
-      {isPendingFolder ? (
-        <PendingFolderNameInput
+      {isPendingCreate ? (
+        <PendingCreateNameInput
           id={String(item.index)}
-          onCommit={onCommitPendingFolder}
-          onCancel={onCancelPendingFolder}
+          kind={page.localPendingCreate === "file" ? "file" : "folder"}
+          onCommit={onCommitPendingCreate}
+          onCancel={onCancelPendingCreate}
         />
       ) : (
         <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
@@ -468,7 +490,11 @@ export function renderItem({
 
   return (
     <li {...withChildren} className="list-none">
-      <SidebarContextMenu page={page} onCreateLocalFolder={onCreateLocalFolder}>
+      <SidebarContextMenu
+        page={page}
+        onCreateLocalFile={onCreateLocalFile}
+        onCreateLocalFolder={onCreateLocalFolder}
+      >
         {row}
       </SidebarContextMenu>
       {children}
