@@ -189,6 +189,10 @@ test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {
 
   expect(surfaceCss).toContain("flex: 1 1 auto");
   expect(surfaceCss).toContain(".bn-block-content > .bn-inline-content");
+  expect(surfaceCss).toContain(
+    ".bn-block-content:has(.ProseMirror-trailingBreak:only-child)",
+  );
+  expect(surfaceCss).toContain("flex-grow: 0");
   expect(listsCss).toContain("pointer-events: none");
   expect(editorTsx).toContain("gooseTrailingBlankClickExtension");
 });

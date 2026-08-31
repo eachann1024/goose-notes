@@ -96,6 +96,18 @@
   min-width: 0;
 }
 
+/*
+ * 空块提示是 .bn-block-content::after，在 flex 容器里是独立一项。
+ * 行内内容 flex-grow 后会把它顶到行尾（新 Chromium / Electron 尤其明显）。
+ * 空块只有一个光标位，不需要吃宽度；收回 grow，让「输入 / 或 、来展开菜单」贴在光标旁。
+ */
+.bn-block-content:has(.ProseMirror-trailingBreak:only-child)
+  > .bn-inline-content,
+.bn-block-content:has(.ProseMirror-trailingBreak:only-child)
+  > :is(h1, h2, h3, h4, h5, h6, blockquote) {
+  flex-grow: 0;
+}
+
 /* BlockNote 块间距全局优化 */
 .workspace-editor-surface .bn-block-outer {
   margin-bottom: 0.5em;
