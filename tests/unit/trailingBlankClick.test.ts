@@ -166,6 +166,39 @@ test("点在字上仍不改光标；空块停在该块", () => {
   ).toBe(4);
 });
 
+/** 行高留白：两行 caret 带不挨着，中间是字内垂直空隙。 */
+function gappyLineCoords(pos: number): CaretCoords {
+  if (pos <= 5) {
+    return { top: 0, bottom: 16, left: pos * 10, right: pos * 10 + 8 };
+  }
+  const col = pos - 6;
+  return { top: 28, bottom: 44, left: col * 10, right: col * 10 + 8 };
+}
+
+test("点在字的行高留白里不拽到段尾", () => {
+  expect(
+    resolveBlockEmptyClickPos({
+      clientX: 25,
+      clientY: 22,
+      start: 0,
+      end: 10,
+      coordsAtPos: gappyLineCoords,
+    }),
+  ).toBeNull();
+});
+
+test("点在行高留白的行尾空白落到最近行行尾", () => {
+  expect(
+    resolveBlockEmptyClickPos({
+      clientX: 120,
+      clientY: 22,
+      start: 0,
+      end: 10,
+      coordsAtPos: gappyLineCoords,
+    }),
+  ).toBe(5);
+});
+
 test("非元素目标不接管", () => {
   expect(isInteractiveCaretClickTarget(null)).toBe(false);
   expect(isInteractiveCaretClickTarget("text" as unknown as EventTarget)).toBe(

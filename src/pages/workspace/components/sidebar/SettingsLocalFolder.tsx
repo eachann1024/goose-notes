@@ -971,14 +971,9 @@ export function SettingsLocalFolder({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          本地文件夹
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          仅对本地文件夹类型的记事本生效。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        本地文件夹
+      </h3>
 
       {isElectronHost && <LegacyInternalPagesExportCard />}
 

@@ -1,6 +1,7 @@
 import { expect, test } from "playwright/test";
 import {
   DEFAULT_QUICKNOTE_HOTKEY,
+  DEFAULT_SEARCH_HOTKEY,
   DEFAULT_WAKE_HOTKEY,
   mergeDesktopSettings,
 } from "../../src/stores/settings/types";
@@ -9,6 +10,8 @@ test("undefined stored desktop settings fall back to default hotkeys", () => {
   const merged = mergeDesktopSettings(undefined);
   expect(merged.wakeHotkey).toBe(DEFAULT_WAKE_HOTKEY);
   expect(merged.wakeHotkeyEnabled).toBe(true);
+  expect(merged.searchHotkey).toBe(DEFAULT_SEARCH_HOTKEY);
+  expect(merged.searchHotkeyEnabled).toBe(true);
   expect(merged.quicknoteHotkey).toBe(DEFAULT_QUICKNOTE_HOTKEY);
   expect(merged.quicknoteHotkeyEnabled).toBe(true);
 });
@@ -20,7 +23,10 @@ test("legacy archive without quicknote fields keeps the stored wake hotkey", () 
   });
   expect(merged.wakeHotkey).toBe("CmdOrCtrl+Shift+N");
   expect(merged.wakeHotkeyEnabled).toBe(false);
+  expect(merged.searchHotkey).toBe(DEFAULT_SEARCH_HOTKEY);
+  expect(merged.searchHotkeyEnabled).toBe(true);
   expect(merged.quicknoteHotkey).toBe(DEFAULT_QUICKNOTE_HOTKEY);
   expect(merged.quicknoteHotkeyEnabled).toBe(true);
   expect(merged.quicknoteHotkeyStatus.state).toBe("idle");
+  expect(merged.searchHotkeyStatus.state).toBe("idle");
 });

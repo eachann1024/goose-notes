@@ -59,7 +59,6 @@ interface SettingsAIProps {
     apiKey: string;
     modelOptions: AIModelOption[];
   }) => void;
-  setTinyfishApiKey: (key: string) => void;
 }
 
 const SETTINGS_OPTION_ROW_CLASS =
@@ -152,7 +151,6 @@ export function SettingsAI({
   selectedModelId,
   setSelectedModelId,
   saveCustomConfig,
-  setTinyfishApiKey,
 }: SettingsAIProps) {
   const initialProviderId: AIProviderId = isAIProviderId(ai.customProviderId)
     ? ai.customProviderId
@@ -167,7 +165,6 @@ export function SettingsAI({
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
-  const [tinyfishKeyVisible, setTinyfishKeyVisible] = useState(false);
   const modelSectionRef = useRef<HTMLDivElement | null>(null);
   const modelRequestIdRef = useRef(0);
 
@@ -437,14 +434,9 @@ export function SettingsAI({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          AI 助手
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          管理 AI 入口、模型和空格唤起。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        AI 助手
+      </h3>
 
       <SettingsSectionCard
         title={
@@ -841,66 +833,6 @@ export function SettingsAI({
                 </Tooltip>
               </TooltipProvider>
             </div>
-          </div>
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title={
-          <span className="flex items-center gap-2">
-            <LucideIcons.Globe
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            联网搜索
-          </span>
-        }
-        description="打包会内置两个 TinyFish key 轮询；这里填写可覆盖。"
-      >
-        <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
-          <div className="flex items-center gap-3">
-            <LucideIcons.KeyRound
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            <Label
-              htmlFor="tinyfish-api-key"
-              className="text-sm font-medium text-foreground"
-            >
-              TinyFish API Key
-            </Label>
-          </div>
-          <div className="relative">
-            <Input
-              id="tinyfish-api-key"
-              type={tinyfishKeyVisible ? "text" : "password"}
-              value={ai.tinyfishApiKey ?? ""}
-              onChange={(event) => setTinyfishApiKey(event.target.value)}
-              placeholder="在 agent.tinyfish.ai 申请后填写"
-              autoComplete="off"
-              spellCheck={false}
-              className="pr-10"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
-              onClick={() => setTinyfishKeyVisible((visible) => !visible)}
-              aria-label={
-                tinyfishKeyVisible ? "隐藏 TinyFish API Key" : "显示 TinyFish API Key"
-              }
-              aria-pressed={tinyfishKeyVisible}
-            >
-              {tinyfishKeyVisible ? (
-                <LucideIcons.EyeOff
-                  className="h-4 w-4"
-                  strokeWidth={1.75}
-                />
-              ) : (
-                <LucideIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
-              )}
-            </Button>
           </div>
         </div>
       </SettingsSectionCard>

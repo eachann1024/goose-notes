@@ -1,6 +1,10 @@
-import { BrowserWindow, type BrowserWindowConstructorOptions } from "electron";
+import { app, BrowserWindow, type BrowserWindowConstructorOptions } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  DEFAULT_TITLE_BAR_HEIGHT_PX,
+  trafficLightPositionForTitleBar,
+} from "../../src/lib/electron/titlebarLayout";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -9,14 +13,10 @@ export const MAIN_HEIGHT = 800;
 export const QUICKNOTE_WIDTH = 480;
 export const QUICKNOTE_HEIGHT = 350;
 
-/** DesktopTitleBar / HistoryToolbar 为 Tailwind h-11 = 44px（与先前 Tauri 顶栏一致）。 */
-export const TITLE_BAR_HEIGHT = 44;
-/** macOS 红绿灯约 12px。hiddenInset 下 y=16 仍贴顶，y 用视觉中线 22。 */
-const TRAFFIC_LIGHT_POSITION = {
-  x: 16,
-  y: 22,
-} as const;
+/** DesktopTitleBar 为 Tailwind h-11 = 2.75rem，随界面字号（标准 14 / 放大 16）变化。 */
+export const TITLE_BAR_HEIGHT = DEFAULT_TITLE_BAR_HEIGHT_PX;
 
+let lastTitleBarHeight = DEFAULT_TITLE_BAR_HEIGHT_PX;
 let mainWindow: BrowserWindow | null = null;
 let quicknoteWindow: BrowserWindow | null = null;
 
@@ -47,12 +47,23 @@ const sharedWebPrefs = (): BrowserWindowConstructorOptions["webPreferences"] => 
   ...(isDevRenderer() ? {} : { v8CacheOptions: "code" as const }),
 });
 
+function trafficLightPosition(): { x: number; y: number } {
+  return trafficLightPositionForTitleBar(lastTitleBarHeight);
+}
+
 function applyTrafficLightPosition(win: BrowserWindow): void {
   if (process.platform !== "darwin" || win.isDestroyed()) return;
-  win.setWindowButtonPosition({
-    x: TRAFFIC_LIGHT_POSITION.x,
-    y: TRAFFIC_LIGHT_POSITION.y,
-  });
+  win.setWindowButtonPosition(trafficLightPosition());
+}
+
+/** 渲染进程在界面字号变化后同步顶栏高度，红绿灯按新高度垂直居中。 */
+export function setMainWindowTitleBarHeight(
+  win: BrowserWindow,
+  height: number,
+): void {
+  if (!Number.isFinite(height) || height < 24 || height > 96) return;
+  lastTitleBarHeight = height;
+  applyTrafficLightPosition(win);
 }
 
 function setHiddenThrottle(win: BrowserWindow, hidden: boolean): void {
@@ -76,11 +87,9 @@ export function createMainWindow(): BrowserWindow {
     frame: true,
     ...(isMac
       ? {
-          titleBarStyle: "hiddenInset" as const,
-          trafficLightPosition: {
-            x: TRAFFIC_LIGHT_POSITION.x,
-            y: TRAFFIC_LIGHT_POSITION.y,
-          },
+          // hidden：自定义 y 就是按钮顶部偏移。inset 样式会额外下移，对不齐 web 顶栏。
+          titleBarStyle: "hidden" as const,
+          trafficLightPosition: trafficLightPosition(),
         }
       : {}),
     webPreferences: sharedWebPrefs(),
@@ -261,5 +270,18 @@ export function broadcast(channel: string, payload: unknown): void {
     if (win && !win.isDestroyed()) {
       win.webContents.send(channel, payload);
     }
+  }
+}
+
+/** 全局搜索热键：显示并聚焦主窗，不 toggle 隐藏。 */
+export function showAndFocusMainWindow(): void {
+  const win = getMainWindow();
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  setHiddenThrottle(win, false);
+  win.show();
+  win.focus();
+  if (process.platform === "darwin") {
+    app.focus({ steal: true });
   }
 }

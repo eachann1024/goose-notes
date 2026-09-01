@@ -27,7 +27,11 @@ import type { FlatTreeItem } from "../tree-dnd";
 import { IconSelector } from "../../shared/IconSelector";
 import { InlineOverflowRevealText } from "../InlineOverflowRevealText";
 import { SidebarContextMenu } from "../SidebarContextMenu";
-import { LocalFileIcon } from "../local-file-icon";
+import {
+  canCustomizePageIcon,
+  LocalFileIcon,
+  shouldShowFolderExpandArrow,
+} from "../local-file-icon";
 import { TREE_INDENT } from "./useTreeDnd";
 
 // 与主树 MainTreeItem.ROW_PADDING_LEFT 对齐，保证收藏行与页面树选中条同宽起点
@@ -149,8 +153,12 @@ export function SortablePageRow({
   const hideExpandArrows = useSettings((s) => s.hideExpandArrows);
   const page = item.page;
   const hasChildren = item.hasChildren;
-  const showArrow = hasChildren;
   const isLocalFolder = isLocalNotebook;
+  const showArrow = shouldShowFolderExpandArrow({
+    isFolder: !!page.isFolder,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
+  });
   const iconName = usePages((s) => {
     const live = s.pages[page.id];
     return live ? live.icon : page.icon;
@@ -252,7 +260,7 @@ export function SortablePageRow({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!hasChildren) return;
+    if (!showArrow) return;
     if (event.button !== 0 || event.ctrlKey) return;
     onToggleOpen(page.id);
   };
@@ -260,7 +268,7 @@ export function SortablePageRow({
   const handleHiddenArrowClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (event.detail === 0 && hasChildren) {
+    if (event.detail === 0 && showArrow) {
       onToggleOpen(page.id);
     }
   };
@@ -305,7 +313,7 @@ export function SortablePageRow({
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive &&
-              "text-muted-foreground dark:text-muted-foreground/65",
+              "text-foreground/80 dark:text-foreground/80",
             isActive && "sidebar-tree-row--selected",
             !isActive &&
               !isDragging &&
@@ -315,7 +323,7 @@ export function SortablePageRow({
           onClick={(e) => {
             e.stopPropagation();
             if (isElectronHost && isLocalNotebook && page.isFolder) {
-              if (hasChildren) onToggleOpen(page.id);
+              onToggleOpen(page.id);
               return;
             }
             // 收藏等复用 SidebarTree 的区域不应为识别双击而延迟单击。
@@ -336,7 +344,7 @@ export function SortablePageRow({
               e.preventDefault();
               e.stopPropagation();
               if (isElectronHost && isLocalNotebook && page.isFolder) {
-                if (hasChildren) onToggleOpen(page.id);
+                onToggleOpen(page.id);
                 return;
               }
               openPageFromSidebar(page.id, "permanent");
@@ -371,7 +379,7 @@ export function SortablePageRow({
             )}
 
             {hideExpandArrows ? (
-              hasChildren ? (
+              showArrow ? (
                 <button
                   type="button"
                   aria-label={item.isOpen ? "折叠子项" : "展开子项"}
@@ -403,6 +411,31 @@ export function SortablePageRow({
                     )}
                   />
                 </button>
+              ) : canCustomizePageIcon(page, isLocalFolder) ? (
+                <div
+                  className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center mr-0.5"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconSelector
+                    value={iconName}
+                    onChange={(newIcon) =>
+                      updatePage(page.id, { icon: newIcon })
+                    }
+                  >
+                    <div className="goose-page-icon-trigger flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
+                      <div className="flex h-4 w-4 items-center justify-center">
+                        <LocalFileIcon
+                          page={page}
+                          iconName={iconName}
+                          isLocalFolder={isLocalFolder}
+                          hasChildren={displayHasChildren}
+                        />
+                      </div>
+                    </div>
+                  </IconSelector>
+                </div>
               ) : (
                 <div className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5">
                   <div className="flex h-4 w-4 items-center justify-center">
@@ -422,7 +455,25 @@ export function SortablePageRow({
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
-                {isLocalFolder ? (
+                {canCustomizePageIcon(page, isLocalFolder) ? (
+                  <IconSelector
+                    value={iconName}
+                    onChange={(newIcon) =>
+                      updatePage(page.id, { icon: newIcon })
+                    }
+                  >
+                    <div className="goose-page-icon-trigger flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
+                      <div className="h-4 w-4 flex items-center justify-center">
+                        <LocalFileIcon
+                          page={page}
+                          iconName={iconName}
+                          isLocalFolder={isLocalFolder}
+                          hasChildren={displayHasChildren}
+                        />
+                      </div>
+                    </div>
+                  </IconSelector>
+                ) : (
                   <div className="flex items-center justify-center w-5 h-5">
                     <LocalFileIcon
                       page={page}
@@ -431,24 +482,6 @@ export function SortablePageRow({
                       hasChildren={displayHasChildren}
                     />
                   </div>
-                ) : (
-                  <IconSelector
-                    value={iconName}
-                    onChange={(newIcon) =>
-                      updatePage(page.id, { icon: newIcon as string })
-                    }
-                  >
-                    <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        <LocalFileIcon
-                          page={page}
-                          iconName={iconName}
-                          isLocalFolder={false}
-                          hasChildren={displayHasChildren}
-                        />
-                      </div>
-                    </div>
-                  </IconSelector>
                 )}
               </div>
             )}
@@ -515,7 +548,11 @@ export function TreeDragOverlay({
       aria-hidden="true"
     >
       <span className="sidebar-tree-drag-overlay-leading">
-        {item.hasChildren ? (
+        {shouldShowFolderExpandArrow({
+          isFolder: !!item.page.isFolder,
+          hasChildren: item.hasChildren,
+          isLocalNotebook,
+        }) ? (
           <LucideIcons.ChevronRight className="h-3.5 w-3.5" />
         ) : (
           <span className="h-3.5 w-3.5" />

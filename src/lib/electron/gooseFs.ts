@@ -399,6 +399,17 @@ export const electronGooseFs = {
       return false;
     }
   },
+
+  printHtmlToPdf: async (html: string) => {
+    const api = getGooseDesktop();
+    if (!api?.printHtmlToPdf) return null;
+    try {
+      return await api.printHtmlToPdf(html);
+    } catch (err) {
+      console.warn("[electron-gooseFs] printHtmlToPdf 失败", err);
+      return null;
+    }
+  },
 } as unknown as GooseFs;
 
 export function installElectronGooseFs(): boolean {

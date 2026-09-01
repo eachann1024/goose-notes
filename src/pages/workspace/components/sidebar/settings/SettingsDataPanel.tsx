@@ -364,14 +364,9 @@ export function SettingsDataPanel({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          数据管理
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          配置并管理应用数据的本地备份与云端同步。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        数据管理
+      </h3>
 
       <Tabs defaultValue="webdav" className="w-full">
         <TabsList className="flex w-full mb-2 bg-muted/60 p-1 rounded-[12px]">

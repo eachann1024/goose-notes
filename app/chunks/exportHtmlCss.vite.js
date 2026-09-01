@@ -1929,6 +1929,13 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   line-height: 1.7;
 }
 
+/* 空块占位（BlockNote 用 ::after content 渲染）默认跟随段落换行，窄窗时会折到第二行。
+   保持单行，超宽才溢出/裁切，避免占位提示破成两行。 */
+.goose-blocknote-editor .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after,
+.bn-editor .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after {
+  white-space: nowrap;
+}
+
 /*
  * 编辑器上下文 UI 的统一 opt-in。
  *
@@ -2059,6 +2066,11 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   bottom: 0;
   left: 100%;
   width: 8px;
+}
+
+/* 标题把手再左移 8px，桥要跟着加宽，否则空隙里会丢 hover */
+.bn-side-menu[data-heading-gutter="true"]::after {
+  width: 16px;
 }
 
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。
@@ -2204,6 +2216,18 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 .bn-block-content > :is(h1, h2, h3, h4, h5, h6, blockquote) {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/*
+ * 空块提示是 .bn-block-content::after，在 flex 容器里是独立一项。
+ * 行内内容 flex-grow 后会把它顶到行尾（新 Chromium / Electron 尤其明显）。
+ * 空块只有一个光标位，不需要吃宽度；收回 grow，让「输入 / 或 、来展开菜单」贴在光标旁。
+ */
+.bn-block-content:has(.ProseMirror-trailingBreak:only-child)
+  > .bn-inline-content,
+.bn-block-content:has(.ProseMirror-trailingBreak:only-child)
+  > :is(h1, h2, h3, h4, h5, h6, blockquote) {
+  flex-grow: 0;
 }
 
 /* BlockNote 块间距全局优化 */
@@ -2623,7 +2647,8 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 }
 
 /* 折叠标题整行虚线边框：
-   - 用 outline 不占地，避免顶破 block-background.css 的 width/margin 补偿；
+   - 用 outline 不占地；左右 8px 外扩在 block-background.css 对所有标题
+     统一做，折叠只加虚线，文字起点不跳。
    - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
    - BlockNote 标题默认 padding-top:18px 制造块间距，outline 会把这段空白
      一起框进去；折叠态把 15px 挪到透明 margin-top，虚线只贴文字行。
@@ -3059,6 +3084,18 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
   padding-left: 6px;
   padding-right: 6px;
   border-radius: 4px;
+}
+
+/* 标题不论折叠都左右外扩 8px，再用等量 padding 把文字放回原基线：
+   折叠虚线框不贴字，展开/收起文字起点一致。写在背景条规则之后，
+   有背景的标题也统一成 8px，避免折叠态和色带各用一套补偿。 */
+.bn-block-content[data-content-type="heading"] {
+  box-sizing: border-box;
+  width: calc(100% + 16px);
+  margin-left: -8px;
+  margin-right: -8px;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 /* BlockNote 标题默认用 18px padding-top 制造块间距。

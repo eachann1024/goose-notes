@@ -290,13 +290,17 @@ function restoreProfile(markdown: string, profile: MarkdownSerializationProfile)
 }
 
 function withFrontmatter(frontmatter: string | null, body: string) {
+  // 编辑器首块已是 yaml-frontmatter（--- 开头）时，正文序列化已带文件头，
+  // 不再用已剥离的 frontmatter 二次拼接，否则同一文件会写出两个 --- 头。
+  if (body.startsWith("---\n") || body.startsWith("---\r\n")) return body;
   return frontmatter ? `${frontmatter}\n\n${body}` : body;
 }
 
 function parseCandidate(markdown: string): (ParsedMarkdownCandidate & { success: boolean }) {
-  const { frontmatter, body } = extractFrontmatter(markdown);
+  const { frontmatter } = extractFrontmatter(markdown);
+  // 喂整份 markdown（含文件头 ---），让 yaml-frontmatter 作为首块进入编辑器，可查看可修改。
   const imported = importFromMarkdown(encodeUnsupportedMarkdownForEditor(
-    unwrapLocalBlockPropsWrappers(body),
+    unwrapLocalBlockPropsWrappers(markdown),
   ), undefined, {
     preserveStructure: true,
   });

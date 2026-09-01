@@ -210,22 +210,25 @@ export async function parseLocalMarkdownContent(
     };
   }
 
-  // 1) 抽出 frontmatter（不入编辑器，保存时由 saveLocalPageContent prepend 回去）
-  // 2) 对剩余 body 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析
+  // 1) 抽出 frontmatter：仍填 localFrontmatter + goose 设置（font/locked/pinned/favorite），
+  //    但 frontmatter 同时作为编辑器首块 yaml-frontmatter 出现，可查看可修改。
+  // 2) 对整份 markdown 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析；
+  //    文件头 --- 由 markdownToJsonContent 识别成 yaml-frontmatter 代码块。
   // 3) 内容保持解析原样：preserveStructure 关闭「首块提升 H1」的标题注入，
   //    无 H1 的文件解析后首块保持段落（「文件名标题绑定」已废弃）。
   //    侧栏/tab 标题由 getPageTitle() 从 localFilePath 文件名取得，不依赖 H1。
   //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
   // 4) 从 frontmatter 恢复 goose-font / goose-locked / goose-pinned / goose-favorite（解析失败则默认，blob 仍原样保留）
-  const { frontmatter, body } = extractFrontmatter(markdown);
+  const { frontmatter } = extractFrontmatter(markdown);
   const fmSettings = parseLocalFrontmatterBlob(frontmatter).settings;
   // 先拆本地文件夹专用的最外层块级 span，再交给通用 inline parser，
   // 避免它把 wrapper 与内部颜色 span 误配成嵌套行内样式。
-  const encodedBody = encodeUnsupportedMarkdownForEditor(
-    unwrapLocalBlockPropsWrappers(body),
+  // 注意：走整份 markdown，不再只喂 body，否则文件头 YAML 永远进不了编辑器。
+  const encodedMd = encodeUnsupportedMarkdownForEditor(
+    unwrapLocalBlockPropsWrappers(markdown),
   );
   const { importFromMarkdown } = await import("@/lib/export");
-  const imported = importFromMarkdown(encodedBody, fallbackTitle, {
+  const imported = importFromMarkdown(encodedMd, fallbackTitle, {
     preserveStructure: true,
   });
   const importedBlocks = Array.isArray(imported.content)

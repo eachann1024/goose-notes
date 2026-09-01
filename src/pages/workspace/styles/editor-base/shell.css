@@ -19,6 +19,13 @@
   line-height: 1.7;
 }
 
+/* 空块占位（BlockNote 用 ::after content 渲染）默认跟随段落换行，窄窗时会折到第二行。
+   保持单行，超宽才溢出/裁切，避免占位提示破成两行。 */
+.goose-blocknote-editor .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after,
+.bn-editor .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after {
+  white-space: nowrap;
+}
+
 /*
  * 编辑器上下文 UI 的统一 opt-in。
  *
@@ -149,6 +156,11 @@
   bottom: 0;
   left: 100%;
   width: 8px;
+}
+
+/* 标题把手再左移 8px，桥要跟着加宽，否则空隙里会丢 hover */
+.bn-side-menu[data-heading-gutter="true"]::after {
+  width: 16px;
 }
 
 /* 编辑器选区：跟强调色，禁止系统 highlight（macOS 浅蓝底叠浅字会糊掉）。

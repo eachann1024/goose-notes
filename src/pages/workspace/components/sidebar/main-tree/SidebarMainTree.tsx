@@ -416,30 +416,16 @@ export function SidebarMainTree({
     return () => window.clearTimeout(timer);
   }, [activePageId, activeNotebookId, pages, expandedIds, setExpanded]);
 
-  const localDirectoryHasChildren = useCallback(
-    (pageId: string) => {
-      const children = items[pageId]?.children;
-      return Array.isArray(children) && children.length > 0;
-    },
-    [items],
-  );
-
   const toggleLocalDirectory = useCallback(
     (pageId: string) => {
-      if (!activeNotebookId || !localDirectoryHasChildren(pageId)) return;
+      if (!activeNotebookId || !isLocalFolderDirectoryPage(pageId)) return;
       if (expandedIds.includes(pageId)) {
         collapseView(activeNotebookId, pageId);
       } else {
         expandView(activeNotebookId, pageId);
       }
     },
-    [
-      activeNotebookId,
-      collapseView,
-      expandView,
-      expandedIds,
-      localDirectoryHasChildren,
-    ],
+    [activeNotebookId, collapseView, expandView, expandedIds],
   );
 
   const activateLocalDirectory = useCallback(

@@ -1,6 +1,10 @@
 import { UToolsAdapter } from "@/lib/utools";
 import { hostRuntime } from "@/lib/host";
 import { fs } from "@/lib/utools/fs";
+import {
+  currentLocalPagePath,
+  pageDirectory,
+} from "@/lib/currentLocalPagePath";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { resolveToAbsolute } from "@/lib/imageStorage/strategies/file-system";
 import {
@@ -20,23 +24,6 @@ function getMaxVideoAttachmentSize(): number {
 }
 const VIDEO_ATTACHMENT_PREFIX = "att-video:";
 const VIDEO_ID_PREFIX = "goose-video/";
-
-async function currentLocalPagePath(): Promise<string | null> {
-  const [{ usePages }, { useNotebooks }] = await Promise.all([
-    import("@/stores/usePages"),
-    import("@/stores/useNotebooks"),
-  ]);
-  const { activePageId, pages } = usePages.getState();
-  if (!activePageId) return null;
-  const page = pages[activePageId];
-  if (!page?.localFilePath) return null;
-  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-  return notebook?.source === "local-folder" ? page.localFilePath : null;
-}
-
-function pageDirectory(pagePath: string): string {
-  return pagePath.replace(/[\\/][^\\/]+$/, "");
-}
 
 function attachmentId(ref: string): string {
   return ref.replace(VIDEO_ATTACHMENT_PREFIX, "");

@@ -46,8 +46,17 @@ export const shell = {
 
   copyImage: (dataUrl: string): void => {
     const utools = getUToolsApi();
-    if (!utools || typeof utools.copyImage !== "function") return;
-    utools.copyImage(dataUrl);
+    if (utools && typeof utools.copyImage === "function") {
+      utools.copyImage(dataUrl);
+      return;
+    }
+    const api =
+      typeof window !== "undefined"
+        ? (window as Window).gooseDesktop ?? null
+        : null;
+    if (api?.writeImage) {
+      void api.writeImage(dataUrl).catch(() => {});
+    }
   },
 
   showNotification: (body: string): void => {
@@ -58,32 +67,69 @@ export const shell = {
 
   openUrl: (url: string, useInternalBrowser = true): void => {
     const utools = getUToolsApi();
-    if (!utools) return;
-    if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
-      utools.ubrowser.goto(url).run();
+    if (utools) {
+      if (useInternalBrowser && typeof utools?.ubrowser?.goto === "function") {
+        utools.ubrowser.goto(url).run();
+        return;
+      }
+      utools.shellOpenExternal?.(url);
       return;
     }
-    utools.shellOpenExternal?.(url);
+    // Electron 桌面端没有 utools API，改用 gooseDesktop.openUrl。
+    const desktop =
+      typeof window !== "undefined"
+        ? (window as Window & { gooseDesktop?: { openUrl?: (u: string) => Promise<void> } }).gooseDesktop
+        : null;
+    if (desktop?.openUrl) {
+      void desktop.openUrl(url).catch(() => {});
+    }
   },
 
   openPath: async (targetPath: string): Promise<boolean> => {
     const utools = getUToolsApi();
-    if (!utools || typeof utools.shellOpenPath !== "function") return false;
-    try {
-      const result = await Promise.resolve(utools.shellOpenPath(targetPath));
-      if (typeof result === "string") return result.length === 0;
-      return result !== false;
-    } catch {
-      return false;
+    if (utools && typeof utools.shellOpenPath === "function") {
+      try {
+        const result = await Promise.resolve(utools.shellOpenPath(targetPath));
+        if (typeof result === "string") return result.length === 0;
+        return result !== false;
+      } catch {
+        return false;
+      }
     }
+    // Electron 桌面端没有 utools API，改用 gooseDesktop.openPath。
+    const desktop =
+      typeof window !== "undefined"
+        ? (window as Window & { gooseDesktop?: { openPath?: (p: string) => Promise<void> } }).gooseDesktop
+        : null;
+    if (desktop?.openPath) {
+      try {
+        await desktop.openPath(targetPath);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
   },
 
   showItemInFolder: async (targetPath: string): Promise<boolean> => {
     const utools = getUToolsApi();
-    if (!utools) return false;
-    if (typeof utools.shellShowItemInFolder === "function") {
+    if (utools && typeof utools.shellShowItemInFolder === "function") {
       try {
         await Promise.resolve(utools.shellShowItemInFolder(targetPath));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    // Electron 桌面端没有 utools API，改用 gooseDesktop.showItemInFolder。
+    const desktop =
+      typeof window !== "undefined"
+        ? (window as Window & { gooseDesktop?: { showItemInFolder?: (p: string) => Promise<void> } }).gooseDesktop
+        : null;
+    if (desktop?.showItemInFolder) {
+      try {
+        await desktop.showItemInFolder(targetPath);
         return true;
       } catch {
         return false;

@@ -9,6 +9,7 @@
  */
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { FontFamily } from "@/types";
+import type { PageContent } from "@/components/editor/utils/blocknote-content";
 import { extractFrontmatter } from "./markdown-raw-guard";
 
 export const GOOSE_FONT_KEY = "goose-font";
@@ -201,6 +202,65 @@ export type MergeFrontmatterResult = {
   error?: string;
   settings: LocalPageFrontmatterSettings;
 };
+
+/** 取内容首块 yaml-frontmatter 的 YAML 正文（不含 --- 定界符），无则 null。 */
+export function getContentFrontmatterBody(
+  content: PageContent | null | undefined,
+): string | null {
+  if (!content || typeof content !== "object") return null;
+  const blocks = Array.isArray(content) ? content : content?.content;
+  if (!Array.isArray(blocks)) return null;
+  const first = blocks[0] as { type?: string; props?: Record<string, unknown>; content?: unknown } | undefined;
+  if (first?.type !== "codeBlock") return null;
+  if (first?.props?.language !== "yaml-frontmatter") return null;
+  const c = first.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.map((n: any) => n?.text ?? "").join("");
+  return null;
+}
+
+/** 用某一段 YAML 正文替换内容首块 yaml-frontmatter；无首块时在顶部插入该块。 */
+export function applyFrontmatterBodyToContent(
+  content: PageContent | null | undefined,
+  yamlBody: string | null | undefined,
+): PageContent {
+  const blocks = Array.isArray(content)
+    ? content
+    : (content?.content as any[] | undefined) ?? [];
+  const trimmed = (yamlBody ?? "").replace(/\s+$/, "");
+  const fmBlock = trimmed
+    ? { type: "codeBlock", props: { language: "yaml-frontmatter" }, content: trimmed }
+    : null;
+
+  if (blocks[0]?.type === "codeBlock" && blocks[0]?.props?.language === "yaml-frontmatter") {
+    if (!fmBlock) {
+      return blocks.slice(1) as PageContent;
+    }
+    return [{ ...blocks[0], content: trimmed }, ...blocks.slice(1)] as PageContent;
+  }
+
+  return fmBlock ? ([fmBlock, ...blocks] as PageContent) : (blocks as PageContent);
+}
+
+/**
+ * 把 goose 设置 merge 进「已以 --- 开头的 markdown」的头部 YAML 块。
+ * 编辑器首块已是 yaml-frontmatter 时走这里：合并结果写回首块并返回，
+ * 调用方不要再 prepend 一段独立 frontmatter，否则同文件会写出两个 --- 头。
+ * markdown 不以 --- 开头时返回 null（调用方回退旧 prepend 路径）。
+ */
+export function mergeSettingsIntoFrontmatterHeader(
+  markdown: string,
+  settings: LocalPageFrontmatterSettings,
+): { markdown: string; frontmatter: string | undefined } | null {
+  if (!/^---\s*\n/.test(markdown)) return null;
+  const { frontmatter, body } = extractFrontmatter(markdown);
+  const merged = mergeLocalPageSettingsIntoFrontmatter(frontmatter, settings);
+  const mergedBlob = merged.parseFailed ? (frontmatter ?? undefined) : merged.blob;
+  return {
+    markdown: mergedBlob ? `${mergedBlob}\n\n${body}` : body,
+    frontmatter: mergedBlob,
+  };
+}
 
 /**
  * 把白名单设置 merge 进 frontmatter。

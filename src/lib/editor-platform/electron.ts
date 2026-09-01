@@ -190,6 +190,15 @@ const clipboard: EditorPlatformClipboard = {
     await navigator.clipboard?.writeText(text);
   },
   copyImage: async (dataUrl) => {
+    const api = getGooseDesktop();
+    if (api?.writeImage) {
+      try {
+        await api.writeImage(dataUrl);
+        return;
+      } catch {
+        // fall through
+      }
+    }
     if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
       throw new Error("当前系统不支持复制图片。");
     }

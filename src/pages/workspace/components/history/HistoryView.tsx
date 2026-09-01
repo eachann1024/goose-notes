@@ -373,20 +373,14 @@ export function HistoryVersionList() {
             页面历史
           </span>
         </div>
-        <p className="mt-1 truncate whitespace-nowrap text-[11px] leading-none text-muted-foreground">
-          选择时间点预览后还原
-        </p>
+        {!isEmpty && (
+          <p className="mt-1 truncate whitespace-nowrap text-[11px] leading-none text-muted-foreground">
+            选择时间点预览后还原
+          </p>
+        )}
       </div>
       {isEmpty ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
-          <LucideIcons.History className="h-10 w-10 text-muted-foreground/20" />
-          <p className="text-xs text-muted-foreground/60">暂无历史版本</p>
-          <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
-            停笔后合并保存，自动版本至少间隔 5 分钟
-            <br />
-            仅空白/换行变化不计入
-          </p>
-        </div>
+        <p className="px-3 pt-2 text-xs text-muted-foreground">暂无历史版本</p>
       ) : (
         <ScrollArea className="flex-1">
           <div className="py-1 pb-4">
@@ -550,6 +544,7 @@ export function HistoryVersionList() {
 export function HistoryToolbar() {
   const {
     pageTitle,
+    isEmpty,
     selectedVersionId,
     selectedStatus,
     isRestoring,
@@ -574,31 +569,33 @@ export function HistoryToolbar() {
         <span className="truncate text-sm font-medium">{pageTitle}</span>
       </div>
 
-      <Button
-        size="sm"
-        aria-label={
-          isRestoring
-            ? "正在还原此版本"
-            : selectedStatus === "loading"
-              ? "正在读取历史版本"
-              : "还原此版本"
-        }
-        aria-busy={isRestoring || selectedStatus === "loading" || undefined}
-        className="history-primary-control h-7 shrink-0 px-3 text-xs transition-[background-color,box-shadow,transform] hover:bg-[var(--goose-primary-hover-bg)] active:translate-y-px active:bg-[var(--goose-primary-active-bg)] active:shadow-none"
-        disabled={
-          !selectedVersionId || selectedStatus !== "ready" || isRestoring
-        }
-        onClick={handleRestore}
-      >
-        {isRestoring || selectedStatus === "loading" ? (
-          <>
-            <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-            {isRestoring ? "正在还原" : "正在读取"}
-          </>
-        ) : (
-          "还原此版本"
-        )}
-      </Button>
+      {!isEmpty && (
+        <Button
+          size="sm"
+          aria-label={
+            isRestoring
+              ? "正在还原此版本"
+              : selectedStatus === "loading"
+                ? "正在读取历史版本"
+                : "还原此版本"
+          }
+          aria-busy={isRestoring || selectedStatus === "loading" || undefined}
+          className="history-primary-control h-7 shrink-0 px-3 text-xs transition-[background-color,box-shadow,transform] hover:bg-[var(--goose-primary-hover-bg)] active:translate-y-px active:bg-[var(--goose-primary-active-bg)] active:shadow-none"
+          disabled={
+            !selectedVersionId || selectedStatus !== "ready" || isRestoring
+          }
+          onClick={handleRestore}
+        >
+          {isRestoring || selectedStatus === "loading" ? (
+            <>
+              <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              {isRestoring ? "正在还原" : "正在读取"}
+            </>
+          ) : (
+            "还原此版本"
+          )}
+        </Button>
+      )}
     </header>
   );
 }

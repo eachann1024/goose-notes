@@ -10,6 +10,29 @@ interface LocalFileIconProps {
   hasChildren?: boolean;
 }
 
+/** 本地仓库里的目录不能换图标；文件和内置笔记本页面可以。 */
+export function canCustomizePageIcon(
+  page: Pick<Page, "isFolder" | "localPendingCreate">,
+  isLocalNotebook: boolean,
+): boolean {
+  if (page.localPendingCreate) return false;
+  if (isLocalNotebook && page.isFolder) return false;
+  return true;
+}
+
+/** 本地仓库：每一级文件夹都显示展开箭头，不论当前有没有子项。 */
+export function shouldShowFolderExpandArrow({
+  isFolder,
+  hasChildren,
+  isLocalNotebook,
+}: {
+  isFolder: boolean;
+  hasChildren: boolean;
+  isLocalNotebook: boolean;
+}): boolean {
+  return isLocalNotebook ? isFolder : hasChildren;
+}
+
 function nodeHasVisibleContent(node: unknown): boolean {
   if (!node || typeof node !== "object") return false;
   const value = node as {
@@ -66,12 +89,9 @@ export function LocalFileIcon({
     );
   }
 
-  if (isLocalFolder) {
-    const Icon = page.isFolder
-      ? hasChildren
-        ? LucideIcons.FolderOpen
-        : LucideIcons.Folder
-      : DefaultPageIcon;
+  // 本地仓库：目录永远用文件夹图标，不吃自定义 icon
+  if (isLocalFolder && page.isFolder) {
+    const Icon = hasChildren ? LucideIcons.FolderOpen : LucideIcons.Folder;
     return (
       <Icon
         className={cn(
@@ -84,6 +104,17 @@ export function LocalFileIcon({
 
   if (SelectedIcon) {
     return <SelectedIcon className={cn("h-4 w-4", className)} />;
+  }
+
+  if (isLocalFolder) {
+    return (
+      <DefaultPageIcon
+        className={cn(
+          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          className,
+        )}
+      />
+    );
   }
 
   // 内置笔记本：有子页面且未自定义图标时，用"有内容的文件夹"标识可展开

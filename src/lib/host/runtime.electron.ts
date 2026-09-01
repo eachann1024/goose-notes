@@ -195,11 +195,18 @@ export const hostRuntime: HostRuntime = {
     );
     await unregisterDesktopGlobalHotkey("wake");
   },
-  registerSearchHotkey: async () => ({
-    ok: false,
-    error: "桌面版暂不支持全局搜索快捷键。",
-  }),
-  unregisterSearchHotkey: async () => {},
+  registerSearchHotkey: async (shortcut: string) => {
+    const { registerDesktopGlobalHotkey } = await import(
+      "@/lib/electron/globalHotkeys"
+    );
+    return registerDesktopGlobalHotkey("search", shortcut);
+  },
+  unregisterSearchHotkey: async () => {
+    const { unregisterDesktopGlobalHotkey } = await import(
+      "@/lib/electron/globalHotkeys"
+    );
+    await unregisterDesktopGlobalHotkey("search");
+  },
   registerQuicknoteHotkey: async (shortcut: string) => {
     const { registerDesktopGlobalHotkey } = await import(
       "@/lib/electron/globalHotkeys"

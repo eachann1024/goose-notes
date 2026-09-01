@@ -35,7 +35,7 @@ export interface AppearanceSliceState {
   imageExportThemeId: CardThemeId;
   /** 隐藏侧栏常驻展开箭头，hover 行时用图标位临时展开/收起 */
   hideExpandArrows: boolean;
-  /** 新建内部笔记时自动分配一个随机图标；本地文件夹忽略。 */
+  /** 新建笔记时自动分配随机图标；本地文件同样生效，文件夹忽略。 */
   randomIconOnCreate: boolean;
 
   /** 极简工作区：所有页面在当前标签中切换。产品固定开启，设置里不再提供开关。 */

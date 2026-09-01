@@ -13,10 +13,11 @@ import {
 import {
   inspectPasteContainer,
   planMultilinePaste,
+  resolvePasteLines,
   shouldSplitMultilinePaste,
-  splitPlainTextPasteLines,
 } from "../utils/multilinePaste";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
+import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "../extensions/copyCurrentBlockExtension";
 import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
 
 type Editor = ReturnType<typeof useCreateBlockNote>;
@@ -81,7 +82,7 @@ function insertSoftWrappedLines(editor: Editor, text: string) {
   );
 }
 
-function pasteLinesAsBlocks(
+export function pasteLinesAsBlocks(
   editor: Editor,
   lines: string[],
   currentBlockType: string | null,
@@ -171,6 +172,29 @@ export function useEditorPaste({
 
       if (!plainText) return;
 
+      // BlockNote 内部「折叠光标整体复制当前块」会写入 GOOSE_BLOCKNOTE_BLOCK_COPY_MIME
+      // 标记，其 text/html 是块级结构。走块级粘贴：解析回块后整块插到当前块之后，
+      // 完整保留内联格式与块类型。绝不能交给默认 HTML 粘贴（会把内容 merge 进当前
+      // 段落，标题/列表降级），更不能走下方「多行拆块/纯文本」逻辑（全变纯文本）。
+      if (clipboard.getData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) {
+        event.preventDefault();
+        event.stopPropagation();
+        void (async () => {
+          let blocks: any[];
+          try {
+            blocks = await editor.tryParseHTMLToBlocks(htmlText);
+          } catch {
+            blocks = [];
+          }
+          if (!blocks || blocks.length === 0) return;
+          const current = editor.getTextCursorPosition().block;
+          const inserted = editor.insertBlocks(blocks, current, "after");
+          const last = inserted[inserted.length - 1];
+          if (last) editor.setTextCursorPosition(last, "end");
+        })();
+        return;
+      }
+
       const trimmedText = plainText.trim();
 
       // 0. callout / quote 内多行仍走 hardBreak，避免拆出容器。
@@ -181,10 +205,12 @@ export function useEditorPaste({
       if (pmState.selection instanceof CellSelection) {
         container.inTable = true;
       }
-      if (container.inSoftWrap && plainText.includes("\n")) {
+      const pasteLines = resolvePasteLines(plainText, htmlText);
+      const softWrapText = pasteLines ? pasteLines.join("\n") : plainText;
+      if (container.inSoftWrap && softWrapText.includes("\n")) {
         event.preventDefault();
         event.stopPropagation();
-        insertSoftWrappedLines(editor, plainText);
+        insertSoftWrappedLines(editor, softWrapText);
         return;
       }
 
@@ -243,10 +269,8 @@ export function useEditorPaste({
         return;
       }
 
-      // 2.6 多行纯文本：每行一个块。列表 / 待办 / 有序继承当前块类型。
-      const pasteLines = splitPlainTextPasteLines(plainText);
-      const inList = Boolean(container.listType);
-      const isMarkdown = looksLikeMarkdownFragment(plainText);
+      // 2.6 多行文本：每行一个块。列表 / 待办 / 有序继承当前块类型。
+      // 含 ** 的碎片也拆，避免 pasteMarkdown 把单换行当成空格、CJK 粘成一段。
       if (
         shouldSplitMultilinePaste({
           lines: pasteLines,
@@ -254,8 +278,7 @@ export function useEditorPaste({
           inSoftWrap: container.inSoftWrap,
           inTable: container.inTable,
           multiBlockSelection: isMultiBlockTextSelection(editor),
-        }) &&
-        (!isMarkdown || inList)
+        })
       ) {
         event.preventDefault();
         event.stopPropagation();

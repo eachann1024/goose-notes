@@ -78,32 +78,35 @@
   opacity: 0.64;
 }
 
-.main-tree-row--selected {
+.rct-main-tree .main-tree-row--selected,
+.rct-main-tree .main-tree-row--hovered {
   color: var(--goose-interactive-selected-fg) !important;
   background: var(--goose-interactive-selected) !important;
 }
 
-/* uTools 旧内核不解析 Tailwind v4 嵌套 hover，整行底用扁平 CSS。 */
-.main-tree-row:hover {
-  color: var(--goose-interactive-selected-fg);
-  background: var(--goose-interactive-selected);
-}
-
-/* 右键菜单是 modal：遮罩一出现行就失去 :hover。菜单开着时保住与选中一致的行底。
-   已选中 / 拖拽 / 落点仍靠各自 !important。 */
+/* 右键菜单是 modal：遮罩一出现行就失去指针悬停。菜单开着时保住与选中一致的行底。
+   已选中 / 拖拽 / 落点仍靠各自 !important。
+   悬停不用 :hover：rct 把 title-container 设成 transparent !important，
+   且 uTools 旧内核会把同类 :hover 套到所有行。 */
 [data-goose-context-trigger][data-context-open="true"] .main-tree-row {
+  color: var(--goose-interactive-selected-fg) !important;
+  background: var(--goose-interactive-selected) !important;
+}
+
+/* 选中 / 悬停行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
+   text-muted-foreground 工具类，需显式覆盖；语义色图标（如读取失败红）不动。 */
+.main-tree-row--selected svg:not([class*="text-destructive"]),
+.main-tree-row--hovered svg:not([class*="text-destructive"]),
+[data-goose-context-trigger][data-context-open="true"]
+  .main-tree-row
+  svg:not([class*="text-destructive"]) {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.main-tree-row .goose-page-icon-trigger:hover,
+.main-tree-row .goose-page-icon-trigger[data-state="open"] {
   color: var(--goose-interactive-selected-fg);
   background: var(--goose-interactive-selected);
-}
-
-/* 选中行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
-   text-muted-foreground 工具类，需显式覆盖；语义色图标（如读取失败红）不动。 */
-.main-tree-row--selected svg:not([class*="text-destructive"]) {
-  color: var(--goose-interactive-selected-fg);
-}
-
-.main-tree-row:hover svg:not([class*="text-destructive"]) {
-  color: var(--goose-interactive-selected-fg);
 }
 
 /* 原行不随拖影消失：以半透明蓝色占位，持续展示来源层级和原位置。 */

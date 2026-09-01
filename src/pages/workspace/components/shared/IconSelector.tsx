@@ -420,7 +420,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
       )}
       <PopoverContent
         className={cn(
-          "w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden rounded-[14px] border border-border/40 bg-popover p-0 text-foreground shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)]",
+          "goose-icon-selector w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden rounded-[14px] border border-border/40 bg-popover p-0 text-foreground shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)]",
           editorContext && "goose-editor-context-ui",
         )}
         align="start"
@@ -450,6 +450,11 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
             .goose-icon-selector-grid {
               grid-template-columns: repeat(6, minmax(0, 1fr));
             }
+          }
+          /* uTools 旧内核不执行 Tailwind v4 嵌套 hover；弹层又在 portal，不能靠 .workspace-shell。 */
+          .goose-icon-selector button:hover {
+            background: var(--goose-interactive-selected);
+            color: var(--goose-interactive-selected-fg);
           }
         `}</style>
         <div className="flex flex-wrap items-center justify-between gap-1 px-2 py-1">

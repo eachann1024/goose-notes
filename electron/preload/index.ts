@@ -60,7 +60,11 @@ const gooseDesktop = {
   openTerminalAtPath: (p: string) =>
     invoke("desktop:openTerminalAtPath", p) as Promise<void>,
   writeText: (t: string) => invoke("desktop:writeText", t) as Promise<void>,
+  writeImage: (dataUrl: string) =>
+    invoke("desktop:writeImage", dataUrl) as Promise<void>,
   readText: () => invoke("desktop:readText") as Promise<string>,
+  printHtmlToPdf: (html: string) =>
+    invoke("desktop:printHtmlToPdf", html) as Promise<string | null>,
   netFetch: (
     url: string,
     init?: { method?: string; headers?: Record<string, string>; body?: string },
@@ -71,14 +75,24 @@ const gooseDesktop = {
       body: string;
     }>,
   setTitle: (t: string) => invoke("desktop:setTitle", t) as Promise<void>,
+  syncTitleBarHeight: (height: number) =>
+    invoke("desktop:syncTitleBarHeight", height) as Promise<void>,
   toggleMainWindow: () => invoke("desktop:toggleMainWindow") as Promise<void>,
   toggleQuicknote: () => invoke("desktop:toggleQuicknote") as Promise<void>,
   hideQuicknote: () => invoke("desktop:hideQuicknote") as Promise<void>,
-  registerHotkeys: (k: { wake: string; quicknote: string }) =>
+  registerHotkeys: (k: { wake: string; quicknote: string; search: string }) =>
     invoke("desktop:registerHotkeys", k) as Promise<{
       wakeOk: boolean;
       quicknoteOk: boolean;
+      searchOk: boolean;
     }>,
+  onOpenSearch: (cb: () => void) => {
+    const listener = () => cb();
+    ipcRenderer.on("desktop:open-search", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:open-search", listener);
+    };
+  },
   notify: (n: { title: string; body: string }) =>
     invoke("desktop:notify", n) as Promise<void>,
 };

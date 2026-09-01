@@ -18,13 +18,18 @@ import type {
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "../SidebarContextMenu";
 import { IconSelector } from "../../shared/IconSelector";
-import { LocalFileIcon } from "../local-file-icon";
+import {
+  canCustomizePageIcon,
+  LocalFileIcon,
+  shouldShowFolderExpandArrow,
+} from "../local-file-icon";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
-import { getPageTitle } from "./treeAdapter";
+import { isExternalFileDrag } from "@/lib/local-folder-target";
+import { setLocalFolderFileDropTarget } from "@/lib/local-folder-file-drop-target";
 
 const INDENT = 18;
 const ROW_PADDING_LEFT = 6;
@@ -47,7 +52,6 @@ function TreeRowIcon({
   isExpanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const iconName = usePages((s) => {
     const live = s.pages[page.id];
     return live ? live.icon : page?.icon;
@@ -60,11 +64,16 @@ function TreeRowIcon({
       hasChildren={hasChildren}
     />
   );
+  const canCustomize = canCustomizePageIcon(page, isLocalFolder);
+  const showExpandControl = shouldShowFolderExpandArrow({
+    isFolder: !!page.isFolder,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
+  });
 
   const stopBubble = {
     onPointerDown: (e: PointerEvent) => {
       e.stopPropagation();
-      setOpen(true);
     },
     onMouseDown: (e: MouseEvent) => e.stopPropagation(),
     onDoubleClick: (e: MouseEvent) => e.stopPropagation(),
@@ -74,17 +83,7 @@ function TreeRowIcon({
     },
   };
 
-  if (hideExpandArrows) {
-    if (!hasChildren || isRenaming) {
-      return (
-        <div className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5">
-          <div className="flex h-4 w-4 items-center justify-center">
-            {renderedIcon}
-          </div>
-        </div>
-      );
-    }
-
+  if (hideExpandArrows && showExpandControl && !isRenaming) {
     return (
       <button
         type="button"
@@ -125,7 +124,32 @@ function TreeRowIcon({
     );
   }
 
-  if (isLocalFolder) {
+  if (canCustomize && !isRenaming) {
+    return (
+      <IconSelector
+        value={iconName}
+        onChange={(newIcon) =>
+          usePages.getState().updatePage(page.id, { icon: newIcon })
+        }
+      >
+        <button
+          type="button"
+          className="goose-page-icon-trigger relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer shrink-0 mr-0.5"
+          draggable={false}
+          {...stopBubble}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <div className="flex h-4 w-4 items-center justify-center">
+            {renderedIcon}
+          </div>
+        </button>
+      </IconSelector>
+    );
+  }
+
+  if (isLocalFolder && page.isFolder && !hideExpandArrows) {
     return (
       <div className="main-tree-local-folder-icon flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
         {renderedIcon}
@@ -133,43 +157,97 @@ function TreeRowIcon({
     );
   }
 
-  if (isRenaming) {
-    return (
-      <div
-        className="flex h-6 w-6 items-center justify-center rounded-[6px] shrink-0 mr-0.5 pointer-events-none"
-        aria-disabled="true"
-      >
-        <div className="flex h-4 w-4 items-center justify-center">
-          {renderedIcon}
-        </div>
+  return (
+    <div
+      className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5"
+      aria-disabled={isRenaming ? "true" : undefined}
+    >
+      <div className="flex h-4 w-4 items-center justify-center">
+        {renderedIcon}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function MainTreeRow({
+  withoutChildren,
+  isLocalFolder,
+  isPendingCreate,
+  isActive,
+  isOver,
+  isDragging,
+  depth,
+  itemIndex,
+  children,
+}: {
+  withoutChildren: HTMLProps<HTMLDivElement>;
+  isLocalFolder: boolean;
+  isPendingCreate: boolean;
+  isActive: boolean;
+  isOver: boolean;
+  isDragging: boolean;
+  depth: number;
+  itemIndex: string;
+  children: ReactNode;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  useEffect(() => {
+    if (isDragging) setHovered(false);
+  }, [isDragging]);
 
   return (
-    <IconSelector
-      value={iconName}
-      onChange={(newIcon) =>
-        usePages.getState().updatePage(page.id, { icon: newIcon })
+    <div
+      {...withoutChildren}
+      onPointerEnter={() => {
+        if (!isDragging) setHovered(true);
+      }}
+      onPointerLeave={() => setHovered(false)}
+      onDragEnter={
+        isLocalFolder
+          ? (e) => {
+              if (!isExternalFileDrag(e.dataTransfer)) return;
+              e.preventDefault();
+              setLocalFolderFileDropTarget(itemIndex);
+            }
+          : undefined
       }
-      open={open}
-      onOpenChange={setOpen}
+      onDragOver={
+        isLocalFolder
+          ? (e) => {
+              if (!isExternalFileDrag(e.dataTransfer)) return;
+              e.preventDefault();
+              setLocalFolderFileDropTarget(itemIndex);
+            }
+          : undefined
+      }
+      className={cn(
+        withoutChildren.className,
+        // mb-0.5 承担行间距：react-complex-tree 的 computeItemHeight 会把本元素的
+        // margin 计入行高（offsetHeight + max(marginTop, marginBottom)）。
+        // 间距放在 ul 的 space-y 上不会被测到，导致拖拽位置判定逐行累积偏差，
+        // 越往下越拖不准，最后一行永远无法 drop 成子页面。
+        "main-tree-row group/main-row relative z-10 mb-0.5 flex min-h-[28px] items-center gap-0.5 rounded-[8px] py-[4px] pl-0 pr-1.5",
+        "text-[13px] font-medium leading-none cursor-pointer select-none",
+        "transition-colors duration-150",
+        "outline-none",
+        isPendingCreate
+          ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+          : isActive
+            ? "main-tree-row--selected"
+            : "text-foreground/80 dark:text-foreground/80",
+        !isActive &&
+          !isPendingCreate &&
+          !isDragging &&
+          hovered &&
+          "main-tree-row--hovered",
+        isOver && "main-tree-row--drop-target",
+        isDragging && "main-tree-row--dragging",
+      )}
+      style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
     >
-      <button
-        type="button"
-        className="relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer shrink-0 mr-0.5"
-        draggable={false}
-        {...stopBubble}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(true);
-        }}
-      >
-        <div className="flex h-4 w-4 items-center justify-center">
-          {renderedIcon}
-        </div>
-      </button>
-    </IconSelector>
+      {children}
+    </div>
   );
 }
 
@@ -309,8 +387,8 @@ export function renderItem({
   if (item.index === "root") {
     return <>{children}</>;
   }
-  const isActive = context.isSelected;
-  const isOver = context.isDraggingOver;
+  const isActive = !!context.isSelected;
+  const isOver = !!context.isDraggingOver;
   const interactive =
     context.interactiveElementProps as HTMLProps<HTMLDivElement>;
   const withChildren =
@@ -390,7 +468,6 @@ export function renderItem({
   };
 
   const toggleLocalDirectory = () => {
-    if (!hasChildren) return;
     context.toggleExpandedState();
   };
 
@@ -423,27 +500,15 @@ export function renderItem({
   };
 
   const row = (
-    <div
-      {...withoutChildren}
-      className={cn(
-        // mb-0.5 承担行间距：react-complex-tree 的 computeItemHeight 会把本元素的
-        // margin 计入行高（offsetHeight + max(marginTop, marginBottom)）。
-        // 间距放在 ul 的 space-y 上不会被测到，导致拖拽位置判定逐行累积偏差，
-        // 越往下越拖不准，最后一行永远无法 drop 成子页面。
-        "main-tree-row group/main-row relative z-10 mb-0.5 flex min-h-[28px] items-center gap-0.5 rounded-[8px] py-[4px] pl-0 pr-1.5",
-        "text-[13px] font-medium leading-none cursor-pointer select-none",
-        "transition-colors duration-150",
-        "outline-none",
-        isPendingCreate
-          ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-          : isActive
-            ? "main-tree-row--selected"
-            : "text-muted-foreground dark:text-muted-foreground/65 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
-        // drop 高亮：使用 workspace-drag-line token 调性，更克制
-        isOver && "main-tree-row--drop-target",
-        isDragging && "main-tree-row--dragging",
-      )}
-      style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
+    <MainTreeRow
+      withoutChildren={withoutChildren}
+      isLocalFolder={isLocalFolder}
+      isPendingCreate={isPendingCreate}
+      isActive={isActive}
+      isOver={isOver}
+      isDragging={isDragging}
+      depth={depth}
+      itemIndex={String(item.index)}
     >
       {/* 整行作为 hit area：interactive div 绝对覆盖整个 row。
           arrow / icon 各自的实际可点击子节点已有自己的 pointer-events 与 stopPropagation，
@@ -485,7 +550,7 @@ export function renderItem({
           {title}
         </span>
       )}
-    </div>
+    </MainTreeRow>
   );
 
   return (
@@ -513,8 +578,18 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
   if (hideExpandArrows) {
     return null;
   }
+  const page = item.data;
+  const notebook = page?.workspaceId
+    ? useNotebooks.getState().notebooks[page.workspaceId]
+    : undefined;
+  const isLocalFolder = notebook?.source === "local-folder";
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
-  if (!item.isFolder || !hasChildren) {
+  const showArrow = shouldShowFolderExpandArrow({
+    isFolder: !!item.isFolder,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
+  });
+  if (!showArrow) {
     // 占位区：不抢 hit area，让外层 row 的 interactive 覆盖层接管点击
     return (
       <span

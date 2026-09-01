@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, X } from "lucide-react";
 import type { SettingsTab, SettingsTabConfig } from "./types";
 import { isElectronRuntime } from "@/lib/electron/runtime";
 
 interface SettingsScaffoldProps {
   activeTab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
+  onClose: () => void;
   tabs: SettingsTabConfig[];
   children: ReactNode;
   feedbackBanner?: ReactNode;
@@ -15,6 +16,7 @@ interface SettingsScaffoldProps {
 export function SettingsScaffold({
   activeTab,
   onTabChange,
+  onClose,
   tabs,
   children,
   feedbackBanner,
@@ -56,19 +58,26 @@ export function SettingsScaffold({
       <div
         className={
           isElectronRuntime()
-            ? "flex h-11 items-center justify-between bg-[hsl(var(--goose-shell-bg))] pl-[78px] pr-14"
-            : "flex h-14 items-center justify-between bg-[hsl(var(--goose-shell-bg))] px-6 pb-0 pt-4 pr-14"
+            ? "electron-titlebar flex w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] pl-[calc(var(--electron-traffic-inset,78px)+0.75rem)] pr-6"
+            : "flex h-14 w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] px-6"
         }
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
-            <SettingsIcon className="h-5 w-5 text-foreground/80" />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
+            <SettingsIcon className="h-4 w-4 text-foreground/80" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">设置</h1>
-            <p className="text-xs text-muted-foreground">配置应用偏好与数据管理</p>
-          </div>
+          <h1 className="truncate text-lg font-semibold leading-none text-foreground">
+            设置
+          </h1>
         </div>
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+          aria-label="关闭"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="workspace-stage flex-1 overflow-hidden p-3">

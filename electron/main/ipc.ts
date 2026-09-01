@@ -4,6 +4,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  nativeImage,
   Notification,
   shell,
 } from "electron";
@@ -22,10 +23,12 @@ import {
 } from "./allowlist";
 import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
 import { registerHotkeys } from "./hotkeys";
+import { printHtmlToPdf } from "./printPdf";
 import {
   broadcast,
   getMainWindow,
   hideQuicknote,
+  setMainWindowTitleBarHeight,
   toggleQuicknoteWindow,
   toggleWindow,
 } from "./windows";
@@ -156,12 +159,29 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsExists", async (_event, p: string) => {
     if (hasUnsafeSegments(p)) return false;
+    let target: string;
     try {
-      const target = assertAllowed(p);
-      await stat(target);
-      return true;
+      target = assertAllowed(p);
     } catch {
       return false;
+    }
+    try {
+      await stat(target);
+      return true;
+    } catch (statError) {
+      // 只有真正的「不存在」(ENOENT) 才该被当作路径失效。
+      // iCloud Drive 等云盘目录可能尚未完全物化，stat 会瞬时抛
+      // EPERM/EACCES/EBUSY，此时目录其实仍存在 —— 不应把真实存在的
+      // 仓库误报成「路径失效」。用 readdir 复核一次再下结论。
+      if ((statError as NodeJS.ErrnoException).code === "ENOENT") {
+        return false;
+      }
+      try {
+        await readdir(target);
+        return true;
+      } catch (readError) {
+        return (readError as NodeJS.ErrnoException).code !== "ENOENT";
+      }
     }
   });
 
@@ -254,7 +274,30 @@ export function registerIpcHandlers(): void {
     clipboard.writeText(t ?? "");
   });
 
+  ipcMain.handle("desktop:writeImage", async (_event, dataUrl: string) => {
+    const trimmed = String(dataUrl ?? "").trim();
+    const match = /^data:image\/[^;]+;base64,(.+)$/i.exec(trimmed);
+    if (!match) {
+      throw new Error("无效 PNG data URL");
+    }
+    const pngBuffer = Buffer.from(match[1], "base64");
+    if (!pngBuffer.length) {
+      throw new Error("无效 PNG data URL");
+    }
+    const image = nativeImage.createFromBuffer(pngBuffer);
+    if (process.platform === "darwin") {
+      clipboard.writeBuffer("public.png", pngBuffer);
+      clipboard.writeImage(image);
+    } else {
+      clipboard.writeImage(image);
+    }
+  });
+
   ipcMain.handle("desktop:readText", async () => clipboard.readText());
+
+  ipcMain.handle("desktop:printHtmlToPdf", async (_event, html: string) => {
+    return printHtmlToPdf(html);
+  });
 
   ipcMain.handle(
     "desktop:netFetch",
@@ -285,6 +328,13 @@ export function registerIpcHandlers(): void {
     if (win && !win.isDestroyed()) win.setTitle(t ?? "");
   });
 
+  ipcMain.handle("desktop:syncTitleBarHeight", async (event, height: number) => {
+    const win = senderWindow(event);
+    const main = getMainWindow();
+    if (!win || win !== main || win.isDestroyed()) return;
+    setMainWindowTitleBarHeight(win, height);
+  });
+
   ipcMain.handle("desktop:toggleMainWindow", async () => {
     await toggleWindow(getMainWindow());
   });
@@ -299,7 +349,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     "desktop:registerHotkeys",
-    async (_event, keys: { wake: string; quicknote: string }) => {
+    async (
+      _event,
+      keys: { wake: string; quicknote: string; search: string },
+    ) => {
       return registerHotkeys(keys);
     },
   );

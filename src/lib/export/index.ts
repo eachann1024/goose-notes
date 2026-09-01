@@ -125,7 +125,9 @@ export function importFromJSON(
   }
 }
 
-export function importFile(): Promise<ImportResult> {
+export function importFile(options?: {
+  preserveStructure?: boolean;
+}): Promise<ImportResult> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -161,7 +163,11 @@ export function importFile(): Promise<ImportResult> {
         if (ext === "json") {
           finish(importFromJSON(text, filename));
         } else if (ext === "md" || ext === "markdown" || ext === "txt") {
-          finish(importFromMarkdown(text, filename));
+          finish(
+            importFromMarkdown(text, filename, {
+              preserveStructure: options?.preserveStructure === true,
+            }),
+          );
         } else {
           finish({
             title: "",

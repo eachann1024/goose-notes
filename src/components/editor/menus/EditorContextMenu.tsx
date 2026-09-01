@@ -19,10 +19,12 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import { pasteLinesAsBlocks } from "@/components/editor/hooks/useEditorPaste";
 import {
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
 } from "@/components/editor/utils/clipboard";
+import { resolvePasteLines } from "@/components/editor/utils/multilinePaste";
 import { getEditorSelectedBlocksForExport } from "@/components/editor/utils/selection";
 import { cn, formatShortcut } from "@/lib/utils";
 
@@ -140,6 +142,17 @@ export function EditorContextMenu({
         await navigator.clipboard.readText(),
       );
       if (!text) return;
+      const lines = resolvePasteLines(text, "");
+      if (lines && lines.length >= 2) {
+        let blockType: string | null = null;
+        try {
+          blockType = editor.getTextCursorPosition().block.type ?? null;
+        } catch {
+          blockType = null;
+        }
+        pasteLinesAsBlocks(editor, lines, blockType);
+        return;
+      }
       if (looksLikeMarkdownFragment(text)) {
         editor.pasteMarkdown(text);
       } else {

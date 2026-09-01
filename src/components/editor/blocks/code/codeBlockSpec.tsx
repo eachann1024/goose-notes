@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
 import {
@@ -65,6 +65,8 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   math: "latex",
   // YAML
   yml: "yaml",
+  "yaml-frontmatter": "yaml",
+  frontmatter: "yaml",
   // Markdown
   md: "markdown",
   mkdown: "markdown",
@@ -778,13 +780,7 @@ function CodeBlockComponent({
         }
       }
 
-      // 预览 DOM 未就绪时离屏渲染 KaTeX 再截图
       const { default: katex } = await import("katex");
-      const html = katex.renderToString(text, {
-        displayMode: true,
-        throwOnError: false,
-        output: "html",
-      });
       const wrapper = document.createElement("div");
       wrapper.style.cssText = [
         "position:fixed",
@@ -798,7 +794,10 @@ function CodeBlockComponent({
         "line-height:1.4",
         "display:inline-block",
       ].join(";");
-      wrapper.innerHTML = html;
+      katex.render(text, wrapper, {
+        displayMode: true,
+        throwOnError: false,
+      });
       document.body.appendChild(wrapper);
       try {
         const blob = await captureElementAsPngBlob(wrapper);
@@ -951,15 +950,17 @@ function CodeBlockComponent({
 
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
-  // 紧凑编辑器构建不渲染 math/mermaid 预览，退化为可编辑源码。
+  // yaml-frontmatter 是可编辑的普通代码块，不做表格预览；
+  // math/mermaid 才走视觉预览（紧凑编辑器构建退化为可编辑源码）。
   const isMathOrMermaid =
     !__GOOSE_EDITOR_COMPACT__ &&
     (language === "math" || language === "mermaid");
+  const isVisualBlock = isMathOrMermaid;
   const canPreview = isMathOrMermaid && textContent.trim().length > 0;
   const shouldShowPreview = canPreview && previewMode === "preview";
   const shouldShowSource =
-    !isMathOrMermaid || previewMode === "code" || !canPreview;
-  const showLineNumbers = !isMathOrMermaid && !wrap;
+    !isVisualBlock || previewMode === "code" || !canPreview;
+  const showLineNumbers = !isVisualBlock && !wrap;
   const visualTitle = language === "math" ? "Math" : "Mermaid";
 
   useEffect(() => {
@@ -972,7 +973,9 @@ function CodeBlockComponent({
   }, [isEditingSummary]);
 
   useEffect(() => {
-    if (!isMathOrMermaid) {
+    // yaml-frontmatter 是普通可编辑代码块，不支持预览，永远是源码态。
+    // 仅 math/mermaid 这类以渲染图为主的块自动切到预览。
+    if (!isVisualBlock) {
       setPreviewMode("code");
       setPreviewContent(null);
       return;
@@ -983,14 +986,14 @@ function CodeBlockComponent({
       return;
     }
     setPreviewMode((current) => (current === "code" ? "preview" : current));
-  }, [isMathOrMermaid, canPreview]);
+  }, [isVisualBlock, canPreview]);
 
   return (
     <div
       ref={rootRef}
       className="goose-code-block-node relative"
       data-collapsed={collapsed ? "true" : "false"}
-      data-visual-preview={isMathOrMermaid ? "true" : undefined}
+      data-visual-preview={isVisualBlock ? "true" : undefined}
       onKeyDownCapture={handleCodeKeyDownCapture}
     >
       {/* Toolbar row */}
@@ -999,7 +1002,7 @@ function CodeBlockComponent({
         contentEditable={false}
       >
         <div className="goose-code-toolbar-left flex items-center gap-0.5 min-w-0 flex-1">
-          {isMathOrMermaid ? (
+          {isVisualBlock ? (
             <div className="goose-code-visual-title">{visualTitle}</div>
           ) : (
             <>
@@ -1092,7 +1095,7 @@ function CodeBlockComponent({
       </div>
 
       {/* Code content */}
-      {(!collapsed || isMathOrMermaid) && (
+      {(!collapsed || isVisualBlock) && (
         <div className="goose-code-content-wrapper">
           {showLineNumbers && shouldShowSource && (
             <div className="goose-code-line-numbers" contentEditable={false}>
@@ -1105,7 +1108,7 @@ function CodeBlockComponent({
             className={cn(
               "goose-code-pre",
               wrap && "goose-code-pre-wrap",
-              isMathOrMermaid && "goose-code-pre-source",
+              isVisualBlock && "goose-code-pre-source",
               !shouldShowSource && "goose-code-pre-hidden",
             )}
             aria-hidden={!shouldShowSource}
@@ -1129,7 +1132,7 @@ function CodeBlockComponent({
             <div
               ref={previewRef}
               contentEditable={false}
-              className="goose-code-preview select-none cursor-pointer bg-transparent"
+              className={cn("goose-code-preview select-none bg-transparent cursor-pointer")}
               onDoubleClick={() => {
                 if (canPreview) void handleInternalPreview();
               }}

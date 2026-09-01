@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
-import { isEditorSideMenuHoverTarget } from "../../src/components/editor/core/sideMenuHover";
+import {
+  HEADING_SIDE_MENU_EXTRA_GAP,
+  SIDE_MENU_CONTENT_GAP,
+  isEditorSideMenuHoverTarget,
+} from "../../src/components/editor/core/sideMenuHover";
 
 function mockTarget(closestMatch: string | null) {
   return {
@@ -45,4 +49,7 @@ test("SideMenu 用 hover 判定挡住 BlockNote 的左右 250px 吸附", () => {
   expect(source).toContain("hoveringEditor || isDragging");
   expect(css).toContain(".bn-side-menu::after");
   expect(css).toContain("left: 100%");
+  expect(css).toContain('.bn-side-menu[data-heading-gutter="true"]::after');
+  expect(SIDE_MENU_CONTENT_GAP).toBe(6);
+  expect(HEADING_SIDE_MENU_EXTRA_GAP).toBe(8);
 });

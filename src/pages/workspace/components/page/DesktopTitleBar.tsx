@@ -48,7 +48,10 @@ import {
 import { useAiHeaderActions } from "../notebook-ai/aiHeaderSlot";
 import { HistoryToolbar } from "../history/HistoryView";
 import { SingleTabTitle } from "./SingleTabTitle";
+import { PageIconButton } from "./PageIconButton";
 import { PageMenu } from "./PageMenu";
+import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
+import { useNotebooks } from "@/stores/useNotebooks";
 
 interface DesktopTitleBarProps {
   page?: Page;
@@ -77,6 +80,7 @@ export function DesktopTitleBar({
 }: DesktopTitleBarProps) {
   const activePageId = usePages((s) => s.activePageId);
   const updatePage = usePages((s) => s.updatePage);
+  const notebooks = useNotebooks((s) => s.notebooks);
   const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView((s) => s.toggleSidebarCollapsed);
   const appShortcuts = useSettings((s) => s.appShortcuts);
@@ -137,10 +141,17 @@ export function DesktopTitleBar({
   }
 
   const showPageActions = Boolean(page) && !page?.trashedAt;
+  const showPageIcon = Boolean(
+    page &&
+      canCustomizePageIcon(
+        page,
+        notebooks[page.workspaceId]?.source === "local-folder",
+      ),
+  );
 
   return (
     <div
-      className="electron-titlebar flex h-11 w-full shrink-0 items-center gap-2 pr-3"
+      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-3"
       data-electron-no-drag="false"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -174,13 +185,20 @@ export function DesktopTitleBar({
         ) : null}
 
         {page ? (
-          <div className="min-w-0 flex-1">
-            <SingleTabTitle
-              key={`${page.id}:${page.localFilePath ?? ""}`}
-              page={page}
-              idleWindowDrag
-            />
-          </div>
+          <>
+            {showPageIcon ? (
+              <div data-electron-no-drag className="shrink-0">
+                <PageIconButton page={page} />
+              </div>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <SingleTabTitle
+                key={`${page.id}:${page.localFilePath ?? ""}`}
+                page={page}
+                idleWindowDrag
+              />
+            </div>
+          </>
         ) : (
           <span className="min-w-0 flex-1 truncate px-2 text-sm font-semibold text-foreground">
             {isWelcomeTab ? "开始" : "Goose Note"}

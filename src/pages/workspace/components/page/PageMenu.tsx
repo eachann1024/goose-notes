@@ -24,10 +24,14 @@ export function PageMenu() {
     width: typeof window === "undefined" ? 0 : window.innerWidth,
     height: typeof window === "undefined" ? 0 : window.innerHeight,
   }));
-  const { activePageId, getPage, updatePage, createPage, setActivePage } =
+  const { activePageId, getPage, updatePage, createPage, createLocalPageRecord, setActivePage } =
     usePages();
-  const { activeNotebookId } = useNotebooks();
+  const { activeNotebookId, notebooks } = useNotebooks();
   const page = activePageId ? getPage(activePageId) : undefined;
+  const activeNotebook = activeNotebookId
+    ? notebooks[activeNotebookId]
+    : undefined;
+  const isLocalFolderNotebook = activeNotebook?.source === "local-folder";
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
@@ -49,7 +53,9 @@ export function PageMenu() {
 
   const handleImport = async () => {
     try {
-      const result = await importFile();
+      const result = await importFile({
+        preserveStructure: isLocalFolderNotebook,
+      });
       if (!result.success) {
         if (result.error !== "未选择文件") {
           toast.error(result.error || "导入失败");
@@ -58,13 +64,31 @@ export function PageMenu() {
       }
 
       closeNotebookAiIfFullscreen();
-      // Electron 仅本地文件夹模式：无仓库时禁止导入到内置本
       if (__HOST_TARGET__ === "electron" && !activeNotebookId) {
         toast.error("请先打开文件夹", {
           description: "Electron 桌面端仅支持本地文件夹仓库。",
         });
         return;
       }
+
+      if (isLocalFolderNotebook && activeNotebookId) {
+        const pageId = await createLocalPageRecord({
+          workspaceId: activeNotebookId,
+          title: result.title,
+          content: result.content as never,
+        });
+        if (!pageId) {
+          toast.error("导入失败，请重试");
+          return;
+        }
+        setActivePage(null);
+        requestAnimationFrame(() => {
+          setActivePage(pageId);
+        });
+        toast.success("已导入为新页面");
+        return;
+      }
+
       const newId = createPage(undefined, activeNotebookId || DEFAULT_NOTEBOOK);
       if (!newId) return;
 
@@ -287,17 +311,15 @@ export function PageMenu() {
           </section>
 
           {/* Import */}
-          {!isLocalItem && (
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
-                onSelect={handleImport}
-              >
-                <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
-                <span className="min-w-0 truncate">导入</span>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          )}
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
+              onSelect={handleImport}
+            >
+              <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
+              <span className="min-w-0 truncate">导入</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
 
           {/* Generate Image — standalone, before Export */}
           <DropdownMenuItem

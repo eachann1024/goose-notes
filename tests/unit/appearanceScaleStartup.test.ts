@@ -60,6 +60,9 @@ test("首帧前同步写入界面字号与编辑器缩放变量", () => {
   // 13 / 16（默认字号）= 0.8125，首帧即恢复上次缩放而非默认 1
   expect(root().style.getPropertyValue("--editor-scale")).toBe("0.8125");
   expect(root().style.getPropertyValue("--editor-ui-scale")).toBe("0.8125");
+  expect(root().style.getPropertyValue("--electron-titlebar-height")).toBe(
+    "44px",
+  );
 });
 
 test("未知界面字号回退到 small，避免启动时字体缺省跳变", () => {
@@ -70,6 +73,9 @@ test("未知界面字号回退到 small，避免启动时字体缺省跳变", ()
   });
 
   expect(root().style.fontSize).toBe("14px");
+  expect(root().style.getPropertyValue("--electron-titlebar-height")).toBe(
+    "38.5px",
+  );
   expect(root().style.getPropertyValue("--editor-scale")).toBe("1.0000");
   expect(root().style.getPropertyValue("--editor-ui-scale")).toBe("1.0000");
 });

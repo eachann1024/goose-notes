@@ -1,6 +1,9 @@
 /** 侧栏 pill 右缘与内容列左缘的间距（px） */
 export const SIDE_MENU_CONTENT_GAP = 6;
 
+/** 标题盒子左右外扩 8px，把手再左移这么多，避免压住标题边框 */
+export const HEADING_SIDE_MENU_EXTRA_GAP = 8;
+
 const EDITOR_SIDE_MENU_HOVER_SELECTOR = ".bn-editor, .bn-side-menu";
 
 /**

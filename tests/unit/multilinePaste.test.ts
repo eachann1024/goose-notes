@@ -4,9 +4,11 @@ import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   buildInheritedPasteBlocks,
   htmlHasNonTextPasteBlocks,
+  htmlToPlainTextForPaste,
   inspectPasteContainer,
   planMultilinePaste,
   resolveInheritedPasteBlockType,
+  resolvePasteLines,
   shouldSplitMultilinePaste,
   splitPlainTextPasteLines,
   stripInheritedListPrefix,
@@ -97,11 +99,12 @@ test("段落多行计划：其余都是段落", () => {
   ]);
 });
 
-test("含图片/表格/代码的 HTML 不拆纯文本行", () => {
-  expect(htmlHasNonTextPasteBlocks("<p>a</p><img src='x'>")).toBe(true);
+test("表格/代码 HTML 不拆纯文本行，表情图片不挡拆行", () => {
+  expect(htmlHasNonTextPasteBlocks("<p>a</p><img src='x'>")).toBe(false);
   expect(htmlHasNonTextPasteBlocks("<table><tr><td>a</td></tr></table>")).toBe(
     true,
   );
+  expect(htmlHasNonTextPasteBlocks("<pre>code</pre>")).toBe(true);
   expect(htmlHasNonTextPasteBlocks("<p>a<br>b</p>")).toBe(false);
 });
 
@@ -137,7 +140,7 @@ test("callout / 表格 / 跨块选区不拆", () => {
   expect(
     shouldSplitMultilinePaste({
       lines,
-      htmlText: "",
+      htmlText: "<p>甲<br>乙<img alt='🔥' src='https://res.wx.qq.com/emoji.gif'></p>",
       inSoftWrap: false,
       inTable: false,
       multiBlockSelection: false,
@@ -204,4 +207,79 @@ test("空待办按计划插入后变成多条未勾选待办", () => {
       checked: false,
     },
   ]);
+});
+
+const PI_POST = `玩 Pi，我发现很多人装了一堆插件，写代码还是乱🔥
+
+上次我分享了Pi常用的插件组合，推荐了联网的、远程控制和安全防护相关的，反响非常好，今天我分享一些特别的插件。
+
+这次不推能连网的插件，我只推我反复用在写代码上插件。
+
+1、ponytail
+先复用现有代码，少生成一堆新文件。
+Pi 默认很能写，但最浪费时间的不是写不出来，是写了一堆你事后还要删的东西。`;
+
+test("长文按行拆块，空行保留为空块", () => {
+  const lines = splitPlainTextPasteLines(PI_POST);
+  expect(lines?.[0]).toBe("玩 Pi，我发现很多人装了一堆插件，写代码还是乱🔥");
+  expect(lines?.[1]).toBe("");
+  expect(lines?.[6]).toBe("1、ponytail");
+  expect(lines?.length).toBeGreaterThan(6);
+  expect(
+    shouldSplitMultilinePaste({
+      lines,
+      htmlText: "",
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(true);
+});
+
+test("纯文本无换行时从 HTML 的 br/p 找回每一行", () => {
+  const jammed =
+    "玩 Pi，我发现很多人装了一堆插件，写代码还是乱🔥上次我分享了Pi常用的插件组合";
+  const html = `<p>玩 Pi，我发现很多人装了一堆插件，写代码还是乱<img alt="🔥" src="https://res.wx.qq.com/emoji.gif"><br><br>上次我分享了Pi常用的插件组合</p>`;
+  expect(splitPlainTextPasteLines(jammed)).toBeNull();
+  expect(htmlToPlainTextForPaste(html)).toContain("🔥");
+  expect(resolvePasteLines(jammed, html)).toEqual([
+    "玩 Pi，我发现很多人装了一堆插件，写代码还是乱🔥",
+    "",
+    "上次我分享了Pi常用的插件组合",
+  ]);
+});
+
+test("Unicode 行分隔符也按行拆", () => {
+  expect(splitPlainTextPasteLines("甲\u2028乙\u2029丙")).toEqual([
+    "甲",
+    "乙",
+    "丙",
+  ]);
+});
+
+test("段落多行计划：中文编号每一行一块", () => {
+  const plan = planMultilinePaste(
+    ["1、ponytail", "先复用现有代码，少生成一堆新文件。"],
+    "paragraph",
+  );
+  expect(plan.firstLine).toBe("1、ponytail");
+  expect(plan.restBlocks).toEqual([
+    { type: "paragraph", content: "先复用现有代码，少生成一堆新文件。" },
+  ]);
+});
+
+test("长文插入后每一行一个段落块", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [{ id: "p", type: "paragraph", content: "" }],
+  });
+  const lines = splitPlainTextPasteLines(PI_POST)!;
+  const plan = planMultilinePaste(lines, "paragraph");
+  editor.updateBlock("p", { content: plan.firstLine });
+  editor.insertBlocks(plan.restBlocks, "p", "after");
+  const texts = editor.document.map((block) => inlineText(block));
+  expect(texts[0]).toBe("玩 Pi，我发现很多人装了一堆插件，写代码还是乱🔥");
+  expect(texts).toContain("1、ponytail");
+  expect(texts).toContain("先复用现有代码，少生成一堆新文件。");
+  expect(texts.length).toBe(lines.length);
 });

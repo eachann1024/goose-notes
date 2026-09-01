@@ -78,6 +78,8 @@ export interface EditorFeaturePolicy {
   transcodeVideoUploads: boolean;
   /** 附件操作是否能直接交给系统默认应用。 */
   openAttachmentsExternally: boolean;
+  /** 当前笔记本是否为本地文件夹仓库。 */
+  localFolderNotebook?: boolean;
 }
 
 /** 宿主透传给编辑器的设置（替换对 useSettings 的直读）。 */

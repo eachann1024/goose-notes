@@ -11,8 +11,9 @@ export type ListPasteBlockType = (typeof LIST_PASTE_BLOCK_TYPES)[number];
 
 const LIST_PASTE_BLOCK_TYPE_SET = new Set<string>(LIST_PASTE_BLOCK_TYPES);
 
+/** 表格/代码/媒体才走默认 HTML 粘贴。微信表情等 <img> 不能挡住按行拆块。 */
 const NON_TEXT_HTML_BLOCK =
-  /<\s*(img|figure|picture|table|thead|tbody|tr|td|th|pre|video|audio|iframe)\b/i;
+  /<\s*(table|thead|tbody|tr|td|th|pre|video|audio|iframe)\b/i;
 
 const LEADING_LIST_MARK =
   /^(?:\s*(?:[-*+]\s+\[[ xX]\]|\[[ xX]\]|\d+[.)、。]|[-*+]|[•·])\s+)/;
@@ -39,6 +40,66 @@ export function splitPlainTextPasteLines(text: string): string[] | null {
 
 export function htmlHasNonTextPasteBlocks(htmlText: string): boolean {
   return NON_TEXT_HTML_BLOCK.test(htmlText || "");
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&#(\d+);/g, (_, n) => {
+      const code = Number.parseInt(n, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    });
+}
+
+/** 从 HTML 找回被 <br>/<p>/<div> 表达的换行；表情 img 用 alt。 */
+export function htmlToPlainTextForPaste(htmlText: string): string {
+  let s = htmlText || "";
+  s = s.replace(/<!--[\s\S]*?-->/g, "");
+  s = s.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "");
+  s = s.replace(/<\s*(script|style|meta|link)\b[^>]*\/?\s*>/gi, "");
+  s = s.replace(/<img\b[^>]*\balt\s*=\s*(["'])([\s\S]*?)\1[^>]*>/gi, "$2");
+  s = s.replace(/<\s*br\s*\/?\s*>/gi, "\n");
+  s = s.replace(
+    /<\s*\/\s*(p|div|li|h[1-6]|tr|blockquote|section|article|header|footer)\s*>/gi,
+    "\n",
+  );
+  s = s.replace(
+    /<\s*(p|div|li|h[1-6]|tr|blockquote|section|article)\b[^>]*>/gi,
+    "\n",
+  );
+  s = s.replace(/<[^>]+>/g, "");
+  return decodeHtmlEntities(s);
+}
+
+function dropLeadingEmptyLines(lines: string[]): string[] {
+  let start = 0;
+  while (start < lines.length && lines[start] === "") start += 1;
+  return start === 0 ? lines : lines.slice(start);
+}
+
+/**
+ * 优先用 text/plain 的换行；没有换行时从 HTML 的 br/块标签找回。
+ * 微信/网页常把 CJK 换行写在 HTML 里，纯文本或默认 HTML 粘贴都会挤成一段。
+ */
+export function resolvePasteLines(
+  plainText: string,
+  htmlText: string,
+): string[] | null {
+  const fromPlain = splitPlainTextPasteLines(plainText);
+  if (fromPlain && fromPlain.length >= 2) return fromPlain;
+  const fromHtml = splitPlainTextPasteLines(htmlToPlainTextForPaste(htmlText));
+  if (!fromHtml || fromHtml.length < 2) return fromPlain;
+  const trimmed = dropLeadingEmptyLines(fromHtml);
+  return trimmed.length >= 2 ? trimmed : fromPlain;
 }
 
 export function resolveInheritedPasteBlockType(

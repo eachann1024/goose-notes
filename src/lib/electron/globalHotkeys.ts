@@ -7,11 +7,12 @@
 import type { HostHotkeyRegisterResult } from "@/lib/host/types";
 import { getGooseDesktop } from "./runtime";
 
-export type DesktopGlobalHotkeyId = "wake" | "quicknote";
+export type DesktopGlobalHotkeyId = "wake" | "quicknote" | "search";
 
 const current = {
   wake: "",
   quicknote: "",
+  search: "",
 };
 
 let queue: Promise<unknown> = Promise.resolve();
@@ -130,6 +131,11 @@ export async function registerDesktopGlobalHotkey(
     return { ok: false, state: "error", error: "桌面桥不可用" };
   }
   const result = await enqueue(async () => api.registerHotkeys({ ...current }));
-  const ok = id === "wake" ? result.wakeOk : result.quicknoteOk;
+  const ok =
+    id === "wake"
+      ? result.wakeOk
+      : id === "quicknote"
+        ? result.quicknoteOk
+        : result.searchOk;
   return classify(ok);
 }

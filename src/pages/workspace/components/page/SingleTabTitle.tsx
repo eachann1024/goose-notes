@@ -35,7 +35,7 @@ interface SingleTabTitleProps {
 const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 
 const TITLE_IDLE_CLASS =
-  "h-8 rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
+  "inline-flex h-8 items-center rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold leading-8 text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
 
 const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]`;
 
@@ -202,7 +202,7 @@ export function SingleTabTitle({
   if (locked) {
     return (
       <span
-        className={`${sizeClass} h-8 truncate px-2 text-sm font-semibold leading-8 text-foreground`}
+        className={`${sizeClass} inline-flex h-8 items-center truncate px-2 text-sm font-semibold leading-8 text-foreground`}
         title={currentTitle}
       >
         {currentTitle}

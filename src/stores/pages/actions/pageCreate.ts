@@ -26,7 +26,10 @@ import {
   toRelativePath,
   writeLocalPageIdMap,
 } from "@/lib/local-page-idmap";
-import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
+import {
+  mergeLocalPageSettingsIntoFrontmatter,
+  mergeSettingsIntoFrontmatterHeader,
+} from "@/lib/local-frontmatter";
 import { encodeLocalBlockPropsWrappers } from "@/lib/export/markdown/blockPropsMarker";
 import {
   decodeUnsupportedMarkdownForDisk,
@@ -234,11 +237,9 @@ export const createPageAction = (
   flushEditorContent();
 
   const notebook = useNotebooks.getState().notebooks[workspaceId];
-  const icon =
-    useSettings.getState().randomIconOnCreate &&
-    notebook?.source !== "local-folder"
-      ? pickRandomPageIcon()
-      : undefined;
+  const icon = useSettings.getState().randomIconOnCreate
+    ? pickRandomPageIcon()
+    : undefined;
 
   const finalId = get().createPageRecord({
     workspaceId,
@@ -338,6 +339,9 @@ export const createLocalPageRecordAction = async (
     return null;
   }
 
+  const randomIcon =
+    useSettings.getState().randomIconOnCreate ? pickRandomPageIcon() : undefined;
+
   const resolveParentPath = () => {
     if (!parentId) return null;
     const parentPage = get().pages[parentId];
@@ -416,13 +420,14 @@ export const createLocalPageRecordAction = async (
     createdAt: now,
     updatedAt: now,
     order: now,
+    ...(randomIcon ? { icon: randomIcon } : {}),
   };
 
   set((state) => ({
     pages: { ...state.pages, [id]: newPage },
   }));
 
-  syncLocalPageMetadataCache(id, null);
+  syncLocalPageMetadataCache(id, newPage);
   const saved = await get().saveLocalPageContent(
     id,
     cloneLocalPageContent(newPage.content),
@@ -436,6 +441,7 @@ export const createLocalPageRecordAction = async (
     return null;
   }
 
+  persistPageSnapshot(get().pages[id]);
   return id;
 };
 
@@ -512,7 +518,7 @@ export const createLocalFolderRecordAction = async (
     pages: { ...state.pages, [id]: newPage },
   }));
 
-  syncLocalPageMetadataCache(id, null);
+  syncLocalPageMetadataCache(id, newPage);
   return id;
 };
 
@@ -574,21 +580,24 @@ export const duplicatePageAction = async (
       candidatePath = dir ? `${dir}${slash}${candidateName}` : candidateName;
     }
 
+    const copySettings = {
+      fontFamily: sourcePage.fontFamily ?? "default",
+      isLocked: Boolean(sourcePage.isLocked),
+      isPinned: false,
+      isFavorite: false,
+    };
     const copyFmMerge = mergeLocalPageSettingsIntoFrontmatter(
       sourcePage.localFrontmatter,
-      {
-        fontFamily: sourcePage.fontFamily ?? "default",
-        isLocked: Boolean(sourcePage.isLocked),
-        isPinned: false,
-        isFavorite: false,
-      },
+      copySettings,
     );
-    const copyFrontmatterBlob = copyFmMerge.parseFailed
+    let copyFrontmatterBlob = copyFmMerge.parseFailed
       ? sourcePage.localFrontmatter
       : copyFmMerge.blob;
 
     // 异步读取源文件真实内容；读不到（如 Electron 无同步 IPC）则从内存页序列化正文，
     // 避免只写 frontmatter 丢正文。
+    // 若是副份，编辑器首块已是 yaml-frontmatter，把副份设置 merge 进该头，
+    // 不要「抽 body + prepend」，否则同文件会写出两个 --- 头。
     let fileContent = "";
     try {
       let rawMd: string | null = null;
@@ -598,10 +607,16 @@ export const duplicatePageAction = async (
         rawMd = fs.readFile(sourcePath);
       }
       if (rawMd != null) {
-        const { body } = extractFrontmatter(rawMd);
-        fileContent = copyFrontmatterBlob
-          ? `${copyFrontmatterBlob}\n\n${body}`
-          : body;
+        const headerMerge = mergeSettingsIntoFrontmatterHeader(rawMd, copySettings);
+        if (headerMerge) {
+          fileContent = headerMerge.markdown;
+          copyFrontmatterBlob = headerMerge.frontmatter;
+        } else {
+          const { body } = extractFrontmatter(rawMd);
+          fileContent = copyFrontmatterBlob
+            ? `${copyFrontmatterBlob}\n\n${body}`
+            : body;
+        }
       }
     } catch {
       // fallback 到内存序列化
@@ -614,9 +629,15 @@ export const duplicatePageAction = async (
           cloneLocalPageContent(sourcePage.content) as any,
         ),
       );
-      fileContent = copyFrontmatterBlob
-        ? `${copyFrontmatterBlob}\n\n${markdownContent}`
-        : markdownContent;
+      const headerMerge = mergeSettingsIntoFrontmatterHeader(markdownContent, copySettings);
+      if (headerMerge) {
+        fileContent = headerMerge.markdown;
+        copyFrontmatterBlob = headerMerge.frontmatter;
+      } else {
+        fileContent = copyFrontmatterBlob
+          ? `${copyFrontmatterBlob}\n\n${markdownContent}`
+          : markdownContent;
+      }
     }
 
     const diskContent = applyTrailingNewlineStyle(

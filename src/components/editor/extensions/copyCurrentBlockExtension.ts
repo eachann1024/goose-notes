@@ -8,6 +8,14 @@ import {
 
 const PLUGIN_KEY = new PluginKey("goose-copy-current-block");
 
+/**
+ * 「折叠光标整体复制当前块」写入的自定义剪贴板标记。
+ * 粘贴侧（useEditorPaste）读到它即说明 text/html 是块级结构，必须交
+ * BlockNote 默认 HTML 粘贴还原内联格式与块类型，绝不能走「多行拆块/纯文本」逻辑。
+ */
+export const GOOSE_BLOCKNOTE_BLOCK_COPY_MIME =
+  "application/x-goose-blocknote-block";
+
 /** 折叠光标提升为当前 BlockNote blockContainer，已有文本选区则保持原样。 */
 export function getCurrentBlockNodeSelection(
   state: EditorState,
@@ -47,6 +55,7 @@ export const gooseCopyCurrentBlockExtension = createExtension({
             clipboard.clearData();
             clipboard.setData("text/html", dom.innerHTML);
             clipboard.setData("text/plain", text);
+            clipboard.setData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME, "1");
             return true;
           },
         },

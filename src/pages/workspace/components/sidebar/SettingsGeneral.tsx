@@ -78,14 +78,9 @@ export function SettingsGeneral({
 }: SettingsGeneralProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          通用
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          配置应用的通用设置。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        通用
+      </h3>
 
       <SettingsSectionCard title="行为设置">
         <div

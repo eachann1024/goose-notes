@@ -200,7 +200,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setAIReadLocalSkills,
     setAISelectedModelId,
     saveAICustomConfig,
-    setTinyfishApiKey,
     setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
@@ -260,7 +259,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setAIReadLocalSkills: s.setAIReadLocalSkills,
       setAISelectedModelId: s.setAISelectedModelId,
       saveAICustomConfig: s.saveAICustomConfig,
-      setTinyfishApiKey: s.setTinyfishApiKey,
       setUToolsWindowHeight: s.setUToolsWindowHeight,
       privacy: s.privacy,
       setAutoOpenLastNote: s.setAutoOpenLastNote,
@@ -734,6 +732,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         open={open}
         onOpenChange={onOpenChange}
         layout="fullscreen"
+        hideClose
         overlayClassName="bg-transparent backdrop-blur-0"
         contentClassName="border-0 bg-[hsl(var(--goose-shell-bg))]"
         bodyClassName="h-full animate-in fade-in duration-200"
@@ -741,6 +740,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <SettingsScaffold
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          onClose={() => onOpenChange(false)}
           tabs={SETTINGS_TABS}
           feedbackBanner={null}
           appsBanner={
@@ -871,7 +871,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 selectedModelId={ai.selectedModelId}
                 setSelectedModelId={setAISelectedModelId}
                 saveCustomConfig={saveAICustomConfig}
-                setTinyfishApiKey={setTinyfishApiKey}
               />
             </div>
           )}

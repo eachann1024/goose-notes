@@ -91,13 +91,17 @@ declare global {
     openWithApp: (app: string, p: string) => Promise<void>
     openTerminalAtPath: (p: string) => Promise<void>
     writeText: (t: string) => Promise<void>
+    writeImage: (dataUrl: string) => Promise<void>
     readText: () => Promise<string>
+    printHtmlToPdf: (html: string) => Promise<string | null>
     netFetch: (url: string, init?: { method?: string; headers?: Record<string,string>; body?: string }) => Promise<{ status: number; headers: Record<string,string>; body: string }>
     setTitle: (t: string) => Promise<void>
+    syncTitleBarHeight: (height: number) => Promise<void>
     toggleMainWindow: () => Promise<void>
     toggleQuicknote: () => Promise<void>
     hideQuicknote: () => Promise<void>
-    registerHotkeys: (k: { wake: string; quicknote: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean }>
+    registerHotkeys: (k: { wake: string; quicknote: string; search: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
+    onOpenSearch: (cb: () => void) => () => void
     notify: (n: { title: string; body: string }) => Promise<void>
   }
 

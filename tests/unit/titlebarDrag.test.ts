@@ -24,8 +24,15 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   expect(title).toContain("data-electron-no-drag");
   expect(title).toContain("TITLE_SIZE_FILL");
   expect(title).toContain("min-w-full");
+  expect(title).toContain("inline-flex");
+  expect(title).toContain("items-center");
+  expect(title).toContain("leading-8");
   expect(titleBar).toContain("min-w-0 flex-1");
   expect(titleBar).not.toContain("min-w-[12px]");
+  expect(titleBar).not.toContain("h-11");
+  expect(titleBar).toContain("PageIconButton");
+  expect(titleBar).toContain("canCustomizePageIcon");
+  expect(titleBar).toContain("data-electron-no-drag");
 });
 
 test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
@@ -35,6 +42,7 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
   );
   expect(css).toContain("--workspace-sidebar-width");
   expect(css).toContain("--electron-traffic-inset");
+  expect(css).toContain("--electron-titlebar-height");
   expect(css).toContain("padding-left: max(");
 
   const sidebar = readFileSync(

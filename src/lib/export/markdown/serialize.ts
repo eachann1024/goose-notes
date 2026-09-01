@@ -43,7 +43,7 @@ function serializeCodeFenceInfo(
 
 function serializeInlineText(
   text: string,
-  styles: Record<string, any>,
+  styles: Record<string, unknown>,
 ): string {
   const hasUnderline = styles.underline === true;
   const textColor = sanitizeCssColor(styles.textColor);
@@ -282,7 +282,10 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       // 编辑器/新 parse 用 props，极旧存量数据用 attrs
       const codeProps = block.props ?? block.attrs ?? {};
       const lang = (codeProps.language || "").trim();
-      if (lang === "math" || lang === "latex") {
+      if (lang === "yaml-frontmatter") {
+        const trimmed = text.trim();
+        result = trimmed ? `---\n${trimmed}\n---` : "---\n---";
+      } else if (lang === "math" || lang === "latex") {
         result = `$$\n${text}\n$$`;
       } else {
         result = `\`\`\`${serializeCodeFenceInfo(lang, codeProps)}\n${text}\n\`\`\``;

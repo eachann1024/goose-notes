@@ -80,7 +80,9 @@ test("SideMenu 水平锚内容列左缘，垂直对齐标题文字中线", () =>
     new URL("../../src/components/editor/core/EditorSideMenu.tsx", import.meta.url),
     "utf8",
   );
-  expect(source).toContain("referencePos.left - SIDE_MENU_CONTENT_GAP");
+  expect(source).toContain("referencePos.left - sideMenuGap");
+  expect(source).toContain("HEADING_SIDE_MENU_EXTRA_GAP");
+  expect(source).toContain("data-heading-gutter");
   expect(source).not.toContain("textRect.left");
   expect(source).toContain("textRect.top + textRect.height / 2");
   expect(source).toContain('transform: "translate(-100%, -50%)"');
@@ -132,6 +134,8 @@ test("折叠标题整行虚线边框用 data-goose-heading-collapsed 选择器",
   expect(dashedRule![0]).toContain("!important");
   expect(dashedRule![0]).toContain("margin-top: 15px");
   expect(dashedRule![0]).toContain("padding-top: 3px");
+  expect(dashedRule![0]).not.toContain("padding-left");
+  expect(dashedRule![0]).not.toContain("padding-right");
   expect(togglesCss).toContain("--goose-editor-highlight-purple-text");
   expect(togglesCss).not.toMatch(
     /\[data-goose-heading-collapsed="true"\][\s\S]*?border-(left|right)-width:\s*[2-9]/,

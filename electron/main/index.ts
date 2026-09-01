@@ -10,6 +10,7 @@ import {
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
 const DEFAULT_QUICKNOTE = "CmdOrCtrl+Alt+Q";
+const DEFAULT_SEARCH = "CmdOrCtrl+Shift+K";
 
 app.setName("Goose Note");
 
@@ -61,7 +62,11 @@ function startApp(): void {
     installMenu();
     loadVaultRoots();
     createMainWindow();
-    registerHotkeys({ wake: DEFAULT_WAKE, quicknote: DEFAULT_QUICKNOTE });
+    registerHotkeys({
+      wake: DEFAULT_WAKE,
+      quicknote: DEFAULT_QUICKNOTE,
+      search: DEFAULT_SEARCH,
+    });
     if (pendingFocus) {
       pendingFocus = false;
       focusMainWindow();

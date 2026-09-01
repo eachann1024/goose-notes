@@ -71,6 +71,7 @@ export interface SlashMenuItem {
 export interface SlashMenuFeaturePolicy {
   transcodeVideoUploads: boolean;
   openAttachmentsExternally: boolean;
+  localFolderNotebook?: boolean;
 }
 
 export function isSlashMenuDivider(item: SlashMenuItem): boolean {
@@ -405,9 +406,10 @@ export function getBlockNoteSlashMenuItems(
     },
     {
       title: "文件",
-      description: features.openAttachmentsExternally
-        ? "上传附件并直接调用系统默认应用打开"
-        : "上传附件并保存为 Markdown 相对资源",
+      description:
+        features.localFolderNotebook || !features.openAttachmentsExternally
+          ? "上传附件并保存为 Markdown 相对资源"
+          : "上传附件并直接调用系统默认应用打开",
       icon: SLASH_ICONS.file,
       aliases: ["file", "attachment", "pdf", "wenjian", "fujian"],
       onItemClick: () => {

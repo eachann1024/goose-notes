@@ -90,7 +90,8 @@ function SortableNotebookItem({
           dragMoved.current = false;
           return;
         }
-        if (notebook.localPathMissing) return;
+        // 路径失效也允许点击：重新触发存在性检测，若云盘目录恢复（如 iCloud 已物化）
+        // 可自动清除「路径失效」并重新加载页面；若确实已删除则保持失效状态。
         onActivate(notebook.id);
       }}
     >

@@ -137,6 +137,7 @@ html.is-electron.is-win {
 }
 
 html.is-electron .electron-titlebar {
+  height: var(--electron-titlebar-height, 2.75rem);
   -webkit-app-region: drag;
   app-region: drag;
 }
@@ -241,6 +242,13 @@ html[data-sidebar-collapsed] .bn-side-menu {
 
 .workspace-shell .history-primary-control:hover {
   background-color: var(--goose-primary-hover-bg) !important;
+}
+
+/* uTools 旧内核不执行 Tailwind v4 嵌套 hover：侧栏/顶栏换图标入口。 */
+.workspace-shell .goose-page-icon-trigger:hover,
+.workspace-shell .goose-page-icon-trigger[data-state="open"] {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
 }
 
 .workspace-shell .history-primary-control:active {

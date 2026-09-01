@@ -113,7 +113,7 @@ export async function inlineExportMediaAsBase64(
           let blob: Blob | null = null;
           if (src.startsWith("att-file:")) {
             const { fileStorage } = await import("@/lib/fileStorage");
-            blob = await fileStorage.load(src);
+            blob = await fileStorage.load(src, pageLocalFilePath);
           } else {
             const { videoStorage } = await import("@/lib/videoStorage");
             if (videoStorage.canHandle(src)) {
@@ -123,6 +123,36 @@ export async function inlineExportMediaAsBase64(
           if (blob) mutableProps.url = await blobToBase64(blob);
         } catch (e) {
           console.warn("[export] 内联视频失败:", src, e);
+        }
+      }
+    }
+
+    if (block.type === "file" && block.props?.url) {
+      const src: string = block.props.url;
+      const mutableProps = block.props as { url: string };
+
+      if (
+        !src.startsWith("data:") &&
+        !src.startsWith("http://") &&
+        !src.startsWith("https://")
+      ) {
+        try {
+          let blob: Blob | null = null;
+          if (src.startsWith("att-file:")) {
+            const { fileStorage } = await import("@/lib/fileStorage");
+            blob = await fileStorage.load(src, pageLocalFilePath);
+          } else if (isLocalFilePath(src)) {
+            const abs = resolveLocalMediaPath(src, pageLocalFilePath);
+            if (abs) {
+              const { readLocalFileAsBlobAsync } = await import(
+                "@/lib/imageStorage/strategies/file-system"
+              );
+              blob = await readLocalFileAsBlobAsync(abs);
+            }
+          }
+          if (blob) mutableProps.url = await blobToBase64(blob);
+        } catch (e) {
+          console.warn("[export] 内联文件失败:", src, e);
         }
       }
     }

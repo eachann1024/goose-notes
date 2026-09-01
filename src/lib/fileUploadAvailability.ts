@@ -1,3 +1,4 @@
+import { hostRuntime } from "@/lib/host";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 
@@ -15,11 +16,20 @@ export function getFileUploadAvailability(): {
   enabled: boolean;
   reason?: string;
 } {
+  const { activePageId, pages } = usePages.getState();
+  const activePage = activePageId ? pages[activePageId] : null;
+
   if (resolveCurrentNotebookSource() === "local-folder") {
-    return {
-      enabled: false,
-      reason: "本地文件夹记事本暂不支持附件上传",
-    };
+    if (!activePage?.localFilePath) {
+      return {
+        enabled: false,
+        reason:
+          hostRuntime.kind === "electron"
+            ? "请先打开文件夹仓库，再插入附件"
+            : "请先打开本地文件页面，再插入附件",
+      };
+    }
+    return { enabled: true };
   }
 
   return { enabled: true };

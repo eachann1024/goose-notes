@@ -14,6 +14,8 @@ import {
 import {
   isLocalPageFrontmatterSettingsUpdate,
   mergeLocalPageSettingsIntoFrontmatter,
+  applyFrontmatterBodyToContent,
+  getContentFrontmatterBody,
 } from "@/lib/local-frontmatter";
 import { queueLocalPageSave } from "./folderSync";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
@@ -27,7 +29,6 @@ import { toast } from "@/components/ui/sonner";
 export { flushEditorContent } from "./actions/flushEditor";
 export { clearLocalPageMetadataCache } from "./clearCache";
 
-import { flushEditorContent } from "./actions/flushEditor";
 import { hydrateFromStorageAction } from "./actions/hydrate";
 import {
   createOnboardingPagesAction,
@@ -178,20 +179,34 @@ export const usePages = create<PagesState>()((set, get) => ({
 
       // 本地页：字体/锁定/置顶/收藏 merge 进 frontmatter blob（解析失败保留原文，避免破坏手写 YAML）
       if (shouldMergeFrontmatterSettings) {
-        const mergeResult = mergeLocalPageSettingsIntoFrontmatter(
-          updatedPage.localFrontmatter,
-          {
-            fontFamily: updatedPage.fontFamily ?? "default",
-            isLocked: Boolean(updatedPage.isLocked),
-            isPinned: Boolean(updatedPage.isPinned),
-            isFavorite: Boolean(updatedPage.isFavorite),
-          },
-        );
+        // 以编辑器当前首块 YAML 为基准（用户可能在编辑器里改过 name/description），
+        // 而不是用过期的 localFrontmatter 覆盖手写内容。
+        const contentYamlBody = getContentFrontmatterBody(updatedPage.content);
+        const baseBlob = contentYamlBody
+          ? `---\n${contentYamlBody}\n---`
+          : updatedPage.localFrontmatter;
+        const mergeResult = mergeLocalPageSettingsIntoFrontmatter(baseBlob, {
+          fontFamily: updatedPage.fontFamily ?? "default",
+          isLocked: Boolean(updatedPage.isLocked),
+          isPinned: Boolean(updatedPage.isPinned),
+          isFavorite: Boolean(updatedPage.isFavorite),
+        });
         if (!mergeResult.parseFailed) {
           updatedPage = {
             ...updatedPage,
             localFrontmatter: mergeResult.blob,
           };
+          // 把 merge 后的内容同步进编辑器首块，否则设置面板改了字体/锁定，
+          // 编辑器看到的还是旧 YAML。blob 为空时不动首块（无 goose 键需写）。
+          if (mergeResult.blob !== undefined) {
+            const yamlBody = mergeResult.blob
+              .replace(/^---\r?\n/, "")
+              .replace(/\r?\n---$/, "");
+            updatedPage = {
+              ...updatedPage,
+              content: applyFrontmatterBodyToContent(updatedPage.content, yamlBody),
+            };
+          }
         } else if (mergeResult.error) {
           console.warn(
             "[local-frontmatter] 无法安全写入设置，已保留原 frontmatter：",

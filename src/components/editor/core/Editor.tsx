@@ -77,7 +77,6 @@ import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBeh
 import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
-import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/calloutKeyboardExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
 import { gooseMediaBlockEnterExtension } from "@/components/editor/extensions/mediaBlockEnterExtension";
 import { gooseEmptyNestedListEnterExtension } from "@/components/editor/extensions/emptyNestedListEnterExtension";
@@ -339,7 +338,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
         gooseCodeBlockLinkStripExtension,
-        gooseCalloutKeyboardExtension,
         gooseFirstTitleEnterExtension,
         gooseMediaBlockEnterExtension,
         gooseEmptyNestedListEnterExtension,

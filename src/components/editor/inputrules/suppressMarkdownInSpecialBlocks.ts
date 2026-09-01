@@ -21,8 +21,8 @@ import type { EditorView } from "@tiptap/pm/view";
  *   自己把文本插进去并 `return true`，从而抢在 BlockNote input rule 之前消费输入，
  *   阻止其转换；不命中则 `return false` 放行。
  * - `handleKeyDown` 的 Enter：换行触发。命中同样条件时 `return true` 吞掉这次 Enter
- *   对 input rule 的喂入（换行本身在特殊块内已由 codeBlock/callout 的 keyboard
- *   extension 处理）。
+ *   对 input rule 的喂入（特殊块内的回车默认走 BlockNote 的 shift+enter 重分支，
+ *   即 Enter 拆出 paragraph / 复用 codeBlock 的 keyboard extension）。
  *
  * 之所以不复用 BlockNote 的 `inputRules` 扩展点：那条链统一受其内部「当前块
  * content 必须为 inline」等约束，且无法表达「消费但不转换」；而特殊块恰好都是
@@ -59,7 +59,6 @@ const MARKDOWN_PREFIX =
 
 /**
  * 从 ProseMirror selection 向上找最近的 blockContainer，返回其内容块类型名。
- * 与 calloutKeyboardExtension 中的遍历方式一致。
  */
 function getCurrentBlockTypeName(state: EditorState): string | null {
   const $from = state.selection.$from;

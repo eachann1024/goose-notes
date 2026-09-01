@@ -74,7 +74,9 @@ export function EditorHostBridge({
   const customActions = useSettings((s) => s.customActions);
 
   const settings = useMemo<EditorSettings>(
-    () => ({
+    () => {
+      const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+      return {
       theme,
       editorFontSize,
       customFonts,
@@ -92,6 +94,7 @@ export function EditorHostBridge({
         // Electron 无 FFmpeg：视频原文件保存，slash 文案走「保存为相对资源」。
         transcodeVideoUploads: __HOST_TARGET__ !== "electron",
         openAttachmentsExternally: true,
+        localFolderNotebook: notebook?.source === "local-folder",
       },
       // Electron 无 uTools redirect 生态：不传 redirectAction，右键「快捷动作」整块不渲染。
       redirectAction:
@@ -100,7 +103,8 @@ export function EditorHostBridge({
           : (label, payload) => {
               UToolsAdapter.redirect(label as string | [string, string], payload);
             },
-    }),
+    };
+    },
     [
       theme,
       editorFontSize,
@@ -111,6 +115,7 @@ export function EditorHostBridge({
       searchProviders,
       utools,
       customActions,
+      page.workspaceId,
     ],
   );
 

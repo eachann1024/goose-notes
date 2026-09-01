@@ -16,6 +16,7 @@ import {
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
 import {
   isImeKeyboardEvent,
   shouldSkipAppHotkeyEvent,
@@ -283,6 +284,35 @@ export function useAppHotkeys() {
               { duration: 1500 },
             );
           })();
+        },
+      },
+      {
+        id: "move-local-folder-item",
+        match: (event) => matchShortcut(event, "Mod+Shift+M"),
+        when: () => {
+          const { activeNotebookId, notebooks } = useNotebooks.getState();
+          if (!activeNotebookId) return false;
+          if (notebooks[activeNotebookId]?.source !== "local-folder") {
+            return false;
+          }
+          const pages = usePages.getState().pages;
+          const selectedId =
+            useSidebarView.getState().selectedByNotebook[activeNotebookId];
+          const pageId = selectedId ?? usePages.getState().activePageId;
+          const page = pageId ? pages[pageId] : undefined;
+          return Boolean(page?.localFilePath && !page.trashedAt);
+        },
+        handler: (event) => {
+          event.preventDefault();
+          const { activeNotebookId } = useNotebooks.getState();
+          if (!activeNotebookId) return;
+          const selectedId =
+            useSidebarView.getState().selectedByNotebook[activeNotebookId];
+          const pageId = selectedId ?? usePages.getState().activePageId;
+          if (!pageId) return;
+          useLocalFolderTargetPicker
+            .getState()
+            .openMovePicker(activeNotebookId, pageId);
         },
       },
       // toggle theme (Mod+Shift+L)

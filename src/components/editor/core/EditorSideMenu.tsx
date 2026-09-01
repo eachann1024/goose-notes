@@ -23,6 +23,7 @@ import {
 } from "@/components/editor/core/toggleHeadingGutter";
 import { getSectionInsertAnchorId } from "@/components/editor/core/headingSectionFold";
 import {
+  HEADING_SIDE_MENU_EXTRA_GAP,
   SIDE_MENU_CONTENT_GAP,
   isEditorSideMenuHoverTarget,
 } from "@/components/editor/core/sideMenuHover";
@@ -173,7 +174,10 @@ export function EditorSideMenu() {
   const top = textRect
     ? textRect.top + textRect.height / 2
     : referencePos.top + referencePos.height / 2;
-  const anchorLeft = referencePos.left - SIDE_MENU_CONTENT_GAP;
+  const onHeading = block.type === "heading";
+  const sideMenuGap =
+    SIDE_MENU_CONTENT_GAP + (onHeading ? HEADING_SIDE_MENU_EXTRA_GAP : 0);
+  const anchorLeft = referencePos.left - sideMenuGap;
   const portalTarget = editor.portalElement ?? document.body;
   return createPortal(
     <div
@@ -182,6 +186,7 @@ export function EditorSideMenu() {
         "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
         "[body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none",
       )}
+      data-heading-gutter={onHeading ? "true" : undefined}
       style={{
         top,
         left: anchorLeft,

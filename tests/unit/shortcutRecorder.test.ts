@@ -80,6 +80,7 @@ test("configured shortcut conflicts include fixed shortcuts", () => {
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Z"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+Z"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Y"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+M"));
 });
 
 test("Windows reserves editor and save shortcuts without blocking unrelated shortcuts", () => {
@@ -167,6 +168,7 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
   const desktopHotkeys = {
     wakeHotkey: "CmdOrCtrl+Alt+N",
     quicknoteHotkey: "CmdOrCtrl+Alt+Q",
+    searchHotkey: "CmdOrCtrl+Shift+K",
   };
   const configured = getAllConfiguredShortcuts(
     {},
@@ -183,6 +185,9 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
   expect(configured).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
   );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Shift+K", isMac),
+  );
 
   const excludingWake = getAllConfiguredShortcuts(
     {},
@@ -198,5 +203,8 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
   );
   expect(excludingWake).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
+  );
+  expect(excludingWake).toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+Shift+K", isMac),
   );
 });

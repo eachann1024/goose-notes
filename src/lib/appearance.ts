@@ -2,6 +2,7 @@ import {
   EDITOR_FONT_SIZE_DEFAULT,
   type UIFontSize,
 } from "@/stores/settings/types";
+import { titleBarHeightPx } from "@/lib/electron/titlebarLayout";
 
 export const UI_FONT_SIZE_MAP: Record<UIFontSize, number> = {
   small: 14,
@@ -66,6 +67,11 @@ export function applyAppearanceScaleVariables(options: {
     (options.editorFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),
   );
   applyEditorUiScale(root, computeEditorUiScale(options.editorFontSize));
+  const titleBarHeight = titleBarHeightPx(targetUiSize);
+  root.style.setProperty("--electron-titlebar-height", `${titleBarHeight}px`);
+  if (typeof window !== "undefined") {
+    void window.gooseDesktop?.syncTitleBarHeight?.(titleBarHeight);
+  }
 }
 
 /** 首帧稳定前的标记：存在期间禁用全局过渡，避免内部动画从默认值追赶到恢复值。 */

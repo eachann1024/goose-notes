@@ -1,5 +1,7 @@
 export function normalizeClipboardLineEndings(value: string): string {
-  return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/[\r\u2028\u2029\u0085]/g, "\n");
 }
 
 export function looksLikeMarkdownFragment(text: string): boolean {

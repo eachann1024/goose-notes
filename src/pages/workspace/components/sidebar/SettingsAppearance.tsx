@@ -254,14 +254,9 @@ export function SettingsAppearance({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          外观
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          自定义界面的外观和感觉。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        外观
+      </h3>
 
       <SettingsSectionCard
         title="主题设置"
@@ -505,7 +500,7 @@ export function SettingsAppearance({
               </Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              新建内部笔记时自动选一个图标。本地文件夹里的文件不受影响。
+              新建笔记时自动选一个图标。本地文件同样生效，文件夹不受影响。
             </p>
           </div>
           <Switch

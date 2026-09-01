@@ -22,6 +22,7 @@ import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { PageMenu } from "./PageMenu";
 import { PageIconButton } from "./PageIconButton";
+import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { SingleTabTitle } from "./SingleTabTitle";
 
@@ -247,11 +248,14 @@ export function PageHeader({
   const getPage = usePages((s) => s.getPage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const notebooks = useNotebooks((state) => state.notebooks);
-  // 本地文件夹页没有 page.icon 元数据；仅 uTools 内置库页在顶栏放紧凑图标入口
-  const showPageIcon =
-    Boolean(page) &&
-    !page?.localFilePath &&
-    notebooks[page?.workspaceId ?? ""]?.source !== "local-folder";
+  // 本地仓库目录不能换图标；文件与内置笔记本页都可以，图标走 gn:local-meta 持久化
+  const showPageIcon = Boolean(
+    page &&
+      canCustomizePageIcon(
+        page,
+        notebooks[page.workspaceId]?.source === "local-folder",
+      ),
+  );
   const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
   const isTabDirty = (tabPageId: string) =>
     Boolean(dirtyLocalPageIds?.[tabPageId]);

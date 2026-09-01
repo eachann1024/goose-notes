@@ -91,7 +91,8 @@ html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span
 }
 
 /* 折叠标题整行虚线边框：
-   - 用 outline 不占地，避免顶破 block-background.css 的 width/margin 补偿；
+   - 用 outline 不占地；左右 8px 外扩在 block-background.css 对所有标题
+     统一做，折叠只加虚线，文字起点不跳。
    - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
    - BlockNote 标题默认 padding-top:18px 制造块间距，outline 会把这段空白
      一起框进去；折叠态把 15px 挪到透明 margin-top，虚线只贴文字行。

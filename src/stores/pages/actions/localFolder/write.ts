@@ -4,7 +4,10 @@ import {
   extractFrontmatter,
   decodeUnsupportedMarkdownForDisk,
 } from "@/lib/markdown-raw-guard";
-import { mergeLocalPageSettingsIntoFrontmatter } from "@/lib/local-frontmatter";
+import {
+  mergeLocalPageSettingsIntoFrontmatter,
+  mergeSettingsIntoFrontmatterHeader,
+} from "@/lib/local-frontmatter";
 import { encodeLocalBlockPropsWrappers } from "@/lib/export/markdown/blockPropsMarker";
 import { isLocalFolderPage } from "../../persistence";
 import {
@@ -360,11 +363,12 @@ const saveLocalPageContentUnlocked = async (
     encodeLocalBlockPropsWrappers(processedContent as any),
   );
 
-  // scanner 抽出 frontmatter 后不入编辑器，保存时 prepend 回去。
   // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked / goose-pinned / goose-favorite），
   // 解析失败则原样保留 blob，避免破坏用户手写 YAML。
-  const frontmatterMerge = mergeLocalPageSettingsIntoFrontmatter(
-    page.localFrontmatter,
+  // 编辑器首块已是 yaml-frontmatter 时，直接把设置 merge 进该块（否则同文件会写出两个 --- 头）；
+  // 只有没有首块 YAML、或 merge 失败时，才回退旧「prepend 独立 blob」路径。
+  const frontmatterHeaderMerge = mergeSettingsIntoFrontmatterHeader(
+    markdownContent,
     {
       fontFamily: page.fontFamily ?? "default",
       isLocked: Boolean(page.isLocked),
@@ -372,12 +376,28 @@ const saveLocalPageContentUnlocked = async (
       isFavorite: Boolean(page.isFavorite),
     },
   );
-  const frontmatterBlob = frontmatterMerge.parseFailed
-    ? page.localFrontmatter
-    : frontmatterMerge.blob;
-  const finalContent = frontmatterBlob
-    ? `${frontmatterBlob}\n\n${markdownContent}`
-    : markdownContent;
+  let frontmatterBlob: string | undefined;
+  let finalContent: string;
+  if (frontmatterHeaderMerge) {
+    finalContent = frontmatterHeaderMerge.markdown;
+    frontmatterBlob = frontmatterHeaderMerge.frontmatter;
+  } else {
+    const frontmatterMerge = mergeLocalPageSettingsIntoFrontmatter(
+      page.localFrontmatter,
+      {
+        fontFamily: page.fontFamily ?? "default",
+        isLocked: Boolean(page.isLocked),
+        isPinned: Boolean(page.isPinned),
+        isFavorite: Boolean(page.isFavorite),
+      },
+    );
+    frontmatterBlob = frontmatterMerge.parseFailed
+      ? page.localFrontmatter
+      : frontmatterMerge.blob;
+    finalContent = frontmatterBlob
+      ? `${frontmatterBlob}\n\n${markdownContent}`
+      : markdownContent;
+  }
 
   if (!markdownContent.trim()) {
     let exists = false;
@@ -467,10 +487,8 @@ const saveLocalPageContentUnlocked = async (
 
   if (result) {
     // 落盘成功即清除脏标记（自动保存与显式保存共用此路径）。
-    // merge 成功时同步 store 中的 localFrontmatter，与磁盘一致。
-    const nextFrontmatter = !frontmatterMerge.parseFailed
-      ? frontmatterBlob
-      : page.localFrontmatter;
+    // 若合并成功，以落盘的头为磁盘一致的 localFrontmatter；merge 失败回退原 blob。
+    const nextFrontmatter = frontmatterBlob ?? page.localFrontmatter;
     set((s) => {
       const current = s.pages[pageId];
       if (!current) {

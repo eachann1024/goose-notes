@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
+import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
 
 const _platform = navigator.platform || navigator.userAgent;
 const _isMac = /Mac/i.test(_platform);
@@ -203,7 +204,9 @@ export function SidebarContextMenu({
             const showMoveTop = hasParent && !isTrashed && !isLocalFolder;
             const showMoveNotebook =
               !isTrashed && !isLocalFolder && movableNotebooks.length > 0;
-            const showMove = showMoveTop || showMoveNotebook;
+            const showMoveLocal =
+              isLocalFolder && !isTrashed && !!page.localFilePath;
+            const showMove = showMoveTop || showMoveNotebook || showMoveLocal;
             const showCopy = showLocalOpen;
 
             const sections: ReactNode[] = [];
@@ -373,6 +376,23 @@ export function SidebarContextMenu({
                         </ContextMenuSubContent>
                       </ContextMenuPortal>
                     </ContextMenuSub>
+                  ) : null}
+                  {showMoveLocal ? (
+                    <ContextMenuItem
+                      onSelect={() =>
+                        scheduleAfterMenuClose(() =>
+                          useLocalFolderTargetPicker
+                            .getState()
+                            .openMovePicker(page.workspaceId, page.id),
+                        )
+                      }
+                    >
+                      <LucideIcons.FolderInput className="h-4 w-4" />
+                      <span>移动到…</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {formatShortcut("Mod+Shift+M")}
+                      </span>
+                    </ContextMenuItem>
                   ) : null}
                 </ContextMenuGroup>,
               );

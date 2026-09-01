@@ -77,8 +77,8 @@ bun run win
 
 构建完成后，最终产物会自动收集到顶层 `dist-desktop/`：
 
-- `dist-desktop/mac/arm64/Goose Note.app`（Apple Silicon）
-- `dist-desktop/win/` 的 NSIS 安装包
+- `dist-desktop/Goose Note.app`（Apple Silicon）
+- `dist-desktop/` 下的 NSIS 安装包（`.exe`）
 
 源码构建中间产物在 `dist-electron/packaged/` 下。macOS 主窗 hiddenInset + traffic lights；Windows 使用系统原生边框（无 overlay）。
 

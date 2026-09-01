@@ -13,6 +13,7 @@ import { PageHeader } from "./components/page/PageHeader";
 import { DesktopTitleBar } from "./components/page/DesktopTitleBar";
 import { useDesktopWindowTitleSync } from "@/hooks/useDesktopWindowTitle";
 import { CommandPalette } from "./components/command/CommandPalette";
+import { LocalFolderTargetPicker } from "./components/sidebar/LocalFolderTargetPicker";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
 import { locateAndHighlight } from "@/components/editor/find/searchHighlightLocate";
@@ -146,6 +147,14 @@ export function WorkspaceLayout({
   const inHistoryMode =
     !!historyActivePageId && historyActivePageId === activePageId;
 
+  const activeNotebook = activeNotebookId
+    ? notebooks[activeNotebookId]
+    : undefined;
+  const isLocalFolderRepo = activeNotebook?.source === "local-folder";
+  const showElectronLocalImportHint =
+    __HOST_TARGET__ === "electron" &&
+    isLocalFolderRepo &&
+    dragIntent === "text-file";
   const page = activePageId ? getPage(activePageId) : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
   // Electron：订阅 activePage 标题，防抖同步系统窗口 title（uTools 构建内部 no-op）。
@@ -329,7 +338,9 @@ export function WorkspaceLayout({
                 {dragIntent === "folder"
                   ? "松手打开文件夹"
                   : dragIntent === "text-file"
-                    ? "松手导入文本文件"
+                    ? showElectronLocalImportHint
+                      ? "松开以导入到当前文件夹 · 按住 ⌥ 选择位置"
+                      : "松手导入文本文件"
                     : "松手后检查文件"}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -341,6 +352,7 @@ export function WorkspaceLayout({
           </div>
         )}
         <CommandPalette />
+        <LocalFolderTargetPicker />
         <AIFeatureNotice />
         <div className="workspace-stage">
           <Sidebar

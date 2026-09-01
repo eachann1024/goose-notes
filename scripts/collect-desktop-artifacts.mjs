@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// 把桌面端最终产物收集到顶层 dist-desktop/：
-//   dist-desktop/mac/arm64/Goose Note.app
-//   dist-desktop/win/*.exe
+// 把桌面端最终产物收集到顶层 dist-desktop/（不再套 mac/arm64、win、linux 子目录）：
+//   dist-desktop/Goose Note.app
+//   dist-desktop/*.exe
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,16 +33,15 @@ function collectMac() {
 
   if (found.length === 0) return false;
 
-  const dest = join(outRoot, "mac");
-  rmSync(dest, { recursive: true, force: true });
-  mkdirSync(dest, { recursive: true });
+  mkdirSync(outRoot, { recursive: true });
+  rmSync(join(outRoot, "mac"), { recursive: true, force: true });
   for (const entry of found) {
-    const archDest = join(dest, entry.destDir);
-    mkdirSync(archDest, { recursive: true });
     for (const app of entry.apps) {
-      cpSync(join(entry.src, app), join(archDest, app), { recursive: true, verbatimSymlinks: true });
+      const dest = join(outRoot, app);
+      rmSync(dest, { recursive: true, force: true });
+      cpSync(join(entry.src, app), dest, { recursive: true, verbatimSymlinks: true });
     }
-    console.log(`  mac ${entry.label} → dist-desktop/mac/${entry.destDir}/${entry.apps.join(", ")}`);
+    console.log(`  mac ${entry.label} → dist-desktop/${entry.apps.join(", ")}`);
   }
   return true;
 }
@@ -65,14 +64,13 @@ function collectWin() {
     }
   }
   if (exes.length === 0) return false;
-  const dest = join(outRoot, "win");
-  rmSync(dest, { recursive: true, force: true });
-  mkdirSync(dest, { recursive: true });
+  mkdirSync(outRoot, { recursive: true });
+  rmSync(join(outRoot, "win"), { recursive: true, force: true });
   for (const exe of exes) {
     const base = exe.split(/[/\\]/).pop();
-    cpSync(exe, join(dest, base));
+    cpSync(exe, join(outRoot, base));
   }
-  console.log(`  win → dist-desktop/win/${exes.map((p) => p.split(/[/\\]/).pop()).join(", ")}`);
+  console.log(`  win → dist-desktop/${exes.map((p) => p.split(/[/\\]/).pop()).join(", ")}`);
   return true;
 }
 
@@ -94,14 +92,13 @@ function collectLinux() {
     }
   }
   if (artifacts.length === 0) return false;
-  const dest = join(outRoot, "linux");
-  rmSync(dest, { recursive: true, force: true });
-  mkdirSync(dest, { recursive: true });
+  mkdirSync(outRoot, { recursive: true });
+  rmSync(join(outRoot, "linux"), { recursive: true, force: true });
   for (const art of artifacts) {
     const base = art.split(/[/\\]/).pop();
-    cpSync(art, join(dest, base));
+    cpSync(art, join(outRoot, base));
   }
-  console.log(`  linux → dist-desktop/linux/${artifacts.map((p) => p.split(/[/\\]/).pop()).join(", ")}`);
+  console.log(`  linux → dist-desktop/${artifacts.map((p) => p.split(/[/\\]/).pop()).join(", ")}`);
   return true;
 }
 

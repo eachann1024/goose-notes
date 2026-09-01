@@ -115,6 +115,42 @@ export function findPosOnVisualLine(
   return null;
 }
 
+/** 行高留白 / 折行缝里取离 `clientY` 最近的视觉行。 */
+function findNearestPosOnVisualLine(
+  coordsAtPos: (pos: number) => CaretCoords,
+  start: number,
+  end: number,
+  clientY: number,
+): number | null {
+  const exact = findPosOnVisualLine(coordsAtPos, start, end, clientY);
+  if (exact != null) return exact;
+
+  let lo = start;
+  let hi = end;
+  let best: number | null = null;
+  let bestDist = Infinity;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    let coords: CaretCoords;
+    try {
+      coords = coordsAtPos(mid);
+    } catch {
+      return best;
+    }
+    let dist = 0;
+    if (clientY < coords.top) dist = coords.top - clientY;
+    else if (clientY > coords.bottom) dist = clientY - coords.bottom;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = mid;
+    }
+    if (clientY < coords.top) hi = mid - 1;
+    else if (clientY > coords.bottom) lo = mid + 1;
+    else return mid;
+  }
+  return best;
+}
+
 export type BlockHitRect = { top: number; bottom: number };
 
 /**
@@ -203,10 +239,27 @@ export function resolveBlockEmptyClickPos(args: {
     if (clientY < first.top) {
       return extendToVisualLineEnd(coordsAtPos, start, end);
     }
+    const last = coordsAtPos(end);
+    if (clientY > last.bottom) {
+      return end;
+    }
   } catch {
-    return end;
+    return null;
   }
-  return end;
+
+  // 文字垂直范围内但没贴到 caret 带：行高留白 / 折行缝。
+  // 按最近视觉行处理，不要当成块间空隙拽到段尾。
+  const nearest = findNearestPosOnVisualLine(coordsAtPos, start, end, clientY);
+  if (nearest == null) return null;
+  try {
+    const coords = coordsAtPos(nearest);
+    return resolveLineEndIfClickPastText({
+      ...args,
+      clientY: (coords.top + coords.bottom) / 2,
+    });
+  } catch {
+    return null;
+  }
 }
 
 function textblockRangeAt(

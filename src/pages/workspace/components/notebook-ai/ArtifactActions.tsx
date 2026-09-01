@@ -16,6 +16,7 @@ import {
   previewPointerHandlers,
   type PreviewContent,
 } from "@/lib/preview/previewAction";
+import { getEditorPlatform } from "@/components/editor/platform/context";
 import { shell } from "@/lib/utools/shell";
 import type { ArtifactInsertResult } from "./insertArtifact";
 
@@ -75,19 +76,7 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 async function copyImagePayload(payload: string | Blob) {
   const dataUrl =
     typeof payload === "string" ? payload : await blobToDataUrl(payload);
-  shell.copyImage(dataUrl);
-  // 非 uTools 环境兜底：Web Clipboard API
-  if (typeof navigator !== "undefined" && navigator.clipboard && typeof ClipboardItem !== "undefined") {
-    try {
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type || "image/png"]: blob }),
-      ]);
-    } catch {
-      // uTools 已写入时忽略浏览器失败
-    }
-  }
+  await getEditorPlatform().clipboard.copyImage(dataUrl);
   toast.success("已复制到剪贴板");
 }
 

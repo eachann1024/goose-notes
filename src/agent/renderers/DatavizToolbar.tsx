@@ -10,7 +10,7 @@ import {
   previewPointerHandlers,
   type PreviewContent,
 } from "@/lib/preview/previewAction";
-import { shell } from "@/lib/utools/shell";
+import { getEditorPlatform } from "@/components/editor/platform/context";
 import { dialogs } from "@/lib/utools/dialogs";
 import { fs } from "@/lib/utools/fs";
 
@@ -67,7 +67,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       setCopyLoading(true);
       try {
         const dataUrl = await capture();
-        shell.copyImage(dataUrl);
+        await getEditorPlatform().clipboard.copyImage(dataUrl);
         toast.success("已复制到剪贴板");
       } catch (err) {
         toast.error(

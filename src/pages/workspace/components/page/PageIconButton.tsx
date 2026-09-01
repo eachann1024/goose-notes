@@ -12,7 +12,7 @@ interface PageIconButtonProps {
 /**
  * 页面图标入口（顶栏紧凑版）。
  * 原先 Notion 式大图标在正文上方会永久占一行空白；单标签把标题提到顶栏后更浪费。
- * 本地文件夹页不支持 page.icon 元数据，调用方应自行不渲染。
+ * 本地仓库的目录不支持换图标，调用方应自行不渲染。
  */
 export function PageIconButton({ page, className }: PageIconButtonProps) {
   const updatePage = usePages((s) => s.updatePage);
@@ -37,7 +37,7 @@ export function PageIconButton({ page, className }: PageIconButtonProps) {
         "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] transition-colors",
         disabled
           ? "cursor-not-allowed opacity-40"
-          : "text-muted-foreground/75 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
+          : "goose-page-icon-trigger text-muted-foreground/75 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         iconName && "text-foreground/85",
         className,
       )}

@@ -101,6 +101,18 @@
   border-radius: 4px;
 }
 
+/* 标题不论折叠都左右外扩 8px，再用等量 padding 把文字放回原基线：
+   折叠虚线框不贴字，展开/收起文字起点一致。写在背景条规则之后，
+   有背景的标题也统一成 8px，避免折叠态和色带各用一套补偿。 */
+.bn-block-content[data-content-type="heading"] {
+  box-sizing: border-box;
+  width: calc(100% + 16px);
+  margin-left: -8px;
+  margin-right: -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 /* BlockNote 标题默认用 18px padding-top 制造块间距。
    有背景时把其中 15px 移到透明 margin，保留原总高度但不形成厚重色带。 */
 .bn-block-content[data-content-type="heading"][data-background-color] {

@@ -8,6 +8,7 @@ import {
   DEFAULT_APP_SHORTCUTS,
   DEFAULT_WAKE_HOTKEY,
   DEFAULT_QUICKNOTE_HOTKEY,
+  DEFAULT_SEARCH_HOTKEY,
   useSettings,
 } from "@/stores/useSettings"
 import type { DesktopHotkeyStatus } from "@/stores/settings/types"
@@ -63,6 +64,7 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
   "Mod+Z",
   "Mod+Shift+Z",
   "Mod+Y",
+  "Mod+Shift+M",
 ]
 
 /** 仅多标签模式生效的固定快捷键。 */
@@ -115,7 +117,11 @@ export function getAllConfiguredShortcuts(
   excludeId: string,
   isMac = isMacPlatform(),
   singleTabMode = false,
-  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
+  desktopHotkeys?: {
+    wakeHotkey?: string
+    quicknoteHotkey?: string
+    searchHotkey?: string
+  },
 ): string[] {
   const fixedValues = singleTabMode
     ? ALWAYS_FIXED_SHORTCUT_VALUES
@@ -145,6 +151,11 @@ export function getAllConfiguredShortcuts(
       normalizeShortcutForConflict(desktopHotkeys.quicknoteHotkey, isMac),
     )
   }
+  if (excludeId !== "search-hotkey" && desktopHotkeys?.searchHotkey) {
+    shortcuts.push(
+      normalizeShortcutForConflict(desktopHotkeys.searchHotkey, isMac),
+    )
+  }
   return shortcuts
 }
 
@@ -155,7 +166,11 @@ function makeAppShortcutSetter(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   singleTabMode: boolean,
-  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
+  desktopHotkeys?: {
+    wakeHotkey?: string
+    quicknoteHotkey?: string
+    searchHotkey?: string
+  },
 ) {
   return (shortcut: string) => {
     if (shortcut) {
@@ -186,7 +201,11 @@ function makeCloseSetter(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   singleTabMode: boolean,
-  desktopHotkeys?: { wakeHotkey?: string; quicknoteHotkey?: string },
+  desktopHotkeys?: {
+    wakeHotkey?: string
+    quicknoteHotkey?: string
+    searchHotkey?: string
+  },
 ) {
   return (shortcut: string) => {
     if (shortcut) {
@@ -232,6 +251,7 @@ const FIXED_SHORTCUTS = [
   { label: "行内代码", shortcut: "Mod+E" },
   { label: "链接", shortcut: "Mod+K" },
   { label: "删除线", shortcut: "Mod+Shift+S" },
+  { label: "移动本地文件/文件夹", shortcut: "Mod+Shift+M" },
   { label: "全选", shortcut: "Mod+A" },
   { label: "撤销", shortcut: "Mod+Z" },
   { label: "重做", shortcut: "Mod+Shift+Z" },
@@ -308,9 +328,11 @@ function DesktopGlobalHotkeysCard({
   const setQuicknoteHotkeyEnabled = useSettings(
     (s) => s.setQuicknoteHotkeyEnabled,
   )
+  const setSearchHotkey = useSettings((s) => s.setSearchHotkey)
+  const setSearchHotkeyEnabled = useSettings((s) => s.setSearchHotkeyEnabled)
 
   const makeDesktopSetter = (
-    excludeId: "wake-hotkey" | "quicknote-hotkey",
+    excludeId: "wake-hotkey" | "quicknote-hotkey" | "search-hotkey",
     setHotkey: (shortcut: string) => void,
     setEnabled: (enabled: boolean) => void,
   ) =>
@@ -331,6 +353,7 @@ function DesktopGlobalHotkeysCard({
         {
           wakeHotkey: desktop.wakeHotkey,
           quicknoteHotkey: desktop.quicknoteHotkey,
+          searchHotkey: desktop.searchHotkey,
         },
       )
       if (existing.includes(normalizeShortcutForConflict(shortcut))) {
@@ -345,6 +368,7 @@ function DesktopGlobalHotkeysCard({
 
   const wakeStatus = desktopHotkeyStatusText(desktop.wakeHotkeyStatus)
   const quicknoteStatus = desktopHotkeyStatusText(desktop.quicknoteHotkeyStatus)
+  const searchStatus = desktopHotkeyStatusText(desktop.searchHotkeyStatus)
 
   return (
     <SettingsSectionCard title="桌面全局快捷键">
@@ -391,6 +415,27 @@ function DesktopGlobalHotkeysCard({
           </p>
         )}
       </div>
+      <div className="mt-2">
+        <ShortcutField
+          id="search-hotkey"
+          title="唤出搜索面板"
+          description="全局聚焦主窗口并打开搜索面板（不隐藏主窗口）。"
+          value={desktop.searchHotkeyEnabled ? desktop.searchHotkey : ""}
+          onChange={makeDesktopSetter(
+            "search-hotkey",
+            setSearchHotkey,
+            setSearchHotkeyEnabled,
+          )}
+          resetValue={DEFAULT_SEARCH_HOTKEY}
+        />
+        {searchStatus.text && (
+          <p
+            className={`mt-1 pl-4 text-[11px] ${searchStatus.isError ? "text-[var(--goose-color-danger)]" : "text-muted-foreground"}`}
+          >
+            {searchStatus.text}
+          </p>
+        )}
+      </div>
     </SettingsSectionCard>
   )
 }
@@ -409,8 +454,9 @@ export function SettingsShortcuts({
   // zustand v5 忽略第二个 equalityFn 参数，对象选择器会导致重复渲染，故拆成原始值。
   const wakeHotkey = useSettings((s) => s.desktop.wakeHotkey)
   const quicknoteHotkey = useSettings((s) => s.desktop.quicknoteHotkey)
+  const searchHotkey = useSettings((s) => s.desktop.searchHotkey)
   const desktopHotkeys = isElectronHost
-    ? { wakeHotkey, quicknoteHotkey }
+    ? { wakeHotkey, quicknoteHotkey, searchHotkey }
     : undefined
 
   const handleReset = () => {
@@ -428,6 +474,8 @@ export function SettingsShortcuts({
       settings.setWakeHotkeyEnabled(true)
       settings.setQuicknoteHotkey(DEFAULT_QUICKNOTE_HOTKEY)
       settings.setQuicknoteHotkeyEnabled(true)
+      settings.setSearchHotkey(DEFAULT_SEARCH_HOTKEY)
+      settings.setSearchHotkeyEnabled(true)
     }
     setConfirmReset(false)
     toast.success("已恢复全部快捷键默认值")
@@ -465,15 +513,14 @@ export function SettingsShortcuts({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-2xl font-semibold tracking-tight text-foreground">快捷键</h3>
-          <p className="mt-1 text-sm text-muted-foreground">自定义应用内的键盘快捷键或鼠标侧键。</p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-xl font-semibold tracking-tight text-foreground">
+          快捷键
+        </h3>
         <Button
           variant="outline"
           size="sm"
-          className="mt-1 shrink-0 rounded-[10px]"
+          className="shrink-0 rounded-[10px]"
           onClick={handleReset}
           onBlur={() => setConfirmReset(false)}
         >

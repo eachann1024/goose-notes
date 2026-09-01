@@ -1,9 +1,15 @@
 import { globalShortcut } from "electron";
-import { getMainWindow, toggleQuicknoteWindow, toggleWindow } from "./windows";
+import {
+  getMainWindow,
+  showAndFocusMainWindow,
+  toggleQuicknoteWindow,
+  toggleWindow,
+} from "./windows";
 
 const registered = {
   wake: "",
   quicknote: "",
+  search: "",
 };
 
 export function toElectronAccelerator(shortcut: string): string {
@@ -73,7 +79,7 @@ export function toElectronAccelerator(shortcut: string): string {
   return [...modifiers, key].join("+");
 }
 
-function unregisterSlot(slot: "wake" | "quicknote"): void {
+function unregisterSlot(slot: "wake" | "quicknote" | "search"): void {
   const existing = registered[slot];
   if (!existing) return;
   try {
@@ -84,19 +90,29 @@ function unregisterSlot(slot: "wake" | "quicknote"): void {
   registered[slot] = "";
 }
 
+function isDuplicateAccelerator(
+  accelerator: string,
+  used: string[],
+): boolean {
+  return Boolean(accelerator) && used.includes(accelerator);
+}
+
 export function registerHotkeys(keys: {
   wake: string;
   quicknote: string;
-}): { wakeOk: boolean; quicknoteOk: boolean } {
+  search: string;
+}): { wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean } {
   unregisterSlot("wake");
   unregisterSlot("quicknote");
+  unregisterSlot("search");
 
-  const result = { wakeOk: true, quicknoteOk: true };
+  const result = { wakeOk: true, quicknoteOk: true, searchOk: true };
 
   const wakeAcc = keys.wake.trim() ? toElectronAccelerator(keys.wake) : "";
   const quickAcc = keys.quicknote.trim()
     ? toElectronAccelerator(keys.quicknote)
     : "";
+  const searchAcc = keys.search.trim() ? toElectronAccelerator(keys.search) : "";
 
   if (keys.wake.trim()) {
     if (!wakeAcc) {
@@ -113,10 +129,12 @@ export function registerHotkeys(keys: {
     }
   }
 
+  const usedAfterWake = [registered.wake].filter(Boolean);
+
   if (keys.quicknote.trim()) {
     if (!quickAcc) {
       result.quicknoteOk = false;
-    } else if (quickAcc === wakeAcc) {
+    } else if (isDuplicateAccelerator(quickAcc, usedAfterWake)) {
       result.quicknoteOk = false;
     } else {
       try {
@@ -126,6 +144,29 @@ export function registerHotkeys(keys: {
         if (result.quicknoteOk) registered.quicknote = quickAcc;
       } catch {
         result.quicknoteOk = false;
+      }
+    }
+  }
+
+  const usedAfterQuicknote = [registered.wake, registered.quicknote].filter(Boolean);
+
+  if (keys.search.trim()) {
+    if (!searchAcc) {
+      result.searchOk = false;
+    } else if (isDuplicateAccelerator(searchAcc, usedAfterQuicknote)) {
+      result.searchOk = false;
+    } else {
+      try {
+        result.searchOk = globalShortcut.register(searchAcc, () => {
+          showAndFocusMainWindow();
+          const win = getMainWindow();
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("desktop:open-search");
+          }
+        });
+        if (result.searchOk) registered.search = searchAcc;
+      } catch {
+        result.searchOk = false;
       }
     }
   }
@@ -141,4 +182,5 @@ export function unregisterAllHotkeys(): void {
   }
   registered.wake = "";
   registered.quicknote = "";
+  registered.search = "";
 }
