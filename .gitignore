@@ -67,6 +67,7 @@ scripts/*
 !scripts/serve-native-editor.mjs
 !scripts/collect-desktop-artifacts.mjs
 !scripts/compile-electron.mjs
+!scripts/electron-build-linux.mjs
 !scripts/electron-build-mac.mjs
 !scripts/electron-build-win.mjs
 !scripts/electron-dev.mjs
