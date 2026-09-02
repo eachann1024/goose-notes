@@ -103,7 +103,8 @@ export function matchQuoteTrigger(
  *
  * 此插件由共享 Editor 挂载，主窗与速记小窗完全一致。特殊块的 markdown 屏蔽仍由
  * suppressMarkdownInSpecialBlocks 负责，并因注册顺序优先于本插件执行。
- * 分隔线 `---` 不以空格触发，退格不会出现本次的“双空格”问题，继续使用 BlockNote 原实现。
+ * 分隔线 `---` + 空格走 gooseDividerInputRuleExtension（divider 是 content:none，
+ * 不能用本插件的 setNodeMarkup）；Enter 由 BlockNote 把 `\n` 喂给同一条 `/^---+\s$/`。
  */
 function getBlockTrigger(
   textBefore: string,

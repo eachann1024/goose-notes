@@ -1,6 +1,32 @@
 import { expect, test } from "playwright/test";
 
-import { moveCursorAfterDivider } from "../../src/components/editor/inputrules/dividerInputRule";
+import {
+  DIVIDER_INPUT_RULE_FIND,
+  matchDividerTrigger,
+  moveCursorAfterDivider,
+} from "../../src/components/editor/inputrules/dividerInputRule";
+
+test("--- / ---- 可触发分割线", () => {
+  expect(matchDividerTrigger("---")).toEqual({ triggerText: "---" });
+  expect(matchDividerTrigger("----")).toEqual({ triggerText: "----" });
+});
+
+test("-- - 单个连字符以及夹杂正文不触发分割线", () => {
+  expect(matchDividerTrigger("--")).toBeNull();
+  expect(matchDividerTrigger("-")).toBeNull();
+  expect(matchDividerTrigger("---x")).toBeNull();
+  expect(matchDividerTrigger(" ---")).toBeNull();
+  expect(matchDividerTrigger("")).toBeNull();
+});
+
+test("---+空格或回车才匹配 input rule", () => {
+  expect(DIVIDER_INPUT_RULE_FIND.test("--- ")).toBe(true);
+  expect(DIVIDER_INPUT_RULE_FIND.test("---\n")).toBe(true);
+  expect(DIVIDER_INPUT_RULE_FIND.test("---- ")).toBe(true);
+  expect(DIVIDER_INPUT_RULE_FIND.test("---")).toBe(false);
+  expect(DIVIDER_INPUT_RULE_FIND.test("-- ")).toBe(false);
+  expect(DIVIDER_INPUT_RULE_FIND.test("- ")).toBe(false);
+});
 
 type TestBlock = { id: string; type: string };
 
