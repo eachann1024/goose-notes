@@ -19,6 +19,11 @@ export const TITLE_BAR_HEIGHT = DEFAULT_TITLE_BAR_HEIGHT_PX;
 let lastTitleBarHeight = DEFAULT_TITLE_BAR_HEIGHT_PX;
 let mainWindow: BrowserWindow | null = null;
 let quicknoteWindow: BrowserWindow | null = null;
+let quicknoteDestroyTimer: NodeJS.Timeout | null = null;
+const QUICKNOTE_IDLE_DESTROY_MS = 5 * 60 * 1000;
+
+const visibilityListeners = new Set<() => void>();
+let lastEmittedVisible = false;
 
 function preloadPath(): string {
   return path.join(__dirname, "../preload/index.cjs");
@@ -72,6 +77,55 @@ function setHiddenThrottle(win: BrowserWindow, hidden: boolean): void {
   win.webContents.backgroundThrottling = hidden;
 }
 
+function windowIsForeground(win: BrowserWindow | null): boolean {
+  if (!win || win.isDestroyed()) return false;
+  return win.isVisible() && !win.isMinimized() && win.isFocused();
+}
+
+function emitVisibilityChange(): void {
+  const visible = hasVisibleWindow();
+  if (visible === lastEmittedVisible) return;
+  lastEmittedVisible = visible;
+  for (const listener of visibilityListeners) {
+    try {
+      listener();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function hasVisibleWindow(): boolean {
+  return windowIsForeground(getMainWindow()) || windowIsForeground(getQuicknoteWindow());
+}
+
+export function onWindowVisibilityChange(listener: () => void): () => void {
+  visibilityListeners.add(listener);
+  return () => {
+    visibilityListeners.delete(listener);
+  };
+}
+
+function clearQuicknoteDestroyTimer(): void {
+  if (!quicknoteDestroyTimer) return;
+  clearTimeout(quicknoteDestroyTimer);
+  quicknoteDestroyTimer = null;
+}
+
+function scheduleQuicknoteIdleDestroy(win: BrowserWindow): void {
+  clearQuicknoteDestroyTimer();
+  if (win.isDestroyed() || appQuitting()) return;
+  const timer = setTimeout(() => {
+    quicknoteDestroyTimer = null;
+    if (appQuitting()) return;
+    if (win.isDestroyed()) return;
+    if (win.isVisible()) return;
+    win.destroy();
+  }, QUICKNOTE_IDLE_DESTROY_MS);
+  timer.unref();
+  quicknoteDestroyTimer = timer;
+}
+
 export function createMainWindow(): BrowserWindow {
   const isMac = process.platform === "darwin";
   const win = new BrowserWindow({
@@ -106,10 +160,32 @@ export function createMainWindow(): BrowserWindow {
   win.on("show", () => {
     applyTrafficLightPosition(win);
     setHiddenThrottle(win, false);
+    emitVisibilityChange();
   });
 
   win.on("hide", () => {
     setHiddenThrottle(win, true);
+    emitVisibilityChange();
+  });
+
+  win.on("blur", () => {
+    setHiddenThrottle(win, true);
+    emitVisibilityChange();
+  });
+
+  win.on("focus", () => {
+    setHiddenThrottle(win, false);
+    emitVisibilityChange();
+  });
+
+  win.on("minimize", () => {
+    setHiddenThrottle(win, true);
+    emitVisibilityChange();
+  });
+
+  win.on("restore", () => {
+    setHiddenThrottle(win, false);
+    emitVisibilityChange();
   });
 
   win.on("leave-full-screen", () => {
@@ -125,6 +201,7 @@ export function createMainWindow(): BrowserWindow {
 
   win.on("closed", () => {
     if (mainWindow === win) mainWindow = null;
+    emitVisibilityChange();
   });
 
   const devUrl = rendererDevUrl();
@@ -158,11 +235,25 @@ export function createQuicknoteWindow(): BrowserWindow {
   });
 
   win.on("show", () => {
+    clearQuicknoteDestroyTimer();
     setHiddenThrottle(win, false);
+    emitVisibilityChange();
   });
 
   win.on("hide", () => {
     setHiddenThrottle(win, true);
+    scheduleQuicknoteIdleDestroy(win);
+    emitVisibilityChange();
+  });
+
+  win.on("blur", () => {
+    setHiddenThrottle(win, true);
+    emitVisibilityChange();
+  });
+
+  win.on("focus", () => {
+    setHiddenThrottle(win, false);
+    emitVisibilityChange();
   });
 
   win.on("close", (event) => {
@@ -175,6 +266,8 @@ export function createQuicknoteWindow(): BrowserWindow {
 
   win.on("closed", () => {
     if (quicknoteWindow === win) quicknoteWindow = null;
+    clearQuicknoteDestroyTimer();
+    emitVisibilityChange();
   });
 
   const devUrl = rendererDevUrl();
@@ -191,6 +284,7 @@ export function createQuicknoteWindow(): BrowserWindow {
 let quitting = false;
 export function markQuitting(): void {
   quitting = true;
+  clearQuicknoteDestroyTimer();
 }
 function appQuitting(): boolean {
   return quitting;
@@ -205,10 +299,13 @@ export function getQuicknoteWindow(): BrowserWindow | null {
 }
 
 function waitReadyToShow(win: BrowserWindow): Promise<void> {
-  if (win.isDestroyed() || !win.webContents.isLoading()) return Promise.resolve();
+  if (win.isDestroyed() || win.webContents.isDestroyed() || !win.webContents.isLoading()) {
+    return Promise.resolve();
+  }
   return new Promise((resolve) => {
     const done = () => resolve();
     win.once("ready-to-show", done);
+    win.once("closed", done);
     win.webContents.once("did-finish-load", done);
   });
 }

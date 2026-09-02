@@ -269,6 +269,19 @@ export const electronGooseFs = {
     }
   },
 
+  // 仅 mtimeMs + size，不含 atime。供本地文件夹 watch 指纹快路径使用。
+  statAsync: async (path: string) => {
+    const api = getGooseDesktop();
+    if (!api) return null;
+    try {
+      const info = await api.fsStat(path);
+      rememberExists(path, true);
+      return { mtimeMs: info.mtimeMs, size: info.size };
+    } catch {
+      return null;
+    }
+  },
+
   writeFile: (path: string, content: string, encoding?: string) => {
     void writeFileImpl(path, content, encoding);
     return true;

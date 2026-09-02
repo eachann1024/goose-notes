@@ -6,26 +6,42 @@
  *
  * 生命周期：
  *   - scanner 读取文件后：setSnapshot(absPath, rawMarkdown)（含 frontmatter 的完整原文）
- *   - 外部变更 reload 后：同上
- *   - 写盘成功后：setSnapshot(absPath, writtenContent)（更新为写入内容）
+ *     并记录 mtimeMs+size 指纹，供 watch 快路径跳过读全文
+ *   - 外部变更 reload 后：同上（内容 + stat 指纹）
+ *   - 写盘成功后：setSnapshot(absPath, writtenContent)，再 stat 更新指纹
  *
  * 比较规则（白名单规范化，减少误判）：
  *   - CRLF → LF
  *   - 去除末尾空白行（trailing newlines）
+ *
+ * 指纹（mtimeMs + size，绝不使用 atime）：其他应用只是打开/读取文件时
+ * macOS 可能发 fs.watch change 但不改 mtime/size，快路径直接忽略。
  */
 
-const snapshotMap = new Map<string, string>();
+export type LocalMdFileStat = {
+  mtimeMs: number;
+  size: number;
+};
+
+type SnapshotEntry = {
+  content: string;
+  mtimeMs?: number;
+  size?: number;
+};
+
+const snapshotMap = new Map<string, SnapshotEntry>();
 
 function normalize(content: string): string {
   return content.replace(/\r\n/g, "\n").replace(/\n+$/, "");
 }
 
 export function setLocalMdSnapshot(absPath: string, rawContent: string): void {
-  snapshotMap.set(absPath, rawContent);
+  // 只写入内容时丢掉旧指纹，避免沿用过期 mtime/size。
+  snapshotMap.set(absPath, { content: rawContent });
 }
 
 export function getLocalMdSnapshot(absPath: string): string | undefined {
-  return snapshotMap.get(absPath);
+  return snapshotMap.get(absPath)?.content;
 }
 
 /**
@@ -35,19 +51,57 @@ export function isLocalMdUnchanged(
   absPath: string,
   pendingContent: string,
 ): boolean {
-  const snapshot = snapshotMap.get(absPath);
+  const snapshot = snapshotMap.get(absPath)?.content;
   if (snapshot === undefined) return false;
   return normalize(pendingContent) === normalize(snapshot);
 }
 
 /**
  * 写盘成功后调用，将快照更新为写入内容。
+ * 指纹需由调用方随后 `updateSnapshotStat` 补齐。
  */
 export function updateSnapshotAfterWrite(
   absPath: string,
   writtenContent: string,
 ): void {
-  snapshotMap.set(absPath, writtenContent);
+  snapshotMap.set(absPath, { content: writtenContent });
+}
+
+/**
+ * 写入或刷新 mtimeMs+size 指纹。无内容快照时不单独建条目。
+ */
+export function updateSnapshotStat(
+  absPath: string,
+  stat: LocalMdFileStat,
+): void {
+  const existing = snapshotMap.get(absPath);
+  if (!existing) return;
+  existing.mtimeMs = stat.mtimeMs;
+  existing.size = stat.size;
+}
+
+/**
+ * mtimeMs 与 size 均与快照一致、且文件 mtime 距今超过 2.5s 时返回 true（可跳过读全文）。
+ * 缺指纹时返回 false，调用方应退回读全文比对。
+ */
+// FAT/exFAT 的 mtime 粒度约 2s，同一窗口内两次不同写入可能 mtime、size 都相同；近 2.5s 内改过的不走快路径。
+export function isStatMatchingSnapshot(
+  absPath: string,
+  stat: LocalMdFileStat,
+): boolean {
+  const existing = snapshotMap.get(absPath);
+  if (
+    existing === undefined ||
+    existing.mtimeMs === undefined ||
+    existing.size === undefined
+  ) {
+    return false;
+  }
+  return (
+    existing.mtimeMs === stat.mtimeMs &&
+    existing.size === stat.size &&
+    Date.now() - stat.mtimeMs > 2500
+  );
 }
 
 // ── 自写回声抑制 ─────────────────────────────────────────────────────────────
@@ -63,7 +117,7 @@ export function markSelfWrite(absPath: string): void {
 
 export function wasRecentlySelfWritten(
   absPath: string,
-  windowMs = 800,
+  windowMs = 2000,
 ): boolean {
   const t = selfWriteTimestamps.get(absPath);
   return t !== undefined && Date.now() - t < windowMs;
@@ -88,7 +142,7 @@ export function isDiskContentMatchingSnapshot(
   absPath: string,
   diskContent: string,
 ): boolean {
-  const snapshot = snapshotMap.get(absPath);
+  const snapshot = snapshotMap.get(absPath)?.content;
   if (snapshot === undefined) return true; // 无快照 = 无从比较，放行
   return normalize(diskContent) === normalize(snapshot);
 }
@@ -107,7 +161,7 @@ export function applyTrailingNewlineStyle(
   content: string,
 ): string {
   const body = content.replace(/\n+$/, "");
-  const snapshot = snapshotMap.get(absPath);
+  const snapshot = snapshotMap.get(absPath)?.content;
   if (snapshot === undefined) return `${body}\n`;
   const trailing = snapshot.match(/\n*$/)?.[0] ?? "";
   return body + trailing;

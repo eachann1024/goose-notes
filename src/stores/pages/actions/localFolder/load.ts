@@ -10,6 +10,7 @@ import {
 } from "@/lib/local-folder-scanner";
 import {
   setLocalMdSnapshot,
+  updateSnapshotStat,
   deleteLocalMdSnapshot,
 } from "@/lib/local-md-snapshot";
 import {
@@ -86,6 +87,12 @@ export const reloadLocalPageFromDiskAction = async (
   // 外部变更后更新快照，保证下次写盘前 diff 与磁盘最新状态比较。
   if (typeof markdown === "string") {
     setLocalMdSnapshot(filePath, markdown);
+    try {
+      const stat = await window.gooseFs.statAsync?.(filePath);
+      if (stat) updateSnapshotStat(filePath, stat);
+    } catch {
+      // 指纹失败不影响重载，下次 watch 退回读全文
+    }
   }
 
   set((state) => {

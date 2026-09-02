@@ -13,6 +13,7 @@ import { isLocalFolderPage } from "../../persistence";
 import {
   isLocalMdUnchanged,
   updateSnapshotAfterWrite,
+  updateSnapshotStat,
   applyTrailingNewlineStyle,
   isDiskContentMatchingSnapshot,
   markSelfWrite,
@@ -206,6 +207,17 @@ export const replaceBlockRangeAction = async (
   const nextContent = [...head, ...replacement, ...tail] as JSONContent;
   return await get().writePageContent(pageId, nextContent);
 };
+
+async function refreshSnapshotFingerprint(filePath: string): Promise<void> {
+  const fs = window.gooseFs;
+  if (!fs?.statAsync) return;
+  try {
+    const stat = await fs.statAsync(filePath);
+    if (stat) updateSnapshotStat(filePath, stat);
+  } catch {
+    // stat 失败时保留内容快照，下次 watch 退回读全文
+  }
+}
 
 export const saveLocalPageContentAction = async (
   set: StoreSet,
@@ -486,6 +498,8 @@ const saveLocalPageContentUnlocked = async (
   }
 
   if (result) {
+    // 写成功后续期静默窗，覆盖写后延迟派发的 change 事件。
+    markSelfWrite(filePath);
     // 落盘成功即清除脏标记（自动保存与显式保存共用此路径）。
     // 若合并成功，以落盘的头为磁盘一致的 localFrontmatter；merge 失败回退原 blob。
     const nextFrontmatter = frontmatterBlob ?? page.localFrontmatter;
@@ -516,8 +530,9 @@ const saveLocalPageContentUnlocked = async (
           : {}),
       };
     });
-    // 写盘成功后更新快照为实际写入磁盘的内容，下次变更比较以此为基准。
+    // 写盘成功后更新快照为实际写入磁盘的内容，并补齐 mtime+size 指纹。
     updateSnapshotAfterWrite(filePath, diskContent);
+    await refreshSnapshotFingerprint(filePath);
   }
   return result;
 };
