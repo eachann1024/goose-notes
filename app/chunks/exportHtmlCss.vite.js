@@ -2213,7 +2213,9 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
  * 点击落在文字节点上。不只列表，短行的所有文本块都会中招。
  */
 .bn-block-content > .bn-inline-content,
-.bn-block-content > :is(h1, h2, h3, h4, h5, h6, blockquote) {
+.bn-block-content > :is(h1, h2, h3, h4, h5, h6, blockquote),
+.bn-block-content[data-content-type="callout"] > .react-renderer,
+.bn-block-content[data-content-type="callout"] [data-callout="true"] {
   flex: 1 1 auto;
   min-width: 0;
 }
