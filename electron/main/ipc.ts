@@ -521,6 +521,20 @@ export function registerIpcHandlers(): void {
     if (win && !win.isDestroyed()) win.setTitle(t ?? "");
   });
 
+
+  ipcMain.handle("desktop:getAlwaysOnTop", async (event) => {
+    const win = senderWindow(event);
+    if (!win || win.isDestroyed()) return false;
+    return win.isAlwaysOnTop();
+  });
+
+  ipcMain.handle("desktop:setAlwaysOnTop", async (event, on: boolean) => {
+    const win = senderWindow(event);
+    if (!win || win.isDestroyed()) return false;
+    win.setAlwaysOnTop(Boolean(on));
+    return win.isAlwaysOnTop();
+  });
+
   ipcMain.handle("desktop:syncTitleBarHeight", async (event, height: number) => {
     const win = senderWindow(event);
     const main = getMainWindow();

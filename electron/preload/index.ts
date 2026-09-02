@@ -75,6 +75,9 @@ const gooseDesktop = {
       body: string;
     }>,
   setTitle: (t: string) => invoke("desktop:setTitle", t) as Promise<void>,
+  getAlwaysOnTop: () => invoke("desktop:getAlwaysOnTop") as Promise<boolean>,
+  setAlwaysOnTop: (on: boolean) =>
+    invoke("desktop:setAlwaysOnTop", on) as Promise<boolean>,
   syncTitleBarHeight: (height: number) =>
     invoke("desktop:syncTitleBarHeight", height) as Promise<void>,
   toggleMainWindow: () => invoke("desktop:toggleMainWindow") as Promise<void>,

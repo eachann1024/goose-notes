@@ -4,6 +4,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useWindowAlwaysOnTop } from "@/hooks/useWindowAlwaysOnTop";
+import { isElectronHost } from "@/lib/local-vault";
 import { useSettings } from "@/stores/settings";
 import { useSidebarView } from "@/stores/useSidebarView";
 
@@ -31,6 +33,7 @@ export function SidebarFooter({
   const toggleSidebarCollapsed = useSidebarView(
     (s) => s.toggleSidebarCollapsed,
   );
+  const { alwaysOnTop, toggleAlwaysOnTop } = useWindowAlwaysOnTop();
   const toggleSidebarShortcutLabel = toggleSidebarShortcut
     ? formatShortcut(toggleSidebarShortcut)
     : "";
@@ -51,6 +54,33 @@ export function SidebarFooter({
   return (
     <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
       <div className="flex items-center gap-0.5">
+        {isElectronHost ? (
+          <TooltipProvider delayDuration={600}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(btnClass, alwaysOnTop && activeClass)}
+                  aria-label={alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
+                  aria-pressed={alwaysOnTop}
+                  data-active={alwaysOnTop ? "true" : "false"}
+                  onClick={toggleAlwaysOnTop}
+                >
+                  <LucideIcons.Pin
+                    className={cn(
+                      "h-4 w-4",
+                      alwaysOnTop &&
+                        "fill-[var(--goose-interactive-selected-fg)]",
+                    )}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <span>{alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
         <TooltipProvider delayDuration={600}>
           <Tooltip>
             <TooltipTrigger asChild>
