@@ -64,8 +64,40 @@ export function hasUnsafeSegments(p: string): boolean {
 }
 
 function isUnder(root: string, target: string): boolean {
-  const rel = path.relative(root, target);
+  let from = root;
+  let to = target;
+  if (process.platform === "win32" || process.platform === "darwin") {
+    from = from.toLowerCase();
+    to = to.toLowerCase();
+  }
+  const rel = path.relative(from, to);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+export function findVaultRootContaining(p: string): string | null {
+  if (hasUnsafeSegments(p)) return null;
+  const resolved = normalizePath(p);
+  let best: string | null = null;
+  for (const root of vaultRoots) {
+    if (!isUnder(root, resolved)) continue;
+    if (!best || root.length > best.length) best = root;
+  }
+  return best;
+}
+
+/** 系统「打开方式」选中的 md：允许读该文件，必要时把父目录登记为仓库根。 */
+export function allowAssociatedMarkdownFile(filePath: string): string {
+  const resolved = normalizePath(filePath);
+  addSessionAllowed(resolved);
+  const parent = path.dirname(resolved);
+  const root = path.parse(resolved).root;
+  if (parent && parent !== resolved && parent !== root) {
+    addSessionAllowed(parent);
+    if (!findVaultRootContaining(resolved)) {
+      addVaultRoot(parent);
+    }
+  }
+  return resolved;
 }
 
 export function isAllowedPath(p: string): boolean {
