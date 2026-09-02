@@ -93,6 +93,15 @@ const gooseDesktop = {
       ipcRenderer.removeListener("desktop:open-search", listener);
     };
   },
+  takePendingOpenMarkdownFiles: () =>
+    invoke("desktop:takePendingOpenMarkdownFiles") as Promise<string[]>,
+  onOpenMarkdownFiles: (cb: (files: string[]) => void) => {
+    const listener = (_event: unknown, files: string[]) => cb(files);
+    ipcRenderer.on("desktop:open-markdown-files", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:open-markdown-files", listener);
+    };
+  },
   notify: (n: { title: string; body: string }) =>
     invoke("desktop:notify", n) as Promise<void>,
 };

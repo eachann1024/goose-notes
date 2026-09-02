@@ -108,6 +108,8 @@ declare global {
     getAccessibilityStatus: () => Promise<{ platform: string; trusted: boolean }>
     requestAccessibility: () => Promise<boolean>
     onOpenSearch: (cb: () => void) => () => void
+    takePendingOpenMarkdownFiles: () => Promise<string[]>
+    onOpenMarkdownFiles: (cb: (files: string[]) => void) => () => void
     notify: (n: { title: string; body: string }) => Promise<void>
   }
 
