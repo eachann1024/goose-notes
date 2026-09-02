@@ -1,6 +1,7 @@
 import { parseInlineMarkdown } from "./inline";
 import {
   isLegacyCodeBlockMetaComment,
+  isThematicBreakLine,
   parseCodeFenceInfo,
   parseTableBlock,
 } from "./blockHelpers";
@@ -286,10 +287,8 @@ export function markdownToJsonContent(markdown: string): any {
       }
     }
 
-    if (line.match(/^---+$/)) {
-      // editor schema 的 divider 不在 VALID_BLOCK_TYPES，会被 normalize 丢弃；
-      // 沿用既有行为：水平线落为字面量段落，序列化时原样写回 ---
-      content.push({ type: "paragraph", content: "---" });
+    if (isThematicBreakLine(line)) {
+      content.push({ type: "divider" });
       i++;
       continue;
     }
@@ -426,7 +425,7 @@ export function markdownToJsonContent(markdown: string): any {
             currentLine.match(/^-\s+\[[ xX]\]/) ||
             currentLine.match(/^[-*+]\s+/) ||
             currentLine.match(/^\d+\.\s+/) ||
-            currentLine.match(/^---+$/) ||
+            isThematicBreakLine(currentLine) ||
             currentLine.match(/^\|/) ||
             currentLine.match(/^\[📎/) ||
             trimmed.match(/^<video\s+src=/) ||

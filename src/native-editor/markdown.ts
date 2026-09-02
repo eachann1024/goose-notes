@@ -179,22 +179,6 @@ function restoreNativeOnlyBlocks(blocks: BlockNoteContent): BlockNoteContent {
         };
       }
     }
-    // 共享解析器为兼容旧 schema 会把 standalone `---` 留成字面量段落；
-    // native schema 已包含 divider，因此在原生入口恢复为真正的分隔线块。
-    const onlyInline = Array.isArray(block.content) && block.content.length === 1
-      ? block.content[0]
-      : null;
-    const onlyInlineText = typeof block.content === "string"
-      ? block.content
-      : typeof onlyInline === "string"
-        ? onlyInline
-      : onlyInline && typeof onlyInline === "object"
-        && typeof (onlyInline as { text?: unknown }).text === "string"
-        ? String((onlyInline as { text: string }).text)
-        : null;
-    if (block.type === "paragraph" && onlyInlineText === "---") {
-      return { type: "divider" };
-    }
     return {
       ...block,
       ...(children ? { children } : {}),

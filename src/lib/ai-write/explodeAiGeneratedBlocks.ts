@@ -12,6 +12,7 @@ const ATOMIC_BLOCK_TYPES = new Set([
   "video",
   "file",
   "audio",
+  "divider",
 ]);
 
 /** 容器块：只拆 children，不把自身正文打成多张卡片。 */

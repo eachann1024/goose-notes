@@ -128,7 +128,8 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
         } as PartialBlock,
       ];
     case "horizontalRule":
-      return [{ type: "paragraph", content: "---" } as PartialBlock];
+    case "divider":
+      return [{ type: "divider" } as PartialBlock];
     default: {
       const text = textFromLegacy(node).trim();
       if (text) return [{ type: "paragraph", content: text } as PartialBlock];

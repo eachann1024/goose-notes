@@ -1,5 +1,17 @@
 const CODE_BLOCK_META_PREFIX = "goose-note=";
 
+/**
+ * CommonMark thematic break：至少三个相同的 `-` / `*` / `_`，中间可夹空格。
+ * 行首最多 3 个空格；与 setext 标题下划线（`---` 紧跟在文本行后）互斥，由调用方保证。
+ */
+export function isThematicBreakLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const leading = line.match(/^ */)?.[0].length ?? 0;
+  if (leading > 3) return false;
+  return /^([-*_])(?:\s*\1){2,}\s*$/.test(trimmed);
+}
+
 export function isLegacyCodeBlockMetaComment(line: string): boolean {
   return /^<!--\s*goose-note:codeblock\s+.+?\s*-->$/.test(line);
 }

@@ -24,6 +24,7 @@ export const VALID_BLOCK_TYPES = new Set([
   "link",
   "embed",
   "toggleListItem",
+  "divider",
 ]);
 
 export const LEGACY_BLOCK_TYPES = new Set([
@@ -342,6 +343,9 @@ function normalizeBlock(block: any): PartialBlock[] {
   if (!block || typeof block !== "object") return [];
 
   const type = block.type;
+  if (type === "horizontalRule") {
+    return [{ type: "divider" } as PartialBlock];
+  }
   if (type === "quote" || type === "blockquote") {
     const flattened = normalizeQuoteBlock(block);
     // 引用块不允许有 children，剥离并展平
