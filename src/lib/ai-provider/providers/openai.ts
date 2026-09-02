@@ -6,6 +6,7 @@ import {
   getCustomProviderOptions,
   readErrorMessage,
 } from "../modelCatalog";
+import { reasoningDeltaFromChatChoice } from "../streamReasoning";
 import { readSSELines } from "../stream";
 
 export async function handleOpenAIStream(
@@ -59,9 +60,10 @@ export async function handleOpenAIStream(
         const json = JSON.parse(dataStr);
         const delta = json.choices?.[0]?.delta;
         if (delta) {
-          if (delta.reasoning_content) {
-            fullReasoning += delta.reasoning_content;
-            emit("thinking", delta.reasoning_content, true);
+          const reasoningDelta = reasoningDeltaFromChatChoice(delta);
+          if (reasoningDelta) {
+            fullReasoning += reasoningDelta;
+            emit("thinking", reasoningDelta, true);
           }
           if (delta.content) {
             fullText += delta.content;

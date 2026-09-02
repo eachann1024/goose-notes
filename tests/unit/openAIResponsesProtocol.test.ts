@@ -17,7 +17,7 @@ const settings: AISettingsLike = {
   customModelOptions: [{ id: "gpt-test", label: "GPT Test" }],
 };
 
-test("Responses 协议发送独立配置并解析文本与推理摘要事件", async () => {
+test("Responses 协议发送独立配置并解析文本与推理事件", async () => {
   const originalFetch = globalThis.fetch;
   let requestURL = "";
   let requestInit: RequestInit | undefined;
@@ -25,7 +25,7 @@ test("Responses 协议发送独立配置并解析文本与推理摘要事件", a
     requestURL = String(input);
     requestInit = init;
     const events = [
-      'data: {"type":"response.reasoning_summary_text.delta","delta":"分析"}',
+      'data: {"type":"response.reasoning_text.delta","delta":"分析"}',
       'data: {"type":"response.output_text.delta","delta":"答案"}',
       'data: {"type":"response.completed"}',
       "",

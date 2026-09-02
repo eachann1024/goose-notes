@@ -6,6 +6,7 @@ import {
   getRequestReasoningLevel,
   readErrorMessage,
 } from "../modelCatalog";
+import { reasoningDeltaFromResponsesEvent } from "../streamReasoning";
 import { readSSELines } from "../stream";
 
 export async function handleOpenAIResponsesStream(
@@ -73,16 +74,18 @@ export async function handleOpenAIResponsesStream(
       if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
         fullText += event.delta;
         emit("generating", event.delta, false);
-      } else if (
-        event.type === "response.reasoning_summary_text.delta" &&
-        typeof event.delta === "string"
-      ) {
-        fullReasoning += event.delta;
-        emit("thinking", event.delta, true);
-      } else if (event.type === "error") {
-        streamError = event.message || event.error?.message || "OpenAI Responses 流式请求失败";
-      } else if (event.type === "response.failed") {
-        streamError = event.response?.error?.message || "OpenAI Responses 流式请求失败";
+      } else {
+        const reasoningDelta = reasoningDeltaFromResponsesEvent(event);
+        if (reasoningDelta) {
+          fullReasoning += reasoningDelta;
+          emit("thinking", reasoningDelta, true);
+        } else if (event.type === "error") {
+          streamError =
+            event.message || event.error?.message || "OpenAI Responses 流式请求失败";
+        } else if (event.type === "response.failed") {
+          streamError =
+            event.response?.error?.message || "OpenAI Responses 流式请求失败";
+        }
       }
     } catch {
       // 忽略无法解析的单条 SSE 事件，继续读取后续内容。
