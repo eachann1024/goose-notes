@@ -9,8 +9,21 @@
  */
 import MiniSearch from "minisearch";
 import type { Page } from "@/types";
-import { getPageTitle } from "@/components/editor/utils/page-title";
+import {
+  getPageTitle,
+  UNTITLED_PAGE_TITLE,
+} from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
+
+function isPlaceholderTitle(title: string): boolean {
+  return title === UNTITLED_PAGE_TITLE || title === "无标题";
+}
+
+function bodyForSearchIndex(page: Page, title: string): string {
+  const body = extractTextFromContent(page.content);
+  if (!isPlaceholderTitle(title)) return body;
+  return body.replace(/^(?:未命名|无标题)\s*/, "").trim();
+}
 
 // ——— 中文分词 ———
 
@@ -84,14 +97,15 @@ export function syncIndex(pages: Record<string, Page>): void {
   const toUpdate: IndexDoc[] = [];
 
   for (const page of Object.values(pages)) {
-    const body = extractTextFromContent(page.content);
+    const title = getPageTitle(page);
+    const body = bodyForSearchIndex(page, title);
     const versionKey = `${page.updatedAt}:${body.length}`;
     const current = indexedVersions.get(page.id);
     if (current === versionKey) continue; // 没变，跳过
 
     const doc: IndexDoc = {
       id: page.id,
-      title: getPageTitle(page),
+      title: isPlaceholderTitle(title) ? "" : title,
       body,
     };
 

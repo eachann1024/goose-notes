@@ -108,6 +108,7 @@ test("extractPlainText 能抽出字符串单元格和单元格内链接文字", 
   expect(plain).toContain("说明");
   expect(plain).toContain("搜索");
   expect(plain).toContain("找内容");
+  expect(plain).not.toContain("https://example.com");
 });
 
 test("simpleExtractText 对表格块也能抽出单元格文字", () => {
@@ -201,6 +202,80 @@ test("extractPlainText 仍能抽出标注、引用、公式和 mermaid 正文", 
   expect(plain).toContain("前人栽树");
   expect(plain).toContain("E = mc^2");
   expect(plain).toContain("开始");
+});
+
+test("占位文件名、存储引用和链接地址不进入搜索文本", () => {
+  const content = [
+    {
+      type: "image",
+      props: { url: "att:img-1", name: "image.webp", caption: "团建照片" },
+    },
+    {
+      type: "video",
+      props: { url: "att-video:v-1", name: "video.mp4" },
+    },
+    {
+      type: "file",
+      props: { url: "att-file:doc-1", name: "att-file:secret" },
+    },
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "link",
+          href: "https://example.com/path",
+          content: [text("官网")],
+        },
+      ],
+    },
+  ];
+
+  const plain = extractPlainText(content);
+  expect(plain).toContain("团建照片");
+  expect(plain).toContain("官网");
+  expect(plain).not.toContain("image.webp");
+  expect(plain).not.toContain("video.mp4");
+  expect(plain).not.toContain("att-file:secret");
+  expect(plain).not.toContain("https://example.com");
+});
+
+test("yaml-frontmatter 的 goose 设置不进入搜索，用户字段保留", () => {
+  const content = [
+    {
+      type: "codeBlock",
+      props: { language: "yaml-frontmatter" },
+      content:
+        "---\ngoose-font: serif\ngoose-locked: true\nname: pearl\ndescription: 覆盖 PR 全链路\n---",
+    },
+  ];
+
+  const plain = extractPlainText(content);
+  expect(plain).toContain("pearl");
+  expect(plain).toContain("覆盖 PR 全链路");
+  expect(plain).not.toContain("goose-font");
+  expect(plain).not.toContain("serif");
+  expect(plain).not.toContain("goose-locked");
+});
+
+test("占位标题不会让未命名空页被搜出来", () => {
+  resetIndex();
+  try {
+    syncIndex({
+      "page-untitled": pageWithContent("page-untitled", [
+        { type: "heading", props: { level: 1 }, content: "未命名" },
+        { type: "paragraph", content: "" },
+      ]),
+      "page-named": pageWithContent("page-named", [
+        { type: "heading", props: { level: 1 }, content: "采购说明" },
+        { type: "paragraph", content: "未命名流程不要用" },
+      ]),
+    });
+
+    expect(searchIndex("未命名")).not.toContain("page-untitled");
+    expect(searchIndex("未命名")).toContain("page-named");
+  } finally {
+    resetIndex();
+  }
 });
 
 test("全局搜索索引能命中附件文件名", () => {
