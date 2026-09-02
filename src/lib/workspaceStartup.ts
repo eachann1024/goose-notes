@@ -15,7 +15,15 @@ export type LastNoteRestoreResult =
   | "not-ready"
   | "disabled"
   | "no-history"
-  | "local-folder-unavailable";
+  | "local-folder-unavailable"
+  | "opened-associated-file";
+
+let preserveStartupSelection = false;
+
+/** 系统关联打开了 md 时，不要被「不自动打开上次笔记」清成空白首页。 */
+export function shouldPreserveStartupSelection(): boolean {
+  return preserveStartupSelection;
+}
 
 type WorkspaceStartupGateOptions = {
   prepare: () => Promise<unknown> | unknown;
@@ -120,6 +128,17 @@ export function restoreLastNoteIfNeeded(): LastNoteRestoreResult {
 export async function prepareWorkspaceStartup(): Promise<LastNoteRestoreResult> {
   const pagesStore = usePages.getState();
   if (!pagesStore.hydrated) return "not-ready";
+
+  if (isElectronHost) {
+    const { consumePendingAssociatedMarkdownFiles } = await import(
+      "@/lib/openAssociatedMarkdown"
+    );
+    const opened = await consumePendingAssociatedMarkdownFiles();
+    if (opened > 0) {
+      preserveStartupSelection = true;
+      return "opened-associated-file";
+    }
+  }
 
   if (!useSettings.getState().privacy.autoOpenLastNote) {
     clearWorkspaceStartupSelection();

@@ -21,6 +21,7 @@ import {
   hasUnsafeSegments,
   userDataRoot,
 } from "./allowlist";
+import { registerOpenMarkdownIpc } from "./openMarkdownFiles";
 import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
 import { registerHotkeys } from "./hotkeys";
 import { printHtmlToPdf } from "./printPdf";
@@ -247,6 +248,7 @@ function isOpenUrlAllowed(url: string): boolean {
 
 export function registerIpcHandlers(): void {
   hookWindowVisibilityForWatch();
+  registerOpenMarkdownIpc();
   ipcMain.handle("desktop:selectDirectory", async (event) => {
     const win = senderWindow(event);
     const result = await dialog.showOpenDialog(win ?? getMainWindow()!, {

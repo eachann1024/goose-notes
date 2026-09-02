@@ -15,6 +15,7 @@ import {
   clearWorkspaceStartupSelection,
   restoreLastNoteIfNeeded,
 } from "@/lib/workspaceStartup";
+import { getGooseDesktop } from "@/lib/electron/runtime";
 
 type UToolsPluginEnterDetail = {
   code?: string;
@@ -196,18 +197,43 @@ export function usePluginEvents() {
       }
     };
 
+    const handleOpenMarkdown = (event: Event) => {
+      const customEvent = event as CustomEvent<{ path?: string }>;
+      const filePath = customEvent.detail?.path;
+      if (typeof filePath !== "string" || filePath.length === 0) return;
+      void import("@/lib/openAssociatedMarkdown").then(({ openAssociatedMarkdownFile }) => {
+        void openAssociatedMarkdownFile(filePath);
+      });
+    };
+
     window.addEventListener(
       "goose-note:open-folder",
       handleOpenFolder as EventListener,
     );
+    window.addEventListener(
+      "goose-note:open-markdown",
+      handleOpenMarkdown as EventListener,
+    );
 
-    const pending = (window as { __gooseNotePendingOpenFolder?: string })
+    const pendingFolder = (window as { __gooseNotePendingOpenFolder?: string })
       .__gooseNotePendingOpenFolder;
-    if (typeof pending === "string" && pending.length > 0) {
+    if (typeof pendingFolder === "string" && pendingFolder.length > 0) {
       (
         window as Window & { __gooseNotePendingOpenFolder?: string | null }
       ).__gooseNotePendingOpenFolder = null;
-      void openFolder(pending);
+      void openFolder(pendingFolder);
+    }
+
+    const pendingMarkdown = (
+      window as { __gooseNotePendingOpenMarkdown?: string }
+    ).__gooseNotePendingOpenMarkdown;
+    if (typeof pendingMarkdown === "string" && pendingMarkdown.length > 0) {
+      (
+        window as Window & { __gooseNotePendingOpenMarkdown?: string | null }
+      ).__gooseNotePendingOpenMarkdown = null;
+      void import("@/lib/openAssociatedMarkdown").then(({ openAssociatedMarkdownFile }) => {
+        void openAssociatedMarkdownFile(pendingMarkdown);
+      });
     }
 
     return () => {
@@ -215,7 +241,25 @@ export function usePluginEvents() {
         "goose-note:open-folder",
         handleOpenFolder as EventListener,
       );
+      window.removeEventListener(
+        "goose-note:open-markdown",
+        handleOpenMarkdown as EventListener,
+      );
     };
+  }, []);
+
+  useEffect(() => {
+    if (__HOST_TARGET__ !== "electron") return;
+    const api = getGooseDesktop();
+    if (!api?.onOpenMarkdownFiles) return;
+    return api.onOpenMarkdownFiles((files) => {
+      if (!Array.isArray(files) || files.length === 0) return;
+      void import("@/lib/openAssociatedMarkdown").then(
+        ({ openAssociatedMarkdownFiles }) => {
+          void openAssociatedMarkdownFiles(files);
+        },
+      );
+    });
   }, []);
 
   // 监控本地文件夹的变更和存活状态

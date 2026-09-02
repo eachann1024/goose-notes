@@ -13,6 +13,7 @@ import {
   applyAppearanceScaleVariables,
   releaseStartupSettlingAfterPaint,
 } from "@/lib/appearance";
+import { shouldPreserveStartupSelection } from "@/lib/workspaceStartup";
 
 function App() {
   const {
@@ -88,7 +89,9 @@ function App() {
 
     const { privacy } = useSettings.getState();
     if (!privacy.autoOpenLastNote) {
-      clearActivePageForBlankEntry();
+      if (!shouldPreserveStartupSelection()) {
+        clearActivePageForBlankEntry();
+      }
       return;
     }
 
