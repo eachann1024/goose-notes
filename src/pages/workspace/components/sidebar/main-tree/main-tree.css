@@ -144,7 +144,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .main-tree-row,
-  .main-tree-drop-between-line {
+  .main-tree-drop-between-line,
+  .rct-main-tree .lucide-chevron-right {
     transition: none !important;
   }
 }

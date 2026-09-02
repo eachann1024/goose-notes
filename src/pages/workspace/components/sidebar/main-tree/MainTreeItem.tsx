@@ -26,6 +26,7 @@ import {
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { toggleSidebarFolder } from "@/stores/useSidebarView";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
 import { isExternalFileDrag } from "@/lib/local-folder-target";
@@ -62,6 +63,7 @@ function TreeRowIcon({
       iconName={iconName}
       isLocalFolder={isLocalFolder}
       hasChildren={hasChildren}
+      isExpanded={isExpanded}
     />
   );
   const canCustomize = canCustomizePageIcon(page, isLocalFolder);
@@ -100,6 +102,7 @@ function TreeRowIcon({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          // 键盘激活的 click 才补一次；指针已在 pointerdown 翻转，避免连点打成同向两次。
           if (e.detail === 0) onToggleExpanded();
         }}
         onDoubleClick={(e) => {
@@ -415,7 +418,9 @@ export function renderItem({
       hasChildren={hasChildren}
       hideExpandArrows={hideExpandArrows}
       isExpanded={!!context.isExpanded}
-      onToggleExpanded={context.toggleExpandedState}
+      onToggleExpanded={() =>
+        toggleSidebarFolder(page.workspaceId, String(item.index))
+      }
     />
   );
 
@@ -468,7 +473,20 @@ export function renderItem({
   };
 
   const toggleLocalDirectory = () => {
-    context.toggleExpandedState();
+    toggleSidebarFolder(page.workspaceId, String(item.index));
+  };
+
+  const handleRowPointerDown: React.PointerEventHandler<HTMLDivElement> = (
+    e,
+  ) => {
+    (
+      interactive.onPointerDown as
+        | React.PointerEventHandler<HTMLDivElement>
+        | undefined
+    )?.(e);
+    if (!isLocalDirectory) return;
+    if (e.button !== 0 || e.ctrlKey) return;
+    if (e.detail <= 1) toggleLocalDirectory();
   };
 
   const handleRowClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
@@ -485,7 +503,8 @@ export function renderItem({
           );
         }
       }
-      if (e.detail <= 1) toggleLocalDirectory();
+      // 指针已在 pointerdown 翻转；键盘（detail=0）在 click 补一次。
+      if (e.detail === 0) toggleLocalDirectory();
       return;
     }
     (
@@ -516,6 +535,7 @@ export function renderItem({
       <div
         {...interactive}
         onClick={handleRowClick}
+        onPointerDown={handleRowPointerDown}
         onDragStart={handleDragStart}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -602,19 +622,27 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
   return (
     <span
       {...arrowProps}
-      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-all duration-200 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
+      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-colors duration-150 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
       aria-hidden="true"
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.button !== 0 || e.ctrlKey) return;
+        toggleSidebarFolder(page.workspaceId, String(item.index));
+      }}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        // 库默认 arrow onClick 会 selectItem → 触发 onSelectItems 切页；展开/收起不应导航
-        context.toggleExpandedState();
+        // 库默认 arrow onClick 会 selectItem → 触发 onSelectItems 切页；展开/收起不应导航。
+        // 指针已在 pointerdown 翻转；这里只接键盘（detail=0）。
+        if (e.detail === 0) {
+          toggleSidebarFolder(page.workspaceId, String(item.index));
+        }
       }}
     >
       <LucideIcons.ChevronRight
         className={cn(
-          "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
+          "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-150 ease-out",
           context.isExpanded && "rotate-90",
         )}
       />

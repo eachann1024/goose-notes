@@ -8,6 +8,7 @@ interface LocalFileIconProps {
   isLocalFolder: boolean;
   className?: string;
   hasChildren?: boolean;
+  isExpanded?: boolean;
 }
 
 /** 本地仓库里的目录不能换图标；文件和内置笔记本页面可以。 */
@@ -63,8 +64,16 @@ function nodeHasVisibleContent(node: unknown): boolean {
   return typeof value.type === "string" && value.type.length > 0;
 }
 
+const visibleContentCache = new WeakMap<object, boolean>();
+
 function pageHasVisibleContent(page: Page): boolean {
-  return nodeHasVisibleContent(page.content);
+  const content = page.content;
+  if (!content || typeof content !== "object") return false;
+  const cached = visibleContentCache.get(content);
+  if (cached !== undefined) return cached;
+  const result = nodeHasVisibleContent(content);
+  visibleContentCache.set(content, result);
+  return result;
 }
 
 export function LocalFileIcon({
@@ -73,12 +82,10 @@ export function LocalFileIcon({
   isLocalFolder,
   className,
   hasChildren,
+  isExpanded,
 }: LocalFileIconProps) {
   const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
   const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
-  const DefaultPageIcon = pageHasVisibleContent(page)
-    ? LucideIcons.FileText
-    : LucideIcons.File;
 
   if (page.localReadState === "error") {
     return (
@@ -89,9 +96,10 @@ export function LocalFileIcon({
     );
   }
 
-  // 本地仓库：目录永远用文件夹图标，不吃自定义 icon
+  // 本地仓库：目录永远用文件夹图标，不吃自定义 icon。
+  // 开合状态跟箭头走，避免收起时还显示打开的文件夹。
   if (isLocalFolder && page.isFolder) {
-    const Icon = hasChildren ? LucideIcons.FolderOpen : LucideIcons.Folder;
+    const Icon = isExpanded ? LucideIcons.FolderOpen : LucideIcons.Folder;
     return (
       <Icon
         className={cn(
@@ -105,6 +113,10 @@ export function LocalFileIcon({
   if (SelectedIcon) {
     return <SelectedIcon className={cn("h-4 w-4", className)} />;
   }
+
+  const DefaultPageIcon = pageHasVisibleContent(page)
+    ? LucideIcons.FileText
+    : LucideIcons.File;
 
   if (isLocalFolder) {
     return (

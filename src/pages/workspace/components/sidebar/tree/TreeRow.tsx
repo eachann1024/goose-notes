@@ -371,7 +371,7 @@ export function SortablePageRow({
               >
                 <LucideIcons.ChevronRight
                   className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-200",
+                    "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-150 ease-out",
                     item.isOpen && "rotate-90",
                   )}
                 />
@@ -402,6 +402,7 @@ export function SortablePageRow({
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
                       hasChildren={displayHasChildren}
+                      isExpanded={item.isOpen}
                     />
                   </span>
                   <LucideIcons.ChevronRight
@@ -431,6 +432,7 @@ export function SortablePageRow({
                           iconName={iconName}
                           isLocalFolder={isLocalFolder}
                           hasChildren={displayHasChildren}
+                          isExpanded={item.isOpen}
                         />
                       </div>
                     </div>
@@ -444,6 +446,7 @@ export function SortablePageRow({
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
                       hasChildren={displayHasChildren}
+                      isExpanded={item.isOpen}
                     />
                   </div>
                 </div>
@@ -469,6 +472,7 @@ export function SortablePageRow({
                           iconName={iconName}
                           isLocalFolder={isLocalFolder}
                           hasChildren={displayHasChildren}
+                          isExpanded={item.isOpen}
                         />
                       </div>
                     </div>
@@ -480,6 +484,7 @@ export function SortablePageRow({
                       iconName={iconName}
                       isLocalFolder={isLocalFolder}
                       hasChildren={displayHasChildren}
+                      isExpanded={item.isOpen}
                     />
                   </div>
                 )}
@@ -564,6 +569,7 @@ export function TreeDragOverlay({
           iconName={item.page.icon}
           isLocalFolder={isLocalNotebook}
           hasChildren={item.hasChildren}
+          isExpanded={item.isOpen}
         />
       </span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">

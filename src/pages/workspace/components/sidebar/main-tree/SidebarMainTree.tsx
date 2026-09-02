@@ -123,6 +123,7 @@ export function SidebarMainTree({
   const setExpanded = useSidebarView((s) => s.setExpanded);
   const expandView = useSidebarView((s) => s.expand);
   const collapseView = useSidebarView((s) => s.collapse);
+  const toggleView = useSidebarView((s) => s.toggle);
   const setFocusedView = useSidebarView((s) => s.setFocused);
   const setSelectedView = useSidebarView((s) => s.setSelected);
 
@@ -419,13 +420,9 @@ export function SidebarMainTree({
   const toggleLocalDirectory = useCallback(
     (pageId: string) => {
       if (!activeNotebookId || !isLocalFolderDirectoryPage(pageId)) return;
-      if (expandedIds.includes(pageId)) {
-        collapseView(activeNotebookId, pageId);
-      } else {
-        expandView(activeNotebookId, pageId);
-      }
+      toggleView(activeNotebookId, pageId);
     },
-    [activeNotebookId, collapseView, expandView, expandedIds],
+    [activeNotebookId, toggleView],
   );
 
   const activateLocalDirectory = useCallback(
