@@ -190,9 +190,14 @@ export function NotebookAiPanel({
       panel.style.removeProperty("--ai-composer-float-pad");
     };
   }, []);
-  // 页面数据可能晚于面板挂载完成；订阅活动页和页面表，确保空会话仍能补上当前笔记。
-  const activePageId = usePages((state) => state.activePageId);
-  const pages = usePages((state) => state.pages);
+  // 只订当前活动页是否属于本笔记本（字符串），任意页自动保存不会重渲染面板。
+  const fallbackPageId = usePages((state) => {
+    const activeId = state.activePageId;
+    if (activeId && state.pages[activeId]?.workspaceId === notebookId) {
+      return activeId;
+    }
+    return null;
+  });
   const notebooks = useNotebooks((state) => state.notebooks);
 
   const {
@@ -216,14 +221,13 @@ export function NotebookAiPanel({
   // 空会话默认 @ 跟随当前页：切笔记本 / 切页后再打开面板时换成最新笔记。
   // 用户已打字、加过其他 chip，或会话里已有消息，都保持原样。
   const currentPageId =
-    getCurrentNotebookAiPageId(notebookId) ??
-    (activePageId && pages[activePageId]?.workspaceId === notebookId
-      ? activePageId
-      : null);
+    getCurrentNotebookAiPageId(notebookId) ?? fallbackPageId;
   const initialReference = useMemo(() => {
-    const page = currentPageId ? pages[currentPageId] : undefined;
+    const page = currentPageId
+      ? usePages.getState().pages[currentPageId]
+      : undefined;
     return page ? buildAiFileReferenceAttrs(page, notebooks) : null;
-  }, [currentPageId, notebooks, pages]);
+  }, [currentPageId, notebooks]);
   const composerSeedContent = useMemo(
     () =>
       resolveEmptySessionComposerSeed(

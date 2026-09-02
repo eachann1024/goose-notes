@@ -20,7 +20,10 @@ import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
 import { toast } from "@/components/ui/sonner";
 import type { EditorRef } from "@/components/editor/core/Editor";
-import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
+import {
+  useNotebookAiChats,
+  composerDraftHasContent,
+} from "@/stores/useNotebookAiChats";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { buildTransport } from "@/lib/notebook-ai/transport";
 import { reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
@@ -146,6 +149,9 @@ export function NotebookAiSessionProvider({
   const requestCurrentPageIdRef = useRef<string | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [composerRevision, setComposerRevision] = useState(0);
+  const composerHasContent = useNotebookAiChats((s) =>
+    composerDraftHasContent(s.composerDrafts[notebookId]),
+  );
   // 打开会话时解析：6 小时未活跃的旧会话归档进历史，展示空白新会话。
   const [conversationId, setConversationId] = useState(() =>
     useNotebookAiChats.getState().ensureFreshActiveConversation(notebookId),
@@ -297,16 +303,34 @@ export function NotebookAiSessionProvider({
   }, [notebookId, conversationId, setMessages, clearError]);
 
   useEffect(() => {
-    if (unavailableReason || isBusy) return;
+    if (unavailableReason || isBusy || composerHasContent) return;
 
-    const timer = window.setInterval(() => {
-      setPlaceholderIndex(
-        (index) => (index + 1) % NOTEBOOK_AI_PLACEHOLDER_HINTS.length,
-      );
-    }, 4500);
+    let timer: number | null = null;
+    const stop = () => {
+      if (timer === null) return;
+      window.clearInterval(timer);
+      timer = null;
+    };
+    const start = () => {
+      if (timer !== null) return;
+      timer = window.setInterval(() => {
+        setPlaceholderIndex(
+          (index) => (index + 1) % NOTEBOOK_AI_PLACEHOLDER_HINTS.length,
+        );
+      }, 4500);
+    };
+    const sync = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
 
-    return () => window.clearInterval(timer);
-  }, [unavailableReason, isBusy]);
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [unavailableReason, isBusy, composerHasContent]);
 
   const persistCurrentConversation = useCallback(() => {
     useNotebookAiChats

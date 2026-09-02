@@ -157,6 +157,7 @@ export function PageEmptyState() {
   const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
   const aiEnabled = useSettings((s) => s.ai.enabled);
   const aiTilt = useAiChipTilt(aiEnabled);
+  const [paused, setPaused] = useState(() => document.hidden);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
   const [vaultDialog, setVaultDialog] = useState<{
@@ -296,6 +297,12 @@ export function PageEmptyState() {
     };
   }, [onCreatePage]);
 
+  useEffect(() => {
+    const syncPaused = () => setPaused(document.hidden);
+    document.addEventListener("visibilitychange", syncPaused);
+    return () => document.removeEventListener("visibilitychange", syncPaused);
+  }, []);
+
   const onCreateVault = useCallback(async () => {
     const parentDir = await pickVaultParentDirectory();
     if (parentDir) {
@@ -376,7 +383,10 @@ export function PageEmptyState() {
   ]);
 
   return (
-    <div className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]">
+    <div
+      className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]"
+      data-paused={paused ? "true" : "false"}
+    >
       <div className="min-h-full flex items-start justify-center pt-2 sm:pt-4 md:pt-6">
         {/* 内容区 */}
         <div className="relative w-full max-w-5xl">

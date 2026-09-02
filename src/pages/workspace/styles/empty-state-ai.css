@@ -309,3 +309,7 @@
     transform: none;
   }
 }
+
+[data-paused="true"] * {
+  animation-play-state: paused;
+}
