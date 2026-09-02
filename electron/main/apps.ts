@@ -25,7 +25,7 @@ export async function listOpenApps(): Promise<OpenApp[]> {
   const found = new Map<string, OpenApp>();
   for (const root of macApplicationRoots()) {
     if (!existsSync(root)) continue;
-    let entries: string[] = [];
+    let entries: string[];
     try {
       entries = await readdir(root);
     } catch {
