@@ -236,6 +236,105 @@ test("preload 创建和复用窗口时都应用校正后的 bounds", () => {
   }
 });
 
+test("小窗 plugin.json 含 ZTools 必填标识与功能说明", () => {
+  const plugin = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../quicknote-plugin.json"), "utf8"),
+  );
+  assert.equal(plugin.name, "goose-quicknote");
+  assert.equal(plugin.title, "鹅的小窗");
+  assert.equal(plugin.pluginName, "鹅的小窗");
+  assert.ok(plugin.homepage);
+  assert.ok(plugin.description);
+  const codes = plugin.features.map((feature) => feature.code);
+  assert.deepEqual(codes, ["quicknote_new", "quicknote_last"]);
+  for (const feature of plugin.features) {
+    assert.equal(typeof feature.explain, "string");
+    assert.ok(feature.explain.length > 8);
+    assert.equal(feature.mainHide, true);
+    assert.ok(Array.isArray(feature.cmds) && feature.cmds.length > 0);
+  }
+});
+
+test("快捷键走 onPluginEnter 也能打开小窗，且不会和 exports.enter 连开连关", () => {
+  const modulePath = require.resolve("./preload-quicknote.cjs");
+  const originalWindow = global.window;
+  const originalUTools = global.utools;
+  const originalSetTimeout = global.setTimeout;
+  const pendingUnlocks = [];
+  let ready = null;
+  let createCount = 0;
+  let hideCalls = 0;
+  let onPluginEnter = null;
+  const win = {
+    isDestroyed: () => false,
+    getBounds: () => ({ x: 960, y: 180, width: 480, height: 350 }),
+    setBounds: () => {},
+    show: () => {},
+    hide: () => {
+      hideCalls += 1;
+    },
+    focus: () => {},
+    setAlwaysOnTop: () => {},
+    webContents: { send: () => {} },
+  };
+
+  try {
+    global.setTimeout = (callback) => {
+      pendingUnlocks.push(callback);
+      return pendingUnlocks.length;
+    };
+    global.window = {};
+    global.utools = {
+      getWindowType: () => "main",
+      getDisplayNearestPoint: () => ({
+        workArea: primaryWorkArea,
+      }),
+      getCursorScreenPoint: () => ({ x: 100, y: 100 }),
+      removeSubInput: () => {},
+      hideMainWindow: () => {},
+      outPlugin: () => true,
+      onPluginEnter: (callback) => {
+        onPluginEnter = callback;
+      },
+      createBrowserWindow: (_url, _options, callback) => {
+        createCount += 1;
+        ready = callback;
+        return win;
+      },
+      db: {
+        get: () => null,
+        put: () => ({ ok: true }),
+      },
+      dbStorage: { removeItem: () => {} },
+    };
+
+    delete require.cache[modulePath];
+    require(modulePath);
+    assert.equal(typeof onPluginEnter, "function");
+
+    onPluginEnter({ code: "quicknote_new", from: "hotkey" });
+    assert.equal(createCount, 1);
+    ready();
+    assert.equal(hideCalls, 0);
+
+    // 同一次唤起若再走 exports.enter，不能立刻当成「再按一次」收起。
+    global.window.exports.quicknote_new.args.enter();
+    assert.equal(createCount, 1);
+    assert.equal(hideCalls, 0);
+
+    pendingUnlocks.splice(0).forEach((callback) => callback());
+    global.window.exports.quicknote_new.args.enter();
+    assert.equal(hideCalls, 1);
+  } finally {
+    delete require.cache[modulePath];
+    if (originalWindow === undefined) delete global.window;
+    else global.window = originalWindow;
+    if (originalUTools === undefined) delete global.utools;
+    else global.utools = originalUTools;
+    global.setTimeout = originalSetTimeout;
+  }
+});
+
 test("临时路径限制在 os.tmpdir 下，拒绝目录逃逸", () => {
   const tmpRoot = os.tmpdir();
   const resolved = resolveTempTargetPath("goose-note/opened-resources/a.png");

@@ -1,9 +1,16 @@
-if (window.ztools) {
+if (typeof window !== "undefined" && window.ztools) {
   window.utools = window.ztools
 }
 
 // B 插件（鹅的速记）preload：纯速记小窗 toggle 逻辑，无主窗联动。
 // CJS 运行在 uTools preload 上下文（Electron renderer），避免与 ESM 主项目冲突。
+//
+// 上架 / 宿主权限信息（开发者工具「权限信息」应对齐这里）：
+// - 独立窗口（createBrowserWindow）：创建置顶速记浮窗，不占用宿主搜索框
+// - 数据库（db / dbStorage）：保存草稿、槽位和窗口位置
+// - 文件系统（fs）：把图片/附件写到系统临时目录，再交给系统查看器打开
+// - 隐藏主窗口 / 退出插件（hideMainWindow、outPlugin）：打开小窗后释放宿主，
+//   全局热键回到主搜索；浮窗常驻后台，不随宿主一起关掉
 //
 // 小窗双击图片需要走 openResourceExternally：把内存/库内图片落到临时文件后
 // utools.shellOpenPath 交给系统查看器。主插件 preload 有完整 gooseFs；B 插件
@@ -697,7 +704,9 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
     const url = `quicknote.html`;
     try {
-      quickNoteWin = utools.createBrowserWindow(url, winOpts, () => {
+      const created = utools.createBrowserWindow(url, winOpts, () => {
+        const win = quickNoteWin;
+        if (!win) return;
         try {
           // 显式回设 bounds：部分 uTools / Electron 版本会忽略 createBrowserWindow
           // 的 winOpts.x/y（改为居中或默认位置），导致「记住的位置」开窗时不生效，
@@ -706,10 +715,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           if (
             typeof winOpts.x === "number" &&
             typeof winOpts.y === "number" &&
-            typeof quickNoteWin.setBounds === "function"
+            typeof win.setBounds === "function"
           ) {
             try {
-              quickNoteWin.setBounds({
+              win.setBounds({
                 x: winOpts.x,
                 y: winOpts.y,
                 width: openWidth,
@@ -719,13 +728,13 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
               /* noop */
             }
           }
-          quickNoteWin.show();
-          quickNoteWin.focus?.();
+          win.show();
+          win.focus?.();
           quickNoteVisible = true;
           quickNoteActiveMode = mode;
           // 强制置顶：用最高层级 screen-saver，确保盖在其他置顶窗之上。
           try {
-            quickNoteWin.setAlwaysOnTop(true, "screen-saver");
+            win.setAlwaysOnTop(true, "screen-saver");
           } catch {
             /* noop */
           }
@@ -733,8 +742,10 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           /* noop */
         }
       });
+      // ZTools 创建失败返回 null；不能把失败结果当成已打开的窗口。
+      quickNoteWin = created || null;
     } catch {
-      /* noop */
+      quickNoteWin = null;
     }
   };
 
@@ -746,15 +757,38 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   // 必须用 isMainWindow 守卫——子窗（browser）加载 quicknote.html 时也会跑这份 preload，
   // 不能让子窗也定义 window.exports（否则覆盖宿主入口、重复定义）。
   if (isMainWindow) {
+    // 搜索框点选走 window.exports.enter；全局快捷键在 uTools 7 / ZTools 上
+    // 往往只打 onPluginEnter。两条路径可能同一次唤起都触发，需挡住第二次，
+    // 否则刚打开就被当成「再按一次」收起。
+    let enterInFlight = false;
     const enterQuickNote = (mode) => {
+      if (enterInFlight) return;
+      enterInFlight = true;
       try {
         triggerQuickNote(mode);
       } catch {
         /* noop */
       }
       // 官方 mode:none 范式：hideMainWindow + outPlugin。
-      // 释放宿主后，全局 uTools 热键应回到主搜索界面；浮窗本身不在此处隐藏。
+      // 释放宿主后，全局热键应回到主搜索界面；浮窗本身不在此处隐藏。
       releaseHostToUToolsMain();
+      const unlock = () => {
+        enterInFlight = false;
+      };
+      if (typeof setTimeout === "function") {
+        setTimeout(unlock, 0);
+      } else {
+        unlock();
+      }
+    };
+    const enterByCode = (code) => {
+      if (code === "quicknote_last") {
+        enterQuickNote("last");
+        return;
+      }
+      if (code === "quicknote_new") {
+        enterQuickNote("new");
+      }
     };
     window.exports = {
       quicknote_new: {
@@ -770,6 +804,13 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         },
       },
     };
+
+    // 快捷键 / 部分宿主不会走 window.exports，必须同时监听 onPluginEnter。
+    if (typeof utools.onPluginEnter === "function") {
+      utools.onPluginEnter((action) => {
+        enterByCode(action && action.code);
+      });
+    }
 
     // onPluginOut：绝不能 hide/destroy 浮窗（用户要的是小窗常驻 + uTools 主界面可用）。
     // isKill=true 时进程将被回收，清空引用避免悬挂；浮窗随进程一起走。

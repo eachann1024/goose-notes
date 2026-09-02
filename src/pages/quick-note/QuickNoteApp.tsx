@@ -48,7 +48,8 @@ import {
   EDITOR_UI_SCALE_CHANGE_EVENT,
 } from "@/lib/appearance";
 
-const POSITION_POLL_MS = 120;
+const POSITION_POLL_IDLE_MS = 500;
+const POSITION_POLL_DRAG_MS = 120;
 const POSITION_SETTLE_MS = 720;
 
 /**
@@ -415,30 +416,63 @@ export function QuickNoteApp() {
   ]);
 
   // 窗口位置记忆：用户拖动窗口移动 → 停下后记住最终位置，下次开窗沿用。
-  // 轮询间隔必须短于 settle 时间，否则拖动中会反复触发持久化 IPC，导致正文重绘抖动。
+  // 仅在前台且有焦点时轮询；空闲 500ms，拖动中升到 120ms（须短于 settle，避免反复 IPC）。
   useEffect(() => {
     let lastX = window.screenX;
     let lastY = window.screenY;
     let settleTimer: number | null = null;
-    const poll = window.setInterval(() => {
-      const x = window.screenX;
-      const y = window.screenY;
-      if (x === lastX && y === lastY) return;
-      lastX = x;
-      lastY = y;
-      if (settleTimer !== null) window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(() => {
-        settleTimer = null;
+    let pollTimer: number | null = null;
+    let pollMs = POSITION_POLL_IDLE_MS;
+
+    const stopPoll = () => {
+      if (pollTimer === null) return;
+      window.clearInterval(pollTimer);
+      pollTimer = null;
+    };
+
+    const startPoll = (ms: number) => {
+      stopPoll();
+      pollMs = ms;
+      pollTimer = window.setInterval(() => {
         const x = window.screenX;
         const y = window.screenY;
-        // preload 权威写 db；store 同步一份，避免后续草稿 persist 用旧坐标盖掉位置。
-        quickNoteWindow.persistPosition(x, y);
-        setWindowPosition(x, y);
-      }, POSITION_SETTLE_MS);
-    }, POSITION_POLL_MS);
+        if (x === lastX && y === lastY) return;
+        lastX = x;
+        lastY = y;
+        if (settleTimer !== null) window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => {
+          settleTimer = null;
+          const sx = window.screenX;
+          const sy = window.screenY;
+          // preload 权威写 db；store 同步一份，避免后续草稿 persist 用旧坐标盖掉位置。
+          quickNoteWindow.persistPosition(sx, sy);
+          setWindowPosition(sx, sy);
+          if (pollMs !== POSITION_POLL_IDLE_MS) startPoll(POSITION_POLL_IDLE_MS);
+        }, POSITION_SETTLE_MS);
+        if (pollMs !== POSITION_POLL_DRAG_MS) startPoll(POSITION_POLL_DRAG_MS);
+      }, ms);
+    };
+
+    const syncPolling = () => {
+      const shouldPoll =
+        document.visibilityState === "visible" && document.hasFocus();
+      if (shouldPoll) {
+        if (pollTimer === null) startPoll(pollMs);
+        return;
+      }
+      stopPoll();
+    };
+
+    syncPolling();
+    document.addEventListener("visibilitychange", syncPolling);
+    window.addEventListener("focus", syncPolling);
+    window.addEventListener("blur", syncPolling);
     return () => {
-      window.clearInterval(poll);
+      stopPoll();
       if (settleTimer !== null) window.clearTimeout(settleTimer);
+      document.removeEventListener("visibilitychange", syncPolling);
+      window.removeEventListener("focus", syncPolling);
+      window.removeEventListener("blur", syncPolling);
     };
   }, [setWindowPosition]);
 
