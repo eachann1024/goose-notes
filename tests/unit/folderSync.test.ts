@@ -18,6 +18,7 @@ import {
   getRecoveryEntry,
   recordRecoveryEntry,
 } from "../../src/lib/storage/recoveryJournal";
+import { DiskWriteError } from "../../src/lib/diskWriteError";
 
 const PAGE_ID = "local-page";
 
@@ -86,6 +87,26 @@ test("false save result keeps pending content and rejects explicit flush", async
 
   expect(pendingLocalSaveContents.get(PAGE_ID)).toBe(draft);
   expect(localSaveWriteChains.has(PAGE_ID)).toBe(false);
+});
+
+test("flush 保留磁盘权限错误，而不是吞成通用保存未完成", async () => {
+  const draft = content("not-yet-saved");
+  pendingLocalSaveContents.set(PAGE_ID, draft);
+  const diskError = new DiskWriteError(
+    "仓库目录当前无法写入（权限不足）。若笔记在 iCloud 等云盘上，请先恢复云盘登录后再保存。",
+    { code: "EACCES", path: "/home/eachann/iCloud/Note/a.md" },
+  );
+
+  await expect(
+    flushPendingLocalSaveByPageIdInternal(
+      PAGE_ID,
+      stateWithSave(async () => {
+        throw diskError;
+      }),
+    ),
+  ).rejects.toThrow(diskError.message);
+
+  expect(pendingLocalSaveContents.get(PAGE_ID)).toBe(draft);
 });
 
 test("failed save does not overwrite newer content queued during the write", async () => {

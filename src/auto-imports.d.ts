@@ -71,6 +71,7 @@ declare global {
   const DialogShell: typeof import('./components/ui/dialog-shell').DialogShell
   const DialogTitle: typeof import('./components/ui/dialog').DialogTitle
   const DialogTrigger: typeof import('./components/ui/dialog').DialogTrigger
+  const DiskWriteError: typeof import('./lib/diskWriteError').DiskWriteError
   const DropdownMenu: typeof import('./components/ui/dropdown-menu').DropdownMenu
   const DropdownMenuCheckboxItem: typeof import('./components/ui/dropdown-menu').DropdownMenuCheckboxItem
   const DropdownMenuContent: typeof import('./components/ui/dropdown-menu').DropdownMenuContent
@@ -253,6 +254,7 @@ declare global {
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const computeEditorUiScale: typeof import('./lib/appearance').computeEditorUiScale
   const confirmLocalDelete: typeof import("./lib/confirm-local-delete").confirmLocalDelete
+  const consumeDiskWriteFailure: typeof import('./lib/diskWriteError').consumeDiskWriteFailure
   const consumePageTitleFocus: typeof import("./lib/page-title-focus").consumePageTitleFocus
   const consumePendingAssociatedMarkdownFiles: typeof import('./lib/openAssociatedMarkdown').consumePendingAssociatedMarkdownFiles
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
@@ -277,6 +279,7 @@ declare global {
   const deleteLocalMdSnapshot: typeof import('./lib/local-md-snapshot').deleteLocalMdSnapshot
   const deletePageWithUndo: typeof import('./lib/page-delete-actions').deletePageWithUndo
   const deleteWebdavBackup: typeof import('./lib/webdavSync').deleteWebdavBackup
+  const describeDiskWriteError: typeof import('./lib/diskWriteError').describeDiskWriteError
   const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
   const downloadWebdavBackup: typeof import('./lib/webdavSync').downloadWebdavBackup
   const emptyBlock: typeof import('./components/editor/utils/blocknote-content/index').emptyBlock
@@ -520,6 +523,7 @@ declare global {
   const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
   const recoverQuickNoteDrafts: typeof import('./stores/useQuickNote').recoverQuickNoteDrafts
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
+  const rememberDiskWriteFailure: typeof import('./lib/diskWriteError').rememberDiskWriteFailure
   const rememberEditorSelectedBlocks: typeof import('./components/editor/utils/selection').rememberEditorSelectedBlocks
   const rememberLocalFolderTarget: typeof import('./lib/local-folder-target').rememberLocalFolderTarget
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
@@ -600,6 +604,7 @@ declare global {
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toCssFontFamily: typeof import('./lib/fontLoader').toCssFontFamily
+  const toDiskWriteError: typeof import('./lib/diskWriteError').toDiskWriteError
   const toInsertableInlineContent: typeof import('./components/editor/utils/softWrapPaste').toInsertableInlineContent
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toast: typeof import('./components/ui/sonner').toast
@@ -715,6 +720,9 @@ declare global {
   // @ts-ignore
   export type { AiWriteAction, AiBlockRange, AiTargetMode, AiTargetSource, AiTargetSelection, AiTargetRef, AiStickyTarget, AiResolvedTarget, AiWritePlan, AiContextBundle, BlockTypeTransformIntent, BlockTypeTransformBlock, BlockTypeTransformPanelOpenDetail, BlockTypeTransformPlan, BlockTypeTransformResult, BlockTypeTransformSelectionSnapshot, BlockTypeTransformTarget, GeneratedBlockStructureExpectation, GeneratedBlockStructureValidationInput, GeneratedBlockStructureValidationResult, PseudoStructureMarkerIssue } from './lib/ai-write/index'
   import('./lib/ai-write/index')
+  // @ts-ignore
+  export type { DiskWriteError } from './lib/diskWriteError'
+  import('./lib/diskWriteError')
   // @ts-ignore
   export type { InlineItem } from './lib/docxExport/docxStyles'
   import('./lib/docxExport/docxStyles')

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { toast } from "@/components/ui/sonner";
+import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 import { useSettings } from "./useSettings";
@@ -132,9 +133,11 @@ const flushClosedPageSaves = (pageIds: string[]): void => {
   const pagesStore = usePages.getState();
   void Promise.all(
     pageIds.map(async (pageId) => {
+      let flushError: unknown;
       try {
         await pagesStore.flushPendingLocalSaveByPageId(pageId);
       } catch (error) {
+        flushError = error;
         console.error("[tabs] closed page flush failed", pageId, error);
       }
       const stillDirty = usePages.getState().dirtyLocalPageIds[pageId];
@@ -142,7 +145,9 @@ const flushClosedPageSaves = (pageIds: string[]): void => {
         const page = usePages.getState().getPage(pageId);
         const title = page ? getPageTitle(page) : pageId;
         toast.warning(`「${title}」未能保存到磁盘`, {
-          description: "文件可能被外部程序修改，请检查文件状态。",
+          description: describeDiskWriteError(
+            flushError ?? new Error(`本地页面保存未完成：${pageId}`),
+          ),
         });
       }
     }),
@@ -359,13 +364,22 @@ export const useTabs = create<TabsState>()((set, get) => {
     const currentPageId =
       activeTab && !isSpecialTab(activeTab) ? activeTab.pageId : null;
     if (currentPageId) {
-      await usePages.getState().flushPendingLocalSaveByPageId(currentPageId);
+      try {
+        await usePages.getState().flushPendingLocalSaveByPageId(currentPageId);
+      } catch (error) {
+        toast.error("当前笔记保存失败，未切换", {
+          description: describeDiskWriteError(error),
+        });
+        return;
+      }
       if (token !== singleTabSwitchToken) return;
       if (usePages.getState().dirtyLocalPageIds[currentPageId]) {
         const currentPage = usePages.getState().getPage(currentPageId);
         toast.error("当前笔记保存失败，未切换", {
           description: currentPage
-            ? `请先处理“${getPageTitle(currentPage)}”的文件状态。`
+            ? describeDiskWriteError(
+                new Error(`本地页面保存未完成：${currentPageId}`),
+              )
             : "请先处理当前文件的保存状态。",
         });
         return;
@@ -403,11 +417,20 @@ export const useTabs = create<TabsState>()((set, get) => {
     const currentPageId =
       activeTab && !isSpecialTab(activeTab) ? activeTab.pageId : null;
     if (currentPageId) {
-      await usePages.getState().flushPendingLocalSaveByPageId(currentPageId);
+      try {
+        await usePages.getState().flushPendingLocalSaveByPageId(currentPageId);
+      } catch (error) {
+        toast.error("当前笔记保存失败，未切换", {
+          description: describeDiskWriteError(error),
+        });
+        return;
+      }
       if (token !== singleTabSwitchToken) return;
       if (usePages.getState().dirtyLocalPageIds[currentPageId]) {
         toast.error("当前笔记保存失败，未切换", {
-          description: "请先处理当前文件的保存状态。",
+          description: describeDiskWriteError(
+            new Error(`本地页面保存未完成：${currentPageId}`),
+          ),
         });
         return;
       }

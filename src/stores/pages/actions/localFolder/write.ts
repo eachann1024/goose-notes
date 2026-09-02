@@ -26,6 +26,10 @@ import {
 import type { StoreSet, StoreGet } from "../hydrate";
 import { clonePageContent, cloneLocalPageContent } from "../pageCreate";
 import { findDuplicateLocalFileOwner } from "./pathGuards";
+import {
+  consumeDiskWriteFailure,
+  DiskWriteError,
+} from "@/lib/diskWriteError";
 
 // FNV-1a 32 位哈希（含长度），用于按内容给图片附件命名以实现去重。
 function hashBase64(data: string): string {
@@ -118,10 +122,15 @@ export const writePageContentAction = async (
 
   if (isLocal) {
     // 程序化写入（AI 等）不走 dirty 队列：直接落盘并清掉 dirty 标记。
-    const saved = await get().saveLocalPageContent(
-      pageId,
-      cloneLocalPageContent(content),
-    );
+    let saved: boolean;
+    try {
+      saved = await get().saveLocalPageContent(
+        pageId,
+        cloneLocalPageContent(content),
+      );
+    } catch {
+      return false;
+    }
     if (saved) {
       set((s) => ({
         dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
@@ -491,10 +500,24 @@ const saveLocalPageContentUnlocked = async (
   // 由 useLocalFolderWatch 据此忽略，不会误判成外部修改弹冲突提示。
   markSelfWrite(filePath);
   let result: boolean;
-  if (window.gooseFs?.writeFileAsync) {
-    result = await window.gooseFs.writeFileAsync(filePath, diskContent);
-  } else {
-    result = window.gooseFs?.writeFile(filePath, diskContent) ?? false;
+  try {
+    if (window.gooseFs?.writeFileAsync) {
+      result = await window.gooseFs.writeFileAsync(filePath, diskContent);
+    } else {
+      result = window.gooseFs?.writeFile(filePath, diskContent) ?? false;
+    }
+  } catch (err) {
+    throw consumeDiskWriteFailure() ?? new DiskWriteError(
+      `无法写入文件：${filePath}`,
+      { path: filePath, cause: err },
+    );
+  }
+
+  if (!result) {
+    throw (
+      consumeDiskWriteFailure() ??
+      new DiskWriteError(`无法写入文件：${filePath}`, { path: filePath })
+    );
   }
 
   if (result) {

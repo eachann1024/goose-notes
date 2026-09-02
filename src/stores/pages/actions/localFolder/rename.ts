@@ -305,35 +305,31 @@ export const saveDirtyLocalPageAction = async (
   if (!page) return false;
   if (page.localReadState === "error") return false;
 
-  try {
-    // 先让编辑器把最新内容刷进 store。
-    window.dispatchEvent(
-      new CustomEvent("goose-note:flush-editor", {
-        detail: { immediate: true, pageId },
-      }),
-    );
+  // 先让编辑器把最新内容刷进 store。
+  window.dispatchEvent(
+    new CustomEvent("goose-note:flush-editor", {
+      detail: { immediate: true, pageId },
+    }),
+  );
 
-    // NOTE: 「H1 → 文件名」自动 rename 已停用。
-    // H1 不再绑定文件名（见 P0 止血：local-folder 链路重构），
-    // maybeRenameLocalFileForTitle 调用被跳过，待虚拟标题方案接管后再重新设计此机制。
-    // const { pageId: effectivePageId, collision } =
-    //   await maybeRenameLocalFileForTitle(set, get, pageId);
-    const effectivePageId = pageId;
+  // NOTE: 「H1 → 文件名」自动 rename 已停用。
+  // H1 不再绑定文件名（见 P0 止血：local-folder 链路重构），
+  // maybeRenameLocalFileForTitle 调用被跳过，待虚拟标题方案接管后再重新设计此机制。
+  // const { pageId: effectivePageId, collision } =
+  //   await maybeRenameLocalFileForTitle(set, get, pageId);
+  const effectivePageId = pageId;
 
-    const latest = get().pages[effectivePageId];
-    if (!latest) return false;
+  const latest = get().pages[effectivePageId];
+  if (!latest) return false;
 
-    const ok = await get().saveLocalPageContent(
-      effectivePageId,
-      cloneLocalPageContent(latest.content),
-    );
-    if (ok) {
-      set((s) => ({
-        dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [effectivePageId]: false },
-      }));
-    }
-    return ok;
-  } catch {
-    return false;
+  const ok = await get().saveLocalPageContent(
+    effectivePageId,
+    cloneLocalPageContent(latest.content),
+  );
+  if (ok) {
+    set((s) => ({
+      dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [effectivePageId]: false },
+    }));
   }
+  return ok;
 };

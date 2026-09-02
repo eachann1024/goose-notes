@@ -220,6 +220,7 @@ applyRolldownPolyfills();
 import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
+import { describeDiskWriteError } from "@/lib/diskWriteError";
 import "./index.css";
 import "./fonts.css";
 import {
@@ -311,9 +312,9 @@ const runFlushOnce = () => {
 
 const reportFlushFailure = (error: unknown) => {
   console.error("[save-guard] pending writes flush failed", error);
-  toast.error("仍有内容未完成保存", {
+  toast.error("笔记未能保存到磁盘", {
     id: "goose-pending-writes-failed",
-    description: "最新内容已保留在恢复备份，请保持窗口打开后重试。",
+    description: describeDiskWriteError(error),
     action: {
       label: "重试",
       onClick: () => retryPendingWrites(),

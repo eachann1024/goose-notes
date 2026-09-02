@@ -8,6 +8,10 @@
  */
 
 import { getGooseDesktop } from "./runtime";
+import {
+  rememberDiskWriteFailure,
+  toDiskWriteError,
+} from "@/lib/diskWriteError";
 
 const LAST_DIRECTORY_KEY = "goose-note:electron-last-directory";
 
@@ -53,6 +57,8 @@ const writeFileImpl = async (
     rememberExists(path, true);
     return true;
   } catch (err) {
+    const diskError = toDiskWriteError(err, path);
+    rememberDiskWriteFailure(diskError);
     console.warn("[electron-gooseFs] writeFile 失败", path, err);
     return false;
   }
@@ -314,6 +320,8 @@ export const electronGooseFs = {
       rememberExists(dir, true);
       return true;
     } catch (err) {
+      const diskError = toDiskWriteError(err, dir);
+      rememberDiskWriteFailure(diskError);
       console.warn("[electron-gooseFs] mkdir 失败", dir, err);
       return false;
     }

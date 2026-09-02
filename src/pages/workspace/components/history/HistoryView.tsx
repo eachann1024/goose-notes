@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,7 @@ function useHistoryViewLogic() {
   const pageTitle = page ? extractBlockNoteTitle(page.content) || "无标题" : "";
 
   const [index, setIndex] = useState<HistoryIndex | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
   const [selectedContent, setSelectedContent] =
     useState<BlockNoteContent | null>(null);
   const [selectedStatus, setSelectedStatus] =
@@ -113,9 +115,11 @@ function useHistoryViewLogic() {
   useEffect(() => {
     if (!pageId) {
       setIndex(null);
+      setIndexError(null);
       return;
     }
     let cancelled = false;
+    setIndexError(null);
     const backend = resolveHistoryBackend(pageId);
     backend
       .loadIndex(pageId)
@@ -127,9 +131,11 @@ function useHistoryViewLogic() {
         );
         if (!cancelled) setIndex({ ...idx, versions });
       })
-      .catch(() => {
-        if (!cancelled)
+      .catch((error) => {
+        if (!cancelled) {
           setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
+          setIndexError(describeDiskWriteError(error));
+        }
       });
     return () => {
       cancelled = true;
@@ -256,7 +262,10 @@ function useHistoryViewLogic() {
     materializeVersion(pageId, selectedVersionId)
       .then((result) => {
         if (!result || result.content == null) {
-          toast.error("无法读取该版本");
+          toast.error("无法读取该版本", {
+            description:
+              "版本文件为空或无法读取。若仓库在云盘上，请先恢复云盘登录。",
+          });
           setIsRestoring(false);
           return;
         }
@@ -281,8 +290,10 @@ function useHistoryViewLogic() {
         setIsRestoring(false);
         exit();
       })
-      .catch(() => {
-        toast.error("无法读取该版本");
+      .catch((error) => {
+        toast.error("无法读取该版本", {
+          description: describeDiskWriteError(error),
+        });
         setIsRestoring(false);
       });
   };
@@ -325,7 +336,9 @@ function useHistoryViewLogic() {
           err,
         );
         applyMilestoneLocally(versionId, !willBe);
-        toast.error(willBe ? "标记失败，请重试" : "取消标记失败，请重试");
+        toast.error(willBe ? "标记失败" : "取消标记失败", {
+          description: describeDiskWriteError(err),
+        });
       })
       .finally(() => setPendingMilestoneVersionId(null));
   };
@@ -336,6 +349,7 @@ function useHistoryViewLogic() {
     pageTitle,
     groups,
     isEmpty: groups.length === 0,
+    indexError,
     selectedVersionId,
     selectedEntry,
     selectedContent,
@@ -358,6 +372,7 @@ export function HistoryVersionList() {
   const {
     groups,
     isEmpty,
+    indexError,
     selectedVersionId,
     pendingMilestoneVersionId,
     select,
@@ -380,7 +395,9 @@ export function HistoryVersionList() {
         )}
       </div>
       {isEmpty ? (
-        <p className="px-3 pt-2 text-xs text-muted-foreground">暂无历史版本</p>
+        <p className="px-3 pt-2 text-xs text-muted-foreground">
+          {indexError ?? "暂无历史版本"}
+        </p>
       ) : (
         <ScrollArea className="flex-1">
           <div className="py-1 pb-4">
@@ -641,8 +658,13 @@ function HistoryReaderState({
  * 复用与主 Editor 完全一致的滚动容器和 max-w-4xl 包裹。
  */
 export function HistoryReader() {
-  const { selectedContent, selectedVersionId, selectedStatus, isEmpty } =
-    useHistoryViewLogic();
+  const {
+    selectedContent,
+    selectedVersionId,
+    selectedStatus,
+    isEmpty,
+    indexError,
+  } = useHistoryViewLogic();
 
   if (selectedStatus === "loading") {
     return (
@@ -658,9 +680,12 @@ export function HistoryReader() {
   if (isEmpty) {
     return (
       <HistoryReaderState
-        icon={LucideIcons.History}
-        title="暂无历史版本"
-        description="停笔一段时间后，鹅的笔记会自动保存可回看的历史。"
+        icon={indexError ? LucideIcons.FileWarning : LucideIcons.History}
+        title={indexError ? "历史列表无法读取" : "暂无历史版本"}
+        description={
+          indexError ??
+          "停笔一段时间后，鹅的笔记会自动保存可回看的历史。"
+        }
       />
     );
   }
@@ -670,7 +695,7 @@ export function HistoryReader() {
       <HistoryReaderState
         icon={LucideIcons.FileQuestion}
         title="此历史版本不可读取"
-        description="这条历史索引还在，但对应版本内容可能已被旧版数据或外部清理移除。"
+        description="版本文件为空或无法读取。若仓库在云盘上，请先恢复云盘登录后再打开历史。"
       />
     );
   }

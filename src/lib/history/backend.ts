@@ -12,6 +12,10 @@ import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import type { HistoryIndex, HistoryVersion } from "./types";
 import { normalizeHistoryIndex, normalizeHistoryVersion } from "./guards";
+import {
+  consumeDiskWriteFailure,
+  DiskWriteError,
+} from "@/lib/diskWriteError";
 
 // ── 简单 FNV-1a (32-bit) ─────────────────────────────────────────────────────
 
@@ -83,9 +87,13 @@ function chainWrite(pageId: string, fn: () => Promise<void>): Promise<void> {
   const prev = writeChains.get(pageId) ?? Promise.resolve();
   const next = prev.catch(() => {}).then(fn);
   writeChains.set(pageId, next);
-  next.finally(() => {
-    if (writeChains.get(pageId) === next) writeChains.delete(pageId);
-  });
+  void next
+    .finally(() => {
+      if (writeChains.get(pageId) === next) writeChains.delete(pageId);
+    })
+    .catch(() => {
+      // 调用方已经处理拒绝；这里只避免 finally 派生的 Promise 变成未处理拒绝。
+    });
   return next;
 }
 
@@ -98,10 +106,22 @@ function makeLocalFolderBackend(basePath: string): HistoryBackend {
     // 逐级确保：basePath/.goose 再 basePath/.goose/history
     const gooseDir = `${basePath}/.goose`;
     if (!(await fsExists(fs, gooseDir))) {
-      await fs.mkdir(gooseDir);
+      const created = await fs.mkdir(gooseDir);
+      if (created === false) {
+        throw (
+          consumeDiskWriteFailure() ??
+          new DiskWriteError(`无法创建历史目录：${gooseDir}`, { path: gooseDir })
+        );
+      }
     }
     if (!(await fsExists(fs, histDir))) {
-      await fs.mkdir(histDir);
+      const created = await fs.mkdir(histDir);
+      if (created === false) {
+        throw (
+          consumeDiskWriteFailure() ??
+          new DiskWriteError(`无法创建历史目录：${histDir}`, { path: histDir })
+        );
+      }
     }
   }
 
@@ -128,7 +148,13 @@ function makeLocalFolderBackend(basePath: string): HistoryBackend {
 
   async function writeJson(path: string, data: unknown): Promise<void> {
     if (typeof window === "undefined" || !window.gooseFs) return;
-    await fsWrite(window.gooseFs, path, JSON.stringify(data));
+    const ok = await fsWrite(window.gooseFs, path, JSON.stringify(data));
+    if (!ok) {
+      throw (
+        consumeDiskWriteFailure() ??
+        new DiskWriteError(`无法写入历史文件：${path}`, { path })
+      );
+    }
   }
 
   return {

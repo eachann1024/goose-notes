@@ -135,7 +135,10 @@ function conflictHandlers(filePath: string, pageId: string) {
         if (!pg) return;
         void usePages
           .getState()
-          .saveLocalPageContent(pageId, pg.content as any, { force: true });
+          .saveLocalPageContent(pageId, pg.content as any, { force: true })
+          .catch((error) => {
+            console.error("[local-folder] conflict force-save failed", error);
+          });
       })();
     },
     // 加载磁盘版本：丢弃本地编辑，重读磁盘

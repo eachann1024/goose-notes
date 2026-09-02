@@ -428,10 +428,15 @@ export const createLocalPageRecordAction = async (
   }));
 
   syncLocalPageMetadataCache(id, newPage);
-  const saved = await get().saveLocalPageContent(
-    id,
-    cloneLocalPageContent(newPage.content),
-  );
+  let saved: boolean;
+  try {
+    saved = await get().saveLocalPageContent(
+      id,
+      cloneLocalPageContent(newPage.content),
+    );
+  } catch {
+    saved = false;
+  }
   if (!saved) {
     set((state) => {
       const nextPages = { ...state.pages };
