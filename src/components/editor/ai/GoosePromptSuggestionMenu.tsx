@@ -123,6 +123,17 @@ export function GoosePromptSuggestionMenu(
     const el = textareaRef.current;
     if (!el) return;
     el.style.boxSizing = "border-box";
+    if (props.busy) {
+      const ticker = tickerScrollerRef.current;
+      const measured = ticker?.scrollHeight ?? DEFAULT_MIN_HEIGHT_PX;
+      const next = Math.min(
+        Math.max(measured + DEFAULT_PAD_Y_PX * 2, DEFAULT_MIN_HEIGHT_PX),
+        maxAutoHeightPx,
+      );
+      el.style.height = `${next}px`;
+      el.style.overflowY = "hidden";
+      return;
+    }
     el.style.height = "0px";
     const measured = el.scrollHeight;
     const next = Math.min(
@@ -131,7 +142,14 @@ export function GoosePromptSuggestionMenu(
     );
     el.style.height = `${next}px`;
     el.style.overflowY = measured > maxAutoHeightPx ? "auto" : "hidden";
-  }, [promptTextToUse, disabled, maxAutoHeightPx, props.placeholder]);
+  }, [
+    promptTextToUse,
+    disabled,
+    maxAutoHeightPx,
+    props.placeholder,
+    props.busy,
+    props.busyTickerText,
+  ]);
 
   useLayoutEffect(() => {
     if (!props.busy) return;
@@ -180,7 +198,12 @@ export function GoosePromptSuggestionMenu(
           spellCheck={false}
         />
         {props.busy ? (
-          <div className="goose-ai-think-ticker" aria-hidden="true">
+          <div
+            className="goose-ai-think-ticker"
+            role="status"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             <div
               ref={tickerScrollerRef}
               className="goose-ai-think-ticker__scroller"

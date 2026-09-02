@@ -482,7 +482,7 @@
   left: var(--goose-ai-icon-slot);
   right: 8px;
   top: 0;
-  height: var(--goose-ai-row);
+  bottom: 0;
   box-sizing: border-box;
   padding: var(--goose-ai-pad-y) 12px var(--goose-ai-pad-y) 0;
   overflow: hidden;
@@ -495,8 +495,9 @@
 }
 
 .goose-ai-think-ticker__scroller {
-  height: var(--goose-ai-line);
-  overflow: hidden;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   overflow-anchor: none;
   scrollbar-width: none;
   font-size: 13px;
