@@ -160,7 +160,7 @@ export function useAppHotkeys() {
           window.dispatchEvent(new CustomEvent("goose-note:open-settings"));
         },
       },
-      // cmd+shift+k search
+      // Mod+K search
       {
         id: "open-search",
         shortcutId: "openSearch",

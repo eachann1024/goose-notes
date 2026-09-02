@@ -13,7 +13,7 @@ import { NON_CUSTOMIZABLE_APP_SHORTCUT_IDS } from '@/lib/fixed-app-shortcuts'
 export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     toggleSidebar: 'Alt+B',
     toggleAIPanel: 'Mod+J',
-    openSearch: 'Mod+Shift+K',
+    openSearch: 'Mod+K',
     toggleTheme: 'Mod+Shift+L',
     navBack: 'Mod+[',
     navForward: 'Mod+]',

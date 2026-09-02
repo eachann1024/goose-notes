@@ -160,7 +160,7 @@ const shortcutSections: ShortcutSection[] = [
     description: "一个管全局搜索，一个管当前页面查找，别混了。",
     items: [
       {
-        shortcut: shortcutLabel("Mod+Shift+K"),
+        shortcut: shortcutLabel("Mod+K"),
         action: "打开全局搜索",
         note: "搜索页面标题与内容。",
       },
@@ -211,7 +211,7 @@ const shortcutSections: ShortcutSection[] = [
         note: "创建后直接输入顶栏标题，按回车进入正文。",
       },
       {
-        shortcut: shortcutLabel("Mod+Shift+K"),
+        shortcut: shortcutLabel("Mod+K"),
         action: "搜索并切换笔记",
         note: "打开结果会替换当前笔记，不会新增标签。",
       },
@@ -330,7 +330,7 @@ export const onboardingPageContent: BlockNoteContent = [
   ...orderedList([
     `按 ${shortcutLabel("Mod+N")} 新建一页，先随便记两行内容。`,
     "在空白行输入 /，看一遍能插入哪些块。",
-    `按 ${shortcutLabel("Mod+Shift+K")} 试一次全局搜索，再按 ${shortcutLabel("Mod+F")} 试一次页内查找。`,
+    `按 ${shortcutLabel("Mod+K")} 试一次全局搜索，再按 ${shortcutLabel("Mod+F")} 试一次页内查找。`,
     "选中一段文字，试试粗体、斜体、行内代码和对齐按钮。",
   ]),
   heading(2, "页面与侧边栏"),

@@ -10,7 +10,7 @@ import {
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
 const DEFAULT_QUICKNOTE = "CmdOrCtrl+Alt+Q";
-const DEFAULT_SEARCH = "CmdOrCtrl+Shift+K";
+const DEFAULT_SEARCH = "CmdOrCtrl+K";
 
 app.setName("Goose Note");
 

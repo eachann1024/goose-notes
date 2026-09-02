@@ -176,6 +176,7 @@ test("fixed shortcuts adapt to the current operating system", () => {
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("newNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("saveNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("reopenTab");
+  expect(DEFAULT_APP_SHORTCUTS.openSearch).toBe("Mod+K");
 });
 
 test("new users start without a close-tab shortcut", () => {

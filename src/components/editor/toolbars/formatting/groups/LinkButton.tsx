@@ -91,7 +91,7 @@ export function LinkButton({
             </Toggle>
           </PopoverTrigger>
         </TooltipTrigger>
-        <ToolbarTooltip label="添加链接" shortcut="Mod+K" />
+        <ToolbarTooltip label="添加链接" />
       </Tooltip>
       <PopoverContent
         align="center"

@@ -10,7 +10,7 @@ import {
 
 test("formatDualShortcut outputs Win default + Mac in parentheses", () => {
   expect(formatDualShortcut("Mod+N")).toBe("Ctrl+N（⌘N）");
-  expect(formatDualShortcut("Mod+Shift+K")).toBe("Ctrl+Shift+K（⌘⇧K）");
+  expect(formatDualShortcut("Mod+K")).toBe("Ctrl+K（⌘K）");
   expect(formatDualShortcut("Mod+F")).toBe("Ctrl+F（⌘F）");
   expect(formatDualShortcut("Mod+Z")).toBe("Ctrl+Z（⌘Z）");
   expect(formatDualShortcut("Mod+S")).toBe("Ctrl+S（⌘S）");
@@ -37,7 +37,7 @@ test("onboarding built-in pages structure includes html and image guide", () => 
 
   const mainPageText = JSON.stringify(onboardingPageContent);
   expect(mainPageText).toContain("Ctrl+N（⌘N）");
-  expect(mainPageText).toContain("Ctrl+Shift+K（⌘⇧K）");
+  expect(mainPageText).toContain("Ctrl+K（⌘K）");
   expect(mainPageText).toContain("生产 HTML 与图片指南");
 
   const thirdPageText = JSON.stringify(onboardingThirdChildContent);
