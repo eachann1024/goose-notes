@@ -82,6 +82,18 @@ export function matchCheckListTrigger(
 }
 
 /**
+ * 行首引用触发匹配：`>` / `＞` / `|` / `｜`。
+ * 导出供单测；转换与退格还原都依赖同一规则。
+ */
+export function matchQuoteTrigger(
+  textBefore: string,
+): { triggerText: string } | null {
+  const matched = /^[>|｜＞]$/u.exec(textBefore);
+  if (!matched) return null;
+  return { triggerText: matched[0] };
+}
+
+/**
  * 将所有「行首标记 + 空格」的普通 markdown 块触发收敛到一处。
  *
  * BlockNote 原生及 createExtension.inputRules 最终都会使用同一个 undoable input-rule
@@ -141,9 +153,9 @@ function getBlockTrigger(
     };
   }
 
-  const quote = /^[|｜]$/u.exec(textBefore);
+  const quote = matchQuoteTrigger(textBefore);
   if (quote) {
-    return { type: "quote", props: {}, triggerText: quote[0] };
+    return { type: "quote", props: {}, triggerText: quote.triggerText };
   }
 
   return null;

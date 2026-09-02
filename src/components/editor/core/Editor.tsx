@@ -310,7 +310,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     {
       initialContent: initialContentRef.current as any,
       schema: editorSchema,
-      // `>` 不再转折叠列表；引用改用 `| `/`｜ `（见 quoteInputRule / markdownInputRules）。
+      // 原生 quote-block-shortcuts 仍禁用；引用由 markdownInputRules 认 >／＞／|／｜ + 半角空格。
       // 同时禁用 toggle-list-item-shortcuts：Enter 对非空 toggleListItem 无条件分裂，
       // 顺序先于自定义扩展；行为在 collapsedToggleEnterExtension 中按收起态重实现。
       disableExtensions: [
