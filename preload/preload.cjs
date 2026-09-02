@@ -1861,6 +1861,16 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     );
   };
 
+  const PENDING_OPEN_MARKDOWN_KEY = "__gooseNotePendingOpenMarkdown";
+  const dispatchOpenMarkdown = (filePath) => {
+    window[PENDING_OPEN_MARKDOWN_KEY] = filePath;
+    window.dispatchEvent(
+      new CustomEvent("goose-note:open-markdown", {
+        detail: { path: filePath },
+      }),
+    );
+  };
+
   const clearSubInput = () => {
     if (typeof utools.removeSubInput === "function") {
       utools.removeSubInput();
@@ -1900,12 +1910,14 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
 
     if (code === "open_folder") {
       if ((type === "files" || type === "file") && payload && payload.length > 0) {
-        const folderPath = payload[0]?.path;
-        if (folderPath) {
+        const targetPath = payload[0]?.path;
+        if (targetPath) {
           try {
-            const stat = fs.statSync(folderPath);
+            const stat = fs.statSync(targetPath);
             if (stat.isDirectory()) {
-              dispatchOpenFolder(folderPath);
+              dispatchOpenFolder(targetPath);
+            } else if (stat.isFile() && /\.(md|markdown)$/i.test(targetPath)) {
+              dispatchOpenMarkdown(targetPath);
             }
           } catch (err) {
             console.error("[gooseFs] stat failed:", err);

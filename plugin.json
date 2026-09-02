@@ -32,12 +32,20 @@
     },
     {
       "code": "open_folder",
-      "explain": "打开 Markdown 文件夹",
+      "explain": "打开 Markdown 文件夹或文件",
       "cmds": [
         {
           "type": "files",
           "fileType": "directory",
           "label": "用鹅的笔记打开",
+          "maxLength": 1
+        },
+        {
+          "type": "files",
+          "fileType": "file",
+          "match": "/\\.(md|markdown)$/i",
+          "label": "用鹅的笔记打开",
+          "minLength": 1,
           "maxLength": 1
         }
       ]
