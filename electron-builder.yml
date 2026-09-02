@@ -24,6 +24,17 @@ files:
   - "!**/*.d.ts"
   - "!**/test/**"
   - "!**/tests/**"
+fileAssociations:
+  - ext: md
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
+  - ext: markdown
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
 mac:
   identity: null
   extendInfo:
@@ -45,3 +56,4 @@ linux:
       Name: Goose Note
       Comment: Local-first notes
       Categories: Office;Note;
+      MimeType: text/markdown;text/x-markdown;

@@ -108,6 +108,17 @@ files:
   - "!icon.ico"
   - "!icon.png"
   - "!electron-builder.yml"
+fileAssociations:
+  - ext: md
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
+  - ext: markdown
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
 mac:
   icon: icon.icns
   category: public.app-category.productivity
@@ -147,6 +158,7 @@ linux:
       Name: Goose Note
       Comment: Local-first notes
       Categories: Office;Note;
+      MimeType: text/markdown;text/x-markdown;
 `,
 );
 console.log("[electron] packed app dir → dist-electron/app-pack");
