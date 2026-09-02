@@ -47,7 +47,10 @@ import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
-import { isPrimaryLinkShortcutEvent } from "@/components/editor/extensions/linkKeyboardExtension";
+import {
+  isLinkShortcutClaimedByApp,
+  isPrimaryLinkShortcutEvent,
+} from "@/components/editor/extensions/linkKeyboardExtension";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { useSettings } from "@/stores/useSettings";
@@ -176,9 +179,15 @@ export function EditorComposer({
     event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
     const target = event.target as HTMLElement | null;
+    const settings = useSettings.getState();
     const isPrimaryLinkShortcut =
       editable &&
       isPrimaryLinkShortcutEvent(event) &&
+      !isLinkShortcutClaimedByApp([
+        ...Object.values(settings.appShortcuts),
+        settings.closeTabShortcut,
+        settings.searchPanelCloseShortcut,
+      ]) &&
       !!target?.closest(".bn-editor");
 
     // 不依赖 ProseMirror keymap 在模块加载时缓存的 navigator.platform。

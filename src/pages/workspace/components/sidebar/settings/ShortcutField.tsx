@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { formatShortcut } from "@/lib/utils"
+import { formatShortcut, getPlatformKind } from "@/lib/utils"
+import { canonicalizeRecordedShortcut } from "@/lib/shortcut-platform"
 import { getShortcutFromMouseEvent } from "@/lib/shortcut-match"
 
 const SETTINGS_OPTION_ROW_CLASS =
@@ -137,7 +138,7 @@ export function ShortcutField({
             event.stopPropagation()
             event.currentTarget.focus()
             setIsCapturing(true)
-            onChange(shortcut)
+            onChange(canonicalizeRecordedShortcut(shortcut, getPlatformKind()))
           }}
           onAuxClick={(event) => {
             if (!getShortcutFromMouseEvent(event.nativeEvent)) return
@@ -187,7 +188,9 @@ export function ShortcutField({
               modifierUsedInChordRef.current = true
             }
             const shortcut = getShortcutFromKeyEvent(event)
-            if (shortcut) onChange(shortcut)
+            if (shortcut) {
+              onChange(canonicalizeRecordedShortcut(shortcut, getPlatformKind()))
+            }
           }}
           onKeyUp={(event) => {
             if (!MODIFIER_KEYS.has(event.key.toLowerCase())) return
@@ -199,7 +202,7 @@ export function ShortcutField({
               pendingModifierRef.current === modifier &&
               !modifierUsedInChordRef.current
             ) {
-              onChange(modifier)
+              onChange(canonicalizeRecordedShortcut(modifier, getPlatformKind()))
             }
             if (pendingModifierRef.current === modifier) {
               resetPendingModifier()

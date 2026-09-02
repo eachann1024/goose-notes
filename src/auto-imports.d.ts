@@ -90,6 +90,7 @@ declare global {
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
   const EDITOR_FONT_SIZE_MAX: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MAX
   const EDITOR_FONT_SIZE_MIN: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_MIN
+  const EDITOR_ONLY_FIXED_SHORTCUTS: typeof import('./lib/shortcut-platform').EDITOR_ONLY_FIXED_SHORTCUTS
   const EDITOR_UI_SCALE_CHANGE_EVENT: typeof import('./lib/appearance').EDITOR_UI_SCALE_CHANGE_EVENT
   const ELECTRON_MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').ELECTRON_MAX_FILE_ATTACHMENT_SIZE
   const ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE
@@ -226,6 +227,7 @@ declare global {
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
+  const canonicalizeRecordedShortcut: typeof import('./lib/shortcut-platform').canonicalizeRecordedShortcut
   const clampQuickNoteZoom: typeof import('./stores/useQuickNote').clampQuickNoteZoom
   const classifyAiLineText: typeof import('./lib/ai-write/index').classifyAiLineText
   const clearAllLocalMdSnapshots: typeof import('./lib/local-md-snapshot').clearAllLocalMdSnapshots
@@ -314,6 +316,8 @@ declare global {
   const formatDualShortcutGroup: typeof import('./lib/onboardingContent').formatDualShortcutGroup
   const formatLocalFolderOpenAppName: typeof import('./lib/local-folder-open-apps').formatLocalFolderOpenAppName
   const formatShortcut: typeof import('./lib/utils').formatShortcut
+  const formatShortcutToken: typeof import('./lib/shortcut-platform').formatShortcutToken
+  const formatSystemModifier: typeof import('./lib/shortcut-platform').formatSystemModifier
   const forwardRef: typeof import('react').forwardRef
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
   const generateExportZip: typeof import('./lib/export/index').generateExportZip
@@ -412,6 +416,7 @@ declare global {
   const isPasteableClipboardVideoFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardVideoFile
   const isPathInsideNotebookRoot: typeof import('./lib/currentLocalPagePath').isPathInsideNotebookRoot
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
+  const isPlatformPrimaryModifierEvent: typeof import('./lib/shortcut-platform').isPlatformPrimaryModifierEvent
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isRandomPageIcon: typeof import('./lib/randomPageIcon').isRandomPageIcon
   const isSpecialTab: typeof import('./stores/useTabs').isSpecialTab
@@ -459,6 +464,8 @@ declare global {
   const normalizePageContent: typeof import('./components/editor/utils/blocknote-content/index').normalizePageContent
   const normalizePageTitle: typeof import('./components/editor/utils/page-title').normalizePageTitle
   const normalizeRemoteDir: typeof import('./lib/webdavSync').normalizeRemoteDir
+  const normalizeShortcutForConflict: typeof import('./lib/shortcut-platform').normalizeShortcutForConflict
+  const normalizeShortcutToken: typeof import('./lib/shortcut-platform').normalizeShortcutToken
   const normalizeWatermarkConfig: typeof import('./lib/imageExport/index').normalizeWatermarkConfig
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
@@ -523,6 +530,7 @@ declare global {
   const resolveImportParentForDrop: typeof import('./lib/local-folder-import').resolveImportParentForDrop
   const resolveInheritedPasteBlockType: typeof import('./components/editor/utils/multilinePaste').resolveInheritedPasteBlockType
   const resolveLocalFolderImportParentId: typeof import('./lib/local-folder-target').resolveLocalFolderImportParentId
+  const resolveModModifier: typeof import('./lib/shortcut-platform').resolveModModifier
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
   const resolvePasteLines: typeof import('./components/editor/utils/multilinePaste').resolvePasteLines

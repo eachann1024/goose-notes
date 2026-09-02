@@ -28,3 +28,11 @@ test("plus keys and non-Mac primary modifiers stay unambiguous", () => {
     "Ctrl",
   );
 });
+
+test("system modifiers stay distinct from Mod on Windows and Linux", () => {
+  expect(formatShortcut("Meta+K", "mac")).toBe("⌘K");
+  expect(formatShortcut("Meta+K", "windows")).toBe("Win + K");
+  expect(formatShortcut("Super+K", "linux")).toBe("Super + K");
+  expect(formatShortcut("Mod+K", "linux")).toBe("Ctrl + K");
+  expect(formatShortcut("Mod+K", "windows")).toBe("Ctrl + K");
+});

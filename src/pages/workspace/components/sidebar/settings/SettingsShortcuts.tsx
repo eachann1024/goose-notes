@@ -1,7 +1,13 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/sonner"
-import { formatShortcut, isMacPlatform } from "@/lib/utils"
+import {
+  formatShortcut,
+  getPlatformKind,
+  isMacPlatform,
+  type PlatformKind,
+} from "@/lib/utils"
+import { normalizeShortcutForConflict } from "@/lib/shortcut-platform"
 import {
   DEFAULT_CLOSE_TAB_SHORTCUT,
   DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
@@ -54,12 +60,6 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
   "Shift+F3",
   // 浏览器/编辑器固定行为不可被自定义动作覆盖。
   "Mod+S",
-  "Mod+B",
-  "Mod+I",
-  "Mod+U",
-  "Mod+E",
-  "Mod+K",
-  "Mod+Shift+S",
   "Mod+A",
   "Mod+Z",
   "Mod+Shift+Z",
@@ -80,33 +80,7 @@ const FIXED_SHORTCUT_VALUES = [
   ...TAB_ONLY_FIXED_SHORTCUT_VALUES,
 ]
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function normalizeShortcutForConflict(
-  shortcut: string,
-  isMac = isMacPlatform(),
-) {
-  const normalized = shortcut
-    .split("+")
-    .map((part) => part.trim().toLowerCase())
-    .filter(Boolean)
-    .map((part) => {
-      if (["mod", "cmdorctrl", "cmdorcontrol", "commandorcontrol"].includes(part)) {
-        return isMac ? "meta" : "ctrl"
-      }
-      if (["meta", "command", "cmd"].includes(part)) return "meta"
-      if (["control", "ctrl"].includes(part)) return "ctrl"
-      if (["alt", "option"].includes(part)) return "alt"
-      if (part === "escape") return "esc"
-      if (part === " ") return "space"
-      return part
-    })
-
-  const modifiers = ["ctrl", "meta", "alt", "shift"].filter((part) =>
-    normalized.includes(part),
-  )
-  const key = normalized.find((part) => !modifiers.includes(part))
-  return [...modifiers, ...(key ? [key] : [])].join("+")
-}
+export { normalizeShortcutForConflict } from "@/lib/shortcut-platform"
 
 // Collect all currently configured shortcuts to detect conflicts
 // eslint-disable-next-line react-refresh/only-export-components
@@ -115,7 +89,7 @@ export function getAllConfiguredShortcuts(
   closeTabShortcut: string,
   searchPanelCloseShortcut: string,
   excludeId: string,
-  isMac = isMacPlatform(),
+  isMac: PlatformKind | boolean = isMacPlatform(),
   singleTabMode = false,
   desktopHotkeys?: {
     wakeHotkey?: string
@@ -258,12 +232,24 @@ const FIXED_SHORTCUTS = [
   { label: "重做（Windows）", shortcut: "Mod+Y" },
 ]
 
-function KbdShortcut({ shortcut }: { shortcut: string }) {
+const FIXED_SHORTCUT_PLATFORMS: { id: PlatformKind; label: string }[] = [
+  { id: "mac", label: "macOS" },
+  { id: "windows", label: "Windows" },
+  { id: "linux", label: "Linux" },
+]
+
+function KbdShortcut({
+  shortcut,
+  platform = getPlatformKind(),
+}: {
+  shortcut: string
+  platform?: PlatformKind
+}) {
   // 范围键仍需格式化 Mod，避免直接把内部存储值展示给用户。
   if (shortcut.includes("~")) {
     return (
       <kbd className="inline-flex items-center rounded-[6px] bg-[var(--goose-interactive-hover)] px-2 py-0.5 font-mono text-xs text-muted-foreground">
-        {formatShortcut(shortcut)}
+        {formatShortcut(shortcut, platform)}
       </kbd>
     )
   }
@@ -272,13 +258,34 @@ function KbdShortcut({ shortcut }: { shortcut: string }) {
     <span className="inline-flex items-center gap-0.5">
       {parts.map((part, i) => (
         <kbd
-          key={i}
+          key={`${platform}-${part}-${i}`}
           className="inline-flex items-center rounded-[6px] bg-[var(--goose-interactive-hover)] px-2 py-0.5 font-mono text-xs text-muted-foreground"
         >
-          {formatShortcut(part)}
+          {formatShortcut(part, platform)}
         </kbd>
       ))}
     </span>
+  )
+}
+
+function FixedShortcutRow({
+  label,
+  shortcut,
+}: {
+  label: string
+  shortcut: string
+}) {
+  return (
+    <div
+      className={`grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-2.5 ${SETTINGS_OPTION_ROW_CLASS}`}
+    >
+      <span className="text-sm text-muted-foreground">{label}</span>
+      {FIXED_SHORTCUT_PLATFORMS.map((item) => (
+        <span key={item.id} className="justify-self-end">
+          <KbdShortcut shortcut={shortcut} platform={item.id} />
+        </span>
+      ))}
+    </div>
   )
 }
 
@@ -633,17 +640,23 @@ export function SettingsShortcuts({
 
       <SettingsSectionCard title="固定快捷键">
         <p className="mb-3 text-xs text-muted-foreground">
-          以下快捷键固定内置，不参与云同步；在不同系统上会自动换成对应按键。
+          应用主键：macOS 为 ⌘，Windows / Linux 为 Ctrl。Super（Linux）和 Win（Windows）是独立按键，不会和 Ctrl 混用。加粗、链接等编辑器格式键只在选中文字时生效，不占用可自定义快捷键。
         </p>
         <div className="space-y-0.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-1 text-[11px] text-muted-foreground">
+            <span />
+            {FIXED_SHORTCUT_PLATFORMS.map((item) => (
+              <span key={item.id} className="justify-self-end">
+                {item.label}
+              </span>
+            ))}
+          </div>
           {FIXED_SHORTCUTS.filter((item) => !singleTabMode || !item.tabOnly).map((item) => (
-            <div
+            <FixedShortcutRow
               key={item.label}
-              className={`flex items-center justify-between gap-4 px-4 py-2.5 ${SETTINGS_OPTION_ROW_CLASS}`}
-            >
-              <span className="text-sm text-muted-foreground">{item.label}</span>
-              <KbdShortcut shortcut={item.shortcut} />
-            </div>
+              label={item.label}
+              shortcut={item.shortcut}
+            />
           ))}
         </div>
       </SettingsSectionCard>

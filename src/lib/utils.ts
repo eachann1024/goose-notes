@@ -52,11 +52,21 @@ export function formatShortcut(
         p === "mod" ||
         p === "cmdorctrl" ||
         p === "cmdorcontrol" ||
-        p === "commandorcontrol" ||
-        p === "command" ||
-        p === "meta"
+        p === "commandorcontrol"
       ) {
         return isMac ? "⌘" : "Ctrl";
+      }
+      if (
+        p === "command" ||
+        p === "meta" ||
+        p === "super" ||
+        p === "win" ||
+        p === "windows"
+      ) {
+        if (isMac) return "⌘";
+        if (platform === "windows") return "Win";
+        if (platform === "linux") return "Super";
+        return "Meta";
       }
       if (p === "ctrl" || p === "control") return isMac ? "⌃" : "Ctrl";
       if (p === "alt" || p === "option") return isMac ? "⌥" : "Alt";

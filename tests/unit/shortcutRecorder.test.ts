@@ -4,6 +4,7 @@ import {
   getAllConfiguredShortcuts,
   normalizeShortcutForConflict,
 } from "../../src/pages/workspace/components/sidebar/settings/SettingsShortcuts";
+import { canonicalizeRecordedShortcut } from "../../src/lib/shortcut-platform";
 import { getFixedAppShortcuts } from "../../src/lib/fixed-app-shortcuts";
 import { DEFAULT_APP_SHORTCUTS } from "../../src/stores/settings/slices/shortcutsSlice";
 import { DEFAULT_CLOSE_TAB_SHORTCUT } from "../../src/stores/settings/types";
@@ -63,6 +64,21 @@ test("conflict normalization aligns Mod with the current platform primary modifi
   expect(normalizeShortcutForConflict("Shift+Ctrl+K", false)).toBe(
     normalizeShortcutForConflict("Control+Shift+K", false),
   );
+  expect(normalizeShortcutForConflict("Mod+K", "linux")).not.toBe(
+    normalizeShortcutForConflict("Super+K", "linux"),
+  );
+  expect(normalizeShortcutForConflict("Super+K", "linux")).toBe(
+    normalizeShortcutForConflict("Meta+K", "linux"),
+  );
+});
+
+test("recorded primary modifiers canonicalize to portable Mod or explicit Super", () => {
+  expect(canonicalizeRecordedShortcut("Meta+K", "mac")).toBe("Mod+K");
+  expect(canonicalizeRecordedShortcut("Ctrl+K", "windows")).toBe("Mod+K");
+  expect(canonicalizeRecordedShortcut("Ctrl+K", "linux")).toBe("Mod+K");
+  expect(canonicalizeRecordedShortcut("Meta+K", "linux")).toBe("Super+K");
+  expect(canonicalizeRecordedShortcut("Meta+K", "windows")).toBe("Super+K");
+  expect(canonicalizeRecordedShortcut("Ctrl+K", "mac")).toBe("Ctrl+K");
 });
 
 test("configured shortcut conflicts include fixed shortcuts", () => {
@@ -75,24 +91,27 @@ test("configured shortcut conflicts include fixed shortcuts", () => {
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+G"));
   expect(configured).toContain(normalizeShortcutForConflict("Shift+F3"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+S"));
-  expect(configured).toContain(normalizeShortcutForConflict("Mod+B"));
-  expect(configured).toContain(normalizeShortcutForConflict("Mod+K"));
+  expect(configured).not.toContain(normalizeShortcutForConflict("Mod+B"));
+  expect(configured).not.toContain(normalizeShortcutForConflict("Mod+K"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Z"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+Z"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Y"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+M"));
 });
 
-test("Windows reserves editor and save shortcuts without blocking unrelated shortcuts", () => {
+test("Windows reserves save shortcuts without blocking editor formatting or Super", () => {
   const configured = getAllConfiguredShortcuts({}, "", "", "unused", false);
-  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+B", false));
-  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+K", false));
+  expect(configured).not.toContain(normalizeShortcutForConflict("Ctrl+B", false));
+  expect(configured).not.toContain(normalizeShortcutForConflict("Ctrl+K", false));
   expect(configured).toContain(normalizeShortcutForConflict("Ctrl+S", false));
   expect(configured).not.toContain(
     normalizeShortcutForConflict("Ctrl+D", false),
   );
   expect(configured).not.toContain(
     normalizeShortcutForConflict("Alt+K", false),
+  );
+  expect(configured).not.toContain(
+    normalizeShortcutForConflict("Meta+K", false),
   );
 });
 

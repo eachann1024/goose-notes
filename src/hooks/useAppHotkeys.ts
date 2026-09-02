@@ -15,6 +15,7 @@ import {
   shortcutHasModifier,
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
+import { isPlatformPrimaryModifierEvent } from "@/lib/shortcut-platform";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
 import {
@@ -95,7 +96,9 @@ export function useAppHotkeys() {
 
     // ----- shared modifier gate for meta/ctrl-based shortcuts -----
     const hasPrimaryModifier = (event: KeyboardEvent) =>
-      (event.metaKey || event.ctrlKey) && !event.altKey && !event.repeat;
+      isPlatformPrimaryModifierEvent(event) &&
+      !event.altKey &&
+      !event.repeat;
 
     const matchesConfiguredShortcut = (
       event: KeyboardEvent,
@@ -216,7 +219,7 @@ export function useAppHotkeys() {
         id: "editor-find-nav-g",
         allowRepeat: true,
         match: (event) =>
-          (event.metaKey || event.ctrlKey) &&
+          isPlatformPrimaryModifierEvent(event) &&
           !event.altKey &&
           event.key.toLowerCase() === "g",
         handler: (event) => {
@@ -480,7 +483,7 @@ export function useAppHotkeys() {
           if (useSettings.getState().singleTabMode) return false;
           if (event.defaultPrevented) return false;
           if (
-            !(event.metaKey || event.ctrlKey) ||
+            !isPlatformPrimaryModifierEvent(event) ||
             event.altKey ||
             event.shiftKey
           ) {

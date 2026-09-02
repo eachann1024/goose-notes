@@ -27,6 +27,10 @@ export function toElectronAccelerator(shortcut: string): string {
       if (!modifiers.includes("CommandOrControl")) modifiers.push("CommandOrControl");
       continue;
     }
+    if (["super", "win", "windows"].includes(lower)) {
+      if (!modifiers.includes("Super")) modifiers.push("Super");
+      continue;
+    }
     if (["meta", "command", "cmd"].includes(lower)) {
       if (!modifiers.includes("Command")) modifiers.push("Command");
       continue;

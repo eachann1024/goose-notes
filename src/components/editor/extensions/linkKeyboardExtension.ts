@@ -3,6 +3,12 @@ import { getEditorPlatform } from "@/components/editor/platform/context";
 import type { EditorSettings } from "@/components/editor/platform/hostContext";
 import type { MutableRefObject } from "react";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
+import {
+  isPlatformPrimaryModifierEvent,
+  normalizeShortcutForConflict,
+} from "@/lib/shortcut-platform";
+import { getPlatformKind, type PlatformKind } from "@/lib/utils";
+import { useSettings } from "@/stores/useSettings";
 
 type LinkShortcutEvent = Pick<
   KeyboardEvent,
@@ -19,8 +25,11 @@ type LinkShortcutEvent = Pick<
     nativeEvent?: Pick<KeyboardEvent, "isComposing" | "keyCode" | "which">;
   };
 
-/** uTools Windows WebView 中不依赖 ProseMirror 缓存的平台判断，直接匹配实际按键。 */
-export function isPrimaryLinkShortcutEvent(event: LinkShortcutEvent) {
+/** 仅匹配当前平台的 Mod+K（macOS ⌘K / Windows·Linux Ctrl+K），不把 Super/Win 当成链接键。 */
+export function isPrimaryLinkShortcutEvent(
+  event: LinkShortcutEvent,
+  platform: PlatformKind = getPlatformKind(),
+) {
   return (
     !event.defaultPrevented &&
     !isImeKeyboardEvent(event.nativeEvent ?? {}) &&
@@ -28,9 +37,21 @@ export function isPrimaryLinkShortcutEvent(event: LinkShortcutEvent) {
     !event.repeat &&
     !event.altKey &&
     !event.shiftKey &&
-    (event.ctrlKey || event.metaKey) &&
+    isPlatformPrimaryModifierEvent(event, platform) &&
     (event.key.toLowerCase() === "k" || event.code === "KeyK")
   );
+}
+
+export function isLinkShortcutClaimedByApp(
+  shortcuts: Iterable<string | undefined>,
+  platform: PlatformKind = getPlatformKind(),
+) {
+  const link = normalizeShortcutForConflict("Mod+K", platform);
+  for (const shortcut of shortcuts) {
+    if (!shortcut) continue;
+    if (normalizeShortcutForConflict(shortcut, platform) === link) return true;
+  }
+  return false;
 }
 
 function normalizeExternalUrl(url: string): string {
@@ -47,6 +68,16 @@ export const createGooseLinkKeyboardExtension = (
     key: "goose-link-keyboard",
     keyboardShortcuts: {
       "Mod-k": ({ editor }) => {
+        const settings = useSettings.getState();
+        if (
+          isLinkShortcutClaimedByApp([
+            ...Object.values(settings.appShortcuts),
+            settings.closeTabShortcut,
+            settings.searchPanelCloseShortcut,
+          ])
+        ) {
+          return false;
+        }
         const url = editor.getSelectedLinkUrl();
         if (url) {
           editor.deleteLink();

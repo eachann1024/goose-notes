@@ -12,7 +12,16 @@ function normalizeShortcutToken(raw: string) {
     return isMacPlatform() ? "meta" : "ctrl";
   }
   if (token === "control" || token === "ctrl") return "ctrl";
-  if (token === "meta" || token === "command" || token === "cmd") return "meta";
+  if (
+    token === "meta" ||
+    token === "command" ||
+    token === "cmd" ||
+    token === "super" ||
+    token === "win" ||
+    token === "windows"
+  ) {
+    return "meta";
+  }
   if (token === "alt" || token === "option") return "alt";
   if (token === "shift") return "shift";
   if (token === "escape" || token === "esc") return "escape";
