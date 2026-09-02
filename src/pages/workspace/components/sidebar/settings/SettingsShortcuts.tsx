@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/sonner"
+import { getGooseDesktop } from "@/lib/electron/runtime"
 import {
   formatShortcut,
   getPlatformKind,
@@ -336,6 +337,27 @@ function DesktopGlobalHotkeysCard({
   )
   const setSearchHotkey = useSettings((s) => s.setSearchHotkey)
   const setSearchHotkeyEnabled = useSettings((s) => s.setSearchHotkeyEnabled)
+  const [macAccessibilityNeeded, setMacAccessibilityNeeded] = useState(false)
+
+  useEffect(() => {
+    const api = getGooseDesktop()
+    if (!api?.getAccessibilityStatus) return
+    let cancelled = false
+    const refresh = () => {
+      void api.getAccessibilityStatus().then((status) => {
+        if (cancelled) return
+        setMacAccessibilityNeeded(
+          status.platform === "darwin" && !status.trusted,
+        )
+      })
+    }
+    refresh()
+    window.addEventListener("focus", refresh)
+    return () => {
+      cancelled = true
+      window.removeEventListener("focus", refresh)
+    }
+  }, [])
 
   const makeDesktopSetter = (
     excludeId: "wake-hotkey" | "quicknote-hotkey" | "search-hotkey",
@@ -381,6 +403,26 @@ function DesktopGlobalHotkeysCard({
       <p className="mb-3 text-xs text-muted-foreground">
         应用未聚焦时也可唤出。同一快捷键再按一次：已聚焦则隐藏，未聚焦则聚焦，不可见则显示。
       </p>
+      {macAccessibilityNeeded && (
+        <div
+          className={`mb-3 flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
+          <p className="text-xs text-muted-foreground">
+            macOS 需要在「系统设置 › 隐私与安全性 › 辅助功能」中允许 Goose Note，全局快捷键才能在其他应用前台时唤出主窗口和速记小窗。
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-[10px]"
+            onClick={() => {
+              void getGooseDesktop()?.requestAccessibility?.()
+            }}
+          >
+            打开系统设置
+          </Button>
+        </div>
+      )}
       <ShortcutField
         id="wake-hotkey"
         title="主窗口唤出 / 隐藏"

@@ -96,6 +96,13 @@ const gooseDesktop = {
       quicknoteOk: boolean;
       searchOk: boolean;
     }>,
+  getAccessibilityStatus: () =>
+    invoke("desktop:getAccessibilityStatus") as Promise<{
+      platform: string;
+      trusted: boolean;
+    }>,
+  requestAccessibility: () =>
+    invoke("desktop:requestAccessibility") as Promise<boolean>,
   onOpenSearch: (cb: () => void) => {
     const listener = () => cb();
     ipcRenderer.on("desktop:open-search", listener);

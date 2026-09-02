@@ -24,6 +24,10 @@ import {
 import { registerOpenMarkdownIpc } from "./openMarkdownFiles";
 import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
 import { registerHotkeys, pauseGlobalHotkeys, resumeGlobalHotkeys } from "./hotkeys";
+import {
+  getAccessibilityStatus,
+  requestMacAccessibilityAccess,
+} from "./accessibility";
 import { printHtmlToPdf } from "./printPdf";
 import {
   broadcast,
@@ -521,7 +525,6 @@ export function registerIpcHandlers(): void {
     if (win && !win.isDestroyed()) win.setTitle(t ?? "");
   });
 
-
   ipcMain.handle("desktop:getAlwaysOnTop", async (event) => {
     const win = senderWindow(event);
     if (!win || win.isDestroyed()) return false;
@@ -564,13 +567,20 @@ export function registerIpcHandlers(): void {
     },
   );
 
-
   ipcMain.handle("desktop:pauseHotkeys", async () => {
     pauseGlobalHotkeys();
   });
 
   ipcMain.handle("desktop:resumeHotkeys", async () => {
     return resumeGlobalHotkeys();
+  });
+
+  ipcMain.handle("desktop:getAccessibilityStatus", async () => {
+    return getAccessibilityStatus();
+  });
+
+  ipcMain.handle("desktop:requestAccessibility", async () => {
+    return requestMacAccessibilityAccess();
   });
 
   ipcMain.handle(

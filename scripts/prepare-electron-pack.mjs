@@ -127,6 +127,8 @@ mac:
   gatekeeperAssess: false
   extendInfo:
     LSMultipleInstancesProhibited: true
+    NSAppleEventsUsageDescription: Goose Note 需要发送系统事件，以便用快捷键唤出主窗口和速记小窗。
+    NSAccessibilityUsageDescription: Goose Note 需要辅助功能权限，以便在其他应用处于前台时用快捷键唤出主窗口和速记小窗。
   target:
     - target: dir
       arch:
