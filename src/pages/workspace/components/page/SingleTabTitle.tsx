@@ -39,9 +39,11 @@ const TITLE_IDLE_CLASS =
 
 const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]`;
 
-/** Electron 顶栏占满主栏剩余宽度；uTools 页头仍随文字收缩。 */
-const TITLE_SIZE_FILL = "w-full min-w-full";
-const TITLE_SIZE_HUG = "max-w-full shrink-0";
+/**
+ * 铺满主栏剩余宽度（到右侧 AI / 菜单为止）。
+ * Electron 拖窗口会丢掉 input 的 size 固有宽，必须写死 w-full，不能随文字收缩。
+ */
+const TITLE_SIZE_FILL = "min-w-0 w-full flex-1";
 
 export function SingleTabTitle({
   page,
@@ -197,7 +199,7 @@ export function SingleTabTitle({
     }
   }, [currentTitle, locked, page, setValue, valueRef]);
 
-  const sizeClass = idleWindowDrag ? TITLE_SIZE_FILL : TITLE_SIZE_HUG;
+  const sizeClass = TITLE_SIZE_FILL;
 
   if (locked) {
     return (
@@ -262,6 +264,8 @@ export function SingleTabTitle({
       ref={inputRef}
       value={value}
       {...imeInputProps}
+      size={1}
+      data-page-title-field
       autoFocus={idleWindowDrag}
       onBlur={() => {
         if (isComposing()) return;
@@ -298,7 +302,7 @@ export function SingleTabTitle({
       title="点击编辑笔记标题"
       spellCheck={false}
       autoComplete="off"
-      className={`${TITLE_INPUT_CLASS} ${sizeClass}`}
+      className={`${TITLE_INPUT_CLASS} ${sizeClass} box-border`}
     />
   );
 }
