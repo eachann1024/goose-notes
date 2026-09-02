@@ -401,8 +401,20 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
   );
 });
 
-function EmptyReasoningPart() {
-  return null;
+function AssistantReasoningPart({ text, status }: TextMessagePartProps) {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const ctx = useContext(AssistantToolRenderContext);
+  const streaming = Boolean(ctx?.isStreaming) && status.type === "running";
+  return (
+    <div
+      className="notebook-ai-reasoning"
+      data-streaming={streaming ? "true" : "false"}
+      role="status"
+    >
+      {trimmed}
+    </div>
+  );
 }
 
 /** 从 context 读 isStreaming，避免 stream 结束时换 Text 组件类型导致整段 remount */
@@ -472,19 +484,19 @@ function NullMessagePart() {
  */
 export const ASSISTANT_TEXT_PARTS = {
   Text: AssistantTextPart,
-  Reasoning: EmptyReasoningPart,
+  Reasoning: AssistantReasoningPart,
   tools: { Override: NullMessagePart },
 };
 
 export const ASSISTANT_APPROVAL_PARTS = {
   Text: NullMessagePart,
-  Reasoning: EmptyReasoningPart,
+  Reasoning: NullMessagePart,
   tools: { Override: AssistantApprovalPart },
 };
 
 export const ASSISTANT_ARTIFACT_PARTS = {
   Text: NullMessagePart,
-  Reasoning: EmptyReasoningPart,
+  Reasoning: NullMessagePart,
   tools: { Override: AssistantArtifactPart },
 };
 

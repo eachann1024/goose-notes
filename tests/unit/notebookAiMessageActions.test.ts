@@ -189,4 +189,5 @@ test("发送后直接显示处理进度，不再出独立思考中卡片", () =>
   expect(messageSource).not.toContain("AssistantThinkingPlaceholder");
   expect(messageSource).not.toContain('activeLabel="思考中"');
   expect(messageSource).not.toContain("ThinkingState");
+  expect(messageSource).toContain("AssistantReasoningPart");
 });
