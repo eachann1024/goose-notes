@@ -42,31 +42,78 @@ export const LEGACY_BLOCK_TYPES = new Set([
 
 const INLINE_CONTENT_TYPES = new Set(["text", "link"]);
 
-export function simpleExtractText(block: any): string {
-  if (!block || typeof block !== "object") return "";
+/** 写在 props/attrs 里、用户能看见或会拿来搜的字段（不含 url / language 等元数据） */
+const SEARCHABLE_PROP_KEYS = ["caption", "name", "summary", "alt", "title"] as const;
+
+function extractBlockPropText(block: any): string {
+  if (!block || typeof block !== "object" || Array.isArray(block)) return "";
+  const source = block.props ?? block.attrs;
+  if (!source || typeof source !== "object") return "";
+  const seen = new Set<string>();
+  const parts: string[] = [];
+  for (const key of SEARCHABLE_PROP_KEYS) {
+    const value = source[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    parts.push(trimmed);
+  }
+  return parts.join(" ");
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function extractInlinePiece(inline: any): string {
+  if (inline == null) return "";
+  if (typeof inline === "string") return inline;
+  if (typeof inline !== "object") return "";
+  if (inline.type === "hardBreak") return "\n";
+  if (inline.type === "link") {
+    const text = simpleExtractText(inline.content ?? "");
+    const href = typeof inline.href === "string" ? inline.href.trim() : "";
+    if (href && isHttpUrl(href) && href !== text) {
+      return text ? `${text} ${href}` : href;
+    }
+    return text;
+  }
+  if (inline.type === "paragraph" || inline.type === "tableCell") {
+    return simpleExtractText(inline);
+  }
+  if (typeof inline.text === "string") return inline.text;
+  if (inline.content != null) return simpleExtractText(inline);
+  return "";
+}
+
+function extractBlockContentText(block: any): string {
   if (typeof block.content === "string") return block.content;
   if (Array.isArray(block.content)) {
-    return block.content
-      .map((inline: any) => {
-        if (typeof inline === "string") return inline;
-        if (inline?.type === "link" && Array.isArray(inline.content)) {
-          return inline.content.map((c: any) => c?.text ?? "").join("");
-        }
-        return inline?.text ?? "";
-      })
-      .join("");
+    return block.content.map(extractInlinePiece).join("");
   }
   if (block.content?.rows) {
     const rows = block.content.rows as any[];
     return rows
-      .flatMap((row) =>
-        (row.cells ?? []).map((cell: any) =>
-          typeof cell === "string" ? cell : simpleExtractText(cell),
-        ),
-      )
+      .flatMap((row) => (row.cells ?? []).map((cell: any) => simpleExtractText(cell)))
       .join(" ");
   }
+  if (typeof block.text === "string") return block.text;
   return "";
+}
+
+export function simpleExtractText(block: any): string {
+  if (block == null) return "";
+  if (typeof block === "string") return block;
+  if (Array.isArray(block)) {
+    return block.map(extractInlinePiece).join("");
+  }
+  if (typeof block !== "object") return "";
+  const contentText = extractBlockContentText(block);
+  const propText = extractBlockPropText(block);
+  if (!contentText) return propText;
+  if (!propText) return contentText;
+  return `${contentText} ${propText}`;
 }
 
 function isStructuredBlockLike(node: unknown): boolean {

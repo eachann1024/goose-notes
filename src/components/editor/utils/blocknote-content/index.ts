@@ -83,22 +83,8 @@ export function extractPlainText(content: PageContent | undefined): string {
 
   const parts: string[] = [];
   const visit = (block: any) => {
-    if (typeof block.content === "string") parts.push(block.content);
-    else if (Array.isArray(block.content)) {
-      for (const inline of block.content) {
-        if (typeof inline === "string") parts.push(inline);
-        else if (inline?.type === "link" && Array.isArray(inline.content)) {
-          parts.push(...inline.content.map((c: any) => c?.text ?? ""));
-        } else if (inline?.text) parts.push(inline.text);
-      }
-    } else if (block.content?.rows) {
-      for (const row of block.content.rows) {
-        for (const cell of row.cells ?? []) {
-          if (typeof cell === "string") parts.push(cell);
-          else parts.push(extractPlainText(cell as PageContent));
-        }
-      }
-    }
+    const text = simpleExtractText(block);
+    if (text) parts.push(text);
     for (const child of block.children ?? []) visit(child);
   };
   for (const block of content as PartialBlock[]) visit(block);
