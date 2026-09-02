@@ -224,6 +224,8 @@ declare global {
   const buildNotebookCardTheme: typeof import('./lib/imageExport/index').buildNotebookCardTheme
   const buildQuickNoteDraftPage: typeof import('./stores/useQuickNote').buildQuickNoteDraftPage
   const buildSinglePageExport: typeof import('./lib/export/index').buildSinglePageExport
+  const buildSoftWrapInlineFromMarkdown: typeof import('./components/editor/utils/softWrapPaste').buildSoftWrapInlineFromMarkdown
+  const buildSoftWrapPasteInline: typeof import('./components/editor/utils/softWrapPaste').buildSoftWrapPasteInline
   const buttonVariants: typeof import('./components/ui/button').buttonVariants
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
@@ -252,6 +254,7 @@ declare global {
   const computeEditorUiScale: typeof import('./lib/appearance').computeEditorUiScale
   const confirmLocalDelete: typeof import("./lib/confirm-local-delete").confirmLocalDelete
   const consumePageTitleFocus: typeof import("./lib/page-title-focus").consumePageTitleFocus
+  const consumePendingAssociatedMarkdownFiles: typeof import('./lib/openAssociatedMarkdown').consumePendingAssociatedMarkdownFiles
   const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const convertImageBlobToPng: typeof import('./lib/imageProcessor').convertImageBlobToPng
   const countWords: typeof import('./components/editor/utils/content-text-extractor').countWords
@@ -307,8 +310,10 @@ declare global {
   const fetchCustomAIModels: typeof import('./lib/ai-provider/index').fetchCustomAIModels
   const fileNavKeyForTab: typeof import('./stores/useFileNavHistory').fileNavKeyForTab
   const fileStorage: typeof import('./lib/fileStorage').fileStorage
+  const findContainingLocalFolderNotebook: typeof import('./lib/openAssociatedMarkdown').findContainingLocalFolderNotebook
   const findNonOverlappingToolbarPosition: typeof import('./components/editor/utils/formattingToolbarPosition').findNonOverlappingToolbarPosition
   const findPseudoStructureMarkers: typeof import('./lib/ai-write/index').findPseudoStructureMarkers
+  const flattenParsedBlocksToSoftWrapInline: typeof import('./components/editor/utils/softWrapPaste').flattenParsedBlocksToSoftWrapInline
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushSidebarViewPersist: typeof import('./stores/useSidebarView').flushSidebarViewPersist
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
@@ -374,7 +379,9 @@ declare global {
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const handleFileInsertion: typeof import("./components/editor/utils/handleClipboardFileInsertion").handleFileInsertion
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
+  const hasStyledSoftWrapItems: typeof import('./components/editor/utils/softWrapPaste').hasStyledSoftWrapItems
   const hasWholePageBlockTypeTransformScope: typeof import('./lib/ai-write/index').hasWholePageBlockTypeTransformScope
+  const htmlHasInlineFormatting: typeof import('./components/editor/utils/softWrapPaste').htmlHasInlineFormatting
   const htmlHasNonTextPasteBlocks: typeof import('./components/editor/utils/multilinePaste').htmlHasNonTextPasteBlocks
   const htmlToPlainTextForPaste: typeof import('./components/editor/utils/multilinePaste').htmlToPlainTextForPaste
   const importFile: typeof import('./lib/export/index').importFile
@@ -385,6 +392,8 @@ declare global {
   const importTextFilesToLocalFolder: typeof import('./lib/local-folder-import').importTextFilesToLocalFolder
   const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
+  const insertSoftWrappedInline: typeof import('./components/editor/utils/softWrapPaste').insertSoftWrappedInline
+  const insertSoftWrappedLines: typeof import('./components/editor/utils/softWrapPaste').insertSoftWrappedLines
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
   const inspectPasteContainer: typeof import('./components/editor/utils/multilinePaste').inspectPasteContainer
   const isAIProviderId: typeof import('./lib/ai-provider/index').isAIProviderId
@@ -473,6 +482,8 @@ declare global {
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
   const onboardingThirdChildContent: typeof import('./lib/onboardingContent').onboardingThirdChildContent
+  const openAssociatedMarkdownFile: typeof import('./lib/openAssociatedMarkdown').openAssociatedMarkdownFile
+  const openAssociatedMarkdownFiles: typeof import('./lib/openAssociatedMarkdown').openAssociatedMarkdownFiles
   const openExternalUrl: typeof import('./lib/openExternalUrl').openExternalUrl
   const openPageFromSidebar: typeof import('./lib/sidebarPageNavigation').openPageFromSidebar
   const openResourceExternally: typeof import('./components/editor/utils/openResourceExternally').openResourceExternally
@@ -567,6 +578,7 @@ declare global {
   const shouldIsolateTitleStructurePaste: typeof import('./components/editor/hooks/useEditorPaste').shouldIsolateTitleStructurePaste
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
+  const shouldPreserveStartupSelection: typeof import('./lib/workspaceStartup').shouldPreserveStartupSelection
   const shouldShowImageExportLivePreview: typeof import('./lib/imageExport/index').shouldShowImageExportLivePreview
   const shouldShowImageExportOptionsCorner: typeof import('./lib/imageExport/index').shouldShowImageExportOptionsCorner
   const shouldSkipAppHotkeyEvent: typeof import('./hooks/useImeInput').shouldSkipAppHotkeyEvent
@@ -588,6 +600,7 @@ declare global {
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toCssFontFamily: typeof import('./lib/fontLoader').toCssFontFamily
+  const toInsertableInlineContent: typeof import('./components/editor/utils/softWrapPaste').toInsertableInlineContent
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toast: typeof import('./components/ui/sonner').toast
   const toggleSidebarFolder: typeof import('./stores/useSidebarView').toggleSidebarFolder
@@ -653,6 +666,7 @@ declare global {
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
   const useUToolsMcpBridge: typeof import('./hooks/useUToolsMcpBridge').useUToolsMcpBridge
+  const useWindowAlwaysOnTop: typeof import('./hooks/useWindowAlwaysOnTop').useWindowAlwaysOnTop
   const validateGeneratedBlockStructure: typeof import('./lib/ai-write/index').validateGeneratedBlockStructure
   const videoStorage: typeof import('./lib/videoStorage').videoStorage
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
@@ -788,6 +802,9 @@ declare global {
   // @ts-ignore
   export type { SlashMenuPagePolicy } from './components/editor/utils/slashMenuPolicy'
   import('./components/editor/utils/slashMenuPolicy')
+  // @ts-ignore
+  export type { SoftWrapInlineItem } from './components/editor/utils/softWrapPaste'
+  import('./components/editor/utils/softWrapPaste')
   // @ts-ignore
   export type { EditorFileUploadDeps } from './components/editor/utils/uploadEditorFile'
   import('./components/editor/utils/uploadEditorFile')
