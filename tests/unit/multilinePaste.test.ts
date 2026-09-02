@@ -148,7 +148,7 @@ test("callout / 表格 / 跨块选区不拆", () => {
   ).toBe(true);
 });
 
-test("inspectPasteContainer 识别空待办和引用", () => {
+test("inspectPasteContainer 识别空待办、引用和标注", () => {
   const emptyTodo = inspectPasteContainer({
     depth: 2,
     node: (d) => {
@@ -172,6 +172,18 @@ test("inspectPasteContainer 识别空待办和引用", () => {
   });
   expect(quote.inSoftWrap).toBe(true);
   expect(quote.listType).toBeNull();
+
+  const callout = inspectPasteContainer({
+    depth: 2,
+    node: (d) => {
+      if (d === 1) {
+        return { type: { name: "blockContainer" }, content: { size: 1 } };
+      }
+      return { type: { name: "callout" }, content: { size: 4 } };
+    },
+  });
+  expect(callout.inSoftWrap).toBe(true);
+  expect(callout.listType).toBeNull();
 });
 
 test("空待办按计划插入后变成多条未勾选待办", () => {

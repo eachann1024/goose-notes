@@ -16,6 +16,12 @@ import {
   resolvePasteLines,
   shouldSplitMultilinePaste,
 } from "../utils/multilinePaste";
+import {
+  buildSoftWrapPasteInline,
+  htmlHasInlineFormatting,
+  insertSoftWrappedInline,
+  insertSoftWrappedLines,
+} from "../utils/softWrapPaste";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
 import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "../extensions/copyCurrentBlockExtension";
 import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
@@ -61,21 +67,6 @@ function insertPlainInline(editor: Editor, text: string) {
   const pmState = editor.prosemirrorState;
   const schema = pmState.schema;
   const nodes = text.length > 0 ? [schema.text(text)] : [];
-  const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
-  editor.prosemirrorView.dispatch(
-    pmState.tr.replaceSelection(slice).scrollIntoView(),
-  );
-}
-
-function insertSoftWrappedLines(editor: Editor, text: string) {
-  const pmState = editor.prosemirrorState;
-  const schema = pmState.schema;
-  const hardBreakType = schema.nodes.hardBreak;
-  const nodes: Array<ReturnType<typeof schema.text> | ReturnType<NonNullable<typeof hardBreakType>["create"]>> = [];
-  text.split("\n").forEach((line, idx) => {
-    if (idx > 0 && hardBreakType) nodes.push(hardBreakType.create());
-    if (line.length > 0) nodes.push(schema.text(line));
-  });
   const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
   editor.prosemirrorView.dispatch(
     pmState.tr.replaceSelection(slice).scrollIntoView(),
@@ -210,6 +201,34 @@ export function useEditorPaste({
       if (container.inSoftWrap && softWrapText.includes("\n")) {
         event.preventDefault();
         event.stopPropagation();
+        const html = htmlText?.trim() ?? "";
+        if (html && htmlHasInlineFormatting(html)) {
+          void (async () => {
+            let blocks: unknown[] = [];
+            try {
+              blocks = await editor.tryParseHTMLToBlocks(htmlText);
+            } catch {
+              blocks = [];
+            }
+            const inline = buildSoftWrapPasteInline({
+              plainText: softWrapText,
+              parsedHtmlBlocks: blocks,
+            });
+            if (inline.length > 0) {
+              insertSoftWrappedInline(editor, inline);
+              return;
+            }
+            insertSoftWrappedLines(editor, softWrapText);
+          })();
+          return;
+        }
+        const inline = buildSoftWrapPasteInline({
+          plainText: softWrapText,
+        });
+        if (inline.length > 0) {
+          insertSoftWrappedInline(editor, inline);
+          return;
+        }
         insertSoftWrappedLines(editor, softWrapText);
         return;
       }

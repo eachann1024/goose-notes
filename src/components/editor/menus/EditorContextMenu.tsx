@@ -24,7 +24,15 @@ import {
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
 } from "@/components/editor/utils/clipboard";
-import { resolvePasteLines } from "@/components/editor/utils/multilinePaste";
+import {
+  inspectPasteContainer,
+  resolvePasteLines,
+} from "@/components/editor/utils/multilinePaste";
+import {
+  buildSoftWrapPasteInline,
+  insertSoftWrappedInline,
+  insertSoftWrappedLines,
+} from "@/components/editor/utils/softWrapPaste";
 import { getEditorSelectedBlocksForExport } from "@/components/editor/utils/selection";
 import { cn, formatShortcut } from "@/lib/utils";
 
@@ -143,6 +151,19 @@ export function EditorContextMenu({
       );
       if (!text) return;
       const lines = resolvePasteLines(text, "");
+      try {
+        const container = inspectPasteContainer(
+          editor.prosemirrorState.selection.$from,
+        );
+        if (container.inSoftWrap && lines && lines.length >= 2) {
+          const inline = buildSoftWrapPasteInline({ plainText: text });
+          if (inline.length > 0) insertSoftWrappedInline(editor, inline);
+          else insertSoftWrappedLines(editor, lines.join("\n"));
+          return;
+        }
+      } catch {
+        /* 选区读不到时按普通多行粘贴 */
+      }
       if (lines && lines.length >= 2) {
         let blockType: string | null = null;
         try {
