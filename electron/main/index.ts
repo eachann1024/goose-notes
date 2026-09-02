@@ -3,6 +3,13 @@ import { loadVaultRoots } from "./allowlist";
 import { registerHotkeys, unregisterAllHotkeys } from "./hotkeys";
 import { closeAllWatchers, registerIpcHandlers } from "./ipc";
 import {
+  bindOpenMarkdownWindow,
+  enqueueMarkdownPathsFromArgv,
+  flushQueuedMarkdownOpenPaths,
+  markOpenMarkdownRendererUnavailable,
+  registerOpenFileEvent,
+} from "./openMarkdownFiles";
+import {
   createMainWindow,
   getMainWindow,
   markQuitting,
@@ -13,6 +20,9 @@ const DEFAULT_QUICKNOTE = "CmdOrCtrl+Alt+Q";
 const DEFAULT_SEARCH = "CmdOrCtrl+K";
 
 app.setName("Goose Note");
+
+// macOS 双击 md 会在 ready 前发 open-file，必须尽早监听。
+registerOpenFileEvent();
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -29,7 +39,10 @@ function startApp(): void {
     const win = getMainWindow();
     if (!win) {
       pendingFocus = true;
-      if (app.isReady()) createMainWindow();
+      if (app.isReady()) {
+        markOpenMarkdownRendererUnavailable();
+        bindOpenMarkdownWindow(createMainWindow());
+      }
       return;
     }
     if (win.isMinimized()) win.restore();
@@ -41,7 +54,8 @@ function startApp(): void {
     }
   }
 
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    enqueueMarkdownPathsFromArgv(argv);
     focusMainWindow();
   });
 
@@ -61,7 +75,10 @@ function startApp(): void {
   app.whenReady().then(() => {
     installMenu();
     loadVaultRoots();
-    createMainWindow();
+    enqueueMarkdownPathsFromArgv(process.argv);
+    const win = createMainWindow();
+    bindOpenMarkdownWindow(win);
+    flushQueuedMarkdownOpenPaths();
     registerHotkeys({
       wake: DEFAULT_WAKE,
       quicknote: DEFAULT_QUICKNOTE,
