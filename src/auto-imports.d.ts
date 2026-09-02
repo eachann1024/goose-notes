@@ -310,6 +310,7 @@ declare global {
   const findNonOverlappingToolbarPosition: typeof import('./components/editor/utils/formattingToolbarPosition').findNonOverlappingToolbarPosition
   const findPseudoStructureMarkers: typeof import('./lib/ai-write/index').findPseudoStructureMarkers
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
+  const flushSidebarViewPersist: typeof import('./stores/useSidebarView').flushSidebarViewPersist
   const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatDualShortcut: typeof import('./lib/onboardingContent').formatDualShortcut
@@ -420,6 +421,7 @@ declare global {
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isRandomPageIcon: typeof import('./lib/randomPageIcon').isRandomPageIcon
   const isSpecialTab: typeof import('./stores/useTabs').isSpecialTab
+  const isStatMatchingSnapshot: typeof import('./lib/local-md-snapshot').isStatMatchingSnapshot
   const isSupportedTextImportFile: typeof import('./lib/local-folder-import').isSupportedTextImportFile
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
@@ -588,12 +590,14 @@ declare global {
   const toCssFontFamily: typeof import('./lib/fontLoader').toCssFontFamily
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toast: typeof import('./components/ui/sonner').toast
+  const toggleSidebarFolder: typeof import('./stores/useSidebarView').toggleSidebarFolder
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const transcodeVideo: typeof import('./lib/videoProcessor').transcodeVideo
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const updateQuickNoteSlotName: typeof import('./stores/useQuickNote').updateQuickNoteSlotName
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
+  const updateSnapshotStat: typeof import('./lib/local-md-snapshot').updateSnapshotStat
   const uploadEditorFile: typeof import('./components/editor/utils/uploadEditorFile').uploadEditorFile
   const uploadWebdavBackup: typeof import('./lib/webdavSync').uploadWebdavBackup
   const use: typeof import('react').use
@@ -724,6 +728,9 @@ declare global {
   // @ts-ignore
   export type { LocalPageFrontmatterSettingsKey, LocalPageFrontmatterSettings, MergeFrontmatterResult } from './lib/local-frontmatter'
   import('./lib/local-frontmatter')
+  // @ts-ignore
+  export type { LocalMdFileStat } from './lib/local-md-snapshot'
+  import('./lib/local-md-snapshot')
   // @ts-ignore
   export type { LocalPageIdMap } from './lib/local-page-idmap'
   import('./lib/local-page-idmap')

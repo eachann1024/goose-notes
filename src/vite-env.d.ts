@@ -44,6 +44,8 @@ declare global {
     writeFileAsync?: (path: string, content: string, encoding?: string) => Promise<boolean>;
     exists: (path: string) => boolean;
     existsAsync?: (path: string) => Promise<boolean>;
+    /** 仅 mtimeMs + size，不含 atime。供本地文件夹 watch 指纹快路径使用。 */
+    statAsync?: (path: string) => Promise<{ mtimeMs: number; size: number } | null>;
     realpathAsync?: (path: string) => Promise<string | null>;
     watch: (dir: string, cb: any) => any;
     unwatch: (dir: string) => void;
@@ -101,6 +103,10 @@ declare global {
     toggleQuicknote: () => Promise<void>
     hideQuicknote: () => Promise<void>
     registerHotkeys: (k: { wake: string; quicknote: string; search: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
+    pauseHotkeys: () => Promise<void>
+    resumeHotkeys: () => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
+    getAccessibilityStatus: () => Promise<{ platform: string; trusted: boolean }>
+    requestAccessibility: () => Promise<boolean>
     onOpenSearch: (cb: () => void) => () => void
     notify: (n: { title: string; body: string }) => Promise<void>
   }

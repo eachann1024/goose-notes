@@ -231,6 +231,11 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const watchers = new Map();
   // 最近写入的文件标记，用于避免自己写入触发重载提示
   const recentWrites = new Map();
+  const RECENT_WRITE_WINDOW_MS = 2000;
+
+  const markRecentWrite = (filePath) => {
+    recentWrites.set(filePath, Date.now());
+  };
 
   const tryTrash = async (targetPath) => {
     try {
@@ -702,6 +707,23 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
   const shouldIgnoreLocalEntry = (name) =>
     typeof name === "string" &&
     (name.startsWith(".") || LOCAL_IGNORED_FOLDERS.has(name));
+
+  const IGNORED_WATCH_BASENAMES = new Set(["thumbs.db", "desktop.ini"]);
+  const IGNORED_WATCH_SUFFIXES = [".swp", ".swx", ".tmp", ".crswap", ".part"];
+
+  const shouldIgnoreWatchFilename = (filename) => {
+    if (typeof filename !== "string" || !filename) return false;
+    const segments = filename.split(/[/\\]/).filter(Boolean);
+    for (const segment of segments) {
+      if (segment.startsWith(".")) return true;
+      if (segment === "node_modules") return true;
+      if (segment.startsWith("~$")) return true;
+      const lower = segment.toLowerCase();
+      if (IGNORED_WATCH_BASENAMES.has(lower)) return true;
+      if (IGNORED_WATCH_SUFFIXES.some((suffix) => lower.endsWith(suffix))) return true;
+    }
+    return false;
+  };
 
   const scanLocalNotebookNotes = async (notebook) => {
     const cacheKey = notebook.id;
@@ -1318,6 +1340,17 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       }
     },
 
+    // 仅返回 mtimeMs + size（不含 atime），供渲染进程指纹快路径使用。
+    statAsync: async (filePath) => {
+      try {
+        const st = await fs.promises.stat(filePath);
+        return { mtimeMs: st.mtimeMs, size: st.size };
+      } catch (err) {
+        console.error("[gooseFs] statAsync failed:", err);
+        return null;
+      }
+    },
+
     readFileBase64: (filePath) => {
       try {
         return fs.readFileSync(filePath).toString("base64");
@@ -1336,7 +1369,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       try {
         fs.writeFileSync(filePath, content, resolveWriteEncoding(encoding));
         // 写入结束后续期，覆盖文件系统延迟派发 watch 事件的情况。
-        recentWrites.set(normalizedFilePath, Date.now());
+        markRecentWrite(normalizedFilePath);
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
@@ -1358,7 +1391,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
           content,
           resolveWriteEncoding(encoding),
         );
-        recentWrites.set(normalizedFilePath, Date.now());
+        markRecentWrite(normalizedFilePath);
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
@@ -1413,7 +1446,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
               const now = Date.now();
               let skip = false;
               for (const [key, time] of recentWrites) {
-                if (now - time >= 1000) {
+                if (now - time >= RECENT_WRITE_WINDOW_MS) {
                   recentWrites.delete(key);
                   continue;
                 }
@@ -1427,6 +1460,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
                 }
               }
               if (skip) return; // 跳过自己写入/删除的文件
+              if (shouldIgnoreWatchFilename(String(filename))) return;
 
               // 通知前端有文件变更
               window.dispatchEvent(
@@ -1457,7 +1491,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     mkdir: (dirPath) => {
       try {
         fs.mkdirSync(dirPath, { recursive: true });
-        recentWrites.set(`${dirPath}${path.sep}`, Date.now());
+        markRecentWrite(`${dirPath}${path.sep}`);
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
@@ -1470,7 +1504,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       try {
         const ok = await tryTrash(filePath);
         if (ok) {
-          recentWrites.set(filePath, Date.now());
+          markRecentWrite(filePath);
           invalidateLocalNotebookCache();
         }
         return ok;
@@ -1484,7 +1518,7 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
       try {
         const ok = await tryTrash(dirPath);
         if (ok) {
-          recentWrites.set(`${dirPath}${path.sep}`, Date.now());
+          markRecentWrite(`${dirPath}${path.sep}`);
           invalidateLocalNotebookCache();
         }
         return ok;
@@ -1497,8 +1531,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     rename: (oldPath, newPath) => {
       try {
         fs.renameSync(oldPath, newPath);
-        recentWrites.set(oldPath, Date.now());
-        recentWrites.set(newPath, Date.now());
+        markRecentWrite(oldPath);
+        markRecentWrite(newPath);
         invalidateLocalNotebookCache();
         return true;
       } catch (err) {
