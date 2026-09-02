@@ -11,6 +11,10 @@
 import { useEffect } from "react";
 import { hostRuntime } from "@/lib/host";
 import { getGooseDesktop } from "@/lib/electron/runtime";
+import {
+  isShortcutRecorderTarget,
+  shouldResumeGlobalHotkeysAfterFocusOut,
+} from "@/lib/electron/hotkeyCapture";
 import { useSettings } from "@/stores/useSettings";
 import type { DesktopHotkeyStatus } from "@/stores/settings/types";
 
@@ -119,4 +123,73 @@ export function useDesktopHotkeys(): void {
     searchHotkey,
     searchHotkeyEnabled,
   ]);
+
+  useEffect(() => {
+    if (__HOST_TARGET__ !== "electron" || !hydrated) return;
+    const api = getGooseDesktop();
+    if (!api?.pauseHotkeys || !api?.resumeHotkeys) return;
+
+    const applyRegisterResult = (result: {
+      wakeOk: boolean;
+      quicknoteOk: boolean;
+      searchOk: boolean;
+    }) => {
+      const settings = useSettings.getState();
+      const desktop = settings.desktop;
+      settings.setWakeHotkeyStatus(
+        !desktop.wakeHotkeyEnabled || !desktop.wakeHotkey.trim()
+          ? { state: "disabled", message: "已关闭主窗口全局快捷键" }
+          : result.wakeOk
+            ? { state: "active" }
+            : {
+                state: "occupied",
+                message: "快捷键已被其他应用占用或无效",
+              },
+      );
+      settings.setQuicknoteHotkeyStatus(
+        !desktop.quicknoteHotkeyEnabled || !desktop.quicknoteHotkey.trim()
+          ? { state: "disabled", message: "已关闭速记小窗全局快捷键" }
+          : result.quicknoteOk
+            ? { state: "active" }
+            : {
+                state: "occupied",
+                message: "快捷键已被其他应用占用或无效",
+              },
+      );
+      settings.setSearchHotkeyStatus(
+        !desktop.searchHotkeyEnabled || !desktop.searchHotkey.trim()
+          ? { state: "disabled", message: "已关闭全局搜索快捷键" }
+          : result.searchOk
+            ? { state: "active" }
+            : {
+                state: "occupied",
+                message: "快捷键已被其他应用占用或无效",
+              },
+      );
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      if (!isShortcutRecorderTarget(event.target)) return;
+      void api.pauseHotkeys();
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (
+        !shouldResumeGlobalHotkeysAfterFocusOut(
+          event.target,
+          event.relatedTarget,
+        )
+      ) {
+        return;
+      }
+      void api.resumeHotkeys().then(applyRegisterResult);
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      void api.resumeHotkeys().then(applyRegisterResult);
+    };
+  }, [hydrated]);
 }

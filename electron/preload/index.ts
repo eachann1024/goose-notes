@@ -89,6 +89,13 @@ const gooseDesktop = {
       quicknoteOk: boolean;
       searchOk: boolean;
     }>,
+  pauseHotkeys: () => invoke("desktop:pauseHotkeys") as Promise<void>,
+  resumeHotkeys: () =>
+    invoke("desktop:resumeHotkeys") as Promise<{
+      wakeOk: boolean;
+      quicknoteOk: boolean;
+      searchOk: boolean;
+    }>,
   onOpenSearch: (cb: () => void) => {
     const listener = () => cb();
     ipcRenderer.on("desktop:open-search", listener);

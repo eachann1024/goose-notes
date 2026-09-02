@@ -23,7 +23,7 @@ import {
 } from "./allowlist";
 import { registerOpenMarkdownIpc } from "./openMarkdownFiles";
 import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
-import { registerHotkeys } from "./hotkeys";
+import { registerHotkeys, pauseGlobalHotkeys, resumeGlobalHotkeys } from "./hotkeys";
 import { printHtmlToPdf } from "./printPdf";
 import {
   broadcast,
@@ -563,6 +563,15 @@ export function registerIpcHandlers(): void {
       return registerHotkeys(keys);
     },
   );
+
+
+  ipcMain.handle("desktop:pauseHotkeys", async () => {
+    pauseGlobalHotkeys();
+  });
+
+  ipcMain.handle("desktop:resumeHotkeys", async () => {
+    return resumeGlobalHotkeys();
+  });
 
   ipcMain.handle(
     "desktop:notify",

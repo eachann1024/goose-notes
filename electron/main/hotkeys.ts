@@ -12,6 +12,16 @@ const registered = {
   search: "",
 };
 
+type HotkeyRequest = { wake: string; quicknote: string; search: string };
+
+const lastRequested: HotkeyRequest = {
+  wake: "",
+  quicknote: "",
+  search: "",
+};
+
+let paused = false;
+
 export function toElectronAccelerator(shortcut: string): string {
   const parts = shortcut
     .split("+")
@@ -101,11 +111,19 @@ function isDuplicateAccelerator(
   return Boolean(accelerator) && used.includes(accelerator);
 }
 
-export function registerHotkeys(keys: {
-  wake: string;
-  quicknote: string;
-  search: string;
-}): { wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean } {
+function copyHotkeyRequest(keys: HotkeyRequest): HotkeyRequest {
+  return {
+    wake: keys.wake ?? "",
+    quicknote: keys.quicknote ?? "",
+    search: keys.search ?? "",
+  };
+}
+
+function applyRegistration(keys: HotkeyRequest): {
+  wakeOk: boolean;
+  quicknoteOk: boolean;
+  searchOk: boolean;
+} {
   unregisterSlot("wake");
   unregisterSlot("quicknote");
   unregisterSlot("search");
@@ -178,7 +196,37 @@ export function registerHotkeys(keys: {
   return result;
 }
 
+export function registerHotkeys(keys: HotkeyRequest): {
+  wakeOk: boolean;
+  quicknoteOk: boolean;
+  searchOk: boolean;
+} {
+  Object.assign(lastRequested, copyHotkeyRequest(keys));
+  if (paused) {
+    return { wakeOk: true, quicknoteOk: true, searchOk: true };
+  }
+  return applyRegistration(lastRequested);
+}
+
+/** 录制快捷键时先卸掉全局热键，否则系统会先吃掉按键，输入框收不到。 */
+export function pauseGlobalHotkeys(): void {
+  paused = true;
+  unregisterSlot("wake");
+  unregisterSlot("quicknote");
+  unregisterSlot("search");
+}
+
+export function resumeGlobalHotkeys(): {
+  wakeOk: boolean;
+  quicknoteOk: boolean;
+  searchOk: boolean;
+} {
+  paused = false;
+  return applyRegistration(lastRequested);
+}
+
 export function unregisterAllHotkeys(): void {
+  paused = false;
   try {
     globalShortcut.unregisterAll();
   } catch {
