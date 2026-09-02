@@ -279,7 +279,25 @@ function textblockRangeAt(
   return null;
 }
 
-function isTextBlockContent(el: HTMLElement): boolean {
+/** 表格/媒体外壳不是可编辑文本块；单元格内的嵌套 paragraph 仍会单独命中。 */
+const NON_TEXT_BLOCK_CONTENT_TYPES = new Set([
+  "table",
+  "image",
+  "video",
+  "file",
+  "audio",
+  "divider",
+]);
+
+/**
+ * 标准块的 `.bn-inline-content` 是 `.bn-block-content` 的直接子级；
+ * 标题/引用隔了一层 `h1`/`blockquote`；callout 等 React 自定义块则嵌在
+ * `.react-renderer` 里。漏掉后者时，点击会被判给上方块（常见为标题 H1）。
+ */
+export function isTextBlockContent(el: HTMLElement): boolean {
+  const type = el.getAttribute("data-content-type");
+  if (type && NON_TEXT_BLOCK_CONTENT_TYPES.has(type)) return false;
+  if (type === "codeBlock" || type === "callout") return true;
   return Boolean(
     el.querySelector(":scope > .bn-inline-content") ||
       el.querySelector(
@@ -287,7 +305,7 @@ function isTextBlockContent(el: HTMLElement): boolean {
       ) ||
       el.querySelector(":scope > blockquote .bn-inline-content") ||
       el.querySelector(":scope > pre") ||
-      el.getAttribute("data-content-type") === "codeBlock",
+      el.querySelector(":scope .bn-inline-content"),
   );
 }
 
@@ -297,18 +315,33 @@ function collectInlineBlockContents(editorDom: Element): HTMLElement[] {
   );
 }
 
+function inlineContentEl(contentEl: HTMLElement): HTMLElement {
+  const type = contentEl.getAttribute("data-content-type");
+  if (type === "codeBlock") {
+    return (
+      contentEl.querySelector<HTMLElement>(":scope pre") ?? contentEl
+    );
+  }
+  return (
+    contentEl.querySelector<HTMLElement>(":scope > .bn-inline-content") ??
+    contentEl.querySelector<HTMLElement>(
+      ":scope > :is(h1, h2, h3, h4, h5, h6) .bn-inline-content",
+    ) ??
+    contentEl.querySelector<HTMLElement>(
+      ":scope > blockquote .bn-inline-content",
+    ) ??
+    contentEl.querySelector<HTMLElement>(".callout-content") ??
+    contentEl.querySelector<HTMLElement>(":scope .bn-inline-content") ??
+    contentEl.querySelector<HTMLElement>(":scope > pre") ??
+    contentEl
+  );
+}
+
 function textblockRangeFromContentEl(
   view: EditorView,
   contentEl: HTMLElement,
 ): { start: number; end: number } | null {
-  const inline =
-    contentEl.querySelector(":scope > .bn-inline-content") ??
-    contentEl.querySelector(
-      ":scope > :is(h1, h2, h3, h4, h5, h6) .bn-inline-content",
-    ) ??
-    contentEl.querySelector(":scope > blockquote .bn-inline-content") ??
-    contentEl.querySelector(":scope > pre") ??
-    contentEl;
+  const inline = inlineContentEl(contentEl);
   try {
     const pos = view.posAtDOM(inline, 0);
     return textblockRangeAt(view, pos);
@@ -317,23 +350,45 @@ function textblockRangeFromContentEl(
   }
 }
 
+/** 点在某个块内部时，用该块，不要按 Y 把点击判给上方标题。 */
+export function contentBlockFromEventTarget(
+  target: EventTarget | null,
+): HTMLElement | null {
+  if (!target || typeof target !== "object") return null;
+  const closest = (target as { closest?: (selector: string) => unknown })
+    .closest;
+  if (typeof closest !== "function") return null;
+  const el = closest.call(target, ".bn-block-content");
+  if (!el || typeof (el as { querySelector?: unknown }).querySelector !== "function") {
+    return null;
+  }
+  const htmlEl = el as HTMLElement;
+  return isTextBlockContent(htmlEl) ? htmlEl : null;
+}
+
 export function resolveTrailingBlankClickPos(
   view: EditorView,
   event: MouseEvent,
 ): number | null {
   const contents = collectInlineBlockContents(view.dom);
-  if (contents.length === 0) return null;
+  const fromTarget = contentBlockFromEventTarget(event.target);
+  const contentEl =
+    fromTarget ??
+    (contents.length === 0
+      ? null
+      : contents[
+          pickOwningBlockIndex(
+            contents.map((el) => {
+              const rect = el.getBoundingClientRect();
+              return { top: rect.top, bottom: rect.bottom };
+            }),
+            event.clientY,
+          ) ?? -1
+        ] ??
+        null);
+  if (!contentEl) return null;
 
-  const index = pickOwningBlockIndex(
-    contents.map((el) => {
-      const rect = el.getBoundingClientRect();
-      return { top: rect.top, bottom: rect.bottom };
-    }),
-    event.clientY,
-  );
-  if (index == null) return null;
-
-  const range = textblockRangeFromContentEl(view, contents[index]);
+  const range = textblockRangeFromContentEl(view, contentEl);
   if (!range) return null;
 
   return resolveBlockEmptyClickPos({

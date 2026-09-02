@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
+import { installExportDom } from "./installExportDom";
 import {
+  contentBlockFromEventTarget,
   extendToVisualLineEnd,
   findPosOnVisualLine,
   isClickOnVisualLine,
   isClickPastTextRight,
   isInteractiveCaretClickTarget,
+  isTextBlockContent,
   pickOwningBlockIndex,
   resolveBlockEmptyClickPos,
   resolveLineEndIfClickPastText,
@@ -223,9 +226,73 @@ test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {
   expect(surfaceCss).toContain("flex: 1 1 auto");
   expect(surfaceCss).toContain(".bn-block-content > .bn-inline-content");
   expect(surfaceCss).toContain(
+    '.bn-block-content[data-content-type="callout"] > .react-renderer',
+  );
+  expect(surfaceCss).toContain(
     ".bn-block-content:has(.ProseMirror-trailingBreak:only-child)",
   );
   expect(surfaceCss).toContain("flex-grow: 0");
   expect(listsCss).toContain("pointer-events: none");
   expect(editorTsx).toContain("gooseTrailingBlankClickExtension");
+});
+
+test("标注块嵌套 inline 算文本块，表格外壳不算", () => {
+  installExportDom();
+  const callout = document.createElement("div");
+  callout.className = "bn-block-content";
+  callout.setAttribute("data-content-type", "callout");
+  callout.innerHTML =
+    '<div class="react-renderer"><div data-callout="true"><div class="callout-content bn-inline-content">提示</div></div></div>';
+  expect(isTextBlockContent(callout)).toBe(true);
+
+  const quote = document.createElement("div");
+  quote.className = "bn-block-content";
+  quote.setAttribute("data-content-type", "quote");
+  quote.innerHTML =
+    '<blockquote><div class="bn-inline-content">引用</div></blockquote>';
+  expect(isTextBlockContent(quote)).toBe(true);
+
+  const paragraph = document.createElement("div");
+  paragraph.className = "bn-block-content";
+  paragraph.setAttribute("data-content-type", "paragraph");
+  paragraph.innerHTML = '<div class="bn-inline-content">正文</div>';
+  expect(isTextBlockContent(paragraph)).toBe(true);
+
+  const table = document.createElement("div");
+  table.className = "bn-block-content";
+  table.setAttribute("data-content-type", "table");
+  table.innerHTML =
+    '<table><td><div class="bn-inline-content">单元格</div></td></table>';
+  expect(isTextBlockContent(table)).toBe(false);
+
+  const image = document.createElement("div");
+  image.className = "bn-block-content";
+  image.setAttribute("data-content-type", "image");
+  expect(isTextBlockContent(image)).toBe(false);
+});
+
+test("点击落在标注块内部时用该块，不按 Y 判给标题", () => {
+  installExportDom();
+  const title = document.createElement("div");
+  title.className = "bn-block-content";
+  title.setAttribute("data-content-type", "heading");
+  title.innerHTML = '<h1 class="bn-inline-content">标题</h1>';
+
+  const callout = document.createElement("div");
+  callout.className = "bn-block-content";
+  callout.setAttribute("data-content-type", "callout");
+  const inner = document.createElement("div");
+  inner.className = "callout-content bn-inline-content";
+  inner.textContent = "提示";
+  const shell = document.createElement("div");
+  shell.setAttribute("data-callout", "true");
+  shell.append(inner);
+  const renderer = document.createElement("div");
+  renderer.className = "react-renderer";
+  renderer.append(shell);
+  callout.append(renderer);
+
+  expect(contentBlockFromEventTarget(inner)).toBe(callout);
+  expect(contentBlockFromEventTarget(title)).toBe(title);
+  expect(contentBlockFromEventTarget(null)).toBeNull();
 });
