@@ -17,5 +17,21 @@ export function migrateSettingsPersistedState(
   delete state.globalEditorFullWidth;
   delete state.tableEvenColumnWidth;
 
+  // 旧默认全局搜索是 Mod+Shift+K；未改过的配置迁到 Mod+K（⌘K / Ctrl+K）。
+  const appShortcuts = state.appShortcuts;
+  if (appShortcuts && typeof appShortcuts === "object") {
+    const shortcuts = appShortcuts as Record<string, unknown>;
+    if (shortcuts.openSearch === "Mod+Shift+K") {
+      state.appShortcuts = { ...shortcuts, openSearch: "Mod+K" };
+    }
+  }
+  const desktop = state.desktop;
+  if (desktop && typeof desktop === "object") {
+    const desktopSettings = desktop as Record<string, unknown>;
+    if (desktopSettings.searchHotkey === "CmdOrCtrl+Shift+K") {
+      state.desktop = { ...desktopSettings, searchHotkey: "CmdOrCtrl+K" };
+    }
+  }
+
   return state;
 }

@@ -25,3 +25,28 @@ test("迁移时丢弃已废弃的全宽和表格两端对齐设置", () => {
   expect(migrated).not.toHaveProperty("globalEditorFullWidth");
   expect(migrated).not.toHaveProperty("tableEvenColumnWidth");
 });
+
+test("旧默认全局搜索 Mod+Shift+K 迁到 Mod+K", () => {
+  const migrated = migrateSettingsPersistedState({
+    appShortcuts: { openSearch: "Mod+Shift+K", toggleAIPanel: "Mod+J" },
+    desktop: { searchHotkey: "CmdOrCtrl+Shift+K" },
+  });
+  expect(migrated.appShortcuts).toMatchObject({
+    openSearch: "Mod+K",
+    toggleAIPanel: "Mod+J",
+  });
+  expect(migrated.desktop).toMatchObject({
+    searchHotkey: "CmdOrCtrl+K",
+  });
+});
+
+test("用户自定义的 Shift+K 搜索快捷键不会被迁移覆盖", () => {
+  const migrated = migrateSettingsPersistedState({
+    appShortcuts: { openSearch: "Alt+K" },
+    desktop: { searchHotkey: "CmdOrCtrl+Alt+K" },
+  });
+  expect(migrated.appShortcuts).toMatchObject({ openSearch: "Alt+K" });
+  expect(migrated.desktop).toMatchObject({
+    searchHotkey: "CmdOrCtrl+Alt+K",
+  });
+});
