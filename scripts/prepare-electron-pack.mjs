@@ -14,20 +14,29 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pack = resolve(root, "dist-electron/app-pack");
-const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+let pkg;
+try {
+  pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+} catch (err) {
+  throw new Error(`Failed to parse root package.json: ${err.message}`);
+}
 
 // Linux deb/rpm 需要 maintainer（要求邮箱格式）。优先取环境变量，其次取 package.json 的 author，
 // 最后给一个 GitHub-style no-reply 兜底，避免 deb/rpm 因缺 author 邮箱直接失败。
 const linuxMaintainer =
   process.env.LINUX_MAINTAINER ||
   (typeof pkg.author === "string" ? pkg.author : undefined) ||
-  (pkg.author?.email ? `${pkg.author.name} <${pkg.author.email}>`.trim() : undefined) ||
+  (pkg.author?.email
+    ? `${pkg.author.name} <${pkg.author.email}>`.trim()
+    : undefined) ||
   "Goose Note <goose-note@users.noreply.github.com>";
 
 rmSync(pack, { recursive: true, force: true });
 mkdirSync(pack, { recursive: true });
 for (const dir of ["main", "preload", "renderer"]) {
-  cpSync(resolve(root, "dist-electron", dir), resolve(pack, dir), { recursive: true });
+  cpSync(resolve(root, "dist-electron", dir), resolve(pack, dir), {
+    recursive: true,
+  });
 }
 cpSync(resolve(root, "electron/icons/icon.icns"), resolve(pack, "icon.icns"));
 cpSync(resolve(root, "electron/icons/icon.ico"), resolve(pack, "icon.ico"));
@@ -68,6 +77,8 @@ writeFileSync(
       name: pkg.name,
       version: pkg.version,
       description: pkg.description,
+      author: pkg.author,
+      homepage: pkg.homepage,
       license: pkg.license,
       private: true,
       type: "module",
@@ -161,6 +172,7 @@ linux:
       Comment: Local-first notes
       Categories: Office;Note;
       MimeType: text/markdown;text/x-markdown;
+      StartupWMClass: goose-note
 `,
 );
 console.log("[electron] packed app dir → dist-electron/app-pack");

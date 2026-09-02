@@ -21,6 +21,16 @@ const DEFAULT_SEARCH = "CmdOrCtrl+K";
 
 app.setName("Goose Note");
 
+if (process.platform === "linux") {
+  // ponytail: Omarchy/Hyprland sets ELECTRON_OZONE_PLATFORM_HINT=wayland.
+  // At scale=2 BlockNote maps mouseup onto the heading above. X11 ozone is the
+  // working path; drop when Electron Wayland click/IME is reliable.
+  process.env.ELECTRON_OZONE_PLATFORM_HINT = "x11";
+  process.env.OZONE_PLATFORM = "x11";
+  app.commandLine.appendSwitch("ozone-platform-hint", "x11");
+  app.commandLine.appendSwitch("ozone-platform", "x11");
+}
+
 // macOS 双击 md 会在 ready 前发 open-file，必须尽早监听。
 registerOpenFileEvent();
 

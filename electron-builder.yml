@@ -59,3 +59,4 @@ linux:
       Comment: Local-first notes
       Categories: Office;Note;
       MimeType: text/markdown;text/x-markdown;
+      StartupWMClass: goose-note
