@@ -25,6 +25,7 @@ import {
   TreeDragOverlay,
 } from "./TreeRow";
 import { useSettings } from "@/stores/useSettings";
+import { shouldRenderExpandArrowSlot } from "../local-file-icon";
 import { TREE_INDENT } from "./useTreeDnd";
 
 // 与 TreeRow / MainTreeItem 保持一致：蓝点落在图标左缘，而非展开箭头区
@@ -59,6 +60,7 @@ interface TreeViewportProps {
   viewportHeight: number;
   width: number;
   onToggleOpen: (id: string) => void;
+  showExpandControls?: boolean;
 }
 
 export function TreeViewport({
@@ -87,6 +89,7 @@ export function TreeViewport({
   viewportHeight,
   width,
   onToggleOpen,
+  showExpandControls = true,
 }: TreeViewportProps) {
   const hideExpandArrows = useSettings((s) => s.hideExpandArrows);
   const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> =
@@ -195,7 +198,12 @@ export function TreeViewport({
                 const dropLineLeft =
                   item.depth * TREE_INDENT +
                   ROW_PADDING_LEFT +
-                  (hideExpandArrows ? 0 : ARROW_SLOT);
+                  (shouldRenderExpandArrowSlot({
+                    showExpandControls,
+                    hideExpandArrows,
+                  })
+                    ? ARROW_SLOT
+                    : 0);
                 const dragEnabled = draggablePageIdSet
                   ? draggablePageIdSet.has(item.id)
                   : true;
@@ -219,6 +227,7 @@ export function TreeViewport({
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     onToggleOpen={onToggleOpen}
+                    showExpandControls={showExpandControls}
                     showAddChildButton={showAddChildButton}
                     dragEnabled={dragEnabled}
                     titleText={titleText}
@@ -239,6 +248,7 @@ export function TreeViewport({
                   item={activeItem}
                   width={width}
                   isLocalNotebook={isLocalNotebook}
+                  showExpandControls={showExpandControls}
                 />
               ) : null}
             </DragOverlay>,

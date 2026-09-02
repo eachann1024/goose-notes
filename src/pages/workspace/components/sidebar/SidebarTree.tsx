@@ -386,6 +386,7 @@ export function SidebarTree({
       sensors={sensors}
       showAddChildButton={showAddChildButton}
       titleDisambiguationMap={titleDisambiguationMap}
+      showExpandControls={!flatRoots}
       titleRevealResetSignal={titleRevealResetSignal}
       virtualItems={virtualizer.getVirtualItems()}
       viewportHeight={viewportHeight}

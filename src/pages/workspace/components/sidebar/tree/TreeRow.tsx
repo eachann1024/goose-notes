@@ -24,17 +24,16 @@ import { isElectronHost } from "@/lib/local-vault";
 import { closeNotebookAiIfFullscreen } from "../../notebook-ai/useNotebookAiPanel";
 import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
-import { IconSelector } from "../../shared/IconSelector";
 import { InlineOverflowRevealText } from "../InlineOverflowRevealText";
 import { SidebarContextMenu } from "../SidebarContextMenu";
 import {
-  canCustomizePageIcon,
   LocalFileIcon,
+  shouldRenderExpandArrowSlot,
   shouldShowFolderExpandArrow,
 } from "../local-file-icon";
 import { TREE_INDENT } from "./useTreeDnd";
 
-// 与主树 MainTreeItem.ROW_PADDING_LEFT 对齐，保证收藏行与页面树选中条同宽起点
+// 与主树 MainTreeItem.ROW_PADDING_LEFT 对齐；收藏平铺行不占展开箭头槽
 const ROW_PADDING_LEFT = 6;
 
 const DEFAULT_NOTEBOOK = "default-notebook";
@@ -99,6 +98,7 @@ export interface SortablePageRowProps {
   dropLinePosition: "top" | "bottom";
   dropLineLeft: number;
   onToggleOpen: (id: string) => void;
+  showExpandControls?: boolean;
   showAddChildButton: boolean;
   dragEnabled: boolean;
   titleText: string;
@@ -119,6 +119,7 @@ export function SortablePageRow({
   dropLinePosition,
   dropLineLeft,
   onToggleOpen,
+  showExpandControls = true,
   showAddChildButton,
   dragEnabled,
   titleText,
@@ -146,7 +147,6 @@ export function SortablePageRow({
 
   const createPage = usePages((state) => state.createPage);
   const createLocalPage = usePages((state) => state.createLocalPage);
-  const updatePage = usePages((state) => state.updatePage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
 
@@ -154,11 +154,18 @@ export function SortablePageRow({
   const page = item.page;
   const hasChildren = item.hasChildren;
   const isLocalFolder = isLocalNotebook;
-  const showArrow = shouldShowFolderExpandArrow({
-    isFolder: !!page.isFolder,
-    hasChildren,
-    isLocalNotebook: isLocalFolder,
+  const showArrow =
+    showExpandControls &&
+    shouldShowFolderExpandArrow({
+      isFolder: !!page.isFolder,
+      hasChildren,
+      isLocalNotebook: isLocalFolder,
+    });
+  const reserveExpandSlot = shouldRenderExpandArrowSlot({
+    showExpandControls,
+    hideExpandArrows,
   });
+  const iconCarriesExpand = showExpandControls && hideExpandArrows && showArrow;
   const iconName = usePages((s) => {
     const live = s.pages[page.id];
     return live ? live.icon : page.icon;
@@ -309,7 +316,7 @@ export function SortablePageRow({
         <div
           {...sortableHandlers}
           className={cn(
-            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-sm font-medium",
+            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-[13px] font-medium leading-none",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive &&
@@ -322,7 +329,12 @@ export function SortablePageRow({
           )}
           onClick={(e) => {
             e.stopPropagation();
-            if (isElectronHost && isLocalNotebook && page.isFolder) {
+            if (
+              showExpandControls &&
+              isElectronHost &&
+              isLocalNotebook &&
+              page.isFolder
+            ) {
               onToggleOpen(page.id);
               return;
             }
@@ -336,14 +348,25 @@ export function SortablePageRow({
           onDoubleClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (isElectronHost && isLocalNotebook && page.isFolder) return;
+            if (
+              showExpandControls &&
+              isElectronHost &&
+              isLocalNotebook &&
+              page.isFolder
+            )
+              return;
             openPageFromSidebar(page.id, "permanent");
           }}
           onAuxClick={(e) => {
             if (e.button === 1) {
               e.preventDefault();
               e.stopPropagation();
-              if (isElectronHost && isLocalNotebook && page.isFolder) {
+              if (
+                showExpandControls &&
+                isElectronHost &&
+                isLocalNotebook &&
+                page.isFolder
+              ) {
                 onToggleOpen(page.id);
                 return;
               }
@@ -355,7 +378,7 @@ export function SortablePageRow({
             className="flex items-center h-full flex-1 min-w-0"
             style={{ paddingLeft: depth * TREE_INDENT + ROW_PADDING_LEFT }}
           >
-            {hideExpandArrows ? null : (
+            {reserveExpandSlot ? (
               <button
                 type="button"
                 aria-label={item.isOpen ? "折叠子页面" : "展开子页面"}
@@ -376,123 +399,55 @@ export function SortablePageRow({
                   )}
                 />
               </button>
-            )}
+            ) : null}
 
-            {hideExpandArrows ? (
-              showArrow ? (
-                <button
-                  type="button"
-                  aria-label={item.isOpen ? "折叠子项" : "展开子项"}
-                  aria-expanded={item.isOpen}
-                  className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
-                  onPointerDown={handleHiddenArrowPointerDown}
-                  onClick={handleHiddenArrowClick}
-                  onDoubleClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-150 group-hover:opacity-0 group-focus-visible/hidden-toggle:opacity-0">
-                    <LocalFileIcon
-                      page={page}
-                      iconName={iconName}
-                      isLocalFolder={isLocalFolder}
-                      hasChildren={displayHasChildren}
-                      isExpanded={item.isOpen}
-                    />
-                  </span>
-                  <LucideIcons.ChevronRight
-                    className={cn(
-                      "pointer-events-none absolute h-3.5 w-3.5 text-muted-foreground/80 opacity-0 transition-[opacity,transform] duration-150 group-hover:opacity-100 group-focus-visible/hidden-toggle:opacity-100",
-                      item.isOpen && "rotate-90",
-                    )}
-                  />
-                </button>
-              ) : canCustomizePageIcon(page, isLocalFolder) ? (
-                <div
-                  className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center mr-0.5"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <IconSelector
-                    value={iconName}
-                    onChange={(newIcon) =>
-                      updatePage(page.id, { icon: newIcon })
-                    }
-                  >
-                    <div className="goose-page-icon-trigger flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
-                      <div className="flex h-4 w-4 items-center justify-center">
-                        <LocalFileIcon
-                          page={page}
-                          iconName={iconName}
-                          isLocalFolder={isLocalFolder}
-                          hasChildren={displayHasChildren}
-                          isExpanded={item.isOpen}
-                        />
-                      </div>
-                    </div>
-                  </IconSelector>
-                </div>
-              ) : (
-                <div className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5">
-                  <div className="flex h-4 w-4 items-center justify-center">
-                    <LocalFileIcon
-                      page={page}
-                      iconName={iconName}
-                      isLocalFolder={isLocalFolder}
-                      hasChildren={displayHasChildren}
-                      isExpanded={item.isOpen}
-                    />
-                  </div>
-                </div>
-              )
-            ) : (
-              <div
-                className="flex items-center justify-center w-5 h-5 shrink-0 mr-0.5 select-none"
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
+            {iconCarriesExpand ? (
+              <button
+                type="button"
+                aria-label={item.isOpen ? "折叠子项" : "展开子项"}
+                aria-expanded={item.isOpen}
+                className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
+                onPointerDown={handleHiddenArrowPointerDown}
+                onClick={handleHiddenArrowClick}
+                onDoubleClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
-                {canCustomizePageIcon(page, isLocalFolder) ? (
-                  <IconSelector
-                    value={iconName}
-                    onChange={(newIcon) =>
-                      updatePage(page.id, { icon: newIcon })
-                    }
-                  >
-                    <div className="goose-page-icon-trigger flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer">
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        <LocalFileIcon
-                          page={page}
-                          iconName={iconName}
-                          isLocalFolder={isLocalFolder}
-                          hasChildren={displayHasChildren}
-                          isExpanded={item.isOpen}
-                        />
-                      </div>
-                    </div>
-                  </IconSelector>
-                ) : (
-                  <div className="flex items-center justify-center w-5 h-5">
-                    <LocalFileIcon
-                      page={page}
-                      iconName={iconName}
-                      isLocalFolder={isLocalFolder}
-                      hasChildren={displayHasChildren}
-                      isExpanded={item.isOpen}
-                    />
-                  </div>
-                )}
+                <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-150 group-hover:opacity-0 group-focus-visible/hidden-toggle:opacity-0">
+                  <LocalFileIcon
+                    page={page}
+                    iconName={iconName}
+                    isLocalFolder={isLocalFolder}
+                    hasChildren={displayHasChildren}
+                    isExpanded={item.isOpen}
+                  />
+                </span>
+                <LucideIcons.ChevronRight
+                  className={cn(
+                    "pointer-events-none absolute h-3.5 w-3.5 text-muted-foreground/80 opacity-0 transition-[opacity,transform] duration-150 group-hover:opacity-100 group-focus-visible/hidden-toggle:opacity-100",
+                    item.isOpen && "rotate-90",
+                  )}
+                />
+              </button>
+            ) : (
+              <div className="pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5">
+                <LocalFileIcon
+                  page={page}
+                  iconName={iconName}
+                  isLocalFolder={isLocalFolder}
+                  hasChildren={displayHasChildren}
+                  isExpanded={item.isOpen}
+                />
               </div>
             )}
 
             <InlineOverflowRevealText
-              className="text-sm"
+              className="text-[13px] leading-snug"
               text={titleText}
               expandedText={expandedTitleText}
               active={isActive || rowHovered}
@@ -539,12 +494,21 @@ export function TreeDragOverlay({
   item,
   width,
   isLocalNotebook,
+  showExpandControls = true,
 }: {
   item: FlatTreeItem;
   width: number;
   isLocalNotebook: boolean;
+  showExpandControls?: boolean;
 }) {
   const title = getPageTitle(item.page);
+  const showOverlayArrow =
+    showExpandControls &&
+    shouldShowFolderExpandArrow({
+      isFolder: !!item.page.isFolder,
+      hasChildren: item.hasChildren,
+      isLocalNotebook,
+    });
 
   return (
     <div
@@ -552,17 +516,15 @@ export function TreeDragOverlay({
       style={{ width: Math.max(160, Math.min(width - 18, 320)) }}
       aria-hidden="true"
     >
-      <span className="sidebar-tree-drag-overlay-leading">
-        {shouldShowFolderExpandArrow({
-          isFolder: !!item.page.isFolder,
-          hasChildren: item.hasChildren,
-          isLocalNotebook,
-        }) ? (
-          <LucideIcons.ChevronRight className="h-3.5 w-3.5" />
-        ) : (
-          <span className="h-3.5 w-3.5" />
-        )}
-      </span>
+      {showExpandControls ? (
+        <span className="sidebar-tree-drag-overlay-leading">
+          {showOverlayArrow ? (
+            <LucideIcons.ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <span className="h-3.5 w-3.5" />
+          )}
+        </span>
+      ) : null}
       <span className="sidebar-tree-drag-overlay-icon">
         <LocalFileIcon
           page={item.page}
@@ -572,7 +534,7 @@ export function TreeDragOverlay({
           isExpanded={item.isOpen}
         />
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug">
         {title}
       </span>
       <LucideIcons.GripVertical className="sidebar-tree-drag-overlay-grip h-4 w-4 shrink-0" />

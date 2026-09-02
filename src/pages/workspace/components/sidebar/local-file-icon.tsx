@@ -34,6 +34,17 @@ export function shouldShowFolderExpandArrow({
   return isLocalNotebook ? isFolder : hasChildren;
 }
 
+/** 收藏等平铺列表不允许展开，不预留箭头槽，也不把图标当展开控件。 */
+export function shouldRenderExpandArrowSlot({
+  showExpandControls,
+  hideExpandArrows,
+}: {
+  showExpandControls: boolean;
+  hideExpandArrows: boolean;
+}): boolean {
+  return showExpandControls && !hideExpandArrows;
+}
+
 function nodeHasVisibleContent(node: unknown): boolean {
   if (!node || typeof node !== "object") return false;
   const value = node as {
@@ -90,6 +101,7 @@ export function LocalFileIcon({
   if (page.localReadState === "error") {
     return (
       <LucideIcons.CircleX
+        size={16}
         className={cn("h-4 w-4 text-destructive/90", className)}
         aria-label={page.localReadError || "Markdown 文件读取失败"}
       />
@@ -102,6 +114,7 @@ export function LocalFileIcon({
     const Icon = isExpanded ? LucideIcons.FolderOpen : LucideIcons.Folder;
     return (
       <Icon
+        size={16}
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
@@ -111,7 +124,15 @@ export function LocalFileIcon({
   }
 
   if (SelectedIcon) {
-    return <SelectedIcon className={cn("h-4 w-4", className)} />;
+    return (
+      <SelectedIcon
+        size={16}
+        className={cn(
+          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          className,
+        )}
+      />
+    );
   }
 
   const DefaultPageIcon = pageHasVisibleContent(page)
@@ -121,6 +142,7 @@ export function LocalFileIcon({
   if (isLocalFolder) {
     return (
       <DefaultPageIcon
+        size={16}
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
@@ -133,6 +155,7 @@ export function LocalFileIcon({
   if (hasChildren) {
     return (
       <LucideIcons.FolderOpen
+        size={16}
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
@@ -147,6 +170,7 @@ export function LocalFileIcon({
     const FolderIcon = hasChildren ? LucideIcons.FolderOpen : LucideIcons.Folder;
     return (
       <FolderIcon
+        size={16}
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
           className,
@@ -157,6 +181,7 @@ export function LocalFileIcon({
 
   return (
     <DefaultPageIcon
+      size={16}
       className={cn(
         "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
         className,

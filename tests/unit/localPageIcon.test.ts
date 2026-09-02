@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { expect, test } from "playwright/test";
 import {
   canCustomizePageIcon,
+  shouldRenderExpandArrowSlot,
   shouldShowFolderExpandArrow,
 } from "../../src/pages/workspace/components/sidebar/local-file-icon";
 import {
@@ -85,6 +86,15 @@ test.afterEach(() => {
   });
 });
 
+test("侧栏文件图标固定 16px，避免 Lucide 默认 24 撑大收藏行", () => {
+  const iconSource = readFileSync(
+    resolve("src/pages/workspace/components/sidebar/local-file-icon.tsx"),
+    "utf8",
+  );
+  expect(iconSource).toContain("size={16}");
+  expect(iconSource).toMatch(/SelectedIcon[\s\S]*?size=\{16\}/);
+});
+
 test("uTools 图标选择器用扁平 :hover，避免旧内核吃不到 Tailwind 嵌套 hover", () => {
   const selector = readFileSync(
     resolve("src/pages/workspace/components/shared/IconSelector.tsx"),
@@ -165,6 +175,33 @@ test("本地仓库：空文件夹也显示展开箭头，文件不显示", () =>
       isFolder: true,
       hasChildren: false,
       isLocalNotebook: false,
+    }),
+  ).toBe(false);
+});
+
+test("收藏平铺列表不预留展开箭头槽", () => {
+  expect(
+    shouldRenderExpandArrowSlot({
+      showExpandControls: false,
+      hideExpandArrows: false,
+    }),
+  ).toBe(false);
+  expect(
+    shouldRenderExpandArrowSlot({
+      showExpandControls: false,
+      hideExpandArrows: true,
+    }),
+  ).toBe(false);
+  expect(
+    shouldRenderExpandArrowSlot({
+      showExpandControls: true,
+      hideExpandArrows: false,
+    }),
+  ).toBe(true);
+  expect(
+    shouldRenderExpandArrowSlot({
+      showExpandControls: true,
+      hideExpandArrows: true,
     }),
   ).toBe(false);
 });
