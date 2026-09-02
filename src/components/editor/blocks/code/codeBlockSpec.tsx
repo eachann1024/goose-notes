@@ -1221,6 +1221,7 @@ export const codeBlockSpec = createReactBlockSpec(
     content: "inline",
   },
   {
+    meta: { isolating: false },
     render: ({ block, contentRef, editor }) => (
       <CodeBlockComponent
         block={block}

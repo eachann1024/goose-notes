@@ -2,6 +2,7 @@ import { BlockNoteEditor } from "@blocknote/core";
 import { TextSelection, type EditorState } from "@tiptap/pm/state";
 import { CellSelection } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
+import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   deleteSelectedBlocks,
   hasPositiveBlockContentOverlap,
@@ -275,7 +276,7 @@ test("hardBreak 多行块完整选中并捎带下一块部分正文时，两块�
   expect(b2Text).toBe("2");
 });
 
-test("hardBreak 多行块与下一块均被完整选中时，仍只清文字不拆块", () => {
+test("hardBreak 多行块与下一块均被完整选中时，非首块整块删除", () => {
   const editor = BlockNoteEditor.create({
     initialContent: [
       { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
@@ -292,13 +293,9 @@ test("hardBreak 多行块与下一块均被完整选中时，仍只清文字不�
   );
 
   expect(deleteSelectedBlocks(editor)).toBe(true);
-  expect(editor.document.map((block) => block.id)).toEqual([
-    "title",
-    "b1",
-    "b2",
-  ]);
-  expect(editor.getBlock("b1")!.content).toEqual([]);
-  expect(editor.getBlock("b2")!.content).toEqual([]);
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
+  expect(editor.getBlock("b1")).toBeUndefined();
+  expect(editor.getBlock("title")).toBeDefined();
 });
 
 test("hardBreak 多行块选区落在内容闭边界之后时，删除仍保留块容器", () => {
@@ -500,4 +497,143 @@ test("表格内部 CellSelection 选区不被 crossBlockDelete 拦截，交由�
   // CellSelection 不应该由 crossBlockDelete 接管
   expect(deleteSelectedBlocks(editor)).toBe(false);
   expect(editor.getBlock("tbl")).toBeDefined();
+});
+
+test("完整选中 callout+段落时删除 callout 整块", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "hint", type: "callout", content: "提示内容" },
+      { id: "p1", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  const hint = contentRanges(editor).get("hint")!;
+  const p1 = contentRanges(editor).get("p1")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, hint.from, p1.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("hint")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
+});
+
+test("部分选中 callout 时保留块壳", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "hint", type: "callout", content: "提示内容" },
+      { id: "p1", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  const hint = contentRanges(editor).get("hint")!;
+  const p1 = contentRanges(editor).get("p1")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, hint.from + 2, p1.from + 2)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("hint")).toBeDefined();
+  expect(editor.document.map((block) => block.id)).toEqual([
+    "title",
+    "hint",
+    "p1",
+  ]);
+  const hintText = (editor.getBlock("hint")!.content as { text?: string }[])
+    .map((c) => c.text ?? "")
+    .join("");
+  expect(hintText).toBe("提示");
+});
+
+test("完整选中 codeBlock+段落时删除 codeBlock 整块", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "code", type: "codeBlock", content: "const answer = 42;" },
+      { id: "p1", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  const code = contentRanges(editor).get("code")!;
+  const p1 = contentRanges(editor).get("p1")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, code.from, p1.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("code")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
+});
+
+test("完整选中 quote+段落时删除 quote 整块", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "q1", type: "quote", content: "引用内容" },
+      { id: "p1", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  const q1 = contentRanges(editor).get("q1")!;
+  const p1 = contentRanges(editor).get("p1")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, q1.from, p1.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("q1")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
+});
+
+test("完整选中 divider+段落时删除 divider 整块", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "p1", type: "paragraph", content: "前置段落" },
+      { id: "hr", type: "divider" },
+      { id: "p2", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  const p1 = contentRanges(editor).get("p1")!;
+  const p2 = contentRanges(editor).get("p2")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, p1.from, p2.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("hr")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
+});
+
+test("完整选中 image+段落时删除 image 整块", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      {
+        id: "img",
+        type: "image",
+        props: { url: "https://example.com/a.png" },
+      },
+      { id: "p1", type: "paragraph", content: "后置段落" },
+    ],
+  });
+  let imgFrom = -1;
+  editor.prosemirrorState.doc.descendants((node, pos) => {
+    if (
+      node.type.name === "blockContainer" &&
+      String(node.attrs.id) === "img"
+    ) {
+      imgFrom = pos + 1;
+    }
+  });
+  const p1 = contentRanges(editor).get("p1")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, imgFrom, p1.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  expect(editor.getBlock("img")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual(["title"]);
 });

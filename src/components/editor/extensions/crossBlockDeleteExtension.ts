@@ -316,8 +316,10 @@ export function deleteSelectedBlocks(editor: any): boolean {
     selectedBlocks.map((block: BlockLike) => block.id),
   );
 
+  const allHitsFullySelected = hits.every(isBlockContentFullySelected);
   // hardBreak 多行块保护：当且仅当正好选中两个文本块且其中之一含 hardBreak 时，保留两块块壳
   const hasTwoTextblocksWithHardbreak =
+    !allHitsFullySelected &&
     hits.length === 2 &&
     hits.every((h) => h.isTextblock) &&
     hits.some((h) => hitSelectionContainsHardBreak(state, h));
@@ -340,7 +342,7 @@ export function deleteSelectedBlocks(editor: any): boolean {
 
     // 文本块：仅在完整选中且未受 hardBreak 保护时整块删除
     if (hasTwoTextblocksWithHardbreak) return false;
-    if (hitSelectionContainsHardBreak(state, hit)) return false;
+    if (!allHitsFullySelected && hitSelectionContainsHardBreak(state, hit)) return false;
     return isBlockContentFullySelected(hit);
   });
 

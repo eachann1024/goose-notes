@@ -112,6 +112,7 @@ export const calloutBlock = createReactBlockSpec(
     content: "inline",
   },
   {
+    meta: { isolating: false },
     render: (props) => (
       <CalloutBlockView
         block={props.block}
