@@ -10,8 +10,10 @@ import {
   isInteractiveCaretClickTarget,
   isTextBlockContent,
   pickOwningBlockIndex,
+  pickTrailingBlankContentEl,
   resolveBlockEmptyClickPos,
   resolveLineEndIfClickPastText,
+  tableCellInlineFromEventTarget,
   type CaretCoords,
 } from "../../src/components/editor/extensions/trailingBlankClickExtension";
 
@@ -209,6 +211,18 @@ test("非元素目标不接管", () => {
   );
 });
 
+test("表格手柄列入空白点击忽略选择器", () => {
+  const source = readFileSync(
+    new URL(
+      "../../src/components/editor/extensions/trailingBlankClickExtension.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  expect(source).toContain('".bn-table-handle"');
+  expect(source).toContain('".bn-table-cell-handle"');
+});
+
 test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {
   const surfaceCss = readFileSync(
     new URL("../../src/pages/workspace/styles/editor-base/surface.css", import.meta.url),
@@ -228,6 +242,14 @@ test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {
   expect(surfaceCss).toContain(
     '.bn-block-content[data-content-type="callout"] > .react-renderer',
   );
+  const tablesCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/tables-callouts.css", import.meta.url),
+    "utf8",
+  );
+  expect(tablesCss).toContain("[data-content-type=\"table\"]");
+  expect(tablesCss).toContain("td");
+  expect(tablesCss).toContain("th");
+  expect(tablesCss).toContain("> .bn-inline-content");
   expect(surfaceCss).toContain(
     ".bn-block-content:has(.ProseMirror-trailingBreak:only-child)",
   );
@@ -295,4 +317,63 @@ test("点击落在标注块内部时用该块，不按 Y 判给标题", () => {
   expect(contentBlockFromEventTarget(inner)).toBe(callout);
   expect(contentBlockFromEventTarget(title)).toBe(title);
   expect(contentBlockFromEventTarget(null)).toBeNull();
+});
+
+function headingBlock(text: string) {
+  const title = document.createElement("div");
+  title.className = "bn-block-content";
+  title.setAttribute("data-content-type", "heading");
+  title.innerHTML = `<h1 class="bn-inline-content">${text}</h1>`;
+  return title;
+}
+
+function tableBlockWithCell(text: string) {
+  const table = document.createElement("div");
+  table.className = "bn-block-content";
+  table.setAttribute("data-content-type", "table");
+  table.innerHTML = `<table><tbody><tr><td><div class="bn-inline-content">${text}</div></td></tr></tbody></table>`;
+  return {
+    table,
+    cellInline: table.querySelector(".bn-inline-content") as HTMLElement,
+  };
+}
+
+function mediaBlock(type: string) {
+  const el = document.createElement("div");
+  el.className = "bn-block-content";
+  el.setAttribute("data-content-type", type);
+  const inner = document.createElement("div");
+  inner.className = "media-preview";
+  el.append(inner);
+  return { block: el, inner };
+}
+
+test("点在表格单元格内用该格，不按 Y 判给上方标题", () => {
+  installExportDom();
+  const title = headingBlock("我的账号");
+  const { table, cellInline } = tableBlockWithCell("13192576263");
+
+  expect(isTextBlockContent(table)).toBe(false);
+  expect(contentBlockFromEventTarget(cellInline)).toBeNull();
+  expect(tableCellInlineFromEventTarget(cellInline)).toBe(cellInline);
+  expect(pickTrailingBlankContentEl(cellInline, [title], 80)).toBe(cellInline);
+  expect(pickTrailingBlankContentEl(cellInline, [title], 10)).toBe(cellInline);
+});
+
+test("点在图片/视频/文件/分割线块内不把光标判给标题", () => {
+  installExportDom();
+  const title = headingBlock("我的账号");
+  for (const type of ["image", "imageResize", "video", "file", "audio", "divider"]) {
+    const { block, inner } = mediaBlock(type);
+    expect(isTextBlockContent(block)).toBe(false);
+    expect(contentBlockFromEventTarget(inner)).toBeNull();
+    expect(pickTrailingBlankContentEl(inner, [title], 80)).toBeNull();
+  }
+});
+
+test("点在表格外壳但未落到单元格时也不判给标题", () => {
+  installExportDom();
+  const title = headingBlock("我的账号");
+  const { table } = tableBlockWithCell("13192576263");
+  expect(pickTrailingBlankContentEl(table, [title], 80)).toBeNull();
 });

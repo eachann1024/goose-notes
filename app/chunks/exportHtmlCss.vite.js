@@ -2267,6 +2267,22 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   overflow-wrap: anywhere;
 }
 
+/* 单元格 inline 随格宽撑满，避免 caretRangeFromPoint 落到格外标题。 */
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  > .bn-inline-content,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  > .bn-inline-content {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 /* 注意：BlockNote 在编辑器内部把 --foreground/--muted 覆盖成 oklch(...) 整色值，
    不再是 HSL 三元组，所以这里不能用 hsl(var(--foreground) / a)，会解析失败导致透明。
    标题行底色改用字面 rgba。 */

@@ -24,6 +24,8 @@ const INTERACTIVE_CLICK_SELECTOR = [
   "a",
   ".bn-side-menu",
   ".bn-toggle-button",
+  ".bn-table-handle",
+  ".bn-table-cell-handle",
   ".goose-table-extend-button",
   "[data-file-block]",
 ].join(",");
@@ -279,10 +281,14 @@ function textblockRangeAt(
   return null;
 }
 
-/** 表格/媒体外壳不是可编辑文本块；单元格内的嵌套 paragraph 仍会单独命中。 */
+/**
+ * 表格/媒体外壳不是可编辑文本块。
+ * 点在这些块上时不能按 Y 把光标判给上方标题；单元格走自己的 inline 容器。
+ */
 const NON_TEXT_BLOCK_CONTENT_TYPES = new Set([
   "table",
   "image",
+  "imageResize",
   "video",
   "file",
   "audio",
@@ -315,6 +321,45 @@ function collectInlineBlockContents(editorDom: Element): HTMLElement[] {
   );
 }
 
+function closestBlockContentEl(target: EventTarget | null): HTMLElement | null {
+  if (!target || typeof target !== "object") return null;
+  const closest = (target as { closest?: (selector: string) => unknown })
+    .closest;
+  if (typeof closest !== "function") return null;
+  const el = closest.call(target, ".bn-block-content");
+  if (!el || typeof (el as { querySelector?: unknown }).querySelector !== "function") {
+    return null;
+  }
+  return el as HTMLElement;
+}
+
+/**
+ * 表格单元格的可编辑面是 td/th 里的 `.bn-inline-content`，
+ * 不是外层 `data-content-type="table"`。点格内文字或格内空白时用这一层。
+ */
+export function tableCellInlineFromEventTarget(
+  target: EventTarget | null,
+): HTMLElement | null {
+  if (!target || typeof target !== "object") return null;
+  const closest = (target as { closest?: (selector: string) => unknown })
+    .closest;
+  if (typeof closest !== "function") return null;
+  const cell = closest.call(target, "td, th");
+  if (!cell || typeof (cell as { querySelector?: unknown }).querySelector !== "function") {
+    return null;
+  }
+  const tableBlock = closestBlockContentEl(target);
+  if (!tableBlock || tableBlock.getAttribute("data-content-type") !== "table") {
+    return null;
+  }
+  const htmlCell = cell as HTMLElement;
+  return (
+    htmlCell.querySelector<HTMLElement>(":scope > .bn-inline-content") ??
+    htmlCell.querySelector<HTMLElement>(".bn-inline-content") ??
+    htmlCell
+  );
+}
+
 function inlineContentEl(contentEl: HTMLElement): HTMLElement {
   const type = contentEl.getAttribute("data-content-type");
   if (type === "codeBlock") {
@@ -341,7 +386,9 @@ function textblockRangeFromContentEl(
   view: EditorView,
   contentEl: HTMLElement,
 ): { start: number; end: number } | null {
-  const inline = inlineContentEl(contentEl);
+  const inline = contentEl.classList.contains("bn-block-content")
+    ? inlineContentEl(contentEl)
+    : contentEl;
   try {
     const pos = view.posAtDOM(inline, 0);
     return textblockRangeAt(view, pos);
@@ -354,38 +401,47 @@ function textblockRangeFromContentEl(
 export function contentBlockFromEventTarget(
   target: EventTarget | null,
 ): HTMLElement | null {
-  if (!target || typeof target !== "object") return null;
-  const closest = (target as { closest?: (selector: string) => unknown })
-    .closest;
-  if (typeof closest !== "function") return null;
-  const el = closest.call(target, ".bn-block-content");
-  if (!el || typeof (el as { querySelector?: unknown }).querySelector !== "function") {
-    return null;
+  const htmlEl = closestBlockContentEl(target);
+  return htmlEl && isTextBlockContent(htmlEl) ? htmlEl : null;
+}
+
+/**
+ * 点在表格/图片等结构化块内部时，不要按 Y 把点击判给上方标题。
+ * 表格单元格返回该格 inline；图片/视频/文件/分割线返回 null（交给默认点击）。
+ */
+export function pickTrailingBlankContentEl(
+  target: EventTarget | null,
+  contents: HTMLElement[],
+  clientY: number,
+): HTMLElement | null {
+  const closest = closestBlockContentEl(target);
+  if (closest && !isTextBlockContent(closest)) {
+    return tableCellInlineFromEventTarget(target);
   }
-  const htmlEl = el as HTMLElement;
-  return isTextBlockContent(htmlEl) ? htmlEl : null;
+  if (closest && isTextBlockContent(closest)) return closest;
+  if (contents.length === 0) return null;
+  return (
+    contents[
+      pickOwningBlockIndex(
+        contents.map((el) => {
+          const rect = el.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }),
+        clientY,
+      ) ?? -1
+    ] ?? null
+  );
 }
 
 export function resolveTrailingBlankClickPos(
   view: EditorView,
   event: MouseEvent,
 ): number | null {
-  const contents = collectInlineBlockContents(view.dom);
-  const fromTarget = contentBlockFromEventTarget(event.target);
-  const contentEl =
-    fromTarget ??
-    (contents.length === 0
-      ? null
-      : contents[
-          pickOwningBlockIndex(
-            contents.map((el) => {
-              const rect = el.getBoundingClientRect();
-              return { top: rect.top, bottom: rect.bottom };
-            }),
-            event.clientY,
-          ) ?? -1
-        ] ??
-        null);
+  const contentEl = pickTrailingBlankContentEl(
+    event.target,
+    collectInlineBlockContents(view.dom),
+    event.clientY,
+  );
   if (!contentEl) return null;
 
   const range = textblockRangeFromContentEl(view, contentEl);
