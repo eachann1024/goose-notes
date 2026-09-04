@@ -29,6 +29,12 @@ test("本地文件夹的目录节点不进入搜索，但文件仍可搜索", ()
       notebooks,
     ),
   ).toBe(true);
+  expect(
+    isCommandSearchablePage(
+      { ...pageBase, localUnsaved: true },
+      notebooks,
+    ),
+  ).toBe(false);
 });
 
 test("内置记事本的父页面仍属于可搜索页面", () => {

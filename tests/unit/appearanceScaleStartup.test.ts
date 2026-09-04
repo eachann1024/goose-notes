@@ -3,6 +3,7 @@ import {
   applyAppearanceScaleVariables,
   clearStartupSettling,
   computeEditorUiScale,
+  computeSidebarRowHeight,
   markStartupSettling,
 } from "../../src/lib/appearance";
 
@@ -57,6 +58,7 @@ test("首帧前同步写入界面字号与编辑器缩放变量", () => {
 
   expect(root().style.fontSize).toBe("16px");
   expect(root().style.getPropertyValue("--editor-font-size")).toBe("13px");
+  expect(root().style.getPropertyValue("--sidebar-font-size")).toBe("13px");
   // 13 / 16（默认字号）= 0.8125，首帧即恢复上次缩放而非默认 1
   expect(root().style.getPropertyValue("--editor-scale")).toBe("0.8125");
   expect(root().style.getPropertyValue("--editor-ui-scale")).toBe("0.8125");
@@ -107,6 +109,25 @@ test("编辑器 UI 缩放只在值实际变化时派发事件", () => {
   expect((dispatchedEvents[1] as CustomEvent).detail).toEqual({
     scale: "1.2500",
   });
+});
+
+test("侧栏字号与编辑器字号各自写入，互不影响", () => {
+  applyAppearanceScaleVariables({
+    uiFontSize: "small",
+    editorFontSize: 20,
+    sidebarFontSize: 15,
+  });
+
+  expect(root().style.fontSize).toBe("14px");
+  expect(root().style.getPropertyValue("--editor-font-size")).toBe("20px");
+  expect(root().style.getPropertyValue("--sidebar-font-size")).toBe("15px");
+  expect(root().style.getPropertyValue("--editor-scale")).toBe("1.2500");
+});
+
+test("侧栏行高跟随侧栏字号，不跟随编辑器字号", () => {
+  expect(computeSidebarRowHeight(13)).toBe(28);
+  expect(computeSidebarRowHeight(15)).toBe(32);
+  expect(computeSidebarRowHeight(18)).toBe(38);
 });
 
 test("启动过渡禁用标记可写入并幂等清除", () => {

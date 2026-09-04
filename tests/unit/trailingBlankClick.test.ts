@@ -5,6 +5,7 @@ import {
   contentBlockFromEventTarget,
   extendToVisualLineEnd,
   findPosOnVisualLine,
+  isClickInInterBlockGap,
   isClickOnVisualLine,
   isClickPastTextRight,
   isInteractiveCaretClickTarget,
@@ -129,7 +130,35 @@ test("块间空隙归上方块，命中盒子时用最内层", () => {
   expect(pickOwningBlockIndex([], 10)).toBeNull();
 });
 
-test("Notion：点块间空隙落到该块行尾，即使 X 还在文字正下方", () => {
+test("块间空隙不改光标，首尾外侧不算空隙", () => {
+  const blocks = [
+    { top: 0, bottom: 20 },
+    { top: 28, bottom: 48 },
+  ];
+  expect(isClickInInterBlockGap(blocks, 24)).toBe(true);
+  expect(isClickInInterBlockGap(blocks, 20.5)).toBe(true);
+  expect(isClickInInterBlockGap(blocks, 10)).toBe(false);
+  expect(isClickInInterBlockGap(blocks, 20)).toBe(false);
+  expect(isClickInInterBlockGap(blocks, 28)).toBe(false);
+  expect(isClickInInterBlockGap(blocks, 30)).toBe(false);
+  expect(isClickInInterBlockGap(blocks, -4)).toBe(false);
+  expect(isClickInInterBlockGap(blocks, 60)).toBe(false);
+  expect(isClickInInterBlockGap(blocks.slice(0, 1), 24)).toBe(false);
+  expect(isClickInInterBlockGap([], 24)).toBe(false);
+});
+
+test("嵌套兄弟块之间的空隙也算块间空隙", () => {
+  const nested = [
+    { top: 0, bottom: 20 },
+    { top: 28, bottom: 48 },
+    { top: 56, bottom: 76 },
+  ];
+  expect(isClickInInterBlockGap(nested, 52)).toBe(true);
+  expect(isClickInInterBlockGap(nested, 24)).toBe(true);
+  expect(isClickInInterBlockGap(nested, 40)).toBe(false);
+});
+
+test("点在块内文字下方留白落到该块行尾，即使 X 还在文字正下方", () => {
   expect(
     resolveBlockEmptyClickPos({
       clientX: 10,
@@ -221,6 +250,8 @@ test("表格手柄列入空白点击忽略选择器", () => {
   );
   expect(source).toContain('".bn-table-handle"');
   expect(source).toContain('".bn-table-cell-handle"');
+  expect(source).toContain("swallowInterBlockGapClick");
+  expect(source).toContain("isPointerInInterBlockGap");
 });
 
 test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {

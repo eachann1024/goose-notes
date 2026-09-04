@@ -51,6 +51,11 @@ test.describe("notebook AI error mapping", () => {
       NOTEBOOK_AI_BATCH_PLAN_SCHEMA_ERROR,
     );
     expect(NOTEBOOK_AI_BATCH_PLAN_BUSINESS_ERROR).toContain("0 项");
+    expect(
+      formatNotebookAiError("本地新建目标在执行时发生变化，已取消创建", {
+        phase: "prepare",
+      }),
+    ).toContain("无法创建本地文件");
   });
 
   test("撤回异常使用固定安全文案", () => {

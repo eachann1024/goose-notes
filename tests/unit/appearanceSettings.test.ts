@@ -218,6 +218,46 @@ test("跟随系统主题能解析系统明暗状态", () => {
   expect(resolveTheme("dark", false)).toBe("dark");
 });
 
+test("侧栏字号与编辑器字号互相独立且各自夹紧边界", () => {
+  expect(APPEARANCE_INITIAL_STATE.sidebarFontSize).toBe(13);
+  expect(APPEARANCE_INITIAL_STATE.editorFontSize).toBe(16);
+
+  let sidebarFontSize = 13;
+  let editorFontSize = 16;
+  const slice = createAppearanceSlice(
+    (updater) => {
+      const current = { sidebarFontSize, editorFontSize };
+      const next =
+        typeof updater === "function" ? updater(current as never) : updater;
+      if (typeof next.sidebarFontSize === "number") {
+        sidebarFontSize = next.sidebarFontSize;
+      }
+      if (typeof next.editorFontSize === "number") {
+        editorFontSize = next.editorFontSize;
+      }
+    },
+    () => ({
+      applyTheme: () => undefined,
+      applyAccentColor: () => undefined,
+      applyCodeStyle: () => undefined,
+    }),
+  );
+
+  slice.increaseSidebarFontSize();
+  slice.increaseSidebarFontSize();
+  expect(sidebarFontSize).toBe(15);
+  expect(editorFontSize).toBe(16);
+
+  slice.setEditorFontSize(20);
+  expect(sidebarFontSize).toBe(15);
+  expect(editorFontSize).toBe(20);
+
+  slice.setSidebarFontSize(99);
+  slice.setEditorFontSize(4);
+  expect(sidebarFontSize).toBe(18);
+  expect(editorFontSize).toBe(12);
+});
+
 test("主题轮转顺序为 system → light → dark → system", () => {
   expect(APPEARANCE_INITIAL_STATE.theme).toBe("system");
 

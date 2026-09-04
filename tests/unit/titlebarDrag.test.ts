@@ -9,6 +9,13 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
     ),
     "utf8",
   );
+  const tabRail = readFileSync(
+    new URL(
+      "../../src/pages/workspace/components/page/TabRail.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const title = readFileSync(
     new URL(
       "../../src/pages/workspace/components/page/SingleTabTitle.tsx",
@@ -18,7 +25,10 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   );
   expect(titleBar).toContain("electron-titlebar");
   expect(titleBar).not.toContain("pl-[78px]");
-  expect(titleBar).toContain("idleWindowDrag");
+  expect(titleBar).toContain('variant="electron-titlebar"');
+  expect(tabRail).toContain("idleWindowDrag");
+  expect(tabRail).toContain('surface="tab-pill"');
+  expect(tabRail).toContain("data-electron-no-drag");
   expect(title).toContain("idleWindowDrag");
   expect(title).toContain("startWindowDragging");
   expect(title).toContain("data-electron-no-drag");
@@ -36,6 +46,10 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   expect(titleBar).not.toContain("h-11");
   expect(titleBar).toContain("PageIconButton");
   expect(titleBar).toContain("canCustomizePageIcon");
+  expect(titleBar.indexOf("ai-icon-button")).toBeGreaterThan(-1);
+  expect(titleBar.indexOf("ai-icon-button")).toBeLessThan(
+    titleBar.indexOf("<PageIconButton"),
+  );
   expect(titleBar).toContain("data-electron-no-drag");
   expect(titleBar).not.toContain("LucideIcons.Pin");
   expect(titleBar).not.toContain("置顶页面");
@@ -45,6 +59,21 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   expect(titleBar).not.toContain('aria-label="导出"');
   expect(titleBar).not.toContain("LucideIcons.History");
   expect(titleBar).not.toContain('aria-label="页面历史"');
+});
+
+test("多标签 pill 标 no-drag，轨空白保持父级 drag", () => {
+  const tabRail = readFileSync(
+    new URL(
+      "../../src/pages/workspace/components/page/TabRail.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  expect(tabRail).toContain('variant === "electron-titlebar"');
+  expect(tabRail).toContain("data-electron-no-drag");
+  expect(tabRail).toContain("tabRailItemClassName");
+  expect(tabRail).not.toContain("max-w-[120px]");
+  expect(tabRail).not.toContain("pl-[78px]");
 });
 
 test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
@@ -58,6 +87,9 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
   expect(css).toContain("padding-left: max(");
   expect(css).toContain("[data-page-title-field]");
   expect(css).toContain("width: 100%");
+  expect(css).toContain("flex-basis 220ms");
+  expect(css).toContain("prefers-reduced-motion");
+  expect(css).not.toContain('[data-tab-active="true"]::after');
 
   const sidebar = readFileSync(
     new URL(

@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 import {
   isLinkShortcutClaimedByApp,
   isPrimaryLinkShortcutEvent,
+  shouldArmLinkOpenHint,
 } from "../../src/components/editor/extensions/linkKeyboardExtension";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent> = {}) {
@@ -102,4 +103,10 @@ test("link shortcut ignores modern and legacy IME keyboard events", () => {
       "windows",
     ),
   ).toBe(false);
+});
+
+test("link open hint arms on Cmd or Ctrl, matching click-to-open", () => {
+  expect(shouldArmLinkOpenHint({ metaKey: true, ctrlKey: false })).toBe(true);
+  expect(shouldArmLinkOpenHint({ metaKey: false, ctrlKey: true })).toBe(true);
+  expect(shouldArmLinkOpenHint({ metaKey: false, ctrlKey: false })).toBe(false);
 });

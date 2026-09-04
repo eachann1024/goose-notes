@@ -227,3 +227,45 @@ test("snapshotBlocks + restoreBlocks 可拒绝后恢复原文", () => {
   expect(body[0]?.type).toBe("paragraph");
   expect(plainText(body[0] as any)).toBe("原始内容");
 });
+
+test("apply 标题改写保留居中、背景色和行内字色", () => {
+  const editor = createEditor([
+    {
+      id: "title",
+      type: "heading",
+      props: { level: 1 },
+      content: "标题",
+    },
+    {
+      id: "week",
+      type: "heading",
+      props: {
+        level: 2,
+        textAlignment: "center",
+        backgroundColor: "orange",
+      },
+      content: [
+        { type: "text", text: "第二周", styles: { textColor: "orange" } },
+      ],
+    },
+  ]);
+
+  applyMarkdownToInlineTarget(
+    editor as unknown as InlineMarkdownEditor,
+    "## 第二周 9.7 - 9.11",
+    { sourceBlockIds: ["week"] },
+  );
+
+  const heading = editor.document.find((b) => b.type === "heading" && b.id !== "title") as {
+    props?: Record<string, unknown>;
+    content?: unknown;
+  };
+  expect(plainText(heading as any)).toBe("第二周 9.7 - 9.11");
+  expect(heading?.props?.textAlignment).toBe("center");
+  expect(heading?.props?.backgroundColor).toBe("orange");
+  const content = heading?.content;
+  const styles = Array.isArray(content)
+    ? (content[0] as { styles?: { textColor?: string } })?.styles
+    : undefined;
+  expect(styles?.textColor).toBe("orange");
+});

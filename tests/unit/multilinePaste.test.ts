@@ -108,6 +108,50 @@ test("表格/代码 HTML 不拆纯文本行，表情图片不挡拆行", () => {
   expect(htmlHasNonTextPasteBlocks("<p>a<br>b</p>")).toBe(false);
 });
 
+test("多行带可保留格式 HTML 不按纯文本拆行", () => {
+  const lines = ["甲", "乙"];
+  expect(
+    shouldSplitMultilinePaste({
+      lines,
+      htmlText: "<p><strong>甲</strong><br><strong>乙</strong></p>",
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(true);
+  expect(
+    shouldSplitMultilinePaste({
+      lines,
+      htmlText: '<p data-background-color="#ffeeaa">甲<br>乙</p>',
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(false);
+  expect(
+    shouldSplitMultilinePaste({
+      lines,
+      htmlText: '<p data-background-color="default">甲<br>乙</p>',
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(true);
+});
+
+test("多行无格式 HTML 仍按纯文本拆行", () => {
+  const lines = ["甲", "乙"];
+  expect(
+    shouldSplitMultilinePaste({
+      lines,
+      htmlText: "<p>甲<br>乙</p>",
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(true);
+});
+
 test("callout / 表格 / 跨块选区不拆", () => {
   const lines = ["一", "二"];
   expect(

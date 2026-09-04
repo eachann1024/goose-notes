@@ -18,6 +18,17 @@ test("折叠块不再画左侧引用线", () => {
   );
 });
 
+test("嵌套列表不再画左侧引用线", () => {
+  const listsCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/lists.css", import.meta.url),
+    "utf8",
+  );
+  expect(listsCss).not.toContain("--goose-list-marker-axis-x");
+  expect(listsCss).not.toMatch(/\.bn-block:has\([\s\S]*?\)::after/);
+  expect(listsCss).toContain("content: none !important");
+  expect(listsCss).toContain("border-left: 0 !important");
+});
+
 test("标题区块折叠用 data-goose-section-hidden 隐藏后续兄弟", () => {
   const togglesCss = readFileSync(
     new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),
@@ -82,6 +93,7 @@ test("SideMenu 水平锚内容列左缘，垂直对齐标题文字中线", () =>
   );
   expect(source).toContain("referencePos.left - sideMenuGap");
   expect(source).toContain("HEADING_SIDE_MENU_EXTRA_GAP");
+  expect(source).toContain('block?.type === "table" ? 0 : HEADING_SIDE_MENU_EXTRA_GAP');
   expect(source).toContain("data-heading-gutter");
   expect(source).not.toContain("textRect.left");
   expect(source).toContain("textRect.top + textRect.height / 2");
@@ -118,6 +130,19 @@ test("SideMenu 对非首块 heading 渲染折叠按钮，顺序为 + / 折叠 / 
   expect(plusIndex).toBeGreaterThan(-1);
   expect(toggleIndex).toBeGreaterThan(-1);
   expect(plusIndex).toBeLessThan(toggleIndex);
+});
+
+test("标题当前行浅底把 18px 顶距挪到透明 margin", () => {
+  const surfaceCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/surface.css", import.meta.url),
+    "utf8",
+  );
+  const headingRule = surfaceCss.match(
+    /\.goose-active-line[\s\S]*?\[data-content-type="heading"\]:not\(\s*\[data-background-color\]\s*\)\s*\{[^}]*\}/,
+  );
+  expect(headingRule).not.toBeNull();
+  expect(headingRule![0]).toContain("margin-top: 15px");
+  expect(headingRule![0]).toContain("padding-top: 3px");
 });
 
 test("折叠标题整行虚线边框用 data-goose-heading-collapsed 选择器", () => {

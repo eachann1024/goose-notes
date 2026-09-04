@@ -15,7 +15,7 @@ test("表格菜单触发器不使用会污染 Portal 坐标的 CSS zoom", () => 
     'className="goose-editor-inline-context-ui goose-table-handle-btn"',
   );
   expect(tableHandleSource).toContain(
-    'className="goose-editor-position-safe-trigger goose-table-handle-btn"',
+    'className="bn-table-handle goose-editor-position-safe-trigger goose-table-handle-btn"',
   );
 });
 

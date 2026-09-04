@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 import {
   resolveInlineBusyTicker,
   visibleBusyTickerLine,
+  composeInlineBusyTicker,
 } from "../../src/components/editor/ai/inlineBusyTicker";
 
 test("有思考时只用思考，不混入正文", () => {
@@ -33,4 +34,21 @@ test("展示行只留最后一句，旧思考被盖住", () => {
   );
   expect(visibleBusyTickerLine("第一句。第二句！第三句")).toBe("第三句");
   expect(visibleBusyTickerLine("")).toBe("");
+});
+
+test("compose 把思考压成一行，不把正文混进去", () => {
+  expect(
+    composeInlineBusyTicker({
+      reasoningText: "是周一？\n8.31 是周一，完美一周。所以改标题",
+      text: "## 第一周 8.31 - 9.4",
+    }),
+  ).toBe("所以改标题");
+});
+
+test("多段工具间思考也只留最后一句，给工作卡行内用", () => {
+  expect(
+    visibleBusyTickerLine(
+      ["先读当前笔记。", "对照适配点。", "轻度原生化就是少套壳"].join("\n"),
+    ),
+  ).toBe("轻度原生化就是少套壳");
 });

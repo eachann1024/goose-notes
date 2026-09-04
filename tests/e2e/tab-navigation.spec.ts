@@ -59,10 +59,12 @@ test.describe("VSCode-style tab navigation", () => {
           __GOOSE_TEST__?: {
             openPermanentTab: (pageId: string, pin?: boolean) => void;
             openPreviewTab: (pageId: string) => void;
+            openWelcomeTab: () => void;
           };
         }).__GOOSE_TEST__;
         if (!bridge) throw new Error("Test bridge unavailable");
         bridge.openPermanentTab(pageA, true);
+        bridge.openWelcomeTab();
         bridge.openPreviewTab(pageB);
       },
       { pageA: a, pageB: b },
@@ -118,10 +120,12 @@ test.describe("VSCode-style tab navigation", () => {
           __GOOSE_TEST__?: {
             openPermanentTab: (pageId: string) => void;
             openPreviewTab: (pageId: string) => void;
+            openWelcomeTab: () => void;
           };
         }).__GOOSE_TEST__;
         if (!bridge) throw new Error("Test bridge unavailable");
         bridge.openPermanentTab(pageA);
+        bridge.openWelcomeTab();
         bridge.openPreviewTab(pageB);
         bridge.openPreviewTab(pageC);
       },
@@ -146,6 +150,45 @@ test.describe("VSCode-style tab navigation", () => {
     expect(preview?.pageId).toBe(c);
   });
 
+  test("sidebar single click switches the only tab instead of adding", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+
+    await page.evaluate(
+      ({ pageA }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string) => void;
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPermanentTab(pageA);
+      },
+      { pageA: a },
+    );
+
+    const rowB = page.locator(`[data-rct-item-id="${b}"]`).first();
+    await expect(rowB).toBeVisible({ timeout: 15_000 });
+    await rowB.click();
+
+    const state = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{ id: string; pageId: string; preview?: boolean }>;
+          };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return bridge.getTabsState();
+    });
+
+    expect(state.openTabs).toHaveLength(1);
+    expect(state.openTabs[0].pageId).toBe(b);
+    expect(state.openTabs[0].preview).toBeFalsy();
+  });
+
   test("sidebar single click opens preview without replacing pinned tab", async ({
     page,
   }) => {
@@ -156,10 +199,12 @@ test.describe("VSCode-style tab navigation", () => {
         const bridge = (window as Window & {
           __GOOSE_TEST__?: {
             openPermanentTab: (pageId: string, pin?: boolean) => void;
+            openWelcomeTab: () => void;
           };
         }).__GOOSE_TEST__;
         if (!bridge) throw new Error("Test bridge unavailable");
         bridge.openPermanentTab(pageA, true);
+        bridge.openWelcomeTab();
       },
       { pageA: a },
     );

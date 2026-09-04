@@ -36,7 +36,7 @@ test("助手消息不再套灰气泡，正文进工作卡、审批嵌工作卡 f
   expect(messageSource).toContain("embedded");
   expect(messageSource).not.toContain("ASSISTANT_MESSAGE_PARTS");
   expect(messageSource).not.toContain("collectWorkCardCommentary");
-  expect(messageSource).not.toContain("thinkingText");
+  expect(messageSource).toContain("thinkingText={reasoningText}");
   expect(messageSource).not.toContain(
     "rounded-[14px] bg-[var(--goose-interactive-hover)]",
   );
@@ -152,8 +152,10 @@ test("工作卡与审批卡共用纸面，步骤图标锁 14px、不套任务卡
   );
   expect(notebookAiCss).toContain(".notebook-ai-work-card");
   expect(notebookAiCss).toContain("width: 14px");
-  expect(notebookAiCss).toContain("padding-left: 42px");
-  expect(notebookAiCss).toContain("margin: 10px 0 2px -22px");
+  expect(notebookAiCss).toContain("padding: 22px 20px 16px");
+  expect(notebookAiCss).toContain("margin: 10px 0 2px");
+  expect(notebookAiCss).not.toContain("padding-left: 42px");
+  expect(notebookAiCss).not.toContain("margin: 10px 0 2px -22px");
   expect(notebookAiCss).toContain("min-height: 32px");
   expect(notebookAiCss).toMatch(
     /\.notebook-ai-work-toggle\[aria-expanded="true"\] \.notebook-ai-work-chev \{[\s\S]{0,80}transform:\s*rotate\(90deg\)/,
@@ -164,13 +166,16 @@ test("工作卡与审批卡共用纸面，步骤图标锁 14px、不套任务卡
   expect(cardSource).not.toContain('d="m6 9 6 6 6-6"');
   expect(cardSource).not.toContain("TaskRows");
   // 有 children/footer 时即使无步骤也出纸；纯空卡才返回 null
-  expect(cardSource).toContain("!hasHeading && !children && !footer");
+  expect(cardSource).toContain("!hasHeading && !showTraceRow && !children && !footer");
   expect(cardSource).toContain("notebook-ai-work-footer");
   expect(cardSource).toContain("foldable && open");
-  expect(cardSource).not.toContain("thinkingText");
-  expect(cardSource).not.toContain("visibleBusyTickerLine");
+  expect(cardSource).toContain("useState(false)");
+  expect(cardSource).not.toContain("setOpen(true)");
+  expect(cardSource).toContain("thinkingText");
+  expect(cardSource).toContain("visibleBusyTickerLine");
+  expect(cardSource).toContain("notebook-ai-work-think");
   expect(messageSource).toContain("collectReasoningText");
-  expect(messageSource).not.toContain("thinkingText");
+  expect(messageSource).toContain("thinkingText={reasoningText}");
 });
 
 test("生成时吸底不因回到底部按钮抢高度", () => {
@@ -189,5 +194,31 @@ test("发送后直接显示处理进度，不再出独立思考中卡片", () =>
   expect(messageSource).not.toContain("AssistantThinkingPlaceholder");
   expect(messageSource).not.toContain('activeLabel="思考中"');
   expect(messageSource).not.toContain("ThinkingState");
-  expect(messageSource).toContain("AssistantReasoningPart");
+  expect(messageSource).not.toContain("AssistantReasoningPart");
+  expect(messageSource).toContain("Reasoning: NullMessagePart");
+});
+
+test("思考与工具汇总成一行，思考只在行内输出", () => {
+  const cardSource = readFileSync(
+    "src/pages/workspace/components/notebook-ai/ToolProgressCard.tsx",
+    "utf8",
+  );
+  expect(cardSource).toContain("thinkingText");
+  expect(cardSource).toContain("visibleBusyTickerLine");
+  expect(cardSource).toContain("notebook-ai-work-think");
+  expect(cardSource).toContain('hasThinking ? "思考"');
+  expect(messageSource).toContain("thinkingText={reasoningText}");
+  expect(notebookAiCss).toContain(".notebook-ai-work-think");
+  expect(notebookAiCss).toContain("white-space: nowrap");
+});
+
+test("有变更计划时思考默认折叠，正文让给整页改动", () => {
+  expect(messageSource).toContain("AssistantLetterFold");
+  expect(messageSource).toContain("notebook-ai-letter-fold");
+  expect(messageSource).toContain("<span>思考</span>");
+  expect(messageSource).toContain("visibleApprovalPart &&");
+  expect(notebookAiCss).toContain(".notebook-ai-letter-fold-toggle");
+  expect(notebookAiCss).toContain(
+    '.notebook-ai-letter-fold-toggle[aria-expanded="true"] .notebook-ai-letter-chev',
+  );
 });

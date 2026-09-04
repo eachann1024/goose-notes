@@ -1,6 +1,9 @@
 import { expect, test } from "playwright/test";
 import { collectNotebookAiMessageSkills } from "../../src/lib/notebook-ai/context";
-import { buildUserMessageSegments } from "../../src/lib/notebook-ai/userMessageSegments";
+import {
+  buildUserMessageSegments,
+  inferSkillsFromDisplayText,
+} from "../../src/lib/notebook-ai/userMessageSegments";
 
 test("collectNotebookAiMessageSkills：合并 payload.skills 与 skill tokens 并按 name 去重", () => {
   const skills = collectNotebookAiMessageSkills({
@@ -124,4 +127,32 @@ test("buildUserMessageSegments：skill 与 @ 引用可共存", () => {
     type: "reference",
     reference: { pageId: "p1", titleSnapshot: "会议纪要" },
   });
+});
+
+test("buildUserMessageSegments：正文路径 /Profile 不当 skill chip", () => {
+  const text =
+    "真机调试签名：要华为开发者账号 + AGC 调试证书 /Profile , 不能再用 OpenHarmony 自带 debug 证书";
+  const segments = buildUserMessageSegments(text, [], []);
+  expect(segments).toEqual([{ type: "text", text }]);
+});
+
+test("buildUserMessageSegments：Unix 路径不当 skill chip", () => {
+  const text = "证书在 /usr/bin 和 /etc/passwd";
+  expect(buildUserMessageSegments(text, [], [])).toEqual([
+    { type: "text", text },
+  ]);
+});
+
+test("buildUserMessageSegments：metadata skill 不吞路径片段", () => {
+  const text = "请打开 /profile/settings";
+  const segments = buildUserMessageSegments(text, [], [{ name: "profile" }]);
+  expect(segments).toEqual([{ type: "text", text }]);
+});
+
+test("inferSkillsFromDisplayText：大小写路径与词中斜杠不推断", () => {
+  expect(inferSkillsFromDisplayText("证书 /Profile")).toEqual([]);
+  expect(inferSkillsFromDisplayText("x/foo")).toEqual([]);
+  expect(inferSkillsFromDisplayText("/grill-me 你好")).toEqual([
+    { name: "grill-me" },
+  ]);
 });

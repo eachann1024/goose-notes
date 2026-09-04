@@ -7,6 +7,7 @@ import {
 } from "../../src/lib/notebook-ai/batch-plan/executor";
 import type { BatchPlanInput } from "../../src/lib/notebook-ai/batch-plan/types";
 import { updateBatchPlanSelection } from "../../src/lib/notebook-ai/batch-plan/journal";
+import { setLocalMdSnapshot } from "../../src/lib/local-md-snapshot";
 import { useNotebooks } from "../../src/stores/useNotebooks";
 import { usePages } from "../../src/stores/usePages";
 
@@ -188,6 +189,36 @@ test("本地正文与文件名可以在同一审批操作中执行并撤回", as
   expect(JSON.stringify(usePages.getState().pages[page.id].content)).toContain(
     "旧正文",
   );
+});
+
+test("本地新建即使存在陈旧快照也会一次写入目标路径", async () => {
+  const { files } = installEnvironment();
+  const { toolCallId, runId } = ids("create-stale");
+  setLocalMdSnapshot(`${ROOT}/验收指南.md`, "外部旧内容");
+
+  const prepared = await prepareBatchPlan({
+    toolCallId,
+    runId,
+    notebookId: NOTEBOOK_ID,
+    input: plan([
+      {
+        type: "create",
+        operationId: "create-stale",
+        title: "验收指南",
+        markdown: "## 一、目的\n\n写给验收用。",
+      },
+    ]),
+  });
+  expect(prepared.ok, prepared.ok ? undefined : prepared.error).toBe(true);
+
+  const executed = await executePreparedBatchPlan(toolCallId, runId);
+  expect(executed.ok, executed.ok ? undefined : executed.error).toBe(true);
+  const createdId = executed.journal.createdPageIds["create-stale"];
+  expect(usePages.getState().pages[createdId].localFilePath).toBe(
+    `${ROOT}/验收指南.md`,
+  );
+  expect(files.has(`${ROOT}/验收指南.md`)).toBe(true);
+  expect(files.get(`${ROOT}/验收指南.md`) ?? "").toContain("写给验收用");
 });
 
 test("本地笔记本可以从审批计划新建页面并撤回", async () => {

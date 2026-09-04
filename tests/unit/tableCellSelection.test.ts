@@ -1,12 +1,14 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
-import { CellSelection } from "prosemirror-tables";
+import { CellSelection, tableEditing } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
+  createTableAwareSelection,
   gooseTableCellSelectionExtension,
   isCrossCellPointer,
   promoteCrossCellTextSelection,
+  selectionCrossesTableBoundary,
 } from "../../src/components/editor/extensions/tableCellSelectionExtension";
 
 const TABLE_CONTENT = [
@@ -30,6 +32,21 @@ const TABLE_CONTENT = [
         },
       ],
     },
+  },
+];
+
+const HEADING_THEN_TABLE = [
+  {
+    id: "h",
+    type: "heading",
+    props: { level: 2 },
+    content: [{ type: "text", text: "资质" }],
+  },
+  TABLE_CONTENT[0],
+  {
+    id: "after",
+    type: "paragraph",
+    content: [{ type: "text", text: "after" }],
   },
 ];
 
@@ -124,6 +141,83 @@ test("从下往上跨单元格 TextSelection（Agent→维度）仍 promote 为 
   expect(promoteTr).not.toBeNull();
   editor.prosemirrorView.dispatch(promoteTr!);
   expect(editor.prosemirrorState.selection).toBeInstanceOf(CellSelection);
+});
+
+test("从表格拖到表前标题时保持跨块 TextSelection，不钳回表内", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: HEADING_THEN_TABLE as any,
+  });
+  const from = findTextRange(editor, "用途");
+  const heading = findTextRange(editor, "资质");
+  const $anchor = editor.prosemirrorState.doc.resolve(from.from);
+  const $head = editor.prosemirrorState.doc.resolve(heading.from);
+
+  expect(selectionCrossesTableBoundary($anchor, $head)).toBe(true);
+
+  const aware = createTableAwareSelection($anchor, $head);
+  expect(aware).toBeInstanceOf(TextSelection);
+  expect(aware?.from).toBeLessThanOrEqual(heading.from);
+  expect(aware?.to).toBeGreaterThanOrEqual(from.from);
+
+  const $headEnd = editor.prosemirrorState.doc.resolve(heading.to);
+  const moved = createTableAwareSelection($anchor, $headEnd);
+  expect(moved?.to).toBe(aware?.to);
+
+  const plain = EditorState.create({
+    schema: editor.prosemirrorState.schema,
+    doc: editor.prosemirrorState.doc,
+  });
+  const spanned = plain.apply(
+    plain.tr.setSelection(
+      TextSelection.create(plain.doc, from.from, heading.from),
+    ),
+  );
+  expect(promoteCrossCellTextSelection(spanned)).toBeNull();
+  expect(spanned.selection).toBeInstanceOf(TextSelection);
+});
+
+test("从表格拖到表后段落时保持跨块 TextSelection，不钳回表内", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: HEADING_THEN_TABLE as any,
+  });
+  const from = findTextRange(editor, "维度");
+  const after = findTextRange(editor, "after");
+  const $anchor = editor.prosemirrorState.doc.resolve(from.from);
+  const $head = editor.prosemirrorState.doc.resolve(after.from);
+  const aware = createTableAwareSelection($anchor, $head);
+
+  expect(selectionCrossesTableBoundary($anchor, $head)).toBe(true);
+  expect(aware).toBeInstanceOf(TextSelection);
+  expect(aware?.to).toBeGreaterThanOrEqual(after.from);
+});
+
+test("有 tableEditing 时，跨出表格的 TextSelection 不会被收成单元格选区", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: HEADING_THEN_TABLE as any,
+  });
+  const plugins = [
+    tableEditing(),
+    ...(gooseTableCellSelectionExtension().prosemirrorPlugins ?? []),
+  ];
+  const from = findTextRange(editor, "用途");
+  const heading = findTextRange(editor, "资质");
+  const selectionTr = editor.prosemirrorState.tr.setSelection(
+    TextSelection.create(editor.prosemirrorState.doc, from.from, heading.from),
+  );
+  const stateWithPlugin = EditorState.create({
+    schema: editor.prosemirrorState.schema,
+    doc: editor.prosemirrorState.doc,
+    plugins,
+  });
+  const { state } = stateWithPlugin.applyTransaction(selectionTr);
+
+  expect(state.selection).toBeInstanceOf(TextSelection);
+  expect(state.selection).not.toBeInstanceOf(CellSelection);
+  expect(state.selection.from).toBeLessThanOrEqual(heading.from);
+  expect(state.selection.to).toBeGreaterThanOrEqual(from.from);
 });
 
 test("isCrossCellPointer 只在两个不同单元格时为 true", () => {

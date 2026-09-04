@@ -21,6 +21,8 @@ test("Electron recorder focus unregisters global shortcuts so the input can capt
   expect(hook).toContain("resumeHotkeys");
   expect(hook).toContain("isShortcutRecorderTarget");
   expect(hook).toContain("shouldResumeGlobalHotkeysAfterFocusOut");
+  expect(hook).toContain("syncAllDesktopGlobalHotkeys");
+  expect(hook).not.toContain("syncDesktopHotkey");
 });
 
 test("macOS packaged Info.plist explains global hotkey permissions", () => {

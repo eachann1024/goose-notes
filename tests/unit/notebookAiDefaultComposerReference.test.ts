@@ -76,6 +76,22 @@ test("打开空会话时把旧默认 @ 换成当前笔记", () => {
   expect(getSoleFileReferencePageId(seed)).toBe("page-new");
 });
 
+test("/new 后 suppress：空会话也不再种默认 @", () => {
+  expect(
+    shouldSeedCurrentPageReference(0, null, "page-new", { suppress: true }),
+  ).toBe(false);
+  expect(
+    resolveEmptySessionComposerSeed(0, null, newPageReference, {
+      suppress: true,
+    }),
+  ).toBeNull();
+  expect(
+    shouldSeedCurrentPageReference(0, soleReferenceDraft, "page-new", {
+      suppress: true,
+    }),
+  ).toBe(false);
+});
+
 test("输入区只有默认 @ 才允许替换，用户文本则跳过", () => {
   expect(
     inspectDefaultComposerTokens([

@@ -177,10 +177,42 @@ test("fixed shortcuts adapt to the current operating system", () => {
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("saveNote");
   expect(DEFAULT_APP_SHORTCUTS).not.toHaveProperty("reopenTab");
   expect(DEFAULT_APP_SHORTCUTS.openSearch).toBe("Mod+K");
+  expect(DEFAULT_APP_SHORTCUTS.splitRight).toBe("Mod+D");
+  expect(DEFAULT_APP_SHORTCUTS.splitDown).toBe("Mod+Shift+D");
+  expect(DEFAULT_APP_SHORTCUTS.splitFocusLeft).toBe("Mod+Alt+ArrowLeft");
+  expect(DEFAULT_APP_SHORTCUTS.splitZoom).toBe("Mod+Shift+Enter");
+  expect(DEFAULT_APP_SHORTCUTS.closeSplitPane).toBe("");
 });
 
 test("new users start without a close-tab shortcut", () => {
   expect(DEFAULT_CLOSE_TAB_SHORTCUT).toBe("");
+});
+
+test("split shortcut defaults do not collide with close-tab or fixed keys", () => {
+  const isMac = true;
+  const configured = getAllConfiguredShortcuts(
+    DEFAULT_APP_SHORTCUTS,
+    DEFAULT_CLOSE_TAB_SHORTCUT,
+    "Esc",
+    "unused",
+    isMac,
+    false,
+  );
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+D", isMac));
+  expect(configured).toContain(
+    normalizeShortcutForConflict("Mod+Shift+D", isMac),
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("Mod+Alt+ArrowLeft", isMac),
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("Mod+Shift+Enter", isMac),
+  );
+  expect(configured).not.toContain(normalizeShortcutForConflict("Mod+W", isMac));
+  expect(DEFAULT_APP_SHORTCUTS.closeSplitPane).toBe("");
+  expect(DEFAULT_APP_SHORTCUTS.closeSplitPane).not.toBe(
+    DEFAULT_CLOSE_TAB_SHORTCUT || "Mod+W",
+  );
 });
 
 test("desktop global hotkeys join the conflict list and respect excludeId", () => {
@@ -226,5 +258,39 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
   );
   expect(excludingWake).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+Shift+K", isMac),
+  );
+});
+
+test("in-app search and desktop search hotkey may share Cmd+K", () => {
+  const isMac = true;
+  const desktopHotkeys = {
+    wakeHotkey: "CmdOrCtrl+Alt+N",
+    quicknoteHotkey: "CmdOrCtrl+Alt+Q",
+    searchHotkey: "CmdOrCtrl+K",
+  };
+  const excludingDesktopSearch = getAllConfiguredShortcuts(
+    { openSearch: "Mod+K" },
+    "",
+    "",
+    "search-hotkey",
+    isMac,
+    false,
+    desktopHotkeys,
+  );
+  expect(excludingDesktopSearch).not.toContain(
+    normalizeShortcutForConflict("Mod+K", isMac),
+  );
+
+  const excludingAppSearch = getAllConfiguredShortcuts(
+    { openSearch: "Mod+K" },
+    "",
+    "",
+    "openSearch",
+    isMac,
+    false,
+    desktopHotkeys,
+  );
+  expect(excludingAppSearch).not.toContain(
+    normalizeShortcutForConflict("CmdOrCtrl+K", isMac),
   );
 });

@@ -22,6 +22,17 @@ test("AI 面板挂载时标记任务面，卸载时清标记并收起浮层", ()
   expect(surface).toContain('[data-streamdown="mermaid-block-actions"]');
 });
 
+test("加入对话在侧栏关闭时强制打开并排布局", () => {
+  const layout = readSource("src/pages/workspace/WorkspaceLayout.tsx");
+  const quote = readSource(
+    "src/components/editor/ai/composer/selectionQuote.ts",
+  );
+  expect(layout).toContain('record?.layout === "side-panel"');
+  expect(layout).toContain('setAiLayoutMode("side-panel")');
+  expect(quote).toContain('detail: { layout: "side-panel" }');
+  expect(quote).toContain("consumePendingAppendComposerSelections");
+});
+
 test("切走 AI / 开设置时隐藏文字工具栏及同类浮动层", () => {
   const css = readSource("src/pages/workspace/styles/editor-base/overlays.css");
 

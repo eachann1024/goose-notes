@@ -213,3 +213,57 @@ test("mergeFullEdit 中间重写保留后续周标题/正文 id（非仅后缀�
   expect(md).toContain("第三周");
   expect(md).toContain("第四周");
 });
+
+test("search_replace 改写标题文字时保留居中和背景色", () => {
+  const content = [
+    {
+      id: "h-week2",
+      type: "heading" as const,
+      props: { level: 2, textAlignment: "center", backgroundColor: "orange" },
+      content: [
+        { type: "text" as const, text: "第二周", styles: { textColor: "orange" } },
+      ],
+    },
+    textBlock("p-week2", "第二周正文"),
+  ];
+
+  const result = applySearchReplacePreservingBlocks(
+    content,
+    "第二周",
+    "第二周 9.7 - 9.11",
+  );
+
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+
+  const heading = asBlocks(result.content).find((b) => b.type === "heading");
+  expect(plainText(heading)).toBe("第二周 9.7 - 9.11");
+  expect(heading?.props?.textAlignment).toBe("center");
+  expect(heading?.props?.backgroundColor).toBe("orange");
+  expect(heading?.content?.[0]?.styles?.textColor).toBe("orange");
+});
+
+test("mergeFullEdit 改写周标题时保留未改段落 id，并继承标题样式", () => {
+  const before = [
+    {
+      id: "h2",
+      type: "heading" as const,
+      props: { level: 2, textAlignment: "center", backgroundColor: "orange" },
+      content: [
+        { type: "text" as const, text: "第二周", styles: { textColor: "orange" } },
+      ],
+    },
+    textBlock("p2", "第二周正文"),
+  ];
+  const result = mergeFullEditPreservingUnchangedBlocks(
+    before,
+    "## 第二周 9.7 - 9.11\n\n第二周正文",
+    { ensureFirstTitle: false },
+  );
+
+  const blocks = asBlocks(result.content);
+  expect(blocks[1]?.id).toBe("p2");
+  expect(plainText(blocks[0])).toBe("第二周 9.7 - 9.11");
+  expect(blocks[0]?.props?.textAlignment).toBe("center");
+  expect(blocks[0]?.props?.backgroundColor).toBe("orange");
+});

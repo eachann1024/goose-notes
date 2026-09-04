@@ -39,3 +39,12 @@ test("gooseDesktop 不可用时 openPath / showItemInFolder 返回 false", async
   expect(await shell.openPath("/x/note.md")).toBe(false);
   expect(await shell.showItemInFolder("/x/note.md")).toBe(false);
 });
+
+test("Electron 无 utools API 时 getDownloadsPath 回退 gooseDesktop", async () => {
+  (globalThis as any).window = {
+    gooseDesktop: {
+      getDownloadsPath: async () => "/Users/me/Downloads",
+    },
+  };
+  expect(await shell.getDownloadsPath()).toBe("/Users/me/Downloads");
+});

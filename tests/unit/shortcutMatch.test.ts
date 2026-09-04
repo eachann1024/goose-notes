@@ -210,3 +210,39 @@ test("mouse side buttons use stable shortcut names", () => {
   expect(matchMouseShortcut({ button: 3 }, "mouseback")).toBe(true);
   expect(matchMouseShortcut({ button: 4 }, "MouseForward")).toBe(true);
 });
+
+test("arrow and enter split shortcuts match KeyboardEvent.key and aliases", () => {
+  expect(
+    matchShortcut(
+      keyboardEvent({
+        key: "ArrowLeft",
+        code: "ArrowLeft",
+        metaKey: true,
+        altKey: true,
+      }),
+      "Meta+Alt+ArrowLeft",
+    ),
+  ).toBe(true);
+  expect(
+    matchShortcut(
+      keyboardEvent({
+        key: "ArrowLeft",
+        code: "ArrowLeft",
+        metaKey: true,
+        altKey: true,
+      }),
+      "Meta+Alt+Left",
+    ),
+  ).toBe(true);
+  expect(
+    matchShortcut(
+      keyboardEvent({
+        key: "Enter",
+        code: "Enter",
+        metaKey: true,
+        shiftKey: true,
+      }),
+      "Meta+Shift+Enter",
+    ),
+  ).toBe(true);
+});

@@ -25,7 +25,7 @@ test("宽屏才显示图片导出真实内容预览", () => {
   expect(shouldShowImageExportLivePreview(Number.NaN)).toBe(false);
 });
 
-test("1200 宽才把生成选项放到弹窗右上角", () => {
+test("1200 宽才把生成选项收到标题行", () => {
   expect(IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH).toBe(1200);
   expect(shouldShowImageExportOptionsCorner(800)).toBe(false);
   expect(shouldShowImageExportOptionsCorner(1199)).toBe(false);

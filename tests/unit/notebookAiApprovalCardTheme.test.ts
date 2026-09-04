@@ -74,7 +74,7 @@ test("消息里的 @ 引用跟随强调色", () => {
   expect(mention).not.toContain("99, 102, 241");
 });
 
-test("审批卡轻量灰盒预览，不回旧 DiffTable", () => {
+test("审批卡用整页计划文档展示全部改动，不用截断灰盒", () => {
   expect(approvalPlanCard).toContain("同意");
   expect(approvalPlanCard).toContain(
     "selectedOperationIds: approved ? operationIds : []",
@@ -87,10 +87,12 @@ test("审批卡轻量灰盒预览，不回旧 DiffTable", () => {
   expect(approvalPlanCard).not.toContain("notebook-ai-plan-checkbox");
   expect(approvalPlanCard).not.toContain("展开");
   expect(notebookAiCss).not.toContain(".notebook-ai-plan-checkbox");
-  // 轻量提案灰盒
   expect(approvalPlanCard).toContain("BatchPlanProposal");
   expect(approvalPlanCard).toContain("notebook-ai-work-proposal");
-  // 40px 按钮
+  expect(approvalPlanCard).toContain("notebook-ai-plan-file");
+  expect(approvalPlanCard).toContain("PlanMarkdown");
+  expect(approvalPlanCard).not.toContain("truncateText");
+  expect(approvalPlanCard).not.toContain("slice(0, 3)");
   expect(approvalPlanCard).toContain("h-[40px]");
   expect(approvalPlanCard).toContain("text-[14px]");
   expect(approvalPlanCard).not.toContain("h-11");
@@ -98,6 +100,8 @@ test("审批卡轻量灰盒预览，不回旧 DiffTable", () => {
   const proposal = getRule(notebookAiCss, ".notebook-ai-work-proposal");
   expect(proposal).toContain("border-radius: 12px");
   expect(proposal).toContain("--goose-block-subtle-bg");
+  expect(notebookAiCss).toContain(".notebook-ai-plan-md");
+  expect(notebookAiCss).toContain("var(--editor-font-size, 16px)");
   expect(approvalCard).not.toContain("border-b");
   expect(approvalCard).not.toContain("border-t");
   expect(approvalCard).toContain("text-[20px]");
