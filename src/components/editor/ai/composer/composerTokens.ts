@@ -10,7 +10,9 @@ import type {
   AiFileReferenceAttrs,
   AiImageAttachmentAttrs,
   AiSkillCommandAttrs,
+  AiSelectionQuoteAttrs,
 } from "./referenceLookup";
+import { formatSelectionQuotePromptLabel, createSelectionQuoteChipElement } from "./selectionQuote";
 import { createChipElement } from "./useReferenceMentions";
 import {
   createSkillChipElement,
@@ -61,6 +63,17 @@ export function readTokensFromDom(container: HTMLElement): AiComposerToken[] {
         } catch {
           // ignore malformed chip
         }
+      } else if (el.dataset.aiSelectionQuoteAttrs) {
+        try {
+          const attrs = JSON.parse(
+            el.dataset.aiSelectionQuoteAttrs,
+          ) as AiSelectionQuoteAttrs;
+          if (attrs.pageId && attrs.text) {
+            tokens.push({ type: "selectionQuote", quote: attrs });
+          }
+        } catch {
+          // ignore malformed chip
+        }
       } else {
         el.childNodes.forEach(walk);
       }
@@ -75,6 +88,7 @@ export function buildPayloadFromTokens(tokens: AiComposerToken[]): AiComposerPay
   const references: AiFileReferenceAttrs[] = [];
   const images: AiImageAttachmentAttrs[] = [];
   const skills: AiSkillCommandAttrs[] = [];
+  const selectionQuotes: AiSelectionQuoteAttrs[] = [];
   let promptText = "";
   let freeformText = "";
 
@@ -92,6 +106,9 @@ export function buildPayloadFromTokens(tokens: AiComposerToken[]): AiComposerPay
       skills.push(token.skill);
       // 与 @ 对称：chip 标签进 promptText，不进 freeformText
       promptText += `/${token.skill.name}`;
+    } else if (token.type === "selectionQuote") {
+      selectionQuotes.push(token.quote);
+      promptText += formatSelectionQuotePromptLabel(token.quote);
     }
   }
 
@@ -101,22 +118,24 @@ export function buildPayloadFromTokens(tokens: AiComposerToken[]): AiComposerPay
     references,
     images,
     skills,
+    selectionQuotes,
     tokens,
   };
 }
 
-/** 发送按钮 / 占位符：无文本、引用、图片、Skill 才视为空 */
+/** 发送按钮 / 占位符：无文本、引用、图片、Skill、选区引用才视为空 */
 export function isComposerPayloadEmpty(
   payload: Pick<
     AiComposerPayload,
     "promptText" | "references" | "images" | "skills"
-  >,
+  > & { selectionQuotes?: AiSelectionQuoteAttrs[] },
 ): boolean {
   return (
     payload.promptText.length === 0 &&
     payload.references.length === 0 &&
     payload.images.length === 0 &&
-    payload.skills.length === 0
+    payload.skills.length === 0 &&
+    (payload.selectionQuotes?.length ?? 0) === 0
   );
 }
 
@@ -198,6 +217,8 @@ export function buildJsonContentFromTokens(
           return { type: "aiFileReference", attrs: token.reference };
         if (token.type === "skill")
           return { type: "aiSkillCommand", attrs: token.skill };
+        if (token.type === "selectionQuote")
+          return { type: "aiSelectionQuote", attrs: token.quote };
         return { type: "aiImageAttachment", attrs: token.image };
       }),
     })),
@@ -231,6 +252,12 @@ export function setDomFromJsonContent(
       } else if (node.type === "aiSkillCommand" && node.attrs) {
         container.appendChild(
           createSkillChipElement(node.attrs as AiSkillCommandAttrs),
+        );
+      } else if (node.type === "aiSelectionQuote" && node.attrs) {
+        container.appendChild(
+          createSelectionQuoteChipElement(
+            node.attrs as AiSelectionQuoteAttrs,
+          ),
         );
       }
     });

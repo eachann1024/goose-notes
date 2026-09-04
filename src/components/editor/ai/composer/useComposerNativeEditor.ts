@@ -95,6 +95,8 @@ export function useComposerNativeEditor(options: {
         : "min-h-[20px] max-h-[88px] text-[12px] leading-[20px]",
     ].join(" ");
     el.contentEditable = "true";
+    // 编辑宿主默认可聚焦但不在 Tab 序（tabIndex=-1）；显式 0 才能从工具栏 Tab 进来。
+    el.tabIndex = 0;
 
     const onBeforeInput = (event: Event) =>
       nativeHandlersRef.current?.onBeforeInput(event);
@@ -240,6 +242,7 @@ export function useComposerNativeEditor(options: {
     const el = editorRef.current;
     if (!el) return;
     el.contentEditable = disabled ? "false" : "true";
+    el.tabIndex = disabled ? -1 : 0;
     el.setAttribute("aria-disabled", disabled ? "true" : "false");
     el.classList.toggle("cursor-not-allowed", Boolean(disabled));
     el.classList.toggle("opacity-60", Boolean(disabled));

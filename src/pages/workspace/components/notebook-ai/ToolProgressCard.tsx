@@ -1,8 +1,9 @@
 /**
  * 处理进度：与审批卡同一套纸面（字距 kicker + 大标题 + 可展开步骤）。
- * 步骤平铺在卡内，不再套一层任务卡，也不再用 12px 日志行。
+ * 工具调用与思考汇总成一行；思考只在行内截成一句，不另开折叠。
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { visibleBusyTickerLine } from "@/components/editor/ai/inlineBusyTicker";
 import {
   ORB_VISIBLE_MIN_MS,
   useMinHoldActive,
@@ -56,13 +57,67 @@ function FoldChevron() {
 interface ToolProgressCardProps {
   parts: ToolProgressPart[];
   isMessageStreaming?: boolean;
+  /** 多段思考拼成一段后压成行内一句，与工具摘要同一行。 */
+  thinkingText?: string;
   children?: ReactNode;
   footer?: ReactNode;
+}
+
+function WorkCardTraceRow({
+  foldable,
+  open,
+  label,
+  thinkingLine,
+  onToggle,
+}: {
+  foldable: boolean;
+  open: boolean;
+  label: string;
+  thinkingLine: string;
+  onToggle: () => void;
+}) {
+  const body = (
+    <>
+      {foldable ? <FoldChevron /> : null}
+      {label ? (
+        <span className="notebook-ai-work-toggle-label">{label}</span>
+      ) : null}
+      {thinkingLine ? (
+        <span
+          className="notebook-ai-work-think"
+          title={thinkingLine}
+          aria-live="polite"
+        >
+          {thinkingLine}
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (foldable) {
+    return (
+      <button
+        type="button"
+        className="notebook-ai-work-toggle"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <p className="notebook-ai-work-toggle notebook-ai-work-toggle--static">
+      {body}
+    </p>
+  );
 }
 
 export function ToolProgressCard({
   parts,
   isMessageStreaming,
+  thinkingText,
   children,
   footer,
 }: ToolProgressCardProps) {
@@ -70,6 +125,8 @@ export function ToolProgressCard({
     () => buildToolProgressSteps(parts, isMessageStreaming),
     [parts, isMessageStreaming],
   );
+  const thinkingLine = visibleBusyTickerLine(thinkingText ?? "");
+  const hasThinking = thinkingLine.length > 0;
 
   const hasError = steps.some((step) => step.status === "error");
   const isRunning =
@@ -80,18 +137,16 @@ export function ToolProgressCard({
   const showRunning = resolveLoaderHold(isRunning, heldRunning);
   const phase = getWorkCardPhase(steps, showRunning);
   const heading = getWorkCardHeading(steps, phase);
-  // running/error 默认展开，done 默认收起
-  const [open, setOpen] = useState(() => phase !== "done");
+  // 步骤默认收起，不随 running/error 自动展开
+  const [open, setOpen] = useState(false);
   const foldable = steps.length > 0;
   const toggleText = heading.toggle || (showRunning ? "正在处理" : "");
+  const traceLabel = foldable ? toggleText : hasThinking ? "思考" : toggleText;
+  const showTraceRow = foldable || hasThinking;
   // 纯问答纸：无步骤且非 running 时不出抬头，避免伪造「处理完成」
   const hasHeading = foldable || showRunning;
 
-  useEffect(() => {
-    if (phase === "error") setOpen(true);
-  }, [phase]);
-
-  if (!hasHeading && !children && !footer) return null;
+  if (!hasHeading && !showTraceRow && !children && !footer) return null;
 
   return (
     <section
@@ -118,22 +173,16 @@ export function ToolProgressCard({
               {heading.title}
             </span>
           </h3>
-          {foldable ? (
-            <button
-              type="button"
-              className="notebook-ai-work-toggle"
-              aria-expanded={open}
-              onClick={() => setOpen((value) => !value)}
-            >
-              <FoldChevron />
-              <span className="notebook-ai-work-toggle-label">{toggleText}</span>
-            </button>
-          ) : showRunning && toggleText ? (
-            <p className="notebook-ai-work-live" aria-live="polite">
-              {toggleText}
-            </p>
-          ) : null}
         </>
+      ) : null}
+      {showTraceRow ? (
+        <WorkCardTraceRow
+          foldable={foldable}
+          open={open}
+          label={traceLabel}
+          thinkingLine={thinkingLine}
+          onToggle={() => setOpen((value) => !value)}
+        />
       ) : null}
       {foldable && open ? (
         <ul className="notebook-ai-work-steps">
@@ -166,7 +215,7 @@ export function ToolProgressCard({
         <div
           className={cn(
             "notebook-ai-work-letter",
-            !hasHeading && "notebook-ai-work-letter--flush",
+            !hasHeading && !showTraceRow && "notebook-ai-work-letter--flush",
           )}
         >
           {children}
@@ -175,10 +224,10 @@ export function ToolProgressCard({
       {footer ? (
         <div className="notebook-ai-work-footer">{footer}</div>
       ) : null}
-      {hasHeading ? (
+      {hasHeading || thinkingLine ? (
         <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {heading.kicker}
-          {heading.title}
+          {hasHeading ? `${heading.kicker}${heading.title}` : ""}
+          {thinkingLine}
         </span>
       ) : null}
     </section>

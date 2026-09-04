@@ -20,6 +20,7 @@ const SYSTEM_PROMPT = [
   "保持合理的 Markdown 结构：列表项用独立的 `- ` / `1. ` / `- [ ] ` 行；列表项之间不要插空行。",
   "若用户要求生成 N 个列表项，输出 N 行列表语法，不要挤在一个段落里。",
   "不要输出页面标题（# 一级标题），只改写当前片段。",
+  "保留原有对齐、字体颜色和背景色：不要删除 HTML 注释、span style 或 text-align。",
 ].join("\n");
 
 function stripOuterFence(text: string): string {

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<!--
+原型：AI 面板白块与生成标题
+问题：灰画布上如何排「顶栏白块 + 消息白块 + 生成标题在「标题」行上方」？
+变体 A 三块独立白卡 / B 一整块白皮内分割 / C 生成标题浮在灰画布上。
+双击本文件即可在浏览器打开；底部 ← → 切换变体，URL hash 记录。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原型：AI 面板白块与生成标题</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: #1f2329;
+    background: #d8d8d8;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px 16px 72px;
+  }
+
+  .proto-brief {
+    max-width: 800px;
+    width: 100%;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #4b5563;
+    padding: 0 4px;
+  }
+  .proto-brief strong { color: #1f2329; font-weight: 600; }
+
+  /* ===== 800×800 窗体外壳 ===== */
+  .window {
+    width: 800px;
+    height: 800px;
+    max-width: 100%;
+    background: #f4f4f4;
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    flex: none;
+  }
+
+  .sidebar {
+    width: 160px;
+    flex: none;
+    background: #f4f4f4;
+    border-right: 1px solid #ececec;
+    padding: 14px 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .sidebar .brand {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2329;
+    padding: 4px 8px 12px;
+  }
+  .sidebar .item {
+    padding: 7px 8px;
+    border-radius: 6px;
+    margin-bottom: 2px;
+  }
+  .sidebar .item.active {
+    background: #ffffff;
+    color: #1f2329;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .sidebar .sec {
+    margin: 14px 8px 6px;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+
+  .note {
+    flex: 1;
+    background: #ffffff;
+    padding: 28px 26px;
+    overflow: hidden;
+  }
+  .note h1 { font-size: 20px; font-weight: 650; margin-bottom: 14px; }
+  .note p  { font-size: 13px; line-height: 1.9; color: #4b5563; margin-bottom: 10px; }
+  .note .line { height: 10px; border-radius: 5px; background: #f2f2f2; margin-bottom: 10px; }
+
+  /* ===== AI 栏公共：灰画布 ===== */
+  .ai-rail {
+    width: 360px;
+    flex: none;
+    background: #e8e8e8;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .panel-white {
+    background: #ffffff;
+    border-radius: 12px;
+    flex: none;
+  }
+
+  /* 生成标题 */
+  .gen-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #1f2329;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .gen-title.is-muted { color: #9ca3af; font-weight: 500; }
+  .gen-title.is-canvas {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    padding: 0 2px 2px;
+  }
+
+  /* 标题行 */
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .title-label {
+    font-size: 12px;
+    color: #6b7280;
+    flex: none;
+    width: 32px;
+  }
+  .title-input {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: #1f2329;
+    background: #fafafa;
+    outline: none;
+  }
+  .title-input:focus {
+    border-color: #d1d5db;
+    background: #ffffff;
+  }
+  .title-input::placeholder { color: #9ca3af; }
+
+  .toolbar-acts {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: none;
+  }
+  .act-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .act-btn:hover { background: #f3f4f6; color: #374151; }
+
+  /* 消息区 */
+  .messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 12px;
+  }
+  .variant-badge {
+    display: inline-block;
+    font-size: 10px;
+    color: #9ca3af;
+    border: 1px solid #ececec;
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-bottom: 12px;
+  }
+  .msg-user {
+    margin-left: auto;
+    max-width: 82%;
+    background: #f4f4f5;
+    border-radius: 12px 12px 4px 12px;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .msg-assistant {
+    font-size: 13px;
+    line-height: 1.75;
+    color: #374151;
+  }
+  .msg-assistant h3 {
+    font-size: 14px;
+    font-weight: 650;
+    color: #1f2329;
+    margin-bottom: 6px;
+  }
+
+  /* Composer */
+  .composer-wrap { padding: 10px 12px 12px; }
+  .composer-pill {
+    border: 1px solid #ececec;
+    border-radius: 16px;
+    padding: 10px 12px;
+    background: #ffffff;
+  }
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .composer-plus {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid #ececec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 15px;
+    flex: none;
+  }
+  .composer-placeholder {
+    flex: 1;
+    font-size: 13px;
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .composer-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .composer-model {
+    font-size: 11px;
+    color: #6b7280;
+    background: #f6f6f7;
+    border-radius: 999px;
+    padding: 3px 10px;
+  }
+  .composer-send {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1f2329;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  /* ===== 变体 A：三块白卡 ===== */
+  .variant-a .card-top {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .variant-a .card-messages {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .variant-a .card-composer { padding: 0; }
+
+  /* ===== 变体 B：一整块白皮 ===== */
+  .variant-b .ai-rail {
+    padding: 8px;
+    gap: 0;
+  }
+  .variant-b .card-unified {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .variant-b .unified-head {
+    padding: 10px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .variant-b .unified-title-block {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .variant-b .unified-toolbar {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .variant-b .unified-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .variant-b .unified-composer {
+    border-top: 1px solid #f0f0f0;
+    padding: 0;
+  }
+
+  /* ===== 变体 C：标题在灰画布 ===== */
+  .variant-c .canvas-title-slot {
+    flex: none;
+    padding: 2px 4px 0;
+    min-width: 0;
+  }
+  .variant-c .card-top-c {
+    padding: 10px 12px;
+  }
+  .variant-c .card-messages-c {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .variant-c .card-composer-c { padding: 0; }
+
+  /* ===== 演示控制条 ===== */
+  .demo-bar {
+    max-width: 800px;
+    width: 100%;
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 0 4px;
+  }
+  .demo-bar .lbl {
+    font-size: 12px;
+    color: #6b7280;
+    margin-right: 4px;
+  }
+  .demo-btn {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+  }
+  .demo-btn:hover { background: #f9fafb; }
+  .demo-btn.is-active {
+    background: #1f2329;
+    border-color: #1f2329;
+    color: #ffffff;
+  }
+
+  /* ===== 底部变体切换 ===== */
+  .switcher {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #111;
+    color: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    font: 600 14px/1 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    user-select: none;
+  }
+  .switcher button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+    background: transparent;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .switcher button:hover { background: #fff; color: #111; }
+  .switcher .label { min-width: 200px; text-align: center; letter-spacing: 0.02em; }
+
+  .variant-root { display: none; width: 100%; height: 100%; }
+  .variant-root.is-active { display: flex; }
+</style>
+</head>
+<body>
+
+<p class="proto-brief">
+  <strong>本原型回答：</strong>AI 侧栏应是「灰画布 + 独立白块」而非整块灰纸；生成会话标题应贴在「标题」输入行<strong>上方</strong>、单行截断；顶栏白块含 label + 输入 + 右侧 +/…/×。用下方按钮切换标题态，悬停生成标题可看全文。
+</p>
+
+<!-- ==================== 变体 A ==================== -->
+<div class="variant-root variant-a is-active" id="variant-a" data-variant="A">
+  <div class="window">
+    <aside class="sidebar">
+      <div class="brand">鹅的笔记</div>
+      <div class="sec">页面</div>
+      <div class="item active">AI 功能演示</div>
+      <div class="item">周报模板</div>
+      <div class="item">新手指南</div>
+    </aside>
+    <main class="note">
+      <h1>AI 功能演示</h1>
+      <p>右侧为变体 A：灰缝分隔的三张独立白卡（顶栏 / 消息 / 输入）。</p>
+      <div class="line" style="width: 92%"></div>
+      <div class="line" style="width: 78%"></div>
+      <div class="line" style="width: 85%"></div>
+    </main>
+    <section class="ai-rail">
+      <header class="panel-white card-top">
+        <div class="gen-title" id="gen-title-a" title="">新会话</div>
+        <div class="title-row">
+          <span class="title-label">标题</span>
+          <input class="title-input" type="text" placeholder="会话标题" value="AI 功能演示" aria-label="会话标题">
+          <div class="toolbar-acts">
+            <button type="button" class="act-btn" title="新建会话">+</button>
+            <button type="button" class="act-btn" title="更多">…</button>
+            <button type="button" class="act-btn" title="关闭">×</button>
+          </div>
+        </div>
+      </header>
+      <div class="panel-white card-messages">
+        <div class="messages">
+          <span class="variant-badge">变体 A · 三块白面板</span>
+          <div class="msg-user">帮我把这段改短一点</div>
+          <div class="msg-assistant">
+            <h3>精简版</h3>
+            <p>AI 可直接在笔记里续写、改写和总结，也能把选中内容转成待办或表格。你只管写，润色、提取行动项、生成纪要都交给它。</p>
+          </div>
+        </div>
+      </div>
+      <footer class="panel-white card-composer">
+        <div class="composer-wrap">
+          <div class="composer-pill">
+            <div class="composer-row">
+              <span class="composer-plus">+</span>
+              <span class="composer-placeholder">向 AI 提问，或输入 / 使用技能…</span>
+            </div>
+            <div class="composer-meta">
+              <span class="composer-model">模型 ▾</span>
+              <span class="composer-send">↑</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </div>
+</div>
+
+<!-- ==================== 变体 B ==================== -->
+<div class="variant-root variant-b" id="variant-b" data-variant="B">
+  <div class="window">
+    <aside class="sidebar">
+      <div class="brand">鹅的笔记</div>
+      <div class="sec">页面</div>
+      <div class="item active">AI 功能演示</div>
+      <div class="item">周报模板</div>
+      <div class="item">新手指南</div>
+    </aside>
+    <main class="note">
+      <h1>AI 功能演示</h1>
+      <p>右侧为变体 B：整张白圆角大卡，内部用淡线分割标题区与消息区。</p>
+      <div class="line" style="width: 92%"></div>
+      <div class="line" style="width: 78%"></div>
+      <div class="line" style="width: 85%"></div>
+    </main>
+    <section class="ai-rail">
+      <div class="panel-white card-unified">
+        <div class="unified-head">
+          <div class="unified-title-block">
+            <div class="gen-title" id="gen-title-b" title="">新会话</div>
+          </div>
+          <div class="unified-toolbar">
+            <div class="title-row">
+              <span class="title-label">标题</span>
+              <input class="title-input" type="text" placeholder="会话标题" value="AI 功能演示" aria-label="会话标题">
+              <div class="toolbar-acts">
+                <button type="button" class="act-btn" title="新建会话">+</button>
+                <button type="button" class="act-btn" title="更多">…</button>
+                <button type="button" class="act-btn" title="关闭">×</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="messages unified-messages">
+          <span class="variant-badge">变体 B · 一整块白皮内分割</span>
+          <div class="msg-user">帮我把这段改短一点</div>
+          <div class="msg-assistant">
+            <h3>精简版</h3>
+            <p>AI 可直接在笔记里续写、改写和总结，也能把选中内容转成待办或表格。你只管写，润色、提取行动项、生成纪要都交给它。</p>
+          </div>
+        </div>
+        <footer class="unified-composer">
+          <div class="composer-wrap">
+            <div class="composer-pill">
+              <div class="composer-row">
+                <span class="composer-plus">+</span>
+                <span class="composer-placeholder">向 AI 提问，或输入 / 使用技能…</span>
+              </div>
+              <div class="composer-meta">
+                <span class="composer-model">模型 ▾</span>
+                <span class="composer-send">↑</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ==================== 变体 C ==================== -->
+<div class="variant-root variant-c" id="variant-c" data-variant="C">
+  <div class="window">
+    <aside class="sidebar">
+      <div class="brand">鹅的笔记</div>
+      <div class="sec">页面</div>
+      <div class="item active">AI 功能演示</div>
+      <div class="item">周报模板</div>
+      <div class="item">新手指南</div>
+    </aside>
+    <main class="note">
+      <h1>AI 功能演示</h1>
+      <p>右侧为变体 C：生成标题浮在灰画布上，其下才是白顶栏与白消息卡。</p>
+      <div class="line" style="width: 92%"></div>
+      <div class="line" style="width: 78%"></div>
+      <div class="line" style="width: 85%"></div>
+    </main>
+    <section class="ai-rail">
+      <div class="canvas-title-slot">
+        <div class="gen-title is-canvas" id="gen-title-c" title="">新会话</div>
+      </div>
+      <header class="panel-white card-top-c">
+        <div class="title-row">
+          <span class="title-label">标题</span>
+          <input class="title-input" type="text" placeholder="会话标题" value="AI 功能演示" aria-label="会话标题">
+          <div class="toolbar-acts">
+            <button type="button" class="act-btn" title="新建会话">+</button>
+            <button type="button" class="act-btn" title="更多">…</button>
+            <button type="button" class="act-btn" title="关闭">×</button>
+          </div>
+        </div>
+      </header>
+      <div class="panel-white card-messages-c">
+        <div class="messages">
+          <span class="variant-badge">变体 C · 生成标题在面板外</span>
+          <div class="msg-user">帮我把这段改短一点</div>
+          <div class="msg-assistant">
+            <h3>精简版</h3>
+            <p>AI 可直接在笔记里续写、改写和总结，也能把选中内容转成待办或表格。你只管写，润色、提取行动项、生成纪要都交给它。</p>
+          </div>
+        </div>
+      </div>
+      <footer class="panel-white card-composer-c">
+        <div class="composer-wrap">
+          <div class="composer-pill">
+            <div class="composer-row">
+              <span class="composer-plus">+</span>
+              <span class="composer-placeholder">向 AI 提问，或输入 / 使用技能…</span>
+            </div>
+            <div class="composer-meta">
+              <span class="composer-model">模型 ▾</span>
+              <span class="composer-send">↑</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </div>
+</div>
+
+<div class="demo-bar" role="group" aria-label="标题态演示">
+  <span class="lbl">标题态：</span>
+  <button type="button" class="demo-btn is-active" data-state="empty">新会话</button>
+  <button type="button" class="demo-btn" data-state="short">短标题</button>
+  <button type="button" class="demo-btn" data-state="long">超长标题</button>
+  <button type="button" class="demo-btn" data-state="generating">生成中</button>
+  <button type="button" class="demo-btn" id="demo-long-toggle" data-state="long-demo">演示 ellipsis</button>
+</div>
+
+<div class="switcher" role="group" aria-label="变体切换">
+  <button type="button" id="prev" aria-label="上一个变体">←</button>
+  <span class="label" id="switcher-label">A — 三块白面板</span>
+  <button type="button" id="next" aria-label="下一个变体">→</button>
+</div>
+
+<script>
+(function () {
+  var VARIANTS = [
+    { key: 'A', label: 'A — 三块白面板' },
+    { key: 'B', label: 'B — 一整块白皮内分割' },
+    { key: 'C', label: 'C — 生成标题在面板外' }
+  ];
+
+  var SHORT_TITLE = '周报要点整理';
+  var LONG_TITLE = '关于第三季度产品路线图、跨团队协作机制与 OKR 复盘的全文纪要（含待办与风险项）';
+  var GENERATING_TEXT = '帮我把这段改短一点';
+
+  var titleState = 'empty';
+  var variantIndex = 0;
+
+  var genEls = [
+    document.getElementById('gen-title-a'),
+    document.getElementById('gen-title-b'),
+    document.getElementById('gen-title-c')
+  ];
+  var stateBtns = document.querySelectorAll('.demo-bar .demo-btn[data-state]');
+  var longToggle = document.getElementById('demo-long-toggle');
+
+  function parseHash() {
+    var raw = (location.hash || '').replace(/^#/, '');
+    if (!raw) return null;
+    var m = raw.match(/^variant=([ABC])/i);
+    return m ? m[1].toUpperCase() : null;
+  }
+
+  function setHash(key) {
+    var next = '#variant=' + key;
+    if (location.hash !== next) history.replaceState(null, '', next);
+  }
+
+  function currentVariantIndex() {
+    var key = parseHash();
+    if (!key) return 0;
+    var i = VARIANTS.findIndex(function (v) { return v.key === key; });
+    return i === -1 ? 0 : i;
+  }
+
+  function titleForState(state) {
+    switch (state) {
+      case 'empty': return { text: '新会话', muted: true, title: '' };
+      case 'short': return { text: SHORT_TITLE, muted: false, title: SHORT_TITLE };
+      case 'long':
+      case 'long-demo':
+        return { text: LONG_TITLE, muted: false, title: LONG_TITLE };
+      case 'generating':
+        return { text: GENERATING_TEXT, muted: false, title: GENERATING_TEXT };
+      default: return { text: '新会话', muted: true, title: '' };
+    }
+  }
+
+  function applyTitleState() {
+    var info = titleForState(titleState);
+    genEls.forEach(function (el) {
+      if (!el) return;
+      el.textContent = info.text;
+      el.title = info.title;
+      el.classList.toggle('is-muted', info.muted);
+    });
+    stateBtns.forEach(function (btn) {
+      var s = btn.getAttribute('data-state');
+      var on = s === titleState || (s === 'long-demo' && titleState === 'long');
+      btn.classList.toggle('is-active', on);
+    });
+  }
+
+  function showVariant(index) {
+    variantIndex = (index + VARIANTS.length) % VARIANTS.length;
+    var v = VARIANTS[variantIndex];
+    document.querySelectorAll('.variant-root').forEach(function (root) {
+      root.classList.toggle('is-active', root.getAttribute('data-variant') === v.key);
+    });
+    document.getElementById('switcher-label').textContent = v.label;
+    document.title = '原型：AI 面板白块与生成标题 · ' + v.label;
+    setHash(v.key);
+  }
+
+  function goVariant(delta) {
+    showVariant(variantIndex + delta);
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { goVariant(-1); });
+  document.getElementById('next').addEventListener('click', function () { goVariant(1); });
+
+  stateBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var s = btn.getAttribute('data-state');
+      if (s === 'long-demo') {
+        titleState = titleState === 'long' ? 'short' : 'long';
+      } else {
+        titleState = s;
+      }
+      applyTitleState();
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goVariant(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); goVariant(1); }
+  });
+
+  window.addEventListener('hashchange', function () {
+    showVariant(currentVariantIndex());
+  });
+
+  showVariant(currentVariantIndex());
+  applyTitleState();
+})();
+</script>
+</body>
+</html>

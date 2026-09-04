@@ -6,6 +6,13 @@ import {
 } from "@/components/editor/utils/content-text-extractor";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
+import {
+  formatSelectionQuotePromptLabel,
+  parseSelectionQuoteAttrs,
+  type AiSelectionQuoteAttrs,
+} from "./selectionQuote";
+
+export type { AiSelectionQuoteAttrs };
 
 export type AiFileReferenceSourceType = "app-page" | "local-file";
 export type AiReferenceRole = "context" | "target";
@@ -63,6 +70,10 @@ export type AiComposerToken =
   | {
       type: "skill";
       skill: AiSkillCommandAttrs;
+    }
+  | {
+      type: "selectionQuote";
+      quote: AiSelectionQuoteAttrs;
     };
 
 export interface AiComposerPayload {
@@ -74,6 +85,8 @@ export interface AiComposerPayload {
   images: AiImageAttachmentAttrs[];
   /** 本地 Skill 调用，按 name 第一次出现顺序去重 */
   skills: AiSkillCommandAttrs[];
+  /** 选区引用 chip，按出现顺序；含完整选区文本 */
+  selectionQuotes?: AiSelectionQuoteAttrs[];
   /** 完整有序 token；同一资源可出现多次并保留每处角色。 */
   tokens: AiComposerToken[];
 }
@@ -295,38 +308,82 @@ function buildDescription(
   return isActiveNotebook ? "应用页面" : `应用页面 · ${notebookName}`;
 }
 
-function getSearchHaystack(page: Page, notebooks: Record<string, Notebook>) {
-  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
-  const notebook = getNotebookSnapshot(wsId, notebooks);
-  return [
-    getPageTitle(page),
-    notebook?.name ?? "",
-    page.localFilePath ?? "",
-    getLocationSnapshot(page, notebooks),
-  ]
-    .join(" ")
-    .toLowerCase();
+function pageFilenameStem(page: Page): string {
+  if (!page.localFilePath) return getPageTitle(page);
+  const name = page.localFilePath.split(/[\\/]/).pop() || "";
+  return name.replace(/\.(md|markdown)$/i, "").trim() || getPageTitle(page);
 }
 
-/** 子串命中，或对中文标题/笔记本名做拼音模糊匹配（如 shu → 数据中台）。 */
+function splitSearchTokens(value: string): string[] {
+  return value.split(/[\s/_.:-]+/).filter(Boolean);
+}
+
+/**
+ * 只搜标题、文件名、相对路径，不搜笔记正文。
+ * 分数越小越靠前：精确标题 > 前缀 > 分段 > 子串 > 路径 > 拼音。
+ */
+function scoreFieldMatch(field: string, query: string, base: number): number | null {
+  if (!field) return null;
+  if (field === query) return base;
+  if (field.startsWith(query)) return base + 10;
+  if (splitSearchTokens(field).includes(query)) return base + 20;
+  if (field.includes(query)) return base + 30;
+  return null;
+}
+
+function scoreAiReferenceQuery(
+  page: Page,
+  notebooks: Record<string, Notebook>,
+  normalizedQuery: string,
+  rawQuery: string,
+): number | null {
+  if (!normalizedQuery) return 0;
+
+  const title = normalizeSearchValue(getPageTitle(page));
+  const filename = normalizeSearchValue(pageFilenameStem(page));
+  const location = normalizeSearchValue(
+    getLocationSnapshot(page, notebooks).replace(/\.(md|markdown)$/i, ""),
+  );
+
+  let best = Number.POSITIVE_INFINITY;
+  const consider = (score: number | null) => {
+    if (score != null && score < best) best = score;
+  };
+
+  consider(scoreFieldMatch(title, normalizedQuery, 0));
+  consider(scoreFieldMatch(filename, normalizedQuery, 1));
+
+  if (
+    page.localFilePath &&
+    location &&
+    location !== title &&
+    location !== filename
+  ) {
+    const segments = location.split("/").filter(Boolean);
+    if (segments.some((part) => part === normalizedQuery)) consider(40);
+    else if (segments.some((part) => part.startsWith(normalizedQuery))) {
+      consider(45);
+    } else if (location.includes(normalizedQuery)) consider(50);
+  }
+
+  if (
+    best === Number.POSITIVE_INFINITY &&
+    isPinyinQuery(rawQuery.trim()) &&
+    pinyinMatchIndices(getPageTitle(page), rawQuery.trim()) !== null
+  ) {
+    consider(60);
+  }
+
+  return best === Number.POSITIVE_INFINITY ? null : best;
+}
+
 function matchesAiReferenceQuery(
   page: Page,
   notebooks: Record<string, Notebook>,
   normalizedQuery: string,
   rawQuery: string,
 ) {
-  if (!normalizedQuery) return true;
-  if (getSearchHaystack(page, notebooks).includes(normalizedQuery)) return true;
-
-  // 拼音只对纯字母 query 有意义；与命令面板搜索保持同一策略。
-  if (!isPinyinQuery(rawQuery.trim())) return false;
-
-  const title = getPageTitle(page);
-  if (pinyinMatchIndices(title, rawQuery.trim()) !== null) return true;
-
-  const wsId = page.workspaceId ?? (page as { notebookId?: string }).notebookId;
-  const notebookName = getNotebookSnapshot(wsId, notebooks)?.name ?? "";
-  return pinyinMatchIndices(notebookName, rawQuery.trim()) !== null;
+  return scoreAiReferenceQuery(page, notebooks, normalizedQuery, rawQuery) != null;
 }
 
 function compareSuggestionItems(
@@ -334,7 +391,15 @@ function compareSuggestionItems(
   b: Page,
   activeNotebookId: string | null,
   notebooks: Record<string, Notebook>,
+  queryScore?: (page: Page) => number,
 ) {
+  if (queryScore) {
+    const scoreDelta = queryScore(a) - queryScore(b);
+    if (scoreDelta !== 0) return scoreDelta;
+    const titleLenDelta = getPageTitle(a).length - getPageTitle(b).length;
+    if (titleLenDelta !== 0) return titleLenDelta;
+  }
+
   const aWsId = a.workspaceId ?? (a as { notebookId?: string }).notebookId;
   const bWsId = b.workspaceId ?? (b as { notebookId?: string }).notebookId;
   const aIsActiveNotebook = aWsId === activeNotebookId;
@@ -401,7 +466,19 @@ export function getAiReferenceSuggestionItems(
     .filter((page) =>
       matchesAiReferenceQuery(page, notebooks, normalizedQuery, query),
     )
-    .sort((a, b) => compareSuggestionItems(a, b, activeNotebookId, notebooks))
+    .sort((a, b) =>
+      compareSuggestionItems(
+        a,
+        b,
+        activeNotebookId,
+        notebooks,
+        normalizedQuery
+          ? (page) =>
+              scoreAiReferenceQuery(page, notebooks, normalizedQuery, query) ??
+              Number.POSITIVE_INFINITY
+          : undefined,
+      ),
+    )
     .slice(0, 30)
     .map((page) => {
       const attrs = buildAiFileReferenceAttrs(page, notebooks);
@@ -451,6 +528,7 @@ function collectInlineContent(
   images: AiImageAttachmentAttrs[],
   skills: AiSkillCommandAttrs[],
   skillNames: Set<string>,
+  selectionQuotes: AiSelectionQuoteAttrs[],
   tokens: AiComposerToken[],
 ) {
   let promptText = "";
@@ -538,6 +616,18 @@ function collectInlineContent(
         type: "skill",
         skill: attrs,
       });
+      return;
+    }
+
+    if (node.type === "aiSelectionQuote") {
+      const attrs = parseSelectionQuoteAttrs(node.attrs);
+      if (!attrs) return;
+      selectionQuotes.push(attrs);
+      promptText += formatSelectionQuotePromptLabel(attrs);
+      tokens.push({
+        type: "selectionQuote",
+        quote: attrs,
+      });
     }
   });
 
@@ -554,6 +644,7 @@ export function serializeAiComposerDoc(
       references: [],
       images: [],
       skills: [],
+      selectionQuotes: [],
       tokens: [],
     };
   }
@@ -562,6 +653,7 @@ export function serializeAiComposerDoc(
   const images: AiImageAttachmentAttrs[] = [];
   const skills: AiSkillCommandAttrs[] = [];
   const skillNames = new Set<string>();
+  const selectionQuotes: AiSelectionQuoteAttrs[] = [];
   const promptBlocks: string[] = [];
   const freeformBlocks: string[] = [];
   const tokens: AiComposerToken[] = [];
@@ -577,6 +669,7 @@ export function serializeAiComposerDoc(
       images,
       skills,
       skillNames,
+      selectionQuotes,
       tokens,
     );
     promptBlocks.push(inline.promptText);
@@ -593,6 +686,7 @@ export function serializeAiComposerDoc(
     references,
     images,
     skills,
+    selectionQuotes,
     tokens,
   };
 }

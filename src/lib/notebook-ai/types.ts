@@ -3,6 +3,7 @@ import type {
   AiFileReferenceAttrs,
   AiSkillCommandAttrs,
 } from "@/components/editor/ai/composer/referenceLookup";
+import type { AiSelectionQuoteAttrs } from "@/components/editor/ai/composer/selectionQuote";
 import type { NotebookAiTools } from "./tools";
 import type { NotebookSkillId } from "./skills";
 
@@ -31,6 +32,8 @@ export interface NotebookAiMessageMetadata {
   references?: AiFileReferenceAttrs[];
   /** 本轮用户消息中显式调用的本地 Skill（chip 顺序）。 */
   skills?: AiSkillCommandAttrs[];
+  /** 选区引用 chip；含完整选区文本，供气泡还原。 */
+  selectionQuotes?: AiSelectionQuoteAttrs[];
   implicitPage?: AiFileReferenceAttrs;
   diagnostics?: NotebookAiContextDiagnostics;
   imageAttachments?: Array<{
@@ -39,6 +42,8 @@ export interface NotebookAiMessageMetadata {
   }>;
   /** 消息创建时间（毫秒时间戳），用于聊天时间分隔条 */
   createdAt?: number;
+  /** 由 /压缩 生成的摘要轮，后续请求把它当作压缩后的历史 */
+  compacted?: boolean;
 }
 
 /** 序列化进持久化存储的单条消息格式 */

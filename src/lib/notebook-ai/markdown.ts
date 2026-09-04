@@ -5,6 +5,7 @@
  * 保证两条写入路径对模型输出做完全一致的清洗。
  */
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { restoreBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
 import {
   normalizePageContent,
   titleHeadingBlock,
@@ -164,8 +165,9 @@ export function parseAiMarkdownToBlocks(markdown: string): BlockNoteContent {
   const normalized = normalizeAiMarkdown(markdown ?? "").trim();
   if (!normalized) return [];
   const fragment = importMarkdownFragment(normalized);
-  const exploded = explodeAiGeneratedBlocks(fragment ?? []);
-  return exploded.length > 0 ? exploded : fragment ?? [];
+  const restored = restoreBlockPropsMarkers((fragment ?? []) as BlockNoteContent);
+  const exploded = explodeAiGeneratedBlocks(restored);
+  return exploded.length > 0 ? exploded : restored;
 }
 
 /**

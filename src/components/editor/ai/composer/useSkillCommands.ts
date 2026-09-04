@@ -6,10 +6,13 @@ import {
   useState,
   type RefObject,
 } from "react";
+import type { LocalSkill } from "@/lib/notebook-ai/localContext";
 import {
-  searchLocalSkills,
-  type LocalSkill,
-} from "@/lib/notebook-ai/localContext";
+  searchComposerSlashItems,
+  type ComposerSlashBuiltinId,
+  type ComposerSlashItem,
+} from "@/lib/notebook-ai/composerSlashCommands";
+import { isSuggestionMenuAcceptKey } from "@/components/editor/utils/slashMenuPolicy";
 import type { AiSkillCommandAttrs } from "./referenceLookup";
 
 interface DetectedCommand {
@@ -187,7 +190,7 @@ export function placeCaretBeforeNode(node: Node) {
 }
 
 const CHIP_SELECTOR =
-  "[data-ai-mention-attrs], [data-ai-image-attrs], [data-ai-skill-attrs]";
+  "[data-ai-mention-attrs], [data-ai-image-attrs], [data-ai-skill-attrs], [data-ai-selection-quote-attrs]";
 
 function isChipElement(node: Node | null): node is HTMLElement {
   return (
@@ -356,18 +359,30 @@ export function useSkillCommands(options: {
   isComposingRef: RefObject<boolean>;
   notebookId?: string;
   enabled: boolean;
+  includeSkills: boolean;
   onContentMutation: () => void;
+  onBuiltinCommand?: (id: ComposerSlashBuiltinId) => void;
 }) {
-  const { editorRef, isComposingRef, notebookId, enabled, onContentMutation } =
-    options;
+  const {
+    editorRef,
+    isComposingRef,
+    notebookId,
+    enabled,
+    includeSkills,
+    onContentMutation,
+    onBuiltinCommand,
+  } = options;
   const lastDetectedRef = useRef<DetectedCommand | null>(null);
   const [command, setCommand] = useState(INACTIVE);
   const items = useMemo(
     () =>
       enabled && command.active
-        ? searchLocalSkills(command.query, notebookId)
+        ? searchComposerSlashItems(command.query, {
+            notebookId,
+            includeSkills,
+          })
         : [],
-    [command.active, command.query, enabled, notebookId],
+    [command.active, command.query, enabled, includeSkills, notebookId],
   );
   const itemsRef = useRef(items);
   useEffect(() => {
@@ -397,18 +412,38 @@ export function useSkillCommands(options: {
   }, [clearCommandState, editorRef, enabled, isComposingRef]);
 
   const insertCommand = useCallback(
-    (skill: LocalSkill) => {
+    (item: ComposerSlashItem) => {
       const editor = editorRef.current;
       const detected =
         lastDetectedRef.current ??
         (editor ? detectCommandAtCaret(editor) : null);
       clearCommandState();
+
+      if (item.kind === "builtin") {
+        if (editor && detected) {
+          try {
+            detected.range.deleteContents();
+            if (item.id === "new") {
+              editor.replaceChildren();
+            }
+            pruneEmptyComposerTextNodes(editor);
+            ensureComposerCaretAnchors(editor);
+            editor.focus();
+          } catch {
+            // 清掉 /query 失败也不阻断指令执行
+          }
+          onContentMutation();
+        }
+        onBuiltinCommand?.(item.id);
+        return;
+      }
+
       if (!editor || !detected) return;
 
       try {
         detected.range.deleteContents();
         // 间距靠 CSS；插入后用 ZWSP 锚点保证旧 Chromium 光标可见。
-        const chip = createSkillChipElement(toSkillAttrs(skill));
+        const chip = createSkillChipElement(toSkillAttrs(item.skill));
         detected.range.insertNode(chip);
         pruneEmptyComposerTextNodes(editor);
         ensureComposerCaretAnchors(editor);
@@ -420,7 +455,7 @@ export function useSkillCommands(options: {
 
       onContentMutation();
     },
-    [clearCommandState, editorRef, onContentMutation],
+    [clearCommandState, editorRef, onBuiltinCommand, onContentMutation],
   );
 
   const handleCommandKeyDown = useCallback(
@@ -437,14 +472,18 @@ export function useSkillCommands(options: {
         }));
         return true;
       }
-      if (event.key === "Enter" && !event.shiftKey) {
-        const skill = currentItems[command.activeIndex];
-        if (!skill) {
+      if (isSuggestionMenuAcceptKey(event)) {
+        const item = currentItems[command.activeIndex];
+        if (!item) {
+          if (event.key === "Tab") {
+            event.preventDefault();
+            return true;
+          }
           clearCommandState();
           return false;
         }
         event.preventDefault();
-        insertCommand(skill);
+        insertCommand(item);
         return true;
       }
       if (event.key === "Escape") {

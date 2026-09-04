@@ -17,6 +17,7 @@ import {
   placeCaretAfterNode,
   pruneEmptyComposerTextNodes,
 } from "./useSkillCommands";
+import { isSuggestionMenuAcceptKey } from "@/components/editor/utils/slashMenuPolicy";
 
 interface DetectedMention {
   query: string;
@@ -243,8 +244,8 @@ export function useReferenceMentions({
         }));
         return true;
       }
-      // Shift+Enter 留给 composer 做换行；仅普通 Enter 确认 @ 引用
-      if (event.key === "Enter" && !event.shiftKey) {
+      // Shift+Enter 留给 composer 做换行；Enter / Tab 确认 @ 引用
+      if (isSuggestionMenuAcceptKey(event)) {
         event.preventDefault();
         const item = items[mention.activeIndex];
         if (item) {

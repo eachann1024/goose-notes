@@ -17,6 +17,7 @@ export const FLOATING_LAYER_SELECTORS = [
   ".goose-ai-menu-floating",
   ".bn-side-menu",
   ".bn-link-toolbar",
+  "[data-goose-link-toolbar]",
   ".bn-panel",
   ".bn-suggestion-menu",
   ".bn-grid-suggestion-menu",

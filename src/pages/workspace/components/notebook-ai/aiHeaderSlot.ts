@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useSyncExternalStore } from "react";
 
 let aiHeaderActions: ReactNode = null;
+let aiHeaderTitle: string | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -25,6 +26,19 @@ export function clearAiHeaderActions() {
   emit();
 }
 
+/** 全屏 AI 时把派生会话标题挂到 PageHeader / DesktopTitleBar。 */
+export function setAiHeaderTitle(title: string | null) {
+  if (aiHeaderTitle === title) return;
+  aiHeaderTitle = title;
+  emit();
+}
+
+export function clearAiHeaderTitle() {
+  if (aiHeaderTitle == null) return;
+  aiHeaderTitle = null;
+  emit();
+}
+
 export function useAiHeaderActions(): ReactNode {
   return useSyncExternalStore(
     (onStoreChange) => {
@@ -34,6 +48,19 @@ export function useAiHeaderActions(): ReactNode {
       };
     },
     () => aiHeaderActions,
+    () => null,
+  );
+}
+
+export function useAiHeaderTitle(): string | null {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      listeners.add(onStoreChange);
+      return () => {
+        listeners.delete(onStoreChange);
+      };
+    },
+    () => aiHeaderTitle,
     () => null,
   );
 }

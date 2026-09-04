@@ -45,7 +45,7 @@ import {
   GoosePromptSuggestionMenu,
   type GooseAiMenuTag,
 } from "./GoosePromptSuggestionMenu";
-import { resolveInlineBusyTicker } from "./inlineBusyTicker";
+import { composeInlineBusyTicker } from "./inlineBusyTicker";
 
 /** idle 态的 5 个改写 tag：全部走 markdown 改写路径。 */
 const IDLE_REWRITE_TAGS: Array<{ key: string; label: string; prompt: string }> =
@@ -414,7 +414,7 @@ export function GooseAIMenu(props: AIMenuProps) {
           oldMarkdown: target.oldMarkdown,
           abortSignal: abortController.signal,
           onUpdate: (update) => {
-            flushBusyTicker(resolveInlineBusyTicker(update));
+            flushBusyTicker(composeInlineBusyTicker(update));
           },
         });
 

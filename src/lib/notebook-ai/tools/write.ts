@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
-import { getPageTitle } from "@/components/editor/utils/page-title";
+import { getPageTitle, withInternalPageTitle } from "@/components/editor/utils/page-title";
 import {
   createAndFinalizePage,
   reloadEditorIfActive,
@@ -14,11 +14,13 @@ import {
 } from "@/lib/notebook-ai/markdown";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
+  applySearchReplacePreservingBlocks,
+  mergeFullEditPreservingUnchangedBlocks,
+} from "@/lib/notebook-ai/batch-plan/surgicalApply";
+import {
   guardPageForAiWrite,
   writePageContentSafely,
 } from "@/lib/notebook-ai/pageWriteGuard";
-import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
-import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { NotebookAiAgentContext } from "../types";
 import type { JSONContent } from "@/types";
 
@@ -87,7 +89,21 @@ export const updatePage = tool({
     }
 
     const title = getPageTitle(guard.page);
-    const content = buildAiPageContent(title, input.markdown);
+    const isLocal = Boolean(guard.page.localFilePath);
+    const merged = mergeFullEditPreservingUnchangedBlocks(
+      guard.page.content,
+      normalizeAiMarkdown(input.markdown),
+      { ensureFirstTitle: !isLocal },
+    );
+    const mergedBlocks = Array.isArray(merged.content)
+      ? merged.content
+      : (merged.content as { content?: unknown } | null)?.content;
+    const content =
+      !Array.isArray(mergedBlocks) || mergedBlocks.length === 0
+        ? buildAiPageContent(title, input.markdown)
+        : isLocal
+          ? merged.content
+          : withInternalPageTitle(merged.content, title);
 
     const result = await writePageContentSafely(
       pageId,
@@ -145,36 +161,23 @@ export const replaceInPage = tool({
       };
     }
 
-    // 先序列化为 markdown，做字符串替换，再写回
     const expectedRevision = {
       updatedAt: guard.updatedAt,
       contentSignature: guard.contentSignature,
     };
-    const currentMd = await blocksToMarkdown(
-      guard.page.content as BlockNoteContent,
+    const applied = applySearchReplacePreservingBlocks(
+      guard.page.content,
+      input.find,
+      input.replace,
+      { replaceAll: true },
     );
-    const afterSerializeGuard = guardPageForAiWrite(pageId, {
-      expectedNotebookId: notebookId,
-      expectedRevision,
-    });
-    if (!afterSerializeGuard.ok) {
-      return {
-        pageId,
-        title,
-        replacedCount: 0,
-        ok: false,
-        error: afterSerializeGuard.error,
-      };
+    if (!applied.ok) {
+      return { pageId, title, replacedCount: 0 };
     }
-    const count = currentMd.split(input.find).length - 1;
-    if (count === 0) return { pageId, title, replacedCount: 0 };
-
-    const newMd = currentMd.split(input.find).join(input.replace);
-    const newContent = buildAiPageContent(title, newMd);
 
     const result = await writePageContentSafely(
       pageId,
-      newContent as JSONContent,
+      applied.content,
       { expectedNotebookId: notebookId, expectedRevision },
     );
     if (!result.ok) {
@@ -188,7 +191,7 @@ export const replaceInPage = tool({
     }
     reloadEditorIfActive(pageId);
 
-    return { pageId, title, replacedCount: count, ok: true };
+    return { pageId, title, replacedCount: applied.replacedCount, ok: true };
   },
 });
 

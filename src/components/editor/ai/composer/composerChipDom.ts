@@ -10,7 +10,7 @@ import {
 import { isComposerDeleteInputType } from "./composerInputGuards";
 
 export const COMPOSER_CHIP_SELECTOR =
-  "[data-ai-mention-attrs], [data-ai-image-attrs], [data-ai-skill-attrs]";
+  "[data-ai-mention-attrs], [data-ai-image-attrs], [data-ai-skill-attrs], [data-ai-selection-quote-attrs]";
 
 export function isComposerChipElement(node: Node | null): node is HTMLElement {
   if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
@@ -18,7 +18,8 @@ export function isComposerChipElement(node: Node | null): node is HTMLElement {
   return (
     el.dataset.aiMentionAttrs != null ||
     el.dataset.aiImageAttrs != null ||
-    el.dataset.aiSkillAttrs != null
+    el.dataset.aiSkillAttrs != null ||
+    el.dataset.aiSelectionQuoteAttrs != null
   );
 }
 

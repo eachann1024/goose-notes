@@ -137,9 +137,8 @@ export function GooseAIMenuController({
   );
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
-    // 菜单目标宽度 ≈ 70% 视口宽（上限 960px，下限 360px），
-    // 不再把浮层撑成「整块宽度」：块锚点时宽度=块宽会把输入框拉成满行，
-    // 多行时图标与首行错位，且 placement:bottom 会让窄内容视觉上偏离选区。
+    // 菜单目标宽度 ≈ 91% 视口宽（上限 1248px，下限 468px），
+    // 相对原先 70vw / 960px / 360px 提高 30%。
     const pad = 8;
 
     const sharedMiddleware = [
@@ -165,11 +164,11 @@ export function GooseAIMenuController({
                 ) || 1
               : 1;
           const desired = Math.min(
-            (typeof window !== "undefined" ? window.innerWidth : 960) * 0.7,
-            960,
+            (typeof window !== "undefined" ? window.innerWidth : 1248) * 0.91,
+            1248,
           );
           const maxW = Math.max(
-            360,
+            468,
             Math.min(desired, availableWidth / Math.max(scale, 0.5) - pad),
           );
           Object.assign(elements.floating.style, {

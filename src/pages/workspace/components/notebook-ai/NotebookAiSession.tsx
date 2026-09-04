@@ -53,12 +53,17 @@ import type { AiComposerPayload } from "@/components/editor/ai/composer/referenc
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
 import { NotebookAiAssistantRuntimeProvider } from "./AssistantUiRuntimeProvider";
+import {
+  buildCompactedConversation,
+  conversationHasCompactableContent,
+  generateConversationCompactSummary,
+} from "@/lib/notebook-ai/compactConversation";
 
 /** 流式响应持续无任何消息更新时自动收尾，避免旧 uTools 内核永久占用会话。 */
 const NOTEBOOK_AI_STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 export const NOTEBOOK_AI_PLACEHOLDER_HINTS = [
-  "向 AI 提问，/ 调用 Skill，@ 引用笔记或本地文件…",
+  "向 AI 提问，/ 调用指令或 Skill，@ 引用笔记或本地文件…",
   "让 AI 根据当前笔记生成一张趋势图…",
   "让 AI 画一个流程图或架构图…",
   "让 AI 生成一张图标或示意图…",
@@ -98,6 +103,8 @@ export interface NotebookAiSessionValue {
   unavailableReason: string | undefined;
   placeholderIndex: number;
   composerRevision: number;
+  /** 用户显式新建空白会话后，不要再种默认 @ 当前页 */
+  suppressDefaultPageSeed: boolean;
   send: (
     payload: AiComposerPayload,
     imageAttachments: NotebookAiImageAttachment[],
@@ -109,6 +116,7 @@ export interface NotebookAiSessionValue {
   newConversation: (options?: {
     onConsumeCapturedSelection?: () => void;
   }) => void;
+  compactConversation: () => void;
   selectConversation: (
     nextConversationId: string,
     options?: { onConsumeCapturedSelection?: () => void },
@@ -147,8 +155,11 @@ export function NotebookAiSessionProvider({
   children,
 }: NotebookAiSessionProviderProps) {
   const requestCurrentPageIdRef = useRef<string | null>(null);
+  const compactAbortRef = useRef<AbortController | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [composerRevision, setComposerRevision] = useState(0);
+  const [suppressDefaultPageSeed, setSuppressDefaultPageSeed] = useState(false);
+  const [isCompacting, setIsCompacting] = useState(false);
   const composerHasContent = useNotebookAiChats((s) =>
     composerDraftHasContent(s.composerDrafts[notebookId]),
   );
@@ -243,13 +254,18 @@ export function NotebookAiSessionProvider({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const isBusy = isStreaming;
+  const isBusy = isStreaming || isCompacting;
   const unavailableReason = !modelCheck.ok ? modelCheck.reason : undefined;
   const stopRef = useRef(stop);
   const aiStatusActiveRef = useRef(false);
   const messagesRef = useRef(messages);
   stopRef.current = stop;
   messagesRef.current = messages;
+
+  const stopAll = useCallback(() => {
+    compactAbortRef.current?.abort();
+    void stop();
+  }, [stop]);
 
   useEffect(() => {
     if (!isStreaming) return;
@@ -265,7 +281,7 @@ export function NotebookAiSessionProvider({
 
   // 请求生命周期 → 页头图标：关面板/切页不打断；仅真实结束才 celebrate。
   useEffect(() => {
-    if (isStreaming) {
+    if (isStreaming || isCompacting) {
       if (!aiStatusActiveRef.current) {
         aiStatusActiveRef.current = true;
         useAiStatus.getState().beginStreaming();
@@ -278,11 +294,12 @@ export function NotebookAiSessionProvider({
     useAiStatus
       .getState()
       .finishStreaming({ celebrate: status === "ready" && !error });
-  }, [error, isStreaming, status]);
+  }, [error, isCompacting, isStreaming, status]);
 
   // 仅 Provider 卸载（换笔记本 / 关 AI 能力）时 stop + 复位图标
   useEffect(
     () => () => {
+      compactAbortRef.current?.abort();
       void stopRef.current();
       if (aiStatusActiveRef.current) {
         aiStatusActiveRef.current = false;
@@ -354,7 +371,11 @@ export function NotebookAiSessionProvider({
       if (isBusy || unavailableReason) return false;
 
       const displayText = payload.promptText.trim();
-      if (!displayText && imageAttachments.length === 0) return false;
+      const hasQuotes =
+        (payload.selectionQuotes?.length ?? 0) > 0 ||
+        payload.tokens.some((token) => token.type === "selectionQuote");
+      if (!displayText && imageAttachments.length === 0 && !hasQuotes)
+        return false;
       const requestPayload = displayText
         ? payload
         : {
@@ -423,12 +444,70 @@ export function NotebookAiSessionProvider({
       const nextConversationId = useNotebookAiChats
         .getState()
         .createConversation(notebookId);
+      setSuppressDefaultPageSeed(true);
       setComposerRevision((revision) => revision + 1);
       setConversationId(nextConversationId);
       setMessages([]);
     },
     [isBusy, persistCurrentConversation, clearError, notebookId, setMessages],
   );
+
+  const compactConversation = useCallback(() => {
+    if (isBusy) {
+      toast.warning("正在生成回复，请稍后再压缩");
+      return;
+    }
+    if (unavailableReason) {
+      toast.error(unavailableReason);
+      return;
+    }
+    const currentMessages = messagesRef.current;
+    if (!conversationHasCompactableContent(currentMessages)) {
+      toast.info("当前会话为空，无需压缩");
+      return;
+    }
+
+    compactAbortRef.current?.abort();
+    const abort = new AbortController();
+    compactAbortRef.current = abort;
+    setIsCompacting(true);
+    clearError();
+
+    void generateConversationCompactSummary(currentMessages, abort.signal)
+      .then((summary) => {
+        if (abort.signal.aborted) return;
+        const compacted = ensureNotebookAiMessageCreatedAt(
+          buildCompactedConversation({
+            summary,
+            createId: createChatMessageId,
+          }),
+        );
+        setMessages(compacted);
+        useNotebookAiChats
+          .getState()
+          .setMessages(notebookId, conversationId, compacted);
+        toast.success("会话已压缩");
+      })
+      .catch((error) => {
+        if (abort.signal.aborted) return;
+        toast.error("压缩失败", {
+          description: formatNotebookAiError(error, { phase: "chat" }),
+        });
+      })
+      .finally(() => {
+        if (compactAbortRef.current === abort) {
+          compactAbortRef.current = null;
+        }
+        setIsCompacting(false);
+      });
+  }, [
+    clearError,
+    conversationId,
+    isBusy,
+    notebookId,
+    setMessages,
+    unavailableReason,
+  ]);
 
   const selectConversation = useCallback(
     (
@@ -446,6 +525,7 @@ export function NotebookAiSessionProvider({
       clearError();
       requestCurrentPageIdRef.current = null;
       options?.onConsumeCapturedSelection?.();
+      setSuppressDefaultPageSeed(false);
       setConversationId(nextConversationId);
       setMessages(nextMessages);
     },
@@ -486,6 +566,7 @@ export function NotebookAiSessionProvider({
         const nextMessages = useNotebookAiChats
           .getState()
           .getConversationMessages(notebookId, nextActiveConversationId);
+        setSuppressDefaultPageSeed(false);
         setConversationId(nextActiveConversationId);
         setMessages(nextMessages);
         return true;
@@ -496,6 +577,7 @@ export function NotebookAiSessionProvider({
       const freshConversationId = useNotebookAiChats
         .getState()
         .createConversation(notebookId);
+      setSuppressDefaultPageSeed(true);
       setComposerRevision((revision) => revision + 1);
       setConversationId(freshConversationId);
       setMessages([]);
@@ -678,14 +760,16 @@ export function NotebookAiSessionProvider({
       status,
       error,
       clearError,
-      stop,
+      stop: stopAll,
       isStreaming,
       isBusy,
       unavailableReason,
       placeholderIndex,
       composerRevision,
+      suppressDefaultPageSeed,
       send,
       newConversation,
+      compactConversation,
       selectConversation,
       deleteConversation,
       searchPages,
@@ -699,14 +783,16 @@ export function NotebookAiSessionProvider({
       status,
       error,
       clearError,
-      stop,
+      stopAll,
       isStreaming,
       isBusy,
       unavailableReason,
       placeholderIndex,
       composerRevision,
+      suppressDefaultPageSeed,
       send,
       newConversation,
+      compactConversation,
       selectConversation,
       deleteConversation,
       searchPages,
@@ -718,9 +804,9 @@ export function NotebookAiSessionProvider({
   return (
     <NotebookAiAssistantRuntimeProvider
       messages={messages}
-      isRunning={isStreaming}
+      isRunning={isBusy}
       isDisabled={Boolean(unavailableReason)}
-      onCancel={stop}
+      onCancel={stopAll}
     >
       <NotebookAiSessionContext.Provider value={value}>
         {children}

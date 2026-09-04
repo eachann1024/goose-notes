@@ -17,6 +17,10 @@ import {
   type AiComposerPayload,
   type AiFileReferenceAttrs,
 } from "./referenceLookup";
+import {
+  appendSelectionQuoteToDom,
+  type AiSelectionQuoteAttrs,
+} from "./selectionQuote";
 import { ComposerSuggestionsList } from "@/components/editor/ai/composer/ComposerSuggestionsList";
 import {
   createChipElement,
@@ -134,6 +138,7 @@ export const AiComposerInput = forwardRef<
       maxImageCount,
       onImageRejected,
       notebookId,
+      onSlashCommand,
     },
     ref,
   ) => {
@@ -146,6 +151,7 @@ export const AiComposerInput = forwardRef<
     const editorHostRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<HTMLDivElement | null>(null);
     const placeholderRef = useRef<HTMLDivElement | null>(null);
+    const liveRegionRef = useRef<HTMLSpanElement | null>(null);
     const nativeHandlersRef = useRef<ComposerNativeHandlers | null>(null);
     /** 标准 composition 标记 */
     const isComposingRef = useRef(false);
@@ -286,8 +292,10 @@ export const AiComposerInput = forwardRef<
       editorRef,
       isComposingRef,
       notebookId,
-      enabled: readLocalSkills,
+      enabled: true,
+      includeSkills: readLocalSkills,
       onContentMutation: emitCurrentContent,
+      onBuiltinCommand: onSlashCommand,
     });
 
     const {
@@ -385,6 +393,32 @@ export const AiComposerInput = forwardRef<
       [emitCurrentContent],
     );
 
+    const appendSelectionQuote = useCallback(
+      (
+        quote: AiSelectionQuoteAttrs,
+        options?: { restoreCaret?: boolean; animate?: boolean },
+      ): "appended" | "duplicate" | "skipped" => {
+        const el = editorRef.current;
+        if (!el) return "skipped";
+
+        const active = document.activeElement;
+        const composerFocused = Boolean(
+          active && (el === active || el.contains(active)),
+        );
+
+        const result = appendSelectionQuoteToDom(el, quote, {
+          animate: options?.animate === true,
+          restoreCaret: options?.restoreCaret ?? composerFocused,
+          liveRegion: liveRegionRef.current,
+        });
+        if (result === "appended") {
+          emitCurrentContent();
+        }
+        return result;
+      },
+      [emitCurrentContent],
+    );
+
     const replaceDefaultPageReference = useCallback(
       (reference: AiFileReferenceAttrs): "applied" | "already" | "skipped" => {
         const el = editorRef.current;
@@ -414,11 +448,7 @@ export const AiComposerInput = forwardRef<
           const el = editorRef.current;
           if (!el) return;
           el.focus();
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          window.getSelection()?.removeAllRanges();
-          window.getSelection()?.addRange(range);
+          placeCaretInEditor(el, false);
         },
         clear: () => {
           const el = editorRef.current;
@@ -465,6 +495,7 @@ export const AiComposerInput = forwardRef<
             ),
         insertImages,
         insertReference,
+        appendSelectionQuote,
         replaceDefaultPageReference,
       }),
       [
@@ -477,6 +508,7 @@ export const AiComposerInput = forwardRef<
         releaseAllImages,
         insertImages,
         insertReference,
+        appendSelectionQuote,
         replaceDefaultPageReference,
         setPlaceholderVisible,
       ],
@@ -503,7 +535,11 @@ export const AiComposerInput = forwardRef<
     // ── auto-focus ───────────────────────────────────────────────────────────
 
     useEffect(() => {
-      if (autoFocusToken > 0) editorRef.current?.focus();
+      if (autoFocusToken <= 0) return;
+      const el = editorRef.current;
+      if (!el) return;
+      el.focus();
+      placeCaretInEditor(el, false);
     }, [autoFocusToken]);
 
     // ── native input / keyboard（挂到命令式节点上，不经 React 合成事件） ──
@@ -686,6 +722,9 @@ export const AiComposerInput = forwardRef<
         const reactLike = {
           key: event.key,
           shiftKey: event.shiftKey,
+          metaKey: event.metaKey,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
           preventDefault: () => event.preventDefault(),
           stopPropagation: () => event.stopPropagation(),
           nativeEvent: event,
@@ -871,7 +910,7 @@ export const AiComposerInput = forwardRef<
             className={cn(
               "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground opacity-70",
               variant === "panel"
-                ? "top-0 line-clamp-3 text-[13px] leading-6"
+                ? "top-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] leading-6"
                 : "top-0 pr-8 text-[12px] leading-[20px]",
             )}
             style={isEmpty ? undefined : { display: "none" }}
@@ -882,6 +921,13 @@ export const AiComposerInput = forwardRef<
 
         {/* 空壳：真正 contenteditable 在 useLayoutEffect 里 append，React 永不 reconcile 它 */}
         <div ref={editorHostRef} className="relative min-w-0" />
+        <span
+          ref={liveRegionRef}
+          className="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+          data-ai-composer-live=""
+        />
 
         {mention.active && mention.anchorRect ? (
           <ComposerSuggestionsList

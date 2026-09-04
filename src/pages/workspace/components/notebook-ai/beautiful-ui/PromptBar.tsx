@@ -1,5 +1,11 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import {
+  PROMPT_BAR_EXPANDED_RADIUS,
+  promptBarBeamRadius,
+} from "./promptBarBeamRadius";
+
+const BEAM_INSET = 1;
 
 export function PromptBar({
   streaming,
@@ -13,9 +19,36 @@ export function PromptBar({
   children: ReactNode;
   className?: string;
 }) {
-  const beamRadius = expanded ? 20 : 999;
+  const barRef = useRef<HTMLDivElement>(null);
+  const [beamRadius, setBeamRadius] = useState(
+    expanded ? PROMPT_BAR_EXPANDED_RADIUS - BEAM_INSET : 21,
+  );
+
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el || !streaming) return;
+
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setBeamRadius(
+        promptBarBeamRadius({
+          width,
+          height,
+          expanded: Boolean(expanded),
+          inset: BEAM_INSET,
+        }),
+      );
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expanded, streaming]);
+
   return (
     <div
+      ref={barRef}
       className={cn(
         "bui-prompt-bar",
         streaming && "bui-prompt-bar--streaming",

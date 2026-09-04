@@ -9,6 +9,8 @@ import type {
  AiFileReferenceAttrs,
  AiReferenceSuggestionItem,
 } from "./referenceLookup";
+import type { AiSelectionQuoteAttrs } from "./selectionQuote";
+import type { ComposerSlashBuiltinId } from "@/lib/notebook-ai/composerSlashCommands";
 
 export interface AiComposerInputHandle {
  focus: () => void;
@@ -24,6 +26,14 @@ export interface AiComposerInputHandle {
  insertImages: (files: File[]) => void;
  /** 在光标处插入页面引用 chip（无光标时追加到末尾） */
  insertReference: (reference: AiFileReferenceAttrs) => void;
+ /**
+  * 把选区引用 chip 静默追加到输入框末尾。
+  * 不 focus；restoreCaret 为 true 时恢复插入前的 caret。
+  */
+ appendSelectionQuote: (
+  quote: AiSelectionQuoteAttrs,
+  options?: { restoreCaret?: boolean; animate?: boolean },
+ ) => "appended" | "duplicate" | "skipped";
  /**
   * 空会话默认 @ 当前页：输入区仍是「空 / 仅一条文件引用」时替换为最新页。
   * 用户已打字或加入其他 chip 时跳过。
@@ -60,6 +70,8 @@ export interface AiComposerInputProps {
  maxImageCount?: number;
  onImageRejected?: (message: string) => void;
  notebookId?: string;
+ /** 选择或发送 /新会话、/压缩 等内置指令 */
+ onSlashCommand?: (id: ComposerSlashBuiltinId) => void;
 }
 
 export interface ComposerNativeHandlers {

@@ -36,13 +36,19 @@ import {
   PANEL_WIDTH_MIN,
   PANEL_WIDTH_MAX,
 } from "./usePanelWidth";
+import { AiPanelResizeEdge } from "./AiPanelResizeEdge";
 import { ConversationHistoryList } from "./ConversationHistoryPopover";
 import type {
   NotebookAiLayoutMode,
   NotebookAiPanelSelectionCapture,
 } from "./useNotebookAiPanel";
 import { isFullscreenAiLayout } from "./useNotebookAiPanel";
-import { clearAiHeaderActions, setAiHeaderActions } from "./aiHeaderSlot";
+import { clearAiHeaderActions, clearAiHeaderTitle, setAiHeaderActions, setAiHeaderTitle } from "./aiHeaderSlot";
+import { ConversationTitle } from "./ConversationTitle";
+import {
+  getConversationSummary,
+  isEmptyConversationSummary,
+} from "@/lib/notebook-ai/conversationSummary";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
 import { buildAiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import {
@@ -105,7 +111,12 @@ export function NotebookAiPanel({
   const isFullscreen = variant === "fullscreen";
   const layoutIsFullscreen = isFullscreenAiLayout(layoutMode);
 
-  const { width, onDragHandleMouseDown } = usePanelWidth();
+  const {
+    width,
+    isResizing,
+    onDragHandleMouseDown,
+    onDragHandlePointerDown,
+  } = usePanelWidth();
   const panelRootRef = useRef<HTMLDivElement | null>(null);
   const composerDockRef = useRef<HTMLDivElement | null>(null);
   // 展示宽度：随父级 flex 行可用空间收缩，避免 minWidth=stored 把面板裁出视口
@@ -209,8 +220,10 @@ export function NotebookAiPanel({
     unavailableReason,
     placeholderIndex,
     composerRevision,
+    suppressDefaultPageSeed,
     send,
     newConversation,
+    compactConversation,
     selectConversation,
     deleteConversation,
     searchPages,
@@ -234,16 +247,26 @@ export function NotebookAiPanel({
         messages.length,
         useNotebookAiChats.getState().getComposerDraft(notebookId),
         initialReference,
+        { suppress: suppressDefaultPageSeed },
       ),
-    [initialReference, messages.length, notebookId, composerRevision],
+    [
+      initialReference,
+      messages.length,
+      notebookId,
+      composerRevision,
+      suppressDefaultPageSeed,
+    ],
   );
 
   // Composer 挂载（或 key 重挂载）后：空会话且输入区仍是默认 @ 时跟到当前页。
+  // /new 后 suppress：空输入 replaceable，不走这里，否则会把刚清掉的 tag 种回去。
   useEffect(() => {
     if (!bodyReady || !initialReference) return;
     const draft = useNotebookAiChats.getState().getComposerDraft(notebookId);
     if (
-      !shouldSeedCurrentPageReference(messages.length, draft, currentPageId)
+      !shouldSeedCurrentPageReference(messages.length, draft, currentPageId, {
+        suppress: suppressDefaultPageSeed,
+      })
     ) {
       return;
     }
@@ -267,9 +290,11 @@ export function NotebookAiPanel({
     messages.length,
     composerRevision,
     notebookId,
+    suppressDefaultPageSeed,
   ]);
 
-  // 面板打开即聚焦输入框；已打开时重复触发「打开」走 goose-note:focus-ai-composer
+  // 面板打开即聚焦输入框；/new 重挂 Composer 后同样拉回焦点。
+  // 已打开时重复触发「打开」走 goose-note:focus-ai-composer
   useEffect(() => {
     if (unavailableReason || !bodyReady) return;
     const focusComposer = () => composerRef.current?.focus();
@@ -279,7 +304,7 @@ export function NotebookAiPanel({
       window.clearTimeout(timer);
       window.removeEventListener("goose-note:focus-ai-composer", focusComposer);
     };
-  }, [unavailableReason, bodyReady]);
+  }, [unavailableReason, bodyReady, composerRevision]);
 
   const handlePanelKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
@@ -313,6 +338,17 @@ export function NotebookAiPanel({
     newConversation({ onConsumeCapturedSelection });
   }, [newConversation, onConsumeCapturedSelection]);
 
+  const handleSlashCommand = useCallback(
+    (id: "new" | "compact") => {
+      if (id === "new") {
+        handleNewConversation();
+        return;
+      }
+      compactConversation();
+    },
+    [compactConversation, handleNewConversation],
+  );
+
   const handleSelectConversation = useCallback(
     (nextConversationId: string) => {
       selectConversation(nextConversationId, { onConsumeCapturedSelection });
@@ -331,6 +367,11 @@ export function NotebookAiPanel({
     isStreaming && messages.length > 0
       ? messages[messages.length - 1].id
       : undefined;
+
+  const conversationSummary = useMemo(
+    () => getConversationSummary(messages),
+    [messages],
+  );
 
   // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
@@ -434,129 +475,155 @@ export function NotebookAiPanel({
   useEffect(() => {
     if (!isFullscreen) {
       clearAiHeaderActions();
+      clearAiHeaderTitle();
       return;
     }
     setAiHeaderActions(headerToolbar);
+    setAiHeaderTitle(conversationSummary);
     return () => {
       clearAiHeaderActions();
+      clearAiHeaderTitle();
     };
-  }, [isFullscreen, headerToolbar]);
+  }, [isFullscreen, headerToolbar, conversationSummary]);
 
   return (
-    <ChatChrome
+    <div
       ref={panelRootRef}
-      onKeyDown={handlePanelKeyDown}
+      data-ai-panel-layout={isFullscreen ? "fullscreen" : "side-panel"}
       className={cn(
-        "relative flex h-full flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]",
-        // 侧栏：shrink-0 保持并排卡片；宽度用 effectiveWidth（可随父级变窄），勿写死 minWidth:stored
+        "relative flex h-full min-h-0 flex-col",
         isFullscreen
-          ? "min-w-0 w-full flex-1 rounded-none"
-          : "z-[50] shrink-0 rounded-[12px]",
+          ? "min-w-0 w-full flex-1"
+          : "z-[50] shrink-0",
       )}
       style={
         isFullscreen ? undefined : { width: effectiveWidth, maxWidth: "100%" }
       }
     >
       {!isFullscreen ? (
-        <div
-          className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-[var(--goose-interactive-hover)]"
-          onMouseDown={onDragHandleMouseDown}
-          aria-hidden="true"
+        <AiPanelResizeEdge
+          isResizing={isResizing}
+          onMouseDown={(event) =>
+            onDragHandleMouseDown(event, effectiveWidth)
+          }
+          onPointerDown={(event) =>
+            onDragHandlePointerDown(event, effectiveWidth)
+          }
         />
       ) : null}
 
-      {!isFullscreen ? (
-        <div className="flex h-12 shrink-0 items-center justify-end gap-1 px-2.5">
-          {headerToolbar}
-        </div>
-      ) : null}
-
-      <div className="notebook-ai-zoom-slot">
-        <div className="notebook-ai-zoom-surface">
-          {!bodyReady ? null : unavailableReason ? (
-            <div className="flex flex-1 items-center justify-center px-6 pb-[var(--ai-composer-float-pad,7.5rem)]">
-              <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
-                  <CircleAlert className="h-5 w-5" strokeWidth={1.75} />
-                </div>
-                <p className="text-sm font-medium text-foreground">
-                  AI 暂不可用
-                </p>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {unavailableReason}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <ChatMessages
-              messages={messages}
-              streamingMessageId={streamingMessageId}
-              editorRef={_editorRef}
-              layout={isFullscreen ? "fullscreen" : "side-panel"}
-              onBatchApproval={onBatchApproval}
-              onBatchUndo={onBatchUndo}
+      <ChatChrome
+        onKeyDown={handlePanelKeyDown}
+        className={cn(
+          "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden gap-2",
+          isFullscreen
+            ? "min-w-0 w-full flex-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-2 pt-0"
+            : "bg-[hsl(var(--goose-shell-bg))] p-2",
+        )}
+      >
+        {!isFullscreen ? (
+          <header className="notebook-ai-panel-header flex h-12 shrink-0 items-center gap-2 rounded-[12px] bg-[hsl(var(--goose-editor-bg))] px-2.5">
+            <ConversationTitle
+              summary={conversationSummary}
+              muted={isEmptyConversationSummary(conversationSummary)}
             />
-          )}
-        </div>
-      </div>
-
-      <div ref={composerDockRef} className="notebook-ai-composer-dock">
-        {bodyReady && error ? (
-          <div
-            className={cn(
-              "pointer-events-auto mb-2 w-full",
-              isFullscreen ? "px-6" : "px-3",
-            )}
-          >
-            <div
-              className={cn(
-                "flex items-start gap-2 rounded-[10px] border border-[var(--goose-color-danger-focus)] bg-[var(--goose-color-danger-subtle-bg)] px-3 py-2.5 text-xs",
-                isFullscreen && "mx-auto max-w-[720px]",
-              )}
-              role="alert"
-            >
-              <CircleAlert
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--goose-color-danger-focus)]"
-                strokeWidth={1.75}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium text-[var(--goose-color-danger-focus)]">
-                  本轮失败原因
-                </div>
-                <div className="mt-0.5 break-words leading-relaxed text-foreground">
-                  {formatNotebookAiChatError(error)}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => clearError()}
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] text-[var(--goose-color-danger-focus)] outline-none transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)]"
-                aria-label="关闭错误提示"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </button>
-            </div>
-          </div>
+            <div className="flex shrink-0 items-center">{headerToolbar}</div>
+          </header>
         ) : null}
 
-        {bodyReady ? (
-          <Composer
-            ref={composerRef}
-            key={`${notebookId}-${composerRevision}`}
-            notebookId={notebookId}
-            initialContent={composerSeedContent}
-            onSend={handleSend}
-            isStreaming={isBusy}
-            disabled={!!unavailableReason}
-            placeholder={composerPlaceholder}
-            searchPages={searchPages}
-            onEscape={onClose}
-            layout={isFullscreen ? "fullscreen" : "side-panel"}
-          />
-        ) : (
-          <div className="h-[4.75rem]" aria-hidden />
-        )}
-      </div>
-    </ChatChrome>
+        <div
+          className={cn(
+            "notebook-ai-zoom-slot rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
+            isFullscreen && "min-h-0 flex-1",
+          )}
+        >
+          <div className="notebook-ai-zoom-surface">
+            {!bodyReady ? null : unavailableReason ? (
+              <div className="flex flex-1 items-center justify-center px-6 pb-[var(--ai-composer-float-pad,7.5rem)]">
+                <div className="flex max-w-[260px] flex-col items-center gap-3 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
+                    <CircleAlert className="h-5 w-5" strokeWidth={1.75} />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    AI 暂不可用
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {unavailableReason}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ChatMessages
+                messages={messages}
+                streamingMessageId={streamingMessageId}
+                editorRef={_editorRef}
+                layout={isFullscreen ? "fullscreen" : "side-panel"}
+                onBatchApproval={onBatchApproval}
+                onBatchUndo={onBatchUndo}
+              />
+            )}
+          </div>
+        </div>
+
+        <div ref={composerDockRef} className="notebook-ai-composer-dock">
+          {bodyReady && error ? (
+            <div
+              className={cn(
+                "pointer-events-auto mb-2 w-full",
+                isFullscreen ? "px-6" : "px-0",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex items-start gap-2 rounded-[10px] border border-[var(--goose-color-danger-focus)] bg-[var(--goose-color-danger-subtle-bg)] px-3 py-2.5 text-xs",
+                  isFullscreen && "mx-auto max-w-[720px]",
+                )}
+                role="alert"
+              >
+                <CircleAlert
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--goose-color-danger-focus)]"
+                  strokeWidth={1.75}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-[var(--goose-color-danger-focus)]">
+                    本轮失败原因
+                  </div>
+                  <div className="mt-0.5 break-words leading-relaxed text-foreground">
+                    {formatNotebookAiChatError(error)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => clearError()}
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] text-[var(--goose-color-danger-focus)] outline-none transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)]"
+                  aria-label="关闭错误提示"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {bodyReady ? (
+            <Composer
+              ref={composerRef}
+              key={`${notebookId}-${composerRevision}`}
+              notebookId={notebookId}
+              initialContent={composerSeedContent}
+              onSend={handleSend}
+              onSlashCommand={handleSlashCommand}
+              isStreaming={isBusy}
+              disabled={!!unavailableReason}
+              placeholder={composerPlaceholder}
+              searchPages={searchPages}
+              onEscape={onClose}
+              layout={isFullscreen ? "fullscreen" : "side-panel"}
+            />
+          ) : (
+            <div className="h-[4.75rem]" aria-hidden />
+          )}
+        </div>
+      </ChatChrome>
+    </div>
   );
 }

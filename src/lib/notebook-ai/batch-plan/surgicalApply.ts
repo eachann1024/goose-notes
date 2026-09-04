@@ -7,6 +7,7 @@ import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { restoreBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
 import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
+import { inheritPresentationFromSource } from "@/lib/notebook-ai/inheritPresentation";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 
 const LIST_ITEM_TYPES = new Set([
@@ -123,18 +124,23 @@ export function alignBlocksByMarkdownFingerprint(
   matches.reverse();
 
   const merged: any[] = [];
+  let prevOi = -1;
   let prevCi = -1;
   for (const match of matches) {
-    for (let k = prevCi + 1; k < match.ci; k += 1) {
-      merged.push(candidate[k]);
-    }
+    const origGap = original.slice(prevOi + 1, match.oi);
+    const candGap = candidate.slice(prevCi + 1, match.ci);
+    merged.push(...inheritPresentationFromSource(origGap, candGap));
     // 保留原块对象（id / props / nesting）
     merged.push(original[match.oi]);
+    prevOi = match.oi;
     prevCi = match.ci;
   }
-  for (let k = prevCi + 1; k < m; k += 1) {
-    merged.push(candidate[k]);
-  }
+  merged.push(
+    ...inheritPresentationFromSource(
+      original.slice(prevOi + 1),
+      candidate.slice(prevCi + 1),
+    ),
+  );
 
   const preservedCount = matches.length;
   return {
@@ -366,7 +372,10 @@ function applyOneMatch(
     newString +
     regionMd.slice(located.localStart + located.localLen);
 
-  const replacement = parseFragment(nextRegionMd);
+  const replacement = inheritPresentationFromSource(
+    regionBlocks,
+    parseFragment(nextRegionMd),
+  );
   const beforeCount = endBlock - startBlock + 1;
   blocks.splice(startBlock, beforeCount, ...replacement);
   return { touched: beforeCount };

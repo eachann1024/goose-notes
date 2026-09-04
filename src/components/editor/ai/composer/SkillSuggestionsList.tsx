@@ -1,7 +1,12 @@
-import { type CSSProperties } from "react";
+import { type CSSProperties, type ComponentType } from "react";
 import { createPortal } from "react-dom";
-import { WandSparkles } from "lucide-react";
-import type { LocalSkill } from "@/lib/notebook-ai/localContext";
+import { FoldVertical, Plus, WandSparkles } from "lucide-react";
+import {
+  slashItemDescription,
+  slashItemKey,
+  slashItemTitle,
+  type ComposerSlashItem,
+} from "@/lib/notebook-ai/composerSlashCommands";
 import { useCenteredActiveItemScroll } from "@/components/editor/hooks/useCenteredActiveItemScroll";
 import { cn } from "@/lib/utils";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
@@ -16,12 +21,22 @@ const LIST_PADDING = 12;
 
 const getSkillItemSelector = (index: number) => `[data-skill-index="${index}"]`;
 
+function SlashItemIcon({ item }: { item: ComposerSlashItem }) {
+  const Icon: ComponentType<{ className?: string }> =
+    item.kind === "skill"
+      ? WandSparkles
+      : item.id === "new"
+        ? Plus
+        : FoldVertical;
+  return <Icon className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
 export function SkillSuggestionsList(props: {
-  items: LocalSkill[];
+  items: ComposerSlashItem[];
   activeIndex: number;
   listKey?: string;
   anchorRect: DOMRect;
-  onSelect: (skill: LocalSkill) => void;
+  onSelect: (item: ComposerSlashItem) => void;
 }) {
   const editorUiScale =
     useSettings((state) => state.editorFontSize) / EDITOR_FONT_SIZE_DEFAULT;
@@ -95,41 +110,44 @@ export function SkillSuggestionsList(props: {
       >
         {props.items.length === 0 ? (
           <div className="px-3 py-2 text-[12px] text-muted-foreground">
-            未找到本地 Skill（~/.agents/skills 或当前目录 SKILL/）
+            没有匹配的指令或 Skill
           </div>
         ) : (
-          props.items.map((skill, index) => (
-            <button
-              key={skill.path}
-              type="button"
-              data-skill-index={index}
-              className={cn(
-                // items-start：多行描述时图标与标题首行并排，首行通过等高容器绝对居中
-                "flex w-full flex-nowrap items-start gap-2 rounded-md px-2.5 py-1.5 text-left",
-                index === props.activeIndex
-                  ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] [&_svg]:text-[var(--goose-interactive-selected-fg)]"
-                  : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_*]:text-[var(--goose-interactive-selected-fg)]",
-              )}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                props.onSelect(skill);
-              }}
-            >
-              <span className="flex h-[18px] w-3.5 shrink-0 items-center justify-center">
-                <WandSparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col justify-start gap-0.5">
-                <span className="block truncate text-[12px] font-medium leading-[18px] text-foreground">
-                  {skill.name}
+          props.items.map((item, index) => {
+            const description = slashItemDescription(item);
+            return (
+              <button
+                key={slashItemKey(item)}
+                type="button"
+                data-skill-index={index}
+                className={cn(
+                  // items-start：多行描述时图标与标题首行并排，首行通过等高容器绝对居中
+                  "flex w-full flex-nowrap items-start gap-2 rounded-md px-2.5 py-1.5 text-left",
+                  index === props.activeIndex
+                    ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] [&_svg]:text-[var(--goose-interactive-selected-fg)]"
+                    : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_*]:text-[var(--goose-interactive-selected-fg)]",
+                )}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  props.onSelect(item);
+                }}
+              >
+                <span className="flex h-[18px] w-3.5 shrink-0 items-center justify-center">
+                  <SlashItemIcon item={item} />
                 </span>
-                {skill.description ? (
-                  <span className="line-clamp-2 text-[10.5px] leading-[14px] text-muted-foreground">
-                    {skill.description}
+                <span className="flex min-w-0 flex-1 flex-col justify-start gap-0.5">
+                  <span className="block truncate text-[12px] font-medium leading-[18px] text-foreground">
+                    {slashItemTitle(item)}
                   </span>
-                ) : null}
-              </span>
-            </button>
-          ))
+                  {description ? (
+                    <span className="line-clamp-2 text-[10.5px] leading-[14px] text-muted-foreground">
+                      {description}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })
         )}
       </div>
     </div>,

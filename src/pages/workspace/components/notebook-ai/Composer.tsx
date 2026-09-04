@@ -21,6 +21,7 @@ import {
   type AiComposerInputHandle,
 } from "@/components/editor/ai/composer/AiComposerInput";
 import { isEditorDomEmpty } from "@/components/editor/ai/composer/composerChipDom";
+import { isComposerPayloadEmpty } from "@/components/editor/ai/composer/composerTokens";
 import {
   measureNowrapContentWidth,
   measureSingleLineSlot,
@@ -33,6 +34,14 @@ import {
   type AiReferenceSuggestionItem,
 } from "@/components/editor/ai/composer/referenceLookup";
 import {
+  APPEND_COMPOSER_SELECTION_EVENT,
+  SELECTION_QUOTE_DUPLICATE_TOAST,
+  buildSelectionQuoteAttrs,
+  consumePendingAppendComposerSelections,
+  type AppendComposerSelectionDetail,
+  type AiSelectionQuoteAttrs,
+} from "@/components/editor/ai/composer/selectionQuote";
+import {
   extractClipboardImageFiles,
   isImageUploadFile,
   resolveImageMimeForUpload,
@@ -43,6 +52,10 @@ import {
 } from "@/stores/useNotebookAiChats";
 import type { JSONContent } from "@/types";
 import { ModelSelectorPopover } from "./ModelSelectorPopover";
+import {
+  matchComposerPayloadSlashCommand,
+  type ComposerSlashBuiltinId,
+} from "@/lib/notebook-ai/composerSlashCommands";
 
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
@@ -69,6 +82,11 @@ export interface ComposerHandle {
   replaceDefaultPageReference: (
     reference: AiFileReferenceAttrs,
   ) => "applied" | "already" | "skipped";
+  /** 静默把选区引用 chip 追加到输入框末尾 */
+  appendSelectionQuote: (
+    quote: AiSelectionQuoteAttrs,
+    options?: { restoreCaret?: boolean; animate?: boolean },
+  ) => "appended" | "duplicate" | "skipped";
 }
 
 interface ComposerProps {
@@ -80,6 +98,7 @@ interface ComposerProps {
     payload: AiComposerPayload,
     images: NotebookAiImageAttachment[],
   ) => boolean | void;
+  onSlashCommand?: (id: ComposerSlashBuiltinId) => void;
   isStreaming: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -95,9 +114,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       notebookId,
       initialContent,
       onSend,
+      onSlashCommand,
       isStreaming,
       disabled,
-      placeholder = "向 AI 提问，/ 调用 Skill，@ 引用笔记或本地文件…",
+      placeholder = "向 AI 提问，/ 调用指令或 Skill，@ 引用笔记或本地文件…",
       searchPages,
       onEscape,
       layout = "side-panel",
@@ -109,7 +129,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const draftSeqRef = useRef(0);
-    const [autoFocusToken, setAutoFocusToken] = useState(0);
+    const [autoFocusToken, setAutoFocusToken] = useState(disabled ? 0 : 1);
     const [dropActive, setDropActive] = useState(false);
     // 仅在挂载时读一次草稿作种子；运行中由 onContentChange 写回 store，
     // 避免把 store 回灌成受控值导致 contenteditable 选区被重建。
@@ -223,7 +243,19 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       if (!payload) return;
 
       const images = input?.resolveImages(payload) ?? [];
-      if (!payload.promptText.trim() && images.length === 0) return;
+      const slashCommand = matchComposerPayloadSlashCommand(payload);
+      if (slashCommand && images.length === 0) {
+        input?.clear();
+        cancelPendingDraftPersist();
+        useNotebookAiChats.getState().clearComposerDraft(notebookId);
+        setIsEmpty(true);
+        collapseChrome();
+        setAutoFocusToken((token) => token + 1);
+        onSlashCommand?.(slashCommand);
+        return;
+      }
+
+      if (isComposerPayloadEmpty(payload) && images.length === 0) return;
 
       const normalized = normalizeAiComposerPayload(payload);
       const accepted = onSend(normalized.payload, images);
@@ -239,6 +271,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       disabled,
       isStreaming,
       onSend,
+      onSlashCommand,
       notebookId,
       cancelPendingDraftPersist,
       collapseChrome,
@@ -329,6 +362,45 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       [addImageFiles, disabled, isStreaming],
     );
 
+    useEffect(() => {
+      let cancelled = false;
+      const applyDetail = (detail: AppendComposerSelectionDetail) => {
+        const attrs = buildSelectionQuoteAttrs({
+          pageId: detail?.pageId ?? "",
+          pageTitle: detail?.pageTitle ?? "",
+          text: detail?.text ?? "",
+        });
+        if (!attrs) return true;
+        const result = inputRef.current?.appendSelectionQuote(attrs, {
+          animate: detail.animate === true,
+        });
+        if (result === "duplicate") {
+          toast(SELECTION_QUOTE_DUPLICATE_TOAST);
+          return true;
+        }
+        return result === "appended";
+      };
+      const flushPending = () => {
+        const run = (tries: number) => {
+          if (cancelled) return;
+          const remaining = consumePendingAppendComposerSelections(applyDetail);
+          if (remaining > 0 && tries > 0) {
+            window.requestAnimationFrame(() => run(tries - 1));
+          }
+        };
+        run(8);
+      };
+      window.addEventListener(APPEND_COMPOSER_SELECTION_EVENT, flushPending);
+      flushPending();
+      return () => {
+        cancelled = true;
+        window.removeEventListener(
+          APPEND_COMPOSER_SELECTION_EVENT,
+          flushPending,
+        );
+      };
+    }, []);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -340,6 +412,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         },
         replaceDefaultPageReference: (reference: AiFileReferenceAttrs) =>
           inputRef.current?.replaceDefaultPageReference(reference) ?? "skipped",
+        appendSelectionQuote: (quote, options) =>
+          inputRef.current?.appendSelectionQuote(quote, options) ?? "skipped",
       }),
       [],
     );
@@ -357,7 +431,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         }}
         className={cn(
           "pointer-events-none",
-          isFullscreen ? "px-6 pb-5" : "px-3 pb-5",
+          isFullscreen ? "px-6 pb-5" : "px-0 pb-2",
         )}
       >
         <div
@@ -451,6 +525,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 maxImageBytes={MAX_IMAGE_FILE_BYTES}
                 maxImageCount={MAX_IMAGE_ATTACHMENTS}
                 onImageRejected={(message) => toast.error(message)}
+                onSlashCommand={onSlashCommand}
               />
 
               <span ref={modelWrapRef} className="flex shrink-0 items-center">

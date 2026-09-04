@@ -4,11 +4,13 @@
  */
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
+import { encodeBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
 import {
   normalizeAiMarkdown,
   parseAiMarkdownToBlocks,
 } from "@/lib/notebook-ai/markdown";
 import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
+import { inheritPresentationFromSource } from "@/lib/notebook-ai/inheritPresentation";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 
 export type InlineEditMode = "selection" | "cursor";
@@ -64,6 +66,13 @@ function serializeBlocksToMarkdown(
   editor: InlineMarkdownEditor,
   blocks: unknown[],
 ): string {
+  try {
+    return jsonContentToMarkdown(
+      encodeBlockPropsMarkers(blocks as BlockNoteContent),
+    );
+  } catch {
+    // fall through
+  }
   if (typeof editor.blocksToMarkdownLossy === "function") {
     try {
       return editor.blocksToMarkdownLossy(blocks as never);
@@ -230,7 +239,14 @@ export function applyMarkdownToInlineTarget(
   }
 
   const parsed = parseMarkdownToBlocks(editor, normalized);
-  const replacementBlocks = toReplacementBlocks(parsed);
+  const sourceBlocks = sourceBlockIds
+    .map((id) =>
+      typeof editor.getBlock === "function" ? editor.getBlock(id) : null,
+    )
+    .filter((block) => !!block);
+  const replacementBlocks = toReplacementBlocks(
+    inheritPresentationFromSource(sourceBlocks, parsed),
+  );
   if (replacementBlocks.length === 0) {
     throw new Error("AI 返回的内容无法解析为有效块。");
   }

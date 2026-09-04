@@ -1556,6 +1556,7 @@ async function run(journal: BatchPlanJournal): Promise<BatchPlanExecuteResult> {
             parentId: operation.parentId,
             title: operation.title,
             content,
+            filePath: plannedLocalPath,
           });
           if (!created) throw new Error("创建本地文件页面失败");
           pageId = created;

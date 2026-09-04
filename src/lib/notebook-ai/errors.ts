@@ -88,6 +88,13 @@ function batchBusinessMessage(message: string): string {
   if (message.includes("参数不完整")) {
     return "计划内容不完整，已执行 0 项且没有写入。请让 AI 重新生成计划。";
   }
+  if (
+    message.includes("本地新建目标") ||
+    message.includes("创建本地文件") ||
+    message.includes("创建页面失败")
+  ) {
+    return "无法创建本地文件，已执行 0 项且没有写入。请检查同名文件后重试。";
+  }
   return BATCH_PLAN_BUSINESS_ERROR;
 }
 

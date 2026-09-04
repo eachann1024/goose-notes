@@ -16,6 +16,13 @@ export function resolveInlineBusyTicker(
   return update.text ?? "";
 }
 
+/** 忙态展示：思考优先，且只留最后一句。 */
+export function composeInlineBusyTicker(
+  update: InlineBusyTickerSource,
+): string {
+  return visibleBusyTickerLine(resolveInlineBusyTicker(update));
+}
+
 /** 固定一行展示：只留最后一句，旧思考被新内容盖住。 */
 export function visibleBusyTickerLine(text: string): string {
   const lastLine =

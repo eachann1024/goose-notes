@@ -65,6 +65,7 @@ import {
 } from "@/lib/notebook-ai/messageTime";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { buildUserMessageSegments } from "@/lib/notebook-ai/userMessageSegments";
+import { formatSelectionQuotePromptLabel } from "@/components/editor/ai/composer/selectionQuote";
 import { FullscreenPreview } from "@/components/preview/FullscreenPreview";
 import type { PreviewContent } from "@/lib/preview/previewAction";
 import { cn } from "@/lib/utils";
@@ -401,18 +402,42 @@ const AssistantStreamdownText = memo(function AssistantStreamdownText({
   );
 });
 
-function AssistantReasoningPart({ text, status }: TextMessagePartProps) {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const ctx = useContext(AssistantToolRenderContext);
-  const streaming = Boolean(ctx?.isStreaming) && status.type === "running";
+function LetterFoldChevron() {
   return (
-    <div
-      className="notebook-ai-reasoning"
-      data-streaming={streaming ? "true" : "false"}
-      role="status"
+    <svg
+      className="notebook-ai-letter-chev"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
     >
-      {trimmed}
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+/** 有变更计划时，把说明收进折叠，默认收起，把版面让给整页改动。 */
+function AssistantLetterFold({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="notebook-ai-letter-fold">
+      <button
+        type="button"
+        className="notebook-ai-letter-fold-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <LetterFoldChevron />
+        <span>思考</span>
+      </button>
+      {open ? (
+        <div className="notebook-ai-letter-fold-body">{children}</div>
+      ) : null}
     </div>
   );
 }
@@ -484,7 +509,7 @@ function NullMessagePart() {
  */
 export const ASSISTANT_TEXT_PARTS = {
   Text: AssistantTextPart,
-  Reasoning: AssistantReasoningPart,
+  Reasoning: NullMessagePart,
   tools: { Override: NullMessagePart },
 };
 
@@ -812,7 +837,13 @@ export function ChatMessages({
     const persistedImages = msg.metadata?.imageAttachments ?? [];
     const references = msg.metadata?.references ?? [];
     const skills = msg.metadata?.skills ?? [];
-    const textSegments = buildUserMessageSegments(text, references, skills);
+    const selectionQuotes = msg.metadata?.selectionQuotes ?? [];
+    const textSegments = buildUserMessageSegments(
+      text,
+      references,
+      skills,
+      selectionQuotes,
+    );
 
     return (
       // 整行 w-full + justify-end：百分比/可用宽度有确定参照，避免 w-fit+max-w% 在旧内核上失效。
@@ -892,6 +923,19 @@ export function ChatMessages({
                       </span>
                     );
                   }
+                  if (segment.type === "selectionQuote") {
+                    return (
+                      <span
+                        key={segment.key}
+                        data-ai-selection-quote-chip=""
+                        className="ai-composer-chip inline-flex max-w-full min-w-0 items-center align-middle mx-1 truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
+                        title={segment.quote.text}
+                        aria-label={`选区引用，来自${segment.quote.pageTitle}`}
+                      >
+                        {formatSelectionQuotePromptLabel(segment.quote)}
+                      </span>
+                    );
+                  }
                   return (
                     <button
                       key={segment.key}
@@ -956,6 +1000,7 @@ export function ChatMessages({
             <ToolProgressCard
               parts={progressToolParts}
               isMessageStreaming={isStreaming}
+              thinkingText={reasoningText}
               footer={
                 hasVisibleApprovalPart(progressToolParts, isStreaming) ? (
                   <MessagePrimitive.Parts
@@ -964,7 +1009,13 @@ export function ChatMessages({
                 ) : undefined
               }
             >
-              <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+              {visibleApprovalPart && hasText ? (
+                <AssistantLetterFold>
+                  <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+                </AssistantLetterFold>
+              ) : (
+                <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+              )}
               {visibleApprovalPart ? (
                 <BatchPlanProposal part={visibleApprovalPart} />
               ) : null}

@@ -26,7 +26,7 @@ export type GoosePromptSuggestionMenuProps = {
   placeholder?: string;
   disabled?: boolean;
   busy?: boolean;
-  /** 忙态时在输入槽里滚动覆盖的思考/生成文本；不撑开高度。 */
+  /** 忙态时在输入槽里单行展示思考/生成文本，不撑开高度。 */
   busyTickerText?: string;
   /** 可换行 tag 行；为空则不渲染。 */
   tags?: GooseAiMenuTag[];
@@ -104,7 +104,6 @@ export function GoosePromptSuggestionMenu(
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const tickerScrollerRef = useRef<HTMLDivElement>(null);
   const hasBeenDisabled = useRef(disabled);
 
   useEffect(() => {
@@ -124,13 +123,7 @@ export function GoosePromptSuggestionMenu(
     if (!el) return;
     el.style.boxSizing = "border-box";
     if (props.busy) {
-      const ticker = tickerScrollerRef.current;
-      const measured = ticker?.scrollHeight ?? DEFAULT_MIN_HEIGHT_PX;
-      const next = Math.min(
-        Math.max(measured + DEFAULT_PAD_Y_PX * 2, DEFAULT_MIN_HEIGHT_PX),
-        maxAutoHeightPx,
-      );
-      el.style.height = `${next}px`;
+      el.style.height = `${DEFAULT_MIN_HEIGHT_PX}px`;
       el.style.overflowY = "hidden";
       return;
     }
@@ -150,13 +143,6 @@ export function GoosePromptSuggestionMenu(
     props.busy,
     props.busyTickerText,
   ]);
-
-  useLayoutEffect(() => {
-    if (!props.busy) return;
-    const el = tickerScrollerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [props.busy, props.busyTickerText, props.placeholder]);
 
   const hasRightSection = props.rightSection != null;
   const tags = props.tags ?? [];
@@ -188,7 +174,7 @@ export function GoosePromptSuggestionMenu(
           name="ai-prompt"
           rows={1}
           value={promptTextToUse || ""}
-          placeholder={props.placeholder}
+          placeholder={props.busy ? "" : props.placeholder}
           disabled={props.disabled}
           onKeyDown={handleKeyDown}
           onChange={handleChange}
@@ -204,13 +190,8 @@ export function GoosePromptSuggestionMenu(
             aria-live="polite"
             aria-atomic="false"
           >
-            <div
-              ref={tickerScrollerRef}
-              className="goose-ai-think-ticker__scroller"
-            >
-              {props.busyTickerText?.trim()
-                ? props.busyTickerText
-                : props.placeholder}
+            <div className="goose-ai-think-ticker__scroller">
+              {props.busyTickerText?.trim() || props.placeholder || "思考中"}
             </div>
           </div>
         ) : null}

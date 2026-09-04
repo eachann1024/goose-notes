@@ -16,6 +16,7 @@ import {
   resolveInvokedLocalSkill,
   resolveInvokedLocalSkillFromTokens,
 } from "./localContext";
+import { formatSelectionQuoteModelBlock } from "@/components/editor/ai/composer/selectionQuote";
 import { useSettings } from "@/stores/useSettings";
 import type {
   NotebookAiContextBudgetTier,
@@ -257,9 +258,26 @@ export function buildNotebookAiUserMessage(params: {
       : implicitPage
         ? `用户没有 @ 其它笔记。默认把当前活动页签对应的笔记作为本轮关联页面，并按${contextSelection.mode === "full-text" ? "全文" : "结构摘要"}模式读取；“当前页 / 本文 / 这篇”都指向该页面。`
         : "";
+  const selectionQuotes =
+    params.payload.selectionQuotes?.length
+      ? params.payload.selectionQuotes
+      : params.payload.tokens
+          .filter(
+            (
+              token,
+            ): token is Extract<
+              (typeof params.payload.tokens)[number],
+              { type: "selectionQuote" }
+            > => token.type === "selectionQuote",
+          )
+          .map((token) => token.quote);
+  const quoteBlock = formatSelectionQuoteModelBlock(selectionQuotes);
   const modelText = [
     "用户输入：",
     displayText,
+    quoteBlock
+      ? ["用户加入的选区引用（含完整原文，请阅读）：", quoteBlock].join("\n")
+      : "",
     invokedSkill
       ? `用户通过 /${invokedSkill.name} 显式调用以下本地 Skill。请遵循其说明执行：\n\n${invokedSkill.content}`
       : "",
@@ -289,6 +307,7 @@ export function buildNotebookAiUserMessage(params: {
       displayText,
       references: references.length > 0 ? references : undefined,
       skills,
+      selectionQuotes: selectionQuotes.length > 0 ? selectionQuotes : undefined,
       implicitPage,
       diagnostics: contextSelection.diagnostics,
     },

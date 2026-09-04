@@ -21,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
+import { getConversationSummary } from "@/lib/notebook-ai/conversationSummary";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import { cn } from "@/lib/utils";
 
@@ -40,34 +40,6 @@ export interface ConversationHistoryPopoverProps {
   notebookId: string;
   onSelectConversation: (conversationId: string) => void;
   disabled?: boolean;
-}
-
-function getMessageText(message: NotebookAiMessage) {
-  const textPart = message.parts?.find((part) => part.type === "text");
-  return textPart && "text" in textPart && typeof textPart.text === "string"
-    ? textPart.text
-    : "";
-}
-
-function getUserDisplayText(message: NotebookAiMessage) {
-  const displayText = message.metadata?.displayText?.trim();
-  if (displayText) return displayText;
-
-  const rawText = getMessageText(message).trim();
-  const hiddenContextStart = rawText.indexOf("\n\n本轮笔记上下文：");
-  if (rawText.startsWith("用户输入：") && hiddenContextStart > -1) {
-    return rawText.slice("用户输入：".length, hiddenContextStart).trim();
-  }
-  return rawText.startsWith("用户输入：")
-    ? rawText.slice("用户输入：".length).trim()
-    : rawText;
-}
-
-function getConversationSummary(messages: NotebookAiMessage[]) {
-  const firstUserMessage = messages.find((message) => message.role === "user");
-  return firstUserMessage
-    ? getUserDisplayText(firstUserMessage) || "新会话"
-    : "新会话";
 }
 
 /** 显示到时分秒；非今日附带月日（跨年再带年份） */
