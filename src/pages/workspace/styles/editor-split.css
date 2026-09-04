@@ -1,0 +1,108 @@
+/* Ghostty 纸缝：Tab 内编辑器分屏。变量挂在 .workspace-shell。 */
+
+.workspace-shell {
+  --split-sash-visual: 1px;
+  --split-sash-hit-fine: 8px;
+  --split-sash-hit-coarse: 24px;
+}
+
+.editor-split-surface {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-split-surface--zoomed,
+.editor-split-group {
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-split-pane {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-split-pane-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  opacity: 1;
+}
+
+.editor-split-pane[data-font-family="default"],
+.editor-split-pane[data-font-family="default"] .bn-editor,
+.editor-split-pane[data-font-family="default"] .bn-default-styles {
+  font-family: var(--font-default);
+}
+
+.editor-split-pane[data-font-family="serif"],
+.editor-split-pane[data-font-family="serif"] .bn-editor,
+.editor-split-pane[data-font-family="serif"] .bn-default-styles {
+  font-family: var(--font-serif);
+}
+
+.editor-split-pane[data-font-family="mono"],
+.editor-split-pane[data-font-family="mono"] .bn-editor,
+.editor-split-pane[data-font-family="mono"] .bn-default-styles {
+  font-family: var(--font-mono);
+}
+
+/* 非活动格只压 chrome，正文对比不变。接线方把标题栏等标 data-split-chrome。 */
+.editor-split-pane[data-focused="false"] [data-split-chrome] {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.55;
+}
+
+.editor-split-sash {
+  position: relative;
+  z-index: 1;
+  flex-grow: 0;
+  flex-shrink: 0;
+  background: var(--workspace-divider);
+  outline: none;
+  touch-action: none;
+  transition: background-color 150ms ease;
+}
+
+.editor-split-sash[aria-orientation="vertical"] {
+  width: var(--split-sash-visual);
+}
+
+.editor-split-sash[aria-orientation="horizontal"] {
+  height: var(--split-sash-visual);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .editor-split-sash:hover {
+    background: hsl(var(--muted-foreground) / 0.45);
+  }
+}
+
+.editor-split-sash:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  background: hsl(var(--muted-foreground) / 0.45);
+}
+
+.editor-split-group[data-dragging="true"] .editor-split-sash,
+.editor-split-sash[data-separator="active"],
+.editor-split-sash:active {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-split-sash {
+    transition: none;
+  }
+}
