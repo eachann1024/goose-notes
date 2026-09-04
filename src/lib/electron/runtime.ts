@@ -4,7 +4,9 @@
  * uTools 构建里 gooseDesktop 不存在，结果仍为 false。
  */
 export function isElectronRuntime(): boolean {
-  if (__HOST_TARGET__ === "electron") return true;
+  if (typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron") {
+    return true;
+  }
   return typeof window !== "undefined" && Boolean(window.gooseDesktop);
 }
 

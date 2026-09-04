@@ -1,10 +1,17 @@
 import { globalShortcut } from "electron";
 import {
+  electronAcceleratorAliases,
+  electronAcceleratorsMatch,
+  toElectronAccelerator,
+} from "../../src/lib/electron/accelerator";
+import {
   getMainWindow,
   showAndFocusMainWindow,
   toggleQuicknoteWindow,
   toggleWindow,
 } from "./windows";
+
+export { toElectronAccelerator };
 
 const registered = {
   wake: "",
@@ -12,6 +19,7 @@ const registered = {
   search: "",
 };
 
+type HotkeySlot = "wake" | "quicknote" | "search";
 type HotkeyRequest = { wake: string; quicknote: string; search: string };
 
 const lastRequested: HotkeyRequest = {
@@ -22,78 +30,7 @@ const lastRequested: HotkeyRequest = {
 
 let paused = false;
 
-export function toElectronAccelerator(shortcut: string): string {
-  const parts = shortcut
-    .split("+")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return "";
-
-  const modifiers: string[] = [];
-  let key = "";
-  for (const part of parts) {
-    const lower = part.toLowerCase();
-    if (["mod", "cmdorctrl", "cmdorcontrol", "commandorcontrol"].includes(lower)) {
-      if (!modifiers.includes("CommandOrControl")) modifiers.push("CommandOrControl");
-      continue;
-    }
-    if (["super", "win", "windows"].includes(lower)) {
-      if (!modifiers.includes("Super")) modifiers.push("Super");
-      continue;
-    }
-    if (["meta", "command", "cmd"].includes(lower)) {
-      if (!modifiers.includes("Command")) modifiers.push("Command");
-      continue;
-    }
-    if (["ctrl", "control"].includes(lower)) {
-      if (!modifiers.includes("Control")) modifiers.push("Control");
-      continue;
-    }
-    if (["alt", "option"].includes(lower)) {
-      if (!modifiers.includes("Alt")) modifiers.push("Alt");
-      continue;
-    }
-    if (lower === "shift") {
-      if (!modifiers.includes("Shift")) modifiers.push("Shift");
-      continue;
-    }
-    if (key) return "";
-    key = part;
-  }
-  if (!key) return "";
-
-  const namedKeys: Record<string, string> = {
-    esc: "Escape",
-    escape: "Escape",
-    space: "Space",
-    plus: "Plus",
-    enter: "Enter",
-    return: "Enter",
-    tab: "Tab",
-    backspace: "Backspace",
-    delete: "Delete",
-    up: "Up",
-    down: "Down",
-    left: "Left",
-    right: "Right",
-    home: "Home",
-    end: "End",
-    pageup: "PageUp",
-    pagedown: "PageDown",
-  };
-  const lowerKey = key.toLowerCase();
-  if (namedKeys[lowerKey]) {
-    key = namedKeys[lowerKey];
-  } else if (/^f([1-9]|1[0-9]|2[0-4])$/.test(lowerKey)) {
-    key = lowerKey.toUpperCase();
-  } else if (key.length === 1) {
-    key = key.toUpperCase();
-  }
-
-  return [...modifiers, key].join("+");
-}
-
-function unregisterSlot(slot: "wake" | "quicknote" | "search"): void {
+function unregisterSlot(slot: HotkeySlot): void {
   const existing = registered[slot];
   if (!existing) return;
   try {
@@ -108,7 +45,12 @@ function isDuplicateAccelerator(
   accelerator: string,
   used: string[],
 ): boolean {
-  return Boolean(accelerator) && used.includes(accelerator);
+  return (
+    Boolean(accelerator) &&
+    used.some((item) =>
+      electronAcceleratorsMatch(item, accelerator, process.platform),
+    )
+  );
 }
 
 function copyHotkeyRequest(keys: HotkeyRequest): HotkeyRequest {
@@ -119,81 +61,82 @@ function copyHotkeyRequest(keys: HotkeyRequest): HotkeyRequest {
   };
 }
 
+function tryRegisterAccelerator(
+  accelerator: string,
+  callback: () => void,
+): string {
+  for (const candidate of electronAcceleratorAliases(
+    accelerator,
+    process.platform,
+  )) {
+    try {
+      if (globalShortcut.register(candidate, callback)) return candidate;
+    } catch {
+      // try the next alias
+    }
+  }
+  return "";
+}
+
 function applyRegistration(keys: HotkeyRequest): {
   wakeOk: boolean;
   quicknoteOk: boolean;
   searchOk: boolean;
 } {
-  unregisterSlot("wake");
-  unregisterSlot("quicknote");
-  unregisterSlot("search");
-
-  const result = { wakeOk: true, quicknoteOk: true, searchOk: true };
-
   const wakeAcc = keys.wake.trim() ? toElectronAccelerator(keys.wake) : "";
   const quickAcc = keys.quicknote.trim()
     ? toElectronAccelerator(keys.quicknote)
     : "";
   const searchAcc = keys.search.trim() ? toElectronAccelerator(keys.search) : "";
+  const next = { wake: wakeAcc, quicknote: quickAcc, search: searchAcc };
 
-  if (keys.wake.trim()) {
-    if (!wakeAcc) {
-      result.wakeOk = false;
-    } else {
-      try {
-        result.wakeOk = globalShortcut.register(wakeAcc, () => {
-          void toggleWindow(getMainWindow());
-        });
-        if (result.wakeOk) registered.wake = wakeAcc;
-      } catch {
-        result.wakeOk = false;
-      }
+  // 键没变就别卸：macOS 对同一 accelerator 立刻 unregister+register 经常返回 false。
+  for (const slot of ["wake", "quicknote", "search"] as const) {
+    if (
+      registered[slot] &&
+      !electronAcceleratorsMatch(registered[slot], next[slot], process.platform)
+    ) {
+      unregisterSlot(slot);
     }
   }
 
-  const usedAfterWake = [registered.wake].filter(Boolean);
+  const used: string[] = [];
 
-  if (keys.quicknote.trim()) {
-    if (!quickAcc) {
-      result.quicknoteOk = false;
-    } else if (isDuplicateAccelerator(quickAcc, usedAfterWake)) {
-      result.quicknoteOk = false;
-    } else {
-      try {
-        result.quicknoteOk = globalShortcut.register(quickAcc, () => {
-          void toggleQuicknoteWindow();
-        });
-        if (result.quicknoteOk) registered.quicknote = quickAcc;
-      } catch {
-        result.quicknoteOk = false;
-      }
+  const bindSlot = (
+    slot: HotkeySlot,
+    acc: string,
+    requested: string,
+    callback: () => void,
+  ): boolean => {
+    if (!requested.trim()) return true;
+    if (!acc) return false;
+    if (isDuplicateAccelerator(acc, used)) return false;
+    if (electronAcceleratorsMatch(registered[slot], acc, process.platform)) {
+      used.push(registered[slot] || acc);
+      return true;
     }
-  }
+    const actual = tryRegisterAccelerator(acc, callback);
+    if (!actual) return false;
+    registered[slot] = actual;
+    used.push(actual);
+    return true;
+  };
 
-  const usedAfterQuicknote = [registered.wake, registered.quicknote].filter(Boolean);
-
-  if (keys.search.trim()) {
-    if (!searchAcc) {
-      result.searchOk = false;
-    } else if (isDuplicateAccelerator(searchAcc, usedAfterQuicknote)) {
-      result.searchOk = false;
-    } else {
-      try {
-        result.searchOk = globalShortcut.register(searchAcc, () => {
-          showAndFocusMainWindow();
-          const win = getMainWindow();
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("desktop:open-search");
-          }
-        });
-        if (result.searchOk) registered.search = searchAcc;
-      } catch {
-        result.searchOk = false;
+  return {
+    wakeOk: bindSlot("wake", wakeAcc, keys.wake, () => {
+      void toggleWindow(getMainWindow());
+    }),
+    quicknoteOk: bindSlot("quicknote", quickAcc, keys.quicknote, () => {
+      void toggleQuicknoteWindow();
+    }),
+    searchOk: bindSlot("search", searchAcc, keys.search, () => {
+      showAndFocusMainWindow();
+      const win = getMainWindow();
+      if (win && !win.isDestroyed()) {
+        win.webContents.send("desktop:open-search");
       }
-    }
-  }
-
-  return result;
+    }),
+  };
 }
 
 export function registerHotkeys(keys: HotkeyRequest): {

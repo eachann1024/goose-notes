@@ -3,16 +3,21 @@ import { loadVaultRoots } from "./allowlist";
 import { registerHotkeys, unregisterAllHotkeys } from "./hotkeys";
 import { closeAllWatchers, registerIpcHandlers } from "./ipc";
 import {
-  bindOpenMarkdownWindow,
   enqueueMarkdownPathsFromArgv,
   flushQueuedMarkdownOpenPaths,
   markOpenMarkdownRendererUnavailable,
   registerOpenFileEvent,
 } from "./openMarkdownFiles";
 import {
-  createMainWindow,
+  CLOSE_TAB_ACCELERATOR,
+  CLOSE_WINDOW_ACCELERATOR,
+} from "./closeTabAccelerator";
+import {
+  createWorkspaceWindow,
   getMainWindow,
   markQuitting,
+  requestCloseActiveTab,
+  restoreWorkspaceWindows,
 } from "./windows";
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
@@ -45,13 +50,13 @@ if (!gotLock) {
 function startApp(): void {
   let pendingFocus = false;
 
-  function focusMainWindow(): void {
+  function focusExistingWorkspace(): void {
     const win = getMainWindow();
     if (!win) {
       pendingFocus = true;
       if (app.isReady()) {
         markOpenMarkdownRendererUnavailable();
-        bindOpenMarkdownWindow(createMainWindow());
+        createWorkspaceWindow({ mode: "blank" });
       }
       return;
     }
@@ -66,7 +71,7 @@ function startApp(): void {
 
   app.on("second-instance", (_event, argv) => {
     enqueueMarkdownPathsFromArgv(argv);
-    focusMainWindow();
+    focusExistingWorkspace();
   });
 
   registerIpcHandlers();
@@ -74,10 +79,48 @@ function startApp(): void {
   function installMenu(): void {
     const template: Electron.MenuItemConstructorOptions[] = [
       ...(process.platform === "darwin" ? [{ role: "appMenu" as const }] : []),
-      { role: "fileMenu" },
+      {
+        role: "fileMenu",
+        submenu: [
+          {
+            label: "新建窗口",
+            accelerator: "CommandOrControl+Shift+N",
+            click: () => {
+              createWorkspaceWindow({
+                mode: "blank",
+                sourceWindow: getMainWindow(),
+              });
+            },
+          },
+          { type: "separator" },
+          {
+            label: "关闭标签",
+            accelerator: CLOSE_TAB_ACCELERATOR,
+            click: (_item, win) => {
+              requestCloseActiveTab(win ?? getMainWindow());
+            },
+          },
+          {
+            label: "关闭窗口",
+            accelerator: CLOSE_WINDOW_ACCELERATOR,
+            click: (_item, win) => {
+              (win ?? getMainWindow())?.close();
+            },
+          },
+        ],
+      },
       { role: "editMenu" },
       { role: "viewMenu" },
-      { role: "windowMenu" },
+      {
+        role: "window",
+        submenu: [
+          { role: "minimize" },
+          { role: "zoom" },
+          ...(process.platform === "darwin"
+            ? ([{ type: "separator" as const }, { role: "front" as const }] as const)
+            : []),
+        ],
+      },
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
@@ -86,8 +129,7 @@ function startApp(): void {
     installMenu();
     loadVaultRoots();
     enqueueMarkdownPathsFromArgv(process.argv);
-    const win = createMainWindow();
-    bindOpenMarkdownWindow(win);
+    restoreWorkspaceWindows();
     flushQueuedMarkdownOpenPaths();
     registerHotkeys({
       wake: DEFAULT_WAKE,
@@ -96,12 +138,12 @@ function startApp(): void {
     });
     if (pendingFocus) {
       pendingFocus = false;
-      focusMainWindow();
+      focusExistingWorkspace();
     }
   });
 
   app.on("activate", () => {
-    focusMainWindow();
+    focusExistingWorkspace();
   });
 
   app.on("window-all-closed", () => {

@@ -2,8 +2,40 @@ import { contextBridge, ipcRenderer } from "electron";
 
 type FsChange = { path: string; type: string };
 
+type WindowTabSnapshot = {
+  id: string;
+  pageId: string;
+  type?: string;
+  pinned?: boolean;
+  workspaceId?: string;
+};
+
+type WindowInitPayload = {
+  takeTab?: WindowTabSnapshot;
+  restoredTabs?: WindowTabSnapshot[];
+};
+
+type AcceptTabPayload = {
+  tab: WindowTabSnapshot;
+  contentX: number;
+};
+
+type TabDockPreviewPayload = {
+  contentX: number | null;
+};
+
+type FinishTabDragResult =
+  | { action: "none" }
+  | { action: "tearOff"; windowId: string }
+  | { action: "docked"; windowId: string };
+
 const invoke = (channel: string, ...args: unknown[]) =>
   ipcRenderer.invoke(channel, ...args);
+
+let pendingWindowInit: WindowInitPayload | null = null;
+ipcRenderer.on("desktop:window-init", (_event, payload: WindowInitPayload) => {
+  pendingWindowInit = payload;
+});
 
 const gooseDesktop = {
   selectDirectory: () => invoke("desktop:selectDirectory") as Promise<string | null>,
@@ -36,6 +68,8 @@ const gooseDesktop = {
   fsRename: (from: string, to: string) =>
     invoke("desktop:fsRename", from, to) as Promise<void>,
   fsRemove: (p: string) => invoke("desktop:fsRemove", p) as Promise<void>,
+  restoreFromTrash: (p: string) =>
+    invoke("desktop:restoreFromTrash", p) as Promise<boolean>,
   fsWatch: (p: string) => invoke("desktop:fsWatch", p) as Promise<string>,
   fsUnwatch: (id: string) => invoke("desktop:fsUnwatch", id) as Promise<void>,
   onFsChange: (cb: (e: FsChange) => void) => {
@@ -47,6 +81,8 @@ const gooseDesktop = {
   },
   getUserDataPath: () => invoke("desktop:getUserDataPath") as Promise<string>,
   getDownloadsPath: () => invoke("desktop:getDownloadsPath") as Promise<string>,
+  saveToDownloads: (filename: string, data: Uint8Array) =>
+    invoke("desktop:saveToDownloads", filename, data) as Promise<string>,
   joinPath: (...parts: string[]) =>
     invoke("desktop:joinPath", parts) as Promise<string>,
   openUrl: (url: string) => invoke("desktop:openUrl", url) as Promise<void>,
@@ -110,6 +146,13 @@ const gooseDesktop = {
       ipcRenderer.removeListener("desktop:open-search", listener);
     };
   },
+  onCloseActiveTab: (cb: () => void) => {
+    const listener = () => cb();
+    ipcRenderer.on("desktop:close-active-tab", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:close-active-tab", listener);
+    };
+  },
   takePendingOpenMarkdownFiles: () =>
     invoke("desktop:takePendingOpenMarkdownFiles") as Promise<string[]>,
   onOpenMarkdownFiles: (cb: (files: string[]) => void) => {
@@ -121,6 +164,56 @@ const gooseDesktop = {
   },
   notify: (n: { title: string; body: string }) =>
     invoke("desktop:notify", n) as Promise<void>,
+  getWindowContext: () =>
+    invoke("desktop:getWindowContext") as Promise<{
+      windowId: string;
+      kind: "workspace" | "quicknote";
+    }>,
+  createWindow: (opts: {
+    mode: "blank" | "currentTab";
+    tab?: WindowTabSnapshot;
+    bounds?: { x: number; y: number; width: number; height: number };
+  }) => invoke("desktop:createWindow", opts) as Promise<{ windowId: string }>,
+  closeWindow: (windowId?: string) =>
+    invoke("desktop:closeWindow", windowId) as Promise<void>,
+  finishTabDrag: (opts: {
+    tab: WindowTabSnapshot;
+    cursor: { x: number; y: number };
+    sourceTabCount: number;
+    grabOffsetX?: number;
+  }) => invoke("desktop:finishTabDrag", opts) as Promise<FinishTabDragResult>,
+  tabDragMove: (cursor: { x: number; y: number }) =>
+    invoke("desktop:tabDragMove", cursor) as Promise<void>,
+  tabDragCancel: () => invoke("desktop:tabDragCancel") as Promise<void>,
+  onAcceptTab: (cb: (payload: AcceptTabPayload) => void) => {
+    const listener = (_event: unknown, payload: AcceptTabPayload) => cb(payload);
+    ipcRenderer.on("desktop:accept-tab", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:accept-tab", listener);
+    };
+  },
+  onTabDockPreview: (cb: (payload: TabDockPreviewPayload) => void) => {
+    const listener = (_event: unknown, payload: TabDockPreviewPayload) =>
+      cb(payload);
+    ipcRenderer.on("desktop:tab-dock-preview", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:tab-dock-preview", listener);
+    };
+  },
+  onWindowInit: (cb: (payload: WindowInitPayload) => void) => {
+    if (pendingWindowInit) {
+      const payload = pendingWindowInit;
+      queueMicrotask(() => cb(payload));
+    }
+    const listener = (_event: unknown, payload: WindowInitPayload) => {
+      pendingWindowInit = payload;
+      cb(payload);
+    };
+    ipcRenderer.on("desktop:window-init", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:window-init", listener);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("gooseDesktop", gooseDesktop);

@@ -29,15 +29,26 @@ import {
   requestMacAccessibilityAccess,
 } from "./accessibility";
 import { printHtmlToPdf } from "./printPdf";
+import { restoreFileFromTrash } from "./trashRestore";
+import { saveToDownloads } from "./saveToDownloads";
+import {
+  cancelTabDrag,
+  finishTabDrag,
+  previewTabDrag,
+} from "./tabDock";
 import {
   broadcast,
+  closeWorkspaceWindow,
+  createWorkspaceWindow,
   getMainWindow,
   hasVisibleWindow,
   hideQuicknote,
+  lookupWindowContext,
   onWindowVisibilityChange,
   setMainWindowTitleBarHeight,
   toggleQuicknoteWindow,
   toggleWindow,
+  type CreateWorkspaceWindowOpts,
 } from "./windows";
 
 const watchers = new Map<string, FSWatcher>();
@@ -388,7 +399,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsRemove", async (_event, p: string) => {
     const target = assertAllowed(p);
-    await withSelfWriteMark([target], () => rm(target, { recursive: true, force: true }));
+    await withSelfWriteMark([target], async () => {
+      try {
+        await shell.trashItem(target);
+      } catch {
+        await rm(target, { recursive: true, force: true });
+      }
+    });
+  });
+
+  ipcMain.handle("desktop:restoreFromTrash", async (_event, p: string) => {
+    const dest = assertAllowed(p);
+    ensureParentDir(dest);
+    return restoreFileFromTrash(dest);
   });
 
   ipcMain.handle("desktop:fsWatch", async (_event, p: string) => {
@@ -429,6 +452,12 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:getUserDataPath", async () => userDataRoot());
   ipcMain.handle("desktop:getDownloadsPath", async () => app.getPath("downloads"));
+  ipcMain.handle(
+    "desktop:saveToDownloads",
+    async (_event, filename: string, data: Uint8Array) => {
+      return saveToDownloads(filename, data);
+    },
+  );
   ipcMain.handle("desktop:joinPath", async (_event, parts: string[]) => {
     return path.join(...parts);
   });
@@ -540,9 +569,59 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:syncTitleBarHeight", async (event, height: number) => {
     const win = senderWindow(event);
-    const main = getMainWindow();
-    if (!win || win !== main || win.isDestroyed()) return;
+    if (!win || win.isDestroyed()) return;
+    const context = lookupWindowContext(win);
+    if (context?.kind === "quicknote") return;
     setMainWindowTitleBarHeight(win, height);
+  });
+
+  ipcMain.handle("desktop:getWindowContext", async (event) => {
+    const win = senderWindow(event);
+    const context = lookupWindowContext(win);
+    if (context) return context;
+    return { windowId: "", kind: "workspace" as const };
+  });
+
+  ipcMain.handle(
+    "desktop:createWindow",
+    async (
+      event,
+      opts: {
+        mode: "blank" | "currentTab";
+        tab?: CreateWorkspaceWindowOpts["tab"];
+        bounds?: CreateWorkspaceWindowOpts["bounds"];
+      } = { mode: "currentTab" },
+    ) => {
+      const source = senderWindow(event);
+      const mode = opts.mode === "blank" ? "blank" : "currentTab";
+      const win = createWorkspaceWindow({
+        mode,
+        tab: mode === "currentTab" ? opts.tab : undefined,
+        bounds: opts.bounds,
+        sourceWindow: source,
+      });
+      const context = lookupWindowContext(win);
+      return { windowId: context?.windowId ?? "" };
+    },
+  );
+
+  ipcMain.handle("desktop:closeWindow", async (event, windowId?: string) => {
+    closeWorkspaceWindow(
+      typeof windowId === "string" && windowId.trim() ? windowId : undefined,
+      senderWindow(event),
+    );
+  });
+
+  ipcMain.handle("desktop:finishTabDrag", async (event, payload) => {
+    return finishTabDrag(senderWindow(event), payload ?? {});
+  });
+
+  ipcMain.handle("desktop:tabDragMove", async (event, cursor) => {
+    previewTabDrag(senderWindow(event), cursor);
+  });
+
+  ipcMain.handle("desktop:tabDragCancel", async (event) => {
+    cancelTabDrag(senderWindow(event));
   });
 
   ipcMain.handle("desktop:toggleMainWindow", async () => {

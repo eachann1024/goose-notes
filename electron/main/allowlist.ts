@@ -23,6 +23,10 @@ export function userDataRoot(): string {
   return app.getPath("userData");
 }
 
+export function downloadsRoot(): string {
+  return app.getPath("downloads");
+}
+
 export function loadVaultRoots(): void {
   vaultRoots.clear();
   try {
@@ -105,6 +109,7 @@ export function isAllowedPath(p: string): boolean {
   const resolved = normalizePath(p);
   if (isUnder(attachmentsRoot(), resolved)) return true;
   if (isUnder(userDataRoot(), resolved)) return true;
+  if (isUnder(downloadsRoot(), resolved)) return true;
   for (const root of vaultRoots) {
     if (isUnder(root, resolved)) return true;
   }

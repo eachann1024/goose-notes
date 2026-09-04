@@ -250,6 +250,65 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
     return false;
   };
 
+  const trashCandidateDirs = () => {
+    if (process.platform === "darwin") {
+      return [path.join(os.homedir(), ".Trash")];
+    }
+    if (process.platform === "linux") {
+      return [path.join(os.homedir(), ".local/share/Trash/files")];
+    }
+    return [];
+  };
+
+  const restoreFromTrash = async (destPath) => {
+    try {
+      if (!destPath || fs.existsSync(destPath)) return false;
+      const name = path.basename(destPath);
+      if (!name || name === "." || name === "..") return false;
+
+      const matches = [];
+      for (const dir of trashCandidateDirs()) {
+        if (!fs.existsSync(dir)) continue;
+        let entries = [];
+        try {
+          entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        } catch {
+          continue;
+        }
+        for (const entry of entries) {
+          if (!entry.isFile() || entry.name !== name) continue;
+          const full = path.join(dir, entry.name);
+          try {
+            const info = await fs.promises.stat(full);
+            matches.push({ path: full, mtimeMs: info.mtimeMs });
+          } catch {
+            // skip unreadable trash entries
+          }
+        }
+      }
+      if (matches.length === 0) return false;
+      matches.sort((a, b) => b.mtimeMs - a.mtimeMs);
+      const source = matches[0]?.path;
+      if (!source) return false;
+      fs.mkdirSync(path.dirname(destPath), { recursive: true });
+      await fs.promises.copyFile(source, destPath);
+      try {
+        await fs.promises.unlink(source);
+      } catch {
+        // restored copy is enough
+      }
+      if (fs.existsSync(destPath)) {
+        markRecentWrite(destPath);
+        invalidateLocalNotebookCache();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("[gooseFs] restoreFromTrash failed:", err);
+      return false;
+    }
+  };
+
   const resolveWriteEncoding = (encoding) =>
     encoding === "base64" || encoding === "binary" ? "base64" : "utf-8";
 
@@ -1513,6 +1572,8 @@ if (typeof window !== "undefined" && typeof utools !== "undefined") {
         return false;
       }
     },
+
+    restoreFromTrash,
 
     deleteDir: async (dirPath) => {
       try {

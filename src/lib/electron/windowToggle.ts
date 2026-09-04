@@ -1,6 +1,8 @@
 /**
  * Electron 桌面端窗口 toggle（全局热键由主进程处理；渲染层也可主动调用）。
  *
+ * 「main」目标是最近活动的 workspace 窗（多窗时不是固定某一扇）。
+ *
  * 同一热键三态切换：
  * - 不可见 → 显示并聚焦；
  * - 可见但未聚焦 → 只聚焦；
@@ -21,6 +23,15 @@ export function resolveWindowToggleAction(state: {
   if (!state.visible) return "show";
   if (state.focused) return "hide";
   return "focus";
+}
+
+/** 全局搜索热键：窗口已在前台时不必再 show/focus/steal，避免 macOS 抢焦点卡一下。 */
+export function shouldRaiseMainWindow(state: {
+  visible: boolean;
+  minimized: boolean;
+  focused: boolean;
+}): boolean {
+  return !state.visible || state.minimized || !state.focused;
 }
 
 export async function toggleDesktopWindow(

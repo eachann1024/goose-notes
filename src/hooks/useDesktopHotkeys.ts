@@ -9,46 +9,25 @@
  * 注册结果写回 desktop.*HotkeyStatus，供设置页展示 占用/无效/已关闭/错误。
  */
 import { useEffect } from "react";
-import { hostRuntime } from "@/lib/host";
 import { getGooseDesktop } from "@/lib/electron/runtime";
+import { syncAllDesktopGlobalHotkeys } from "@/lib/electron/globalHotkeys";
 import {
   isShortcutRecorderTarget,
   shouldResumeGlobalHotkeysAfterFocusOut,
 } from "@/lib/electron/hotkeyCapture";
 import { useSettings } from "@/stores/useSettings";
 import type { DesktopHotkeyStatus } from "@/stores/settings/types";
+import type { HostHotkeyRegisterResult } from "@/lib/host/types";
 
-type DesktopHotkeyKind = "wake" | "quicknote" | "search";
-
-async function syncDesktopHotkey(
-  kind: DesktopHotkeyKind,
-  shortcut: string,
+function statusFromRegisterResult(
   enabled: boolean,
-): Promise<DesktopHotkeyStatus> {
-  const register =
-    kind === "wake"
-      ? hostRuntime.registerWakeHotkey
-      : kind === "quicknote"
-        ? hostRuntime.registerQuicknoteHotkey
-        : hostRuntime.registerSearchHotkey;
-  const unregister =
-    kind === "wake"
-      ? hostRuntime.unregisterWakeHotkey
-      : kind === "quicknote"
-        ? hostRuntime.unregisterQuicknoteHotkey
-        : hostRuntime.unregisterSearchHotkey;
-
+  shortcut: string,
+  result: HostHotkeyRegisterResult,
+  disabledMessage: string,
+): DesktopHotkeyStatus {
   if (!enabled || !shortcut.trim()) {
-    await unregister(shortcut);
-    const message =
-      kind === "wake"
-        ? "已关闭主窗口全局快捷键"
-        : kind === "quicknote"
-          ? "已关闭速记小窗全局快捷键"
-          : "已关闭全局搜索快捷键";
-    return { state: "disabled", message };
+    return { state: "disabled", message: disabledMessage };
   }
-  const result = await register(shortcut);
   if (result.ok) return { state: "active" };
   return {
     state: result.state ?? "error",
@@ -81,35 +60,56 @@ export function useDesktopHotkeys(): void {
     if (__HOST_TARGET__ !== "electron" || !hydrated) return;
     let cancelled = false;
 
-    const apply = async (
-      kind: DesktopHotkeyKind,
-      shortcut: string,
-      enabled: boolean,
-      setStatus: (status: DesktopHotkeyStatus) => void,
-    ) => {
-      const status = await syncDesktopHotkey(kind, shortcut, enabled);
-      if (!cancelled) setStatus(status);
-    };
-
-    const settings = useSettings.getState();
-    void apply(
-      "wake",
-      wakeHotkey,
-      wakeHotkeyEnabled,
-      settings.setWakeHotkeyStatus,
-    );
-    void apply(
-      "quicknote",
-      quicknoteHotkey,
-      quicknoteHotkeyEnabled,
-      settings.setQuicknoteHotkeyStatus,
-    );
-    void apply(
-      "search",
-      searchHotkey,
-      searchHotkeyEnabled,
-      settings.setSearchHotkeyStatus,
-    );
+    void (async () => {
+      const failed: HostHotkeyRegisterResult = {
+        ok: false,
+        state: "error",
+        error: "桌面快捷键注册失败",
+      };
+      let result: {
+        wake: HostHotkeyRegisterResult;
+        quicknote: HostHotkeyRegisterResult;
+        search: HostHotkeyRegisterResult;
+      };
+      try {
+        result = await syncAllDesktopGlobalHotkeys({
+          wake: { shortcut: wakeHotkey, enabled: wakeHotkeyEnabled },
+          quicknote: {
+            shortcut: quicknoteHotkey,
+            enabled: quicknoteHotkeyEnabled,
+          },
+          search: { shortcut: searchHotkey, enabled: searchHotkeyEnabled },
+        });
+      } catch {
+        result = { wake: failed, quicknote: failed, search: failed };
+      }
+      if (cancelled) return;
+      const settings = useSettings.getState();
+      settings.setWakeHotkeyStatus(
+        statusFromRegisterResult(
+          wakeHotkeyEnabled,
+          wakeHotkey,
+          result.wake,
+          "已关闭主窗口全局快捷键",
+        ),
+      );
+      settings.setQuicknoteHotkeyStatus(
+        statusFromRegisterResult(
+          quicknoteHotkeyEnabled,
+          quicknoteHotkey,
+          result.quicknote,
+          "已关闭速记小窗全局快捷键",
+        ),
+      );
+      settings.setSearchHotkeyStatus(
+        statusFromRegisterResult(
+          searchHotkeyEnabled,
+          searchHotkey,
+          result.search,
+          "已关闭全局搜索快捷键",
+        ),
+      );
+    })();
 
     return () => {
       cancelled = true;

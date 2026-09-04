@@ -1,4 +1,4 @@
-import { app, ipcMain, type BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,10 +63,17 @@ function acceptMarkdownFile(raw: string): string | null {
   return allowAssociatedMarkdownFile(resolved);
 }
 
+/** 默认把 md 投到最近活动的已有 workspace 窗，不另开新窗。 */
+function deliveryWindow(): BrowserWindow | null {
+  const win = getMainWindow();
+  if (!win || win.isDestroyed()) return null;
+  return win;
+}
+
 function deliverQueuedToRenderer(): void {
   if (!rendererHasTakenPending) return;
-  const win = getMainWindow();
-  if (!win || win.isDestroyed()) return;
+  const win = deliveryWindow();
+  if (!win) return;
   if (pendingForRenderer.length === 0) return;
   const files = uniqueKeepOrder(pendingForRenderer);
   pendingForRenderer.length = 0;
@@ -108,14 +115,19 @@ export function markOpenMarkdownRendererUnavailable(): void {
 
 export function bindOpenMarkdownWindow(win: BrowserWindow): void {
   win.webContents.on("did-start-loading", () => {
-    markOpenMarkdownRendererUnavailable();
+    if (deliveryWindow() === win) {
+      markOpenMarkdownRendererUnavailable();
+    }
   });
 }
 
 export function registerOpenMarkdownIpc(): void {
   if (ipcRegistered) return;
   ipcRegistered = true;
-  ipcMain.handle(TAKE_PENDING_CHANNEL, () => {
+  ipcMain.handle(TAKE_PENDING_CHANNEL, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const target = deliveryWindow();
+    if (!win || !target || win !== target) return [];
     rendererHasTakenPending = true;
     processQueuedRaw();
     const files = uniqueKeepOrder(pendingForRenderer);

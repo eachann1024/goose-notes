@@ -339,6 +339,18 @@ export const electronGooseFs = {
     }
   },
 
+  restoreFromTrash: async (path: string) => {
+    const api = getGooseDesktop();
+    if (!api?.restoreFromTrash) return false;
+    try {
+      const restored = await api.restoreFromTrash(path);
+      if (restored) rememberExists(path, true);
+      return restored;
+    } catch {
+      return false;
+    }
+  },
+
   deleteDir: async (path: string) => {
     const api = getGooseDesktop();
     if (!api) return false;
