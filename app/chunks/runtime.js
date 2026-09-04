@@ -1,0 +1,1 @@
+function e(){return typeof window<`u`&&!!window.gooseDesktop}function t(){return typeof window>`u`?null:window.gooseDesktop??null}export{e as n,t};

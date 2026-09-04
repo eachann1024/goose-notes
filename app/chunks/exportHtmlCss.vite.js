@@ -228,8 +228,10 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 }
 
 .goose-code-content-wrapper {
+  --goose-code-font-size: 0.85em;
+  --goose-code-line-box: calc(var(--goose-code-font-size) * 1.7);
   position: relative;
-  padding-top: 36px;
+  padding-top: var(--editor-code-toolbar-row-height, 36px);
 }
 
 .goose-code-block-node[data-visual-preview="true"] .goose-code-content-wrapper {
@@ -244,7 +246,8 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   border-radius: 0;
   background: transparent;
   color: inherit;
-  padding: 12px 16px;
+  padding: var(--editor-code-block-padding-y, 12px)
+    var(--editor-code-block-padding-x, 16px);
   font-family: var(
     --font-mono,
     "DM Mono",
@@ -256,7 +259,7 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
     "Courier New",
     monospace
   );
-  font-size: 0.85em;
+  font-size: var(--goose-code-font-size, 0.85em);
   line-height: 1.7;
   overflow-x: auto;
 }
@@ -273,6 +276,24 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+}
+
+/* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。 */
+.bn-block-outer[data-goose-code-active-line]
+  .goose-code-content-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  height: var(--goose-code-line-box);
+  top: calc(
+    var(--editor-code-toolbar-row-height, 36px) +
+      var(--editor-code-block-padding-y, 12px) +
+      (var(--goose-code-active-line, 1) - 1) * var(--goose-code-line-box)
+  );
+  background: var(--code-active-line-bg, var(--goose-active-line-bg));
 }
 
 /* 行号 */
@@ -978,6 +999,56 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   }
 }
 
+/* ===== 笔记 @ 提及 tag：垂直居中，左右留白避免贴在一起 ===== */
+.workspace-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"],
+.quicknote-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"] {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: bottom;
+  box-sizing: border-box;
+  height: 1.5em;
+  margin-left: 0.25em;
+  margin-right: 0.25em;
+  padding: 0 8px;
+  border-radius: 6px;
+  background-color: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+  line-height: 1;
+  user-select: none;
+  cursor: default;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"]
+  .goose-page-mention,
+.quicknote-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"]
+  .goose-page-mention {
+  display: inline-flex;
+  align-items: center;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.workspace-editor-surface
+  .goose-page-mention-armed
+  [data-inline-content-type="pageMention"],
+.workspace-editor-surface
+  .goose-page-mention-armed
+  .goose-page-mention {
+  cursor: pointer;
+}
+
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
@@ -1072,9 +1143,9 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 .workspace-editor-surface[data-font-family="mono"] .bn-default-styles {
   font-family: var(--font-mono);
 }
-`,i=`/* 有序/无序列表 marker、嵌套连接线、代码块与表格块外边距。
+`,i=`/* 有序/无序列表 marker、代码块与表格块外边距。
  * 被 editor-base.css 按序 @import。
- * 依赖 --goose-list-* / --goose-bullet-* / --goose-interactive-selected-fg / --bn-colors-side-menu。
+ * 依赖 --goose-list-* / --goose-bullet-* / --goose-interactive-selected-fg。
  */
 
 /* 无序 / 有序列表 marker 共用正文首行的光学中心轴。
@@ -1110,102 +1181,15 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
 }
 
 /*
- * 嵌套列表连接线：BlockNote 默认把线拆到每个 child outer 上，线段高度不包含
- * 上面的 block margin，因此列表项之间会出现断口；默认 x 也比 24px marker 槽
- * 的中心偏左 8px。改为由「拥有 children 的列表父块」绘制一根完整主干：
- *
- * - 默认 x=10.5px，对齐圆点 / checkbox 的真实视觉中心轴；
- * - 有序列表单独使用 x=9px，对齐数字字形的视觉中心；
- * - y 从父项 marker 下边缘开始；接到下一同级项时，在线上方边缘收口；
- * - 后面仍有同级列表项时，继续穿过父块 margin 并收在下一 marker 上边缘；
- * - 线不接收指针事件，不影响光标、选择、checkbox 和拖拽。
- *
- * 只替换普通列表的原生 child 分段线。折叠列表 / 折叠标题不再画引用线。
+ * 嵌套块不再画左侧引用线。BlockNote 默认在 child outer::before 上画
+ * 分段线；折叠列表 / 折叠标题本来就不画，普通列表也不再补主干。
  */
 .workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  ) {
-  --goose-list-marker-axis-x: 10.5px;
-  --goose-list-marker-axis-y: calc(
-    0.75em + 3px + var(--goose-list-marker-optical-offset-y)
-  );
-  --goose-list-marker-clearance-y: 0.25em;
-  --goose-list-next-marker-clearance-y: 0.25em;
-  position: relative;
-}
-
-/* 不同 marker 的纵向轮廓不同：圆点按半径避让，数字按字形半高避让，
-   checkbox 按 1em 方框半高避让。连接线与 marker 同轴，但不能穿透。 */
-.workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content[data-content-type="numberedListItem"] + .bn-block-group
-  ) {
-  --goose-list-marker-axis-x: 9px;
-  --goose-list-marker-clearance-y: 0.625em;
-}
-
-.workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content[data-content-type="checkListItem"] + .bn-block-group
-  ) {
-  /* 自绘方框没有原生 checkbox 墨迹偏移，连接线按几何中心收口 */
-  --goose-list-marker-axis-y: calc(0.75em + 3px);
-  --goose-list-marker-clearance-y: 0.5em;
-}
-
-/* 仅常规笔记本无序列表：连接线从圆点外缘再退让 0.3125em；随字号缩放。 */
-.workspace-shell
-  .workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content[data-content-type="bulletListItem"] + .bn-block-group
-  ) {
-  --goose-list-marker-axis-x: var(--goose-bullet-marker-center-x);
-  --goose-list-marker-axis-y: calc(0.75em + 3px);
-  --goose-bullet-line-gap: 0.3125em;
-  --goose-list-marker-clearance-y: calc(
-    var(--goose-bullet-marker-radius) + var(--goose-bullet-line-gap)
-  );
-  --goose-list-next-marker-clearance-y: var(--goose-list-marker-clearance-y);
-}
-
-.workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  )::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  left: var(--goose-list-marker-axis-x);
-  top: calc(
-    var(--goose-list-marker-axis-y) + var(--goose-list-marker-clearance-y)
-  );
-  bottom: var(--goose-list-marker-axis-y);
-  width: 1px;
-  border-radius: 1px;
-  background: var(--bn-colors-side-menu);
-  pointer-events: none;
-}
-
-/* 默认 bottom 只收在末级圆点中心；无序列表需对称退到圆点外缘 5px。 */
-.workspace-shell
-  .workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content[data-content-type="bulletListItem"] + .bn-block-group
-  )::after {
-  bottom: calc(
-    var(--goose-list-marker-axis-y) + var(--goose-list-marker-clearance-y)
-  );
+  .bn-block-group
+  .bn-block-group
+  > .bn-block-outer::before {
+  content: none !important;
+  border-left: 0 !important;
 }
 
 /* 有序列表数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
@@ -1275,84 +1259,6 @@ import{t as e}from"./vendor-blocknote.js";var t=`/* 代码块 chrome、工具栏
   > input:not(:checked) {
   outline: 1px solid var(--goose-interactive-selected-fg);
   outline-offset: -1px;
-}
-
-/* 下一同级 marker 的上边缘决定主干终点。 */
-.workspace-editor-surface
-  .bn-block-outer:has(
-    > .bn-block
-      > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  ):has(
-    + .bn-block-outer
-      > .bn-block
-      > .bn-block-content[data-content-type="numberedListItem"]
-  )
-  > .bn-block {
-  --goose-list-next-marker-clearance-y: 0.625em;
-}
-
-.workspace-editor-surface
-  .bn-block-outer:has(
-    > .bn-block
-      > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  ):has(
-    + .bn-block-outer
-      > .bn-block
-      > .bn-block-content[data-content-type="checkListItem"]
-  )
-  > .bn-block {
-  --goose-list-next-marker-clearance-y: 0.5em;
-}
-
-/* 下一同级仍是列表时，把主干延长到它的 marker 上边缘。 */
-.workspace-editor-surface
-  .bn-block-outer:has(
-    > .bn-block
-      > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  ):has(
-    + .bn-block-outer
-      > .bn-block
-      > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-  )
-  > .bn-block::after {
-  bottom: calc(
-    -0.5em - var(--goose-list-marker-axis-y) +
-      var(--goose-list-next-marker-clearance-y)
-  );
-}
-
-/* 关闭被单根主干替代的 BlockNote 原生逐项分段线。 */
-.workspace-editor-surface
-  .bn-block:has(
-    > .bn-block-content:is(
-        [data-content-type="bulletListItem"],
-        [data-content-type="numberedListItem"],
-        [data-content-type="checkListItem"]
-      )
-      + .bn-block-group
-  )
-  > .bn-block-group
-  > .bn-block-outer::before {
-  border-left: 0;
 }
 
 /* 一级子无序列表始终使用空心圆，不依赖父项是否也是无序列表。
@@ -1884,6 +1790,7 @@ body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-code-floa
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-ai-menu-floating,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-side-menu,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-link-toolbar,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-link-toolbar],
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-panel,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-suggestion-menu,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-grid-suggestion-menu,
@@ -1927,6 +1834,13 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   overflow-anchor: none;
   font-size: var(--editor-font-size);
   line-height: 1.7;
+  caret-color: hsl(var(--foreground));
+  caret-width: var(--goose-editor-caret-width, 2px);
+}
+
+.goose-blocknote-editor .bn-inline-content,
+.bn-editor .bn-inline-content {
+  caret-width: var(--goose-editor-caret-width, 2px);
 }
 
 /* 空块占位（BlockNote 用 ::after content 渲染）默认跟随段落换行，窄窗时会折到第二行。
@@ -2223,13 +2137,49 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 /*
  * 空块提示是 .bn-block-content::after，在 flex 容器里是独立一项。
  * 行内内容 flex-grow 后会把它顶到行尾（新 Chromium / Electron 尤其明显）。
- * 空块只有一个光标位，不需要吃宽度；收回 grow，让「输入 / 或 、来展开菜单」贴在光标旁。
+ * 空块只有一个光标位，不需要吃宽度；收回 grow，让空块提示贴在光标旁。
  */
 .bn-block-content:has(.ProseMirror-trailingBreak:only-child)
   > .bn-inline-content,
 .bn-block-content:has(.ProseMirror-trailingBreak:only-child)
   > :is(h1, h2, h3, h4, h5, h6, blockquote) {
   flex-grow: 0;
+}
+
+/* 光标所在文本行：Zed 式浅底，只盖当前块内容、不含子块。
+ * 左右外扩与标题色条对齐，再用等量 padding 把文字/光标放回原基线。
+ * 标题本身已外扩 8px，不再叠一次。 */
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content {
+  background-color: var(--goose-active-line-bg);
+}
+
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content:not([data-content-type="heading"]) {
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--goose-active-line-outset, 8px));
+  margin-left: calc(-1 * var(--goose-active-line-outset, 8px));
+  margin-right: calc(-1 * var(--goose-active-line-outset, 8px));
+  padding-left: var(--goose-active-line-outset, 8px);
+  padding-right: var(--goose-active-line-outset, 8px);
+  border-radius: 4px;
+}
+
+/* 标题默认 18px padding-top 是块间距，底色会把这块空白一起涂上。
+ * 与色条标题相同：15px 挪到透明 margin，浅底只包文字行。 */
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content[data-content-type="heading"]:not(
+    [data-background-color]
+  ) {
+  margin-top: 15px;
+  padding-top: 3px;
+  border-radius: 4px;
 }
 
 /* BlockNote 块间距全局优化 */
@@ -2242,7 +2192,7 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
 }
 `,l=`/* 表格与分割线、链接、标注、表格扩展/拖拽手柄、图视频块间距。
  * 被 editor-base.css 按序 @import。
- * 依赖 --goose-accent-link / --border / --primary / --muted-foreground。
+ * 依赖 --goose-interactive-selected-fg / --goose-accent-link / --border / --primary / --muted-foreground。
  */
 
 /* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
@@ -2321,6 +2271,22 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   color: inherit;
 }
 
+/* 跨出表格时只压住原生 ::selection，不要给所有表格盖不透明遮罩。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
 .workspace-editor-surface .bn-editor .selectedCell {
   user-select: none;
   -webkit-user-select: none;
@@ -2334,19 +2300,43 @@ body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
   border-top-color: hsl(var(--border) / 0.4);
 }
 
-/* ===== 链接样式：跟随产品强调色（含表格单元格内） ===== */
-.workspace-editor-surface a[data-inline-content-type="link"] {
-  color: var(--goose-accent-link);
+/* ===== 链接：正文色+下划线；按住 Cmd/Ctrl 再悬停才进可打开态 ===== */
+.workspace-editor-surface a[data-inline-content-type="link"],
+.quicknote-editor-surface a[data-inline-content-type="link"] {
+  color: inherit;
   text-decoration: underline;
   text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   cursor: text;
-  transition: color 0.15s ease;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.workspace-editor-surface a[data-inline-content-type="link"]:hover {
-  color: var(--goose-accent-link-hover);
+@media (hover: hover) and (pointer: fine) {
+  .workspace-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover,
+  .quicknote-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover,
+  .workspace-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover
+    *,
+  .quicknote-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover
+    * {
+    color: var(--goose-interactive-selected-fg) !important;
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface a[data-inline-content-type="link"],
+  .quicknote-editor-surface a[data-inline-content-type="link"] {
+    transition: none;
+  }
 }
 
 .workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
@@ -2752,7 +2742,7 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
 }
 `,d=`/* 格式工具栏、块工具栏、选中节点去描边、极简工作区隐藏首个 H1。
  * 被 editor-base.css 按序 @import。
- * 依赖 --editor-ui-scale / --goose-interactive-selected / --goose-icon-chip-on-selected / --popover / --border / --ring。
+ * 依赖 --editor-ui-scale / --goose-interactive-selected / --goose-icon-chip-on-selected / --goose-color-danger / --popover / --border / --ring。
  */
 
 /* 共享格式工具栏
@@ -2863,6 +2853,53 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
   opacity: 0.8;
 }
 
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 24px;
+  min-height: 24px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:hover {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat-kbd {
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+
+@media (max-width: 720px) {
+  [data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat-kbd {
+    display: none;
+  }
+}
+
 /* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
 
 /* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。
@@ -2895,6 +2932,16 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
   margin: 0 calc(1px * var(--editor-ui-scale, 1));
 }
 
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-add-to-chat {
+  height: calc(26px * var(--editor-ui-scale, 1));
+  min-height: 24px;
+  padding: 0 calc(8px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+  gap: calc(6px * var(--editor-ui-scale, 1));
+}
+
 .goose-formatting-toolbar-dock .goose-formatting-toolbar-row {
   gap: 2px;
   padding: 4px;
@@ -2916,6 +2963,12 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
 .goose-formatting-toolbar-dock .goose-formatting-toolbar-separator {
   height: 18px;
   margin: 0 2px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-add-to-chat {
+  height: 28px;
+  min-height: 28px;
+  border-radius: 7px;
 }
 
 /* 图片、视频等块级浮层共用同一密度；外层 goose-editor-context-ui 负责等比缩放。 */
@@ -2971,6 +3024,90 @@ html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hov
   margin: 0 1px;
   background: hsl(var(--border));
   opacity: 0.8;
+}
+
+/* 链接悬浮工具栏：与选区浮动格式工具栏同一套密度，随 --editor-ui-scale 缩放。 */
+[data-goose-link-toolbar] {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: calc(1px * var(--editor-ui-scale, 1));
+  padding: calc(3px * var(--editor-ui-scale, 1));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(10px * var(--editor-ui-scale, 1));
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  box-shadow: none;
+}
+
+[data-goose-link-toolbar][data-goose-link-toolbar-editing] {
+  gap: calc(6px * var(--editor-ui-scale, 1));
+  padding: calc(8px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-control {
+  display: inline-flex;
+  height: calc(26px * var(--editor-ui-scale, 1));
+  align-items: center;
+  justify-content: center;
+  gap: calc(4px * var(--editor-ui-scale, 1));
+  border: 0;
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  background: transparent;
+  padding: 0 calc(8px * var(--editor-ui-scale, 1));
+  color: hsl(var(--foreground));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.goose-link-toolbar-control:hover {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-link-toolbar-control:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+.goose-link-toolbar-control svg {
+  width: calc(14px * var(--editor-ui-scale, 1));
+  height: calc(14px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-control-danger {
+  color: var(--goose-color-danger);
+}
+
+.goose-link-toolbar-control-danger:hover {
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
+}
+
+.goose-link-toolbar-input {
+  height: calc(28px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-form-button {
+  height: calc(28px * var(--editor-ui-scale, 1));
+  padding-inline: calc(8px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-link-toolbar-control {
+    transition: none;
+  }
 }
 
 /* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
